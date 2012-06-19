@@ -1,10 +1,6 @@
 #ifndef evaluator_h
 #define evaluator_h
-#if COMkernel
 #include "kernel.h"
-#else
-#include "kernel2.h"
-#endif
 #define splitFirst(Ci,Cj) Cj->NCHILD == 0 || (Ci->NCHILD != 0 && Ci->RCRIT >= Cj->RCRIT)
 
 class Evaluator : public Kernel {
@@ -43,7 +39,6 @@ private:
   void interact(C_iter Ci, C_iter Cj, PairQueue &pairQueue, bool mutual=true) {
     vect dX = Ci->X - Cj->X;
     real Rq = norm(dX);
-#if DUAL
     if(Rq >= (Ci->RCRIT+Cj->RCRIT)*(Ci->RCRIT+Cj->RCRIT) && Rq != 0) {
       M2L(Ci,Cj,mutual);
       NM2L++;
@@ -54,21 +49,6 @@ private:
       Pair pair(Ci,Cj);
       pairQueue.push_back(pair);
     }
-#else
-    if(Ci->RCRIT != Cj->RCRIT) {
-      Pair pair(Ci,Cj);
-      pairQueue.push_back(pair);
-    } else if(Rq >= (Ci->RCRIT+Cj->RCRIT)*(Ci->RCRIT+Cj->RCRIT) && Rq != 0) {
-      M2L(Ci,Cj,mutual);
-      NM2L++;
-    } else if(Ci->NCHILD == 0 && Cj->NCHILD == 0) {
-      P2P(Ci,Cj,mutual);
-      NP2P++;
-    } else {
-      Pair pair(Ci,Cj);
-      pairQueue.push_back(pair);
-    }
-#endif
   }
 
 protected:
@@ -97,28 +77,20 @@ protected:
       X += c->X * std::abs(c->M[0]);
     }
     X /= m;
-#if USE_BMAX
     C->R = getBmax(X,C);
-#endif
-#if COMcenter
     C->X = X;
-#endif
   }
 
   void setRcrit(Cells &cells) {
-#if ERROR_OPT
     real c = (1 - THETA) * (1 - THETA) / pow(THETA,P+2) / pow(std::abs(ROOT->M[0]),1.0/3);
-#endif
     for( C_iter C=cells.begin(); C!=cells.end(); ++C ) {
       real x = 1.0 / THETA;
-#if ERROR_OPT
       real a = c * pow(std::abs(C->M[0]),1.0/3);
       for( int i=0; i<5; ++i ) {
         real f = x * x - 2 * x + 1 - a * pow(x,-P);
         real df = (P + 2) * x - 2 * (P + 1) + P / x;
         x -= f / df;
       }
-#endif
       C->RCRIT *= x;
     }
   }

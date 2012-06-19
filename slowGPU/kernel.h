@@ -633,11 +633,7 @@ public:
       C->M[0] += M[0];
       for( int i=1; i<MTERM; ++i ) C->M[i] += M[i+3];
     }
-#if USE_RMAX
     C->RCRIT = std::min(C->R,Rmax);
-#else
-    C->RCRIT = C->R;
-#endif
   }
 
   void M2M(C_iter Ci, real &Rmax) const {
@@ -654,11 +650,7 @@ public:
       for( int i=1; i<MTERM; ++i ) Ci->M[i] += C[i+3] * M[0];
       Upward<0,0,P-1>::M2M(Ci->M,C,M);
     }
-#if USE_RMAX
     Ci->RCRIT = std::min(Ci->R,Rmax);
-#else
-    Ci->RCRIT = Ci->R;
-#endif
   }
 
   void M2L(C_iter Ci, C_iter Cj, bool mutual=true) const {
