@@ -1,0 +1,33 @@
+CUDA_INSTALL_PATH  = /usr/local/cuda
+
+CXX = g++ -fopenmp -O3
+NVCC = nvcc -arch sm_21 -use_fast_math -Iinclude -Xcompiler "-fopenmp -O3"
+
+ORG = approximate.o \
+	main.o \
+	scanKernels.o \
+	sortKernels.th_o \
+	tree.o
+
+.SUFFIXES: .o .cpp .cu
+
+all: $(ORG)
+	$(CXX) $^ -lcudart -L$(CUDA_INSTALL_PATH)/lib64
+	./a.out
+
+%.o: %.cu
+	$(NVCC) -c $< -o $@
+
+%.th_o: %.cu
+	$(NVCC) -c $< -o $@
+
+$(ORG): include/*.h
+
+clean:
+	find . -name "*.o" -o -name "*.out*" | xargs rm -rf
+cleanall:
+	make clean
+	rm *.th_o
+save:
+	make clean
+	cd .. && tar zcvf fastGPU.tgz fastGPU
