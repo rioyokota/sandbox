@@ -137,7 +137,7 @@ public:
   void upwardPass(Cells &cells) {
     setRootCell(cells);
     for( C_iter C=cells.begin(); C!=cells.end(); ++C ) {
-      C->M = 0;
+      for( int i=0; i<MTERM; ++i ) C->M[i] = 0;
       C->L = 0;
     }
     for( C_iter C=cells.begin(); C!=cells.end(); ++C ) {
@@ -173,13 +173,13 @@ public:
     B_iter B2=jbodies.begin();
     for( B_iter B=ibodies.begin(); B!=ibodies.end(); ++B, ++B2 ) {
       B->TRG /= B->SRC;
-      diff1 += (B->TRG[0] - B2->TRG[0]) * (B->TRG[0] - B2->TRG[0]);// Difference of potential
-      norm1 += B2->TRG[0] * B2->TRG[0];                         //  Value of potential
-      diff2 += (B->TRG[1] - B2->TRG[1]) * (B->TRG[1] - B2->TRG[1]);// Difference of x acceleration
-      diff2 += (B->TRG[2] - B2->TRG[2]) * (B->TRG[2] - B2->TRG[2]);// Difference of y acceleration
-      diff2 += (B->TRG[3] - B2->TRG[3]) * (B->TRG[3] - B2->TRG[3]);// Difference of z acceleration
-      norm2 += B2->TRG[1] * B2->TRG[1];                         //  Value of x acceleration
-      norm2 += B2->TRG[2] * B2->TRG[2];                         //  Value of y acceleration
+      diff1 += (B->TRG[0] - B2->TRG[0]) * (B->TRG[0] - B2->TRG[0]);
+      norm1 += B2->TRG[0] * B2->TRG[0];
+      diff2 += (B->TRG[1] - B2->TRG[1]) * (B->TRG[1] - B2->TRG[1]);
+      diff2 += (B->TRG[2] - B2->TRG[2]) * (B->TRG[2] - B2->TRG[2]);
+      diff2 += (B->TRG[3] - B2->TRG[3]) * (B->TRG[3] - B2->TRG[3]);
+      norm2 += B2->TRG[1] * B2->TRG[1];
+      norm2 += B2->TRG[2] * B2->TRG[2];
       norm2 += B2->TRG[3] * B2->TRG[3];
     }
     std::cout << std::setw(20) << std::left

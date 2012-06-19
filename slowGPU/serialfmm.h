@@ -120,24 +120,11 @@ public:
     toc = getTime();
     if( printNow ) printf("Tree                 : %lf\n",toc-tic);
     tic = getTime();
+    Multipole = new real [cells.size()][MTERM]();
+    Local = new real [cells.size()][LTERM]();
     upwardPass(cells);
     toc = getTime();
     if( printNow ) printf("Upward pass          : %lf\n",toc-tic);
-  }
-
-  void evaluate(Cells &cells) {
-    double tic, toc;
-    tic = getTime();
-    setRootCell(cells);
-    CellQueue cellQueue;
-    cellQueue.push(ROOT);
-    traverse(cellQueue);
-    toc = getTime();
-    if( printNow ) printf("Traverse             : %lf\n",toc-tic);
-    tic = getTime();
-    downwardPass(cells);
-    toc = getTime();
-    if( printNow ) printf("Downward pass        : %lf\n",toc-tic);
   }
 
   void evaluate(Cells &icells, Cells &jcells) {
@@ -154,6 +141,8 @@ public:
     downwardPass(icells);
     toc = getTime();
     if( printNow ) printf("Downward pass        : %lf\n",toc-tic);
+    delete[] Multipole;
+    delete[] Local;
   }
 
 };
