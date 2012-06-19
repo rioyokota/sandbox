@@ -3,7 +3,7 @@
 #define warpId (threadIdx.x >> WARP_SIZE2)
 #define IF(x) (-(int)(x))
 
-__device__ __forceinline__ int inclusiveScanInt(int* prefix, int value) 
+__device__ __forceinline__ int inclusiveScanInt(int* prefix, int value)
 {
   prefix[laneId] = value;
   for (int i = 0; i < WARP_SIZE2; i++) {
@@ -98,8 +98,8 @@ __device__ __forceinline__ void P2P(
 }
 
 __device__ bool applyMAC(
-    const float4 sourceCenter, 
-    const float4 groupCenter, 
+    const float4 sourceCenter,
+    const float4 groupCenter,
     const float4 groupSize) {
   float3 dr = make_float3(fabsf(groupCenter.x - sourceCenter.x) - (groupSize.x),
                           fabsf(groupCenter.y - sourceCenter.y) - (groupSize.y),
@@ -219,9 +219,9 @@ __device__ void traverse(
 #endif
       }
 
-      if( warpOffsetSplit > 0 ) { 
+      if( warpOffsetSplit > 0 ) {
         stackGlob[ACCESS(numStack)] = stackShrd[laneId];
-        numStack++; 
+        numStack++;
         numNodesNew += warpOffsetSplit;
       }
       numNodes = numNodesNew;
@@ -248,7 +248,7 @@ __device__ void traverse(
     } else {
       pos_j[laneId] = make_float4(1.0e10f, 1.0e10f, 1.0e10f, 0.0f);
     }
-    for( int i=0; i<WARP_SIZE; i++ ) 
+    for( int i=0; i<WARP_SIZE; i++ )
       P2P(acc_i, pos_i, pos_j[i], eps2);
   }
 }
