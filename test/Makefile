@@ -46,5 +46,11 @@ gpufmm: gpufmm.o thrust.o
 openacc: openacc.c
 	pgcc -O3 -mp -acc -ta=nvidia $?
 	./a.out
-clean:
-	rm -f *.o *.out
+cleanall:
+	@make -C .. cleanall
+commit:
+	@make -C .. commit
+save:
+	@make -C .. save
+revert:
+	@make -C .. revert

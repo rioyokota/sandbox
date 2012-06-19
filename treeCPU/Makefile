@@ -4,8 +4,11 @@ a	: main.cxx
 	$(CXX) $?
 	./a.out
 
-clean:
-	find . -name "*.o" -o -name "*.out*" | xargs rm -rf
-save	:
-	make clean
-	cd .. && tar zcvf tree.tgz tree
+cleanall:
+	@make -C .. cleanall
+commit:
+	@make -C .. commit
+save:
+	@make -C .. save
+revert:
+	@make -C .. revert

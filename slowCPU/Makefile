@@ -5,7 +5,10 @@ a	: main.cxx
 	./a.out
 
 cleanall:
-	find . -name "*.o" -o -name "*.out*" -o -name "*.dat" | xargs rm -rf
-save    :
-	make cleanall
-	cd .. && tar zcvf slow.tgz slow
+	@make -C .. cleanall
+commit:
+	@make -C .. commit
+save:
+	@make -C .. save
+revert:
+	@make -C .. revert

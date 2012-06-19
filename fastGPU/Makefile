@@ -23,11 +23,12 @@ all: $(ORG)
 
 $(ORG): include/*.h
 
-clean:
-	find . -name "*.o" -o -name "*.out*" | xargs rm -rf
 cleanall:
-	make clean
+	@make -C .. cleanall
 	rm *.th_o
+commit:
+	@make -C .. commit
 save:
-	make clean
-	cd .. && tar zcvf fastGPU.tgz fastGPU
+	@make -C .. save
+revert:
+	@make -C .. revert
