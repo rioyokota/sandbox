@@ -1,6 +1,5 @@
 cleanall:
 	find . -name "*.o" -o -name "*.out*" | xargs rm -rf
-	make clean
 commit  :
 	git commit
 	git push origin master

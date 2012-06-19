@@ -25,7 +25,6 @@ $(ORG): include/*.h
 
 cleanall:
 	@make -C .. cleanall
-	rm *.th_o
 commit:
 	@make -C .. commit
 save:
