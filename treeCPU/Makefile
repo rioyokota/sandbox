@@ -1,6 +1,6 @@
 CXX = mpicxx -ggdb3 -Wall -Wextra -Wshadow -Wuninitialized -O3 -fopenmp -ffast-math -funroll-loops -fforce-addr
 
-a	: main.cxx
+all:	main.cxx
 	$(CXX) $?
 	./a.out
 

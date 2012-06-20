@@ -22,7 +22,6 @@ int main(){
   // cerr << vec[0].x << " "
   //    << vec[0].y << " "
   //    << vec[0].z << endl;
-#else
 #endif
   int nbody = 1<<20;
   vector<float4> vec(nbody);
