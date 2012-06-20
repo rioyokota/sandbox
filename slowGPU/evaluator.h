@@ -138,7 +138,7 @@ public:
     setRootCell(cells);
     for( C_iter C=cells.begin(); C!=cells.end(); ++C ) {
       for( int i=0; i<MTERM; ++i ) C->M[i] = 0;
-      C->L = 0;
+      for( int i=0; i<LTERM; ++i ) C->L[i] = 0;
     }
     for( C_iter C=cells.begin(); C!=cells.end(); ++C ) {
       real Rmax = 0;

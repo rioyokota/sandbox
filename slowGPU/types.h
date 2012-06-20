@@ -29,8 +29,6 @@ const real EPS2     = 0;                                        //!< Softening p
 const int MTERM = P*(P+1)*(P+2)/6;                              //!< Number of Cartesian mutlipole terms
 const int LTERM = (P+1)*(P+2)*(P+3)/6;                          //!< Number of Cartesian local terms
 
-typedef vec<LTERM,real>                        Lset;            //!< Local coefficient type for Cartesian
-
 struct Body {
   int         IBODY;                                            //!< Initial body numbering for sorting back
   int         IPROC;                                            //!< Initial process numbering for partitioning back
@@ -58,7 +56,7 @@ struct Cell {
   real     RMAX;                                                //!< Max cell radius
   real     RCRIT;                                               //!< Critical cell radius
   real     M[MTERM];                                            //!< Multipole coefficients
-  Lset     L;                                                   //!< Local coefficients
+  real     L[LTERM];                                            //!< Local coefficients
 };
 typedef std::vector<Cell>              Cells;                   //!< Vector of cells
 typedef std::vector<Cell>::iterator    C_iter;                  //!< Iterator for cell vector
