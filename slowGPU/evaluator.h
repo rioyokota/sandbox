@@ -68,11 +68,11 @@ protected:
   void setCenter(Cell *C) const {
     real m = 0;
     vect X = 0;
-    for( Body *B=C->LEAF; B!=C->LEAF+C->NCLEAF; ++B ) {
+    for( Body *B=C->LEAF; B<C->LEAF+C->NCLEAF; ++B ) {
       m += B->SRC;
       X += B->X * B->SRC;
     }
-    for( Cell *c=Cj0+C->CHILD; c!=Cj0+C->CHILD+C->NCHILD; ++c ) {
+    for( Cell *c=Cj0+C->CHILD; c<Cj0+C->CHILD+C->NCHILD; ++c ) {
       m += std::abs(c->M[0]);
       X += c->X * std::abs(c->M[0]);
     }
@@ -83,7 +83,7 @@ protected:
 
   void setRcrit(Cells &cells) {
     real c = (1 - THETA) * (1 - THETA) / pow(THETA,P+2) / pow(std::abs(ROOT->M[0]),1.0/3);
-    for( Cell *C=&*cells.begin(); C!=&*cells.end(); ++C ) {
+    for( Cell *C=&*cells.begin(); C<&*cells.end(); ++C ) {
       real x = 1.0 / THETA;
       real a = c * pow(std::abs(C->M[0]),1.0/3);
       for( int i=0; i<5; ++i ) {
@@ -101,12 +101,12 @@ protected:
       pairQueue.pop_front();
       if(splitFirst(pair.first,pair.second)) {
         Cell *C = pair.first;
-        for( Cell *Ci=Ci0+C->CHILD; Ci!=Ci0+C->CHILD+C->NCHILD; ++Ci ) {
+        for( Cell *Ci=Ci0+C->CHILD; Ci<Ci0+C->CHILD+C->NCHILD; ++Ci ) {
           interact(Ci,pair.second,pairQueue,mutual);
         }
       } else {
         Cell *C = pair.second;
-        for( Cell *Cj=Cj0+C->CHILD; Cj!=Cj0+C->CHILD+C->NCHILD; ++Cj ) {
+        for( Cell *Cj=Cj0+C->CHILD; Cj<Cj0+C->CHILD+C->NCHILD; ++Cj ) {
           interact(pair.first,Cj,pairQueue,mutual);
         }
       }
@@ -118,9 +118,9 @@ protected:
     while( !cellQueue.empty() ) {
       Cell *C = cellQueue.front();
       cellQueue.pop();
-      for( Cell *Ci=Ci0+C->CHILD; Ci!=Ci0+C->CHILD+C->NCHILD; ++Ci ) {
+      for( Cell *Ci=Ci0+C->CHILD; Ci<Ci0+C->CHILD+C->NCHILD; ++Ci ) {
         interact(Ci,cellQueue);
-        for( Cell *Cj=Ci+1; Cj!=Cj0+C->CHILD+C->NCHILD; ++Cj ) {
+        for( Cell *Cj=Ci+1; Cj<Cj0+C->CHILD+C->NCHILD; ++Cj ) {
           interact(Ci,Cj,pairQueue);
         }
       }
@@ -136,24 +136,24 @@ public:
 
   void upwardPass(Cells &cells) {
     setRootCell(cells);
-    for( Cell *C=&*cells.begin(); C!=&*cells.end(); ++C ) {
+    for( Cell *C=&*cells.begin(); C<&*cells.end(); ++C ) {
       for( int i=0; i<MTERM; ++i ) C->M[i] = 0;
       for( int i=0; i<LTERM; ++i ) C->L[i] = 0;
     }
-    for( Cell *C=&*cells.begin(); C!=&*cells.end(); ++C ) {
+    for( Cell *C=&*cells.begin(); C<&*cells.end(); ++C ) {
       real Rmax = 0;
       setCenter(C);
       P2M(C,Rmax);
       M2M(C,Rmax);
     }
-    for( Cell *C=&*cells.begin(); C!=&*cells.end(); ++C ) {
+    for( Cell *C=&*cells.begin(); C<&*cells.end(); ++C ) {
       for( int i=1; i<MTERM; ++i ) C->M[i] /= C->M[0];
     }
     setRcrit(cells);
   }
 
   void downwardPass(Cells &cells) const {
-    for( Cell *C=&*cells.end()-2; C!=&*cells.begin()-1; --C ) {
+    for( Cell *C=&*cells.end()-2; C>=&*cells.begin(); --C ) {
       L2L(C);
       L2P(C);
     }
@@ -167,11 +167,11 @@ public:
     Ci->NDLEAF = ibodies.size();
     Cj->LEAF = &*jbodies.begin();
     Cj->NDLEAF = jbodies.size();
-    for( Body *B=&*ibodies.begin(); B!=&*ibodies.end(); ++B ) B->TRG = 0;
+    for( Body *B=&*ibodies.begin(); B<&*ibodies.end(); ++B ) B->TRG = 0;
     P2P(Ci,Cj,false);
     real diff1 = 0, norm1 = 0, diff2 = 0, norm2 = 0;
     Body *B2=&*jbodies.begin();
-    for( Body *B=&*ibodies.begin(); B!=&*ibodies.end(); ++B, ++B2 ) {
+    for( Body *B=&*ibodies.begin(); B<&*ibodies.end(); ++B, ++B2 ) {
       B->TRG /= B->SRC;
       diff1 += (B->TRG[0] - B2->TRG[0]) * (B->TRG[0] - B2->TRG[0]);
       norm1 += B2->TRG[0] * B2->TRG[0];

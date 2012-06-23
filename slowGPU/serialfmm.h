@@ -16,12 +16,12 @@ private:
 
   inline void setMorton(Bodies &bodies) {
     float d = 2 * R0 / (1 << MAXLEVEL);
-    for( Body *B=&*bodies.begin(); B!=&*bodies.end(); ++B ) {
+    for( Body *B=&*bodies.begin(); B<&*bodies.end(); ++B ) {
       int ix = int((B->X[0] + R0 - X0[0]) / d);
       int iy = int((B->X[1] + R0 - X0[1]) / d);
       int iz = int((B->X[2] + R0 - X0[2]) / d);
       int id = 0;
-      for( int l=0; l!=MAXLEVEL; ++l ) {
+      for( int l=0; l<MAXLEVEL; ++l ) {
         id += ix % 2 << (3 * l);
         id += iy % 2 << (3 * l + 1);
         id += iz % 2 << (3 * l + 2);
@@ -54,7 +54,7 @@ private:
     cells.clear();
     cells.reserve(1 << (3 * MAXLEVEL));
     float d = 2 * R0 / (1 << MAXLEVEL);
-    for( Body *B=&*bodies.begin(); B!=&*bodies.end(); ++B ) {
+    for( Body *B=&*bodies.begin(); B<&*bodies.end(); ++B ) {
       int IC = B->ICELL;
       if( IC != I ) {
         Cell cell;
@@ -85,12 +85,12 @@ protected:
   void linkTree(Cells &cells) {
     int begin = 0, end = cells.size();
     float d = 2 * R0 / (1 << MAXLEVEL);
-    for( int l=0; l!=MAXLEVEL; ++l ) {
+    for( int l=0; l<MAXLEVEL; ++l ) {
       int div = (8 << (3 * l));
       int I = -1;
       int p = end - 1;
       d *= 2;
-      for( int c=begin; c!=end; ++c ) {
+      for( int c=begin; c<end; ++c ) {
         Body *B = cells[c].LEAF;
         int IC = B->ICELL / div;
         if( IC != I ) {

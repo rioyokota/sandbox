@@ -535,8 +535,8 @@ private:
   }
 
   inline void flipCoef(real *C) const {
-    for( int i=1; i!=4; ++i ) C[i] = -C[i];
-    for( int i=10; i!=20; ++i ) C[i] = -C[i];
+    for( int i=1; i<4; ++i ) C[i] = -C[i];
+    for( int i=10; i<20; ++i ) C[i] = -C[i];
   }
 
   inline void sumM2L(real *L, const real *C, const real *M) const {
@@ -573,10 +573,10 @@ public:
   ~Kernel() {}
 
   void P2P(Cell *Ci, Cell *Cj, bool mutual=true) const {
-    for( Body *Bi=Ci->LEAF; Bi!=Ci->LEAF+Ci->NDLEAF; ++Bi ) {
+    for( Body *Bi=Ci->LEAF; Bi<Ci->LEAF+Ci->NDLEAF; ++Bi ) {
       real P0 = 0;
       vect F0 = 0;
-      for( Body *Bj=Cj->LEAF; Bj!=Cj->LEAF+Cj->NDLEAF; ++Bj ) {
+      for( Body *Bj=Cj->LEAF; Bj<Cj->LEAF+Cj->NDLEAF; ++Bj ) {
         vect dX = Bi->X - Bj->X;
         real R2 = norm(dX) + EPS2;
         real invR2 = 1.0 / R2;
@@ -599,10 +599,10 @@ public:
 
   void P2P(Cell *C) const {
     int NJ = C->NDLEAF;
-    for( Body *Bi=C->LEAF; Bi!=C->LEAF+C->NDLEAF; ++Bi, --NJ ) {
+    for( Body *Bi=C->LEAF; Bi<C->LEAF+C->NDLEAF; ++Bi, --NJ ) {
       real P0 = 0;
       vect F0 = 0;
-      for( Body *Bj=Bi+1; Bj!=Bi+NJ; ++Bj ) {
+      for( Body *Bj=Bi+1; Bj<Bi+NJ; ++Bj ) {
         vect dX = Bi->X - Bj->X;
         real R2 = norm(dX) + EPS2;
         real invR2 = 1.0 / R2;
@@ -624,7 +624,7 @@ public:
   }
 
   void P2M(Cell *C, real &Rmax) const {
-    for( Body *B=C->LEAF; B!=C->LEAF+C->NCLEAF; ++B ) {
+    for( Body *B=C->LEAF; B<C->LEAF+C->NCLEAF; ++B ) {
       vect dist = C->X - B->X;
       real R = std::sqrt(norm(dist));
       if( R > Rmax ) Rmax = R;
@@ -640,7 +640,7 @@ public:
   }
 
   void M2M(Cell *Ci, real &Rmax) const {
-    for( Cell *Cj=Cj0+Ci->CHILD; Cj!=Cj0+Ci->CHILD+Ci->NCHILD; ++Cj ) {
+    for( Cell *Cj=Cj0+Ci->CHILD; Cj<Cj0+Ci->CHILD+Ci->NCHILD; ++Cj ) {
       vect dist = Ci->X - Cj->X;
       real R = std::sqrt(norm(dist)) + Cj->RCRIT;
       if( R > Rmax ) Rmax = R;
@@ -673,7 +673,7 @@ public:
   }
 
   void M2P(Cell *Ci, Cell *Cj, bool mutual=true) const {
-    for( Body *B=Ci->LEAF; B!=Ci->LEAF+Ci->NDLEAF; ++B ) {
+    for( Body *B=Ci->LEAF; B<Ci->LEAF+Ci->NDLEAF; ++B ) {
       vect dist = B->X - Cj->X;
       real invR2 = 1 / norm(dist);
       real invR  = B->SRC * Cj->M[0] * std::sqrt(invR2);
@@ -682,7 +682,7 @@ public:
       sumM2P(B,C,Cj->M);
     }
     if( mutual ) {
-      for( Body *B=Cj->LEAF; B!=Cj->LEAF+Cj->NDLEAF; ++B ) {
+      for( Body *B=Cj->LEAF; B<Cj->LEAF+Cj->NDLEAF; ++B ) {
         vect dist = B->X - Ci->X;
         real invR2 = 1 / norm(dist);
         real invR  = B->SRC * Ci->M[0] * std::sqrt(invR2);
@@ -707,7 +707,7 @@ public:
   }
 
   void L2P(Cell *Ci) const {
-    for( Body *B=Ci->LEAF; B!=Ci->LEAF+Ci->NCLEAF; ++B ) {
+    for( Body *B=Ci->LEAF; B<Ci->LEAF+Ci->NCLEAF; ++B ) {
 #if 0
       vect dist = B->X - Ci->X;
       real C[LTERM], L[LTERM];
