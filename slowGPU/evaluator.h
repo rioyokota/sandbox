@@ -68,7 +68,7 @@ protected:
   void setCenter(Cell *C) const {
     real m = 0;
     vect X = 0;
-    for( B_iter B=C->LEAF; B!=C->LEAF+C->NCLEAF; ++B ) {
+    for( Body *B=C->LEAF; B!=C->LEAF+C->NCLEAF; ++B ) {
       m += B->SRC;
       X += B->X * B->SRC;
     }
@@ -163,15 +163,15 @@ public:
     Cells cells;
     cells.resize(2);
     Cell *Ci = &*cells.begin(), *Cj = &*cells.begin()+1;
-    Ci->LEAF = ibodies.begin();
+    Ci->LEAF = &*ibodies.begin();
     Ci->NDLEAF = ibodies.size();
-    Cj->LEAF = jbodies.begin();
+    Cj->LEAF = &*jbodies.begin();
     Cj->NDLEAF = jbodies.size();
-    for( B_iter B=ibodies.begin(); B!=ibodies.end(); ++B ) B->TRG = 0;
+    for( Body *B=&*ibodies.begin(); B!=&*ibodies.end(); ++B ) B->TRG = 0;
     P2P(Ci,Cj,false);
     real diff1 = 0, norm1 = 0, diff2 = 0, norm2 = 0;
-    B_iter B2=jbodies.begin();
-    for( B_iter B=ibodies.begin(); B!=ibodies.end(); ++B, ++B2 ) {
+    Body *B2=&*jbodies.begin();
+    for( Body *B=&*ibodies.begin(); B!=&*ibodies.end(); ++B, ++B2 ) {
       B->TRG /= B->SRC;
       diff1 += (B->TRG[0] - B2->TRG[0]) * (B->TRG[0] - B2->TRG[0]);
       norm1 += B2->TRG[0] * B2->TRG[0];

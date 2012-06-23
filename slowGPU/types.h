@@ -41,7 +41,6 @@ struct Body {
   }
 };
 typedef std::vector<Body>              Bodies;                  //!< Vector of bodies
-typedef std::vector<Body>::iterator    B_iter;                  //!< Iterator for body vector
 
 struct Cell {
   bigint   ICELL;                                               //!< Cell index
@@ -50,7 +49,7 @@ struct Cell {
   int      NDLEAF;                                              //!< Number of descendant leafs
   int      PARENT;                                              //!< Iterator offset of parent cell
   int      CHILD;                                               //!< Iterator offset of child cells
-  B_iter   LEAF;                                                //!< Iterator of first leaf
+  Body    *LEAF;                                                //!< Iterator of first leaf
   vect     X;                                                   //!< Cell center
   real     R;                                                   //!< Cell radius
   real     RMAX;                                                //!< Max cell radius

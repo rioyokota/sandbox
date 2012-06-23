@@ -16,7 +16,7 @@ private:
 
   inline void setMorton(Bodies &bodies) {
     float d = 2 * R0 / (1 << MAXLEVEL);
-    for( B_iter B=bodies.begin(); B!=bodies.end(); ++B ) {
+    for( Body *B=&*bodies.begin(); B!=&*bodies.end(); ++B ) {
       int ix = int((B->X[0] + R0 - X0[0]) / d);
       int iy = int((B->X[1] + R0 - X0[1]) / d);
       int iz = int((B->X[2] + R0 - X0[2]) / d);
@@ -33,7 +33,7 @@ private:
     }
   }
 
-  inline void initCell(Cell &cell, int child, B_iter LEAF, real diameter) {
+  inline void initCell(Cell &cell, int child, Body *LEAF, real diameter) {
     cell.NCHILD = 0;
     cell.NCLEAF = 0;
     cell.NDLEAF = 0;
@@ -54,7 +54,7 @@ private:
     cells.clear();
     cells.reserve(1 << (3 * MAXLEVEL));
     float d = 2 * R0 / (1 << MAXLEVEL);
-    for( B_iter B=bodies.begin(); B!=bodies.end(); ++B ) {
+    for( Body *B=&*bodies.begin(); B!=&*bodies.end(); ++B ) {
       int IC = B->ICELL;
       if( IC != I ) {
         Cell cell;
@@ -91,7 +91,7 @@ protected:
       int p = end - 1;
       d *= 2;
       for( int c=begin; c!=end; ++c ) {
-        B_iter B = cells[c].LEAF;
+        Body *B = cells[c].LEAF;
         int IC = B->ICELL / div;
         if( IC != I ) {
           Cell cell;

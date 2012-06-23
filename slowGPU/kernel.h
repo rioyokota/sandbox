@@ -370,7 +370,7 @@ struct Downward {
     Downward<nx,ny+1,nz-1>::M2L(L,C,M);
     L[Index<nx,ny,nz>::I] += M2LSum<nx,ny,nz>::kernel(C,M);
   }
-  static inline void M2P(B_iter B, const real *C, const real *M) {
+  static inline void M2P(Body *B, const real *C, const real *M) {
     Downward<nx,ny+1,nz-1>::M2P(B,C,M);
     B->TRG[Index<nx,ny,nz>::I] += M2LSum<nx,ny,nz>::kernel(C,M);
   }
@@ -378,7 +378,7 @@ struct Downward {
     Downward<nx,ny+1,nz-1>::L2L(LI,C,LJ);
     LI[Index<nx,ny,nz>::I] += LocalSum<nx,ny,nz>::kernel(C,LJ);
   }
-  static inline void L2P(B_iter B, const real *C, const real *L) {
+  static inline void L2P(Body *B, const real *C, const real *L) {
     Downward<nx,ny+1,nz-1>::L2P(B,C,L);
     B->TRG[Index<nx,ny,nz>::I] += LocalSum<nx,ny,nz>::kernel(C,L);
   }
@@ -390,7 +390,7 @@ struct Downward<nx,ny,0> {
     Downward<nx+1,0,ny-1>::M2L(L,C,M);
     L[Index<nx,ny,0>::I] += M2LSum<nx,ny,0>::kernel(C,M);
   }
-  static inline void M2P(B_iter B, const real *C, const real *M) {
+  static inline void M2P(Body *B, const real *C, const real *M) {
     Downward<nx+1,0,ny-1>::M2P(B,C,M);
     B->TRG[Index<nx,ny,0>::I] += M2LSum<nx,ny,0>::kernel(C,M);
   }
@@ -398,7 +398,7 @@ struct Downward<nx,ny,0> {
     Downward<nx+1,0,ny-1>::L2L(LI,C,LJ);
     LI[Index<nx,ny,0>::I] += LocalSum<nx,ny,0>::kernel(C,LJ);
   }
-  static inline void L2P(B_iter B, const real *C, const real *L) {
+  static inline void L2P(Body *B, const real *C, const real *L) {
     Downward<nx+1,0,ny-1>::L2P(B,C,L);
     B->TRG[Index<nx,ny,0>::I] += LocalSum<nx,ny,0>::kernel(C,L);
   }
@@ -410,7 +410,7 @@ struct Downward<nx,0,0> {
     Downward<0,0,nx-1>::M2L(L,C,M);
     L[Index<nx,0,0>::I] += M2LSum<nx,0,0>::kernel(C,M);
   }
-  static inline void M2P(B_iter B, const real *C, const real *M) {
+  static inline void M2P(Body *B, const real *C, const real *M) {
     Downward<0,0,nx-1>::M2P(B,C,M);
     B->TRG[Index<nx,0,0>::I] += M2LSum<nx,0,0>::kernel(C,M);
   }
@@ -418,7 +418,7 @@ struct Downward<nx,0,0> {
     Downward<0,0,nx-1>::L2L(LI,C,LJ);
     LI[Index<nx,0,0>::I] += LocalSum<nx,0,0>::kernel(C,LJ);
   }
-  static inline void L2P(B_iter B, const real *C, const real *L) {
+  static inline void L2P(Body *B, const real *C, const real *L) {
     Downward<0,0,nx-1>::L2P(B,C,L);
     B->TRG[Index<nx,0,0>::I] += LocalSum<nx,0,0>::kernel(C,L);
   }
@@ -427,9 +427,9 @@ struct Downward<nx,0,0> {
 template<>
 struct Downward<0,0,0> {
   static inline void M2L(real*, const real*, const real*) {}
-  static inline void M2P(B_iter, const real*, const real*) {}
+  static inline void M2P(Body*, const real*, const real*) {}
   static inline void L2L(real*, const real*, const real*) {}
-  static inline void L2P(B_iter, const real*, const real*) {}
+  static inline void L2P(Body*, const real*, const real*) {}
 };
 
 class Kernel {
@@ -552,7 +552,7 @@ private:
 #endif
   }
 
-  inline void sumM2P(B_iter B, const real *C, const real *M) const {
+  inline void sumM2P(Body *B, const real *C, const real *M) const {
     B->TRG[0] += C[0];
     B->TRG[1] += C[1];
     B->TRG[2] += C[2];
@@ -573,10 +573,10 @@ public:
   ~Kernel() {}
 
   void P2P(Cell *Ci, Cell *Cj, bool mutual=true) const {
-    for( B_iter Bi=Ci->LEAF; Bi!=Ci->LEAF+Ci->NDLEAF; ++Bi ) {
+    for( Body *Bi=Ci->LEAF; Bi!=Ci->LEAF+Ci->NDLEAF; ++Bi ) {
       real P0 = 0;
       vect F0 = 0;
-      for( B_iter Bj=Cj->LEAF; Bj!=Cj->LEAF+Cj->NDLEAF; ++Bj ) {
+      for( Body *Bj=Cj->LEAF; Bj!=Cj->LEAF+Cj->NDLEAF; ++Bj ) {
         vect dX = Bi->X - Bj->X;
         real R2 = norm(dX) + EPS2;
         real invR2 = 1.0 / R2;
@@ -599,10 +599,10 @@ public:
 
   void P2P(Cell *C) const {
     int NJ = C->NDLEAF;
-    for( B_iter Bi=C->LEAF; Bi!=C->LEAF+C->NDLEAF; ++Bi, --NJ ) {
+    for( Body *Bi=C->LEAF; Bi!=C->LEAF+C->NDLEAF; ++Bi, --NJ ) {
       real P0 = 0;
       vect F0 = 0;
-      for( B_iter Bj=Bi+1; Bj!=Bi+NJ; ++Bj ) {
+      for( Body *Bj=Bi+1; Bj!=Bi+NJ; ++Bj ) {
         vect dX = Bi->X - Bj->X;
         real R2 = norm(dX) + EPS2;
         real invR2 = 1.0 / R2;
@@ -624,7 +624,7 @@ public:
   }
 
   void P2M(Cell *C, real &Rmax) const {
-    for( B_iter B=C->LEAF; B!=C->LEAF+C->NCLEAF; ++B ) {
+    for( Body *B=C->LEAF; B!=C->LEAF+C->NCLEAF; ++B ) {
       vect dist = C->X - B->X;
       real R = std::sqrt(norm(dist));
       if( R > Rmax ) Rmax = R;
@@ -673,7 +673,7 @@ public:
   }
 
   void M2P(Cell *Ci, Cell *Cj, bool mutual=true) const {
-    for( B_iter B=Ci->LEAF; B!=Ci->LEAF+Ci->NDLEAF; ++B ) {
+    for( Body *B=Ci->LEAF; B!=Ci->LEAF+Ci->NDLEAF; ++B ) {
       vect dist = B->X - Cj->X;
       real invR2 = 1 / norm(dist);
       real invR  = B->SRC * Cj->M[0] * std::sqrt(invR2);
@@ -682,7 +682,7 @@ public:
       sumM2P(B,C,Cj->M);
     }
     if( mutual ) {
-      for( B_iter B=Cj->LEAF; B!=Cj->LEAF+Cj->NDLEAF; ++B ) {
+      for( Body *B=Cj->LEAF; B!=Cj->LEAF+Cj->NDLEAF; ++B ) {
         vect dist = B->X - Ci->X;
         real invR2 = 1 / norm(dist);
         real invR  = B->SRC * Ci->M[0] * std::sqrt(invR2);
@@ -707,7 +707,7 @@ public:
   }
 
   void L2P(Cell *Ci) const {
-    for( B_iter B=Ci->LEAF; B!=Ci->LEAF+Ci->NCLEAF; ++B ) {
+    for( Body *B=Ci->LEAF; B!=Ci->LEAF+Ci->NCLEAF; ++B ) {
 #if 0
       vect dist = B->X - Ci->X;
       real C[LTERM], L[LTERM];

@@ -12,7 +12,7 @@ int main() {
     std::cout << "N                    : " << numBodies << std::endl;
     bodies.resize(numBodies);
     srand48(0);
-    for( B_iter B=bodies.begin(); B!=bodies.end(); ++B ) {      // Loop over bodies
+    for( Body *B=&*bodies.begin(); B!=&*bodies.end(); ++B ) {      // Loop over bodies
       for( int d=0; d!=3; ++d ) {
        B->X[d] = drand48();
       }
