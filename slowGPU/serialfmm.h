@@ -50,7 +50,7 @@ private:
 
   void buildBottom(Bodies &bodies, Cells &cells) {
     int I = -1;
-    C_iter C;
+    Cell *C;
     cells.clear();
     cells.reserve(1 << (3 * MAXLEVEL));
     float d = 2 * R0 / (1 << MAXLEVEL);
@@ -61,7 +61,7 @@ private:
         initCell(cell,0,B,d);
         cell.ICELL = IC;
         cells.push_back(cell);
-        C = cells.end()-1;
+        C = &*cells.end()-1;
         I = IC;
       }
       C->NCLEAF++;

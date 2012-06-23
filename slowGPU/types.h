@@ -59,9 +59,8 @@ struct Cell {
   real     L[LTERM];                                            //!< Local coefficients
 };
 typedef std::vector<Cell>              Cells;                   //!< Vector of cells
-typedef std::vector<Cell>::iterator    C_iter;                  //!< Iterator for cell vector
-typedef std::queue<C_iter>             CellQueue;               //!< Queue of cell iterators
-typedef std::pair<C_iter,C_iter>       Pair;                    //!< Pair of interacting cells
+typedef std::queue<Cell*>              CellQueue;               //!< Queue of cell iterators
+typedef std::pair<Cell*,Cell*>         Pair;                    //!< Pair of interacting cells
 typedef std::deque<Pair>               PairQueue;               //!< Queue of interacting cell pairs
 
 #endif

@@ -436,8 +436,8 @@ class Kernel {
 protected:
   vect   X0;
   real   R0;
-  C_iter Ci0;
-  C_iter Cj0;
+  Cell  *Ci0;
+  Cell  *Cj0;
 
   real (*Ibodies)[4];
   real (*Jbodies)[4];
@@ -572,7 +572,7 @@ public:
   Kernel() : X0(0), R0(0) {}
   ~Kernel() {}
 
-  void P2P(C_iter Ci, C_iter Cj, bool mutual=true) const {
+  void P2P(Cell *Ci, Cell *Cj, bool mutual=true) const {
     for( B_iter Bi=Ci->LEAF; Bi!=Ci->LEAF+Ci->NDLEAF; ++Bi ) {
       real P0 = 0;
       vect F0 = 0;
@@ -597,7 +597,7 @@ public:
     }
   }
 
-  void P2P(C_iter C) const {
+  void P2P(Cell *C) const {
     int NJ = C->NDLEAF;
     for( B_iter Bi=C->LEAF; Bi!=C->LEAF+C->NDLEAF; ++Bi, --NJ ) {
       real P0 = 0;
@@ -623,7 +623,7 @@ public:
     }
   }
 
-  void P2M(C_iter C, real &Rmax) const {
+  void P2M(Cell *C, real &Rmax) const {
     for( B_iter B=C->LEAF; B!=C->LEAF+C->NCLEAF; ++B ) {
       vect dist = C->X - B->X;
       real R = std::sqrt(norm(dist));
@@ -639,8 +639,8 @@ public:
     C->RCRIT = std::min(C->R,Rmax);
   }
 
-  void M2M(C_iter Ci, real &Rmax) const {
-    for( C_iter Cj=Cj0+Ci->CHILD; Cj!=Cj0+Ci->CHILD+Ci->NCHILD; ++Cj ) {
+  void M2M(Cell *Ci, real &Rmax) const {
+    for( Cell *Cj=Cj0+Ci->CHILD; Cj!=Cj0+Ci->CHILD+Ci->NCHILD; ++Cj ) {
       vect dist = Ci->X - Cj->X;
       real R = std::sqrt(norm(dist)) + Cj->RCRIT;
       if( R > Rmax ) Rmax = R;
@@ -659,7 +659,7 @@ public:
     Ci->RCRIT = std::min(Ci->R,Rmax);
   }
 
-  void M2L(C_iter Ci, C_iter Cj, bool mutual=true) const {
+  void M2L(Cell *Ci, Cell *Cj, bool mutual=true) const {
     vect dist = Ci->X - Cj->X;
     real invR2 = 1 / norm(dist);
     real invR  = Ci->M[0] * Cj->M[0] * std::sqrt(invR2);
@@ -672,7 +672,7 @@ public:
     }
   }
 
-  void M2P(C_iter Ci, C_iter Cj, bool mutual=true) const {
+  void M2P(Cell *Ci, Cell *Cj, bool mutual=true) const {
     for( B_iter B=Ci->LEAF; B!=Ci->LEAF+Ci->NDLEAF; ++B ) {
       vect dist = B->X - Cj->X;
       real invR2 = 1 / norm(dist);
@@ -693,8 +693,8 @@ public:
     }
   }
 
-  void L2L(C_iter Ci) const {
-    C_iter Cj = Ci0 + Ci->PARENT;
+  void L2L(Cell *Ci) const {
+    Cell *Cj = Ci0 + Ci->PARENT;
     vect dist = Ci->X - Cj->X;
     real C[LTERM];
     C[0] = 1;
@@ -706,7 +706,7 @@ public:
     Downward<0,0,P-1>::L2L(Ci->L,C,Cj->L);
   }
 
-  void L2P(C_iter Ci) const {
+  void L2P(Cell *Ci) const {
     for( B_iter B=Ci->LEAF; B!=Ci->LEAF+Ci->NCLEAF; ++B ) {
 #if 0
       vect dist = B->X - Ci->X;

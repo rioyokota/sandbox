@@ -7,7 +7,7 @@ class Evaluator : public Kernel {
 private:
   int NM2L, NP2P;
 protected:
-  C_iter  ROOT, ROOT2;
+  Cell  *ROOT, *ROOT2;
 
 public:
   bool printNow;
@@ -19,7 +19,7 @@ public:
   }
 
 private:
-  real getBmax(vect const&X, C_iter C) const {
+  real getBmax(vect const&X, Cell *C) const {
     real rad = C->R;
     real dx = rad+std::abs(X[0]-C->X[0]);
     real dy = rad+std::abs(X[1]-C->X[1]);
@@ -27,7 +27,7 @@ private:
     return std::sqrt( dx*dx + dy*dy + dz*dz );
   }
 
-  void interact(C_iter C, CellQueue &cellQueue) {
+  void interact(Cell *C, CellQueue &cellQueue) {
     if(C->NCHILD == 0 || C->NDLEAF < 64) {
       P2P(C);
       NP2P++;
@@ -36,7 +36,7 @@ private:
     }
   }
 
-  void interact(C_iter Ci, C_iter Cj, PairQueue &pairQueue, bool mutual=true) {
+  void interact(Cell *Ci, Cell *Cj, PairQueue &pairQueue, bool mutual=true) {
     vect dX = Ci->X - Cj->X;
     real Rq = norm(dX);
     if(Rq >= (Ci->RCRIT+Cj->RCRIT)*(Ci->RCRIT+Cj->RCRIT) && Rq != 0) {
@@ -53,37 +53,37 @@ private:
 
 protected:
   void setRootCell(Cells &cells) {
-    Ci0 = cells.begin();
-    Cj0 = cells.begin();
-    ROOT = cells.end() - 1;
+    Ci0 = &cells.front();
+    Cj0 = &cells.front();
+    ROOT = &cells.back();
   }
 
   void setRootCell(Cells &icells, Cells &jcells) {
-    Ci0 = icells.begin();
-    Cj0 = jcells.begin();
-    ROOT  = icells.end() - 1;
-    ROOT2 = jcells.end() - 1;
+    Ci0 = &icells.front();
+    Cj0 = &jcells.front();
+    ROOT  = &icells.back();
+    ROOT2 = &jcells.back();
   }
 
-  void setCenter(C_iter C) const {
+  void setCenter(Cell *C) const {
     real m = 0;
     vect X = 0;
     for( B_iter B=C->LEAF; B!=C->LEAF+C->NCLEAF; ++B ) {
       m += B->SRC;
       X += B->X * B->SRC;
     }
-    for( C_iter c=Cj0+C->CHILD; c!=Cj0+C->CHILD+C->NCHILD; ++c ) {
+    for( Cell *c=Cj0+C->CHILD; c!=Cj0+C->CHILD+C->NCHILD; ++c ) {
       m += std::abs(c->M[0]);
       X += c->X * std::abs(c->M[0]);
     }
     X /= m;
-    C->R = getBmax(X,C);
+    C->R = getBmax(X,&*C);
     C->X = X;
   }
 
   void setRcrit(Cells &cells) {
     real c = (1 - THETA) * (1 - THETA) / pow(THETA,P+2) / pow(std::abs(ROOT->M[0]),1.0/3);
-    for( C_iter C=cells.begin(); C!=cells.end(); ++C ) {
+    for( Cell *C=&*cells.begin(); C!=&*cells.end(); ++C ) {
       real x = 1.0 / THETA;
       real a = c * pow(std::abs(C->M[0]),1.0/3);
       for( int i=0; i<5; ++i ) {
@@ -100,13 +100,13 @@ protected:
       Pair pair = pairQueue.front();
       pairQueue.pop_front();
       if(splitFirst(pair.first,pair.second)) {
-        C_iter C = pair.first;
-        for( C_iter Ci=Ci0+C->CHILD; Ci!=Ci0+C->CHILD+C->NCHILD; ++Ci ) {
+        Cell *C = pair.first;
+        for( Cell *Ci=Ci0+C->CHILD; Ci!=Ci0+C->CHILD+C->NCHILD; ++Ci ) {
           interact(Ci,pair.second,pairQueue,mutual);
         }
       } else {
-        C_iter C = pair.second;
-        for( C_iter Cj=Cj0+C->CHILD; Cj!=Cj0+C->CHILD+C->NCHILD; ++Cj ) {
+        Cell *C = pair.second;
+        for( Cell *Cj=Cj0+C->CHILD; Cj!=Cj0+C->CHILD+C->NCHILD; ++Cj ) {
           interact(pair.first,Cj,pairQueue,mutual);
         }
       }
@@ -116,11 +116,11 @@ protected:
   void traverse(CellQueue &cellQueue) {
     PairQueue pairQueue;
     while( !cellQueue.empty() ) {
-      C_iter C = cellQueue.front();
+      Cell *C = cellQueue.front();
       cellQueue.pop();
-      for( C_iter Ci=Ci0+C->CHILD; Ci!=Ci0+C->CHILD+C->NCHILD; ++Ci ) {
+      for( Cell *Ci=Ci0+C->CHILD; Ci!=Ci0+C->CHILD+C->NCHILD; ++Ci ) {
         interact(Ci,cellQueue);
-        for( C_iter Cj=Ci+1; Cj!=Cj0+C->CHILD+C->NCHILD; ++Cj ) {
+        for( Cell *Cj=Ci+1; Cj!=Cj0+C->CHILD+C->NCHILD; ++Cj ) {
           interact(Ci,Cj,pairQueue);
         }
       }
@@ -136,24 +136,24 @@ public:
 
   void upwardPass(Cells &cells) {
     setRootCell(cells);
-    for( C_iter C=cells.begin(); C!=cells.end(); ++C ) {
+    for( Cell *C=&*cells.begin(); C!=&*cells.end(); ++C ) {
       for( int i=0; i<MTERM; ++i ) C->M[i] = 0;
       for( int i=0; i<LTERM; ++i ) C->L[i] = 0;
     }
-    for( C_iter C=cells.begin(); C!=cells.end(); ++C ) {
+    for( Cell *C=&*cells.begin(); C!=&*cells.end(); ++C ) {
       real Rmax = 0;
       setCenter(C);
       P2M(C,Rmax);
       M2M(C,Rmax);
     }
-    for( C_iter C=cells.begin(); C!=cells.end(); ++C ) {
+    for( Cell *C=&*cells.begin(); C!=&*cells.end(); ++C ) {
       for( int i=1; i<MTERM; ++i ) C->M[i] /= C->M[0];
     }
     setRcrit(cells);
   }
 
   void downwardPass(Cells &cells) const {
-    for( C_iter C=cells.end()-2; C!=cells.begin()-1; --C ) {
+    for( Cell *C=&*cells.end()-2; C!=&*cells.begin()-1; --C ) {
       L2L(C);
       L2P(C);
     }
@@ -162,7 +162,7 @@ public:
   void direct(Bodies &ibodies, Bodies &jbodies) {
     Cells cells;
     cells.resize(2);
-    C_iter Ci = cells.begin(), Cj = cells.begin()+1;
+    Cell *Ci = &*cells.begin(), *Cj = &*cells.begin()+1;
     Ci->LEAF = ibodies.begin();
     Ci->NDLEAF = ibodies.size();
     Cj->LEAF = jbodies.begin();
