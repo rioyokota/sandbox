@@ -7,7 +7,7 @@ class Evaluator : public Kernel {
 private:
   int NM2L, NP2P;
 protected:
-  Cell  *ROOT, *ROOT2;
+  Cell *ROOT, *ROOT2;
 
 public:
   bool printNow;
@@ -36,14 +36,14 @@ private:
     }
   }
 
-  void interact(Cell *Ci, Cell *Cj, PairQueue &pairQueue, bool mutual=true) {
+  void interact(Cell *Ci, Cell *Cj, PairQueue &pairQueue) {
     vect dX = Ci->X - Cj->X;
     real Rq = norm(dX);
     if(Rq >= (Ci->RCRIT+Cj->RCRIT)*(Ci->RCRIT+Cj->RCRIT) && Rq != 0) {
-      M2L(Ci,Cj,mutual);
+      M2L(Ci,Cj);
       NM2L++;
     } else if(Ci->NCHILD == 0 && Cj->NCHILD == 0) {
-      P2P(Ci,Cj,mutual);
+      P2P(Ci,Cj);
       NP2P++;
     } else {
       Pair pair(Ci,Cj);
@@ -68,24 +68,24 @@ protected:
   void setCenter(Cell *C) const {
     real m = 0;
     vect X = 0;
-    for( Body *B=C->LEAF; B<C->LEAF+C->NCLEAF; ++B ) {
-      m += B->SRC;
+    for( Body *B=Bi0+C->LEAF; B<Bi0+C->LEAF+C->NCLEAF; ++B ) {
+      m += Jbodies[B-Bi0][3];
       X += B->X * B->SRC;
     }
     for( Cell *c=Cj0+C->CHILD; c<Cj0+C->CHILD+C->NCHILD; ++c ) {
-      m += std::abs(c->M[0]);
-      X += c->X * std::abs(c->M[0]);
+      m += std::abs(Multipole[c-Cj0][0]);
+      X += c->X * std::abs(Multipole[c-Cj0][0]);
     }
     X /= m;
-    C->R = getBmax(X,&*C);
+    C->R = getBmax(X,C);
     C->X = X;
   }
 
   void setRcrit(Cells &cells) {
-    real c = (1 - THETA) * (1 - THETA) / pow(THETA,P+2) / pow(std::abs(ROOT->M[0]),1.0/3);
+    real c = (1 - THETA) * (1 - THETA) / pow(THETA,P+2) / pow(std::abs(Multipole[ROOT-Ci0][0]),1.0/3);
     for( Cell *C=&*cells.begin(); C<&*cells.end(); ++C ) {
       real x = 1.0 / THETA;
-      real a = c * pow(std::abs(C->M[0]),1.0/3);
+      real a = c * pow(std::abs(Multipole[C-Ci0][0]),1.0/3);
       for( int i=0; i<5; ++i ) {
         real f = x * x - 2 * x + 1 - a * pow(x,-P);
         real df = (P + 2) * x - 2 * (P + 1) + P / x;
@@ -95,19 +95,19 @@ protected:
     }
   }
 
-  void traverse(PairQueue &pairQueue, bool mutual=true) {
+  void traverse(PairQueue &pairQueue) {
     while( !pairQueue.empty() ) {
       Pair pair = pairQueue.front();
       pairQueue.pop_front();
       if(splitFirst(pair.first,pair.second)) {
         Cell *C = pair.first;
         for( Cell *Ci=Ci0+C->CHILD; Ci<Ci0+C->CHILD+C->NCHILD; ++Ci ) {
-          interact(Ci,pair.second,pairQueue,mutual);
+          interact(Ci,pair.second,pairQueue);
         }
       } else {
         Cell *C = pair.second;
         for( Cell *Cj=Cj0+C->CHILD; Cj<Cj0+C->CHILD+C->NCHILD; ++Cj ) {
-          interact(pair.first,Cj,pairQueue,mutual);
+          interact(pair.first,Cj,pairQueue);
         }
       }
     }
@@ -136,9 +136,10 @@ public:
 
   void upwardPass(Cells &cells) {
     setRootCell(cells);
-    for( Cell *C=&*cells.begin(); C<&*cells.end(); ++C ) {
-      for( int i=0; i<MTERM; ++i ) C->M[i] = 0;
-      for( int i=0; i<LTERM; ++i ) C->L[i] = 0;
+    int c = 0;
+    for( Cell *C=&*cells.begin(); C<&*cells.end(); ++C,++c ) {
+      for( int i=0; i<MTERM; ++i ) Multipole[c][i] = 0;
+      for( int i=0; i<LTERM; ++i ) Local[c][i] = 0;
     }
     for( Cell *C=&*cells.begin(); C<&*cells.end(); ++C ) {
       real Rmax = 0;
@@ -146,8 +147,9 @@ public:
       P2M(C,Rmax);
       M2M(C,Rmax);
     }
-    for( Cell *C=&*cells.begin(); C<&*cells.end(); ++C ) {
-      for( int i=1; i<MTERM; ++i ) C->M[i] /= C->M[0];
+    c = 0;
+    for( Cell *C=&*cells.begin(); C<&*cells.end(); ++C,++c ) {
+      for( int i=1; i<MTERM; ++i ) Multipole[c][i] /= Multipole[c][0];
     }
     setRcrit(cells);
   }
@@ -163,12 +165,14 @@ public:
     Cells cells;
     cells.resize(2);
     Cell *Ci = &*cells.begin(), *Cj = &*cells.begin()+1;
-    Ci->LEAF = &*ibodies.begin();
+    Bi0 = &ibodies.front();
+    Bj0 = &jbodies.front();
+    Ci->LEAF = 0;
     Ci->NDLEAF = ibodies.size();
-    Cj->LEAF = &*jbodies.begin();
+    Cj->LEAF = 0;
     Cj->NDLEAF = jbodies.size();
     for( Body *B=&*ibodies.begin(); B<&*ibodies.end(); ++B ) B->TRG = 0;
-    P2P(Ci,Cj,false);
+    P2P(Ci,Cj);
     real diff1 = 0, norm1 = 0, diff2 = 0, norm2 = 0;
     Body *B2=&*jbodies.begin();
     for( Body *B=&*ibodies.begin(); B<&*ibodies.end(); ++B, ++B2 ) {

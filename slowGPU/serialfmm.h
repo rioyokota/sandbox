@@ -33,15 +33,15 @@ private:
     }
   }
 
-  inline void initCell(Cell &cell, int child, Body *LEAF, real diameter) {
+  inline void initCell(Cell &cell, int child, int LEAF, real diameter) {
     cell.NCHILD = 0;
     cell.NCLEAF = 0;
     cell.NDLEAF = 0;
     cell.CHILD  = child;
     cell.LEAF   = LEAF;
-    int ix = int((LEAF->X[0] + R0 - X0[0]) / diameter);
-    int iy = int((LEAF->X[1] + R0 - X0[1]) / diameter);
-    int iz = int((LEAF->X[2] + R0 - X0[2]) / diameter);
+    int ix = int(((Bi0+LEAF)->X[0] + R0 - X0[0]) / diameter);
+    int iy = int(((Bi0+LEAF)->X[1] + R0 - X0[1]) / diameter);
+    int iz = int(((Bi0+LEAF)->X[2] + R0 - X0[2]) / diameter);
     cell.X[0]   = diameter * (ix + .5) + X0[0] - R0;
     cell.X[1]   = diameter * (iy + .5) + X0[1] - R0;
     cell.X[2]   = diameter * (iz + .5) + X0[2] - R0;
@@ -49,6 +49,8 @@ private:
   }
 
   void buildBottom(Bodies &bodies, Cells &cells) {
+    Bi0 = &bodies.front();
+    Bj0 = &bodies.front();
     int I = -1;
     Cell *C;
     cells.clear();
@@ -58,7 +60,7 @@ private:
       int IC = B->ICELL;
       if( IC != I ) {
         Cell cell;
-        initCell(cell,0,B,d);
+        initCell(cell,0,B-Bi0,d);
         cell.ICELL = IC;
         cells.push_back(cell);
         C = &*cells.end()-1;
@@ -91,7 +93,7 @@ protected:
       int p = end - 1;
       d *= 2;
       for( int c=begin; c<end; ++c ) {
-        Body *B = cells[c].LEAF;
+        Body *B = Bi0 + cells[c].LEAF;
         int IC = B->ICELL / div;
         if( IC != I ) {
           Cell cell;
@@ -111,6 +113,30 @@ protected:
   }
 
 public:
+  SerialFMM() {
+    Ibodies = new real [1000000][4]();
+    Jbodies = new real [1000000][4]();
+  }
+  ~SerialFMM() {
+    delete[] Ibodies;
+    delete[] Jbodies;
+  }
+
+  void dataset(Bodies &bodies) {
+    srand48(0);
+    int b = 0;
+    for( Body *B=&*bodies.begin(); B<&*bodies.end(); ++B,++b ) {      // Loop over bodies
+      for( int d=0; d<3; ++d ) {
+        B->X[d] = drand48();
+        Jbodies[b][d] = B->X[d];
+      }
+      B->SRC = 1. / bodies.size();
+      Jbodies[b][3] = 1. / bodies.size();
+      B->TRG = 0;
+      for( int d=0; d<4; ++d ) Ibodies[b][d] = 0;
+    }
+  }
+
   void bottomup(Bodies &bodies, Cells &cells) {
     double tic, toc;
     tic = getTime();
@@ -134,7 +160,7 @@ public:
     Pair pair(ROOT,ROOT2);
     PairQueue pairQueue;
     pairQueue.push_front(pair);
-    traverse(pairQueue,false);
+    traverse(pairQueue);
     toc = getTime();
     if( printNow ) printf("Traverse             : %lf\n",toc-tic);
     tic = getTime();

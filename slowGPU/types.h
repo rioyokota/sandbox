@@ -13,7 +13,6 @@
 #include "vec.h"
 #include <sys/time.h>
 
-typedef unsigned           bigint;                              //!< Big integer type
 typedef float              real;                                //!< Real number type on CPU
 typedef vec<3,real>        vect;                                //!< 3-D vector type
 
@@ -32,7 +31,7 @@ const int LTERM = (P+1)*(P+2)*(P+3)/6;                          //!< Number of C
 struct Body {
   int         IBODY;                                            //!< Initial body numbering for sorting back
   int         IPROC;                                            //!< Initial process numbering for partitioning back
-  bigint      ICELL;                                            //!< Cell index
+  int         ICELL;                                            //!< Cell index
   vect        X;                                                //!< Position
   real        SRC;                                              //!< Scalar source values
   vec<4,real> TRG;                                              //!< Scalar+vector target values
@@ -43,19 +42,17 @@ struct Body {
 typedef std::vector<Body>              Bodies;                  //!< Vector of bodies
 
 struct Cell {
-  bigint   ICELL;                                               //!< Cell index
+  int      ICELL;                                               //!< Cell index
   int      NCHILD;                                              //!< Number of child cells
   int      NCLEAF;                                              //!< Number of child leafs
   int      NDLEAF;                                              //!< Number of descendant leafs
   int      PARENT;                                              //!< Iterator offset of parent cell
   int      CHILD;                                               //!< Iterator offset of child cells
-  Body    *LEAF;                                                //!< Iterator of first leaf
+  int      LEAF;                                                //!< Iterator of first leaf
   vect     X;                                                   //!< Cell center
   real     R;                                                   //!< Cell radius
   real     RMAX;                                                //!< Max cell radius
   real     RCRIT;                                               //!< Critical cell radius
-  real     M[MTERM];                                            //!< Multipole coefficients
-  real     L[LTERM];                                            //!< Local coefficients
 };
 typedef std::vector<Cell>              Cells;                   //!< Vector of cells
 typedef std::queue<Cell*>              CellQueue;               //!< Queue of cell iterators

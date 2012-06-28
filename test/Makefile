@@ -12,6 +12,9 @@ VFLAGS = -lvtkCommon -lvtkCharts
 sort: sort.o
 	$(CXX) $?
 	./a.out
+radixsort: radixsort.o
+	$(CXX) $?
+	./a.out
 tree: tree.o
 	$(CXX) $?
 	./a.out

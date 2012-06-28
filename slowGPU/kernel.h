@@ -436,6 +436,8 @@ class Kernel {
 protected:
   vect   X0;
   real   R0;
+  Body  *Bi0;
+  Body  *Bj0;
   Cell  *Ci0;
   Cell  *Cj0;
 
@@ -572,11 +574,11 @@ public:
   Kernel() : X0(0), R0(0) {}
   ~Kernel() {}
 
-  void P2P(Cell *Ci, Cell *Cj, bool mutual=true) const {
-    for( Body *Bi=Ci->LEAF; Bi<Ci->LEAF+Ci->NDLEAF; ++Bi ) {
+  void P2P(Cell *Ci, Cell *Cj) const {
+    for( Body *Bi=Bi0+Ci->LEAF; Bi<Bi0+Ci->LEAF+Ci->NDLEAF; ++Bi ) {
       real P0 = 0;
       vect F0 = 0;
-      for( Body *Bj=Cj->LEAF; Bj<Cj->LEAF+Cj->NDLEAF; ++Bj ) {
+      for( Body *Bj=Bj0+Cj->LEAF; Bj<Bj0+Cj->LEAF+Cj->NDLEAF; ++Bj ) {
         vect dX = Bi->X - Bj->X;
         real R2 = norm(dX) + EPS2;
         real invR2 = 1.0 / R2;
@@ -585,10 +587,6 @@ public:
         dX *= invR2 * invR;
         P0 += invR;
         F0 += dX;
-        Bj->TRG[0] += invR * mutual;
-        Bj->TRG[1] += dX[0] * mutual;
-        Bj->TRG[2] += dX[1] * mutual;
-        Bj->TRG[3] += dX[2] * mutual;
       }
       Bi->TRG[0] += P0;
       Bi->TRG[1] -= F0[0];
@@ -599,7 +597,7 @@ public:
 
   void P2P(Cell *C) const {
     int NJ = C->NDLEAF;
-    for( Body *Bi=C->LEAF; Bi<C->LEAF+C->NDLEAF; ++Bi, --NJ ) {
+    for( Body *Bi=Bi0+C->LEAF; Bi<Bi0+C->LEAF+C->NDLEAF; ++Bi, --NJ ) {
       real P0 = 0;
       vect F0 = 0;
       for( Body *Bj=Bi+1; Bj<Bi+NJ; ++Bj ) {
@@ -624,16 +622,14 @@ public:
   }
 
   void P2M(Cell *C, real &Rmax) const {
-    for( Body *B=C->LEAF; B<C->LEAF+C->NCLEAF; ++B ) {
+    for( Body *B=Bi0+C->LEAF; B<Bi0+C->LEAF+C->NCLEAF; ++B ) {
       vect dist = C->X - B->X;
       real R = std::sqrt(norm(dist));
       if( R > Rmax ) Rmax = R;
       real M[LTERM];
       M[0] = B->SRC;
       Terms<0,0,P-1>::power(M,dist);
-      C->M[0] += M[0];
       Multipole[C-Ci0][0] += M[0];
-      for( int i=1; i<MTERM; ++i ) C->M[i] += M[i+3];
       for( int i=1; i<MTERM; ++i ) Multipole[C-Ci0][i] += M[i+3];
     }
     C->RCRIT = std::min(C->R,Rmax);
@@ -648,49 +644,21 @@ public:
       real C[LTERM];
       C[0] = 1;
       Terms<0,0,P-1>::power(C,dist);
-      for( int i=0; i<MTERM; ++i ) M[i] = Cj->M[i];
-      Ci->M[0] += C[0] * M[0];
+      for( int i=0; i<MTERM; ++i ) M[i] = Multipole[Cj-Cj0][i];
       Multipole[Ci-Ci0][0] += C[0] * M[0];
-      for( int i=1; i<MTERM; ++i ) Ci->M[i] += C[i+3] * M[0];
       for( int i=1; i<MTERM; ++i ) Multipole[Ci-Ci0][i] += C[i+3] * M[0];
-      Upward<0,0,P-1>::M2M(Ci->M,C,M);
       Upward<0,0,P-1>::M2M(Multipole[Ci-Ci0],C,M);
     }
     Ci->RCRIT = std::min(Ci->R,Rmax);
   }
 
-  void M2L(Cell *Ci, Cell *Cj, bool mutual=true) const {
+  void M2L(Cell *Ci, Cell *Cj) const {
     vect dist = Ci->X - Cj->X;
     real invR2 = 1 / norm(dist);
-    real invR  = Ci->M[0] * Cj->M[0] * std::sqrt(invR2);
+    real invR  = Multipole[Ci-Ci0][0] * Multipole[Cj-Cj0][0] * std::sqrt(invR2);
     real C[LTERM];
     getCoef(C,dist,invR2,invR);
-    sumM2L(Ci->L,C,Cj->M);
-    if( mutual ) {
-      flipCoef(C);
-      sumM2L(Cj->L,C,Ci->M);
-    }
-  }
-
-  void M2P(Cell *Ci, Cell *Cj, bool mutual=true) const {
-    for( Body *B=Ci->LEAF; B<Ci->LEAF+Ci->NDLEAF; ++B ) {
-      vect dist = B->X - Cj->X;
-      real invR2 = 1 / norm(dist);
-      real invR  = B->SRC * Cj->M[0] * std::sqrt(invR2);
-      real C[LTERM];
-      getCoef(C,dist,invR2,invR);
-      sumM2P(B,C,Cj->M);
-    }
-    if( mutual ) {
-      for( Body *B=Cj->LEAF; B<Cj->LEAF+Cj->NDLEAF; ++B ) {
-        vect dist = B->X - Ci->X;
-        real invR2 = 1 / norm(dist);
-        real invR  = B->SRC * Ci->M[0] * std::sqrt(invR2);
-        real C[LTERM];
-        getCoef(C,dist,invR2,invR);
-        sumM2P(B,C,Ci->M);
-      }
-    }
+    sumM2L(Local[Ci-Ci0],C,Multipole[Cj-Cj0]);
   }
 
   void L2L(Cell *Ci) const {
@@ -700,21 +668,21 @@ public:
     C[0] = 1;
     Terms<0,0,P>::power(C,dist);
 
-    for( int i=0; i<LTERM; ++i ) Ci->L[i] /= Ci->M[0];
-    for( int i=0; i<LTERM; ++i ) Ci->L[i] += Cj->L[i];
-    for( int i=1; i<LTERM; ++i ) Ci->L[0] += C[i] * Cj->L[i];
-    Downward<0,0,P-1>::L2L(Ci->L,C,Cj->L);
+    for( int i=0; i<LTERM; ++i ) Local[Ci-Ci0][i] /= Multipole[Ci-Ci0][0];
+    for( int i=0; i<LTERM; ++i ) Local[Ci-Ci0][i] += Local[Cj-Cj0][i];
+    for( int i=1; i<LTERM; ++i ) Local[Ci-Ci0][0] += C[i] * Local[Cj-Cj0][i];
+    Downward<0,0,P-1>::L2L(Local[Ci-Ci0],C,Local[Cj-Cj0]);
   }
 
   void L2P(Cell *Ci) const {
-    for( Body *B=Ci->LEAF; B<Ci->LEAF+Ci->NCLEAF; ++B ) {
+    for( Body *B=Bi0+Ci->LEAF; B<Bi0+Ci->LEAF+Ci->NCLEAF; ++B ) {
 #if 0
       vect dist = B->X - Ci->X;
       real C[LTERM], L[LTERM];
       C[0] = 1;
       Terms<0,0,P>::power(C,dist);
 
-      L = Ci->L;
+      L = Local[Ci-Ci0];
       B->TRG /= B->SRC;
       B->TRG[0] += L[0];
       B->TRG[1] += L[1];
@@ -726,20 +694,20 @@ public:
       real C[LTERM];
       vect dist = B->X - Ci->X;
       B->TRG /= B->SRC;
-      B->TRG[0] += Ci->L[0];
-      B->TRG[1] += Ci->L[1];
-      B->TRG[2] += Ci->L[2];
-      B->TRG[3] += Ci->L[3];
-      C[0] = Ci->L[1] *dist[0] + Ci->L[2] *dist[1] + Ci->L[3] *dist[2];
-      C[1] = Ci->L[4] *dist[0] + Ci->L[5] *dist[1] + Ci->L[6] *dist[2];
-      C[2] = Ci->L[5] *dist[0] + Ci->L[7] *dist[1] + Ci->L[8] *dist[2];
-      C[3] = Ci->L[6] *dist[0] + Ci->L[8] *dist[1] + Ci->L[9] *dist[2];
-      C[4] = Ci->L[10]*dist[0] + Ci->L[11]*dist[1] + Ci->L[12]*dist[2];
-      C[5] = Ci->L[11]*dist[0] + Ci->L[13]*dist[1] + Ci->L[14]*dist[2];
-      C[6] = Ci->L[12]*dist[0] + Ci->L[14]*dist[1] + Ci->L[15]*dist[2];
-      C[7] = Ci->L[13]*dist[0] + Ci->L[16]*dist[1] + Ci->L[17]*dist[2];
-      C[8] = Ci->L[14]*dist[0] + Ci->L[17]*dist[1] + Ci->L[18]*dist[2];
-      C[9] = Ci->L[15]*dist[0] + Ci->L[18]*dist[1] + Ci->L[19]*dist[2];
+      B->TRG[0] += Local[Ci-Ci0][0];
+      B->TRG[1] += Local[Ci-Ci0][1];
+      B->TRG[2] += Local[Ci-Ci0][2];
+      B->TRG[3] += Local[Ci-Ci0][3];
+      C[0] = Local[Ci-Ci0][1] *dist[0] + Local[Ci-Ci0][2] *dist[1] + Local[Ci-Ci0][3] *dist[2];
+      C[1] = Local[Ci-Ci0][4] *dist[0] + Local[Ci-Ci0][5] *dist[1] + Local[Ci-Ci0][6] *dist[2];
+      C[2] = Local[Ci-Ci0][5] *dist[0] + Local[Ci-Ci0][7] *dist[1] + Local[Ci-Ci0][8] *dist[2];
+      C[3] = Local[Ci-Ci0][6] *dist[0] + Local[Ci-Ci0][8] *dist[1] + Local[Ci-Ci0][9] *dist[2];
+      C[4] = Local[Ci-Ci0][10]*dist[0] + Local[Ci-Ci0][11]*dist[1] + Local[Ci-Ci0][12]*dist[2];
+      C[5] = Local[Ci-Ci0][11]*dist[0] + Local[Ci-Ci0][13]*dist[1] + Local[Ci-Ci0][14]*dist[2];
+      C[6] = Local[Ci-Ci0][12]*dist[0] + Local[Ci-Ci0][14]*dist[1] + Local[Ci-Ci0][15]*dist[2];
+      C[7] = Local[Ci-Ci0][13]*dist[0] + Local[Ci-Ci0][16]*dist[1] + Local[Ci-Ci0][17]*dist[2];
+      C[8] = Local[Ci-Ci0][14]*dist[0] + Local[Ci-Ci0][17]*dist[1] + Local[Ci-Ci0][18]*dist[2];
+      C[9] = Local[Ci-Ci0][15]*dist[0] + Local[Ci-Ci0][18]*dist[1] + Local[Ci-Ci0][19]*dist[2];
       B->TRG[0] += C[0];
       B->TRG[1] += C[1];
       B->TRG[2] += C[2];

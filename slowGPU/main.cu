@@ -11,14 +11,7 @@ int main() {
     numBodies = int(pow(10,(it+24)/8.0));
     std::cout << "N                    : " << numBodies << std::endl;
     bodies.resize(numBodies);
-    srand48(0);
-    for( Body *B=&*bodies.begin(); B<&*bodies.end(); ++B ) {      // Loop over bodies
-      for( int d=0; d<3; ++d ) {
-       B->X[d] = drand48();
-      }
-      B->SRC = 1. / bodies.size();
-      B->TRG = 0;
-    }
+    FMM.dataset(bodies);
 
     tic = FMM.getTime();
     FMM.bottomup(bodies,cells);
