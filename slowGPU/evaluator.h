@@ -68,8 +68,8 @@ protected:
   void setCenter(Cell *C) const {
     real m = 0;
     vect X = 0;
-    for( Body *B=Bi0+C->LEAF; B<Bi0+C->LEAF+C->NCLEAF; ++B ) {
-      m += Jbodies[B-Bi0][3];
+    for( Body *B=B0+C->LEAF; B<B0+C->LEAF+C->NCLEAF; ++B ) {
+      m += Jbodies[B-B0][3];
       X += B->X * B->SRC;
     }
     for( Cell *c=Cj0+C->CHILD; c<Cj0+C->CHILD+C->NCHILD; ++c ) {
@@ -161,30 +161,30 @@ public:
     }
   }
 
-  void direct(Bodies &ibodies, Bodies &jbodies) {
-    Cells cells;
-    cells.resize(2);
-    Cell *Ci = &*cells.begin(), *Cj = &*cells.begin()+1;
-    Bi0 = &ibodies.front();
-    Bj0 = &jbodies.front();
+  void direct(Bodies &jbodies) {
+    Cell Ci[2];
+    Cell *Cj = Ci + 1;
+    Bodies ibodies = jbodies;
+    B0 = &ibodies.front();
     Ci->LEAF = 0;
-    Ci->NDLEAF = ibodies.size();
+    Ci->NDLEAF = 100;
     Cj->LEAF = 0;
-    Cj->NDLEAF = jbodies.size();
-    for( Body *B=&*ibodies.begin(); B<&*ibodies.end(); ++B ) B->TRG = 0;
+    Cj->NDLEAF = ibodies.size();
+    for( int b=0; b<100; ++b ) ibodies[b].TRG = 0;
     P2P(Ci,Cj);
     real diff1 = 0, norm1 = 0, diff2 = 0, norm2 = 0;
-    Body *B2=&*jbodies.begin();
-    for( Body *B=&*ibodies.begin(); B<&*ibodies.end(); ++B, ++B2 ) {
+    for( int b=0; b<100; ++b ) {
+      Body *B = &ibodies[b];
+      Body *B2 = &jbodies[b];
       B->TRG /= B->SRC;
       diff1 += (B->TRG[0] - B2->TRG[0]) * (B->TRG[0] - B2->TRG[0]);
-      norm1 += B2->TRG[0] * B2->TRG[0];
+      norm1 += B->TRG[0] * B->TRG[0];
       diff2 += (B->TRG[1] - B2->TRG[1]) * (B->TRG[1] - B2->TRG[1]);
       diff2 += (B->TRG[2] - B2->TRG[2]) * (B->TRG[2] - B2->TRG[2]);
       diff2 += (B->TRG[3] - B2->TRG[3]) * (B->TRG[3] - B2->TRG[3]);
-      norm2 += B2->TRG[1] * B2->TRG[1];
-      norm2 += B2->TRG[2] * B2->TRG[2];
-      norm2 += B2->TRG[3] * B2->TRG[3];
+      norm2 += B->TRG[1] * B->TRG[1];
+      norm2 += B->TRG[2] * B->TRG[2];
+      norm2 += B->TRG[3] * B->TRG[3];
     }
     std::cout << std::setw(20) << std::left
               << "Error (pot)" << " : " << std::sqrt(diff1/norm1) << std::endl;

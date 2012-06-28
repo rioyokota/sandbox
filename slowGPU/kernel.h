@@ -436,8 +436,7 @@ class Kernel {
 protected:
   vect   X0;
   real   R0;
-  Body  *Bi0;
-  Body  *Bj0;
+  Body  *B0;
   Cell  *Ci0;
   Cell  *Cj0;
 
@@ -575,10 +574,10 @@ public:
   ~Kernel() {}
 
   void P2P(Cell *Ci, Cell *Cj) const {
-    for( Body *Bi=Bi0+Ci->LEAF; Bi<Bi0+Ci->LEAF+Ci->NDLEAF; ++Bi ) {
+    for( Body *Bi=B0+Ci->LEAF; Bi<B0+Ci->LEAF+Ci->NDLEAF; ++Bi ) {
       real P0 = 0;
       vect F0 = 0;
-      for( Body *Bj=Bj0+Cj->LEAF; Bj<Bj0+Cj->LEAF+Cj->NDLEAF; ++Bj ) {
+      for( Body *Bj=B0+Cj->LEAF; Bj<B0+Cj->LEAF+Cj->NDLEAF; ++Bj ) {
         vect dX = Bi->X - Bj->X;
         real R2 = norm(dX) + EPS2;
         real invR2 = 1.0 / R2;
@@ -597,7 +596,7 @@ public:
 
   void P2P(Cell *C) const {
     int NJ = C->NDLEAF;
-    for( Body *Bi=Bi0+C->LEAF; Bi<Bi0+C->LEAF+C->NDLEAF; ++Bi, --NJ ) {
+    for( Body *Bi=B0+C->LEAF; Bi<B0+C->LEAF+C->NDLEAF; ++Bi, --NJ ) {
       real P0 = 0;
       vect F0 = 0;
       for( Body *Bj=Bi+1; Bj<Bi+NJ; ++Bj ) {
@@ -622,7 +621,7 @@ public:
   }
 
   void P2M(Cell *C, real &Rmax) const {
-    for( Body *B=Bi0+C->LEAF; B<Bi0+C->LEAF+C->NCLEAF; ++B ) {
+    for( Body *B=B0+C->LEAF; B<B0+C->LEAF+C->NCLEAF; ++B ) {
       vect dist = C->X - B->X;
       real R = std::sqrt(norm(dist));
       if( R > Rmax ) Rmax = R;
@@ -675,7 +674,7 @@ public:
   }
 
   void L2P(Cell *Ci) const {
-    for( Body *B=Bi0+Ci->LEAF; B<Bi0+Ci->LEAF+Ci->NCLEAF; ++B ) {
+    for( Body *B=B0+Ci->LEAF; B<B0+Ci->LEAF+Ci->NCLEAF; ++B ) {
 #if 0
       vect dist = B->X - Ci->X;
       real C[LTERM], L[LTERM];

@@ -39,9 +39,9 @@ private:
     cell.NDLEAF = 0;
     cell.CHILD  = child;
     cell.LEAF   = LEAF;
-    int ix = int(((Bi0+LEAF)->X[0] + R0 - X0[0]) / diameter);
-    int iy = int(((Bi0+LEAF)->X[1] + R0 - X0[1]) / diameter);
-    int iz = int(((Bi0+LEAF)->X[2] + R0 - X0[2]) / diameter);
+    int ix = int(((B0+LEAF)->X[0] + R0 - X0[0]) / diameter);
+    int iy = int(((B0+LEAF)->X[1] + R0 - X0[1]) / diameter);
+    int iz = int(((B0+LEAF)->X[2] + R0 - X0[2]) / diameter);
     cell.X[0]   = diameter * (ix + .5) + X0[0] - R0;
     cell.X[1]   = diameter * (iy + .5) + X0[1] - R0;
     cell.X[2]   = diameter * (iz + .5) + X0[2] - R0;
@@ -49,8 +49,7 @@ private:
   }
 
   void buildBottom(Bodies &bodies, Cells &cells) {
-    Bi0 = &bodies.front();
-    Bj0 = &bodies.front();
+    B0 = &bodies.front();
     int I = -1;
     Cell *C;
     cells.clear();
@@ -60,7 +59,7 @@ private:
       int IC = B->ICELL;
       if( IC != I ) {
         Cell cell;
-        initCell(cell,0,B-Bi0,d);
+        initCell(cell,0,B-B0,d);
         cell.ICELL = IC;
         cells.push_back(cell);
         C = &*cells.end()-1;
@@ -93,7 +92,7 @@ protected:
       int p = end - 1;
       d *= 2;
       for( int c=begin; c<end; ++c ) {
-        Body *B = Bi0 + cells[c].LEAF;
+        Body *B = B0 + cells[c].LEAF;
         int IC = B->ICELL / div;
         if( IC != I ) {
           Cell cell;

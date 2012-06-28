@@ -4,7 +4,7 @@ int main() {
   double tic, toc;
   int numBodies = 1000;
   THETA = 0.6;
-  Bodies bodies, bodies2;
+  Bodies bodies;
   Cells cells;
   SerialFMM FMM;
   for( int it=0; it<25; ++it ) {
@@ -19,10 +19,8 @@ int main() {
     toc = FMM.getTime();
     if( FMM.printNow ) printf("FMM                  : %lf\n",toc-tic);
 
-    bodies2 = bodies;
-    bodies2.resize(100);
     tic = FMM.getTime();
-    FMM.direct(bodies2,bodies);
+    FMM.direct(bodies);
     toc = FMM.getTime();
     if( FMM.printNow ) printf("Direct               : %lf\n",toc-tic);
   }
