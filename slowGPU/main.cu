@@ -15,7 +15,7 @@ int main() {
 
     tic = FMM.getTime();
     FMM.bottomup(bodies,cells);
-    FMM.evaluate(cells,cells);
+    FMM.evaluate(cells);
     toc = FMM.getTime();
     if( FMM.printNow ) printf("FMM                  : %lf\n",toc-tic);
 

@@ -152,18 +152,18 @@ public:
     if( printNow ) printf("Upward pass          : %lf\n",toc-tic);
   }
 
-  void evaluate(Cells &icells, Cells &jcells) {
+  void evaluate(Cells &cells) {
     double tic, toc;
     tic = getTime();
-    setRootCell(icells,jcells);
-    Pair pair(ROOT,ROOT2);
+    setRootCell(cells);
+    Pair pair(ROOT,ROOT);
     PairQueue pairQueue;
     pairQueue.push_front(pair);
     traverse(pairQueue);
     toc = getTime();
     if( printNow ) printf("Traverse             : %lf\n",toc-tic);
     tic = getTime();
-    downwardPass(icells);
+    downwardPass(cells);
     toc = getTime();
     if( printNow ) printf("Downward pass        : %lf\n",toc-tic);
     delete[] Multipole;

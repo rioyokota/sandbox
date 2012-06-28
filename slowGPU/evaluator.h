@@ -7,7 +7,7 @@ class Evaluator : public Kernel {
 private:
   int NM2L, NP2P;
 protected:
-  Cell *ROOT, *ROOT2;
+  Cell *ROOT;
 
 public:
   bool printNow;
@@ -53,16 +53,8 @@ private:
 
 protected:
   void setRootCell(Cells &cells) {
-    Ci0 = &cells.front();
-    Cj0 = &cells.front();
+    C0 = &cells.front();
     ROOT = &cells.back();
-  }
-
-  void setRootCell(Cells &icells, Cells &jcells) {
-    Ci0 = &icells.front();
-    Cj0 = &jcells.front();
-    ROOT  = &icells.back();
-    ROOT2 = &jcells.back();
   }
 
   void setCenter(Cell *C) const {
@@ -72,9 +64,9 @@ protected:
       m += Jbodies[B-B0][3];
       X += B->X * B->SRC;
     }
-    for( Cell *c=Cj0+C->CHILD; c<Cj0+C->CHILD+C->NCHILD; ++c ) {
-      m += std::abs(Multipole[c-Cj0][0]);
-      X += c->X * std::abs(Multipole[c-Cj0][0]);
+    for( Cell *c=C0+C->CHILD; c<C0+C->CHILD+C->NCHILD; ++c ) {
+      m += std::abs(Multipole[c-C0][0]);
+      X += c->X * std::abs(Multipole[c-C0][0]);
     }
     X /= m;
     C->R = getBmax(X,C);
@@ -82,10 +74,10 @@ protected:
   }
 
   void setRcrit(Cells &cells) {
-    real c = (1 - THETA) * (1 - THETA) / pow(THETA,P+2) / pow(std::abs(Multipole[ROOT-Ci0][0]),1.0/3);
+    real c = (1 - THETA) * (1 - THETA) / pow(THETA,P+2) / pow(std::abs(Multipole[ROOT-C0][0]),1.0/3);
     for( Cell *C=&*cells.begin(); C<&*cells.end(); ++C ) {
       real x = 1.0 / THETA;
-      real a = c * pow(std::abs(Multipole[C-Ci0][0]),1.0/3);
+      real a = c * pow(std::abs(Multipole[C-C0][0]),1.0/3);
       for( int i=0; i<5; ++i ) {
         real f = x * x - 2 * x + 1 - a * pow(x,-P);
         real df = (P + 2) * x - 2 * (P + 1) + P / x;
@@ -101,12 +93,12 @@ protected:
       pairQueue.pop_front();
       if(splitFirst(pair.first,pair.second)) {
         Cell *C = pair.first;
-        for( Cell *Ci=Ci0+C->CHILD; Ci<Ci0+C->CHILD+C->NCHILD; ++Ci ) {
+        for( Cell *Ci=C0+C->CHILD; Ci<C0+C->CHILD+C->NCHILD; ++Ci ) {
           interact(Ci,pair.second,pairQueue);
         }
       } else {
         Cell *C = pair.second;
-        for( Cell *Cj=Cj0+C->CHILD; Cj<Cj0+C->CHILD+C->NCHILD; ++Cj ) {
+        for( Cell *Cj=C0+C->CHILD; Cj<C0+C->CHILD+C->NCHILD; ++Cj ) {
           interact(pair.first,Cj,pairQueue);
         }
       }
@@ -118,9 +110,9 @@ protected:
     while( !cellQueue.empty() ) {
       Cell *C = cellQueue.front();
       cellQueue.pop();
-      for( Cell *Ci=Ci0+C->CHILD; Ci<Ci0+C->CHILD+C->NCHILD; ++Ci ) {
+      for( Cell *Ci=C0+C->CHILD; Ci<C0+C->CHILD+C->NCHILD; ++Ci ) {
         interact(Ci,cellQueue);
-        for( Cell *Cj=Ci+1; Cj<Cj0+C->CHILD+C->NCHILD; ++Cj ) {
+        for( Cell *Cj=Ci+1; Cj<C0+C->CHILD+C->NCHILD; ++Cj ) {
           interact(Ci,Cj,pairQueue);
         }
       }
