@@ -29,8 +29,6 @@ const int MTERM = P*(P+1)*(P+2)/6;                              //!< Number of C
 const int LTERM = (P+1)*(P+2)*(P+3)/6;                          //!< Number of Cartesian local terms
 
 struct Body {
-  int         IBODY;                                            //!< Initial body numbering for sorting back
-  int         IPROC;                                            //!< Initial process numbering for partitioning back
   int         ICELL;                                            //!< Cell index
   vect        X;                                                //!< Position
   real        SRC;                                              //!< Scalar source values
@@ -54,8 +52,6 @@ struct Cell {
   real     RMAX;                                                //!< Max cell radius
   real     RCRIT;                                               //!< Critical cell radius
 };
-typedef std::vector<Cell>              Cells;                   //!< Vector of cells
-typedef std::queue<Cell*>              CellQueue;               //!< Queue of cell iterators
 typedef std::pair<Cell*,Cell*>         Pair;                    //!< Pair of interacting cells
 typedef std::deque<Pair>               PairQueue;               //!< Queue of interacting cell pairs
 

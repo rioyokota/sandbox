@@ -5,17 +5,16 @@ int main() {
   int numBodies = 1000;
   THETA = 0.6;
   Bodies bodies;
-  Cells cells;
   SerialFMM FMM;
   for( int it=0; it<25; ++it ) {
     numBodies = int(pow(10,(it+24)/8.0));
     std::cout << "N                    : " << numBodies << std::endl;
     bodies.resize(numBodies);
-    FMM.dataset(bodies);
+    FMM.dataset(bodies,numBodies);
 
     tic = FMM.getTime();
-    FMM.bottomup(bodies,cells);
-    FMM.evaluate(cells);
+    FMM.bottomup(bodies);
+    FMM.evaluate();
     toc = FMM.getTime();
     if( FMM.printNow ) printf("FMM                  : %lf\n",toc-tic);
 

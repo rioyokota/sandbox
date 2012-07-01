@@ -1,4 +1,4 @@
-NVCC = nvcc -arch sm_21 -use_fast_math -Iinclude -Xcompiler "-fopenmp -O3"
+NVCC	= nvcc -arch sm_21 -use_fast_math -Iinclude -Xcompiler "-fopenmp -O3"
 
 all:	main.cu
 	$(NVCC) $?

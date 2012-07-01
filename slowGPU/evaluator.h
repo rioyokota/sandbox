@@ -7,6 +7,9 @@ class Evaluator : public Kernel {
 private:
   int NM2L, NP2P;
 protected:
+  int numBodies;
+  int numCells;
+  int *Index;
   Cell *ROOT;
 
 public:
@@ -27,15 +30,6 @@ private:
     return std::sqrt( dx*dx + dy*dy + dz*dz );
   }
 
-  void interact(Cell *C, CellQueue &cellQueue) {
-    if(C->NCHILD == 0 || C->NDLEAF < 64) {
-      P2P(C);
-      NP2P++;
-    } else {
-      cellQueue.push(C);
-    }
-  }
-
   void interact(Cell *Ci, Cell *Cj, PairQueue &pairQueue) {
     vect dX = Ci->X - Cj->X;
     real Rq = norm(dX);
@@ -52,11 +46,6 @@ private:
   }
 
 protected:
-  void setRootCell(Cells &cells) {
-    C0 = &cells.front();
-    ROOT = &cells.back();
-  }
-
   void setCenter(Cell *C) const {
     real m = 0;
     vect X = 0;
@@ -73,11 +62,12 @@ protected:
     C->X = X;
   }
 
-  void setRcrit(Cells &cells) {
-    real c = (1 - THETA) * (1 - THETA) / pow(THETA,P+2) / pow(std::abs(Multipole[ROOT-C0][0]),1.0/3);
-    for( Cell *C=&*cells.begin(); C<&*cells.end(); ++C ) {
+  void setRcrit() {
+    real coef = (1 - THETA) * (1 - THETA) / pow(THETA,P+2) / pow(std::abs(Multipole[ROOT-C0][0]),1.0/3);
+    for( int c=0; c<numCells; ++c ) {
+      Cell *C = C0 + c;
       real x = 1.0 / THETA;
-      real a = c * pow(std::abs(Multipole[C-C0][0]),1.0/3);
+      real a = coef * pow(std::abs(Multipole[C-C0][0]),1.0/3);
       for( int i=0; i<5; ++i ) {
         real f = x * x - 2 * x + 1 - a * pow(x,-P);
         real df = (P + 2) * x - 2 * (P + 1) + P / x;
@@ -105,49 +95,33 @@ protected:
     }
   }
 
-  void traverse(CellQueue &cellQueue) {
-    PairQueue pairQueue;
-    while( !cellQueue.empty() ) {
-      Cell *C = cellQueue.front();
-      cellQueue.pop();
-      for( Cell *Ci=C0+C->CHILD; Ci<C0+C->CHILD+C->NCHILD; ++Ci ) {
-        interact(Ci,cellQueue);
-        for( Cell *Cj=Ci+1; Cj<C0+C->CHILD+C->NCHILD; ++Cj ) {
-          interact(Ci,Cj,pairQueue);
-        }
-      }
-      traverse(pairQueue);
-    }
-  }
-
 public:
   Evaluator() : NM2L(0), NP2P(0), printNow(true) {}
   ~Evaluator() {
     std::cout << "NM2L : " << NM2L << " NP2P : " << NP2P << std::endl;
   }
 
-  void upwardPass(Cells &cells) {
-    setRootCell(cells);
-    int c = 0;
-    for( Cell *C=&*cells.begin(); C<&*cells.end(); ++C,++c ) {
+  void upwardPass() {
+    for( int c=0; c<numCells; ++c ) {
       for( int i=0; i<MTERM; ++i ) Multipole[c][i] = 0;
       for( int i=0; i<LTERM; ++i ) Local[c][i] = 0;
     }
-    for( Cell *C=&*cells.begin(); C<&*cells.end(); ++C ) {
+    for( int c=0; c<numCells; ++c ) {
+      Cell *C = C0 + c;
       real Rmax = 0;
       setCenter(C);
       P2M(C,Rmax);
       M2M(C,Rmax);
     }
-    c = 0;
-    for( Cell *C=&*cells.begin(); C<&*cells.end(); ++C,++c ) {
+    for( int c=0; c<numCells; ++c ) {
       for( int i=1; i<MTERM; ++i ) Multipole[c][i] /= Multipole[c][0];
     }
-    setRcrit(cells);
+    setRcrit();
   }
 
-  void downwardPass(Cells &cells) const {
-    for( Cell *C=&*cells.end()-2; C>=&*cells.begin(); --C ) {
+  void downwardPass() const {
+    for( int c=numCells-2; c>=0; --c ) {
+      Cell *C = C0 + c;
       L2L(C);
       L2P(C);
     }

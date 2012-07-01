@@ -16,7 +16,8 @@ private:
 
   inline void setMorton(Bodies &bodies) {
     float d = 2 * R0 / (1 << MAXLEVEL);
-    for( Body *B=&*bodies.begin(); B<&*bodies.end(); ++B ) {
+    int b = 0;
+    for( Body *B=&*bodies.begin(); B<&*bodies.end(); ++B,++b ) {
       int ix = int((B->X[0] + R0 - X0[0]) / d);
       int iy = int((B->X[1] + R0 - X0[1]) / d);
       int iz = int((B->X[2] + R0 - X0[2]) / d);
@@ -30,7 +31,32 @@ private:
         iz >>= 1;
       }
       B->ICELL = id;
+      Index[b] = id;
     }
+  }
+
+  inline void radixSort() {
+    const int bitStride = 8;
+    const int stride = 1 << bitStride;
+    const int stride1 = stride - 1;
+    int *buffer = new int [numBodies];
+    int imax = 0;
+    for( int i=0; i<numBodies; i++ )
+      if( Index[i] > imax ) imax = Index[i];
+    int exp = 0;
+    while( (imax >> exp) > 0 ) {
+      int bucket[stride] = {0};
+      for( int i=0; i<numBodies; i++ )
+        bucket[(Index[i] >> exp) & stride1]++;
+      for( int i=1; i<stride; i++ )
+        bucket[i] += bucket[i-1];
+      for( int i=numBodies-1; i>=0; i-- )
+        buffer[--bucket[(Index[i] >> exp) & stride1]] = Index[i];
+      for( int i=0; i<numBodies; i++ )
+        Index[i] = buffer[i];
+      exp += bitStride;
+    }
+    delete[] buffer;
   }
 
   inline void initCell(Cell &cell, int child, int LEAF, real diameter) {
@@ -48,12 +74,12 @@ private:
     cell.R      = diameter * .5;
   }
 
-  void buildBottom(Bodies &bodies, Cells &cells) {
+  void buildBottom(Bodies &bodies) {
     B0 = &bodies.front();
     int I = -1;
-    Cell *C;
-    cells.clear();
-    cells.reserve(1 << (3 * MAXLEVEL));
+    delete[] C0;
+    C0 = new Cell [1 << (3 * MAXLEVEL + 1)];
+    int c = -1;
     float d = 2 * R0 / (1 << MAXLEVEL);
     for( Body *B=&*bodies.begin(); B<&*bodies.end(); ++B ) {
       int IC = B->ICELL;
@@ -61,13 +87,14 @@ private:
         Cell cell;
         initCell(cell,0,B-B0,d);
         cell.ICELL = IC;
-        cells.push_back(cell);
-        C = &*cells.end()-1;
+        c++;
+        C0[c] = cell;
         I = IC;
       }
-      C->NCLEAF++;
-      C->NDLEAF++;
+      C0[c].NCLEAF++;
+      C0[c].NDLEAF++;
     }
+    numCells = c+1;
   }
 
 protected:
@@ -76,15 +103,16 @@ protected:
     X0 = R0 = .5;
   }
 
-  void buildTree(Bodies &bodies, Cells &cells) {
+  void buildTree(Bodies &bodies) {
     setMorton(bodies);
     Bodies buffer = bodies;
     sort(bodies.begin(),bodies.end());
-    buildBottom(bodies,cells);
+    radixSort();
+    buildBottom(bodies);
   }
 
-  void linkTree(Cells &cells) {
-    int begin = 0, end = cells.size();
+  void linkTree() {
+    int begin = 0, end = numCells;
     float d = 2 * R0 / (1 << MAXLEVEL);
     for( int l=0; l<MAXLEVEL; ++l ) {
       int div = (8 << (3 * l));
@@ -92,36 +120,41 @@ protected:
       int p = end - 1;
       d *= 2;
       for( int c=begin; c<end; ++c ) {
-        Body *B = B0 + cells[c].LEAF;
+        Body *B = B0 + C0[c].LEAF;
         int IC = B->ICELL / div;
         if( IC != I ) {
           Cell cell;
-          initCell(cell,c,cells[c].LEAF,d);
+          initCell(cell,c,C0[c].LEAF,d);
           cell.ICELL = IC;
-          cells.push_back(cell);
           p++;
+          C0[p] = cell;
           I = IC;
         }
-        cells[p].NCHILD++;
-        cells[p].NDLEAF += cells[c].NDLEAF;
-        cells[c].PARENT = p;
+        C0[p].NCHILD++;
+        C0[p].NDLEAF += C0[c].NDLEAF;
+        C0[c].PARENT = p;
       }
       begin = end;
-      end = cells.size();
+      end = p + 1;
     }
+    numCells = end;
+    ROOT = C0 + numCells - 1;
   }
 
 public:
   SerialFMM() {
+    Index   = new int  [1000000];
     Ibodies = new real [1000000][4]();
     Jbodies = new real [1000000][4]();
   }
   ~SerialFMM() {
+    delete[] Index;
     delete[] Ibodies;
     delete[] Jbodies;
   }
 
-  void dataset(Bodies &bodies) {
+  void dataset(Bodies &bodies, int N) {
+    numBodies = N;
     srand48(0);
     int b = 0;
     for( Body *B=&*bodies.begin(); B<&*bodies.end(); ++B,++b ) {      // Loop over bodies
@@ -136,26 +169,25 @@ public:
     }
   }
 
-  void bottomup(Bodies &bodies, Cells &cells) {
+  void bottomup(Bodies &bodies) {
     double tic, toc;
     tic = getTime();
     setDomain(bodies);
-    buildTree(bodies,cells);
-    linkTree(cells);
+    buildTree(bodies);
+    linkTree();
     toc = getTime();
     if( printNow ) printf("Tree                 : %lf\n",toc-tic);
     tic = getTime();
-    Multipole = new real [cells.size()][MTERM]();
-    Local = new real [cells.size()][LTERM]();
-    upwardPass(cells);
+    Multipole = new real [numCells][MTERM]();
+    Local = new real [numCells][LTERM]();
+    upwardPass();
     toc = getTime();
     if( printNow ) printf("Upward pass          : %lf\n",toc-tic);
   }
 
-  void evaluate(Cells &cells) {
+  void evaluate() {
     double tic, toc;
     tic = getTime();
-    setRootCell(cells);
     Pair pair(ROOT,ROOT);
     PairQueue pairQueue;
     pairQueue.push_front(pair);
@@ -163,7 +195,7 @@ public:
     toc = getTime();
     if( printNow ) printf("Traverse             : %lf\n",toc-tic);
     tic = getTime();
-    downwardPass(cells);
+    downwardPass();
     toc = getTime();
     if( printNow ) printf("Downward pass        : %lf\n",toc-tic);
     delete[] Multipole;
