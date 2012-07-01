@@ -12,7 +12,7 @@ double get_time() {
 void radixsort(int *a, int *b, int n) {
   const int bitStride = 8;
   const int stride = 1 << bitStride;
-  const int stride1 = stride - 1;
+  const int mask = stride - 1;
   int amax = 0;
   for( int i=0; i<n; i++ )
     if( a[i] > amax ) amax = a[i];
@@ -20,11 +20,11 @@ void radixsort(int *a, int *b, int n) {
   while( (amax >> exp) > 0 ) {
     int bucket[stride] = {0};
     for( int i=0; i<n; i++ )
-      bucket[(a[i] >> exp) & stride1]++;
+      bucket[(a[i] >> exp) & mask]++;
     for( int i=1; i<stride; i++ )
       bucket[i] += bucket[i-1];
     for( int i=n-1; i>=0; i-- )
-      b[--bucket[(a[i] >> exp) & stride1]] = a[i];
+      b[--bucket[(a[i] >> exp) & mask]] = a[i];
     for( int i=0; i<n; i++ )
       a[i] = b[i];
     exp += bitStride;
