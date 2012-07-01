@@ -8,4 +8,4 @@ save    :
 	make cleanall
 	cd .. && tar zcvf sandbox.tgz sandbox
 revert  :
-	hg reset --hard HEAD
+	git reset --hard HEAD
