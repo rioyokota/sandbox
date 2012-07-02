@@ -9,7 +9,6 @@ private:
 protected:
   int numBodies;
   int numCells;
-  int *Index;
   Cell *ROOT;
 
 public:
@@ -49,9 +48,9 @@ protected:
   void setCenter(Cell *C) const {
     real m = 0;
     vect X = 0;
-    for( Body *B=B0+C->LEAF; B<B0+C->LEAF+C->NCLEAF; ++B ) {
-      m += Jbodies[B-B0][3];
-      X += B->X * B->SRC;
+    for( int b=C->LEAF; b<C->LEAF+C->NCLEAF; ++b ) {
+      m += Jbodies[b][3];
+      for( int d=0; d<3; d++ ) X[d] += Jbodies[b][d] * Jbodies[b][3];
     }
     for( Cell *c=C0+C->CHILD; c<C0+C->CHILD+C->NCHILD; ++c ) {
       m += std::abs(Multipole[c-C0][0]);
@@ -127,35 +126,38 @@ public:
     }
   }
 
-  void direct(Bodies &jbodies) {
+  void direct() {
     Cell Ci[2];
     Cell *Cj = Ci + 1;
-    Bodies ibodies = jbodies;
-    B0 = &ibodies.front();
     Ci->LEAF = 0;
     Ci->NDLEAF = 100;
     Cj->LEAF = 0;
-    Cj->NDLEAF = ibodies.size();
-    for( int b=0; b<100; ++b ) ibodies[b].TRG = 0;
+    Cj->NDLEAF = numBodies;
+    real (*Ibodies2)[4] = new real [1000000][4]();
+    for( int b=0; b<100; b++ ) {
+      for( int d=0; d<4; d++ ) {
+        Ibodies2[b][d] = Ibodies[b][d];
+        Ibodies[b][d] = 0;
+      }
+    }
     P2P(Ci,Cj);
     real diff1 = 0, norm1 = 0, diff2 = 0, norm2 = 0;
     for( int b=0; b<100; ++b ) {
-      Body *B = &ibodies[b];
-      Body *B2 = &jbodies[b];
-      B->TRG /= B->SRC;
-      diff1 += (B->TRG[0] - B2->TRG[0]) * (B->TRG[0] - B2->TRG[0]);
-      norm1 += B->TRG[0] * B->TRG[0];
-      diff2 += (B->TRG[1] - B2->TRG[1]) * (B->TRG[1] - B2->TRG[1]);
-      diff2 += (B->TRG[2] - B2->TRG[2]) * (B->TRG[2] - B2->TRG[2]);
-      diff2 += (B->TRG[3] - B2->TRG[3]) * (B->TRG[3] - B2->TRG[3]);
-      norm2 += B->TRG[1] * B->TRG[1];
-      norm2 += B->TRG[2] * B->TRG[2];
-      norm2 += B->TRG[3] * B->TRG[3];
+      for( int d=0; d<4; d++ ) Ibodies[b][d] /= Jbodies[b][3];
+      diff1 += (Ibodies[b][0] - Ibodies2[b][0]) * (Ibodies[b][0] - Ibodies2[b][0]);
+      norm1 += Ibodies[b][0] * Ibodies[b][0];
+      diff2 += (Ibodies[b][1] - Ibodies2[b][1]) * (Ibodies[b][1] - Ibodies2[b][1]);
+      diff2 += (Ibodies[b][2] - Ibodies2[b][2]) * (Ibodies[b][2] - Ibodies2[b][2]);
+      diff2 += (Ibodies[b][3] - Ibodies2[b][3]) * (Ibodies[b][3] - Ibodies2[b][3]);
+      norm2 += Ibodies[b][1] * Ibodies[b][1];
+      norm2 += Ibodies[b][2] * Ibodies[b][2];
+      norm2 += Ibodies[b][3] * Ibodies[b][3];
     }
     std::cout << std::setw(20) << std::left
               << "Error (pot)" << " : " << std::sqrt(diff1/norm1) << std::endl;
     std::cout << std::setw(20) << std::left
               << "Error (acc)" << " : " << std::sqrt(diff2/norm2) << std::endl;
+    delete[] Ibodies2;
   }
 };
 

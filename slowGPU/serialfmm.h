@@ -5,22 +5,19 @@
 class SerialFMM : public Evaluator {
 protected:
   int MAXLEVEL;
+  int *Index;
 
 private:
-  int getMaxLevel(Bodies &bodies) {
-    const long N = bodies.size();
-    int level;
-    level = N >= NCRIT ? 1 + int(log(N / NCRIT)/M_LN2/3) : 0;
-    return level;
+  int getMaxLevel() {
+    return numBodies >= NCRIT ? 1 + int(log(numBodies / NCRIT)/M_LN2/3) : 0;
   }
 
-  inline void setMorton(Bodies &bodies) {
+  inline void setMorton() {
     float d = 2 * R0 / (1 << MAXLEVEL);
-    int b = 0;
-    for( Body *B=&*bodies.begin(); B<&*bodies.end(); ++B,++b ) {
-      int ix = int((B->X[0] + R0 - X0[0]) / d);
-      int iy = int((B->X[1] + R0 - X0[1]) / d);
-      int iz = int((B->X[2] + R0 - X0[2]) / d);
+    for( int b=0; b<numBodies; b++ ) {
+      int ix = int((Jbodies[b][0] + R0 - X0[0]) / d);
+      int iy = int((Jbodies[b][1] + R0 - X0[1]) / d);
+      int iz = int((Jbodies[b][2] + R0 - X0[2]) / d);
       int id = 0;
       for( int l=0; l<MAXLEVEL; ++l ) {
         id += ix % 2 << (3 * l);
@@ -30,62 +27,64 @@ private:
         iy >>= 1;
         iz >>= 1;
       }
-      B->ICELL = id;
       Index[b] = id;
     }
   }
 
-  inline void radixSort() {
-    const int bitStride = 8;
-    const int stride = 1 << bitStride;
-    const int stride1 = stride - 1;
-    int *buffer = new int [numBodies];
-    int imax = 0;
-    for( int i=0; i<numBodies; i++ )
-      if( Index[i] > imax ) imax = Index[i];
-    int exp = 0;
-    while( (imax >> exp) > 0 ) {
-      int bucket[stride] = {0};
-      for( int i=0; i<numBodies; i++ )
-        bucket[(Index[i] >> exp) & stride1]++;
-      for( int i=1; i<stride; i++ )
-        bucket[i] += bucket[i-1];
-      for( int i=numBodies-1; i>=0; i-- )
-        buffer[--bucket[(Index[i] >> exp) & stride1]] = Index[i];
-      for( int i=0; i<numBodies; i++ )
-        Index[i] = buffer[i];
-      exp += bitStride;
+  void sortBodies() {
+    int Imax = Index[0];
+    int Imin = Index[0];
+    for( int i=0; i<numBodies; i++ ) {
+      Imax = std::max(Imax,Index[i]);
+      Imin = std::min(Imin,Index[i]);
     }
+    int numBucket = Imax - Imin + 1;
+    int *bucket = new int [numBucket];
+    int *buffer = new int [numBodies];
+    for( int i=0; i<numBucket; i++ ) bucket[i] = 0;
+    for( int i=0; i<numBodies; i++ ) bucket[Index[i]-Imin]++;
+    for( int i=1; i<numBucket; i++ ) bucket[i] += bucket[i-1];
+    for( int i=numBodies-1; i>=0; --i ) {
+      bucket[Index[i]-Imin]--;
+      int inew = bucket[Index[i]-Imin];
+      buffer[inew] = Index[i];
+      for( int d=0; d<4; d++ ) Ibodies[inew][d] = Jbodies[i][d];
+    }
+    for( int i=0; i<numBodies; i++ ) {
+      Index[i] = buffer[i];
+      for( int d=0; d<4; d++ ) Jbodies[i][d] = Ibodies[i][d];
+      for( int d=0; d<4; d++ ) Ibodies[i][d] = 0;
+    }
+    delete[] bucket;
     delete[] buffer;
   }
 
-  inline void initCell(Cell &cell, int child, int LEAF, real diameter) {
+  inline void initCell(Cell &cell, int child, int b, real diameter) {
     cell.NCHILD = 0;
     cell.NCLEAF = 0;
     cell.NDLEAF = 0;
     cell.CHILD  = child;
-    cell.LEAF   = LEAF;
-    int ix = int(((B0+LEAF)->X[0] + R0 - X0[0]) / diameter);
-    int iy = int(((B0+LEAF)->X[1] + R0 - X0[1]) / diameter);
-    int iz = int(((B0+LEAF)->X[2] + R0 - X0[2]) / diameter);
+    cell.LEAF   = b;
+    int ix = int((Jbodies[b][0] + R0 - X0[0]) / diameter);
+    int iy = int((Jbodies[b][1] + R0 - X0[1]) / diameter);
+    int iz = int((Jbodies[b][2] + R0 - X0[2]) / diameter);
     cell.X[0]   = diameter * (ix + .5) + X0[0] - R0;
     cell.X[1]   = diameter * (iy + .5) + X0[1] - R0;
     cell.X[2]   = diameter * (iz + .5) + X0[2] - R0;
     cell.R      = diameter * .5;
   }
 
-  void buildBottom(Bodies &bodies) {
-    B0 = &bodies.front();
+  void buildBottom() {
     int I = -1;
-    delete[] C0;
+    if( C0 != NULL ) delete[] C0;
     C0 = new Cell [1 << (3 * MAXLEVEL + 1)];
     int c = -1;
     float d = 2 * R0 / (1 << MAXLEVEL);
-    for( Body *B=&*bodies.begin(); B<&*bodies.end(); ++B ) {
-      int IC = B->ICELL;
+    for( int b=0; b<numBodies; b++ ) {
+      int IC = Index[b];
       if( IC != I ) {
         Cell cell;
-        initCell(cell,0,B-B0,d);
+        initCell(cell,0,b,d);
         cell.ICELL = IC;
         c++;
         C0[c] = cell;
@@ -98,17 +97,15 @@ private:
   }
 
 protected:
-  void setDomain(Bodies &bodies) {
-    MAXLEVEL = getMaxLevel(bodies);
+  void setDomain() {
+    MAXLEVEL = getMaxLevel();
     X0 = R0 = .5;
   }
 
-  void buildTree(Bodies &bodies) {
-    setMorton(bodies);
-    Bodies buffer = bodies;
-    sort(bodies.begin(),bodies.end());
-    radixSort();
-    buildBottom(bodies);
+  void buildTree() {
+    setMorton();
+    sortBodies();
+    buildBottom();
   }
 
   void linkTree() {
@@ -120,8 +117,7 @@ protected:
       int p = end - 1;
       d *= 2;
       for( int c=begin; c<end; ++c ) {
-        Body *B = B0 + C0[c].LEAF;
-        int IC = B->ICELL / div;
+        int IC = Index[C0[c].LEAF] / div;
         if( IC != I ) {
           Cell cell;
           initCell(cell,c,C0[c].LEAF,d);
@@ -153,27 +149,22 @@ public:
     delete[] Jbodies;
   }
 
-  void dataset(Bodies &bodies, int N) {
+  void dataset(int N) {
     numBodies = N;
     srand48(0);
-    int b = 0;
-    for( Body *B=&*bodies.begin(); B<&*bodies.end(); ++B,++b ) {      // Loop over bodies
+    for( int b=0; b<numBodies; b++ ) {
       for( int d=0; d<3; ++d ) {
-        B->X[d] = drand48();
-        Jbodies[b][d] = B->X[d];
+        Jbodies[b][d] = drand48();
       }
-      B->SRC = 1. / bodies.size();
-      Jbodies[b][3] = 1. / bodies.size();
-      B->TRG = 0;
-      for( int d=0; d<4; ++d ) Ibodies[b][d] = 0;
+      Jbodies[b][3] = 1. / numBodies;
     }
   }
 
-  void bottomup(Bodies &bodies) {
+  void bottomup() {
     double tic, toc;
     tic = getTime();
-    setDomain(bodies);
-    buildTree(bodies);
+    setDomain();
+    buildTree();
     linkTree();
     toc = getTime();
     if( printNow ) printf("Tree                 : %lf\n",toc-tic);
