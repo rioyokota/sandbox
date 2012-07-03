@@ -3,8 +3,7 @@
 int main() {
   double tic, toc;
   int numBodies = 1000;
-  THETA = 0.6;
-  SerialFMM FMM;
+  SerialFMM FMM(1000000);
   for( int it=0; it<25; ++it ) {
     numBodies = int(pow(10,(it+24)/8.0));
     std::cout << "N                    : " << numBodies << std::endl;

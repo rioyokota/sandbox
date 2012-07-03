@@ -21,7 +21,7 @@ public:
   }
 
 private:
-  real getBmax(vect const&X, Cell *C) const {
+  real getBmax(vec3 const&X, Cell *C) const {
     real rad = C->R;
     real dx = rad+std::abs(X[0]-C->X[0]);
     real dy = rad+std::abs(X[1]-C->X[1]);
@@ -30,7 +30,7 @@ private:
   }
 
   void interact(Cell *Ci, Cell *Cj, PairStack &pairStack) {
-    vect dX = Ci->X - Cj->X;
+    vec3 dX = Ci->X - Cj->X;
     real Rq = norm(dX);
     if(Rq >= (Ci->RCRIT+Cj->RCRIT)*(Ci->RCRIT+Cj->RCRIT) && Rq != 0) {
       M2L(Ci,Cj);
@@ -47,14 +47,15 @@ private:
 protected:
   void setCenter(Cell *C) const {
     real m = 0;
-    vect X = 0;
+    vec3 X = 0;
     for( int b=C->LEAF; b<C->LEAF+C->NCLEAF; ++b ) {
       m += Jbodies[b][3];
       for( int d=0; d<3; d++ ) X[d] += Jbodies[b][d] * Jbodies[b][3];
     }
-    for( Cell *c=C0+C->CHILD; c<C0+C->CHILD+C->NCHILD; ++c ) {
-      m += std::abs(Multipole[c-C0][0]);
-      X += c->X * std::abs(Multipole[c-C0][0]);
+    for( int c=C->CHILD; c<C->CHILD+C->NCHILD; c++ ) {
+      Cell *CC = C0 + c;
+      m += std::abs(Multipole[c][0]);
+      X += CC->X * std::abs(Multipole[c][0]);
     }
     X /= m;
     C->R = getBmax(X,C);
@@ -66,7 +67,7 @@ protected:
     for( int c=0; c<numCells; ++c ) {
       Cell *C = C0 + c;
       real x = 1.0 / THETA;
-      real a = coef * pow(std::abs(Multipole[C-C0][0]),1.0/3);
+      real a = coef * pow(std::abs(Multipole[c][0]),1.0/3);
       for( int i=0; i<5; ++i ) {
         real f = x * x - 2 * x + 1 - a * pow(x,-P);
         real df = (P + 2) * x - 2 * (P + 1) + P / x;
@@ -101,8 +102,8 @@ public:
 
   void upwardPass() {
     for( int c=0; c<numCells; ++c ) {
-      for( int i=0; i<MTERM; ++i ) Multipole[c][i] = 0;
-      for( int i=0; i<LTERM; ++i ) Local[c][i] = 0;
+      Multipole[c] = 0;
+      Local[c] = 0;
     }
     for( int c=0; c<numCells; ++c ) {
       Cell *C = C0 + c;

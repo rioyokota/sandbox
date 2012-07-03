@@ -8,10 +8,6 @@ protected:
   int *Index;
 
 private:
-  int getMaxLevel() {
-    return numBodies >= NCRIT ? 1 + int(log(numBodies / NCRIT)/M_LN2/3) : 0;
-  }
-
   inline void setMorton() {
     float d = 2 * R0 / (1 << MAXLEVEL);
     for( int b=0; b<numBodies; b++ ) {
@@ -98,7 +94,6 @@ private:
 
 protected:
   void setDomain() {
-    MAXLEVEL = getMaxLevel();
     X0 = R0 = .5;
   }
 
@@ -138,10 +133,10 @@ protected:
   }
 
 public:
-  SerialFMM() {
-    Index   = new int  [1000000];
-    Ibodies = new real [1000000][4]();
-    Jbodies = new real [1000000][4]();
+  SerialFMM(int N) {
+    Index   = new int  [N];
+    Ibodies = new vec4 [N];
+    Jbodies = new vec4 [N];
   }
   ~SerialFMM() {
     delete[] Index;
@@ -151,6 +146,7 @@ public:
 
   void dataset(int N) {
     numBodies = N;
+    MAXLEVEL =  numBodies >= NCRIT ? 1 + int(log(numBodies / NCRIT)/M_LN2/3) : 0;
     srand48(0);
     for( int b=0; b<numBodies; b++ ) {
       for( int d=0; d<3; ++d ) {
@@ -169,8 +165,8 @@ public:
     toc = getTime();
     if( printNow ) printf("Tree                 : %lf\n",toc-tic);
     tic = getTime();
-    Multipole = new real [numCells][MTERM]();
-    Local = new real [numCells][LTERM]();
+    Multipole = new vecM [numCells];
+    Local = new vecL [numCells];
     upwardPass();
     toc = getTime();
     if( printNow ) printf("Upward pass          : %lf\n",toc-tic);
