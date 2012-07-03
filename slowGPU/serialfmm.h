@@ -179,10 +179,10 @@ public:
   void evaluate() {
     double tic, toc;
     tic = getTime();
-    Pair pair(ROOT,ROOT);
-    PairQueue pairQueue;
-    pairQueue.push_front(pair);
-    traverse(pairQueue);
+    CellPair pair(ROOT,ROOT);
+    PairStack pairStack;
+    pairStack.push(pair);
+    traverse(pairStack);
     toc = getTime();
     if( printNow ) printf("Traverse             : %lf\n",toc-tic);
     tic = getTime();

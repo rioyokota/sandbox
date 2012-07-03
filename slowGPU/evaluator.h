@@ -29,7 +29,7 @@ private:
     return std::sqrt( dx*dx + dy*dy + dz*dz );
   }
 
-  void interact(Cell *Ci, Cell *Cj, PairQueue &pairQueue) {
+  void interact(Cell *Ci, Cell *Cj, PairStack &pairStack) {
     vect dX = Ci->X - Cj->X;
     real Rq = norm(dX);
     if(Rq >= (Ci->RCRIT+Cj->RCRIT)*(Ci->RCRIT+Cj->RCRIT) && Rq != 0) {
@@ -39,8 +39,8 @@ private:
       P2P(Ci,Cj);
       NP2P++;
     } else {
-      Pair pair(Ci,Cj);
-      pairQueue.push_back(pair);
+      CellPair pair(Ci,Cj);
+      pairStack.push(pair);
     }
   }
 
@@ -76,19 +76,18 @@ protected:
     }
   }
 
-  void traverse(PairQueue &pairQueue) {
-    while( !pairQueue.empty() ) {
-      Pair pair = pairQueue.front();
-      pairQueue.pop_front();
+  void traverse(PairStack &pairStack) {
+    while( !pairStack.empty() ) {
+      CellPair pair = pairStack.pop();
       if(splitFirst(pair.first,pair.second)) {
         Cell *C = pair.first;
         for( Cell *Ci=C0+C->CHILD; Ci<C0+C->CHILD+C->NCHILD; ++Ci ) {
-          interact(Ci,pair.second,pairQueue);
+          interact(Ci,pair.second,pairStack);
         }
       } else {
         Cell *C = pair.second;
         for( Cell *Cj=C0+C->CHILD; Cj<C0+C->CHILD+C->NCHILD; ++Cj ) {
-          interact(pair.first,Cj,pairQueue);
+          interact(pair.first,Cj,pairStack);
         }
       }
     }
