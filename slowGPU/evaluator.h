@@ -140,7 +140,6 @@ public:
     DIRECT(Ci,Cj);
     real diff1 = 0, norm1 = 0, diff2 = 0, norm2 = 0;
     for( int b=0; b<100; ++b ) {
-      Ibodies[b] /= Jbodies[b][3];
       diff1 += (Ibodies[b][0] - Ibodies2[b][0]) * (Ibodies[b][0] - Ibodies2[b][0]);
       norm1 += Ibodies[b][0] * Ibodies[b][0];
       diff2 += (Ibodies[b][1] - Ibodies2[b][1]) * (Ibodies[b][1] - Ibodies2[b][1]);
