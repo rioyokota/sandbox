@@ -21,7 +21,7 @@ __global__ void traverse(int numCells, int *Branch, vec4 *Ibodies, vec4 *Jbodies
   Cell *iroot = Cells + Branch[blockIdx.x];
   Cell *jroot = Cells + numCells - 1;
   CellPair pair(iroot,jroot);
-  PairStack pairStack;
+  __shared__ PairStack pairStack;
   pairStack.push(pair);
   while( !pairStack.empty() ) {
     CellPair pair = pairStack.pop();

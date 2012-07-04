@@ -3,25 +3,25 @@
 #include "types.h"
 
 __device__ void P2P(Cell *Ci, Cell *Cj, vec4 *Ibodies, vec4 *Jbodies) {
-  for( int bi=Ci->LEAF; bi<Ci->LEAF+Ci->NDLEAF; ++bi ) {
-    real P0 = 0;
-    vec3 F0 = 0;
-    for( int bj=Cj->LEAF; bj<Cj->LEAF+Cj->NDLEAF; ++bj ) {
-      vec3 dX;
-      for( int d=0; d<3; d++ ) dX[d] = Jbodies[bi][d] - Jbodies[bj][d];
-      real R2 = norm(dX) + EPS2;
-      real invR2 = 1.0 / R2;
-      if( R2 == 0 ) invR2 = 0;
-      real invR = Jbodies[bi][3] * Jbodies[bj][3] * std::sqrt(invR2);
-      dX *= invR2 * invR;
-      P0 += invR;
-      F0 += dX;
-    }
-    Ibodies[bi][0] += P0;
-    Ibodies[bi][1] -= F0[0];
-    Ibodies[bi][2] -= F0[1];
-    Ibodies[bi][3] -= F0[2];
+  if( Ci->NDLEAF <= threadIdx.x ) return;
+  int bi = Ci->LEAF + threadIdx.x;
+  real P0 = 0;
+  vec3 F0 = 0;
+  for( int bj=Cj->LEAF; bj<Cj->LEAF+Cj->NDLEAF; ++bj ) {
+    vec3 dX;
+    for( int d=0; d<3; d++ ) dX[d] = Jbodies[bi][d] - Jbodies[bj][d];
+    real R2 = norm(dX) + EPS2;
+    real invR2 = 1.0 / R2;
+    if( R2 == 0 ) invR2 = 0;
+    real invR = Jbodies[bi][3] * Jbodies[bj][3] * std::sqrt(invR2);
+    dX *= invR2 * invR;
+    P0 += invR;
+    F0 += dX;
   }
+  Ibodies[bi][0] += P0;
+  Ibodies[bi][1] -= F0[0];
+  Ibodies[bi][2] -= F0[1];
+  Ibodies[bi][3] -= F0[2];
 }
 
 __device__ void M2L(Cell *Ci, Cell *Cj, Cell *Cells, vecM *Multipole, vecL *Local) {
@@ -66,7 +66,7 @@ __device__ void M2L(Cell *Ci, Cell *Cj, Cell *Cells, vecM *Multipole, vecL *Loca
   L[1] += C[10]*M[1] + C[11]*M[2] + C[12]*M[3] + C[13]*M[4] + C[14]*M[5] + C[15]*M[6];
   L[2] += C[11]*M[1] + C[13]*M[2] + C[14]*M[3] + C[16]*M[4] + C[17]*M[5] + C[18]*M[6];
   L[3] += C[12]*M[1] + C[14]*M[2] + C[15]*M[3] + C[17]*M[4] + C[18]*M[5] + C[19]*M[6];
-  Local[ci] += L; 
+  if( threadIdx.x == 0 ) Local[ci] += L; 
 }
 
 class Kernel {

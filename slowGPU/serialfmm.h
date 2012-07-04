@@ -171,6 +171,7 @@ public:
     Queue.push(numCells-1);
     while( Queue.size() < 100 ) {
       Cell *C = Cells.host() + Queue.front();
+      if( C->NCHILD == 0 ) return;
       Queue.pop();
       for( int c=C->CHILD; c<C->CHILD+C->NCHILD; c++ ) {
         Queue.push(c);
@@ -190,7 +191,7 @@ public:
     Local.h2d();
     Branch.h2d();
     tic = getTime();
-    traverse<<<Branch.size(),1>>>(numCells,Branch.devc(),Ibodies.devc(),Jbodies.devc(),Cells.devc(),Multipole.devc(),Local.devc());
+    traverse<<<Branch.size(),NCRIT>>>(numCells,Branch.devc(),Ibodies.devc(),Jbodies.devc(),Cells.devc(),Multipole.devc(),Local.devc());
     Ibodies.d2h();
     Local.d2h();
     toc = getTime();
