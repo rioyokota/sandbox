@@ -2,6 +2,73 @@
 #define kernel_h
 #include "types.h"
 
+__device__ void P2P(Cell *Ci, Cell *Cj, vec4 *Ibodies, vec4 *Jbodies) {
+  for( int bi=Ci->LEAF; bi<Ci->LEAF+Ci->NDLEAF; ++bi ) {
+    real P0 = 0;
+    vec3 F0 = 0;
+    for( int bj=Cj->LEAF; bj<Cj->LEAF+Cj->NDLEAF; ++bj ) {
+      vec3 dX;
+      for( int d=0; d<3; d++ ) dX[d] = Jbodies[bi][d] - Jbodies[bj][d];
+      real R2 = norm(dX) + EPS2;
+      real invR2 = 1.0 / R2;
+      if( R2 == 0 ) invR2 = 0;
+      real invR = Jbodies[bi][3] * Jbodies[bj][3] * std::sqrt(invR2);
+      dX *= invR2 * invR;
+      P0 += invR;
+      F0 += dX;
+    }
+    Ibodies[bi][0] += P0;
+    Ibodies[bi][1] -= F0[0];
+    Ibodies[bi][2] -= F0[1];
+    Ibodies[bi][3] -= F0[2];
+  }
+}
+
+__device__ void M2L(Cell *Ci, Cell *Cj, Cell *Cells, vecM *Multipole, vecL *Local) {
+  int ci = Ci - Cells;
+  int cj = Cj - Cells;
+  vec3 dist = Ci->X - Cj->X;
+  real invR2 = 1 / norm(dist);
+  real invR  = Multipole[ci][0] * Multipole[cj][0] * std::sqrt(invR2);
+  invR2 = -invR2;
+  real invR3 = invR * invR2;
+  real invR5 = 3 * invR3 * invR2;
+  real invR7 = 5 * invR5 * invR2;
+  vecL C;
+  C[0] = invR;
+  C[1] = dist[0] * invR3;
+  C[2] = dist[1] * invR3;
+  C[3] = dist[2] * invR3;
+  real t = dist[0] * invR5;
+  C[4] = dist[0] * t + invR3;
+  C[5] = dist[1] * t;
+  C[6] = dist[2] * t;
+  t = dist[1] * invR5;
+  C[7] = dist[1] * t + invR3;
+  C[8] = dist[2] * t;
+  C[9] = dist[2] * dist[2] * invR5 + invR3;
+  t = dist[0] * dist[0] * invR7;
+  C[10] = dist[0] * (t + 3 * invR5);
+  C[11] = dist[1] * (t +     invR5);
+  C[12] = dist[2] * (t +     invR5);
+  t = dist[1] * dist[1] * invR7;
+  C[13] = dist[0] * (t +     invR5);
+  C[16] = dist[1] * (t + 3 * invR5);
+  C[17] = dist[2] * (t +     invR5);
+  t = dist[2] * dist[2] * invR7;
+  C[15] = dist[0] * (t +     invR5);
+  C[18] = dist[1] * (t +     invR5);
+  C[19] = dist[2] * (t + 3 * invR5);
+  C[14] = dist[0] * dist[1] * dist[2] * invR7;
+  vecM M = Multipole[cj];
+  vecL L = C;
+  L[0] += C[4] *M[1] + C[5] *M[2] + C[6] *M[3] + C[7] *M[4] + C[8] *M[5] + C[9] *M[6];
+  L[1] += C[10]*M[1] + C[11]*M[2] + C[12]*M[3] + C[13]*M[4] + C[14]*M[5] + C[15]*M[6];
+  L[2] += C[11]*M[1] + C[13]*M[2] + C[14]*M[3] + C[16]*M[4] + C[17]*M[5] + C[18]*M[6];
+  L[3] += C[12]*M[1] + C[14]*M[2] + C[15]*M[3] + C[17]*M[4] + C[18]*M[5] + C[19]*M[6];
+  Local[ci] += L; 
+}
+
 class Kernel {
 protected:
   vec3 X0;
@@ -17,7 +84,7 @@ public:
   Kernel() : X0(0), R0(0) {}
   ~Kernel() {}
 
-  void P2P(Cell *Ci, Cell *Cj) const {
+  void DIRECT(Cell *Ci, Cell *Cj) const {
     for( int bi=Ci->LEAF; bi<Ci->LEAF+Ci->NDLEAF; ++bi ) {
       real P0 = 0;
       vec3 F0 = 0;
@@ -81,51 +148,6 @@ public:
       Multipole[ci][6] += M * dist[2] * dist[2] / 2;
     }
     if( Ci->RCRIT == 0 ) Ci->RCRIT = std::min(Ci->R,Rmax);
-  }
-
-  void M2L(Cell *Ci, Cell *Cj) const {
-    int ci = Ci - Cells.host();
-    int cj = Cj - Cells.host();
-    vec3 dist = Ci->X - Cj->X;
-    real invR2 = 1 / norm(dist);
-    real invR  = Multipole[ci][0] * Multipole[cj][0] * std::sqrt(invR2);
-    invR2 = -invR2;
-    real invR3 = invR * invR2;
-    real invR5 = 3 * invR3 * invR2;
-    real invR7 = 5 * invR5 * invR2;
-    vecL C;
-    C[0] = invR;
-    C[1] = dist[0] * invR3;
-    C[2] = dist[1] * invR3;
-    C[3] = dist[2] * invR3;
-    real t = dist[0] * invR5;
-    C[4] = dist[0] * t + invR3;
-    C[5] = dist[1] * t;
-    C[6] = dist[2] * t;
-    t = dist[1] * invR5;
-    C[7] = dist[1] * t + invR3;
-    C[8] = dist[2] * t;
-    C[9] = dist[2] * dist[2] * invR5 + invR3;
-    t = dist[0] * dist[0] * invR7;
-    C[10] = dist[0] * (t + 3 * invR5);
-    C[11] = dist[1] * (t +     invR5);
-    C[12] = dist[2] * (t +     invR5);
-    t = dist[1] * dist[1] * invR7;
-    C[13] = dist[0] * (t +     invR5);
-    C[16] = dist[1] * (t + 3 * invR5);
-    C[17] = dist[2] * (t +     invR5);
-    t = dist[2] * dist[2] * invR7;
-    C[15] = dist[0] * (t +     invR5);
-    C[18] = dist[1] * (t +     invR5);
-    C[19] = dist[2] * (t + 3 * invR5);
-    C[14] = dist[0] * dist[1] * dist[2] * invR7;
-    vecM M = Multipole[cj];
-    vecL L = C;
-    L[0] += C[4] *M[1] + C[5] *M[2] + C[6] *M[3] + C[7] *M[4] + C[8] *M[5] + C[9] *M[6];
-    L[1] += C[10]*M[1] + C[11]*M[2] + C[12]*M[3] + C[13]*M[4] + C[14]*M[5] + C[15]*M[6];
-    L[2] += C[11]*M[1] + C[13]*M[2] + C[14]*M[3] + C[16]*M[4] + C[17]*M[5] + C[18]*M[6];
-    L[3] += C[12]*M[1] + C[14]*M[2] + C[15]*M[3] + C[17]*M[4] + C[18]*M[5] + C[19]*M[6];
-    Local[ci] += L; 
   }
 
   void L2L(Cell *Ci) const {

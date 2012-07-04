@@ -167,8 +167,32 @@ public:
 
   void evaluate() {
     double tic, toc;
+    std::queue<int> Queue;
+    Queue.push(numCells-1);
+    while( Queue.size() < 100 ) {
+      Cell *C = Cells.host() + Queue.front();
+      Queue.pop();
+      for( int c=C->CHILD; c<C->CHILD+C->NCHILD; c++ ) {
+        Queue.push(c);
+      }
+    }
+    cudaVec<int> Branch;
+    Branch.alloc(Queue.size());
+    int c = 0;
+    while( !Queue.empty() ) {
+      Branch[c++] = Queue.front();
+      Queue.pop();
+    }
+    Ibodies.h2d();
+    Jbodies.h2d();
+    Cells.h2d();
+    Multipole.h2d();
+    Local.h2d();
+    Branch.h2d();
     tic = getTime();
-    traverse();
+    traverse<<<Branch.size(),1>>>(numCells,Branch.devc(),Ibodies.devc(),Jbodies.devc(),Cells.devc(),Multipole.devc(),Local.devc());
+    Ibodies.d2h();
+    Local.d2h();
     toc = getTime();
     if( printNow ) printf("Traverse             : %lf\n",toc-tic);
     tic = getTime();

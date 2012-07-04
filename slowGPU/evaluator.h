@@ -3,9 +3,43 @@
 #include "kernel.h"
 #define splitFirst(Ci,Cj) Cj->NCHILD == 0 || (Ci->NCHILD != 0 && Ci->RCRIT >= Cj->RCRIT)
 
+__device__ void interact(Cell *Ci, Cell *Cj, PairStack &pairStack,
+              vec4 *Ibodies, vec4 *Jbodies, Cell *Cells, vecM *Multipole, vecL *Local) {
+  vec3 dX = Ci->X - Cj->X;
+  real Rq = norm(dX);
+  if(Rq >= (Ci->RCRIT+Cj->RCRIT)*(Ci->RCRIT+Cj->RCRIT) && Rq != 0) {
+    M2L(Ci,Cj,Cells,Multipole,Local);
+  } else if(Ci->NCHILD == 0 && Cj->NCHILD == 0) {
+    P2P(Ci,Cj,Ibodies,Jbodies);
+  } else {
+    CellPair pair(Ci,Cj);
+    pairStack.push(pair);
+  }
+}
+
+__global__ void traverse(int numCells, int *Branch, vec4 *Ibodies, vec4 *Jbodies, Cell *Cells, vecM *Multipole, vecL *Local) {
+  Cell *iroot = Cells + Branch[blockIdx.x];
+  Cell *jroot = Cells + numCells - 1;
+  CellPair pair(iroot,jroot);
+  PairStack pairStack;
+  pairStack.push(pair);
+  while( !pairStack.empty() ) {
+    CellPair pair = pairStack.pop();
+    if(splitFirst(pair.first,pair.second)) {
+      Cell *C = pair.first;
+      for( Cell *Ci=Cells+C->CHILD; Ci<Cells+C->CHILD+C->NCHILD; ++Ci ) {
+        interact(Ci,pair.second,pairStack,Ibodies,Jbodies,Cells,Multipole,Local);
+      }
+    } else {
+      Cell *C = pair.second;
+      for( Cell *Cj=Cells+C->CHILD; Cj<Cells+C->CHILD+C->NCHILD; ++Cj ) {
+        interact(pair.first,Cj,pairStack,Ibodies,Jbodies,Cells,Multipole,Local);
+      }
+    }
+  }
+}
+
 class Evaluator : public Kernel {
-private:
-  int NM2L, NP2P;
 protected:
   int numBodies;
   int numCells;
@@ -26,21 +60,6 @@ private:
     real dy = rad+std::abs(X[1]-C->X[1]);
     real dz = rad+std::abs(X[2]-C->X[2]);
     return std::sqrt( dx*dx + dy*dy + dz*dz );
-  }
-
-  void interact(Cell *Ci, Cell *Cj, PairStack &pairStack) {
-    vec3 dX = Ci->X - Cj->X;
-    real Rq = norm(dX);
-    if(Rq >= (Ci->RCRIT+Cj->RCRIT)*(Ci->RCRIT+Cj->RCRIT) && Rq != 0) {
-      M2L(Ci,Cj);
-      NM2L++;
-    } else if(Ci->NCHILD == 0 && Cj->NCHILD == 0) {
-      P2P(Ci,Cj);
-      NP2P++;
-    } else {
-      CellPair pair(Ci,Cj);
-      pairStack.push(pair);
-    }
   }
 
 protected:
@@ -76,32 +95,8 @@ protected:
     }
   }
 
-  void traverse() {
-    Cell *root = Cells.host() + numCells - 1;
-    CellPair pair(root,root);
-    PairStack pairStack;
-    pairStack.push(pair);
-    while( !pairStack.empty() ) {
-      CellPair pair = pairStack.pop();
-      if(splitFirst(pair.first,pair.second)) {
-        Cell *C = pair.first;
-        for( Cell *Ci=Cells.host()+C->CHILD; Ci<Cells.host()+C->CHILD+C->NCHILD; ++Ci ) {
-          interact(Ci,pair.second,pairStack);
-        }
-      } else {
-        Cell *C = pair.second;
-        for( Cell *Cj=Cells.host()+C->CHILD; Cj<Cells.host()+C->CHILD+C->NCHILD; ++Cj ) {
-          interact(pair.first,Cj,pairStack);
-        }
-      }
-    }
-  }
-
 public:
-  Evaluator() : NM2L(0), NP2P(0), printNow(true) {}
-  ~Evaluator() {
-    std::cout << "NM2L : " << NM2L << " NP2P : " << NP2P << std::endl;
-  }
+  Evaluator() : printNow(true) {}
 
   void upwardPass() {
     for( int c=0; c<numCells; ++c ) {
@@ -142,7 +137,7 @@ public:
         Ibodies[b][d] = 0;
       }
     }
-    P2P(Ci,Cj);
+    DIRECT(Ci,Cj);
     real diff1 = 0, norm1 = 0, diff2 = 0, norm2 = 0;
     for( int b=0; b<100; ++b ) {
       Ibodies[b] /= Jbodies[b][3];
