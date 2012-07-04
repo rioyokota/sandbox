@@ -8,6 +8,7 @@
 #include <iostream>
 #include <omp.h>
 #include <sys/time.h>
+#include "cudavec.h"
 #include "pair.h"
 #include "stack.h"
 #include "vec.h"

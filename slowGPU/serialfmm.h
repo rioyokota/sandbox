@@ -5,10 +5,9 @@
 class SerialFMM : public Evaluator {
 protected:
   int MAXLEVEL;
-  int *Index;
 
 private:
-  inline void setMorton() {
+  inline void setMorton(int *key) {
     float d = 2 * R0 / (1 << MAXLEVEL);
     for( int b=0; b<numBodies; b++ ) {
       int ix = int((Jbodies[b][0] + R0 - X0[0]) / d);
@@ -23,31 +22,31 @@ private:
         iy >>= 1;
         iz >>= 1;
       }
-      Index[b] = id;
+      key[b] = id;
     }
   }
 
-  void sortBodies() {
-    int Imax = Index[0];
-    int Imin = Index[0];
+  void sortBodies(int *key) {
+    int Imax = key[0];
+    int Imin = key[0];
     for( int i=0; i<numBodies; i++ ) {
-      Imax = std::max(Imax,Index[i]);
-      Imin = std::min(Imin,Index[i]);
+      Imax = std::max(Imax,key[i]);
+      Imin = std::min(Imin,key[i]);
     }
     int numBucket = Imax - Imin + 1;
     int *bucket = new int [numBucket];
     int *buffer = new int [numBodies];
     for( int i=0; i<numBucket; i++ ) bucket[i] = 0;
-    for( int i=0; i<numBodies; i++ ) bucket[Index[i]-Imin]++;
+    for( int i=0; i<numBodies; i++ ) bucket[key[i]-Imin]++;
     for( int i=1; i<numBucket; i++ ) bucket[i] += bucket[i-1];
     for( int i=numBodies-1; i>=0; --i ) {
-      bucket[Index[i]-Imin]--;
-      int inew = bucket[Index[i]-Imin];
-      buffer[inew] = Index[i];
+      bucket[key[i]-Imin]--;
+      int inew = bucket[key[i]-Imin];
+      buffer[inew] = key[i];
       for( int d=0; d<4; d++ ) Ibodies[inew][d] = Jbodies[i][d];
     }
     for( int i=0; i<numBodies; i++ ) {
-      Index[i] = buffer[i];
+      key[i] = buffer[i];
       for( int d=0; d<4; d++ ) Jbodies[i][d] = Ibodies[i][d];
       for( int d=0; d<4; d++ ) Ibodies[i][d] = 0;
     }
@@ -70,24 +69,23 @@ private:
     cell.R      = diameter * .5;
   }
 
-  void buildBottom() {
+  void buildBottom(int *key) {
     int I = -1;
-    if( C0 != NULL ) delete[] C0;
-    C0 = new Cell [1 << (3 * MAXLEVEL + 1)];
+    Cells.alloc(1 << (3 * MAXLEVEL + 1));
     int c = -1;
     float d = 2 * R0 / (1 << MAXLEVEL);
     for( int b=0; b<numBodies; b++ ) {
-      int IC = Index[b];
+      int IC = key[b];
       if( IC != I ) {
         Cell cell;
         initCell(cell,0,b,d);
         cell.ICELL = IC;
         c++;
-        C0[c] = cell;
+        Cells[c] = cell;
         I = IC;
       }
-      C0[c].NCLEAF++;
-      C0[c].NDLEAF++;
+      Cells[c].NCLEAF++;
+      Cells[c].NDLEAF++;
     }
     numCells = c+1;
   }
@@ -98,12 +96,15 @@ protected:
   }
 
   void buildTree() {
-    setMorton();
-    sortBodies();
-    buildBottom();
+    int *key = new int [numBodies];
+    setMorton(key);
+    sortBodies(key);
+    buildBottom(key);
+    linkTree(key);
+    delete[] key;
   }
 
-  void linkTree() {
+  void linkTree(int *key) {
     int begin = 0, end = numCells;
     float d = 2 * R0 / (1 << MAXLEVEL);
     for( int l=0; l<MAXLEVEL; ++l ) {
@@ -112,36 +113,29 @@ protected:
       int p = end - 1;
       d *= 2;
       for( int c=begin; c<end; ++c ) {
-        int IC = Index[C0[c].LEAF] / div;
+        int IC = key[Cells[c].LEAF] / div;
         if( IC != I ) {
           Cell cell;
-          initCell(cell,c,C0[c].LEAF,d);
+          initCell(cell,c,Cells[c].LEAF,d);
           cell.ICELL = IC;
           p++;
-          C0[p] = cell;
+          Cells[p] = cell;
           I = IC;
         }
-        C0[p].NCHILD++;
-        C0[p].NDLEAF += C0[c].NDLEAF;
-        C0[c].PARENT = p;
+        Cells[p].NCHILD++;
+        Cells[p].NDLEAF += Cells[c].NDLEAF;
+        Cells[c].PARENT = p;
       }
       begin = end;
       end = p + 1;
     }
     numCells = end;
-    ROOT = C0 + numCells - 1;
   }
 
 public:
   SerialFMM(int N) {
-    Index   = new int  [N];
-    Ibodies = new vec4 [N];
-    Jbodies = new vec4 [N];
-  }
-  ~SerialFMM() {
-    delete[] Index;
-    delete[] Ibodies;
-    delete[] Jbodies;
+    Ibodies.alloc(N);
+    Jbodies.alloc(N);
   }
 
   void dataset(int N) {
@@ -161,12 +155,11 @@ public:
     tic = getTime();
     setDomain();
     buildTree();
-    linkTree();
     toc = getTime();
     if( printNow ) printf("Tree                 : %lf\n",toc-tic);
     tic = getTime();
-    Multipole = new vecM [numCells];
-    Local = new vecL [numCells];
+    Multipole.alloc(numCells);
+    Local.alloc(numCells);
     upwardPass();
     toc = getTime();
     if( printNow ) printf("Upward pass          : %lf\n",toc-tic);
@@ -175,18 +168,13 @@ public:
   void evaluate() {
     double tic, toc;
     tic = getTime();
-    CellPair pair(ROOT,ROOT);
-    PairStack pairStack;
-    pairStack.push(pair);
-    traverse(pairStack);
+    traverse();
     toc = getTime();
     if( printNow ) printf("Traverse             : %lf\n",toc-tic);
     tic = getTime();
     downwardPass();
     toc = getTime();
     if( printNow ) printf("Downward pass        : %lf\n",toc-tic);
-    delete[] Multipole;
-    delete[] Local;
   }
 
 };

@@ -9,7 +9,6 @@ private:
 protected:
   int numBodies;
   int numCells;
-  Cell *ROOT;
 
 public:
   bool printNow;
@@ -53,7 +52,7 @@ protected:
       for( int d=0; d<3; d++ ) X[d] += Jbodies[b][d] * Jbodies[b][3];
     }
     for( int c=C->CHILD; c<C->CHILD+C->NCHILD; c++ ) {
-      Cell *CC = C0 + c;
+      Cell *CC = Cells.host() + c;
       m += std::abs(Multipole[c][0]);
       X += CC->X * std::abs(Multipole[c][0]);
     }
@@ -63,9 +62,9 @@ protected:
   }
 
   void setRcrit() {
-    real coef = (1 - THETA) * (1 - THETA) / pow(THETA,P+2) / pow(std::abs(Multipole[ROOT-C0][0]),1.0/3);
+    real coef = (1 - THETA) * (1 - THETA) / pow(THETA,P+2) / pow(std::abs(Multipole[numCells-1][0]),1.0/3);
     for( int c=0; c<numCells; ++c ) {
-      Cell *C = C0 + c;
+      Cell *C = Cells.host() + c;
       real x = 1.0 / THETA;
       real a = coef * pow(std::abs(Multipole[c][0]),1.0/3);
       for( int i=0; i<5; ++i ) {
@@ -77,17 +76,21 @@ protected:
     }
   }
 
-  void traverse(PairStack &pairStack) {
+  void traverse() {
+    Cell *root = Cells.host() + numCells - 1;
+    CellPair pair(root,root);
+    PairStack pairStack;
+    pairStack.push(pair);
     while( !pairStack.empty() ) {
       CellPair pair = pairStack.pop();
       if(splitFirst(pair.first,pair.second)) {
         Cell *C = pair.first;
-        for( Cell *Ci=C0+C->CHILD; Ci<C0+C->CHILD+C->NCHILD; ++Ci ) {
+        for( Cell *Ci=Cells.host()+C->CHILD; Ci<Cells.host()+C->CHILD+C->NCHILD; ++Ci ) {
           interact(Ci,pair.second,pairStack);
         }
       } else {
         Cell *C = pair.second;
-        for( Cell *Cj=C0+C->CHILD; Cj<C0+C->CHILD+C->NCHILD; ++Cj ) {
+        for( Cell *Cj=Cells.host()+C->CHILD; Cj<Cells.host()+C->CHILD+C->NCHILD; ++Cj ) {
           interact(pair.first,Cj,pairStack);
         }
       }
@@ -106,11 +109,10 @@ public:
       Local[c] = 0;
     }
     for( int c=0; c<numCells; ++c ) {
-      Cell *C = C0 + c;
-      real Rmax = 0;
+      Cell *C = Cells.host() + c;
       setCenter(C);
-      P2M(C,Rmax);
-      M2M(C,Rmax);
+      P2M(C);
+      M2M(C);
     }
     for( int c=0; c<numCells; ++c ) {
       for( int i=1; i<MTERM; ++i ) Multipole[c][i] /= Multipole[c][0];
@@ -120,7 +122,7 @@ public:
 
   void downwardPass() const {
     for( int c=numCells-2; c>=0; --c ) {
-      Cell *C = C0 + c;
+      Cell *C = Cells.host() + c;
       L2L(C);
       L2P(C);
     }
@@ -133,7 +135,7 @@ public:
     Ci->NDLEAF = 100;
     Cj->LEAF = 0;
     Cj->NDLEAF = numBodies;
-    real (*Ibodies2)[4] = new real [1000000][4]();
+    vec4 *Ibodies2 = new vec4 [100];
     for( int b=0; b<100; b++ ) {
       for( int d=0; d<4; d++ ) {
         Ibodies2[b][d] = Ibodies[b][d];
@@ -143,7 +145,7 @@ public:
     P2P(Ci,Cj);
     real diff1 = 0, norm1 = 0, diff2 = 0, norm2 = 0;
     for( int b=0; b<100; ++b ) {
-      for( int d=0; d<4; d++ ) Ibodies[b][d] /= Jbodies[b][3];
+      Ibodies[b] /= Jbodies[b][3];
       diff1 += (Ibodies[b][0] - Ibodies2[b][0]) * (Ibodies[b][0] - Ibodies2[b][0]);
       norm1 += Ibodies[b][0] * Ibodies[b][0];
       diff2 += (Ibodies[b][1] - Ibodies2[b][1]) * (Ibodies[b][1] - Ibodies2[b][1]);
