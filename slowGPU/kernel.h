@@ -12,9 +12,10 @@ __device__ void P2P(Cell *Ci, Cell *Cj, vec4 *Ibodies, vec4 *Jbodies) {
     vec3 dX;
     for( int d=0; d<3; d++ ) dX[d] = target[d] - Jbodies[bj][d];
     real R2 = norm(dX) + EPS2;
-    real invR2 = 1.0 / R2;
-    if( R2 == 0 ) invR2 = 0;
-    real invR = Jbodies[bj][3] * std::sqrt(invR2);
+    real invR = rsqrtf(R2);
+    if( R2 == 0 ) invR = 0;
+    real invR2 = invR * invR;
+    invR *= Jbodies[bj][3];
     dX *= invR2 * invR;
     P0 += invR;
     F0 += dX;

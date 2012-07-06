@@ -1,34 +1,30 @@
 #include "octree.h"
 
-static __device__ void pairMinMax(float3 &xmin, float3 &xmax,
-                                  float4 reg_min, float4 reg_max) {
-  xmin.x = fminf(xmin.x, reg_min.x);
-  xmin.y = fminf(xmin.y, reg_min.y);
-  xmin.z = fminf(xmin.z, reg_min.z);
-  xmax.x = fmaxf(xmax.x, reg_max.x);
-  xmax.y = fmaxf(xmax.y, reg_max.y);
-  xmax.z = fmaxf(xmax.z, reg_max.z);
+static __device__ void pairMinMax(vec3 &xmin, vec3 &xmax,
+                                  vec4 reg_min, vec4 reg_max) {
+  for(int d=0; d<3; d++ ) xmin[d] = fminf(xmin[d], reg_min[d]);
+  for(int d=0; d<3; d++ ) xmax[d] = fmaxf(xmax[d], reg_max[d]);
 }
 
-static __device__ void pairMinMax(int i, int j, float3 &xmin, float3 &xmax,
+static __device__ void pairMinMax(int i, int j, vec3 &xmin, vec3 &xmax,
                                   volatile float3 *sh_xmin, volatile float3 *sh_xmax) {
-  sh_xmin[i].x = xmin.x = fminf(xmin.x, sh_xmin[j].x);
-  sh_xmin[i].y = xmin.y = fminf(xmin.y, sh_xmin[j].y);
-  sh_xmin[i].z = xmin.z = fminf(xmin.z, sh_xmin[j].z);
-  sh_xmax[i].x = xmax.x = fmaxf(xmax.x, sh_xmax[j].x);
-  sh_xmax[i].y = xmax.y = fmaxf(xmax.y, sh_xmax[j].y);
-  sh_xmax[i].z = xmax.z = fmaxf(xmax.z, sh_xmax[j].z);
+  sh_xmin[i].x = xmin[0] = fminf(xmin[0], sh_xmin[j].x);
+  sh_xmin[i].y = xmin[1] = fminf(xmin[1], sh_xmin[j].y);
+  sh_xmin[i].z = xmin[2] = fminf(xmin[2], sh_xmin[j].z);
+  sh_xmax[i].x = xmax[0] = fmaxf(xmax[0], sh_xmax[j].x);
+  sh_xmax[i].y = xmax[1] = fmaxf(xmax[1], sh_xmax[j].y);
+  sh_xmax[i].z = xmax[2] = fmaxf(xmax[2], sh_xmax[j].z);
 }
 
-static __device__ void sharedMinMax(float3 &xmin, float3 &xmax) {
+static __device__ void sharedMinMax(vec3 &xmin, vec3 &xmax) {
   volatile __shared__ float3 sh_xmin[NCRIT];
   volatile __shared__ float3 sh_xmax[NCRIT];
-  sh_xmin[threadIdx.x].x = xmin.x;
-  sh_xmin[threadIdx.x].y = xmin.y;
-  sh_xmin[threadIdx.x].z = xmin.z;
-  sh_xmax[threadIdx.x].x = xmax.x;
-  sh_xmax[threadIdx.x].y = xmax.y;
-  sh_xmax[threadIdx.x].z = xmax.z;
+  sh_xmin[threadIdx.x].x = xmin[0];
+  sh_xmin[threadIdx.x].y = xmin[1];
+  sh_xmin[threadIdx.x].z = xmin[2];
+  sh_xmax[threadIdx.x].x = xmax[0];
+  sh_xmax[threadIdx.x].y = xmax[1];
+  sh_xmax[threadIdx.x].z = xmax[2];
 
   __syncthreads();
   if(blockDim.x >= 512 && threadIdx.x < 256)
@@ -148,24 +144,24 @@ extern "C" __global__ void boundaryReduction(const int numBodies,
                                              float3 *output_xmin,
                                              float3 *output_xmax)
 {
-  float3 xmin = make_float3(+1e10f, +1e10f, +1e10f);
-  float3 xmax = make_float3(-1e10f, -1e10f, -1e10f);
+  vec3 xmin =  1e10f;
+  vec3 xmax = -1e10f;
   uint idx = blockIdx.x * blockDim.x + threadIdx.x;
   const uint stride = blockDim.x * gridDim.x;
   while (idx < numBodies) {
     float4 pos = bodyPos[idx];
-    pairMinMax(xmin, xmax, pos, pos);
+    pairMinMax(xmin, xmax, make_vec4(pos), make_vec4(pos));
     idx += stride;
   }
   sharedMinMax(xmin,xmax);
 
   if( threadIdx.x == 0 ) {
-    output_xmin[blockIdx.x].x = xmin.x;
-    output_xmin[blockIdx.x].y = xmin.y;
-    output_xmin[blockIdx.x].z = xmin.z;
-    output_xmax[blockIdx.x].x = xmax.x;
-    output_xmax[blockIdx.x].y = xmax.y;
-    output_xmax[blockIdx.x].z = xmax.z;
+    output_xmin[blockIdx.x].x = xmin[0];
+    output_xmin[blockIdx.x].y = xmin[1];
+    output_xmin[blockIdx.x].z = xmin[2];
+    output_xmax[blockIdx.x].x = xmax[0];
+    output_xmax[blockIdx.x].y = xmax[1];
+    output_xmax[blockIdx.x].z = xmax[2];
   }
 }
 
@@ -345,24 +341,24 @@ extern "C" __global__ void setGroups(uint *leafNodes,
                                       float4 *groupCenterInfo,
                                       float4 *groupSizeInfo){
   int nodeID = leafNodes[blockIdx.x];
-  float3 xmin = make_float3(+1e10f, +1e10f, +1e10f);
-  float3 xmax = make_float3(-1e10f, -1e10f, -1e10f);
+  vec3 xmin =  1e10f;
+  vec3 xmax = -1e10f;
   int begin = nodeBodies[nodeID].x;
   int end   = nodeBodies[nodeID].y;
 
   int idx = begin + threadIdx.x;
   if( idx < end ) {
     float4 pos = bodyPos[idx];
-    pairMinMax(xmin, xmax, pos, pos);
+    pairMinMax(xmin, xmax, make_vec4(pos), make_vec4(pos));
   }
   sharedMinMax(xmin,xmax);
   if( threadIdx.x == 0 ) {
-    float3 groupCenter = make_float3(0.5*(xmin.x + xmax.x),
-                                     0.5*(xmin.y + xmax.y),
-                                     0.5*(xmin.z + xmax.z));
-    float3 groupSize = make_float3(fmaxf(fabs(groupCenter.x-xmin.x), fabs(groupCenter.x-xmax.x)),
-                                   fmaxf(fabs(groupCenter.y-xmin.y), fabs(groupCenter.y-xmax.y)),
-                                   fmaxf(fabs(groupCenter.z-xmin.z), fabs(groupCenter.z-xmax.z)));
+    float3 groupCenter = make_float3(0.5*(xmin[0] + xmax[0]),
+                                     0.5*(xmin[1] + xmax[1]),
+                                     0.5*(xmin[2] + xmax[2]));
+    float3 groupSize = make_float3(fmaxf(fabs(groupCenter.x-xmin[0]), fabs(groupCenter.x-xmax[0])),
+                                   fmaxf(fabs(groupCenter.y-xmin[1]), fabs(groupCenter.y-xmax[1])),
+                                   fmaxf(fabs(groupCenter.z-xmin[2]), fabs(groupCenter.z-xmax[2])));
     int nleaf = end-begin;
     begin = begin | (nleaf-1) << CRITBIT;
     groupSizeInfo[blockIdx.x].x = groupSize.x;
@@ -397,16 +393,15 @@ extern "C" __global__ void P2M(const int numLeafs,
   const uint begin = nodeBodies[nodeID].x;
   const uint end   = nodeBodies[nodeID].y;
   float4 mon = {0.0f, 0.0f, 0.0f, 0.0f};
-  float3 xmin, xmax;
-  xmin = make_float3(+1e10f, +1e10f, +1e10f);
-  xmax = make_float3(-1e10f, -1e10f, -1e10f);
+  vec3 xmin =  1e10f;
+  vec3 xmax = -1e10f;
   for( int i=begin; i<end; i++ ) {
     float4 pos = bodyPos[i];
     mon.w += pos.w;
     mon.x += pos.w * pos.x;
     mon.y += pos.w * pos.y;
     mon.z += pos.w * pos.z;
-    pairMinMax(xmin, xmax, pos, pos);
+    pairMinMax(xmin, xmax, make_vec4(pos), make_vec4(pos));
   }
   float im = 1.0/mon.w;
   if(mon.w == 0) im = 0;
@@ -414,8 +409,8 @@ extern "C" __global__ void P2M(const int numLeafs,
   mon.y *= im;
   mon.z *= im;
   multipole[nodeID] = make_float4(mon.x, mon.y, mon.z, mon.w);
-  nodeLowerBounds[nodeID] = make_float4(xmin.x, xmin.y, xmin.z, 0.0f);
-  nodeUpperBounds[nodeID] = make_float4(xmax.x, xmax.y, xmax.z, 1.0f);
+  nodeLowerBounds[nodeID] = make_float4(xmin[0], xmin[1], xmin[2], 0.0f);
+  nodeUpperBounds[nodeID] = make_float4(xmax[0], xmax[1], xmax[2], 1.0f);
   return;
 }
 
@@ -432,16 +427,15 @@ extern "C" __global__ void M2M(const int level,
   const uint begin = nodeChild[nodeID] & 0x0FFFFFFF;
   const uint end = begin + ((nodeChild[nodeID] & 0xF0000000) >> 28);
   float4 mon = {0.0f, 0.0f, 0.0f, 0.0f};
-  float3 xmin, xmax;
-  xmin = make_float3(+1e10f, +1e10f, +1e10f);
-  xmax = make_float3(-1e10f, -1e10f, -1e10f);
+  vec3 xmin =  1e10f;
+  vec3 xmax = -1e10f;
   for( int i=begin; i<end; i++ ) {
     float4 pos = multipole[i];
     mon.w += pos.w;
     mon.x += pos.w * pos.x;
     mon.y += pos.w * pos.y;
     mon.z += pos.w * pos.z;
-    pairMinMax(xmin, xmax, nodeLowerBounds[i], nodeUpperBounds[i]);
+    pairMinMax(xmin, xmax, make_vec4(nodeLowerBounds[i]), make_vec4(nodeUpperBounds[i]));
   }
   float im = 1.0 / mon.w;
   if(mon.w == 0) im = 0;
@@ -449,8 +443,8 @@ extern "C" __global__ void M2M(const int level,
   mon.y *= im;
   mon.z *= im;
   multipole[nodeID] = make_float4(mon.x, mon.y, mon.z, mon.w);
-  nodeLowerBounds[nodeID] = make_float4(xmin.x, xmin.y, xmin.z, 0.0f);
-  nodeUpperBounds[nodeID] = make_float4(xmax.x, xmax.y, xmax.z, 0.0f);
+  nodeLowerBounds[nodeID] = make_float4(xmin[0], xmin[1], xmin[2], 0.0f);
+  nodeUpperBounds[nodeID] = make_float4(xmax[0], xmax[1], xmax[2], 0.0f);
   return;
 }
 
@@ -459,7 +453,6 @@ extern "C" __global__ void rescale(const int node_count,
                                            float4 *nodeLowerBounds,
                                            float4 *nodeUpperBounds,
                                            uint  *nodeChild,
-                                           float theta,
                                            float *openingAngle,
                                            uint2 *nodeBodies){
   const uint idx = blockIdx.x * blockDim.x + threadIdx.x;
@@ -479,7 +472,7 @@ extern "C" __global__ void rescale(const int node_count,
 
   float length = 2 * fmaxf(boxSize.x, fmaxf(boxSize.y, boxSize.z));
   if(length < 0.000001) length = 0.000001;
-  float cellOp = length / theta + R;
+  float cellOp = length / THETA + R;
   cellOp = cellOp * cellOp;
   uint pfirst = nodeBodies[idx].x;
   uint nchild = nodeBodies[idx].y - pfirst;
@@ -603,5 +596,5 @@ void octree::upward() {
   }
 
   blocks = ALIGN(numNodes,threads);
-  rescale<<<blocks,threads,0,execStream>>>(numNodes,multipole.devc(),nodeLowerBounds.devc(),nodeUpperBounds.devc(),nodeChild.devc(),theta,openingAngle.devc(),nodeBodies.devc());
+  rescale<<<blocks,threads,0,execStream>>>(numNodes,multipole.devc(),nodeLowerBounds.devc(),nodeUpperBounds.devc(),nodeChild.devc(),openingAngle.devc(),nodeBodies.devc());
 }
