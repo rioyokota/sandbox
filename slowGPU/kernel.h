@@ -33,7 +33,6 @@ __device__ void M2L(Cell *Ci, Cell *Cj, Cell *Cells, vecM *Multipole, vecL *Loca
   vec3 dist = Ci->X - Cj->X;
   real invR2 = 1 / norm(dist);
   real invR  = Multipole[cj][0] * std::sqrt(invR2);
-  real invR = 1;
   invR2 = -invR2;
   real invR3 = invR * invR2;
   real invR5 = 3 * invR3 * invR2;

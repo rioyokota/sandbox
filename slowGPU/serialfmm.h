@@ -190,8 +190,9 @@ public:
     Multipole.h2d();
     Local.h2d();
     Branch.h2d();
+    Branch.tex("texBranch");
     tic = getTime();
-    traverse<<<Branch.size(),NCRIT>>>(numCells,Branch.devc(),Ibodies.devc(),Jbodies.devc(),Cells.devc(),Multipole.devc(),Local.devc());
+    traverse<<<Branch.size(),NCRIT>>>(numCells,Ibodies.devc(),Jbodies.devc(),Cells.devc(),Multipole.devc(),Local.devc());
     Ibodies.d2h();
     Local.d2h();
     toc = getTime();

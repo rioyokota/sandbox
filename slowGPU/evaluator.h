@@ -3,8 +3,11 @@
 #include "kernel.h"
 #define splitFirst(Ci,Cj) Cj->NCHILD == 0 || (Ci->NCHILD != 0 && Ci->RCRIT >= Cj->RCRIT)
 
+texture<int, 1, cudaReadModeElementType> texBranch;
+texture<vec4, 1, cudaReadModeElementType> texJbodies;
+
 __device__ void interact(Cell *Ci, Cell *Cj, PairStack &pairStack,
-              vec4 *Ibodies, vec4 *Jbodies, Cell *Cells, vecM *Multipole, vecL *Local) {
+                         vec4 *Ibodies, vec4 *Jbodies, Cell *Cells, vecM *Multipole, vecL *Local) {
   vec3 dX = Ci->X - Cj->X;
   real Rq = norm(dX);
   if(Rq >= (Ci->RCRIT+Cj->RCRIT)*(Ci->RCRIT+Cj->RCRIT) && Rq != 0) {
@@ -17,8 +20,8 @@ __device__ void interact(Cell *Ci, Cell *Cj, PairStack &pairStack,
   }
 }
 
-__global__ void traverse(int numCells, int *Branch, vec4 *Ibodies, vec4 *Jbodies, Cell *Cells, vecM *Multipole, vecL *Local) {
-  Cell *iroot = Cells + Branch[blockIdx.x];
+__global__ void traverse(int numCells, vec4 *Ibodies, vec4 *Jbodies, Cell *Cells, vecM *Multipole, vecL *Local) {
+  Cell *iroot = Cells + tex1Dfetch(texBranch,blockIdx.x);
   Cell *jroot = Cells + numCells - 1;
   CellPair pair(iroot,jroot);
   __shared__ PairStack pairStack;

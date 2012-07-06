@@ -66,7 +66,7 @@ public:
     const textureReference *texref;
     cudaChannelFormatDesc channelDesc = cudaCreateChannelDesc<T>();
     CU_SAFE_CALL(cudaGetTextureReference(&texref,symbol));
-    CU_SAFE_CALL(cudaBindTexture(0,texref,(void*)DEVC,&channelDesc,sizeof(T)*SIZE));
+    CU_SAFE_CALL(cudaBindTexture(0, texref, (void*)DEVC, &channelDesc, SIZE*sizeof(T)));
   }
 
   T& operator[] (int i) const { return HOST[i]; }
