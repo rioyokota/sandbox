@@ -51,24 +51,6 @@
 #error "Please choose correct NCRIT available in node_specs.h"
 #endif
 
-#if NTHREAD == 8
-#define NTHREAD2 3
-#elif NTHREAD == 16
-#define NTHREAD2 4
-#elif NTHREAD == 32
-#define NTHREAD2 5
-#elif NTHREAD == 64
-#define NTHREAD2 6
-#elif NTHREAD == 96
-#define NTHREAD2 7
-#elif NTHREAD == 128
-#define NTHREAD2 7
-#elif NTHREAD == 256
-#define NTHREAD2 8
-#else
-#error "Please choose correct NTHREAD available in node_specs.h"
-#endif
-
 #if WARP_SIZE == 16
 #define WARP_SIZE2 4
 #elif WARP_SIZE == 32

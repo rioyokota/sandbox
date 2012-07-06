@@ -2,13 +2,15 @@
 #define laneId (threadIdx.x & (WARP_SIZE - 1))
 #define warpId (threadIdx.x >> WARP_SIZE2)
 #define IF(x) (-(int)(x))
+#define ABS(a) ((int(a) < 0) ? -(a) : (a))
 
 __device__ __forceinline__ int inclusiveScanInt(int* prefix, int value)
 {
   prefix[laneId] = value;
   for (int i = 0; i < WARP_SIZE2; i++) {
     const int offset = 1 << i;
-    prefix[laneId] += prefix[laneId-offset] & IF(laneId >= offset);
+    const int laneOffset = ABS(laneId-offset);
+    prefix[laneId] += prefix[laneOffset] & IF(laneId >= offset);
   }
   return prefix[WARP_SIZE-1];
 }
@@ -54,7 +56,8 @@ __device__ __forceinline__ int inclusive_segscan_warp(
   shmem[laneId] = value;
   for( int i=0; i<WARP_SIZE2; i++ ) {
     const int offset = 1 << i;
-    shmem[laneId] += shmem[laneId-offset] & IF(offset <= distance);
+    const int laneOffset = ABS(laneId-offset);
+    shmem[laneId] += shmem[laneOffset] & IF(offset <= distance);
   }
   return shmem[WARP_SIZE - 1];
 }
@@ -75,11 +78,6 @@ __device__ __forceinline__ int inclusive_segscan_array(int *shmem_in, const int 
 __device__ __forceinline__ int ACCESS(const int i) {
   return (i & (LMEM_STACK_SIZE - 1)) * blockDim.x + threadIdx.x;
 }
-
-texture<uint, 1, cudaReadModeElementType> texNodeChild;
-texture<float, 1, cudaReadModeElementType> texOpening;
-texture<float4, 1, cudaReadModeElementType> texMultipole;
-texture<float4, 1, cudaReadModeElementType> texBody;
 
 __device__ __forceinline__ void P2P(
     float4 &acc,  const float4 pos,
@@ -112,17 +110,20 @@ __device__ bool applyMAC(
 }
 
 __device__ void traverse(
+    float4 *pos,
     float4 &pos_i,
     float4 &acc_i,
+    uint  *nodeChild,
+    float *openingAngle,
+    float4 *multipole,
     float4 targetCenter,
     float4 targetSize,
     float eps2,
     uint2 rootRange,
     int *shmem,
     int *lmem) {
-  const int stackSize = LMEM_STACK_SIZE << NTHREAD2;
-  const int nWarps2 = NTHREAD2 - WARP_SIZE2;
-  int *approxNodes = lmem + stackSize + (NTHREAD >> (nWarps2 - 1)) * warpId;
+  const int stackSize = LMEM_STACK_SIZE * NTHREAD;
+  int *approxNodes = lmem + stackSize + 2 * WARP_SIZE * warpId;
   int *numDirect = shmem;
   int *stackShrd = numDirect + WARP_SIZE;
   int *directNodes = stackShrd + WARP_SIZE;
@@ -147,11 +148,11 @@ __device__ void traverse(
       // walk a level
       for( int iStack=beginStack; iStack<endStack; iStack++ ) {
         bool valid = laneId < numNodes;
-        int node = stackGlob[ACCESS(iStack)];
+        int node = stackGlob[ACCESS(iStack)] & IF(valid);
         numNodes -= WARP_SIZE;
-        float opening = tex1Dfetch(texOpening, node);
-        uint sourceData = tex1Dfetch(texNodeChild, node);
-        float4 sourceCenter = tex1Dfetch(texMultipole, node);
+        float opening = openingAngle[node];
+        uint sourceData = nodeChild[node];
+        float4 sourceCenter = multipole[node];
         sourceCenter.w = opening;
         bool split = applyMAC(sourceCenter, targetCenter, targetSize);
         bool leaf = opening <= 0;
@@ -179,15 +180,15 @@ __device__ void traverse(
         if( warpOffsetApprox >= WARP_SIZE ) {
           warpOffsetApprox -= WARP_SIZE;
           node = approxNodes[warpOffsetApprox+laneId];
-          pos_j[laneId] = tex1Dfetch(texMultipole, node);
+          pos_j[laneId] = multipole[node];
           for( int i=0; i<WARP_SIZE; i++ )
             P2P(acc_i, pos_i, pos_j[i], eps2);
         }
 #endif
 #if 1   // DIRECT
         flag = split && leaf && valid;
-        const int jbody = sourceData & BODYMASK;
-        int numBodies = (((sourceData & INVBMASK) >> LEAFBIT)+1) & IF(flag);
+        const int jbody = sourceData & CRITMASK;
+        int numBodies = (((sourceData & INVCMASK) >> CRITBIT)+1) & IF(flag);
         directNodes[laneId] = numDirect[laneId];
 
         int sumBodies = inclusiveScanInt(prefix, numBodies);
@@ -210,7 +211,7 @@ __device__ void traverse(
           warpOffsetDirect += numBodies;
           while( warpOffsetDirect >= WARP_SIZE ) {
             warpOffsetDirect -= WARP_SIZE;
-            pos_j[laneId] = tex1Dfetch(texBody,directNodes[warpOffsetDirect+laneId]);
+            pos_j[laneId] = pos[directNodes[warpOffsetDirect+laneId]];
             for( int i=0; i<WARP_SIZE; i++ )
               P2P(acc_i, pos_i, pos_j[i], eps2);
           }
@@ -233,7 +234,7 @@ __device__ void traverse(
   if( warpOffsetApprox > 0 ) {
     if( laneId < warpOffsetApprox )  {
       const int node = approxNodes[laneId];
-      pos_j[laneId] = tex1Dfetch(texMultipole, node);
+      pos_j[laneId] = multipole[node];
     } else {
       pos_j[laneId] = make_float4(1.0e10f, 1.0e10f, 1.0e10f, 0.0f);
     }
@@ -243,7 +244,7 @@ __device__ void traverse(
 
   if( warpOffsetDirect > 0 ) {
     if( laneId < warpOffsetDirect ) {
-      const float4 posj = tex1Dfetch(texBody,numDirect[laneId]);
+      const float4 posj = pos[numDirect[laneId]];
       pos_j[laneId] = posj;
     } else {
       pos_j[laneId] = make_float4(1.0e10f, 1.0e10f, 1.0e10f, 0.0f);
@@ -258,6 +259,10 @@ extern "C" __global__ void
       const int numGroups,
       float eps2,
       uint2 *levelRange,
+      uint *nodeChild,
+      float *openingAngle,
+      float4 *multipole,
+      float4 *pos,
       float4 *acc,
       float4 *groupSizeInfo,
       float4 *groupCenterInfo,
@@ -277,10 +282,10 @@ extern "C" __global__ void
     const uint numGroup = ((groupData & INVCMASK) >> CRITBIT) + 1;
     float4 groupCenter = groupCenterInfo[wid[warpId]];
     uint body_i = begin + laneId % numGroup;
-    float4 pos_i = tex1Dfetch(texBody,body_i);
+    float4 pos_i = pos[body_i];
     float4 acc_i = make_float4(0.0f, 0.0f, 0.0f, 0.0f);
 
-    traverse(pos_i, acc_i, groupCenter, groupSize, eps2, levelRange[2], shmem, lmem);
+    traverse(pos, pos_i, acc_i, nodeChild, openingAngle, multipole, groupCenter, groupSize, eps2, levelRange[2], shmem, lmem);
     if( laneId < numGroup )
       acc[body_i] = acc_i;
   }
@@ -304,15 +309,15 @@ extern "C" __global__ void directKernel(float4 *bodyPos, float4 *bodyAcc, const 
 }
 
 void octree::traverse() {
-  nodeChild.tex("texNodeChild");
-  openingAngle.tex("texOpening");
-  multipole.tex("texMultipole");
-  bodyPos.tex("texBody");
   workToDo.zeros();
   traverseKernel<<<NBLOCK,NTHREAD,0,execStream>>>(
     numGroups,
     eps2,
     levelRange.devc(),
+    nodeChild.devc(),
+    openingAngle.devc(),
+    multipole.devc(),
+    bodyPos.devc(),
     bodyAcc.devc(),
     groupSizeInfo.devc(),
     groupCenterInfo.devc(),
