@@ -44,7 +44,7 @@ private:
   int numLevels;
   union {
     uint4 *uint4buffer;
-    float4 *float4buffer;
+    vec4 *vec4buffer;
   };
   cudaVec<uint4>  bodyKeys;
   cudaVec<uint2>  nodeBodies;
@@ -57,24 +57,24 @@ private:
 
   cudaVec<uint>   leafNodes;
   cudaVec<uint2>  groupRange;
-  cudaVec<float4> multipole;      
+  cudaVec<vecM>   multipole;      
 
   cudaVec<float>  openingAngle;
-  cudaVec<vec4> groupSizeInfo;
-  cudaVec<vec4> groupCenterInfo;
+  cudaVec<vec4>   groupSizeInfo;
+  cudaVec<vec4>   groupCenterInfo;
 
   cudaVec<uint>   generalBuffer1;
   vec4 corner;
 
-  cudaVec<vec3> XMIN;
-  cudaVec<vec3> XMAX;
+  cudaVec<vec3>   XMIN;
+  cudaVec<vec3>   XMAX;
   cudaVec<uint>   offset;
   cudaVec<uint>   workToDo;
   
 public:
-  cudaVec<float4> bodyPos;
-  cudaVec<float4> bodyAcc;
-  cudaVec<float4> bodyAcc2;
+  cudaVec<vec4>   bodyPos;
+  cudaVec<vec4>   bodyAcc;
+  cudaVec<vec4>   bodyAcc2;
 
 private:
   bool isPowerOfTwo(const int n) {

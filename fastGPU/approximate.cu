@@ -80,44 +80,38 @@ __device__ __forceinline__ int ACCESS(const int i) {
 }
 
 __device__ __forceinline__ void P2P(
-    float4 &acc,  const float4 pos,
-    const float4 posj) {
-  vec3 dist;
-  dist[0] = posj.x - pos.x;
-  dist[1] = posj.y - pos.y;
-  dist[2] = posj.z - pos.z;
-  const float R2     = norm(dist) + EPS2;
-  float invR   = rsqrtf(R2);
-  const float invR2  = invR * invR;
-  invR  *= posj.w;
+    vec4 &acc,  const vec4 pos,
+    const vec4 posj) {
+  vec3 dist = make_vec3(posj - pos);
+  const float R2 = norm(dist) + EPS2;
+  float invR = rsqrtf(R2);
+  const float invR2 = invR * invR;
+  invR *= posj[3];
   dist *= invR * invR2;
-  acc.w -= invR;
-  acc.x += dist[0];
-  acc.y += dist[1];
-  acc.z += dist[2];
+  acc[3] -= invR;
+  acc[0] += dist[0];
+  acc[1] += dist[1];
+  acc[2] += dist[2];
 }
 
 __device__ bool applyMAC(
-    const float4 sourceCenter,
+    const vec4 sourceCenter,
     const vec4 groupCenter,
     const vec4 groupSize) {
-  vec3 dist;
-  dist[0] = fabsf(groupCenter[0] - sourceCenter.x) - (groupSize[0]);
-  dist[1] = fabsf(groupCenter[1] - sourceCenter.y) - (groupSize[1]);
-  dist[2] = fabsf(groupCenter[2] - sourceCenter.z) - (groupSize[2]);
+  vec3 dist = make_vec3(fabsf(groupCenter - sourceCenter) - groupSize);
   for( int d=0; d<3; d++ ) dist[d] += fabsf(dist[d]);
   dist *= 0.5f;
   const float R2 = norm(dist);
-  return R2 <= fabsf(sourceCenter.w);
+  return R2 <= fabsf(sourceCenter[3]);
 }
 
 __device__ void traverse(
-    float4 *pos,
-    float4 &pos_i,
-    float4 &acc_i,
+    vec4 *pos,
+    vec4 &pos_i,
+    vec4 &acc_i,
     uint  *nodeChild,
     float *openingAngle,
-    float4 *multipole,
+    vecM *multipole,
     vec4 targetCenter,
     vec4 targetSize,
     uint2 rootRange,
@@ -128,7 +122,7 @@ __device__ void traverse(
   int *numDirect = shmem;
   int *stackShrd = numDirect + WARP_SIZE;
   int *directNodes = stackShrd + WARP_SIZE;
-  float4 *pos_j = (float4*)&directNodes[3*WARP_SIZE];
+  vec4 *pos_j = (vec4*)&directNodes[3*WARP_SIZE];
   int *prefix = (int*)&pos_j[WARP_SIZE];
 
   // stack
@@ -153,8 +147,7 @@ __device__ void traverse(
         numNodes -= WARP_SIZE;
         float opening = openingAngle[node];
         uint sourceData = nodeChild[node];
-        float4 sourceCenter = multipole[node];
-        sourceCenter.w = opening;
+        vec4 sourceCenter = make_vec4(multipole[node][1],multipole[node][2],multipole[node][3],opening);
         bool split = applyMAC(sourceCenter, targetCenter, targetSize);
         bool leaf = opening <= 0;
         bool flag = split && !leaf && valid;
@@ -181,7 +174,7 @@ __device__ void traverse(
         if( warpOffsetApprox >= WARP_SIZE ) {
           warpOffsetApprox -= WARP_SIZE;
           node = approxNodes[warpOffsetApprox+laneId];
-          pos_j[laneId] = multipole[node];
+          pos_j[laneId] = make_vec4(multipole[node][1],multipole[node][2],multipole[node][3],multipole[node][0]);
           for( int i=0; i<WARP_SIZE; i++ )
             P2P(acc_i, pos_i, pos_j[i]);
         }
@@ -235,9 +228,9 @@ __device__ void traverse(
   if( warpOffsetApprox > 0 ) {
     if( laneId < warpOffsetApprox )  {
       const int node = approxNodes[laneId];
-      pos_j[laneId] = multipole[node];
+      pos_j[laneId] = make_vec4(multipole[node][1],multipole[node][2],multipole[node][3],multipole[node][0]);
     } else {
-      pos_j[laneId] = make_float4(1.0e10f, 1.0e10f, 1.0e10f, 0.0f);
+      pos_j[laneId] = make_vec4(1.0e10f, 1.0e10f, 1.0e10f, 0.0f);
     }
     for( int i=0; i<WARP_SIZE; i++ )
       P2P(acc_i, pos_i, pos_j[i]);
@@ -245,10 +238,10 @@ __device__ void traverse(
 
   if( warpOffsetDirect > 0 ) {
     if( laneId < warpOffsetDirect ) {
-      const float4 posj = pos[numDirect[laneId]];
+      const vec4 posj = pos[numDirect[laneId]];
       pos_j[laneId] = posj;
     } else {
-      pos_j[laneId] = make_float4(1.0e10f, 1.0e10f, 1.0e10f, 0.0f);
+      pos_j[laneId] = make_vec4(1.0e10f, 1.0e10f, 1.0e10f, 0.0f);
     }
     for( int i=0; i<WARP_SIZE; i++ )
       P2P(acc_i, pos_i, pos_j[i]);
@@ -261,9 +254,9 @@ extern "C" __global__ void
       uint2 *levelRange,
       uint *nodeChild,
       float *openingAngle,
-      float4 *multipole,
-      float4 *pos,
-      float4 *acc,
+      vecM *multipole,
+      vec4 *pos,
+      vec4 *acc,
       vec4 *groupSizeInfo,
       vec4 *groupCenterInfo,
       int    *MEM_BUF,
@@ -282,8 +275,8 @@ extern "C" __global__ void
     const uint numGroup = ((groupData & INVCMASK) >> CRITBIT) + 1;
     vec4 groupCenter = groupCenterInfo[wid[warpId]];
     uint body_i = begin + laneId % numGroup;
-    float4 pos_i = pos[body_i];
-    float4 acc_i = make_float4(0.0f, 0.0f, 0.0f, 0.0f);
+    vec4 pos_i = pos[body_i];
+    vec4 acc_i = 0.0f;
 
     traverse(pos, pos_i, acc_i, nodeChild, openingAngle, multipole, groupCenter, groupSize, levelRange[2], shmem, lmem);
     if( laneId < numGroup )
@@ -291,17 +284,17 @@ extern "C" __global__ void
   }
 }
 
-extern "C" __global__ void directKernel(float4 *bodyPos, float4 *bodyAcc, const int N) {
+extern "C" __global__ void directKernel(vec4 *bodyPos, vec4 *bodyAcc, const int N) {
   uint idx = min(blockIdx.x * blockDim.x + threadIdx.x, N-1);
-  float4 pos_i = bodyPos[idx];
-  float4 acc_i = make_float4(0.0f, 0.0f, 0.0f, 0.0f);
-  __shared__ float4 shmem[NTHREAD];
-  float4 *pos_j = shmem + WARP_SIZE * warpId;
+  vec4 pos_i = bodyPos[idx];
+  vec4 acc_i = 0.0f;
+  __shared__ vec4 shmem[NTHREAD];
+  vec4 *pos_j = shmem + WARP_SIZE * warpId;
   const int numWarp = ALIGN(N, WARP_SIZE);
   for( int jwarp=0; jwarp<numWarp; jwarp++ ) {
     int jGlob = jwarp*WARP_SIZE+laneId;
     pos_j[laneId] = bodyPos[min(jGlob,N-1)];
-    pos_j[laneId].w *= jGlob < N;
+    pos_j[laneId][3] *= jGlob < N;
     for( int i=0; i<WARP_SIZE; i++ )
       P2P(acc_i, pos_i, pos_j[i]);
   }

@@ -140,9 +140,9 @@ public:
     return c;
   }
   __device__
-  friend vec fabs(const vec &b) {
+  friend vec fabsf(const vec &b) {
     vec c;
-    for_i c[i] = fabs(b[i]);
+    for_i c[i] = fabsf(b[i]);
     return c;
   }
   __device__
