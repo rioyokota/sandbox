@@ -254,7 +254,7 @@ extern "C" __global__ void buildNodes(
     key = make_uint4(key.x & mask.x, key.y & mask.y, key.z & mask.z, level); 
     nodeBodies[offset+idx] = make_uint2(begin, end);
     nodeKeys  [offset+idx] = key;
-    if( end - begin <= NLEAF )
+    if( end - begin <= NCRIT )
       for( int i=begin; i<end; i++ )
         bodyKeys[i] = make_uint4(0xFFFFFFFF,0xFFFFFFFF,0xFFFFFFFF,0xFFFFFFFF);
     idx += stride;
@@ -294,7 +294,7 @@ extern "C" __global__ void linkNodes(int numNodes,
   atomicOr(&nodeChild[idx], cj);
 
   uint valid = idx; 
-  if( end - begin <= NLEAF )    
+  if( end - begin <= NCRIT )    
     valid = idx | (uint)(1 << 31);
   validRange[idx] = valid;
 }
@@ -321,8 +321,7 @@ extern "C" __global__ void getLevelRange(const int numNodes,
   validRange[(idx-numLeafs)*2+1] = idx | (level_c != level_p) << 31;
 }
 
-extern "C" __global__ void getGroupRange(int numBodies,
-                                         uint *validRange,
+extern "C" __global__ void setNodeRange(int numBodies,
                                          uint *nodeRange,
                                          int treeDepth) {
   const uint idx = blockIdx.x * blockDim.x + threadIdx.x;
@@ -338,21 +337,43 @@ extern "C" __global__ void getGroupRange(int numBodies,
         nodeRange[threadIdx.x] = shmem[threadIdx.x*2-1]+1;
     }
   }
-  int validStart = ((idx     % NCRIT) == 0);
-  int validEnd   = (((idx+1) % NCRIT) == 0);
-  if(idx+1 == numBodies) validEnd = 1;
-  validRange[2*idx + 0] = (idx)   | (uint)(validStart << 31);
-  validRange[2*idx + 1] = (idx+1) | (uint)(validEnd   << 31);    
 }
 
-extern "C" __global__ void storeGroupRange(int numGroups,
-                                            uint *validRange,
-                                            uint2 *groupRange) {
-  if(blockIdx.x >= numGroups) return;
-  if(threadIdx.x == 0) {
-    int begin = validRange[2*blockIdx.x];
-    int end   = validRange[2*blockIdx.x+1];
-    groupRange[blockIdx.x] = make_uint2(begin,end);
+extern "C" __global__ void setGroups(uint *leafNodes,
+                                      uint2 *nodeBodies,
+                                      float4 *bodyPos,
+                                      float4 *groupCenterInfo,
+                                      float4 *groupSizeInfo){
+  int nodeID = leafNodes[blockIdx.x];
+  float3 xmin = make_float3(+1e10f, +1e10f, +1e10f);
+  float3 xmax = make_float3(-1e10f, -1e10f, -1e10f);
+  int begin = nodeBodies[nodeID].x;
+  int end   = nodeBodies[nodeID].y;
+
+  int idx = begin + threadIdx.x;
+  if( idx < end ) {
+    float4 pos = bodyPos[idx];
+    pairMinMax(xmin, xmax, pos, pos);
+  }
+  sharedMinMax(xmin,xmax);
+  if( threadIdx.x == 0 ) {
+    float3 groupCenter = make_float3(0.5*(xmin.x + xmax.x),
+                                     0.5*(xmin.y + xmax.y),
+                                     0.5*(xmin.z + xmax.z));
+    float3 groupSize = make_float3(fmaxf(fabs(groupCenter.x-xmin.x), fabs(groupCenter.x-xmax.x)),
+                                   fmaxf(fabs(groupCenter.y-xmin.y), fabs(groupCenter.y-xmax.y)),
+                                   fmaxf(fabs(groupCenter.z-xmin.z), fabs(groupCenter.z-xmax.z)));
+    int nleaf = end-begin;
+    begin = begin | (nleaf-1) << CRITBIT;
+    groupSizeInfo[blockIdx.x].x = groupSize.x;
+    groupSizeInfo[blockIdx.x].y = groupSize.y;
+    groupSizeInfo[blockIdx.x].z = groupSize.z;
+    groupSizeInfo[blockIdx.x].w = __int_as_float(begin);
+    float length = max(groupSize.x, max(groupSize.y, groupSize.z));
+    groupCenterInfo[blockIdx.x].x = groupCenter.x;
+    groupCenterInfo[blockIdx.x].y = groupCenter.y;
+    groupCenterInfo[blockIdx.x].z = groupCenter.z;
+    groupCenterInfo[blockIdx.x].w = length;
   }
 }
 
@@ -364,12 +385,12 @@ extern "C" __global__ void reorder(const int size, uint4 *index, float4 *input, 
 }
 
 extern "C" __global__ void P2M(const int numLeafs,
-                                        uint *leafNodes,
-                                        uint2 *nodeBodies,
-                                        float4 *bodyPos,
-                                        float4 *multipole,
-                                        float4 *nodeLowerBounds,
-                                        float4 *nodeUpperBounds) {
+                               uint *leafNodes,
+                               uint2 *nodeBodies,
+                               float4 *bodyPos,
+                               float4 *multipole,
+                               float4 *nodeLowerBounds,
+                               float4 *nodeUpperBounds) {
   const uint idx = blockIdx.x * blockDim.x + threadIdx.x;
   if (idx >= numLeafs) return;
   int nodeID = leafNodes[idx];
@@ -452,13 +473,13 @@ extern "C" __global__ void rescale(const int node_count,
   float3 boxSize = make_float3(fmaxf(fabs(boxCenter.x-xmin.x), fabs(boxCenter.x-xmax.x)),
                                fmaxf(fabs(boxCenter.y-xmin.y), fabs(boxCenter.y-xmax.y)),
                                fmaxf(fabs(boxCenter.z-xmin.z), fabs(boxCenter.z-xmax.z)));
-  float3 s3 = make_float3((boxCenter.x - mon.x), (boxCenter.y - mon.y), (boxCenter.z - mon.z));
-  float s = sqrt((s3.x*s3.x) + (s3.y*s3.y) + (s3.z*s3.z));
-  if(fabs(mon.w) < 1e-10) s = 0;
+  float3 dist = make_float3((boxCenter.x - mon.x), (boxCenter.y - mon.y), (boxCenter.z - mon.z));
+  float R = sqrt((dist.x*dist.x) + (dist.y*dist.y) + (dist.z*dist.z));
+  if(fabs(mon.w) < 1e-10) R = 0;
 
   float length = 2 * fmaxf(boxSize.x, fmaxf(boxSize.y, boxSize.z));
   if(length < 0.000001) length = 0.000001;
-  float cellOp = length / theta + s;
+  float cellOp = length / theta + R;
   cellOp = cellOp * cellOp;
   uint pfirst = nodeBodies[idx].x;
   uint nchild = nodeBodies[idx].y - pfirst;
@@ -468,48 +489,11 @@ extern "C" __global__ void rescale(const int node_count,
     cellOp = 10e10;
   if( leaf ) {
     cellOp = -cellOp;
-    pfirst = pfirst | ((nchild-1) << LEAFBIT);
+    pfirst = pfirst | ((nchild-1) << CRITBIT);
     nodeChild[idx] = pfirst;
   }
   openingAngle[idx] = cellOp;
   return;
-}
-
-extern "C" __global__ void setGroups(const int numGroups,
-                                          float4 *bodyPos,
-                                          int2  *groupRange,
-                                          float4 *groupCenterInfo,
-                                          float4 *groupSizeInfo){
-  if(blockIdx.x >= numGroups) return;
-  float3 xmin = make_float3(+1e10f, +1e10f, +1e10f);
-  float3 xmax = make_float3(-1e10f, -1e10f, -1e10f);
-  int begin = groupRange[blockIdx.x].x;
-  int end   = groupRange[blockIdx.x].y;
-  int idx = begin + threadIdx.x;
-  if( idx < end ) {
-    float4 pos = bodyPos[idx];
-    pairMinMax(xmin, xmax, pos, pos);
-  }
-  sharedMinMax(xmin,xmax);
-  if( threadIdx.x == 0 ) {
-    float3 groupCenter = make_float3(0.5*(xmin.x + xmax.x),
-                                     0.5*(xmin.y + xmax.y),
-                                     0.5*(xmin.z + xmax.z));
-    float3 groupSize = make_float3(fmaxf(fabs(groupCenter.x-xmin.x), fabs(groupCenter.x-xmax.x)),
-                                   fmaxf(fabs(groupCenter.y-xmin.y), fabs(groupCenter.y-xmax.y)),
-                                   fmaxf(fabs(groupCenter.z-xmin.z), fabs(groupCenter.z-xmax.z)));
-    int nchild = end-begin;
-    begin = begin | (nchild-1) << CRITBIT;
-    groupSizeInfo[blockIdx.x].x = groupSize.x;
-    groupSizeInfo[blockIdx.x].y = groupSize.y;
-    groupSizeInfo[blockIdx.x].z = groupSize.z;
-    groupSizeInfo[blockIdx.x].w = __int_as_float(begin);
-    float length = max(groupSize.x, max(groupSize.y, groupSize.z));
-    groupCenterInfo[blockIdx.x].x = groupCenter.x;
-    groupCenterInfo[blockIdx.x].y = groupCenter.y;
-    groupCenterInfo[blockIdx.x].z = groupCenter.z;
-    groupCenterInfo[blockIdx.x].w = length;
-  }
 }
 
 void octree::getBoundaries() {
@@ -570,6 +554,14 @@ void octree::buildTree() {
   numNodes = levelRange[numLevels].y;
 }
 
+void octree::allocateTreePropMemory()
+{
+  multipole.alloc(numNodes);
+  groupSizeInfo.alloc(numNodes);
+  openingAngle.alloc(numNodes);
+  groupCenterInfo.alloc(numNodes);
+}
+
 void octree::linkTree() {
   // leafNodes
   nodeChild.zeros();
@@ -586,23 +578,11 @@ void octree::linkTree() {
   blocks = ALIGN(numNodes-numLeafs,threads);
   getLevelRange<<<blocks,threads,0,execStream>>>(numNodes,numLeafs,leafNodes.devc(),nodeKeys.devc(),validRange.devc());
   gpuCompact(validRange, nodeRange, 2*(numNodes-numLeafs));
-  // groupRange
-  validRange.zeros();
   blocks = ALIGN(numBodies,threads);
-  getGroupRange<<<blocks,threads>>>(numBodies,validRange.devc(),nodeRange.devc(),numLevels+1);
-  gpuCompact(validRange, compactRange, numBodies*2);
-  workToDo.d2h();
-  numGroups = workToDo[0] / 2;
-  groupRange.alloc(numGroups);
-  storeGroupRange<<<numGroups,NCRIT,0,execStream>>>(numGroups,compactRange.devc(),groupRange.devc());
-}
-
-void octree::allocateTreePropMemory()
-{
-  multipole.alloc(numNodes);
-  groupSizeInfo.alloc(numNodes);
-  openingAngle.alloc(numNodes);
-  groupCenterInfo.alloc(numNodes);
+  setNodeRange<<<blocks,threads>>>(numBodies,nodeRange.devc(),numLevels+1);
+  // groupRange
+  numGroups = numLeafs;
+  setGroups<<<numLeafs,NCRIT>>>(leafNodes.devc(),nodeBodies.devc(),bodyPos.devc(),groupCenterInfo.devc(),groupSizeInfo.devc());
 }
 
 void octree::upward() {
@@ -624,5 +604,4 @@ void octree::upward() {
 
   blocks = ALIGN(numNodes,threads);
   rescale<<<blocks,threads,0,execStream>>>(numNodes,multipole.devc(),nodeLowerBounds.devc(),nodeUpperBounds.devc(),nodeChild.devc(),theta,openingAngle.devc(),nodeBodies.devc());
-  setGroups<<<numGroups,NCRIT>>>(numGroups,bodyPos.devc(),(int2*)groupRange.devc(),groupCenterInfo.devc(),groupSizeInfo.devc());
 }

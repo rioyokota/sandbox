@@ -344,13 +344,13 @@ void octree::iterate() {
   CU_SAFE_CALL(cudaStreamSynchronize(execStream));
   printf("BUILD : %lf\n",get_time() - t1);;
   t1 = get_time();
-  linkTree();
-  CU_SAFE_CALL(cudaStreamSynchronize(execStream));
-  printf("LINK  : %lf\n",get_time() - t1);;
-  t1 = get_time();
   allocateTreePropMemory();
   CU_SAFE_CALL(cudaStreamSynchronize(execStream));
   printf("ALLOC : %lf\n",get_time() - t1);;
+  t1 = get_time();
+  linkTree();
+  CU_SAFE_CALL(cudaStreamSynchronize(execStream));
+  printf("LINK  : %lf\n",get_time() - t1);;
   t1 = get_time();
   upward();
   CU_SAFE_CALL(cudaStreamSynchronize(execStream));

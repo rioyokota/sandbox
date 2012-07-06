@@ -14,7 +14,6 @@
 #include <sys/time.h>
 #include <vector>
 
-#define NLEAF 16
 #define NCRIT 32
 #define NTHREAD 128
 #define NBLOCK 512
@@ -22,35 +21,6 @@
 #define MAXLEVELS 30
 #define LMEM_STACK_SIZE 2048
 #define NWARP (NTHREAD / WARP_SIZE)
-
-#if NLEAF == 8
-#define NLEAF2 3
-#define LEAFBIT 29
-#define BODYMASK 0x1FFFFFFF
-#define INVBMASK 0xE0000000
-#elif NLEAF == 16
-#define NLEAF2 4
-#define LEAFBIT 28
-#define BODYMASK 0x0FFFFFFF
-#define INVBMASK 0xF0000000
-#elif NLEAF == 32
-#define NLEAF2 5
-#define LEAFBIT 27
-#define BODYMASK 0x07FFFFFF
-#define INVBMASK 0xF8000000
-#elif NLEAF == 64
-#define NLEAF2 6
-#define LEAFBIT 26
-#define BODYMASK 0x03FFFFFF
-#define INVBMASK 0xFC000000
-#elif NLEAF == 128
-#define NLEAF2 7
-#define LEAFBIT 25
-#define BODYMASK 0x01FFFFFF
-#define INVBMASK 0xFE000000
-#else
-#error "Please choose correct NLEAF available in node_specs.h"
-#endif
 
 #if NCRIT == 8
 #define NCRIT2 3

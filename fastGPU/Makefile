@@ -21,7 +21,7 @@ all: $(ORG)
 %.th_o: %.cu
 	$(NVCC) -c $< -o $@
 
-$(ORG): include/*.h
+#$(ORG): include/*.h
 
 cleanall:
 	@make -C .. cleanall
