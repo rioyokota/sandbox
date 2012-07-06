@@ -139,19 +139,31 @@ public:
     for_i c+=b[i]*b[i];
     return c;
   }
-  __device__
+  __host__ __device__
   friend vec fabsf(const vec &b) {
     vec c;
     for_i c[i] = fabsf(b[i]);
     return c;
   }
-  __device__
+  __host__ __device__
+  friend T fminf(const vec &b) {
+    T c;
+    for_i c = fminf(b[i],c);
+    return c;
+  }
+  __host__ __device__
+  friend T fmaxf(const vec &b) {
+    T c;
+    for_i c = fmaxf(b[i],c);
+    return c;
+  }
+  __host__ __device__
   friend vec fminf(const vec &b, const vec &c) {
     vec d;
     for_i d[i] = fminf(b[i],c[i]);
     return d;
   }
-  __device__
+  __host__ __device__
   friend vec fmaxf(const vec &b, const vec &c) {
     vec d;
     for_i d[i] = fmaxf(b[i],c[i]);

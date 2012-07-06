@@ -211,15 +211,14 @@ extern "C" __global__ void getValidRange(int numBodies,
   validRange[idx*2+1] = idx | ((valid1) << 31);
 }
 
-extern "C" __global__ void buildNodes(
-                             uint level,
-                             uint *workToDo,
-                             uint *maxLevel,
-                             uint2 *levelRange,
-                             uint *bodyRange,
-                             uint4 *bodyKeys,
-                             uint4 *nodeKeys,
-                             uint2 *nodeBodies) {
+extern "C" __global__ void buildNodes(uint level,
+                                      uint *workToDo,
+                                      uint *maxLevel,
+                                      uint2 *levelRange,
+                                      uint *bodyRange,
+                                      uint4 *bodyKeys,
+                                      uint4 *nodeKeys,
+                                      uint2 *nodeBodies) {
   if( *workToDo == 0 ) return;
   uint idx  = blockIdx.x * blockDim.x + threadIdx.x;
   const uint stride = gridDim.x * blockDim.x;
@@ -306,8 +305,8 @@ extern "C" __global__ void getLevelRange(const int numNodes,
 }
 
 extern "C" __global__ void setNodeRange(int numBodies,
-                                         uint *nodeRange,
-                                         int treeDepth) {
+                                        uint *nodeRange,
+                                        int treeDepth) {
   const uint idx = blockIdx.x * blockDim.x + threadIdx.x;
   if (idx >= numBodies) return;
   __shared__ int shmem[128];
@@ -324,10 +323,10 @@ extern "C" __global__ void setNodeRange(int numBodies,
 }
 
 extern "C" __global__ void setGroups(uint *leafNodes,
-                                      uint2 *nodeBodies,
-                                      vec4 *bodyPos,
-                                      vec4 *groupCenterInfo,
-                                      vec4 *groupSizeInfo){
+                                     uint2 *nodeBodies,
+                                     vec4 *bodyPos,
+                                     vec3 *groupCenterInfo,
+                                     vec3 *groupSizeInfo){
   int nodeID = leafNodes[blockIdx.x];
   vec3 xmin =  1e10f;
   vec3 xmax = -1e10f;
@@ -342,12 +341,8 @@ extern "C" __global__ void setGroups(uint *leafNodes,
   sharedMinMax(xmin,xmax);
   if( threadIdx.x == 0 ) {
     vec3 groupCenter = (xmin + xmax) * 0.5;
-    vec3 groupSize = fmaxf(fabsf(groupCenter-xmin), fabsf(groupCenter-xmax));
-    int nleaf = end-begin;
-    begin = begin | (nleaf-1) << CRITBIT;
-    groupSizeInfo[blockIdx.x] = make_vec4(groupSize[0],groupSize[1],groupSize[2],__int_as_float(begin));
-    float length = max(groupSize[0], max(groupSize[1], groupSize[2]));
-    groupCenterInfo[blockIdx.x] = make_vec4(groupCenter[0],groupCenter[1],groupCenter[2],length);
+    groupCenterInfo[blockIdx.x] = groupCenter;
+    groupSizeInfo[blockIdx.x] = fmaxf(fabsf(groupCenter-xmin), fabsf(groupCenter-xmax));
   }
 }
 
@@ -393,12 +388,12 @@ extern "C" __global__ void P2M(const int numLeafs,
 }
 
 extern "C" __global__ void M2M(const int level,
-                                            uint *leafNodes,
-                                            uint *nodeRange,
-                                            uint *nodeChild,
-                                            vecM *multipole,
-                                            vec4 *nodeLowerBounds,
-                                            vec4 *nodeUpperBounds) {
+                               uint *leafNodes,
+                               uint *nodeRange,
+                               uint *nodeChild,
+                               vecM *multipole,
+                               vec4 *nodeLowerBounds,
+                               vec4 *nodeUpperBounds) {
   const uint idx = blockIdx.x * blockDim.x + threadIdx.x + nodeRange[level-1];
   if(idx >= nodeRange[level]) return;
   const int nodeID = leafNodes[idx];
@@ -444,7 +439,7 @@ extern "C" __global__ void rescale(const int node_count,
   float R = norm(dist);
   if(fabsf(M[0]) < 1e-10) R = 0;
 
-  float length = 2 * fmaxf(boxSize[0], fmaxf(boxSize[1], boxSize[2]));
+  float length = 2 * fmaxf(boxSize);
   if(length < 0.000001) length = 0.000001;
   float cellOp = length / THETA + R;
   cellOp = cellOp * cellOp;
@@ -467,17 +462,16 @@ void octree::getBoundaries() {
   boundaryReduction<<<64,NCRIT,0,execStream>>>(numBodies,bodyPos.devc(),XMIN.devc(),XMAX.devc());
   XMIN.d2h();
   XMAX.d2h();
-  vec4 xmin =  1e10;
-  vec4 xmax = -1e10;
+  vec3 xmin =  1e10;
+  vec3 xmax = -1e10;
   for ( int i=0; i<64; i++ ) {
-    for( int d=0; d<3; d++ ) xmin[d] = std::min(xmin[d], XMIN[i][d]);
-    for( int d=0; d<3; d++ ) xmax[d] = std::max(xmax[d], XMAX[i][d]);
+    xmin = fminf(xmin, XMIN[i]);
+    xmax = fmaxf(xmax, XMAX[i]);
   }
-  float size = 1.001f*std::max(xmax[0] - xmin[0],
-                      std::max(xmax[1] - xmin[1], xmax[2] - xmin[2]));
-  corner = make_vec4(0.5f*(xmin[0] + xmax[0]) - 0.5f*size,
-                     0.5f*(xmin[1] + xmax[1]) - 0.5f*size,
-                     0.5f*(xmin[2] + xmax[2]) - 0.5f*size,
+  float size = 1.001f * fmaxf(xmax - xmin);
+  corner = make_vec4(0.5f * (xmin[0] + xmax[0] - size),
+                     0.5f * (xmin[1] + xmax[1] - size),
+                     0.5f * (xmin[2] + xmax[2] - size),
                      size / (1 << MAXLEVELS));
 }
 
@@ -544,13 +538,12 @@ void octree::linkTree() {
   blocks = ALIGN(numBodies,threads);
   setNodeRange<<<blocks,threads>>>(numBodies,nodeRange.devc(),numLevels+1);
   // groupRange
-  numGroups = numLeafs;
   setGroups<<<numLeafs,NCRIT>>>(leafNodes.devc(),nodeBodies.devc(),bodyPos.devc(),groupCenterInfo.devc(),groupSizeInfo.devc());
 }
 
 void octree::upward() {
-  cudaVec<vec4>  nodeLowerBounds;
-  cudaVec<vec4>  nodeUpperBounds;
+  cudaVec<vec4> nodeLowerBounds;
+  cudaVec<vec4> nodeUpperBounds;
   nodeLowerBounds.alloc(numNodes);
   nodeUpperBounds.alloc(numNodes);
 

@@ -23,7 +23,7 @@ typedef vec<4,real> vec4;
 
 const int  P     = 3;
 const real EPS2  = 0.0001;
-const real THETA = .75;
+const real THETA = .6;
 
 const int MTERM = P*(P+1)*(P+2)/6;
 const int LTERM = (P+1)*(P+2)*(P+3)/6;

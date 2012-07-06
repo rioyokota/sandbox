@@ -79,9 +79,9 @@ __device__ __forceinline__ int ACCESS(const int i) {
   return (i & (LMEM_STACK_SIZE - 1)) * blockDim.x + threadIdx.x;
 }
 
-__device__ __forceinline__ void P2P(
-    vec4 &acc,  const vec4 pos,
-    const vec4 posj) {
+__device__ __forceinline__ void P2P(vec4 &acc, 
+                                    const vec4 pos,
+                                    const vec4 posj) {
   vec3 dist = make_vec3(posj - pos);
   const float R2 = norm(dist) + EPS2;
   float invR = rsqrtf(R2);
@@ -94,29 +94,25 @@ __device__ __forceinline__ void P2P(
   acc[2] += dist[2];
 }
 
-__device__ bool applyMAC(
-    const vec4 sourceCenter,
-    const vec4 groupCenter,
-    const vec4 groupSize) {
-  vec3 dist = make_vec3(fabsf(groupCenter - sourceCenter) - groupSize);
-  for( int d=0; d<3; d++ ) dist[d] += fabsf(dist[d]);
-  dist *= 0.5f;
+__device__ bool applyMAC(const vec4 sourceCenter,
+                         const vec3 groupCenter,
+                         const vec3 groupSize) {
+  vec3 dist = fabsf(groupCenter - make_vec3(sourceCenter));
   const float R2 = norm(dist);
   return R2 <= fabsf(sourceCenter[3]);
 }
 
-__device__ void traverse(
-    vec4 *pos,
-    vec4 &pos_i,
-    vec4 &acc_i,
-    uint  *nodeChild,
-    float *openingAngle,
-    vecM *multipole,
-    vec4 targetCenter,
-    vec4 targetSize,
-    uint2 rootRange,
-    int *shmem,
-    int *lmem) {
+__device__ void traverse(vec4 *pos,
+                         vec4 &pos_i,
+                         vec4 &acc_i,
+                         uint *nodeChild,
+                         float *openingAngle,
+                         vecM *multipole,
+                         vec3 targetCenter,
+                         vec3 targetSize,
+                         uint2 rootRange,
+                         int *shmem,
+                         int *lmem) {
   const int stackSize = LMEM_STACK_SIZE * NTHREAD;
   int *approxNodes = lmem + stackSize + 2 * WARP_SIZE * warpId;
   int *numDirect = shmem;
@@ -248,19 +244,19 @@ __device__ void traverse(
   }
 }
 
-extern "C" __global__ void
-  traverseKernel(
-      const int numGroups,
-      uint2 *levelRange,
-      uint *nodeChild,
-      float *openingAngle,
-      vecM *multipole,
-      vec4 *pos,
-      vec4 *acc,
-      vec4 *groupSizeInfo,
-      vec4 *groupCenterInfo,
-      int    *MEM_BUF,
-      uint   *workToDo) {
+extern "C" __global__ void traverseKernel(const int numLeafs,
+                                          uint2 *levelRange,
+                                          uint *leafNodes,
+                                          uint2 *nodeBodies,
+                                          uint *nodeChild,
+                                          float *openingAngle,
+                                          vecM *multipole,
+                                          vec4 *pos,
+                                          vec4 *acc,
+                                          vec3 *groupSizeInfo,
+                                          vec3 *groupCenterInfo,
+                                          int *MEM_BUF,
+                                          uint *workToDo) {
   __shared__ int wid[4];
   __shared__ int shmem_pool[10*NTHREAD];
   int *shmem = shmem_pool+10*WARP_SIZE*warpId;
@@ -268,12 +264,13 @@ extern "C" __global__ void
   while(true) {
     if( laneId == 0 )
       wid[warpId] = atomicAdd(workToDo,1);
-    if( wid[warpId] >= numGroups ) return;
-    vec4 groupSize = groupSizeInfo[wid[warpId]];
-    const int groupData = __float_as_int(groupSize[3]);
-    const uint begin = groupData & CRITMASK;
-    const uint numGroup = ((groupData & INVCMASK) >> CRITBIT) + 1;
-    vec4 groupCenter = groupCenterInfo[wid[warpId]];
+    if( wid[warpId] >= numLeafs ) return;
+    int nodeID = leafNodes[wid[warpId]];
+    const uint begin = nodeBodies[nodeID].x;
+    const uint end   = nodeBodies[nodeID].y;
+    const uint numGroup = end - begin;
+    vec3 groupSize = groupSizeInfo[wid[warpId]];
+    vec3 groupCenter = groupCenterInfo[wid[warpId]];
     uint body_i = begin + laneId % numGroup;
     vec4 pos_i = pos[body_i];
     vec4 acc_i = 0.0f;
@@ -304,8 +301,10 @@ extern "C" __global__ void directKernel(vec4 *bodyPos, vec4 *bodyAcc, const int 
 void octree::traverse() {
   workToDo.zeros();
   traverseKernel<<<NBLOCK,NTHREAD,0,execStream>>>(
-    numGroups,
+    numLeafs,
     levelRange.devc(),
+    leafNodes.devc(),
+    nodeBodies.devc(),
     nodeChild.devc(),
     openingAngle.devc(),
     multipole.devc(),

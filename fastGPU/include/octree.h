@@ -40,7 +40,6 @@ private:
   int numBodies;
   int numLeafs;
   int numNodes;
-  int numGroups;
   int numLevels;
   union {
     uint4 *uint4buffer;
@@ -60,8 +59,8 @@ private:
   cudaVec<vecM>   multipole;      
 
   cudaVec<float>  openingAngle;
-  cudaVec<vec4>   groupSizeInfo;
-  cudaVec<vec4>   groupCenterInfo;
+  cudaVec<vec3>   groupSizeInfo;
+  cudaVec<vec3>   groupCenterInfo;
 
   cudaVec<uint>   generalBuffer1;
   vec4 corner;
