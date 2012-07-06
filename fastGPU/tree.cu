@@ -2,29 +2,21 @@
 
 static __device__ void pairMinMax(vec3 &xmin, vec3 &xmax,
                                   vec4 reg_min, vec4 reg_max) {
-  for(int d=0; d<3; d++ ) xmin[d] = fminf(xmin[d], reg_min[d]);
-  for(int d=0; d<3; d++ ) xmax[d] = fmaxf(xmax[d], reg_max[d]);
+  xmin = fminf(xmin, make_vec3(reg_min));
+  xmax = fmaxf(xmax, make_vec3(reg_max));
 }
 
 static __device__ void pairMinMax(int i, int j, vec3 &xmin, vec3 &xmax,
-                                  volatile float3 *sh_xmin, volatile float3 *sh_xmax) {
-  sh_xmin[i].x = xmin[0] = fminf(xmin[0], sh_xmin[j].x);
-  sh_xmin[i].y = xmin[1] = fminf(xmin[1], sh_xmin[j].y);
-  sh_xmin[i].z = xmin[2] = fminf(xmin[2], sh_xmin[j].z);
-  sh_xmax[i].x = xmax[0] = fmaxf(xmax[0], sh_xmax[j].x);
-  sh_xmax[i].y = xmax[1] = fmaxf(xmax[1], sh_xmax[j].y);
-  sh_xmax[i].z = xmax[2] = fmaxf(xmax[2], sh_xmax[j].z);
+                                  vec3 *sh_xmin, vec3 *sh_xmax) {
+  sh_xmin[i] = xmin = fminf(xmin, sh_xmin[j]);
+  sh_xmax[i] = xmax = fmaxf(xmax, sh_xmax[j]);
 }
 
 static __device__ void sharedMinMax(vec3 &xmin, vec3 &xmax) {
-  volatile __shared__ float3 sh_xmin[NCRIT];
-  volatile __shared__ float3 sh_xmax[NCRIT];
-  sh_xmin[threadIdx.x].x = xmin[0];
-  sh_xmin[threadIdx.x].y = xmin[1];
-  sh_xmin[threadIdx.x].z = xmin[2];
-  sh_xmax[threadIdx.x].x = xmax[0];
-  sh_xmax[threadIdx.x].y = xmax[1];
-  sh_xmax[threadIdx.x].z = xmax[2];
+  __shared__ vec3 sh_xmin[NCRIT];
+  __shared__ vec3 sh_xmax[NCRIT];
+  sh_xmin[threadIdx.x] = xmin;
+  sh_xmax[threadIdx.x] = xmax;
 
   __syncthreads();
   if(blockDim.x >= 512 && threadIdx.x < 256)
@@ -141,8 +133,8 @@ static __device__ int findKey(uint4 key, uint2 cij, uint4 *keys) {
 
 extern "C" __global__ void boundaryReduction(const int numBodies,
                                              float4 *bodyPos,
-                                             float3 *output_xmin,
-                                             float3 *output_xmax)
+                                             vec3 *output_xmin,
+                                             vec3 *output_xmax)
 {
   vec3 xmin =  1e10f;
   vec3 xmax = -1e10f;
@@ -156,26 +148,22 @@ extern "C" __global__ void boundaryReduction(const int numBodies,
   sharedMinMax(xmin,xmax);
 
   if( threadIdx.x == 0 ) {
-    output_xmin[blockIdx.x].x = xmin[0];
-    output_xmin[blockIdx.x].y = xmin[1];
-    output_xmin[blockIdx.x].z = xmin[2];
-    output_xmax[blockIdx.x].x = xmax[0];
-    output_xmax[blockIdx.x].y = xmax[1];
-    output_xmax[blockIdx.x].z = xmax[2];
+    for( int d=0; d<3; d++ ) output_xmin[blockIdx.x][d] = xmin[d];
+    for( int d=0; d<3; d++ ) output_xmax[blockIdx.x][d] = xmax[d];
   }
 }
 
 extern "C" __global__ void getKeyKernel(int numBodies,
-                                        float4 corner,
+                                        vec4 corner,
                                         float4 *bodyPos,
                                         uint4 *bodyKeys) {
   const uint idx = blockIdx.x * blockDim.x + threadIdx.x;
   if (idx >= numBodies) return;
   float4 pos = bodyPos[idx];
   int4 index3;
-  index3.x = (int)roundf(__fdividef(pos.x - corner.x, corner.w));
-  index3.y = (int)roundf(__fdividef(pos.y - corner.y, corner.w));
-  index3.z = (int)roundf(__fdividef(pos.z - corner.z, corner.w));
+  index3.x = (int)roundf(__fdividef(pos.x - corner[0], corner[3]));
+  index3.y = (int)roundf(__fdividef(pos.y - corner[1], corner[3]));
+  index3.z = (int)roundf(__fdividef(pos.z - corner[2], corner[3]));
   uint4 key = getKey(index3);
   key.w = idx;
   bodyKeys[idx] = key;
@@ -263,7 +251,7 @@ extern "C" __global__ void buildNodes(
 }
 
 extern "C" __global__ void linkNodes(int numNodes,
-                                     float4 corner,
+                                     vec4 corner,
                                      uint2 *nodeBodies,
                                      uint4 *nodeKeys,
                                      uint *nodeChild,
@@ -338,8 +326,8 @@ extern "C" __global__ void setNodeRange(int numBodies,
 extern "C" __global__ void setGroups(uint *leafNodes,
                                       uint2 *nodeBodies,
                                       float4 *bodyPos,
-                                      float4 *groupCenterInfo,
-                                      float4 *groupSizeInfo){
+                                      vec4 *groupCenterInfo,
+                                      vec4 *groupSizeInfo){
   int nodeID = leafNodes[blockIdx.x];
   vec3 xmin =  1e10f;
   vec3 xmax = -1e10f;
@@ -353,23 +341,13 @@ extern "C" __global__ void setGroups(uint *leafNodes,
   }
   sharedMinMax(xmin,xmax);
   if( threadIdx.x == 0 ) {
-    float3 groupCenter = make_float3(0.5*(xmin[0] + xmax[0]),
-                                     0.5*(xmin[1] + xmax[1]),
-                                     0.5*(xmin[2] + xmax[2]));
-    float3 groupSize = make_float3(fmaxf(fabs(groupCenter.x-xmin[0]), fabs(groupCenter.x-xmax[0])),
-                                   fmaxf(fabs(groupCenter.y-xmin[1]), fabs(groupCenter.y-xmax[1])),
-                                   fmaxf(fabs(groupCenter.z-xmin[2]), fabs(groupCenter.z-xmax[2])));
+    vec3 groupCenter = (xmin + xmax) * 0.5;
+    vec3 groupSize = fmaxf(fabs(groupCenter-xmin), fabs(groupCenter-xmax));
     int nleaf = end-begin;
     begin = begin | (nleaf-1) << CRITBIT;
-    groupSizeInfo[blockIdx.x].x = groupSize.x;
-    groupSizeInfo[blockIdx.x].y = groupSize.y;
-    groupSizeInfo[blockIdx.x].z = groupSize.z;
-    groupSizeInfo[blockIdx.x].w = __int_as_float(begin);
-    float length = max(groupSize.x, max(groupSize.y, groupSize.z));
-    groupCenterInfo[blockIdx.x].x = groupCenter.x;
-    groupCenterInfo[blockIdx.x].y = groupCenter.y;
-    groupCenterInfo[blockIdx.x].z = groupCenter.z;
-    groupCenterInfo[blockIdx.x].w = length;
+    groupSizeInfo[blockIdx.x] = make_vec4(groupSize[0],groupSize[1],groupSize[2],__int_as_float(begin));
+    float length = max(groupSize[0], max(groupSize[1], groupSize[2]));
+    groupCenterInfo[blockIdx.x] = make_vec4(groupCenter[0],groupCenter[1],groupCenter[2],length);
   }
 }
 
@@ -385,8 +363,8 @@ extern "C" __global__ void P2M(const int numLeafs,
                                uint2 *nodeBodies,
                                float4 *bodyPos,
                                float4 *multipole,
-                               float4 *nodeLowerBounds,
-                               float4 *nodeUpperBounds) {
+                               vec4 *nodeLowerBounds,
+                               vec4 *nodeUpperBounds) {
   const uint idx = blockIdx.x * blockDim.x + threadIdx.x;
   if (idx >= numLeafs) return;
   int nodeID = leafNodes[idx];
@@ -409,8 +387,8 @@ extern "C" __global__ void P2M(const int numLeafs,
   mon.y *= im;
   mon.z *= im;
   multipole[nodeID] = make_float4(mon.x, mon.y, mon.z, mon.w);
-  nodeLowerBounds[nodeID] = make_float4(xmin[0], xmin[1], xmin[2], 0.0f);
-  nodeUpperBounds[nodeID] = make_float4(xmax[0], xmax[1], xmax[2], 1.0f);
+  nodeLowerBounds[nodeID] = make_vec4(xmin[0], xmin[1], xmin[2], 0.0f);
+  nodeUpperBounds[nodeID] = make_vec4(xmax[0], xmax[1], xmax[2], 1.0f);
   return;
 }
 
@@ -419,8 +397,8 @@ extern "C" __global__ void M2M(const int level,
                                             uint  *nodeRange,
                                             uint  *nodeChild,
                                             float4 *multipole,
-                                            float4 *nodeLowerBounds,
-                                            float4 *nodeUpperBounds) {
+                                            vec4 *nodeLowerBounds,
+                                            vec4 *nodeUpperBounds) {
   const uint idx = blockIdx.x * blockDim.x + threadIdx.x + nodeRange[level-1];
   if(idx >= nodeRange[level]) return;
   const int nodeID = leafNodes[idx];
@@ -435,7 +413,7 @@ extern "C" __global__ void M2M(const int level,
     mon.x += pos.w * pos.x;
     mon.y += pos.w * pos.y;
     mon.z += pos.w * pos.z;
-    pairMinMax(xmin, xmax, make_vec4(nodeLowerBounds[i]), make_vec4(nodeUpperBounds[i]));
+    pairMinMax(xmin, xmax, nodeLowerBounds[i], nodeUpperBounds[i]);
   }
   float im = 1.0 / mon.w;
   if(mon.w == 0) im = 0;
@@ -443,40 +421,36 @@ extern "C" __global__ void M2M(const int level,
   mon.y *= im;
   mon.z *= im;
   multipole[nodeID] = make_float4(mon.x, mon.y, mon.z, mon.w);
-  nodeLowerBounds[nodeID] = make_float4(xmin[0], xmin[1], xmin[2], 0.0f);
-  nodeUpperBounds[nodeID] = make_float4(xmax[0], xmax[1], xmax[2], 0.0f);
+  nodeLowerBounds[nodeID] = make_vec4(xmin[0], xmin[1], xmin[2], 0.0f);
+  nodeUpperBounds[nodeID] = make_vec4(xmax[0], xmax[1], xmax[2], 0.0f);
   return;
 }
 
 extern "C" __global__ void rescale(const int node_count,
                                            float4 *multipole,
-                                           float4 *nodeLowerBounds,
-                                           float4 *nodeUpperBounds,
+                                           vec4 *nodeLowerBounds,
+                                           vec4 *nodeUpperBounds,
                                            uint  *nodeChild,
                                            float *openingAngle,
                                            uint2 *nodeBodies){
   const uint idx = blockIdx.x * blockDim.x + threadIdx.x;
   if(idx >= node_count) return;
-  float4 mon = multipole[idx];
-  float4 xmin = nodeLowerBounds[idx];
-  float4 xmax = nodeUpperBounds[idx];
-  float3 boxCenter = make_float3(0.5*(xmin.x + xmax.x),
-                                 0.5*(xmin.y + xmax.y),
-                                 0.5*(xmin.z + xmax.z));
-  float3 boxSize = make_float3(fmaxf(fabs(boxCenter.x-xmin.x), fabs(boxCenter.x-xmax.x)),
-                               fmaxf(fabs(boxCenter.y-xmin.y), fabs(boxCenter.y-xmax.y)),
-                               fmaxf(fabs(boxCenter.z-xmin.z), fabs(boxCenter.z-xmax.z)));
-  float3 dist = make_float3((boxCenter.x - mon.x), (boxCenter.y - mon.y), (boxCenter.z - mon.z));
-  float R = sqrt((dist.x*dist.x) + (dist.y*dist.y) + (dist.z*dist.z));
-  if(fabs(mon.w) < 1e-10) R = 0;
+  vec4 mon = make_vec4(multipole[idx]);
+  vec4 xmin = nodeLowerBounds[idx];
+  vec4 xmax = nodeUpperBounds[idx];
+  vec3 boxCenter = make_vec3(xmin + xmax) * 0.5;
+  vec3 boxSize = fmaxf(fabs(boxCenter-make_vec3(xmin)), fabs(boxCenter-make_vec3(xmax)));
+  vec3 dist = boxCenter - make_vec3(mon);
+  float R = norm(dist);
+  if(fabs(mon[3]) < 1e-10) R = 0;
 
-  float length = 2 * fmaxf(boxSize.x, fmaxf(boxSize.y, boxSize.z));
+  float length = 2 * fmaxf(boxSize[0], fmaxf(boxSize[1], boxSize[2]));
   if(length < 0.000001) length = 0.000001;
   float cellOp = length / THETA + R;
   cellOp = cellOp * cellOp;
   uint pfirst = nodeBodies[idx].x;
   uint nchild = nodeBodies[idx].y - pfirst;
-  bool leaf = (xmax.w > 0);
+  bool leaf = (xmax[3] > 0);
 
   if( nchild == 1 )
     cellOp = 10e10;
@@ -493,22 +467,18 @@ void octree::getBoundaries() {
   boundaryReduction<<<64,NCRIT,0,execStream>>>(numBodies,bodyPos.devc(),XMIN.devc(),XMAX.devc());
   XMIN.d2h();
   XMAX.d2h();
-  float4 xmin = make_float4(+1e10, +1e10, +1e10, +1e10);
-  float4 xmax = make_float4(-1e10, -1e10, -1e10, -1e10);
-  for (int i = 0; i < 64; i++) {
-    xmin.x = std::min(xmin.x, XMIN[i].x);
-    xmin.y = std::min(xmin.y, XMIN[i].y);
-    xmin.z = std::min(xmin.z, XMIN[i].z);
-    xmax.x = std::max(xmax.x, XMAX[i].x);
-    xmax.y = std::max(xmax.y, XMAX[i].y);
-    xmax.z = std::max(xmax.z, XMAX[i].z);
+  vec4 xmin =  1e10;
+  vec4 xmax = -1e10;
+  for ( int i=0; i<64; i++ ) {
+    for( int d=0; d<3; d++ ) xmin[d] = std::min(xmin[d], XMIN[i][d]);
+    for( int d=0; d<3; d++ ) xmax[d] = std::max(xmax[d], XMAX[i][d]);
   }
-  float size = 1.001f*std::max(xmax.z - xmin.z,
-                      std::max(xmax.y - xmin.y, xmax.x - xmin.x));
-  corner = make_float4(0.5f*(xmin.x + xmax.x) - 0.5f*size,
-                       0.5f*(xmin.y + xmax.y) - 0.5f*size,
-                       0.5f*(xmin.z + xmax.z) - 0.5f*size,
-                       size / (1 << MAXLEVELS));
+  float size = 1.001f*std::max(xmax[0] - xmin[0],
+                      std::max(xmax[1] - xmin[1], xmax[2] - xmin[2]));
+  corner = make_vec4(0.5f*(xmin[0] + xmax[0]) - 0.5f*size,
+                     0.5f*(xmin[1] + xmax[1]) - 0.5f*size,
+                     0.5f*(xmin[2] + xmax[2]) - 0.5f*size,
+                     size / (1 << MAXLEVELS));
 }
 
 void octree::getKeys() {
@@ -579,8 +549,8 @@ void octree::linkTree() {
 }
 
 void octree::upward() {
-  cudaVec<float4>  nodeLowerBounds;
-  cudaVec<float4>  nodeUpperBounds;
+  cudaVec<vec4>  nodeLowerBounds;
+  cudaVec<vec4>  nodeUpperBounds;
   nodeLowerBounds.alloc(numNodes);
   nodeUpperBounds.alloc(numNodes);
 

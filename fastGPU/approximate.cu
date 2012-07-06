@@ -99,12 +99,12 @@ __device__ __forceinline__ void P2P(
 
 __device__ bool applyMAC(
     const float4 sourceCenter,
-    const float4 groupCenter,
-    const float4 groupSize) {
+    const vec4 groupCenter,
+    const vec4 groupSize) {
   vec3 dist;
-  dist[0] = fabsf(groupCenter.x - sourceCenter.x) - (groupSize.x);
-  dist[1] = fabsf(groupCenter.y - sourceCenter.y) - (groupSize.y);
-  dist[2] = fabsf(groupCenter.z - sourceCenter.z) - (groupSize.z);
+  dist[0] = fabsf(groupCenter[0] - sourceCenter.x) - (groupSize[0]);
+  dist[1] = fabsf(groupCenter[1] - sourceCenter.y) - (groupSize[1]);
+  dist[2] = fabsf(groupCenter[2] - sourceCenter.z) - (groupSize[2]);
   for( int d=0; d<3; d++ ) dist[d] += fabsf(dist[d]);
   dist *= 0.5f;
   const float R2 = norm(dist);
@@ -118,8 +118,8 @@ __device__ void traverse(
     uint  *nodeChild,
     float *openingAngle,
     float4 *multipole,
-    float4 targetCenter,
-    float4 targetSize,
+    vec4 targetCenter,
+    vec4 targetSize,
     uint2 rootRange,
     int *shmem,
     int *lmem) {
@@ -264,8 +264,8 @@ extern "C" __global__ void
       float4 *multipole,
       float4 *pos,
       float4 *acc,
-      float4 *groupSizeInfo,
-      float4 *groupCenterInfo,
+      vec4 *groupSizeInfo,
+      vec4 *groupCenterInfo,
       int    *MEM_BUF,
       uint   *workToDo) {
   __shared__ int wid[4];
@@ -276,11 +276,11 @@ extern "C" __global__ void
     if( laneId == 0 )
       wid[warpId] = atomicAdd(workToDo,1);
     if( wid[warpId] >= numGroups ) return;
-    float4 groupSize = groupSizeInfo[wid[warpId]];
-    const int groupData = __float_as_int(groupSize.w);
+    vec4 groupSize = groupSizeInfo[wid[warpId]];
+    const int groupData = __float_as_int(groupSize[3]);
     const uint begin = groupData & CRITMASK;
     const uint numGroup = ((groupData & INVCMASK) >> CRITBIT) + 1;
-    float4 groupCenter = groupCenterInfo[wid[warpId]];
+    vec4 groupCenter = groupCenterInfo[wid[warpId]];
     uint body_i = begin + laneId % numGroup;
     float4 pos_i = pos[body_i];
     float4 acc_i = make_float4(0.0f, 0.0f, 0.0f, 0.0f);
