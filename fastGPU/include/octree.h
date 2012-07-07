@@ -48,7 +48,8 @@ private:
   cudaVec<uint4>  Body_ICELL;
   cudaVec<uint>   Cell_BEGIN;
   cudaVec<uint>   Cell_SIZE;
-  cudaVec<uint4>  nodeKeys;
+  cudaVec<uint3>  Cell_ICELL;
+  cudaVec<uint>   Cell_LEVEL;
   cudaVec<uint>   nodeChild;
   cudaVec<uint>   nodeRange;
   cudaVec<uint2>  levelRange;
@@ -71,8 +72,8 @@ private:
 public:
   cudaVec<vec3>   Body_X;
   cudaVec<float>  Body_SRC;
-  cudaVec<vec4>   bodyAcc;
-  cudaVec<vec4>   bodyAcc2;
+  cudaVec<vec4>   Body_TRG;
+  cudaVec<vec4>   Body2_TRG;
 
 private:
   bool isPowerOfTwo(const int n) {
@@ -97,17 +98,18 @@ public:
     Body_X.alloc(numBodies+1);
     Body_SRC.alloc(numBodies+1);
     Body_ICELL.alloc(numBodies+1);
-    bodyAcc.alloc(numBodies);
-    bodyAcc2.alloc(numBodies);
+    Body_TRG.alloc(numBodies);
+    Body2_TRG.alloc(numBodies);
     Cell_BEGIN.alloc(numBodies);
     Cell_SIZE.alloc(numBodies);
-    nodeKeys.alloc(numBodies);
+    Cell_ICELL.alloc(numBodies);
+    Cell_LEVEL.alloc(numBodies);
     nodeChild.alloc(numBodies);
     nodeRange.alloc(MAXLEVELS*2);
     levelRange.alloc(MAXLEVELS);
     validRange.alloc(2*numBodies);
     compactRange.alloc(2*numBodies);
-    bodyAcc.zeros();
+    Body_TRG.zeros();
     CU_SAFE_CALL(cudaMalloc((uint4**)&uint4buffer, numBodies*sizeof(uint4)));
 
     int treeWalkStackSize = (LMEM_STACK_SIZE * NTHREAD + 2 * NTHREAD) * NBLOCK;

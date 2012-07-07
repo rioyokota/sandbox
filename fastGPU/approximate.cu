@@ -80,9 +80,9 @@ __device__ __forceinline__ int ACCESS(const int i) {
 }
 
 __device__ __forceinline__ void P2P(vec4 &acc, 
-                                    const vec3 pos,
+                                    const vec3 targetX,
                                     const vec4 posj) {
-  vec3 dist = make_vec3(posj) - pos;
+  vec3 dist = make_vec3(posj) - targetX;
   const float R2 = norm(dist) + EPS2;
   float invR = rsqrtf(R2);
   const float invR2 = invR * invR;
@@ -95,9 +95,9 @@ __device__ __forceinline__ void P2P(vec4 &acc,
 }
 
 __device__ __forceinline__ void M2P(vec4 &acc,
-                                    const vec3 pos,
+                                    const vec3 targetX,
                                     const vecM M) {
-  vec3 dist = make_vec3(M[1],M[2],M[3]) - pos;
+  vec3 dist = make_vec3(M[1],M[2],M[3]) - targetX;
   const float R2 = norm(dist) + EPS2;
   float invR = rsqrtf(R2);
   const float invR2 = invR * invR;
@@ -119,8 +119,8 @@ __device__ bool applyMAC(const vec3 sourceCenter,
 
 __device__ void traverse(vec3 *Body_X,
                          float *Body_SRC,
-                         vec3 &pos_i,
-                         vec4 &acc_i,
+                         vec3 &X,
+                         vec4 &TRG,
                          uint *nodeChild,
                          float *openingAngle,
                          vecM *multipole,
@@ -134,8 +134,8 @@ __device__ void traverse(vec3 *Body_X,
   int *numDirect = shmem + numShrd * WARP_SIZE * warpId;
   int *stackShrd = numDirect + WARP_SIZE;
   int *directNodes = stackShrd + WARP_SIZE;
-  vec4 *pos_j = (vec4*)&directNodes[3*WARP_SIZE];
-  vecM *M = (vecM*)&pos_j[WARP_SIZE];
+  vec4 *source = (vec4*)&directNodes[3*WARP_SIZE];
+  vecM *M = (vecM*)&source[WARP_SIZE];
   int *prefix = (int*)&M[WARP_SIZE];
 
   // stack
@@ -188,7 +188,7 @@ __device__ void traverse(vec3 *Body_X,
         node = approxNodes[warpOffsetApprox+laneId];
         M[laneId] = multipole[node];
         for( int i=0; i<WARP_SIZE; i++ )
-          M2P(acc_i, pos_i, M[i]);
+          M2P(TRG, X, M[i]);
       }
 #endif
 #if 1   // DIRECT
@@ -218,9 +218,9 @@ __device__ void traverse(vec3 *Body_X,
         while( warpOffsetDirect >= WARP_SIZE ) {
           warpOffsetDirect -= WARP_SIZE;
           const int j = directNodes[warpOffsetDirect+laneId];
-          pos_j[laneId] = make_vec4(Body_X[j][0],Body_X[j][1],Body_X[j][2],Body_SRC[j]);
+          source[laneId] = make_vec4(Body_X[j][0],Body_X[j][1],Body_X[j][2],Body_SRC[j]);
           for( int i=0; i<WARP_SIZE; i++ )
-            P2P(acc_i, pos_i, pos_j[i]);
+            P2P(TRG, X, source[i]);
         }
       }
       numDirect[laneId] = directNodes[laneId];
@@ -240,24 +240,23 @@ __device__ void traverse(vec3 *Body_X,
   if( warpOffsetApprox > 0 ) {
     if( laneId < warpOffsetApprox )  {
       const int node = approxNodes[laneId];
-      pos_j[laneId] = make_vec4(multipole[node][1],multipole[node][2],multipole[node][3],multipole[node][0]);
+      source[laneId] = make_vec4(multipole[node][1],multipole[node][2],multipole[node][3],multipole[node][0]);
     } else {
-      pos_j[laneId] = make_vec4(1.0e10f, 1.0e10f, 1.0e10f, 0.0f);
+      source[laneId] = make_vec4(1.0e10f, 1.0e10f, 1.0e10f, 0.0f);
     }
     for( int i=0; i<WARP_SIZE; i++ )
-      P2P(acc_i, pos_i, pos_j[i]);
+      P2P(TRG, X, source[i]);
   }
 
   if( warpOffsetDirect > 0 ) {
     if( laneId < warpOffsetDirect ) {
       const int j = numDirect[laneId];
-      const vec4 posj = make_vec4(Body_X[j][0],Body_X[j][1],Body_X[j][2],Body_SRC[j]);
-      pos_j[laneId] = posj;
+      source[laneId] = make_vec4(Body_X[j][0],Body_X[j][1],Body_X[j][2],Body_SRC[j]);
     } else {
-      pos_j[laneId] = make_vec4(1.0e10f, 1.0e10f, 1.0e10f, 0.0f);
+      source[laneId] = make_vec4(1.0e10f, 1.0e10f, 1.0e10f, 0.0f);
     }
     for( int i=0; i<WARP_SIZE; i++ )
-      P2P(acc_i, pos_i, pos_j[i]);
+      P2P(TRG, X, source[i]);
   }
 }
 
@@ -271,7 +270,7 @@ extern "C" __global__ void traverseKernel(const int numLeafs,
                                           vecM *multipole,
                                           vec3 *Body_X,
                                           float *Body_SRC,
-                                          vec4 *acc,
+                                          vec4 *Body_TRG,
                                           int *MEM_BUF,
                                           uint *workToDo) {
   __shared__ int wid[4];
@@ -287,16 +286,16 @@ extern "C" __global__ void traverseKernel(const int numLeafs,
     bool valid = laneId < size;
     int body = (begin + laneId) & IF(valid);
     vec3 X = Body_X[body];
-    vec4 acc_i = 0.0f;
-    traverse(Body_X, Body_SRC, X, acc_i, nodeChild, openingAngle, multipole, targetCenter, levelRange[0].x, lmem);
-    if( valid ) acc[body] = acc_i;
+    vec4 TRG = 0.0f;
+    traverse(Body_X, Body_SRC, X, TRG, nodeChild, openingAngle, multipole, targetCenter, levelRange[0].x, lmem);
+    if( valid ) Body_TRG[body] = TRG;
   }
 }
 
-extern "C" __global__ void directKernel(vec3 *Body_X, float *Body_SRC, vec4 *bodyAcc, const int N) {
+extern "C" __global__ void directKernel(vec3 *Body_X, float *Body_SRC, vec4 *Body_TRG, const int N) {
   uint idx = min(blockIdx.x * blockDim.x + threadIdx.x, N-1);
   vec3 targetX = Body_X[idx];
-  vec4 acc_i = 0.0f;
+  vec4 TRG = 0.0f;
   __shared__ vec4 shmem[NTHREAD];
   vec4 *source = shmem + WARP_SIZE * warpId;
   const int numWarp = ALIGN(N, WARP_SIZE);
@@ -306,9 +305,9 @@ extern "C" __global__ void directKernel(vec3 *Body_X, float *Body_SRC, vec4 *bod
     source[laneId] = make_vec4(Body_X[j][0],Body_X[j][1],Body_X[j][2],Body_SRC[j]);
     source[laneId][3] *= jGlob < N;
     for( int i=0; i<WARP_SIZE; i++ )
-      P2P(acc_i, targetX, source[i]);
+      P2P(TRG, targetX, source[i]);
   }
-  bodyAcc[idx] = acc_i;
+  Body_TRG[idx] = TRG;
 }
 
 void octree::traverse() {
@@ -324,7 +323,7 @@ void octree::traverse() {
     multipole.devc(),
     Body_X.devc(),
     Body_SRC.devc(),
-    bodyAcc.devc(),
+    Body_TRG.devc(),
     (int*)generalBuffer1.devc(),
     workToDo.devc()
   );
@@ -368,7 +367,7 @@ void octree::iterate() {
 
 void octree::direct() {
   int blocks = ALIGN(numBodies/100, NTHREAD);
-  directKernel<<<blocks,NTHREAD,0,execStream>>>(Body_X.devc(),Body_SRC.devc(),bodyAcc2.devc(),numBodies);
+  directKernel<<<blocks,NTHREAD,0,execStream>>>(Body_X.devc(),Body_SRC.devc(),Body2_TRG.devc(),numBodies);
   CU_SAFE_CALL(cudaStreamSynchronize(execStream));
   CU_SAFE_CALL(cudaStreamDestroy(execStream));
 }

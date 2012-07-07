@@ -17,12 +17,12 @@ int main() {
     double tic = tree->get_time();
     tree->direct();
     double toc = tree->get_time();
-    tree->bodyAcc.d2h();
-    tree->bodyAcc2.d2h();
+    tree->Body_TRG.d2h();
+    tree->Body2_TRG.d2h();
     float diff1 = 0, norm1 = 0, diff2 = 0, norm2 = 0;
     for( uint i=0; i<numBodies/100; i++ ) {
-      vec4 fapprox = tree->bodyAcc[i];
-      vec4 fdirect = tree->bodyAcc2[i];
+      vec4 fapprox = tree->Body_TRG[i];
+      vec4 fdirect = tree->Body2_TRG[i];
       diff1 += (fapprox[3] - fdirect[3]) * (fapprox[3] - fdirect[3]);
       diff2 += norm(make_vec3(fapprox - fdirect));
       norm1 += fdirect[3] * fdirect[3];

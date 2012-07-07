@@ -29,9 +29,9 @@ static __device__ uint4 getKey(int4 index3) {
   return key4;
 }
 
-static __device__ uint4 getMask(int level) {
+static __device__ uint3 getMask(int level) {
   int mask_levels = 3 * (MAXLEVELS - level);
-  uint4 mask = {0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF};
+  uint3 mask = {0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF};
   if (mask_levels > 60) {
     mask.z = 0;
     mask.y = 0;
@@ -45,7 +45,7 @@ static __device__ uint4 getMask(int level) {
   return mask;
 }
 
-static __device__ int compareKey(uint4 a, uint4 b) {
+static __device__ int compareKey(uint3 a, uint3 b) {
   if      (a.x < b.x) return -1;
   else if (a.x > b.x) return +1;
   else {
@@ -60,7 +60,7 @@ static __device__ int compareKey(uint4 a, uint4 b) {
 }
 
 //Binary search of the key within certain bounds (cij.x, cij.y)
-static __device__ int findKey(uint4 key, uint2 cij, uint4 *keys) {
+static __device__ int findKey(uint3 key, uint2 cij, uint3 *keys) {
   int l = cij.x;
   int r = cij.y - 1;
   while (r - l > 1) {
@@ -99,20 +99,20 @@ extern "C" __global__ void getValidRange(int numBodies,
   if (*workToDo == 0) return;
   const uint idx = blockIdx.x * blockDim.x + threadIdx.x;
   if (idx >= numBodies) return;
-  const uint4 key_F = {0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF};
-  uint4 mask = getMask(level);
-  uint4 key_c = Body_ICELL[idx];
-  uint4 key_m;
+  const uint3 key_F = {0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF};
+  uint3 mask = getMask(level);
+  uint3 key_c = make_uint3(Body_ICELL[idx].x,Body_ICELL[idx].y,Body_ICELL[idx].z);
+  uint3 key_m;
   if( idx == 0 )
     key_m = key_F;
   else
-    key_m = Body_ICELL[idx-1];
+    key_m = make_uint3(Body_ICELL[idx-1].x,Body_ICELL[idx-1].y,Body_ICELL[idx-1].z);
 
-  uint4 key_p;
+  uint3 key_p;
   if( idx == numBodies-1 )
     key_p = key_F;
   else
-    key_p = Body_ICELL[idx+1];
+    key_p = make_uint3(Body_ICELL[idx+1].x,Body_ICELL[idx+1].y,Body_ICELL[idx+1].z);
 
   int valid0 = 0;
   int valid1 = 0;
@@ -139,7 +139,8 @@ extern "C" __global__ void buildNodes(uint level,
                                       uint2 *levelRange,
                                       uint *bodyRange,
                                       uint4 *Body_ICELL,
-                                      uint4 *nodeKeys,
+                                      uint3 *Cell_ICELL,
+                                      uint *Cell_LEVEL,
                                       uint *Cell_BEGIN,
                                       uint *Cell_SIZE) {
   if( *workToDo == 0 ) return;
@@ -156,11 +157,11 @@ extern "C" __global__ void buildNodes(uint level,
     uint begin = bodyRange[idx*2];
     uint end = bodyRange[idx*2+1]+1;
     uint4 key  = Body_ICELL[begin];
-    uint4 mask = getMask(level);
-    key = make_uint4(key.x & mask.x, key.y & mask.y, key.z & mask.z, level); 
+    uint3 mask = getMask(level);
+    Cell_ICELL[offset+idx] = make_uint3(key.x & mask.x, key.y & mask.y, key.z & mask.z);
+    Cell_LEVEL[offset+idx] = level;
     Cell_BEGIN[offset+idx] = begin;
     Cell_SIZE[offset+idx] = end - begin;
-    nodeKeys  [offset+idx] = key;
     if( end - begin <= NCRIT )
       for( int i=begin; i<end; i++ )
         Body_ICELL[i] = make_uint4(0xFFFFFFFF,0xFFFFFFFF,0xFFFFFFFF,0xFFFFFFFF);
@@ -175,27 +176,28 @@ extern "C" __global__ void buildNodes(uint level,
 
 extern "C" __global__ void linkNodes(int numNodes,
                                      uint *Cell_SIZE,
-                                     uint4 *nodeKeys,
+                                     uint3 *Cell_ICELL,
+                                     uint *Cell_LEVEL,
                                      uint *nodeChild,
                                      uint2 *levelRange,
                                      uint* validRange) {
   const uint idx = blockIdx.x * blockDim.x + threadIdx.x;
   if (idx >= numNodes) return;
-  uint4 key = nodeKeys[idx];
-  uint level = key.w;
+  uint3 key = Cell_ICELL[idx];
+  uint level = Cell_LEVEL[idx];
   uint size = Cell_SIZE[idx];
 
-  uint4 mask = getMask(level-1);
-  key = make_uint4(key.x & mask.x, key.y & mask.y,  key.z & mask.z, 0); 
+  uint3 mask = getMask(level-1);
+  key = make_uint3(key.x & mask.x, key.y & mask.y,  key.z & mask.z); 
   if(idx > 0) {
-    int ci = findKey(key,levelRange[level-1],nodeKeys);
+    int ci = findKey(key,levelRange[level-1],Cell_ICELL);
     atomicAdd(&nodeChild[ci], (1 << 28));
   }
 
-  key = nodeKeys[idx];
+  key = Cell_ICELL[idx];
   mask = getMask(level);
-  key = make_uint4(key.x & mask.x, key.y & mask.y, key.z & mask.z, 0); 
-  int cj = findKey(key,levelRange[level+1],nodeKeys);
+  key = make_uint3(key.x & mask.x, key.y & mask.y, key.z & mask.z); 
+  int cj = findKey(key,levelRange[level+1],Cell_ICELL);
   atomicOr(&nodeChild[idx], cj);
 
   uint valid = idx; 
@@ -207,21 +209,21 @@ extern "C" __global__ void linkNodes(int numNodes,
 extern "C" __global__ void getLevelRange(const int numNodes,
                                          const int numLeafs,
                                          uint *leafNodes,
-                                         uint4 *nodeKeys,
+                                         uint *Cell_LEVEL,
                                          uint* validRange) {
   uint idx = blockIdx.x * blockDim.x + threadIdx.x + numLeafs;
   if (idx >= numNodes) return;
   const int nodeID = leafNodes[idx];
   int level_c, level_m, level_p;
-  level_c = nodeKeys[leafNodes[idx]].w;
+  level_c = Cell_LEVEL[leafNodes[idx]];
   if( idx+1 < numNodes )
-    level_p = nodeKeys[leafNodes[idx+1]].w;
+    level_p = Cell_LEVEL[leafNodes[idx+1]];
   else
     level_p = MAXLEVELS+5;
   if(nodeID == 0)
     level_m = -1;    
   else
-    level_m = nodeKeys[leafNodes[idx-1]].w;
+    level_m = Cell_LEVEL[leafNodes[idx-1]];
   validRange[(idx-numLeafs)*2]   = idx | (level_c != level_m) << 31;
   validRange[(idx-numLeafs)*2+1] = idx | (level_c != level_p) << 31;
 }
@@ -395,7 +397,7 @@ void octree::buildTree() {
   for( int level=0; level<MAXLEVELS; level++ ) {
     getValidRange<<<blocks,threads,0,execStream>>>(numBodies,level,Body_ICELL.devc(),validRange.devc(),workToDo.devc());
     gpuCompact(validRange,compactRange,2*numBodies);
-    buildNodes<<<64,threads,0,execStream>>>(level,workToDo.devc(),maxLevel.devc(),levelRange.devc(),compactRange.devc(),Body_ICELL.devc(),nodeKeys.devc(),Cell_BEGIN.devc(),Cell_SIZE.devc());
+    buildNodes<<<64,threads,0,execStream>>>(level,workToDo.devc(),maxLevel.devc(),levelRange.devc(),compactRange.devc(),Body_ICELL.devc(),Cell_ICELL.devc(),Cell_LEVEL.devc(),Cell_BEGIN.devc(),Cell_SIZE.devc());
   }
   maxLevel.d2h();
   numLevels = maxLevel[0];
@@ -414,7 +416,7 @@ void octree::linkTree() {
   nodeChild.zeros();
   int threads = 128;
   int blocks = ALIGN(numNodes,threads);
-  linkNodes<<<blocks,threads,0,execStream>>>(numNodes,Cell_SIZE.devc(),nodeKeys.devc(),nodeChild.devc(),levelRange.devc(),validRange.devc());
+  linkNodes<<<blocks,threads,0,execStream>>>(numNodes,Cell_SIZE.devc(),Cell_ICELL.devc(),Cell_LEVEL.devc(),nodeChild.devc(),levelRange.devc(),validRange.devc());
   leafNodes.alloc(numNodes);
   workToDo.ones();
   gpuSplit(validRange, leafNodes, numNodes);
@@ -423,7 +425,7 @@ void octree::linkTree() {
   // nodeRange
   validRange.zeros();
   blocks = ALIGN(numNodes-numLeafs,threads);
-  getLevelRange<<<blocks,threads,0,execStream>>>(numNodes,numLeafs,leafNodes.devc(),nodeKeys.devc(),validRange.devc());
+  getLevelRange<<<blocks,threads,0,execStream>>>(numNodes,numLeafs,leafNodes.devc(),Cell_LEVEL.devc(),validRange.devc());
   gpuCompact(validRange, nodeRange, 2*(numNodes-numLeafs));
   blocks = ALIGN(numBodies,threads);
   setNodeRange<<<blocks,threads,0,execStream>>>(numBodies,nodeRange.devc(),numLevels+1);
