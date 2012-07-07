@@ -50,8 +50,8 @@ private:
   cudaVec<uint>   Cell_SIZE;
   cudaVec<uint3>  Cell_ICELL;
   cudaVec<uint>   Cell_LEVEL;
-  cudaVec<uint>   Cell_CHILD;
-  cudaVec<uint>   Cell_NCHILD;
+  cudaVec<uint>   Cell_LEAF;
+  cudaVec<uint>   Cell_NLEAF;
   cudaVec<uint>   nodeRange;
   cudaVec<uint2>  levelRange;
   cudaVec<uint>   validRange;
@@ -101,12 +101,10 @@ public:
     Body_ICELL.alloc(numBodies+1);
     Body_TRG.alloc(numBodies);
     Body2_TRG.alloc(numBodies);
-    Cell_BEGIN.alloc(numBodies);
-    Cell_SIZE.alloc(numBodies);
     Cell_ICELL.alloc(numBodies);
     Cell_LEVEL.alloc(numBodies);
-    Cell_CHILD.alloc(numBodies);
-    Cell_NCHILD.alloc(numBodies);
+    Cell_LEAF.alloc(numBodies);
+    Cell_NLEAF.alloc(numBodies);
     nodeRange.alloc(MAXLEVELS*2);
     levelRange.alloc(MAXLEVELS);
     validRange.alloc(2*numBodies);

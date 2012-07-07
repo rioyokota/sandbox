@@ -121,8 +121,8 @@ __device__ void traverse(vec3 *Body_X,
                          float *Body_SRC,
                          vec3 &X,
                          vec4 &TRG,
-                         uint *Cell_CHILD,
-                         uint *Cell_NCHILD,
+                         uint *Cell_BEGIN,
+                         uint *Cell_SIZE,
                          float *openingAngle,
                          vecM *multipole,
                          vec3 targetCenter,
@@ -163,8 +163,8 @@ __device__ void traverse(vec3 *Body_X,
       bool split = applyMAC(sourceCenter, targetCenter, opening);
       bool leaf = opening <= 0;
       bool flag = split && !leaf && valid;
-      int begin = Cell_CHILD[node];
-      int size = Cell_NCHILD[node];
+      int begin = Cell_BEGIN[node];
+      int size = Cell_SIZE[node];
       int numChild = size & IF(flag);
       int sumChild = inclusiveScanInt(prefix, numChild);
       int laneOffset = prefix[laneId];
@@ -265,8 +265,6 @@ extern "C" __global__ void traverseKernel(const int numLeafs,
                                           uint *leafNodes,
                                           uint *Cell_BEGIN,
                                           uint *Cell_SIZE,
-                                          uint *Cell_CHILD,
-                                          uint *Cell_NCHILD,
                                           float *openingAngle,
                                           vecM *multipole,
                                           vec3 *Body_X,
@@ -288,7 +286,7 @@ extern "C" __global__ void traverseKernel(const int numLeafs,
     int body = (begin + laneId) & IF(valid);
     vec3 X = Body_X[body];
     vec4 TRG = 0.0f;
-    traverse(Body_X, Body_SRC, X, TRG, Cell_CHILD, Cell_NCHILD, openingAngle, multipole, targetCenter, levelRange[0].x, lmem);
+    traverse(Body_X, Body_SRC, X, TRG, Cell_BEGIN, Cell_SIZE, openingAngle, multipole, targetCenter, levelRange[0].x, lmem);
     if( valid ) Body_TRG[body] = TRG;
   }
 }
@@ -319,8 +317,6 @@ void octree::traverse() {
     leafNodes.devc(),
     Cell_BEGIN.devc(),
     Cell_SIZE.devc(),
-    Cell_CHILD.devc(),
-    Cell_NCHILD.devc(),
     openingAngle.devc(),
     multipole.devc(),
     Body_X.devc(),
