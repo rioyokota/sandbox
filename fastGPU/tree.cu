@@ -1,9 +1,9 @@
 #include "octree.h"
 
 static __device__ void pairMinMax(vec3 &xmin, vec3 &xmax,
-                                  vec4 reg_min, vec4 reg_max) {
-  xmin = fminf(xmin, make_vec3(reg_min));
-  xmax = fmaxf(xmax, make_vec3(reg_max));
+                                  vec3 Xmin, vec3 Xmax) {
+  xmin = fminf(xmin, Xmin);
+  xmax = fmaxf(xmax, Xmax);
 }
 
 static __device__ uint4 getKey(int4 index3) {
@@ -76,11 +76,11 @@ static __device__ int findKey(uint4 key, uint2 cij, uint4 *keys) {
 }
 
 extern "C" __global__ void getKeyKernel(int numBodies,
-                                        vec4 *bodyPos,
+                                        vec3 *Body_X,
                                         uint4 *Body_ICELL) {
   const uint idx = blockIdx.x * blockDim.x + threadIdx.x;
   if (idx >= numBodies) return;
-  vec4 pos = bodyPos[idx];
+  vec3 pos = Body_X[idx];
   int4 index3;
   float size = 1 << MAXLEVELS;
   index3.x = int(pos[0] * size);
@@ -244,18 +244,26 @@ extern "C" __global__ void setNodeRange(int numBodies,
   }
 }
 
-extern "C" __global__ void permuteBodies(const int numBodies, uint4 *index, vec4 *input, vec4* output) {
+extern "C" __global__ void permuteBodies(const int numBodies, uint4 *index, vec3 *Body_X, float *Body_SRC, vec4* output) {
   const uint idx = blockIdx.x * blockDim.x + threadIdx.x;
   if (idx >= numBodies) return;
   int newIndex = index[idx].w;
-  output[idx] = input[newIndex];
+  output[idx] = make_vec4(Body_X[newIndex][0],Body_X[newIndex][1],Body_X[newIndex][2],Body_SRC[newIndex]);
+}
+
+extern "C" __global__ void copyBodies(const int numBodies, uint4 *index, vec3 *Body_X, float *Body_SRC, vec4* input) {
+  const uint idx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (idx >= numBodies) return;
+  Body_X[idx] = make_vec3(input[idx][0],input[idx][1],input[idx][2]);
+  Body_SRC[idx] = input[idx][3];
 }
 
 extern "C" __global__ void P2M(const int numLeafs,
                                uint *leafNodes,
                                uint *Cell_BEGIN,
                                uint *Cell_SIZE,
-                               vec4 *bodyPos,
+                               vec3 *Body_X,
+                               float *Body_SRC,
                                vecM *multipole,
                                vec4 *nodeLowerBounds,
                                vec4 *nodeUpperBounds) {
@@ -268,12 +276,13 @@ extern "C" __global__ void P2M(const int numLeafs,
   vec3 xmin =  1e10f;
   vec3 xmax = -1e10f;
   for( int i=begin; i<begin+size; i++ ) {
-    vec4 pos = bodyPos[i];
-    M[0] += pos[3];
-    M[1] += pos[3] * pos[0];
-    M[2] += pos[3] * pos[1];
-    M[3] += pos[3] * pos[2];
-    pairMinMax(xmin, xmax, pos, pos);
+    float SRC = Body_SRC[i];
+    vec3 X = Body_X[i];
+    M[0] += SRC;
+    M[1] += SRC * X[0];
+    M[2] += SRC * X[1];
+    M[3] += SRC * X[2];
+    pairMinMax(xmin, xmax, X, X);
   }
   float invM = 1.0 / M[0];
   if(M[0] == 0) invM = 0;
@@ -307,7 +316,7 @@ extern "C" __global__ void M2M(const int level,
     Mi[1] += Mj[0] * Mj[1];
     Mi[2] += Mj[0] * Mj[2];
     Mi[3] += Mj[0] * Mj[3];
-    pairMinMax(xmin, xmax, nodeLowerBounds[i], nodeUpperBounds[i]);
+    pairMinMax(xmin, xmax, make_vec3(nodeLowerBounds[i]), make_vec3(nodeUpperBounds[i]));
   }
   float invM = 1.0 / Mi[0];
   if(Mi[0] == 0) invM = 0;
@@ -361,7 +370,7 @@ extern "C" __global__ void rescale(const int numNodes,
 void octree::getKeys() {
   int threads = 128;
   int blocks = ALIGN(numBodies,threads);
-  getKeyKernel<<<blocks,threads,0,execStream>>>(numBodies,bodyPos.devc(),uint4buffer);
+  getKeyKernel<<<blocks,threads,0,execStream>>>(numBodies,Body_X.devc(),uint4buffer);
 }
 
 void octree::sortKeys() {
@@ -371,8 +380,8 @@ void octree::sortKeys() {
 void octree::sortBodies() {
   int threads = 512;
   int blocks = ALIGN(numBodies,threads);
-  permuteBodies<<<blocks,threads,0,execStream>>>(numBodies,Body_ICELL.devc(),bodyPos.devc(),vec4buffer);
-  CU_SAFE_CALL(cudaMemcpy(bodyPos.devc(),vec4buffer,numBodies*sizeof(vec4),cudaMemcpyDeviceToDevice));
+  permuteBodies<<<blocks,threads,0,execStream>>>(numBodies,Body_ICELL.devc(),Body_X.devc(),Body_SRC.devc(),vec4buffer);
+  copyBodies<<<blocks,threads,0,execStream>>>(numBodies,Body_ICELL.devc(),Body_X.devc(),Body_SRC.devc(),vec4buffer);
 }
 
 void octree::buildTree() {
@@ -428,7 +437,7 @@ void octree::upward() {
 
   int threads = 128;
   int blocks = ALIGN(numLeafs,threads);
-  P2M<<<blocks,threads,0,execStream>>>(numLeafs,leafNodes.devc(),Cell_BEGIN.devc(),Cell_SIZE.devc(),bodyPos.devc(),multipole.devc(),nodeLowerBounds.devc(),nodeUpperBounds.devc());
+  P2M<<<blocks,threads,0,execStream>>>(numLeafs,leafNodes.devc(),Cell_BEGIN.devc(),Cell_SIZE.devc(),Body_X.devc(),Body_SRC.devc(),multipole.devc(),nodeLowerBounds.devc(),nodeUpperBounds.devc());
 
   nodeRange.d2h();
   for( int level=numLevels; level>=1; level-- ) {

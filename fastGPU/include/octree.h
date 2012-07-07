@@ -69,7 +69,8 @@ private:
   cudaVec<uint>   workToDo;
   
 public:
-  cudaVec<vec4>   bodyPos;
+  cudaVec<vec3>   Body_X;
+  cudaVec<float>  Body_SRC;
   cudaVec<vec4>   bodyAcc;
   cudaVec<vec4>   bodyAcc2;
 
@@ -93,7 +94,8 @@ public:
   octree(const int _n) : numBodies(_n) {
     assert(isPowerOfTwo(NCRIT));
     cudaSetDevice(2);
-    bodyPos.alloc(numBodies+1);
+    Body_X.alloc(numBodies+1);
+    Body_SRC.alloc(numBodies+1);
     Body_ICELL.alloc(numBodies+1);
     bodyAcc.alloc(numBodies);
     bodyAcc2.alloc(numBodies);

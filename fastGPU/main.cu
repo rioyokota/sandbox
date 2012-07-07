@@ -6,12 +6,13 @@ int main() {
     octree *tree = new octree(numBodies);
     printf("N     : %d\n",numBodies);
     for( uint i=0; i<numBodies; i++ ) {
-      tree->bodyPos[i][3]  = 1. / numBodies;
-      tree->bodyPos[i][0]  = drand48();
-      tree->bodyPos[i][1]  = drand48();
-      tree->bodyPos[i][2]  = drand48();
+      tree->Body_X[i][0]  = drand48();
+      tree->Body_X[i][1]  = drand48();
+      tree->Body_X[i][2]  = drand48();
+      tree->Body_SRC[i]  = 1. / numBodies;
     }
-    tree->bodyPos.h2d();
+    tree->Body_X.h2d();
+    tree->Body_SRC.h2d();
     tree->iterate(); 
     double tic = tree->get_time();
     tree->direct();
