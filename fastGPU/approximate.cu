@@ -121,7 +121,8 @@ __device__ void traverse(vec3 *Body_X,
                          float *Body_SRC,
                          vec3 &X,
                          vec4 &TRG,
-                         uint *nodeChild,
+                         uint *Cell_CHILD,
+                         uint *Cell_NCHILD,
                          float *openingAngle,
                          vecM *multipole,
                          vec3 targetCenter,
@@ -158,18 +159,18 @@ __device__ void traverse(vec3 *Body_X,
       int node = stackGlob[ACCESS(iStack)] & IF(valid);
       numNodes -= WARP_SIZE;
       float opening = openingAngle[node];
-      uint sourceData = nodeChild[node];
       vec3 sourceCenter = make_vec3(multipole[node][1],multipole[node][2],multipole[node][3]);
       bool split = applyMAC(sourceCenter, targetCenter, opening);
       bool leaf = opening <= 0;
       bool flag = split && !leaf && valid;
-      int child = sourceData & 0x0FFFFFFF;
-      int numChild = ((sourceData & 0xF0000000) >> 28) & IF(flag);
+      int begin = Cell_CHILD[node];
+      int size = Cell_NCHILD[node];
+      int numChild = size & IF(flag);
       int sumChild = inclusiveScanInt(prefix, numChild);
       int laneOffset = prefix[laneId];
       laneOffset += warpOffsetSplit - numChild;
       for( int i=0; i<numChild; i++ )
-        stackShrd[laneOffset+i] = child+i;
+        stackShrd[laneOffset+i] = begin+i;
       warpOffsetSplit += sumChild;
       while( warpOffsetSplit >= WARP_SIZE ) {
         warpOffsetSplit -= WARP_SIZE;
@@ -193,8 +194,7 @@ __device__ void traverse(vec3 *Body_X,
 #endif
 #if 1   // DIRECT
       flag = split && leaf && valid;
-      const int jbody = sourceData & CRITMASK;
-      int numBodies = (((sourceData & INVCMASK) >> CRITBIT)+1) & IF(flag);
+      int numBodies = size & IF(flag);
       directNodes[laneId] = numDirect[laneId];
 
       int sumBodies = inclusiveScanInt(prefix, numBodies);
@@ -208,7 +208,7 @@ __device__ void traverse(vec3 *Body_X,
         for( int i=warpOffsetDirect; i<warpOffsetDirect+numBodies; i+=WARP_SIZE )
           directNodes[i+laneId] = 0;
         if( flag && (numDirect[laneId] <= numBodies) && (laneOffset >= 0) )
-          directNodes[warpOffsetDirect+laneOffset] = -1-jbody;
+          directNodes[warpOffsetDirect+laneOffset] = -1-begin;
         numFinished += inclusive_segscan_array(&directNodes[warpOffsetDirect], numBodies);
         numBodies = numDirect[prefix[numFinished-1]];
         sumBodies -= numBodies;
@@ -265,7 +265,8 @@ extern "C" __global__ void traverseKernel(const int numLeafs,
                                           uint *leafNodes,
                                           uint *Cell_BEGIN,
                                           uint *Cell_SIZE,
-                                          uint *nodeChild,
+                                          uint *Cell_CHILD,
+                                          uint *Cell_NCHILD,
                                           float *openingAngle,
                                           vecM *multipole,
                                           vec3 *Body_X,
@@ -287,7 +288,7 @@ extern "C" __global__ void traverseKernel(const int numLeafs,
     int body = (begin + laneId) & IF(valid);
     vec3 X = Body_X[body];
     vec4 TRG = 0.0f;
-    traverse(Body_X, Body_SRC, X, TRG, nodeChild, openingAngle, multipole, targetCenter, levelRange[0].x, lmem);
+    traverse(Body_X, Body_SRC, X, TRG, Cell_CHILD, Cell_NCHILD, openingAngle, multipole, targetCenter, levelRange[0].x, lmem);
     if( valid ) Body_TRG[body] = TRG;
   }
 }
@@ -318,7 +319,8 @@ void octree::traverse() {
     leafNodes.devc(),
     Cell_BEGIN.devc(),
     Cell_SIZE.devc(),
-    nodeChild.devc(),
+    Cell_CHILD.devc(),
+    Cell_NCHILD.devc(),
     openingAngle.devc(),
     multipole.devc(),
     Body_X.devc(),
