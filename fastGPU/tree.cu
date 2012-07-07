@@ -322,28 +322,6 @@ extern "C" __global__ void setNodeRange(int numBodies,
   }
 }
 
-extern "C" __global__ void setGroups(uint *leafNodes,
-                                     uint2 *nodeBodies,
-                                     vec4 *bodyPos,
-                                     vec3 *groupCenterInfo){
-  int nodeID = leafNodes[blockIdx.x];
-  vec3 xmin =  1e10f;
-  vec3 xmax = -1e10f;
-  int begin = nodeBodies[nodeID].x;
-  int end   = nodeBodies[nodeID].y;
-
-  int idx = begin + threadIdx.x;
-  if( idx < end ) {
-    vec4 pos = bodyPos[idx];
-    pairMinMax(xmin, xmax, pos, pos);
-  }
-  sharedMinMax(xmin,xmax);
-  if( threadIdx.x == 0 ) {
-    vec3 groupCenter = (xmin + xmax) * 0.5;
-    groupCenterInfo[blockIdx.x] = groupCenter;
-  }
-}
-
 extern "C" __global__ void reorder(const int size, uint4 *index, vec4 *input, vec4* output) {
   const uint idx = blockIdx.x * blockDim.x + threadIdx.x;
   if (idx >= size) return;
@@ -513,7 +491,6 @@ void octree::allocateTreePropMemory()
 {
   multipole.alloc(numNodes);
   openingAngle.alloc(numNodes);
-  groupCenterInfo.alloc(numNodes);
 }
 
 void octree::linkTree() {
@@ -534,8 +511,6 @@ void octree::linkTree() {
   gpuCompact(validRange, nodeRange, 2*(numNodes-numLeafs));
   blocks = ALIGN(numBodies,threads);
   setNodeRange<<<blocks,threads>>>(numBodies,nodeRange.devc(),numLevels+1);
-  // groupRange
-  setGroups<<<numLeafs,NCRIT>>>(leafNodes.devc(),nodeBodies.devc(),bodyPos.devc(),groupCenterInfo.devc());
 }
 
 void octree::upward() {
