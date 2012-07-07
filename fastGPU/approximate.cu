@@ -109,10 +109,10 @@ __device__ __forceinline__ void M2P(vec4 &acc,
   acc[2] += dist[2];
 }
 
-__device__ bool applyMAC(const vec3 sourceCenter,
-                         const vec3 targetCenter,
+__device__ bool applyMAC(const vec3 sourceX,
+                         const vec3 targetX,
                          const float Cell_RCRIT) {
-  vec3 dist = targetCenter - sourceCenter;
+  vec3 dist = targetX - sourceX;
   const float R2 = norm(dist);
   return R2 <= fabsf(Cell_RCRIT);
 }
@@ -125,21 +125,21 @@ __device__ void traverse(vec3 *Body_X,
                          uint *Cell_SIZE,
                          float *Cell_RCRIT,
                          vecM *multipole,
-                         vec3 targetCenter,
-                         int *lmem) {
+                         vec3 targetX,
+                         int *blockPtr) {
   const int stackSize = LMEM_STACK_SIZE * NTHREAD;
-  int *approxNodes = lmem + stackSize + 2 * WARP_SIZE * warpId;
+  int *approxNodes = blockPtr + stackSize + 2 * WARP_SIZE * warpId;
   const uint numShrd = 10 + MTERM;
-  __shared__ int shmem[numShrd*NTHREAD];
+  __shared__ int shmem[numShrd * NTHREAD];
   int *numDirect = shmem + numShrd * WARP_SIZE * warpId;
-  int *stackShrd = numDirect + WARP_SIZE;
-  int *directNodes = stackShrd + WARP_SIZE;
+  int *prefix = &numDirect[WARP_SIZE];
+  int *stackShrd = &prefix[WARP_SIZE];
+  int *directNodes = &stackShrd[WARP_SIZE];
   vec4 *source = (vec4*)&directNodes[3*WARP_SIZE];
   vecM *M = (vecM*)&source[WARP_SIZE];
-  int *prefix = (int*)&M[WARP_SIZE];
 
   // stack
-  int *stackGlob = lmem;
+  int *stackGlob = blockPtr;
   // begin tree-walk
   int warpOffsetApprox = 0;
   int warpOffsetDirect = 0;
@@ -157,10 +157,10 @@ __device__ void traverse(vec3 *Body_X,
       bool valid = laneId < numNodes;
       int node = stackGlob[ACCESS(iStack)] & IF(valid);
       numNodes -= WARP_SIZE;
-      float opening = Cell_RCRIT[node];
-      vec3 sourceCenter = make_vec3(multipole[node][1],multipole[node][2],multipole[node][3]);
-      bool split = applyMAC(sourceCenter, targetCenter, opening);
-      bool leaf = opening <= 0;
+      float RCRIT = Cell_RCRIT[node];
+      vec3 sourceX = make_vec3(multipole[node][1],multipole[node][2],multipole[node][3]);
+      bool split = applyMAC(sourceX, targetX, RCRIT);
+      bool leaf = RCRIT <= 0;
       bool flag = split && !leaf && valid;
       int begin = Cell_BEGIN[node];
       int size = Cell_SIZE[node];
@@ -168,15 +168,19 @@ __device__ void traverse(vec3 *Body_X,
       int sumChild = inclusiveScanInt(prefix, numChild);
       int laneOffset = prefix[laneId];
       laneOffset += warpOffsetSplit - numChild;
-      for( int i=0; i<numChild; i++ )
+      for( int i=0; i<numChild; i++ ) {
         stackShrd[laneOffset+i] = begin+i;
+      }
       warpOffsetSplit += sumChild;
       while( warpOffsetSplit >= WARP_SIZE ) {
         warpOffsetSplit -= WARP_SIZE;
         stackGlob[ACCESS(numStack)] = stackShrd[warpOffsetSplit+laneId];
         numStack++;
         numNodesNew += WARP_SIZE;
-        if( (numStack - iStack) > LMEM_STACK_SIZE ) return;
+        if( (numStack - iStack) > LMEM_STACK_SIZE ) {
+          printf("overflow\n");
+          return;
+        }
       }
 #if 1   // APPROX
       flag = !split && valid;
@@ -268,23 +272,24 @@ extern "C" __global__ void traverseKernel(const int numLeafs,
                                           vec3 *Body_X,
                                           float *Body_SRC,
                                           vec4 *Body_TRG,
-                                          int *MEM_BUF,
+                                          int *buffer,
                                           uint *workToDo) {
-  __shared__ int wid[4];
-  int *lmem = &MEM_BUF[blockIdx.x*(LMEM_STACK_SIZE*NTHREAD+2*NTHREAD)];
+  __shared__ int warpLeaf[4];
+  int *leaf = warpLeaf + warpId;
+  int *blockPtr = buffer + blockIdx.x * (LMEM_STACK_SIZE * NTHREAD + 2 * NTHREAD);
   while(true) {
     if( laneId == 0 )
-      wid[warpId] = atomicAdd(workToDo,1);
-    if( wid[warpId] >= numLeafs ) return;
-    int nodeID = leafNodes[wid[warpId]];
-    const uint begin = Cell_BEGIN[nodeID];
-    const uint size  = Cell_SIZE[nodeID];
-    vec3 targetCenter = make_vec3(multipole[nodeID][1],multipole[nodeID][2],multipole[nodeID][3]);
+      *leaf = atomicAdd(workToDo,1);
+    if( *leaf >= numLeafs ) return;
+    int node = leafNodes[*leaf];
+    const uint begin = Cell_BEGIN[node];
+    const uint size  = Cell_SIZE[node];
+    vec3 targetX = make_vec3(multipole[node][1],multipole[node][2],multipole[node][3]);
     bool valid = laneId < size;
     int body = (begin + laneId) & IF(valid);
     vec3 X = Body_X[body];
     vec4 TRG = 0.0f;
-    traverse(Body_X, Body_SRC, X, TRG, Cell_BEGIN, Cell_SIZE, Cell_RCRIT, multipole, targetCenter, lmem);
+    traverse(Body_X, Body_SRC, X, TRG, Cell_BEGIN, Cell_SIZE, Cell_RCRIT, multipole, targetX, blockPtr);
     if( valid ) Body_TRG[body] = TRG;
   }
 }
