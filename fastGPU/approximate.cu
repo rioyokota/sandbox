@@ -94,11 +94,27 @@ __device__ __forceinline__ void P2P(vec4 &acc,
   acc[2] += dist[2];
 }
 
-__device__ bool applyMAC(const vec4 sourceCenter,
-                         const vec3 targetCenter) {
-  vec3 dist = fabsf(targetCenter - make_vec3(sourceCenter));
+__device__ __forceinline__ void M2P(vec4 &acc,
+                                    const vec4 pos,
+                                    const vecM M) {
+  vec3 dist = make_vec3(M[1],M[2],M[3]) - make_vec3(pos);
+  const float R2 = norm(dist) + EPS2;
+  float invR = rsqrtf(R2);
+  const float invR2 = invR * invR;
+  invR *= M[0];
+  dist *= invR * invR2;
+  acc[3] -= invR;
+  acc[0] += dist[0];
+  acc[1] += dist[1];
+  acc[2] += dist[2];
+}
+
+__device__ bool applyMAC(const vec3 sourceCenter,
+                         const vec3 targetCenter,
+                         const float openingAngle) {
+  vec3 dist = targetCenter - sourceCenter;
   const float R2 = norm(dist);
-  return R2 <= fabsf(sourceCenter[3]);
+  return R2 <= fabsf(openingAngle);
 }
 
 __device__ void traverse(vec4 *pos,
@@ -108,115 +124,115 @@ __device__ void traverse(vec4 *pos,
                          float *openingAngle,
                          vecM *multipole,
                          vec3 targetCenter,
-                         uint2 rootRange,
-                         int *shmem,
+                         int root,
                          int *lmem) {
   const int stackSize = LMEM_STACK_SIZE * NTHREAD;
   int *approxNodes = lmem + stackSize + 2 * WARP_SIZE * warpId;
-  int *numDirect = shmem;
+  const uint numShrd = 10 + MTERM;
+  __shared__ int shmem[numShrd*NTHREAD];
+  int *numDirect = shmem + numShrd * WARP_SIZE * warpId;
   int *stackShrd = numDirect + WARP_SIZE;
   int *directNodes = stackShrd + WARP_SIZE;
   vec4 *pos_j = (vec4*)&directNodes[3*WARP_SIZE];
-  int *prefix = (int*)&pos_j[WARP_SIZE];
+  vecM *M = (vecM*)&pos_j[WARP_SIZE];
+  int *prefix = (int*)&M[WARP_SIZE];
 
   // stack
   int *stackGlob = lmem;
   // begin tree-walk
   int warpOffsetApprox = 0;
   int warpOffsetDirect = 0;
-  for( int root=rootRange.x; root<rootRange.y; root+=WARP_SIZE ) {
-    int numNodes = min(rootRange.y-root, WARP_SIZE);
-    int beginStack = 0;
-    int endStack = 1;
-    stackGlob[threadIdx.x] = root + laneId;
-    // walk each level
-    while( numNodes > 0 ) {
-      int numNodesNew = 0;
-      int warpOffsetSplit = 0;
-      int numStack = endStack;
-      // walk a level
-      for( int iStack=beginStack; iStack<endStack; iStack++ ) {
-        bool valid = laneId < numNodes;
-        int node = stackGlob[ACCESS(iStack)] & IF(valid);
-        numNodes -= WARP_SIZE;
-        float opening = openingAngle[node];
-        uint sourceData = nodeChild[node];
-        vec4 sourceCenter = make_vec4(multipole[node][1],multipole[node][2],multipole[node][3],opening);
-        bool split = applyMAC(sourceCenter, targetCenter);
-        bool leaf = opening <= 0;
-        bool flag = split && !leaf && valid;
-        int child = sourceData & 0x0FFFFFFF;
-        int numChild = ((sourceData & 0xF0000000) >> 28) & IF(flag);
-        int sumChild = inclusiveScanInt(prefix, numChild);
-        int laneOffset = prefix[laneId];
-        laneOffset += warpOffsetSplit - numChild;
-        for( int i=0; i<numChild; i++ )
-          stackShrd[laneOffset+i] = child+i;
-        warpOffsetSplit += sumChild;
-        while( warpOffsetSplit >= WARP_SIZE ) {
-          warpOffsetSplit -= WARP_SIZE;
-          stackGlob[ACCESS(numStack)] = stackShrd[warpOffsetSplit+laneId];
-          numStack++;
-          numNodesNew += WARP_SIZE;
-          if( (numStack - iStack) > LMEM_STACK_SIZE ) return;
-        }
+  int numNodes = 1;
+  int beginStack = 0;
+  int endStack = 1;
+  stackGlob[threadIdx.x] = root + laneId;
+  // walk each level
+  while( numNodes > 0 ) {
+    int numNodesNew = 0;
+    int warpOffsetSplit = 0;
+    int numStack = endStack;
+    // walk a level
+    for( int iStack=beginStack; iStack<endStack; iStack++ ) {
+      bool valid = laneId < numNodes;
+      int node = stackGlob[ACCESS(iStack)] & IF(valid);
+      numNodes -= WARP_SIZE;
+      float opening = openingAngle[node];
+      uint sourceData = nodeChild[node];
+      vec3 sourceCenter = make_vec3(multipole[node][1],multipole[node][2],multipole[node][3]);
+      bool split = applyMAC(sourceCenter, targetCenter, opening);
+      bool leaf = opening <= 0;
+      bool flag = split && !leaf && valid;
+      int child = sourceData & 0x0FFFFFFF;
+      int numChild = ((sourceData & 0xF0000000) >> 28) & IF(flag);
+      int sumChild = inclusiveScanInt(prefix, numChild);
+      int laneOffset = prefix[laneId];
+      laneOffset += warpOffsetSplit - numChild;
+      for( int i=0; i<numChild; i++ )
+        stackShrd[laneOffset+i] = child+i;
+      warpOffsetSplit += sumChild;
+      while( warpOffsetSplit >= WARP_SIZE ) {
+        warpOffsetSplit -= WARP_SIZE;
+        stackGlob[ACCESS(numStack)] = stackShrd[warpOffsetSplit+laneId];
+        numStack++;
+        numNodesNew += WARP_SIZE;
+        if( (numStack - iStack) > LMEM_STACK_SIZE ) return;
+      }
 #if 1   // APPROX
-        flag = !split && valid;
-        laneOffset = exclusiveScanBit(flag);
-        if( flag ) approxNodes[warpOffsetApprox+laneOffset] = node;
-        warpOffsetApprox += reduceBit(flag);
-        if( warpOffsetApprox >= WARP_SIZE ) {
-          warpOffsetApprox -= WARP_SIZE;
-          node = approxNodes[warpOffsetApprox+laneId];
-          pos_j[laneId] = make_vec4(multipole[node][1],multipole[node][2],multipole[node][3],multipole[node][0]);
+      flag = !split && valid;
+      laneOffset = exclusiveScanBit(flag);
+      if( flag ) approxNodes[warpOffsetApprox+laneOffset] = node;
+      warpOffsetApprox += reduceBit(flag);
+      if( warpOffsetApprox >= WARP_SIZE ) {
+        warpOffsetApprox -= WARP_SIZE;
+        node = approxNodes[warpOffsetApprox+laneId];
+        M[laneId] = multipole[node];
+        for( int i=0; i<WARP_SIZE; i++ )
+          M2P(acc_i, pos_i, M[i]);
+      }
+#endif
+#if 1   // DIRECT
+      flag = split && leaf && valid;
+      const int jbody = sourceData & CRITMASK;
+      int numBodies = (((sourceData & INVCMASK) >> CRITBIT)+1) & IF(flag);
+      directNodes[laneId] = numDirect[laneId];
+
+      int sumBodies = inclusiveScanInt(prefix, numBodies);
+      laneOffset = prefix[laneId];
+      if( flag ) prefix[exclusiveScanBit(flag)] = laneId;
+      numDirect[laneId] = laneOffset;
+      laneOffset -= numBodies;
+      int numFinished = 0;
+      while( sumBodies > 0 ) {
+        numBodies = min(sumBodies, 3*WARP_SIZE-warpOffsetDirect);
+        for( int i=warpOffsetDirect; i<warpOffsetDirect+numBodies; i+=WARP_SIZE )
+          directNodes[i+laneId] = 0;
+        if( flag && (numDirect[laneId] <= numBodies) && (laneOffset >= 0) )
+          directNodes[warpOffsetDirect+laneOffset] = -1-jbody;
+        numFinished += inclusive_segscan_array(&directNodes[warpOffsetDirect], numBodies);
+        numBodies = numDirect[prefix[numFinished-1]];
+        sumBodies -= numBodies;
+        numDirect[laneId] -= numBodies;
+        laneOffset -= numBodies;
+        warpOffsetDirect += numBodies;
+        while( warpOffsetDirect >= WARP_SIZE ) {
+          warpOffsetDirect -= WARP_SIZE;
+          pos_j[laneId] = pos[directNodes[warpOffsetDirect+laneId]];
           for( int i=0; i<WARP_SIZE; i++ )
             P2P(acc_i, pos_i, pos_j[i]);
         }
-#endif
-#if 1   // DIRECT
-        flag = split && leaf && valid;
-        const int jbody = sourceData & CRITMASK;
-        int numBodies = (((sourceData & INVCMASK) >> CRITBIT)+1) & IF(flag);
-        directNodes[laneId] = numDirect[laneId];
-
-        int sumBodies = inclusiveScanInt(prefix, numBodies);
-        laneOffset = prefix[laneId];
-        if( flag ) prefix[exclusiveScanBit(flag)] = laneId;
-        numDirect[laneId] = laneOffset;
-        laneOffset -= numBodies;
-        int numFinished = 0;
-        while( sumBodies > 0 ) {
-          numBodies = min(sumBodies, 3*WARP_SIZE-warpOffsetDirect);
-          for( int i=warpOffsetDirect; i<warpOffsetDirect+numBodies; i+=WARP_SIZE )
-            directNodes[i+laneId] = 0;
-          if( flag && (numDirect[laneId] <= numBodies) && (laneOffset >= 0) )
-            directNodes[warpOffsetDirect+laneOffset] = -1-jbody;
-          numFinished += inclusive_segscan_array(&directNodes[warpOffsetDirect], numBodies);
-          numBodies = numDirect[prefix[numFinished-1]];
-          sumBodies -= numBodies;
-          numDirect[laneId] -= numBodies;
-          laneOffset -= numBodies;
-          warpOffsetDirect += numBodies;
-          while( warpOffsetDirect >= WARP_SIZE ) {
-            warpOffsetDirect -= WARP_SIZE;
-            pos_j[laneId] = pos[directNodes[warpOffsetDirect+laneId]];
-            for( int i=0; i<WARP_SIZE; i++ )
-              P2P(acc_i, pos_i, pos_j[i]);
-          }
-        }
-        numDirect[laneId] = directNodes[laneId];
-#endif
       }
-
-      if( warpOffsetSplit > 0 ) {
-        stackGlob[ACCESS(numStack)] = stackShrd[laneId];
-        numStack++;
-        numNodesNew += warpOffsetSplit;
-      }
-      numNodes = numNodesNew;
-      beginStack = endStack;
-      endStack = numStack;
+      numDirect[laneId] = directNodes[laneId];
+#endif
     }
+
+    if( warpOffsetSplit > 0 ) {
+      stackGlob[ACCESS(numStack)] = stackShrd[laneId];
+      numStack++;
+      numNodesNew += warpOffsetSplit;
+    }
+    numNodes = numNodesNew;
+    beginStack = endStack;
+    endStack = numStack;
   }
 
   if( warpOffsetApprox > 0 ) {
@@ -254,8 +270,6 @@ extern "C" __global__ void traverseKernel(const int numLeafs,
                                           int *MEM_BUF,
                                           uint *workToDo) {
   __shared__ int wid[4];
-  __shared__ int shmem_pool[10*NTHREAD];
-  int *shmem = shmem_pool+10*WARP_SIZE*warpId;
   int *lmem = &MEM_BUF[blockIdx.x*(LMEM_STACK_SIZE*NTHREAD+2*NTHREAD)];
   while(true) {
     if( laneId == 0 )
@@ -266,13 +280,14 @@ extern "C" __global__ void traverseKernel(const int numLeafs,
     const uint end   = nodeBodies[nodeID].y;
     const uint numGroup = end - begin;
     vec3 targetCenter = make_vec3(multipole[nodeID][1],multipole[nodeID][2],multipole[nodeID][3]);
-    uint body_i = begin + laneId % numGroup;
-    vec4 pos_i = pos[body_i];
+    bool valid = laneId < numGroup;
+    int body = (begin + laneId) & IF(valid);
+    vec4 pos_i = pos[body];
     vec4 acc_i = 0.0f;
 
-    traverse(pos, pos_i, acc_i, nodeChild, openingAngle, multipole, targetCenter, levelRange[2], shmem, lmem);
+    traverse(pos, pos_i, acc_i, nodeChild, openingAngle, multipole, targetCenter, levelRange[0].x, lmem);
     if( laneId < numGroup )
-      acc[body_i] = acc_i;
+      acc[body] = acc_i;
   }
 }
 
@@ -313,21 +328,17 @@ void octree::traverse() {
 void octree::iterate() {
   CU_SAFE_CALL(cudaStreamCreate(&execStream));
   double t1 = get_time();
-  getBoundaries();
-  CU_SAFE_CALL(cudaStreamSynchronize(execStream));
-  printf("BOUND : %lf\n",get_time() - t1);;
-  t1 = get_time();
   getKeys();
   CU_SAFE_CALL(cudaStreamSynchronize(execStream));
   printf("INDEX : %lf\n",get_time() - t1);;
   t1 = get_time();
   sortKeys();
   CU_SAFE_CALL(cudaStreamSynchronize(execStream));
-  printf("KEYS  : %lf\n",get_time() - t1);;
+  printf("SORT  : %lf\n",get_time() - t1);;
   t1 = get_time();
   sortBodies();
   CU_SAFE_CALL(cudaStreamSynchronize(execStream));
-  printf("BODIES: %lf\n",get_time() - t1);;
+  printf("PERM  : %lf\n",get_time() - t1);;
   t1 = get_time();
   buildTree();
   CU_SAFE_CALL(cudaStreamSynchronize(execStream));
@@ -347,7 +358,7 @@ void octree::iterate() {
   t1 = get_time();
   traverse();
   CU_SAFE_CALL(cudaStreamSynchronize(execStream));
-  printf("FMM   : %lf\n",get_time() - t1);;
+  printf("TRAV  : %lf\n",get_time() - t1);;
 }
 
 void octree::direct() {

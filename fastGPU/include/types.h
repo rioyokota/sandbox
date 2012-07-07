@@ -17,22 +17,21 @@
 #include "macros.h"
 #include "vec.h"
 
-typedef float real;
-typedef vec<3,real> vec3;
-typedef vec<4,real> vec4;
+typedef vec<3,float> vec3;
+typedef vec<4,float> vec4;
 
 const int  P     = 3;
-const real EPS2  = 0.0001;
-const real THETA = .6;
+const float EPS2  = 0.0001;
+const float THETA = .6;
 
 const int MTERM = P*(P+1)*(P+2)/6;
 const int LTERM = (P+1)*(P+2)*(P+3)/6;
-typedef vec<4,real> vecM;
-typedef vec<LTERM,real> vecL;
+typedef vec<MTERM,float> vecM;
+typedef vec<LTERM,float> vecL;
 
 namespace {
 __host__ __device__
-inline vec3 make_vec3(real x, real y, real z) {
+inline vec3 make_vec3(float x, float y, float z) {
   vec3 output;
   output[0] = x;
   output[1] = y;
@@ -50,7 +49,7 @@ inline vec3 make_vec3(vec4 input) {
 }
 
 __host__ __device__
-inline vec4 make_vec4(real x, real y, real z, real w) {
+inline vec4 make_vec4(float x, float y, float z, float w) {
   vec4 output;
   output[0] = x;
   output[1] = y;
