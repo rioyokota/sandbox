@@ -1,5 +1,7 @@
 #include "octree.h"
 
+static __device__ uint compactOffset[NBLOCK+1];
+
 //Warp based summation
 static __device__ int inexclusive_scan_warp(volatile int *ptr,bool inclusive, const uint idx, int value) {
   const uint lane = idx & 31;
@@ -17,7 +19,7 @@ static __device__ int inexclusive_scan_warp(volatile int *ptr,bool inclusive, co
 }
 
 //N is number of previous blocks in the count call
-extern "C" __global__ void exclusive_scan_block(uint *ptr, const int size, uint *count)  {
+extern "C" __global__ void exclusive_scan_block(const int size, uint *count)  {
  if (*count == 0) return;
   const uint idx = threadIdx.x;
   const uint lane   = idx & 31;
@@ -28,7 +30,7 @@ extern "C" __global__ void exclusive_scan_block(uint *ptr, const int size, uint 
 
   //Read the data in shmem
   if(idx < size + 1)
-    shmemESB[idx] = value = ptr[idx];
+    shmemESB[idx] = value = compactOffset[idx];
   else
     shmemESB[idx] = value = 0;
   
@@ -51,13 +53,12 @@ extern "C" __global__ void exclusive_scan_block(uint *ptr, const int size, uint 
   __syncthreads();
 
   // Step 5: Write and return the final result
-  ptr[idx] = val;
+  compactOffset[idx] = val;
   __syncthreads();
 
 
-  // ptr[blockDim.x - 1] + lastValue; //count
   if(idx == 0)//Thread 0 saves the total count value
-    *count = ptr[blockDim.x - 1];
+    *count = compactOffset[blockDim.x - 1];
 }
 
 static __device__  __forceinline__ int hillisSteele5(volatile uint tmp[], int &count, uint val, const int idx)
@@ -95,7 +96,6 @@ static __device__ void reduce_block2(int tid, volatile int *shmem, int val)
 
 //Count the number of valid elements in this BLOCK
 extern "C" __global__ void compact_count(volatile uint *values,
-                                         uint *compactOffset,
                                          const int size,
                                          const uint *workToDo) {
   if (*workToDo == 0) return;
@@ -155,7 +155,6 @@ extern "C" __global__ void compact_count(volatile uint *values,
 //The kernel that actually moves the data
 extern "C" __global__ void compact_move(uint *values,
                                         uint *output,
-                                        uint *compactOffset,
                                         const int size,
                                         const uint *workToDo) {
   if(*workToDo == 0) return;
@@ -221,7 +220,6 @@ extern "C" __global__ void compact_move(uint *values,
 //The kernel that actually moves/splits the data
 extern "C" __global__ void split_move(uint *valid,
                                       uint *output,
-                                      uint *compactOffset,
                                       const int size) {
   //Determine the parameters and loop over the particles
   int jobSize, offset;
@@ -309,14 +307,14 @@ extern "C" __global__ void split_move(uint *valid,
 
 void octree::gpuCompact(cudaVec<uint> &input, cudaVec<uint> &output, int size) {
   int blocks = NBLOCK-2;
-  compact_count<<<blocks,32,0,execStream>>>(input.devc(),offset.devc(),size,workToDo.devc());
-  exclusive_scan_block<<<1,NBLOCK,0,execStream>>>(offset.devc(),blocks,workToDo.devc());
-  compact_move<<<blocks,32,0,execStream>>>(input.devc(),output.devc(),offset.devc(),size,workToDo.devc());
+  compact_count<<<blocks,32,0,execStream>>>(input.devc(),size,workToDo.devc());
+  exclusive_scan_block<<<1,NBLOCK,0,execStream>>>(blocks,workToDo.devc());
+  compact_move<<<blocks,32,0,execStream>>>(input.devc(),output.devc(),size,workToDo.devc());
 }
 
 void octree::gpuSplit(cudaVec<uint> &input, cudaVec<uint> &output, int size) {
   int blocks = NBLOCK-2;
-  compact_count<<<blocks,32,0,execStream>>>(input.devc(),offset.devc(),size,workToDo.devc());
-  exclusive_scan_block<<<1,NBLOCK,0,execStream>>>(offset.devc(),blocks,workToDo.devc());
-  split_move<<<blocks,32,0,execStream>>>(input.devc(),output.devc(),offset.devc(),size);
+  compact_count<<<blocks,32,0,execStream>>>(input.devc(),size,workToDo.devc());
+  exclusive_scan_block<<<1,NBLOCK,0,execStream>>>(blocks,workToDo.devc());
+  split_move<<<blocks,32,0,execStream>>>(input.devc(),output.devc(),size);
 }

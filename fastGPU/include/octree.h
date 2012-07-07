@@ -27,7 +27,7 @@ private:
   b40c::radix_sort::Enactor *sort_enactor;
 
 public:
-  Sort90(uint size, uint *generalBuffer);
+  Sort90(uint size, uint *buffer);
   ~Sort90();
   void sort(uint4 *input, cudaVec<uint4> &output, int size);
 };
@@ -52,22 +52,14 @@ private:
   cudaVec<uint>   Cell_LEVEL;
   cudaVec<uint>   Cell_LEAF;
   cudaVec<uint>   Cell_NLEAF;
+  cudaVec<float>  Cell_RCRIT;
   cudaVec<uint>   nodeRange;
   cudaVec<uint2>  levelRange;
   cudaVec<uint>   validRange;
   cudaVec<uint>   compactRange;
-
   cudaVec<uint>   leafNodes;
-  cudaVec<uint2>  groupRange;
   cudaVec<vecM>   multipole;      
-
-  cudaVec<float>  openingAngle;
-  cudaVec<uint>   generalBuffer1;
-  vec4 corner;
-
-  cudaVec<vec3>   XMIN;
-  cudaVec<vec3>   XMAX;
-  cudaVec<uint>   offset;
+  cudaVec<int>    buffer;
   cudaVec<uint>   workToDo;
   
 public:
@@ -109,19 +101,13 @@ public:
     levelRange.alloc(MAXLEVELS);
     validRange.alloc(2*numBodies);
     compactRange.alloc(2*numBodies);
+    workToDo.alloc(1);
     Body_TRG.zeros();
     CU_SAFE_CALL(cudaMalloc((uint4**)&uint4buffer, numBodies*sizeof(uint4)));
-
     int treeWalkStackSize = (LMEM_STACK_SIZE * NTHREAD + 2 * NTHREAD) * NBLOCK;
     int sortBufferSize = 4 * ALIGN(numBodies,128) * 128;
-    generalBuffer1.alloc(max(treeWalkStackSize,sortBufferSize));
-    sorter = new Sort90(numBodies, generalBuffer1.devc());
-
-    XMIN.alloc(64);
-    XMAX.alloc(64);
-    offset.alloc(NBLOCK);
-    workToDo.alloc(1);
-
+    buffer.alloc(max(treeWalkStackSize,sortBufferSize));
+    sorter = new Sort90((uint)numBodies, (uint*)buffer.devc());
   }
   ~octree() {
     delete sorter;

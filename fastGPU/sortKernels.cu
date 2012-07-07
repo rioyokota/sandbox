@@ -7,19 +7,19 @@
 #include <thrust/iterator/transform_iterator.h>
 #include "octree.h"
 
-Sort90::Sort90(uint size, uint* generalBuffer) 
+Sort90::Sort90(uint size, uint* buffer) 
 {
   double_buffer = new b40c::util::DoubleBuffer<uint, uint>;
   sort_enactor = new b40c::radix_sort::Enactor;
   int offset = 0;
   int stride = ALIGN(size,128) * 128;
-  double_buffer->d_keys[0] = generalBuffer+offset;
+  double_buffer->d_keys[0] = buffer+offset;
   offset += stride;
-  double_buffer->d_keys[1] = generalBuffer+offset;
+  double_buffer->d_keys[1] = buffer+offset;
   offset += stride;
-  double_buffer->d_values[0] = generalBuffer+offset;
+  double_buffer->d_values[0] = buffer+offset;
   offset += stride;
-  double_buffer->d_values[1] = generalBuffer+offset;
+  double_buffer->d_values[1] = buffer+offset;
 }
 
 Sort90::~Sort90() 

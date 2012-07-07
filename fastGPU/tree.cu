@@ -214,14 +214,14 @@ extern "C" __global__ void getLevelRange(const int numNodes,
                                          uint* validRange) {
   uint idx = blockIdx.x * blockDim.x + threadIdx.x + numLeafs;
   if (idx >= numNodes) return;
-  const int nodeID = leafNodes[idx];
+  const int node = leafNodes[idx];
   int level_c, level_m, level_p;
-  level_c = Cell_LEVEL[leafNodes[idx]];
+  level_c = Cell_LEVEL[node];
   if( idx+1 < numNodes )
     level_p = Cell_LEVEL[leafNodes[idx+1]];
   else
     level_p = MAXLEVELS+5;
-  if(nodeID == 0)
+  if(node == 0)
     level_m = -1;    
   else
     level_m = Cell_LEVEL[leafNodes[idx-1]];
@@ -272,9 +272,9 @@ extern "C" __global__ void P2M(const int numLeafs,
                                vec4 *nodeUpperBounds) {
   const uint idx = blockIdx.x * blockDim.x + threadIdx.x;
   if (idx >= numLeafs) return;
-  int nodeID = leafNodes[idx];
-  const uint begin = Cell_LEAF[nodeID];
-  const uint size = Cell_NLEAF[nodeID];
+  int node = leafNodes[idx];
+  const uint begin = Cell_LEAF[node];
+  const uint size = Cell_NLEAF[node];
   vecM M = 0.0f;
   vec3 xmin =  1e10f;
   vec3 xmax = -1e10f;
@@ -292,9 +292,9 @@ extern "C" __global__ void P2M(const int numLeafs,
   M[1] *= invM;
   M[2] *= invM;
   M[3] *= invM;
-  multipole[nodeID] = M;
-  nodeLowerBounds[nodeID] = make_vec4(xmin[0], xmin[1], xmin[2], 0.0f);
-  nodeUpperBounds[nodeID] = make_vec4(xmax[0], xmax[1], xmax[2], 1.0f);
+  multipole[node] = M;
+  nodeLowerBounds[node] = make_vec4(xmin[0], xmin[1], xmin[2], 0.0f);
+  nodeUpperBounds[node] = make_vec4(xmax[0], xmax[1], xmax[2], 1.0f);
   return;
 }
 
@@ -308,9 +308,9 @@ extern "C" __global__ void M2M(const int level,
                                vec4 *nodeUpperBounds) {
   const uint idx = blockIdx.x * blockDim.x + threadIdx.x + nodeRange[level-1];
   if(idx >= nodeRange[level]) return;
-  const int nodeID = leafNodes[idx];
-  const uint begin = Cell_BEGIN[nodeID];
-  const uint end = begin + Cell_SIZE[nodeID];
+  const int node = leafNodes[idx];
+  const uint begin = Cell_BEGIN[node];
+  const uint end = begin + Cell_SIZE[node];
   vecM Mi = 0.0f;
   vec3 xmin =  1e10f;
   vec3 xmax = -1e10f;
@@ -327,9 +327,9 @@ extern "C" __global__ void M2M(const int level,
   Mi[1] *= invM;
   Mi[2] *= invM;
   Mi[3] *= invM;
-  multipole[nodeID] = Mi;
-  nodeLowerBounds[nodeID] = make_vec4(xmin[0], xmin[1], xmin[2], 0.0f);
-  nodeUpperBounds[nodeID] = make_vec4(xmax[0], xmax[1], xmax[2], 0.0f);
+  multipole[node] = Mi;
+  nodeLowerBounds[node] = make_vec4(xmin[0], xmin[1], xmin[2], 0.0f);
+  nodeUpperBounds[node] = make_vec4(xmax[0], xmax[1], xmax[2], 0.0f);
   return;
 }
 
@@ -339,7 +339,7 @@ extern "C" __global__ void rescale(const int numNodes,
                                    vec4 *nodeUpperBounds,
                                    uint  *Cell_BEGIN,
                                    uint  *Cell_SIZE,
-                                   float *openingAngle,
+                                   float *Cell_RCRIT,
                                    uint *Cell_LEAF,
                                    uint *Cell_NLEAF){
   const uint idx = blockIdx.x * blockDim.x + threadIdx.x;
@@ -355,20 +355,18 @@ extern "C" __global__ void rescale(const int numNodes,
 
   float length = 2 * fmaxf(boxSize);
   if(length < 1e-6) length = 1e-6;
-  float opening = length / THETA + R;
-  opening = opening * opening;
+  float RCRIT = length / THETA + R;
+  RCRIT = RCRIT * RCRIT;
   uint begin = Cell_LEAF[idx];
   uint size = Cell_NLEAF[idx];
-  bool leaf = (xmax[3] > 0);
+  bool leaf = (size <= NCRIT);
 
-  if( size == 1 )
-    opening = 10e10;
   if( leaf ) {
-    opening = -opening;
+    RCRIT = -RCRIT;
     Cell_BEGIN[idx] = begin;
     Cell_SIZE[idx] = size;
   }
-  openingAngle[idx] = opening;
+  Cell_RCRIT[idx] = RCRIT;
   return;
 }
 
@@ -411,7 +409,7 @@ void octree::buildTree() {
 void octree::allocateTreePropMemory()
 {
   multipole.alloc(numNodes);
-  openingAngle.alloc(numNodes);
+  Cell_RCRIT.alloc(numNodes);
   Cell_BEGIN.alloc(numNodes);
   Cell_SIZE.alloc(numNodes);
 }
@@ -455,5 +453,5 @@ void octree::upward() {
   }
 
   blocks = ALIGN(numNodes,threads);
-  rescale<<<blocks,threads,0,execStream>>>(numNodes,multipole.devc(),nodeLowerBounds.devc(),nodeUpperBounds.devc(),Cell_BEGIN.devc(),Cell_SIZE.devc(),openingAngle.devc(),Cell_LEAF.devc(),Cell_NLEAF.devc());
+  rescale<<<blocks,threads,0,execStream>>>(numNodes,multipole.devc(),nodeLowerBounds.devc(),nodeUpperBounds.devc(),Cell_BEGIN.devc(),Cell_SIZE.devc(),Cell_RCRIT.devc(),Cell_LEAF.devc(),Cell_NLEAF.devc());
 }

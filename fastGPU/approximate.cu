@@ -111,10 +111,10 @@ __device__ __forceinline__ void M2P(vec4 &acc,
 
 __device__ bool applyMAC(const vec3 sourceCenter,
                          const vec3 targetCenter,
-                         const float openingAngle) {
+                         const float Cell_RCRIT) {
   vec3 dist = targetCenter - sourceCenter;
   const float R2 = norm(dist);
-  return R2 <= fabsf(openingAngle);
+  return R2 <= fabsf(Cell_RCRIT);
 }
 
 __device__ void traverse(vec3 *Body_X,
@@ -123,10 +123,9 @@ __device__ void traverse(vec3 *Body_X,
                          vec4 &TRG,
                          uint *Cell_BEGIN,
                          uint *Cell_SIZE,
-                         float *openingAngle,
+                         float *Cell_RCRIT,
                          vecM *multipole,
                          vec3 targetCenter,
-                         int root,
                          int *lmem) {
   const int stackSize = LMEM_STACK_SIZE * NTHREAD;
   int *approxNodes = lmem + stackSize + 2 * WARP_SIZE * warpId;
@@ -147,7 +146,7 @@ __device__ void traverse(vec3 *Body_X,
   int numNodes = 1;
   int beginStack = 0;
   int endStack = 1;
-  stackGlob[threadIdx.x] = root + laneId;
+  stackGlob[threadIdx.x] = laneId;
   // walk each level
   while( numNodes > 0 ) {
     int numNodesNew = 0;
@@ -158,7 +157,7 @@ __device__ void traverse(vec3 *Body_X,
       bool valid = laneId < numNodes;
       int node = stackGlob[ACCESS(iStack)] & IF(valid);
       numNodes -= WARP_SIZE;
-      float opening = openingAngle[node];
+      float opening = Cell_RCRIT[node];
       vec3 sourceCenter = make_vec3(multipole[node][1],multipole[node][2],multipole[node][3]);
       bool split = applyMAC(sourceCenter, targetCenter, opening);
       bool leaf = opening <= 0;
@@ -261,11 +260,10 @@ __device__ void traverse(vec3 *Body_X,
 }
 
 extern "C" __global__ void traverseKernel(const int numLeafs,
-                                          uint2 *levelRange,
                                           uint *leafNodes,
                                           uint *Cell_BEGIN,
                                           uint *Cell_SIZE,
-                                          float *openingAngle,
+                                          float *Cell_RCRIT,
                                           vecM *multipole,
                                           vec3 *Body_X,
                                           float *Body_SRC,
@@ -286,7 +284,7 @@ extern "C" __global__ void traverseKernel(const int numLeafs,
     int body = (begin + laneId) & IF(valid);
     vec3 X = Body_X[body];
     vec4 TRG = 0.0f;
-    traverse(Body_X, Body_SRC, X, TRG, Cell_BEGIN, Cell_SIZE, openingAngle, multipole, targetCenter, levelRange[0].x, lmem);
+    traverse(Body_X, Body_SRC, X, TRG, Cell_BEGIN, Cell_SIZE, Cell_RCRIT, multipole, targetCenter, lmem);
     if( valid ) Body_TRG[body] = TRG;
   }
 }
@@ -313,16 +311,15 @@ void octree::traverse() {
   workToDo.zeros();
   traverseKernel<<<NBLOCK,NTHREAD,0,execStream>>>(
     numLeafs,
-    levelRange.devc(),
     leafNodes.devc(),
     Cell_BEGIN.devc(),
     Cell_SIZE.devc(),
-    openingAngle.devc(),
+    Cell_RCRIT.devc(),
     multipole.devc(),
     Body_X.devc(),
     Body_SRC.devc(),
     Body_TRG.devc(),
-    (int*)generalBuffer1.devc(),
+    buffer.devc(),
     workToDo.devc()
   );
 }
