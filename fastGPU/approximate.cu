@@ -95,8 +95,7 @@ __device__ __forceinline__ void P2P(vec4 &acc,
 }
 
 __device__ bool applyMAC(const vec4 sourceCenter,
-                         const vec3 groupCenter,
-                         const vec3 groupSize) {
+                         const vec3 groupCenter) {
   vec3 dist = fabsf(groupCenter - make_vec3(sourceCenter));
   const float R2 = norm(dist);
   return R2 <= fabsf(sourceCenter[3]);
@@ -109,7 +108,6 @@ __device__ void traverse(vec4 *pos,
                          float *openingAngle,
                          vecM *multipole,
                          vec3 targetCenter,
-                         vec3 targetSize,
                          uint2 rootRange,
                          int *shmem,
                          int *lmem) {
@@ -144,7 +142,7 @@ __device__ void traverse(vec4 *pos,
         float opening = openingAngle[node];
         uint sourceData = nodeChild[node];
         vec4 sourceCenter = make_vec4(multipole[node][1],multipole[node][2],multipole[node][3],opening);
-        bool split = applyMAC(sourceCenter, targetCenter, targetSize);
+        bool split = applyMAC(sourceCenter, targetCenter);
         bool leaf = opening <= 0;
         bool flag = split && !leaf && valid;
         int child = sourceData & 0x0FFFFFFF;
@@ -253,7 +251,6 @@ extern "C" __global__ void traverseKernel(const int numLeafs,
                                           vecM *multipole,
                                           vec4 *pos,
                                           vec4 *acc,
-                                          vec3 *groupSizeInfo,
                                           vec3 *groupCenterInfo,
                                           int *MEM_BUF,
                                           uint *workToDo) {
@@ -269,13 +266,12 @@ extern "C" __global__ void traverseKernel(const int numLeafs,
     const uint begin = nodeBodies[nodeID].x;
     const uint end   = nodeBodies[nodeID].y;
     const uint numGroup = end - begin;
-    vec3 groupSize = groupSizeInfo[wid[warpId]];
     vec3 groupCenter = groupCenterInfo[wid[warpId]];
     uint body_i = begin + laneId % numGroup;
     vec4 pos_i = pos[body_i];
     vec4 acc_i = 0.0f;
 
-    traverse(pos, pos_i, acc_i, nodeChild, openingAngle, multipole, groupCenter, groupSize, levelRange[2], shmem, lmem);
+    traverse(pos, pos_i, acc_i, nodeChild, openingAngle, multipole, groupCenter, levelRange[2], shmem, lmem);
     if( laneId < numGroup )
       acc[body_i] = acc_i;
   }
@@ -310,7 +306,6 @@ void octree::traverse() {
     multipole.devc(),
     bodyPos.devc(),
     bodyAcc.devc(),
-    groupSizeInfo.devc(),
     groupCenterInfo.devc(),
     (int*)generalBuffer1.devc(),
     workToDo.devc()

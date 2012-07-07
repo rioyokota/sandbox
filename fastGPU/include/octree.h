@@ -59,7 +59,6 @@ private:
   cudaVec<vecM>   multipole;      
 
   cudaVec<float>  openingAngle;
-  cudaVec<vec3>   groupSizeInfo;
   cudaVec<vec3>   groupCenterInfo;
 
   cudaVec<uint>   generalBuffer1;

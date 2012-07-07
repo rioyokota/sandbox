@@ -325,8 +325,7 @@ extern "C" __global__ void setNodeRange(int numBodies,
 extern "C" __global__ void setGroups(uint *leafNodes,
                                      uint2 *nodeBodies,
                                      vec4 *bodyPos,
-                                     vec3 *groupCenterInfo,
-                                     vec3 *groupSizeInfo){
+                                     vec3 *groupCenterInfo){
   int nodeID = leafNodes[blockIdx.x];
   vec3 xmin =  1e10f;
   vec3 xmax = -1e10f;
@@ -342,7 +341,6 @@ extern "C" __global__ void setGroups(uint *leafNodes,
   if( threadIdx.x == 0 ) {
     vec3 groupCenter = (xmin + xmax) * 0.5;
     groupCenterInfo[blockIdx.x] = groupCenter;
-    groupSizeInfo[blockIdx.x] = fmaxf(fabsf(groupCenter-xmin), fabsf(groupCenter-xmax));
   }
 }
 
@@ -514,7 +512,6 @@ void octree::buildTree() {
 void octree::allocateTreePropMemory()
 {
   multipole.alloc(numNodes);
-  groupSizeInfo.alloc(numNodes);
   openingAngle.alloc(numNodes);
   groupCenterInfo.alloc(numNodes);
 }
@@ -538,7 +535,7 @@ void octree::linkTree() {
   blocks = ALIGN(numBodies,threads);
   setNodeRange<<<blocks,threads>>>(numBodies,nodeRange.devc(),numLevels+1);
   // groupRange
-  setGroups<<<numLeafs,NCRIT>>>(leafNodes.devc(),nodeBodies.devc(),bodyPos.devc(),groupCenterInfo.devc(),groupSizeInfo.devc());
+  setGroups<<<numLeafs,NCRIT>>>(leafNodes.devc(),nodeBodies.devc(),bodyPos.devc(),groupCenterInfo.devc());
 }
 
 void octree::upward() {
