@@ -45,8 +45,9 @@ private:
     uint4 *uint4buffer;
     vec4 *vec4buffer;
   };
-  cudaVec<uint4>  bodyKeys;
-  cudaVec<uint2>  nodeBodies;
+  cudaVec<uint4>  Body_ICELL;
+  cudaVec<uint>   Cell_BEGIN;
+  cudaVec<uint>   Cell_SIZE;
   cudaVec<uint4>  nodeKeys;
   cudaVec<uint>   nodeChild;
   cudaVec<uint>   nodeRange;
@@ -93,10 +94,11 @@ public:
     assert(isPowerOfTwo(NCRIT));
     cudaSetDevice(2);
     bodyPos.alloc(numBodies+1);
-    bodyKeys.alloc(numBodies+1);
+    Body_ICELL.alloc(numBodies+1);
     bodyAcc.alloc(numBodies);
     bodyAcc2.alloc(numBodies);
-    nodeBodies.alloc(numBodies);
+    Cell_BEGIN.alloc(numBodies);
+    Cell_SIZE.alloc(numBodies);
     nodeKeys.alloc(numBodies);
     nodeChild.alloc(numBodies);
     nodeRange.alloc(MAXLEVELS*2);

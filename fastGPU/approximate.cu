@@ -261,7 +261,8 @@ __device__ void traverse(vec4 *pos,
 extern "C" __global__ void traverseKernel(const int numLeafs,
                                           uint2 *levelRange,
                                           uint *leafNodes,
-                                          uint2 *nodeBodies,
+                                          uint *Cell_BEGIN,
+                                          uint *Cell_SIZE,
                                           uint *nodeChild,
                                           float *openingAngle,
                                           vecM *multipole,
@@ -276,18 +277,15 @@ extern "C" __global__ void traverseKernel(const int numLeafs,
       wid[warpId] = atomicAdd(workToDo,1);
     if( wid[warpId] >= numLeafs ) return;
     int nodeID = leafNodes[wid[warpId]];
-    const uint begin = nodeBodies[nodeID].x;
-    const uint end   = nodeBodies[nodeID].y;
-    const uint numGroup = end - begin;
+    const uint begin = Cell_BEGIN[nodeID];
+    const uint size  = Cell_SIZE[nodeID];
     vec3 targetCenter = make_vec3(multipole[nodeID][1],multipole[nodeID][2],multipole[nodeID][3]);
-    bool valid = laneId < numGroup;
+    bool valid = laneId < size;
     int body = (begin + laneId) & IF(valid);
     vec4 pos_i = pos[body];
     vec4 acc_i = 0.0f;
-
     traverse(pos, pos_i, acc_i, nodeChild, openingAngle, multipole, targetCenter, levelRange[0].x, lmem);
-    if( laneId < numGroup )
-      acc[body] = acc_i;
+    if( valid ) acc[body] = acc_i;
   }
 }
 
@@ -314,7 +312,8 @@ void octree::traverse() {
     numLeafs,
     levelRange.devc(),
     leafNodes.devc(),
-    nodeBodies.devc(),
+    Cell_BEGIN.devc(),
+    Cell_SIZE.devc(),
     nodeChild.devc(),
     openingAngle.devc(),
     multipole.devc(),

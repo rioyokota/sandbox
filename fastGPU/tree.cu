@@ -77,7 +77,7 @@ static __device__ int findKey(uint4 key, uint2 cij, uint4 *keys) {
 
 extern "C" __global__ void getKeyKernel(int numBodies,
                                         vec4 *bodyPos,
-                                        uint4 *bodyKeys) {
+                                        uint4 *Body_ICELL) {
   const uint idx = blockIdx.x * blockDim.x + threadIdx.x;
   if (idx >= numBodies) return;
   vec4 pos = bodyPos[idx];
@@ -88,12 +88,12 @@ extern "C" __global__ void getKeyKernel(int numBodies,
   index3.z = int(pos[2] * size);
   uint4 key = getKey(index3);
   key.w = idx;
-  bodyKeys[idx] = key;
+  Body_ICELL[idx] = key;
 }
 
 extern "C" __global__ void getValidRange(int numBodies,
                                          int level,
-                                         uint4 *bodyKeys,
+                                         uint4 *Body_ICELL,
                                          uint *validRange,
                                          const uint *workToDo) {
   if (*workToDo == 0) return;
@@ -101,18 +101,18 @@ extern "C" __global__ void getValidRange(int numBodies,
   if (idx >= numBodies) return;
   const uint4 key_F = {0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF};
   uint4 mask = getMask(level);
-  uint4 key_c = bodyKeys[idx];
+  uint4 key_c = Body_ICELL[idx];
   uint4 key_m;
   if( idx == 0 )
     key_m = key_F;
   else
-    key_m = bodyKeys[idx-1];
+    key_m = Body_ICELL[idx-1];
 
   uint4 key_p;
   if( idx == numBodies-1 )
     key_p = key_F;
   else
-    key_p = bodyKeys[idx+1];
+    key_p = Body_ICELL[idx+1];
 
   int valid0 = 0;
   int valid1 = 0;
@@ -138,9 +138,10 @@ extern "C" __global__ void buildNodes(uint level,
                                       uint *maxLevel,
                                       uint2 *levelRange,
                                       uint *bodyRange,
-                                      uint4 *bodyKeys,
+                                      uint4 *Body_ICELL,
                                       uint4 *nodeKeys,
-                                      uint2 *nodeBodies) {
+                                      uint *Cell_BEGIN,
+                                      uint *Cell_SIZE) {
   if( *workToDo == 0 ) return;
   uint idx  = blockIdx.x * blockDim.x + threadIdx.x;
   const uint stride = gridDim.x * blockDim.x;
@@ -154,14 +155,15 @@ extern "C" __global__ void buildNodes(uint level,
   while( idx < n ) {
     uint begin = bodyRange[idx*2];
     uint end = bodyRange[idx*2+1]+1;
-    uint4 key  = bodyKeys[begin];
+    uint4 key  = Body_ICELL[begin];
     uint4 mask = getMask(level);
     key = make_uint4(key.x & mask.x, key.y & mask.y, key.z & mask.z, level); 
-    nodeBodies[offset+idx] = make_uint2(begin, end);
+    Cell_BEGIN[offset+idx] = begin;
+    Cell_SIZE[offset+idx] = end - begin;
     nodeKeys  [offset+idx] = key;
     if( end - begin <= NCRIT )
       for( int i=begin; i<end; i++ )
-        bodyKeys[i] = make_uint4(0xFFFFFFFF,0xFFFFFFFF,0xFFFFFFFF,0xFFFFFFFF);
+        Body_ICELL[i] = make_uint4(0xFFFFFFFF,0xFFFFFFFF,0xFFFFFFFF,0xFFFFFFFF);
     idx += stride;
   }
 
@@ -172,7 +174,7 @@ extern "C" __global__ void buildNodes(uint level,
 }
 
 extern "C" __global__ void linkNodes(int numNodes,
-                                     uint2 *nodeBodies,
+                                     uint *Cell_SIZE,
                                      uint4 *nodeKeys,
                                      uint *nodeChild,
                                      uint2 *levelRange,
@@ -181,8 +183,7 @@ extern "C" __global__ void linkNodes(int numNodes,
   if (idx >= numNodes) return;
   uint4 key = nodeKeys[idx];
   uint level = key.w;
-  uint begin = nodeBodies[idx].x;
-  uint end   = nodeBodies[idx].y;
+  uint size = Cell_SIZE[idx];
 
   uint4 mask = getMask(level-1);
   key = make_uint4(key.x & mask.x, key.y & mask.y,  key.z & mask.z, 0); 
@@ -198,7 +199,7 @@ extern "C" __global__ void linkNodes(int numNodes,
   atomicOr(&nodeChild[idx], cj);
 
   uint valid = idx; 
-  if( end - begin <= NCRIT )    
+  if( size <= NCRIT )    
     valid = idx | (uint)(1 << 31);
   validRange[idx] = valid;
 }
@@ -252,7 +253,8 @@ extern "C" __global__ void permuteBodies(const int numBodies, uint4 *index, vec4
 
 extern "C" __global__ void P2M(const int numLeafs,
                                uint *leafNodes,
-                               uint2 *nodeBodies,
+                               uint *Cell_BEGIN,
+                               uint *Cell_SIZE,
                                vec4 *bodyPos,
                                vecM *multipole,
                                vec4 *nodeLowerBounds,
@@ -260,12 +262,12 @@ extern "C" __global__ void P2M(const int numLeafs,
   const uint idx = blockIdx.x * blockDim.x + threadIdx.x;
   if (idx >= numLeafs) return;
   int nodeID = leafNodes[idx];
-  const uint begin = nodeBodies[nodeID].x;
-  const uint end   = nodeBodies[nodeID].y;
+  const uint begin = Cell_BEGIN[nodeID];
+  const uint size = Cell_SIZE[nodeID];
   vecM M = 0.0f;
   vec3 xmin =  1e10f;
   vec3 xmax = -1e10f;
-  for( int i=begin; i<end; i++ ) {
+  for( int i=begin; i<begin+size; i++ ) {
     vec4 pos = bodyPos[i];
     M[0] += pos[3];
     M[1] += pos[3] * pos[0];
@@ -324,7 +326,8 @@ extern "C" __global__ void rescale(const int numNodes,
                                    vec4 *nodeUpperBounds,
                                    uint  *nodeChild,
                                    float *openingAngle,
-                                   uint2 *nodeBodies){
+                                   uint *Cell_BEGIN,
+                                   uint *Cell_SIZE){
   const uint idx = blockIdx.x * blockDim.x + threadIdx.x;
   if(idx >= numNodes) return;
   vecM M = multipole[idx];
@@ -340,15 +343,15 @@ extern "C" __global__ void rescale(const int numNodes,
   if(length < 1e-6) length = 1e-6;
   float opening = length / THETA + R;
   opening = opening * opening;
-  uint begin = nodeBodies[idx].x;
-  uint nchild = nodeBodies[idx].y - begin;
+  uint begin = Cell_BEGIN[idx];
+  uint size = Cell_SIZE[idx];
   bool leaf = (xmax[3] > 0);
 
-  if( nchild == 1 )
+  if( size == 1 )
     opening = 10e10;
   if( leaf ) {
     opening = -opening;
-    begin = begin | ((nchild-1) << CRITBIT);
+    begin = begin | ((size-1) << CRITBIT);
     nodeChild[idx] = begin;
   }
   openingAngle[idx] = opening;
@@ -362,13 +365,13 @@ void octree::getKeys() {
 }
 
 void octree::sortKeys() {
-  sorter->sort(uint4buffer,bodyKeys,numBodies);
+  sorter->sort(uint4buffer,Body_ICELL,numBodies);
 }
 
 void octree::sortBodies() {
   int threads = 512;
   int blocks = ALIGN(numBodies,threads);
-  permuteBodies<<<blocks,threads,0,execStream>>>(numBodies,bodyKeys.devc(),bodyPos.devc(),vec4buffer);
+  permuteBodies<<<blocks,threads,0,execStream>>>(numBodies,Body_ICELL.devc(),bodyPos.devc(),vec4buffer);
   CU_SAFE_CALL(cudaMemcpy(bodyPos.devc(),vec4buffer,numBodies*sizeof(vec4),cudaMemcpyDeviceToDevice));
 }
 
@@ -381,9 +384,9 @@ void octree::buildTree() {
   int threads = 128;
   int blocks = ALIGN(numBodies,threads);
   for( int level=0; level<MAXLEVELS; level++ ) {
-    getValidRange<<<blocks,threads,0,execStream>>>(numBodies,level,bodyKeys.devc(),validRange.devc(),workToDo.devc());
+    getValidRange<<<blocks,threads,0,execStream>>>(numBodies,level,Body_ICELL.devc(),validRange.devc(),workToDo.devc());
     gpuCompact(validRange,compactRange,2*numBodies);
-    buildNodes<<<64,threads,0,execStream>>>(level,workToDo.devc(),maxLevel.devc(),levelRange.devc(),compactRange.devc(),bodyKeys.devc(),nodeKeys.devc(),nodeBodies.devc());
+    buildNodes<<<64,threads,0,execStream>>>(level,workToDo.devc(),maxLevel.devc(),levelRange.devc(),compactRange.devc(),Body_ICELL.devc(),nodeKeys.devc(),Cell_BEGIN.devc(),Cell_SIZE.devc());
   }
   maxLevel.d2h();
   numLevels = maxLevel[0];
@@ -402,7 +405,7 @@ void octree::linkTree() {
   nodeChild.zeros();
   int threads = 128;
   int blocks = ALIGN(numNodes,threads);
-  linkNodes<<<blocks,threads,0,execStream>>>(numNodes,nodeBodies.devc(),nodeKeys.devc(),nodeChild.devc(),levelRange.devc(),validRange.devc());
+  linkNodes<<<blocks,threads,0,execStream>>>(numNodes,Cell_SIZE.devc(),nodeKeys.devc(),nodeChild.devc(),levelRange.devc(),validRange.devc());
   leafNodes.alloc(numNodes);
   workToDo.ones();
   gpuSplit(validRange, leafNodes, numNodes);
@@ -414,7 +417,7 @@ void octree::linkTree() {
   getLevelRange<<<blocks,threads,0,execStream>>>(numNodes,numLeafs,leafNodes.devc(),nodeKeys.devc(),validRange.devc());
   gpuCompact(validRange, nodeRange, 2*(numNodes-numLeafs));
   blocks = ALIGN(numBodies,threads);
-  setNodeRange<<<blocks,threads>>>(numBodies,nodeRange.devc(),numLevels+1);
+  setNodeRange<<<blocks,threads,0,execStream>>>(numBodies,nodeRange.devc(),numLevels+1);
 }
 
 void octree::upward() {
@@ -425,7 +428,7 @@ void octree::upward() {
 
   int threads = 128;
   int blocks = ALIGN(numLeafs,threads);
-  P2M<<<blocks,threads,0,execStream>>>(numLeafs,leafNodes.devc(),nodeBodies.devc(),bodyPos.devc(),multipole.devc(),nodeLowerBounds.devc(),nodeUpperBounds.devc());
+  P2M<<<blocks,threads,0,execStream>>>(numLeafs,leafNodes.devc(),Cell_BEGIN.devc(),Cell_SIZE.devc(),bodyPos.devc(),multipole.devc(),nodeLowerBounds.devc(),nodeUpperBounds.devc());
 
   nodeRange.d2h();
   for( int level=numLevels; level>=1; level-- ) {
@@ -435,5 +438,5 @@ void octree::upward() {
   }
 
   blocks = ALIGN(numNodes,threads);
-  rescale<<<blocks,threads,0,execStream>>>(numNodes,multipole.devc(),nodeLowerBounds.devc(),nodeUpperBounds.devc(),nodeChild.devc(),openingAngle.devc(),nodeBodies.devc());
+  rescale<<<blocks,threads,0,execStream>>>(numNodes,multipole.devc(),nodeLowerBounds.devc(),nodeUpperBounds.devc(),nodeChild.devc(),openingAngle.devc(),Cell_BEGIN.devc(),Cell_SIZE.devc());
 }
