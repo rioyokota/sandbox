@@ -265,9 +265,10 @@ extern "C" __global__ void P2M(const int numLeafs,
                                uint *leafNodes,
                                uint *Cell_LEAF,
                                uint *Cell_NLEAF,
+                               vec3 *Cell_X,
                                vec3 *Body_X,
                                float *Body_SRC,
-                               vecM *multipole,
+                               vecM *Multipole,
                                vec4 *nodeLowerBounds,
                                vec4 *nodeUpperBounds) {
   const uint idx = blockIdx.x * blockDim.x + threadIdx.x;
@@ -275,24 +276,26 @@ extern "C" __global__ void P2M(const int numLeafs,
   int node = leafNodes[idx];
   const uint begin = Cell_LEAF[node];
   const uint size = Cell_NLEAF[node];
-  vecM M = 0.0f;
+  vecM Mi = 0.0f;
+  vec3 Xi = 0.0f;
   vec3 xmin =  1e10f;
   vec3 xmax = -1e10f;
   for( int i=begin; i<begin+size; i++ ) {
-    float SRC = Body_SRC[i];
-    vec3 X = Body_X[i];
-    M[0] += SRC;
-    M[1] += SRC * X[0];
-    M[2] += SRC * X[1];
-    M[3] += SRC * X[2];
-    pairMinMax(xmin, xmax, X, X);
+    float Mj = Body_SRC[i];
+    vec3 Xj = Body_X[i];
+    Mi[0] += Mj;
+    Xi[0] += Mj * Xj[0];
+    Xi[1] += Mj * Xj[1];
+    Xi[2] += Mj * Xj[2];
+    pairMinMax(xmin, xmax, Xj, Xj);
   }
-  float invM = 1.0 / M[0];
-  if(M[0] == 0) invM = 0;
-  M[1] *= invM;
-  M[2] *= invM;
-  M[3] *= invM;
-  multipole[node] = M;
+  float invM = 1.0 / Mi[0];
+  if(Mi[0] == 0) invM = 0;
+  Xi[0] *= invM;
+  Xi[1] *= invM;
+  Xi[2] *= invM;
+  Multipole[node] = Mi;
+  Cell_X[node] = Xi;
   nodeLowerBounds[node] = make_vec4(xmin[0], xmin[1], xmin[2], 0.0f);
   nodeUpperBounds[node] = make_vec4(xmax[0], xmax[1], xmax[2], 1.0f);
   return;
@@ -303,7 +306,8 @@ extern "C" __global__ void M2M(const int level,
                                uint *nodeRange,
                                uint *Cell_BEGIN,
                                uint *Cell_SIZE,
-                               vecM *multipole,
+                               vec3 *Cell_X,
+                               vecM *Multipole,
                                vec4 *nodeLowerBounds,
                                vec4 *nodeUpperBounds) {
   const uint idx = blockIdx.x * blockDim.x + threadIdx.x + nodeRange[level-1];
@@ -312,44 +316,49 @@ extern "C" __global__ void M2M(const int level,
   const uint begin = Cell_BEGIN[node];
   const uint end = begin + Cell_SIZE[node];
   vecM Mi = 0.0f;
+  vec3 Xi = 0.0f;
   vec3 xmin =  1e10f;
   vec3 xmax = -1e10f;
   for( int i=begin; i<end; i++ ) {
-    vecM Mj = multipole[i];
+    vecM Mj = Multipole[i];
+    vec3 Xj = Cell_X[i];
     Mi[0] += Mj[0];
-    Mi[1] += Mj[0] * Mj[1];
-    Mi[2] += Mj[0] * Mj[2];
-    Mi[3] += Mj[0] * Mj[3];
+    Xi[0] += Mj[0] * Xj[0];
+    Xi[1] += Mj[0] * Xj[1];
+    Xi[2] += Mj[0] * Xj[2];
     pairMinMax(xmin, xmax, make_vec3(nodeLowerBounds[i]), make_vec3(nodeUpperBounds[i]));
   }
   float invM = 1.0 / Mi[0];
   if(Mi[0] == 0) invM = 0;
-  Mi[1] *= invM;
-  Mi[2] *= invM;
-  Mi[3] *= invM;
-  multipole[node] = Mi;
+  Xi[0] *= invM;
+  Xi[1] *= invM;
+  Xi[2] *= invM;
+  Multipole[node] = Mi;
+  Cell_X[node] = Xi;
   nodeLowerBounds[node] = make_vec4(xmin[0], xmin[1], xmin[2], 0.0f);
   nodeUpperBounds[node] = make_vec4(xmax[0], xmax[1], xmax[2], 0.0f);
   return;
 }
 
 extern "C" __global__ void rescale(const int numNodes,
-                                   vecM *multipole,
+                                   vecM *Multipole,
                                    vec4 *nodeLowerBounds,
                                    vec4 *nodeUpperBounds,
                                    uint  *Cell_BEGIN,
                                    uint  *Cell_SIZE,
                                    float *Cell_RCRIT,
+                                   vec3 *Cell_X,
                                    uint *Cell_LEAF,
                                    uint *Cell_NLEAF){
   const uint idx = blockIdx.x * blockDim.x + threadIdx.x;
   if(idx >= numNodes) return;
-  vecM M = multipole[idx];
+  vecM M = Multipole[idx];
+  vec3 X = Cell_X[idx];
   vec4 xmin = nodeLowerBounds[idx];
   vec4 xmax = nodeUpperBounds[idx];
   vec3 boxCenter = make_vec3(xmin + xmax) * 0.5;
   vec3 boxSize = fmaxf(fabsf(boxCenter-make_vec3(xmin)), fabsf(boxCenter-make_vec3(xmax)));
-  vec3 dist = boxCenter - make_vec3(M[1],M[2],M[3]);
+  vec3 dist = boxCenter - X;
   float R = norm(dist);
   if(fabsf(M[0]) < 1e-10) R = 0;
 
@@ -408,10 +417,11 @@ void octree::buildTree() {
 
 void octree::allocateTreePropMemory()
 {
-  multipole.alloc(numNodes);
-  Cell_RCRIT.alloc(numNodes);
+  Multipole.alloc(numNodes);
   Cell_BEGIN.alloc(numNodes);
   Cell_SIZE.alloc(numNodes);
+  Cell_RCRIT.alloc(numNodes);
+  Cell_X.alloc(numNodes);
 }
 
 void octree::linkTree() {
@@ -443,15 +453,15 @@ void octree::upward() {
 
   int threads = 128;
   int blocks = ALIGN(numLeafs,threads);
-  P2M<<<blocks,threads,0,execStream>>>(numLeafs,leafNodes.devc(),Cell_LEAF.devc(),Cell_NLEAF.devc(),Body_X.devc(),Body_SRC.devc(),multipole.devc(),nodeLowerBounds.devc(),nodeUpperBounds.devc());
+  P2M<<<blocks,threads,0,execStream>>>(numLeafs,leafNodes.devc(),Cell_LEAF.devc(),Cell_NLEAF.devc(),Cell_X.devc(),Body_X.devc(),Body_SRC.devc(),Multipole.devc(),nodeLowerBounds.devc(),nodeUpperBounds.devc());
 
   nodeRange.d2h();
   for( int level=numLevels; level>=1; level-- ) {
     int totalOnThisLevel = nodeRange[level] - nodeRange[level-1];
     blocks = ALIGN(totalOnThisLevel,threads);
-    M2M<<<blocks,threads,0,execStream>>>(level,leafNodes.devc(),nodeRange.devc(),Cell_BEGIN.devc(),Cell_SIZE.devc(),multipole.devc(),nodeLowerBounds.devc(),nodeUpperBounds.devc());
+    M2M<<<blocks,threads,0,execStream>>>(level,leafNodes.devc(),nodeRange.devc(),Cell_BEGIN.devc(),Cell_SIZE.devc(),Cell_X.devc(),Multipole.devc(),nodeLowerBounds.devc(),nodeUpperBounds.devc());
   }
 
   blocks = ALIGN(numNodes,threads);
-  rescale<<<blocks,threads,0,execStream>>>(numNodes,multipole.devc(),nodeLowerBounds.devc(),nodeUpperBounds.devc(),Cell_BEGIN.devc(),Cell_SIZE.devc(),Cell_RCRIT.devc(),Cell_LEAF.devc(),Cell_NLEAF.devc());
+  rescale<<<blocks,threads,0,execStream>>>(numNodes,Multipole.devc(),nodeLowerBounds.devc(),nodeUpperBounds.devc(),Cell_BEGIN.devc(),Cell_SIZE.devc(),Cell_RCRIT.devc(),Cell_X.devc(),Cell_LEAF.devc(),Cell_NLEAF.devc());
 }

@@ -53,12 +53,13 @@ private:
   cudaVec<uint>   Cell_LEAF;
   cudaVec<uint>   Cell_NLEAF;
   cudaVec<float>  Cell_RCRIT;
+  cudaVec<vec3>   Cell_X;
   cudaVec<uint>   nodeRange;
   cudaVec<uint2>  levelRange;
   cudaVec<uint>   validRange;
   cudaVec<uint>   compactRange;
   cudaVec<uint>   leafNodes;
-  cudaVec<vecM>   multipole;      
+  cudaVec<vecM>   Multipole;      
   cudaVec<int>    buffer;
   cudaVec<uint>   workToDo;
   
