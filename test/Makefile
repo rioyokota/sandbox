@@ -34,7 +34,7 @@ hello: hello.asm
 direct: direct.o p2p_sse.o
 	$(NVCC) $? -lpapi
 	./a.out
-p2p: p2p.o p2p_sse.o
+p2p: p2p.o
 	$(NVCC) $? -lpapi
 	./a.out
 cpufmm: cpufmm.o

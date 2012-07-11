@@ -53,6 +53,7 @@ private:
   cudaVec<uint>   Cell_LEAF;
   cudaVec<uint>   Cell_NLEAF;
   cudaVec<float>  Cell_RCRIT;
+  cudaVec<float>  Cell_R;
   cudaVec<vec3>   Cell_X;
   cudaVec<uint>   nodeRange;
   cudaVec<uint2>  levelRange;

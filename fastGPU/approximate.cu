@@ -83,32 +83,64 @@ __device__ __forceinline__ void P2P(vec4 &acc,
                                     const vec3 targetX,
                                     const vec3 sourceX,
                                     const float sourceM) {
-  vec3 dist = sourceX - targetX;
+  vec3 dist = targetX - sourceX;
   const float R2 = norm(dist) + EPS2;
   float invR = rsqrtf(R2);
   const float invR2 = invR * invR;
   invR *= sourceM;
-  dist *= invR * invR2;
-  acc[3] -= invR;
-  acc[0] += dist[0];
-  acc[1] += dist[1];
-  acc[2] += dist[2];
+  float invR3 = invR * invR2;
+  acc[0] += invR;
+  acc[1] -= dist[0] * invR3;
+  acc[2] -= dist[1] * invR3;
+  acc[3] -= dist[2] * invR3;
 }
 
 __device__ __forceinline__ void M2P(vec4 &acc,
                                     const vec3 targetX,
                                     const vec3 sourceX,
                                     const vecM M) {
-  vec3 dist = sourceX - targetX;
+  vec3 dist = targetX - sourceX;
   const float R2 = norm(dist) + EPS2;
   float invR = rsqrtf(R2);
-  const float invR2 = invR * invR;
+  float invR2 = invR * invR;
   invR *= M[0];
-  dist *= invR * invR2;
-  acc[3] -= invR;
-  acc[0] += dist[0];
-  acc[1] += dist[1];
-  acc[2] += dist[2];
+  invR2 = -invR2;
+  vecL C;
+  C[0] = invR;
+  float invR3 = invR * invR2;
+  C[1] = dist[0] * invR3;
+  C[2] = dist[1] * invR3;
+  C[3] = dist[2] * invR3;
+  acc += make_vec4(C[0],C[1],C[2],C[3]);
+/*
+  float invR5 = 3 * invR3 * invR2;
+  float t = dist[0] * invR5;
+  C[4] = dist[0] * t + invR3;
+  C[5] = dist[1] * t;
+  C[6] = dist[2] * t;
+  t = dist[1] * invR5;
+  C[7] = dist[1] * t + invR3;
+  C[8] = dist[2] * t;
+  C[9] = dist[2] * dist[2] * invR5 + invR3;
+  float invR7 = 5 * invR5 * invR2;
+  t = dist[0] * dist[0] * invR7;
+  C[10] = dist[0] * (t + 3 * invR5);
+  C[11] = dist[1] * (t +     invR5);
+  C[12] = dist[2] * (t +     invR5);
+  t = dist[1] * dist[1] * invR7;
+  C[13] = dist[0] * (t +     invR5);
+  C[16] = dist[1] * (t + 3 * invR5);
+  C[17] = dist[2] * (t +     invR5);
+  t = dist[2] * dist[2] * invR7;
+  C[15] = dist[0] * (t +     invR5);
+  C[18] = dist[1] * (t +     invR5);
+  C[19] = dist[2] * (t + 3 * invR5);
+  C[14] = dist[0] * dist[1] * dist[2] * invR7;
+  acc[0] += C[4] *M[1] + C[5] *M[2] + C[6] *M[3] + C[7] *M[4] + C[8] *M[5] + C[9] *M[6];
+  acc[1] += C[10]*M[1] + C[11]*M[2] + C[12]*M[3] + C[13]*M[4] + C[14]*M[5] + C[15]*M[6];
+  acc[2] += C[11]*M[1] + C[13]*M[2] + C[14]*M[3] + C[16]*M[4] + C[17]*M[5] + C[18]*M[6];
+  acc[3] += C[12]*M[1] + C[14]*M[2] + C[15]*M[3] + C[17]*M[4] + C[18]*M[5] + C[19]*M[6];
+*/
 }
 
 __device__ bool applyMAC(const vec3 sourceX,

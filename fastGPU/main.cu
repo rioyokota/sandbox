@@ -23,9 +23,9 @@ int main() {
     for( uint i=0; i<numBodies/100; i++ ) {
       vec4 fapprox = tree->Body_TRG[i];
       vec4 fdirect = tree->Body2_TRG[i];
-      diff1 += (fapprox[3] - fdirect[3]) * (fapprox[3] - fdirect[3]);
+      diff1 += (fapprox[0] - fdirect[0]) * (fapprox[0] - fdirect[0]);
       diff2 += norm(make_vec3(fapprox - fdirect));
-      norm1 += fdirect[3] * fdirect[3];
+      norm1 += fdirect[0] * fdirect[0];
       norm2 += norm(make_vec3(fdirect));
     }
     printf("Direct: %lf\n",toc-tic);

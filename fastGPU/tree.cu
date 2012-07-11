@@ -6,7 +6,7 @@ static __device__ void pairMinMax(vec3 &xmin, vec3 &xmax,
   xmax = fmaxf(xmax, Xmax);
 }
 
-static __device__ uint4 getKey(int4 index3) {
+static __device__ uint4 getKey(int3 index3) {
   const int bits = 30;
   uint4 key4 = {0, 0, 0, 0};
   int mask = 1 << (bits - 1);
@@ -27,6 +27,29 @@ static __device__ uint4 getKey(int4 index3) {
   }
   key4.z = key;
   return key4;
+}
+
+static __device__ int3 getIndex(uint4 key4) {
+  const int bits = 30;
+  int3 index3 = {0, 0, 0};
+  int mask = 1 << (bits - 1);
+  int key = 0;
+  for( int i=0; i<bits; i++, mask >>= 1) {
+    int xi = (index3.x & mask) ? 1 : 0;
+    int yi = (index3.y & mask) ? 1 : 0;
+    int zi = (index3.z & mask) ? 1 : 0;
+    key = (key << 3) + (xi << 2) + (yi << 1) + zi;
+    if(i == 19) {
+      key4.y = key;
+      key = 0;
+    }
+    if(i == 9) {
+      key4.x = key;
+      key = 0;
+    }
+  }
+  key4.z = key;
+  return index3;
 }
 
 static __device__ uint3 getMask(int level) {
@@ -81,7 +104,7 @@ extern "C" __global__ void getKeyKernel(int numBodies,
   const uint idx = blockIdx.x * blockDim.x + threadIdx.x;
   if (idx >= numBodies) return;
   vec3 pos = Body_X[idx];
-  int4 index3;
+  int3 index3;
   float size = 1 << MAXLEVELS;
   index3.x = int(pos[0] * size);
   index3.y = int(pos[1] * size);
@@ -180,6 +203,8 @@ extern "C" __global__ void linkNodes(int numNodes,
                                      uint *Cell_NLEAF,
                                      uint *Cell_BEGIN,
                                      uint *Cell_SIZE,
+                                     float *Cell_R,
+                                     vec3 *Cell_X,
                                      uint2 *levelRange,
                                      uint* validRange) {
   const uint idx = blockIdx.x * blockDim.x + threadIdx.x;
@@ -187,6 +212,7 @@ extern "C" __global__ void linkNodes(int numNodes,
   uint3 key = Cell_ICELL[idx];
   uint level = Cell_LEVEL[idx];
   uint size = Cell_NLEAF[idx];
+  Cell_R[idx] = .5 / (1 << level);
 
   uint3 mask = getMask(level-1);
   key = make_uint3(key.x & mask.x, key.y & mask.y,  key.z & mask.z); 
@@ -265,19 +291,20 @@ extern "C" __global__ void P2M(const int numLeafs,
                                uint *leafNodes,
                                uint *Cell_LEAF,
                                uint *Cell_NLEAF,
+                               float *Cell_R,
                                vec3 *Cell_X,
                                vec3 *Body_X,
                                float *Body_SRC,
                                vecM *Multipole,
-                               vec4 *nodeLowerBounds,
-                               vec4 *nodeUpperBounds) {
+                               vec3 *XMIN,
+                               vec3 *XMAX) {
   const uint idx = blockIdx.x * blockDim.x + threadIdx.x;
   if (idx >= numLeafs) return;
   int node = leafNodes[idx];
   const uint begin = Cell_LEAF[node];
   const uint size = Cell_NLEAF[node];
-  vecM Mi = 0.0f;
   vec3 Xi = 0.0f;
+  vecM Mi = 0.0f;
   vec3 xmin =  1e10f;
   vec3 xmax = -1e10f;
   for( int i=begin; i<begin+size; i++ ) {
@@ -294,10 +321,23 @@ extern "C" __global__ void P2M(const int numLeafs,
   Xi[0] *= invM;
   Xi[1] *= invM;
   Xi[2] *= invM;
-  Multipole[node] = Mi;
   Cell_X[node] = Xi;
-  nodeLowerBounds[node] = make_vec4(xmin[0], xmin[1], xmin[2], 0.0f);
-  nodeUpperBounds[node] = make_vec4(xmax[0], xmax[1], xmax[2], 1.0f);
+  XMIN[node] = xmin;
+  XMAX[node] = xmax;
+  for( int i=begin; i<begin+size; i++ ) {
+    float Mj = Body_SRC[i];
+    vec3 dist = Xi - Body_X[i];
+    float tmp = Mj * dist[0];
+    Mi[1] += tmp * dist[0] / 2;
+    Mi[2] += tmp * dist[1];
+    Mi[3] += tmp * dist[2];
+    tmp = Mj * dist[1];
+    Mi[4] += tmp * dist[1] / 2;
+    Mi[5] += tmp * dist[2];
+    Mi[6] += Mj * dist[2] * dist[2] / 2;
+  }
+  for( int i=1; i<MTERM; i++ ) Mi[i] *= invM;
+  Multipole[node] = Mi;
   return;
 }
 
@@ -306,47 +346,63 @@ extern "C" __global__ void M2M(const int level,
                                uint *nodeRange,
                                uint *Cell_BEGIN,
                                uint *Cell_SIZE,
+                               float *Cell_R,
                                vec3 *Cell_X,
                                vecM *Multipole,
-                               vec4 *nodeLowerBounds,
-                               vec4 *nodeUpperBounds) {
+                               vec3 *XMIN,
+                               vec3 *XMAX) {
   const uint idx = blockIdx.x * blockDim.x + threadIdx.x + nodeRange[level-1];
   if(idx >= nodeRange[level]) return;
   const int node = leafNodes[idx];
   const uint begin = Cell_BEGIN[node];
   const uint end = begin + Cell_SIZE[node];
-  vecM Mi = 0.0f;
   vec3 Xi = 0.0f;
+  vecM Mi = 0.0f;
   vec3 xmin =  1e10f;
   vec3 xmax = -1e10f;
   for( int i=begin; i<end; i++ ) {
-    vecM Mj = Multipole[i];
+    float Mj = Multipole[i][0];
     vec3 Xj = Cell_X[i];
-    Mi[0] += Mj[0];
-    Xi[0] += Mj[0] * Xj[0];
-    Xi[1] += Mj[0] * Xj[1];
-    Xi[2] += Mj[0] * Xj[2];
-    pairMinMax(xmin, xmax, make_vec3(nodeLowerBounds[i]), make_vec3(nodeUpperBounds[i]));
+    Mi[0] += Mj;
+    Xi[0] += Mj * Xj[0];
+    Xi[1] += Mj * Xj[1];
+    Xi[2] += Mj * Xj[2];
+    pairMinMax(xmin, xmax, XMIN[i], XMAX[i]);
   }
   float invM = 1.0 / Mi[0];
   if(Mi[0] == 0) invM = 0;
   Xi[0] *= invM;
   Xi[1] *= invM;
   Xi[2] *= invM;
-  Multipole[node] = Mi;
   Cell_X[node] = Xi;
-  nodeLowerBounds[node] = make_vec4(xmin[0], xmin[1], xmin[2], 0.0f);
-  nodeUpperBounds[node] = make_vec4(xmax[0], xmax[1], xmax[2], 0.0f);
+  XMIN[node] = xmin;
+  XMAX[node] = xmax;
+  for( int i=begin; i<end; i++ ) {
+    vecM Mj = Multipole[i];
+    for( int m=1; m<MTERM; m++ ) Mi[m] += Mj[m] * Mj[0];
+    vec3 dist = Xi - Cell_X[i];
+    float tmp = Mj[0] * dist[0];
+    Mi[1] += tmp * dist[0] / 2;
+    Mi[2] += tmp * dist[1];
+    Mi[3] += tmp * dist[2];
+    tmp = Mj[0] * dist[1];
+    Mi[4] += tmp * dist[1] / 2;
+    Mi[5] += tmp * dist[2];
+    Mi[6] += Mj[0] * dist[2] * dist[2] / 2;
+  }
+  for( int i=1; i<MTERM; i++ ) Mi[i] *= invM;
+  Multipole[node] = Mi;
   return;
 }
 
 extern "C" __global__ void rescale(const int numNodes,
                                    vecM *Multipole,
-                                   vec4 *nodeLowerBounds,
-                                   vec4 *nodeUpperBounds,
+                                   vec3 *XMIN,
+                                   vec3 *XMAX,
                                    uint  *Cell_BEGIN,
                                    uint  *Cell_SIZE,
                                    float *Cell_RCRIT,
+                                   float *Cell_R,
                                    vec3 *Cell_X,
                                    uint *Cell_LEAF,
                                    uint *Cell_NLEAF){
@@ -354,12 +410,13 @@ extern "C" __global__ void rescale(const int numNodes,
   if(idx >= numNodes) return;
   vecM M = Multipole[idx];
   vec3 X = Cell_X[idx];
-  vec4 xmin = nodeLowerBounds[idx];
-  vec4 xmax = nodeUpperBounds[idx];
-  vec3 boxCenter = make_vec3(xmin + xmax) * 0.5;
-  vec3 boxSize = fmaxf(fabsf(boxCenter-make_vec3(xmin)), fabsf(boxCenter-make_vec3(xmax)));
+  vec3 xmin = XMIN[idx];
+  vec3 xmax = XMAX[idx];
+  vec3 boxCenter = (xmin + xmax) * 0.5;
+//  vec3 boxSize = fmaxf(fabsf(boxCenter-xmin), fabsf(boxCenter-xmax));
+  vec3 boxSize = Cell_R[idx];
   vec3 dist = boxCenter - X;
-  float R = norm(dist);
+  float R = sqrtf(norm(dist));
   if(fabsf(M[0]) < 1e-10) R = 0;
 
   float length = 2 * fmaxf(boxSize);
@@ -421,6 +478,7 @@ void octree::allocateTreePropMemory()
   Cell_BEGIN.alloc(numNodes);
   Cell_SIZE.alloc(numNodes);
   Cell_RCRIT.alloc(numNodes);
+  Cell_R.alloc(numNodes);
   Cell_X.alloc(numNodes);
 }
 
@@ -430,7 +488,7 @@ void octree::linkTree() {
   Cell_SIZE.zeros();
   int threads = 128;
   int blocks = ALIGN(numNodes,threads);
-  linkNodes<<<blocks,threads,0,execStream>>>(numNodes,Cell_ICELL.devc(),Cell_LEVEL.devc(),Cell_NLEAF.devc(),Cell_BEGIN.devc(),Cell_SIZE.devc(),levelRange.devc(),validRange.devc());
+  linkNodes<<<blocks,threads,0,execStream>>>(numNodes,Cell_ICELL.devc(),Cell_LEVEL.devc(),Cell_NLEAF.devc(),Cell_BEGIN.devc(),Cell_SIZE.devc(),Cell_R.devc(),Cell_X.devc(),levelRange.devc(),validRange.devc());
   leafNodes.alloc(numNodes);
   workToDo.ones();
   gpuSplit(validRange, leafNodes, numNodes);
@@ -446,22 +504,22 @@ void octree::linkTree() {
 }
 
 void octree::upward() {
-  cudaVec<vec4> nodeLowerBounds;
-  cudaVec<vec4> nodeUpperBounds;
-  nodeLowerBounds.alloc(numNodes);
-  nodeUpperBounds.alloc(numNodes);
+  cudaVec<vec3> XMIN;
+  cudaVec<vec3> XMAX;
+  XMIN.alloc(numNodes);
+  XMAX.alloc(numNodes);
 
   int threads = 128;
   int blocks = ALIGN(numLeafs,threads);
-  P2M<<<blocks,threads,0,execStream>>>(numLeafs,leafNodes.devc(),Cell_LEAF.devc(),Cell_NLEAF.devc(),Cell_X.devc(),Body_X.devc(),Body_SRC.devc(),Multipole.devc(),nodeLowerBounds.devc(),nodeUpperBounds.devc());
+  P2M<<<blocks,threads,0,execStream>>>(numLeafs,leafNodes.devc(),Cell_LEAF.devc(),Cell_NLEAF.devc(),Cell_R.devc(),Cell_X.devc(),Body_X.devc(),Body_SRC.devc(),Multipole.devc(),XMIN.devc(),XMAX.devc());
 
   nodeRange.d2h();
   for( int level=numLevels; level>=1; level-- ) {
     int totalOnThisLevel = nodeRange[level] - nodeRange[level-1];
     blocks = ALIGN(totalOnThisLevel,threads);
-    M2M<<<blocks,threads,0,execStream>>>(level,leafNodes.devc(),nodeRange.devc(),Cell_BEGIN.devc(),Cell_SIZE.devc(),Cell_X.devc(),Multipole.devc(),nodeLowerBounds.devc(),nodeUpperBounds.devc());
+    M2M<<<blocks,threads,0,execStream>>>(level,leafNodes.devc(),nodeRange.devc(),Cell_BEGIN.devc(),Cell_SIZE.devc(),Cell_R.devc(),Cell_X.devc(),Multipole.devc(),XMIN.devc(),XMAX.devc());
   }
 
   blocks = ALIGN(numNodes,threads);
-  rescale<<<blocks,threads,0,execStream>>>(numNodes,Multipole.devc(),nodeLowerBounds.devc(),nodeUpperBounds.devc(),Cell_BEGIN.devc(),Cell_SIZE.devc(),Cell_RCRIT.devc(),Cell_X.devc(),Cell_LEAF.devc(),Cell_NLEAF.devc());
+  rescale<<<blocks,threads,0,execStream>>>(numNodes,Multipole.devc(),XMIN.devc(),XMAX.devc(),Cell_BEGIN.devc(),Cell_SIZE.devc(),Cell_RCRIT.devc(),Cell_R.devc(),Cell_X.devc(),Cell_LEAF.devc(),Cell_NLEAF.devc());
 }
