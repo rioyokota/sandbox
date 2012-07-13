@@ -23,7 +23,8 @@ int main(){
   //    << vec[0].y << " "
   //    << vec[0].z << endl;
 #endif
-  int nbody = 1<<20;
+  int nbody = 10000000;
+  std::cout << "N = " << nbody << std::endl;
   vector<float4> vec(nbody);
   Plummer plummer(nbody);
   for(int i=0; i<nbody; i++){

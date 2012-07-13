@@ -16,21 +16,26 @@ void radixsort(int *a, int *b, int *p, int *q, int n) {
   const int bitStride = 8;
   const int stride = 1 << bitStride;
   const int mask = stride - 1;
-  int (*bucket2D)[stride] = new int [OMP_NUM_THREADS][stride]();
-  int amax = 0;
+  int (*bucketPerThread)[stride] = new int [OMP_NUM_THREADS][stride]();
+  int aMaxPerThread[OMP_NUM_THREADS] = {0};
+#pragma omp parallel for num_threads(OMP_NUM_THREADS)
   for( int i=0; i<n; i++ )
-    if( a[i] > amax ) amax = a[i];
-  while( amax > 0 ) {
+    if( a[i] > aMaxPerThread[omp_get_thread_num()] )
+      aMaxPerThread[omp_get_thread_num()] = a[i];
+  int aMax = 0;
+  for( int i=0; i<OMP_NUM_THREADS; i++ )
+    if( aMaxPerThread[i] > aMax ) aMax = aMaxPerThread[i];
+  while( aMax > 0 ) {
     int bucket[stride] = {0};
     for( int t=0; t<OMP_NUM_THREADS; t++ )
       for( int i=0; i<stride; i++ )
-        bucket2D[t][i] = 0;
+        bucketPerThread[t][i] = 0;
 #pragma omp parallel for num_threads(OMP_NUM_THREADS)
     for( int i=0; i<n; i++ )
-      bucket2D[omp_get_thread_num()][a[i] & mask]++;
+      bucketPerThread[omp_get_thread_num()][a[i] & mask]++;
     for( int t=0; t<OMP_NUM_THREADS; t++ )
       for( int i=0; i<stride; i++ )
-        bucket[i] += bucket2D[t][i];
+        bucket[i] += bucketPerThread[t][i];
     for( int i=1; i<stride; i++ )
       bucket[i] += bucket[i-1];
     for( int i=n-1; i>=0; i-- )
@@ -47,9 +52,9 @@ void radixsort(int *a, int *b, int *p, int *q, int n) {
 #pragma omp parallel for num_threads(OMP_NUM_THREADS)
     for( int i=0; i<n; i++ )
       a[i] = b[i] >> bitStride;
-    amax >>= bitStride;
+    aMax >>= bitStride;
   }
-  delete[] bucket2D;
+  delete[] bucketPerThread;
 }
  
  
