@@ -9,7 +9,7 @@
 
 const int N = 10001;
 const float OPS = 20. * N * N * 1e-9;
-const float EPS2 = 1e-6;
+const float EPS2 = 0.0;
 
 struct float4 {
   float x;
@@ -32,6 +32,7 @@ double get_time() {
 }
 
 void P2Psse(float16 &target4, const float4 *source, const int &n){
+  __m128 zero = _mm_setzero_ps();       // zero = 0
   __m128 ax = _mm_setzero_ps();         // ax = 0
   __m128 ay = _mm_setzero_ps();         // ay = 0
   __m128 az = _mm_setzero_ps();         // az = 0
@@ -65,6 +66,8 @@ void P2Psse(float16 &target4, const float4 *source, const int &n){
   z2 = x2;                              // z2 = x2;
   for( int j=0; j<n; j++ ) {
     __m128 invR = _mm_rsqrt_ps(R2);     // invR = rsqrt(R2)       1
+    __m128 mask = _mm_cmpgt_ps(R2,zero);// mask = R2 > 0
+    invR = _mm_and_ps(invR,mask);       // invR = invR & mask
     source++;
     R2 = _mm_load_ps(target4.w);        // R2 = target4.w
     x2 = _mm_shuffle_ps(x2, x2, 0x00);  // x2 = source->x
@@ -138,6 +141,7 @@ void P2P(float4 *target, float4 *source, int ni, int nj, float eps2) {
       float dz = source[j].z - source[i].z;
       float R2 = dx * dx + dy * dy + dz * dz + eps2;
       float invR = 1. / sqrtf(R2);
+      if( R2 == 0 ) invR = 0;
       t.w += source[j].w * invR;
       float invR3 = invR * invR * invR * source[j].w;
       t.x += dx * invR3;
@@ -188,8 +192,10 @@ int main() {
 // COMPARE RESULTS
   float pd = 0, pn = 0, fd = 0, fn = 0;
   for( int i=0; i<N; i++ ) {
-    hostR[i].w -= hostS[i].w / sqrtf(EPS2);
-    hostT[i].w -= hostS[i].w / sqrtf(EPS2);
+    if( EPS2 != 0 ) {
+      hostR[i].w -= hostS[i].w / sqrtf(EPS2);
+      hostT[i].w -= hostS[i].w / sqrtf(EPS2);
+    }
     pd += (hostR[i].w - hostT[i].w) * (hostR[i].w - hostT[i].w);
     pn += hostR[i].w * hostR[i].w;
     fd += (hostR[i].x - hostT[i].x) * (hostR[i].x - hostT[i].x)
