@@ -17,7 +17,9 @@ double get_time() {
   return double(tv.tv_sec+tv.tv_usec*1e-6);
 }
 
-extern void P2Phost(float4 *target, float4 *source, int ni, int nj, float eps2);
+extern void P2Psse(float4 *target, float4 *source, int ni, int nj, float eps2);
+
+extern void P2Pasm(float4 *target, float4 *source, int ni, int nj, float eps2);
 
 __global__ void P2Pdevice(float4 *target, float4 *source) {
   int i = blockIdx.x * THREADS + threadIdx.x;
@@ -45,21 +47,22 @@ __global__ void P2Pdevice(float4 *target, float4 *source) {
 
 int main() {
 // ALLOCATE
-  float4 *hostS = new float4 [N];
-  float4 *hostT = new float4 [N];
-  float4 *hostR = new float4 [N];
+  float4 *sourceHost = new float4 [N];
+  float4 *targetSSE = new float4 [N];
+  float4 *targetASM = new float4 [N];
+  float4 *targetGPU = new float4 [N];
   for( int i=0; i<N; i++ ) {
-    hostS[i].x = drand48();
-    hostS[i].y = drand48();
-    hostS[i].z = drand48();
-    hostS[i].w = drand48() / N;
+    sourceHost[i].x = drand48();
+    sourceHost[i].y = drand48();
+    sourceHost[i].z = drand48();
+    sourceHost[i].w = drand48() / N;
   }
-  float4 *deviceS, *deviceT;
-  cudaMalloc((void**)&deviceS,N*sizeof(float4));
-  cudaMalloc((void**)&deviceT,N*sizeof(float4));
+  float4 *sourceDevc, *targetDevc;
+  cudaMalloc((void**)&sourceDevc,N*sizeof(float4));
+  cudaMalloc((void**)&targetDevc,N*sizeof(float4));
   std::cout << std::scientific << "N     : " << N << std::endl;
 
-// CPU P2P
+// SSE P2P
   int Events[3] = { PAPI_L2_DCM, PAPI_L2_DCA, PAPI_TLB_DM };
   int EventSet = PAPI_NULL;
   PAPI_library_init(PAPI_VER_CURRENT);
@@ -68,7 +71,7 @@ int main() {
   PAPI_start(EventSet);
 
   double tic = get_time();
-  P2Phost(hostR,hostS,N,N,EPS2);
+  P2Psse(targetSSE,sourceHost,N,N,EPS2);
   double toc = get_time();
 
   long long values[3];
@@ -77,36 +80,51 @@ int main() {
             << " L2 Access: " << values[1]
             << " TLB Miss: " << values[2] << std::endl;
 
-  std::cout << std::scientific << "CPU   : " << toc-tic << " s : " << OPS / (toc-tic) << " GFlops" << std::endl;
+  std::cout << std::scientific << "SSE   : " << toc-tic << " s : " << OPS / (toc-tic) << " GFlops" << std::endl;
+
+// SSE P2P
+  PAPI_start(EventSet);
+
+  tic = get_time();
+  P2Pasm(targetASM,sourceHost,N,N,EPS2);
+  toc = get_time();
+
+  PAPI_stop(EventSet,values);
+  std::cout << "L2 Miss: " << values[0]
+            << " L2 Access: " << values[1]
+            << " TLB Miss: " << values[2] << std::endl;
+
+  std::cout << std::scientific << "ASM   : " << toc-tic << " s : " << OPS / (toc-tic) << " GFlops" << std::endl;
 
 // GPU P2P
-  cudaMemcpy(deviceS,hostS,N*sizeof(float4),cudaMemcpyHostToDevice);
+  cudaMemcpy(sourceDevc,sourceHost,N*sizeof(float4),cudaMemcpyHostToDevice);
   tic = get_time();
-  P2Pdevice<<<N/THREADS,THREADS>>>(deviceT,deviceS);
+  P2Pdevice<<<N/THREADS,THREADS>>>(targetDevc,sourceDevc);
   toc = get_time();
-  cudaMemcpy(hostT,deviceT,N*sizeof(float4),cudaMemcpyDeviceToHost);
+  cudaMemcpy(targetGPU,targetDevc,N*sizeof(float4),cudaMemcpyDeviceToHost);
   std::cout << std::scientific << "GPU   : " << toc-tic << " s : " << OPS / (toc-tic) << " GFlops" << std::endl;
   cudaDeviceReset();
 
 // COMPARE RESULTS
   float pd = 0, pn = 0, fd = 0, fn = 0;
   for( int i=0; i<N; i++ ) {
-    hostR[i].w -= hostS[i].w / sqrtf(EPS2);
-    hostT[i].w -= hostS[i].w / sqrtf(EPS2);
-    pd += (hostR[i].w - hostT[i].w) * (hostR[i].w - hostT[i].w);
-    pn += hostR[i].w * hostR[i].w;
-    fd += (hostR[i].x - hostT[i].x) * (hostR[i].x - hostT[i].x)
-        + (hostR[i].y - hostT[i].y) * (hostR[i].y - hostT[i].y)
-        + (hostR[i].z - hostT[i].z) * (hostR[i].z - hostT[i].z);
-    fn += hostR[i].x * hostR[i].x + hostR[i].y * hostR[i].y + hostR[i].z * hostR[i].z;
+    targetSSE[i].w -= sourceHost[i].w / sqrtf(EPS2);
+    targetGPU[i].w -= sourceHost[i].w / sqrtf(EPS2);
+    pd += (targetSSE[i].w - targetGPU[i].w) * (targetSSE[i].w - targetGPU[i].w);
+    pn += targetSSE[i].w * targetSSE[i].w;
+    fd += (targetSSE[i].x - targetGPU[i].x) * (targetSSE[i].x - targetGPU[i].x)
+        + (targetSSE[i].y - targetGPU[i].y) * (targetSSE[i].y - targetGPU[i].y)
+        + (targetSSE[i].z - targetGPU[i].z) * (targetSSE[i].z - targetGPU[i].z);
+    fn += targetSSE[i].x * targetSSE[i].x + targetSSE[i].y * targetSSE[i].y + targetSSE[i].z * targetSSE[i].z;
   }
   std::cout << std::scientific << "P ERR : " << sqrtf(pd/pn) << std::endl;
   std::cout << std::scientific << "F ERR : " << sqrtf(fd/fn) << std::endl;
 
 // DEALLOCATE
-  cudaFree(deviceS);
-  cudaFree(deviceT);
-  delete[] hostT;
-  delete[] hostS;
-  delete[] hostR;
+  cudaFree(sourceDevc);
+  cudaFree(targetDevc);
+  delete[] sourceHost;
+  delete[] targetSSE;
+  delete[] targetASM;
+  delete[] targetGPU;
 }

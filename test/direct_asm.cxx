@@ -48,7 +48,7 @@ struct float16 {
   float w[4];
 };
 
-void P2Pasm(float16 *target, const float4 *source, const int &n){
+void P2PasmKernel(float16 *target, const float4 *source, const int &n){
   assert(((unsigned long)source & 15) == 0);
   assert(((unsigned long)target & 15) == 0);
 
@@ -135,7 +135,7 @@ void P2Pasm(float16 *target, const float4 *source, const int &n){
   STORPS(PHI, *target->w);     // target->w = PHI
 }
 
-void P2Phost(float4 *target, float4 *source, int ni, int nj, float eps2) {
+void P2Pasm(float4 *target, float4 *source, int ni, int nj, float eps2) {
 #pragma omp parallel for
   for( int base=0; base<ni; base+=4 ) {
     float16 target4;
@@ -145,7 +145,7 @@ void P2Phost(float4 *target, float4 *source, int ni, int nj, float eps2) {
       target4.z[i] = source[base+i].z;
       target4.w[i] = eps2;
     }
-    P2Pasm(&target4, source, nj);
+    P2PasmKernel(&target4, source, nj);
     for( int i=0; i<4; i++ ) {
       target[base+i].x = target4.x[i];
       target[base+i].y = target4.y[i];
