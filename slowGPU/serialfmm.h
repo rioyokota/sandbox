@@ -9,15 +9,16 @@ protected:
 private:
   inline void setMorton(int *key) {
     float d = 2 * R0 / (1 << MAXLEVEL);
+#pragma omp parallel for
     for( int b=0; b<numBodies; b++ ) {
       int ix = int((Jbodies[b][0] + R0 - X0[0]) / d);
       int iy = int((Jbodies[b][1] + R0 - X0[1]) / d);
       int iz = int((Jbodies[b][2] + R0 - X0[2]) / d);
       int id = 0;
       for( int l=0; l<MAXLEVEL; ++l ) {
-        id += ix % 2 << (3 * l);
-        id += iy % 2 << (3 * l + 1);
-        id += iz % 2 << (3 * l + 2);
+        id += (ix & 1) << (3 * l);
+        id += (iy & 1) << (3 * l + 1);
+        id += (iz & 1) << (3 * l + 2);
         ix >>= 1;
         iy >>= 1;
         iz >>= 1;

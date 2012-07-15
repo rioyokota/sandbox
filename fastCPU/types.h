@@ -12,6 +12,7 @@
 #include <vector>
 #include "vec.h"
 #include <sys/time.h>
+#include <xmmintrin.h>
 
 typedef unsigned           bigint;                              //!< Big integer type
 typedef float              real;                                //!< Real number type on CPU

@@ -1,10 +1,6 @@
 #ifndef evaluator_h
 #define evaluator_h
-#if COMkernel
-#include "kernel.h"
-#else
-#include "kernel2.h"
-#endif
+#include "cartesian.h"
 #define splitFirst(Ci,Cj) Cj->NCHILD == 0 || (Ci->NCHILD != 0 && Ci->RCRIT >= Cj->RCRIT)
 
 class Evaluator : public Kernel {
