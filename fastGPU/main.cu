@@ -3,30 +3,35 @@
 int main() {
   for( int it=0; it<25; it++ ) {
     uint numBodies = uint(pow(10,(it+24)/8.0));
-    octree *tree = new octree(numBodies);
+    float eps      = 0.01f;
+    float theta    = 0.75f;
+    octree *tree = new octree(numBodies, theta, eps);
     printf("N     : %d\n",numBodies);
     for( uint i=0; i<numBodies; i++ ) {
-      tree->Body_X[i][0]  = drand48();
-      tree->Body_X[i][1]  = drand48();
-      tree->Body_X[i][2]  = drand48();
-      tree->Body_SRC[i]  = 1. / numBodies;
+      tree->bodyPos[i].w  = 1. / numBodies;
+      tree->bodyPos[i].x  = drand48();
+      tree->bodyPos[i].y  = drand48();
+      tree->bodyPos[i].z  = drand48();
     }
-    tree->Body_X.h2d();
-    tree->Body_SRC.h2d();
+    tree->bodyPos.h2d();
     tree->iterate(); 
     double tic = tree->get_time();
     tree->direct();
     double toc = tree->get_time();
-    tree->Body_TRG.d2h();
-    tree->Body2_TRG.d2h();
+    tree->bodyAcc.d2h();
+    tree->bodyAcc2.d2h();
     float diff1 = 0, norm1 = 0, diff2 = 0, norm2 = 0;
     for( uint i=0; i<numBodies/100; i++ ) {
-      vec4 fapprox = tree->Body_TRG[i];
-      vec4 fdirect = tree->Body2_TRG[i];
-      diff1 += (fapprox[0] - fdirect[0]) * (fapprox[0] - fdirect[0]);
-      diff2 += norm(make_vec3(fapprox - fdirect));
-      norm1 += fdirect[0] * fdirect[0];
-      norm2 += norm(make_vec3(fdirect));
+      float4 fapprox = tree->bodyAcc[i];
+      float4 fdirect = tree->bodyAcc2[i];
+      diff1 += (fapprox.w - fdirect.w) * (fapprox.w - fdirect.w);
+      diff2 += (fapprox.x - fdirect.x) * (fapprox.x - fdirect.x);
+      diff2 += (fapprox.y - fdirect.y) * (fapprox.y - fdirect.y);
+      diff2 += (fapprox.z - fdirect.z) * (fapprox.z - fdirect.z);
+      norm1 += fdirect.w * fdirect.w;
+      norm2 += fdirect.x * fdirect.x;
+      norm2 += fdirect.y * fdirect.y;
+      norm2 += fdirect.z * fdirect.z;
     }
     printf("Direct: %lf\n",toc-tic);
     printf("P Err : %f\n",sqrtf(diff1/norm1));

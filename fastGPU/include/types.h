@@ -13,49 +13,181 @@
 #include <string>
 #include <sys/time.h>
 #include <vector>
-#include "cudavec.h"
-#include "macros.h"
-#include "vec.h"
 
-typedef vec<3,float> vec3;
-typedef vec<4,float> vec4;
+#define NLEAF 16
+#define NCRIT 32
+#define NTHREAD 128
+#define NBLOCK 512
+#define WARP_SIZE 32
+#define MAXLEVELS 30
+#define LMEM_STACK_SIZE 2048
+#define NWARP (NTHREAD / WARP_SIZE)
 
-const int  P     = 3;
-const float EPS2  = 0.0001;
-const float THETA = .6;
+#if NLEAF == 8
+#define NLEAF2 3
+#define LEAFBIT 29
+#define BODYMASK 0x1FFFFFFF
+#define INVBMASK 0xE0000000
+#elif NLEAF == 16
+#define NLEAF2 4
+#define LEAFBIT 28
+#define BODYMASK 0x0FFFFFFF
+#define INVBMASK 0xF0000000
+#elif NLEAF == 32
+#define NLEAF2 5
+#define LEAFBIT 27
+#define BODYMASK 0x07FFFFFF
+#define INVBMASK 0xF8000000
+#elif NLEAF == 64
+#define NLEAF2 6
+#define LEAFBIT 26
+#define BODYMASK 0x03FFFFFF
+#define INVBMASK 0xFC000000
+#elif NLEAF == 128
+#define NLEAF2 7
+#define LEAFBIT 25
+#define BODYMASK 0x01FFFFFF
+#define INVBMASK 0xFE000000
+#else
+#error "Please choose correct NLEAF available in node_specs.h"
+#endif
 
-const int MTERM = P*(P+1)*(P+2)/6;
-const int LTERM = (P+1)*(P+2)*(P+3)/6;
-typedef vec<MTERM,float> vecM;
-typedef vec<LTERM,float> vecL;
+#if NCRIT == 8
+#define NCRIT2 3
+#define CRITBIT 29
+#define CRITMASK 0x1FFFFFFF
+#define INVCMASK 0xE0000000
+#elif NCRIT == 16
+#define NCRIT2 4
+#define CRITBIT 28
+#define CRITMASK 0x0FFFFFFF
+#define INVCMASK 0xF0000000
+#elif NCRIT == 32
+#define NCRIT2 5
+#define CRITBIT 27
+#define CRITMASK 0x07FFFFFF
+#define INVCMASK 0xF8000000
+#elif NCRIT == 64
+#define NCRIT2 6
+#define CRITBIT 26
+#define CRITMASK 0x03FFFFFF
+#define INVCMASK 0xFC000000
+#elif NCRIT == 128
+#define NCRIT2 7
+#define CRITBIT 25
+#define CRITMASK 0x01FFFFFF
+#define INVCMASK 0xFE000000
+#else
+#error "Please choose correct NCRIT available in node_specs.h"
+#endif
 
-namespace {
-__host__ __device__
-inline vec3 make_vec3(float x, float y, float z) {
-  vec3 output;
-  output[0] = x;
-  output[1] = y;
-  output[2] = z;
-  return output;
+#if NTHREAD == 8
+#define NTHREAD2 3
+#elif NTHREAD == 16
+#define NTHREAD2 4
+#elif NTHREAD == 32
+#define NTHREAD2 5
+#elif NTHREAD == 64
+#define NTHREAD2 6
+#elif NTHREAD == 96
+#define NTHREAD2 7
+#elif NTHREAD == 128
+#define NTHREAD2 7
+#elif NTHREAD == 256
+#define NTHREAD2 8
+#else
+#error "Please choose correct NTHREAD available in node_specs.h"
+#endif
+
+#if WARP_SIZE == 16
+#define WARP_SIZE2 4
+#elif WARP_SIZE == 32
+#define WARP_SIZE2 5
+#else
+#error "Please choose correct WARP_SIZE available in node_specs.h"
+#endif
+
+#if NCRIT > 2*WARP_SIZE
+#error "NCRIT in include/node_specs.h must be <= WARP_SIZE"
+#endif
+
+#if NCRIT < NLEAF
+#error "Fatal, NCRIT < NLEAF. Please check that NCRIT >= NLEAF"
+#endif
+
+#define ALIGN(a, b) ((a - 1) / b + 1)
+
+#define CU_SAFE_CALL(err)  __checkCudaErrors (err, __FILE__, __LINE__)
+inline void __checkCudaErrors(cudaError err, const char *file, const int line ) {
+  if(cudaSuccess != err) {
+    fprintf(stderr, "%s(%i) : CUDA Runtime API error %d: %s.\n",file, line, (int)err, cudaGetErrorString( err ) );
+    exit(-1);
+  }
 }
 
-__host__ __device__
-inline vec3 make_vec3(vec4 input) {
-  vec3 output;
-  output[0] = input[0];
-  output[1] = input[1];
-  output[2] = input[2];
-  return output;
-}
+template<class T>
+class cudaVec {
+private:
+  int size;
+  T *devcPtr;
+  T *hostPtr;
 
-__host__ __device__
-inline vec4 make_vec4(float x, float y, float z, float w) {
-  vec4 output;
-  output[0] = x;
-  output[1] = y;
-  output[2] = z;
-  output[3] = w;
-  return output;
-}
-}
+public:
+  cudaVec() : size(0), devcPtr(NULL), hostPtr(NULL) {}
+
+  ~cudaVec() {
+    cudaFree(devcPtr);
+#if PINNED
+    cudaFreeHost((void*)hostPtr);
+#else
+    free(hostPtr);
+#endif
+  }
+  
+  void alloc(int n) {
+    assert(size == 0);
+    size = n;
+#if PINNED
+    CU_SAFE_CALL(cudaMallocHost((T**)&hostPtr, size*sizeof(T)));
+#else
+    hostPtr = (T*)malloc(size*sizeof(T));
+#endif
+    CU_SAFE_CALL(cudaMalloc((T**)&devcPtr, size*sizeof(T)));
+  }
+
+  void zeros() {
+    CU_SAFE_CALL(cudaMemset((void*)devcPtr, 0, size*sizeof(T)));     
+  }
+
+  void ones() {
+    CU_SAFE_CALL(cudaMemset((void*)devcPtr, 1, size*sizeof(T)));
+  }
+
+  void d2h() {
+    CU_SAFE_CALL(cudaMemcpy(hostPtr, devcPtr, size*sizeof(T), cudaMemcpyDeviceToHost));
+  }
+  
+  void d2h(int n) {
+    CU_SAFE_CALL(cudaMemcpy(hostPtr, devcPtr, n*sizeof(T),cudaMemcpyDeviceToHost));
+  }    
+  
+  void h2d() {
+    CU_SAFE_CALL(cudaMemcpy(devcPtr, hostPtr, size*sizeof(T),cudaMemcpyHostToDevice ));
+  }
+  
+  void h2d(int n) {
+    CU_SAFE_CALL(cudaMemcpy(devcPtr, hostPtr, n*sizeof(T),cudaMemcpyHostToDevice));
+  }        
+
+  void tex(const char *symbol) {
+    const textureReference *texref;
+    cudaChannelFormatDesc channelDesc = cudaCreateChannelDesc<T>();
+    CU_SAFE_CALL(cudaGetTextureReference(&texref,symbol));
+    CU_SAFE_CALL(cudaBindTexture(0,texref,(void*)devcPtr,&channelDesc,sizeof(T)*size));
+  }
+
+  T& operator[] (int i){ return hostPtr[i]; }
+  T* devc() {return devcPtr;}
+};
+
 #endif

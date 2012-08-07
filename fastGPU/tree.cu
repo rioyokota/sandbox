@@ -1,13 +1,60 @@
 #include "octree.h"
 
-static __device__ void pairMinMax(vec3 &xmin, vec3 &xmax,
-                                  vec3 Xmin, vec3 Xmax) {
-  xmin = fminf(xmin, Xmin);
-  xmax = fmaxf(xmax, Xmax);
+static __device__ void pairMinMax(float3 &xmin, float3 &xmax,
+                                  float4 reg_min, float4 reg_max) {
+  xmin.x = fminf(xmin.x, reg_min.x);
+  xmin.y = fminf(xmin.y, reg_min.y);
+  xmin.z = fminf(xmin.z, reg_min.z);
+  xmax.x = fmaxf(xmax.x, reg_max.x);
+  xmax.y = fmaxf(xmax.y, reg_max.y);
+  xmax.z = fmaxf(xmax.z, reg_max.z);
 }
 
-static __device__ uint4 getKey(int3 index3) {
+static __device__ void pairMinMax(int i, int j, float3 &xmin, float3 &xmax,
+                                  volatile float3 *sh_xmin, volatile float3 *sh_xmax) {
+  sh_xmin[i].x = xmin.x = fminf(xmin.x, sh_xmin[j].x);
+  sh_xmin[i].y = xmin.y = fminf(xmin.y, sh_xmin[j].y);
+  sh_xmin[i].z = xmin.z = fminf(xmin.z, sh_xmin[j].z);
+  sh_xmax[i].x = xmax.x = fmaxf(xmax.x, sh_xmax[j].x);
+  sh_xmax[i].y = xmax.y = fmaxf(xmax.y, sh_xmax[j].y);
+  sh_xmax[i].z = xmax.z = fmaxf(xmax.z, sh_xmax[j].z);
+}
+
+static __device__ void sharedMinMax(float3 &xmin, float3 &xmax) {
+  volatile __shared__ float3 sh_xmin[NCRIT];
+  volatile __shared__ float3 sh_xmax[NCRIT];
+  sh_xmin[threadIdx.x].x = xmin.x;
+  sh_xmin[threadIdx.x].y = xmin.y;
+  sh_xmin[threadIdx.x].z = xmin.z;
+  sh_xmax[threadIdx.x].x = xmax.x;
+  sh_xmax[threadIdx.x].y = xmax.y;
+  sh_xmax[threadIdx.x].z = xmax.z;
+
+  __syncthreads();
+  if(blockDim.x >= 512 && threadIdx.x < 256)
+    pairMinMax(threadIdx.x, threadIdx.x + 256, xmin, xmax, sh_xmin, sh_xmax);
+  __syncthreads();
+  if(blockDim.x >= 256 && threadIdx.x < 128)
+    pairMinMax(threadIdx.x, threadIdx.x + 128, xmin, xmax, sh_xmin, sh_xmax);
+  __syncthreads();
+  if(blockDim.x >= 128 && threadIdx.x < 64)
+    pairMinMax(threadIdx.x, threadIdx.x + 64, xmin, xmax, sh_xmin, sh_xmax);
+  __syncthreads();
+  if(blockDim.x >= 64 && threadIdx.x < 32)
+    pairMinMax(threadIdx.x, threadIdx.x + 32, xmin, xmax, sh_xmin, sh_xmax);
+  if(blockDim.x >= 32 && threadIdx.x < 16)
+    pairMinMax(threadIdx.x, threadIdx.x + 16, xmin, xmax, sh_xmin, sh_xmax);
+  if(threadIdx.x < 8) {
+    pairMinMax(threadIdx.x, threadIdx.x +  8, xmin, xmax, sh_xmin, sh_xmax);
+    pairMinMax(threadIdx.x, threadIdx.x +  4, xmin, xmax, sh_xmin, sh_xmax);
+    pairMinMax(threadIdx.x, threadIdx.x +  2, xmin, xmax, sh_xmin, sh_xmax);
+    pairMinMax(threadIdx.x, threadIdx.x +  1, xmin, xmax, sh_xmin, sh_xmax);
+  }
+}
+
+static __device__ uint4 getKey(int4 index3) {
   const int bits = 30;
+  const int C[8] = {0, 1, 7, 6, 3, 2, 4, 5};
   uint4 key4 = {0, 0, 0, 0};
   int mask = 1 << (bits - 1);
   int key = 0;
@@ -15,7 +62,28 @@ static __device__ uint4 getKey(int3 index3) {
     int xi = (index3.x & mask) ? 1 : 0;
     int yi = (index3.y & mask) ? 1 : 0;
     int zi = (index3.z & mask) ? 1 : 0;        
-    key = (key << 3) + (xi << 2) + (yi << 1) + zi;
+    int index = (xi << 2) + (yi << 1) + zi;
+    if(index == 0) {
+      index3.w = index3.z;
+      index3.z = index3.y;
+      index3.y = index3.w;
+    } else if(index == 1 || index == 5) {
+      index3.w = index3.x;
+      index3.x = index3.y;
+      index3.y = index3.w;
+    } else if(index == 4 || index == 6) {
+      index3.x = (index3.x) ^ (-1);
+      index3.z = (index3.z) ^ (-1);
+    } else if(index == 7 || index == 3) {
+      index3.w = (index3.x) ^ (-1);         
+      index3.x = (index3.y) ^ (-1);
+      index3.y = index3.w;
+    } else {
+      index3.w = (index3.z) ^ (-1);         
+      index3.z = (index3.y) ^ (-1);
+      index3.y = index3.w;          
+    }   
+    key = (key << 3) + C[index];
     if(i == 19) {
       key4.y = key;
       key = 0;
@@ -29,32 +97,9 @@ static __device__ uint4 getKey(int3 index3) {
   return key4;
 }
 
-static __device__ int3 getIndex(uint4 key4) {
-  const int bits = 30;
-  int3 index3 = {0, 0, 0};
-  int mask = 1 << (bits - 1);
-  int key = 0;
-  for( int i=0; i<bits; i++, mask >>= 1) {
-    int xi = (index3.x & mask) ? 1 : 0;
-    int yi = (index3.y & mask) ? 1 : 0;
-    int zi = (index3.z & mask) ? 1 : 0;
-    key = (key << 3) + (xi << 2) + (yi << 1) + zi;
-    if(i == 19) {
-      key4.y = key;
-      key = 0;
-    }
-    if(i == 9) {
-      key4.x = key;
-      key = 0;
-    }
-  }
-  key4.z = key;
-  return index3;
-}
-
-static __device__ uint3 getMask(int level) {
+static __device__ uint4 getMask(int level) {
   int mask_levels = 3 * (MAXLEVELS - level);
-  uint3 mask = {0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF};
+  uint4 mask = {0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF};
   if (mask_levels > 60) {
     mask.z = 0;
     mask.y = 0;
@@ -68,7 +113,7 @@ static __device__ uint3 getMask(int level) {
   return mask;
 }
 
-static __device__ int compareKey(uint3 a, uint3 b) {
+static __device__ int compareKey(uint4 a, uint4 b) {
   if      (a.x < b.x) return -1;
   else if (a.x > b.x) return +1;
   else {
@@ -83,7 +128,7 @@ static __device__ int compareKey(uint3 a, uint3 b) {
 }
 
 //Binary search of the key within certain bounds (cij.x, cij.y)
-static __device__ int findKey(uint3 key, uint2 cij, uint3 *keys) {
+static __device__ int findKey(uint4 key, uint2 cij, uint4 *keys) {
   int l = cij.x;
   int r = cij.y - 1;
   while (r - l > 1) {
@@ -98,44 +143,70 @@ static __device__ int findKey(uint3 key, uint2 cij, uint3 *keys) {
   return r;
 }
 
+extern "C" __global__ void boundaryReduction(const int numBodies,
+                                             float4 *bodyPos,
+                                             float3 *output_xmin,
+                                             float3 *output_xmax)
+{
+  float3 xmin = make_float3(+1e10f, +1e10f, +1e10f);
+  float3 xmax = make_float3(-1e10f, -1e10f, -1e10f);
+  uint idx = blockIdx.x * blockDim.x + threadIdx.x;
+  const uint stride = blockDim.x * gridDim.x;
+  while (idx < numBodies) {
+    float4 pos = bodyPos[idx];
+    pairMinMax(xmin, xmax, pos, pos);
+    idx += stride;
+  }
+  sharedMinMax(xmin,xmax);
+
+  if( threadIdx.x == 0 ) {
+    output_xmin[blockIdx.x].x = xmin.x;
+    output_xmin[blockIdx.x].y = xmin.y;
+    output_xmin[blockIdx.x].z = xmin.z;
+    output_xmax[blockIdx.x].x = xmax.x;
+    output_xmax[blockIdx.x].y = xmax.y;
+    output_xmax[blockIdx.x].z = xmax.z;
+  }
+}
+
 extern "C" __global__ void getKeyKernel(int numBodies,
-                                        vec3 *Body_X,
-                                        uint4 *Body_ICELL) {
+                                        float4 corner,
+                                        float4 *bodyPos,
+                                        uint4 *bodyKeys) {
   const uint idx = blockIdx.x * blockDim.x + threadIdx.x;
   if (idx >= numBodies) return;
-  vec3 pos = Body_X[idx];
-  int3 index3;
-  float size = 1 << MAXLEVELS;
-  index3.x = int(pos[0] * size);
-  index3.y = int(pos[1] * size);
-  index3.z = int(pos[2] * size);
+  float4 pos = bodyPos[idx];
+  int4 index3;
+  index3.x = (int)roundf(__fdividef(pos.x - corner.x, corner.w));
+  index3.y = (int)roundf(__fdividef(pos.y - corner.y, corner.w));
+  index3.z = (int)roundf(__fdividef(pos.z - corner.z, corner.w));
   uint4 key = getKey(index3);
   key.w = idx;
-  Body_ICELL[idx] = key;
+  bodyKeys[idx] = key;
 }
 
 extern "C" __global__ void getValidRange(int numBodies,
                                          int level,
-                                         uint4 *Body_ICELL,
+                                         uint4 *bodyKeys,
                                          uint *validRange,
                                          const uint *workToDo) {
   if (*workToDo == 0) return;
   const uint idx = blockIdx.x * blockDim.x + threadIdx.x;
   if (idx >= numBodies) return;
-  const uint3 key_F = {0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF};
-  uint3 mask = getMask(level);
-  uint3 key_c = make_uint3(Body_ICELL[idx].x,Body_ICELL[idx].y,Body_ICELL[idx].z);
-  uint3 key_m;
+  const uint4 key_F = {0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF};
+  uint4 mask = getMask(level);
+  uint4 key_c = bodyKeys[idx];
+  uint4 key_m;
   if( idx == 0 )
     key_m = key_F;
   else
-    key_m = make_uint3(Body_ICELL[idx-1].x,Body_ICELL[idx-1].y,Body_ICELL[idx-1].z);
+    key_m = bodyKeys[idx-1];
 
-  uint3 key_p;
+  uint4 key_p;
   if( idx == numBodies-1 )
     key_p = key_F;
   else
-    key_p = make_uint3(Body_ICELL[idx+1].x,Body_ICELL[idx+1].y,Body_ICELL[idx+1].z);
+    key_p = bodyKeys[idx+1];
 
   int valid0 = 0;
   int valid1 = 0;
@@ -156,16 +227,15 @@ extern "C" __global__ void getValidRange(int numBodies,
   validRange[idx*2+1] = idx | ((valid1) << 31);
 }
 
-extern "C" __global__ void buildNodes(uint level,
-                                      uint *workToDo,
-                                      uint *maxLevel,
-                                      uint2 *levelRange,
-                                      uint *bodyRange,
-                                      uint4 *Body_ICELL,
-                                      uint3 *Cell_ICELL,
-                                      uint *Cell_LEVEL,
-                                      uint *Cell_LEAF,
-                                      uint *Cell_NLEAF) {
+extern "C" __global__ void buildNodes(
+                             uint level,
+                             uint *workToDo,
+                             uint *maxLevel,
+                             uint2 *levelRange,
+                             uint *bodyRange,
+                             uint4 *bodyKeys,
+                             uint4 *nodeKeys,
+                             uint2 *nodeBodies) {
   if( *workToDo == 0 ) return;
   uint idx  = blockIdx.x * blockDim.x + threadIdx.x;
   const uint stride = gridDim.x * blockDim.x;
@@ -179,15 +249,14 @@ extern "C" __global__ void buildNodes(uint level,
   while( idx < n ) {
     uint begin = bodyRange[idx*2];
     uint end = bodyRange[idx*2+1]+1;
-    uint4 key  = Body_ICELL[begin];
-    uint3 mask = getMask(level);
-    Cell_ICELL[offset+idx] = make_uint3(key.x & mask.x, key.y & mask.y, key.z & mask.z);
-    Cell_LEVEL[offset+idx] = level;
-    Cell_LEAF[offset+idx] = begin;
-    Cell_NLEAF[offset+idx] = end - begin;
-    if( end - begin <= NCRIT )
+    uint4 key  = bodyKeys[begin];
+    uint4 mask = getMask(level);
+    key = make_uint4(key.x & mask.x, key.y & mask.y, key.z & mask.z, level); 
+    nodeBodies[offset+idx] = make_uint2(begin, end);
+    nodeKeys  [offset+idx] = key;
+    if( end - begin <= NLEAF )
       for( int i=begin; i<end; i++ )
-        Body_ICELL[i] = make_uint4(0xFFFFFFFF,0xFFFFFFFF,0xFFFFFFFF,0xFFFFFFFF);
+        bodyKeys[i] = make_uint4(0xFFFFFFFF,0xFFFFFFFF,0xFFFFFFFF,0xFFFFFFFF);
     idx += stride;
   }
 
@@ -198,37 +267,34 @@ extern "C" __global__ void buildNodes(uint level,
 }
 
 extern "C" __global__ void linkNodes(int numNodes,
-                                     uint3 *Cell_ICELL,
-                                     uint *Cell_LEVEL,
-                                     uint *Cell_NLEAF,
-                                     uint *Cell_BEGIN,
-                                     uint *Cell_SIZE,
-                                     float *Cell_R,
-                                     vec3 *Cell_X,
+                                     float4 corner,
+                                     uint2 *nodeBodies,
+                                     uint4 *nodeKeys,
+                                     uint *nodeChild,
                                      uint2 *levelRange,
                                      uint* validRange) {
   const uint idx = blockIdx.x * blockDim.x + threadIdx.x;
   if (idx >= numNodes) return;
-  uint3 key = Cell_ICELL[idx];
-  uint level = Cell_LEVEL[idx];
-  uint size = Cell_NLEAF[idx];
-  Cell_R[idx] = .5 / (1 << level);
+  uint4 key = nodeKeys[idx];
+  uint level = key.w;
+  uint begin = nodeBodies[idx].x;
+  uint end   = nodeBodies[idx].y;
 
-  uint3 mask = getMask(level-1);
-  key = make_uint3(key.x & mask.x, key.y & mask.y,  key.z & mask.z); 
+  uint4 mask = getMask(level-1);
+  key = make_uint4(key.x & mask.x, key.y & mask.y,  key.z & mask.z, 0); 
   if(idx > 0) {
-    int ci = findKey(key,levelRange[level-1],Cell_ICELL);
-    atomicAdd(&Cell_SIZE[ci], 1);
+    int ci = findKey(key,levelRange[level-1],nodeKeys);
+    atomicAdd(&nodeChild[ci], (1 << 28));
   }
 
-  key = Cell_ICELL[idx];
+  key = nodeKeys[idx];
   mask = getMask(level);
-  key = make_uint3(key.x & mask.x, key.y & mask.y, key.z & mask.z); 
-  int cj = findKey(key,levelRange[level+1],Cell_ICELL);
-  atomicOr(&Cell_BEGIN[idx], cj);
+  key = make_uint4(key.x & mask.x, key.y & mask.y, key.z & mask.z, 0); 
+  int cj = findKey(key,levelRange[level+1],nodeKeys);
+  atomicOr(&nodeChild[idx], cj);
 
   uint valid = idx; 
-  if( size <= NCRIT )    
+  if( end - begin <= NLEAF )    
     valid = idx | (uint)(1 << 31);
   validRange[idx] = valid;
 }
@@ -236,28 +302,29 @@ extern "C" __global__ void linkNodes(int numNodes,
 extern "C" __global__ void getLevelRange(const int numNodes,
                                          const int numLeafs,
                                          uint *leafNodes,
-                                         uint *Cell_LEVEL,
+                                         uint4 *nodeKeys,
                                          uint* validRange) {
   uint idx = blockIdx.x * blockDim.x + threadIdx.x + numLeafs;
   if (idx >= numNodes) return;
-  const int node = leafNodes[idx];
+  const int nodeID = leafNodes[idx];
   int level_c, level_m, level_p;
-  level_c = Cell_LEVEL[node];
+  level_c = nodeKeys[leafNodes[idx]].w;
   if( idx+1 < numNodes )
-    level_p = Cell_LEVEL[leafNodes[idx+1]];
+    level_p = nodeKeys[leafNodes[idx+1]].w;
   else
     level_p = MAXLEVELS+5;
-  if(node == 0)
+  if(nodeID == 0)
     level_m = -1;    
   else
-    level_m = Cell_LEVEL[leafNodes[idx-1]];
+    level_m = nodeKeys[leafNodes[idx-1]].w;
   validRange[(idx-numLeafs)*2]   = idx | (level_c != level_m) << 31;
   validRange[(idx-numLeafs)*2+1] = idx | (level_c != level_p) << 31;
 }
 
-extern "C" __global__ void setNodeRange(int numBodies,
-                                        uint *nodeRange,
-                                        int treeDepth) {
+extern "C" __global__ void getGroupRange(int numBodies,
+                                         uint *validRange,
+                                         uint *nodeRange,
+                                         int treeDepth) {
   const uint idx = blockIdx.x * blockDim.x + threadIdx.x;
   if (idx >= numBodies) return;
   __shared__ int shmem[128];
@@ -271,186 +338,217 @@ extern "C" __global__ void setNodeRange(int numBodies,
         nodeRange[threadIdx.x] = shmem[threadIdx.x*2-1]+1;
     }
   }
+  int validStart = ((idx     % NCRIT) == 0);
+  int validEnd   = (((idx+1) % NCRIT) == 0);
+  if(idx+1 == numBodies) validEnd = 1;
+  validRange[2*idx + 0] = (idx)   | (uint)(validStart << 31);
+  validRange[2*idx + 1] = (idx+1) | (uint)(validEnd   << 31);    
 }
 
-extern "C" __global__ void permuteBodies(const int numBodies, uint4 *index, vec3 *Body_X, float *Body_SRC, vec4* output) {
+extern "C" __global__ void storeGroupRange(int numGroups,
+                                            uint *validRange,
+                                            uint2 *groupRange) {
+  if(blockIdx.x >= numGroups) return;
+  if(threadIdx.x == 0) {
+    int begin = validRange[2*blockIdx.x];
+    int end   = validRange[2*blockIdx.x+1];
+    groupRange[blockIdx.x] = make_uint2(begin,end);
+  }
+}
+
+extern "C" __global__ void reorder(const int size, uint4 *index, float4 *input, float4* output) {
   const uint idx = blockIdx.x * blockDim.x + threadIdx.x;
-  if (idx >= numBodies) return;
+  if (idx >= size) return;
   int newIndex = index[idx].w;
-  output[idx] = make_vec4(Body_X[newIndex][0],Body_X[newIndex][1],Body_X[newIndex][2],Body_SRC[newIndex]);
-}
-
-extern "C" __global__ void copyBodies(const int numBodies, uint4 *index, vec3 *Body_X, float *Body_SRC, vec4* input) {
-  const uint idx = blockIdx.x * blockDim.x + threadIdx.x;
-  if (idx >= numBodies) return;
-  Body_X[idx] = make_vec3(input[idx][0],input[idx][1],input[idx][2]);
-  Body_SRC[idx] = input[idx][3];
+  output[idx] = input[newIndex];
 }
 
 extern "C" __global__ void P2M(const int numLeafs,
-                               uint *leafNodes,
-                               uint *Cell_LEAF,
-                               uint *Cell_NLEAF,
-                               float *Cell_R,
-                               vec3 *Cell_X,
-                               vec3 *Body_X,
-                               float *Body_SRC,
-                               vecM *Multipole,
-                               vec3 *XMIN,
-                               vec3 *XMAX) {
+                                        uint *leafNodes,
+                                        uint2 *nodeBodies,
+                                        float4 *bodyPos,
+                                        float4 *multipole,
+                                        float4 *nodeLowerBounds,
+                                        float4 *nodeUpperBounds) {
   const uint idx = blockIdx.x * blockDim.x + threadIdx.x;
   if (idx >= numLeafs) return;
-  int node = leafNodes[idx];
-  const uint begin = Cell_LEAF[node];
-  const uint size = Cell_NLEAF[node];
-  vec3 Xi = 0.0f;
-  vecM Mi = 0.0f;
-  vec3 xmin =  1e10f;
-  vec3 xmax = -1e10f;
-  for( int i=begin; i<begin+size; i++ ) {
-    float Mj = Body_SRC[i];
-    vec3 Xj = Body_X[i];
-    Mi[0] += Mj;
-    Xi[0] += Mj * Xj[0];
-    Xi[1] += Mj * Xj[1];
-    Xi[2] += Mj * Xj[2];
-    pairMinMax(xmin, xmax, Xj, Xj);
+  int nodeID = leafNodes[idx];
+  const uint begin = nodeBodies[nodeID].x;
+  const uint end   = nodeBodies[nodeID].y;
+  float4 mon = {0.0f, 0.0f, 0.0f, 0.0f};
+  float3 xmin, xmax;
+  xmin = make_float3(+1e10f, +1e10f, +1e10f);
+  xmax = make_float3(-1e10f, -1e10f, -1e10f);
+  for( int i=begin; i<end; i++ ) {
+    float4 pos = bodyPos[i];
+    mon.w += pos.w;
+    mon.x += pos.w * pos.x;
+    mon.y += pos.w * pos.y;
+    mon.z += pos.w * pos.z;
+    pairMinMax(xmin, xmax, pos, pos);
   }
-  float invM = 1.0 / Mi[0];
-  if(Mi[0] == 0) invM = 0;
-  Xi[0] *= invM;
-  Xi[1] *= invM;
-  Xi[2] *= invM;
-  Cell_X[node] = Xi;
-  XMIN[node] = xmin;
-  XMAX[node] = xmax;
-  for( int i=begin; i<begin+size; i++ ) {
-    float Mj = Body_SRC[i];
-    vec3 dist = Xi - Body_X[i];
-    float tmp = Mj * dist[0];
-    Mi[1] += tmp * dist[0] / 2;
-    Mi[2] += tmp * dist[1];
-    Mi[3] += tmp * dist[2];
-    tmp = Mj * dist[1];
-    Mi[4] += tmp * dist[1] / 2;
-    Mi[5] += tmp * dist[2];
-    Mi[6] += Mj * dist[2] * dist[2] / 2;
-  }
-  for( int i=1; i<MTERM; i++ ) Mi[i] *= invM;
-  Multipole[node] = Mi;
+  float im = 1.0/mon.w;
+  if(mon.w == 0) im = 0;
+  mon.x *= im;
+  mon.y *= im;
+  mon.z *= im;
+  multipole[nodeID] = make_float4(mon.x, mon.y, mon.z, mon.w);
+  nodeLowerBounds[nodeID] = make_float4(xmin.x, xmin.y, xmin.z, 0.0f);
+  nodeUpperBounds[nodeID] = make_float4(xmax.x, xmax.y, xmax.z, 1.0f);
   return;
 }
 
 extern "C" __global__ void M2M(const int level,
-                               uint *leafNodes,
-                               uint *nodeRange,
-                               uint *Cell_BEGIN,
-                               uint *Cell_SIZE,
-                               float *Cell_R,
-                               vec3 *Cell_X,
-                               vecM *Multipole,
-                               vec3 *XMIN,
-                               vec3 *XMAX) {
+                                            uint  *leafNodes,
+                                            uint  *nodeRange,
+                                            uint  *nodeChild,
+                                            float4 *multipole,
+                                            float4 *nodeLowerBounds,
+                                            float4 *nodeUpperBounds) {
   const uint idx = blockIdx.x * blockDim.x + threadIdx.x + nodeRange[level-1];
   if(idx >= nodeRange[level]) return;
-  const int node = leafNodes[idx];
-  const uint begin = Cell_BEGIN[node];
-  const uint end = begin + Cell_SIZE[node];
-  vec3 Xi = 0.0f;
-  vecM Mi = 0.0f;
-  vec3 xmin =  1e10f;
-  vec3 xmax = -1e10f;
+  const int nodeID = leafNodes[idx];
+  const uint begin = nodeChild[nodeID] & 0x0FFFFFFF;
+  const uint end = begin + ((nodeChild[nodeID] & 0xF0000000) >> 28);
+  float4 mon = {0.0f, 0.0f, 0.0f, 0.0f};
+  float3 xmin, xmax;
+  xmin = make_float3(+1e10f, +1e10f, +1e10f);
+  xmax = make_float3(-1e10f, -1e10f, -1e10f);
   for( int i=begin; i<end; i++ ) {
-    float Mj = Multipole[i][0];
-    vec3 Xj = Cell_X[i];
-    Mi[0] += Mj;
-    Xi[0] += Mj * Xj[0];
-    Xi[1] += Mj * Xj[1];
-    Xi[2] += Mj * Xj[2];
-    pairMinMax(xmin, xmax, XMIN[i], XMAX[i]);
+    float4 pos = multipole[i];
+    mon.w += pos.w;
+    mon.x += pos.w * pos.x;
+    mon.y += pos.w * pos.y;
+    mon.z += pos.w * pos.z;
+    pairMinMax(xmin, xmax, nodeLowerBounds[i], nodeUpperBounds[i]);
   }
-  float invM = 1.0 / Mi[0];
-  if(Mi[0] == 0) invM = 0;
-  Xi[0] *= invM;
-  Xi[1] *= invM;
-  Xi[2] *= invM;
-  Cell_X[node] = Xi;
-  XMIN[node] = xmin;
-  XMAX[node] = xmax;
-  for( int i=begin; i<end; i++ ) {
-    vecM Mj = Multipole[i];
-    for( int m=1; m<MTERM; m++ ) Mi[m] += Mj[m] * Mj[0];
-    vec3 dist = Xi - Cell_X[i];
-    float tmp = Mj[0] * dist[0];
-    Mi[1] += tmp * dist[0] / 2;
-    Mi[2] += tmp * dist[1];
-    Mi[3] += tmp * dist[2];
-    tmp = Mj[0] * dist[1];
-    Mi[4] += tmp * dist[1] / 2;
-    Mi[5] += tmp * dist[2];
-    Mi[6] += Mj[0] * dist[2] * dist[2] / 2;
-  }
-  for( int i=1; i<MTERM; i++ ) Mi[i] *= invM;
-  Multipole[node] = Mi;
+  float im = 1.0 / mon.w;
+  if(mon.w == 0) im = 0;
+  mon.x *= im;
+  mon.y *= im;
+  mon.z *= im;
+  multipole[nodeID] = make_float4(mon.x, mon.y, mon.z, mon.w);
+  nodeLowerBounds[nodeID] = make_float4(xmin.x, xmin.y, xmin.z, 0.0f);
+  nodeUpperBounds[nodeID] = make_float4(xmax.x, xmax.y, xmax.z, 0.0f);
   return;
 }
 
-extern "C" __global__ void rescale(const int numNodes,
-                                   vecM *Multipole,
-                                   vec3 *XMIN,
-                                   vec3 *XMAX,
-                                   uint  *Cell_BEGIN,
-                                   uint  *Cell_SIZE,
-                                   float *Cell_RCRIT,
-                                   float *Cell_R,
-                                   vec3 *Cell_X,
-                                   uint *Cell_LEAF,
-                                   uint *Cell_NLEAF){
+extern "C" __global__ void rescale(const int node_count,
+                                           float4 *multipole,
+                                           float4 *nodeLowerBounds,
+                                           float4 *nodeUpperBounds,
+                                           uint  *nodeChild,
+                                           float theta,
+                                           float *openingAngle,
+                                           uint2 *nodeBodies){
   const uint idx = blockIdx.x * blockDim.x + threadIdx.x;
-  if(idx >= numNodes) return;
-  vecM M = Multipole[idx];
-  vec3 X = Cell_X[idx];
-  vec3 xmin = XMIN[idx];
-  vec3 xmax = XMAX[idx];
-  vec3 boxCenter = (xmin + xmax) * 0.5;
-//  vec3 boxSize = fmaxf(fabsf(boxCenter-xmin), fabsf(boxCenter-xmax));
-  vec3 boxSize = Cell_R[idx];
-  vec3 dist = boxCenter - X;
-  float R = sqrtf(norm(dist));
-  if(fabsf(M[0]) < 1e-10) R = 0;
+  if(idx >= node_count) return;
+  float4 mon = multipole[idx];
+  float4 xmin = nodeLowerBounds[idx];
+  float4 xmax = nodeUpperBounds[idx];
+  float3 boxCenter = make_float3(0.5*(xmin.x + xmax.x),
+                                 0.5*(xmin.y + xmax.y),
+                                 0.5*(xmin.z + xmax.z));
+  float3 boxSize = make_float3(fmaxf(fabs(boxCenter.x-xmin.x), fabs(boxCenter.x-xmax.x)),
+                               fmaxf(fabs(boxCenter.y-xmin.y), fabs(boxCenter.y-xmax.y)),
+                               fmaxf(fabs(boxCenter.z-xmin.z), fabs(boxCenter.z-xmax.z)));
+  float3 s3 = make_float3((boxCenter.x - mon.x), (boxCenter.y - mon.y), (boxCenter.z - mon.z));
+  float s = sqrt((s3.x*s3.x) + (s3.y*s3.y) + (s3.z*s3.z));
+  if(fabs(mon.w) < 1e-10) s = 0;
 
-  float length = 2 * fmaxf(boxSize);
-  if(length < 1e-6) length = 1e-6;
-  float RCRIT = length / THETA + R;
-  RCRIT = RCRIT * RCRIT;
-  uint begin = Cell_LEAF[idx];
-  uint size = Cell_NLEAF[idx];
-  bool leaf = (size <= NCRIT);
+  float length = 2 * fmaxf(boxSize.x, fmaxf(boxSize.y, boxSize.z));
+  if(length < 0.000001) length = 0.000001;
+  float cellOp = length / theta + s;
+  cellOp = cellOp * cellOp;
+  uint pfirst = nodeBodies[idx].x;
+  uint nchild = nodeBodies[idx].y - pfirst;
+  bool leaf = (xmax.w > 0);
 
+  if( nchild == 1 )
+    cellOp = 10e10;
   if( leaf ) {
-    RCRIT = -RCRIT;
-    Cell_BEGIN[idx] = begin;
-    Cell_SIZE[idx] = size;
+    cellOp = -cellOp;
+    pfirst = pfirst | ((nchild-1) << LEAFBIT);
+    nodeChild[idx] = pfirst;
   }
-  Cell_RCRIT[idx] = RCRIT;
+  openingAngle[idx] = cellOp;
   return;
+}
+
+extern "C" __global__ void setGroups(const int numGroups,
+                                          float4 *bodyPos,
+                                          int2  *groupRange,
+                                          float4 *groupCenterInfo,
+                                          float4 *groupSizeInfo){
+  if(blockIdx.x >= numGroups) return;
+  float3 xmin = make_float3(+1e10f, +1e10f, +1e10f);
+  float3 xmax = make_float3(-1e10f, -1e10f, -1e10f);
+  int begin = groupRange[blockIdx.x].x;
+  int end   = groupRange[blockIdx.x].y;
+  int idx = begin + threadIdx.x;
+  if( idx < end ) {
+    float4 pos = bodyPos[idx];
+    pairMinMax(xmin, xmax, pos, pos);
+  }
+  sharedMinMax(xmin,xmax);
+  if( threadIdx.x == 0 ) {
+    float3 groupCenter = make_float3(0.5*(xmin.x + xmax.x),
+                                     0.5*(xmin.y + xmax.y),
+                                     0.5*(xmin.z + xmax.z));
+    float3 groupSize = make_float3(fmaxf(fabs(groupCenter.x-xmin.x), fabs(groupCenter.x-xmax.x)),
+                                   fmaxf(fabs(groupCenter.y-xmin.y), fabs(groupCenter.y-xmax.y)),
+                                   fmaxf(fabs(groupCenter.z-xmin.z), fabs(groupCenter.z-xmax.z)));
+    int nchild = end-begin;
+    begin = begin | (nchild-1) << CRITBIT;
+    groupSizeInfo[blockIdx.x].x = groupSize.x;
+    groupSizeInfo[blockIdx.x].y = groupSize.y;
+    groupSizeInfo[blockIdx.x].z = groupSize.z;
+    groupSizeInfo[blockIdx.x].w = __int_as_float(begin);
+    float length = max(groupSize.x, max(groupSize.y, groupSize.z));
+    groupCenterInfo[blockIdx.x].x = groupCenter.x;
+    groupCenterInfo[blockIdx.x].y = groupCenter.y;
+    groupCenterInfo[blockIdx.x].z = groupCenter.z;
+    groupCenterInfo[blockIdx.x].w = length;
+  }
+}
+
+void octree::getBoundaries() {
+  boundaryReduction<<<64,NCRIT,0,execStream>>>(numBodies,bodyPos.devc(),XMIN.devc(),XMAX.devc());
+  XMIN.d2h();
+  XMAX.d2h();
+  float4 xmin = make_float4(+1e10, +1e10, +1e10, +1e10);
+  float4 xmax = make_float4(-1e10, -1e10, -1e10, -1e10);
+  for (int i = 0; i < 64; i++) {
+    xmin.x = std::min(xmin.x, XMIN[i].x);
+    xmin.y = std::min(xmin.y, XMIN[i].y);
+    xmin.z = std::min(xmin.z, XMIN[i].z);
+    xmax.x = std::max(xmax.x, XMAX[i].x);
+    xmax.y = std::max(xmax.y, XMAX[i].y);
+    xmax.z = std::max(xmax.z, XMAX[i].z);
+  }
+  float size = 1.001f*std::max(xmax.z - xmin.z,
+                      std::max(xmax.y - xmin.y, xmax.x - xmin.x));
+  corner = make_float4(0.5f*(xmin.x + xmax.x) - 0.5f*size,
+                       0.5f*(xmin.y + xmax.y) - 0.5f*size,
+                       0.5f*(xmin.z + xmax.z) - 0.5f*size,
+                       size / (1 << MAXLEVELS));
 }
 
 void octree::getKeys() {
   int threads = 128;
   int blocks = ALIGN(numBodies,threads);
-  getKeyKernel<<<blocks,threads,0,execStream>>>(numBodies,Body_X.devc(),uint4buffer);
+  getKeyKernel<<<blocks,threads,0,execStream>>>(numBodies,corner,bodyPos.devc(),uint4buffer);
 }
 
 void octree::sortKeys() {
-  sorter->sort(uint4buffer,Body_ICELL,numBodies);
+  sorter->sort(uint4buffer,bodyKeys,numBodies);
 }
 
 void octree::sortBodies() {
   int threads = 512;
   int blocks = ALIGN(numBodies,threads);
-  permuteBodies<<<blocks,threads,0,execStream>>>(numBodies,Body_ICELL.devc(),Body_X.devc(),Body_SRC.devc(),vec4buffer);
-  copyBodies<<<blocks,threads,0,execStream>>>(numBodies,Body_ICELL.devc(),Body_X.devc(),Body_SRC.devc(),vec4buffer);
+  reorder<<<blocks,threads,0,execStream>>>(numBodies,bodyKeys.devc(),bodyPos.devc(),float4buffer);
+  CU_SAFE_CALL(cudaMemcpy(bodyPos.devc(),float4buffer,numBodies*sizeof(float4),cudaMemcpyDeviceToDevice));
 }
 
 void octree::buildTree() {
@@ -462,9 +560,9 @@ void octree::buildTree() {
   int threads = 128;
   int blocks = ALIGN(numBodies,threads);
   for( int level=0; level<MAXLEVELS; level++ ) {
-    getValidRange<<<blocks,threads,0,execStream>>>(numBodies,level,Body_ICELL.devc(),validRange.devc(),workToDo.devc());
+    getValidRange<<<blocks,threads,0,execStream>>>(numBodies,level,bodyKeys.devc(),validRange.devc(),workToDo.devc());
     gpuCompact(validRange,compactRange,2*numBodies);
-    buildNodes<<<64,threads,0,execStream>>>(level,workToDo.devc(),maxLevel.devc(),levelRange.devc(),compactRange.devc(),Body_ICELL.devc(),Cell_ICELL.devc(),Cell_LEVEL.devc(),Cell_LEAF.devc(),Cell_NLEAF.devc());
+    buildNodes<<<64,threads,0,execStream>>>(level,workToDo.devc(),maxLevel.devc(),levelRange.devc(),compactRange.devc(),bodyKeys.devc(),nodeKeys.devc(),nodeBodies.devc());
   }
   maxLevel.d2h();
   numLevels = maxLevel[0];
@@ -472,23 +570,12 @@ void octree::buildTree() {
   numNodes = levelRange[numLevels].y;
 }
 
-void octree::allocateTreePropMemory()
-{
-  Multipole.alloc(numNodes);
-  Cell_BEGIN.alloc(numNodes);
-  Cell_SIZE.alloc(numNodes);
-  Cell_RCRIT.alloc(numNodes);
-  Cell_R.alloc(numNodes);
-  Cell_X.alloc(numNodes);
-}
-
 void octree::linkTree() {
   // leafNodes
-  Cell_BEGIN.zeros();
-  Cell_SIZE.zeros();
+  nodeChild.zeros();
   int threads = 128;
   int blocks = ALIGN(numNodes,threads);
-  linkNodes<<<blocks,threads,0,execStream>>>(numNodes,Cell_ICELL.devc(),Cell_LEVEL.devc(),Cell_NLEAF.devc(),Cell_BEGIN.devc(),Cell_SIZE.devc(),Cell_R.devc(),Cell_X.devc(),levelRange.devc(),validRange.devc());
+  linkNodes<<<blocks,threads,0,execStream>>>(numNodes,corner,nodeBodies.devc(),nodeKeys.devc(),nodeChild.devc(),levelRange.devc(),validRange.devc());
   leafNodes.alloc(numNodes);
   workToDo.ones();
   gpuSplit(validRange, leafNodes, numNodes);
@@ -497,29 +584,45 @@ void octree::linkTree() {
   // nodeRange
   validRange.zeros();
   blocks = ALIGN(numNodes-numLeafs,threads);
-  getLevelRange<<<blocks,threads,0,execStream>>>(numNodes,numLeafs,leafNodes.devc(),Cell_LEVEL.devc(),validRange.devc());
+  getLevelRange<<<blocks,threads,0,execStream>>>(numNodes,numLeafs,leafNodes.devc(),nodeKeys.devc(),validRange.devc());
   gpuCompact(validRange, nodeRange, 2*(numNodes-numLeafs));
+  // groupRange
+  validRange.zeros();
   blocks = ALIGN(numBodies,threads);
-  setNodeRange<<<blocks,threads,0,execStream>>>(numBodies,nodeRange.devc(),numLevels+1);
+  getGroupRange<<<blocks,threads>>>(numBodies,validRange.devc(),nodeRange.devc(),numLevels+1);
+  gpuCompact(validRange, compactRange, numBodies*2);
+  workToDo.d2h();
+  numGroups = workToDo[0] / 2;
+  groupRange.alloc(numGroups);
+  storeGroupRange<<<numGroups,NCRIT,0,execStream>>>(numGroups,compactRange.devc(),groupRange.devc());
+}
+
+void octree::allocateTreePropMemory()
+{
+  multipole.alloc(numNodes);
+  groupSizeInfo.alloc(numNodes);
+  openingAngle.alloc(numNodes);
+  groupCenterInfo.alloc(numNodes);
 }
 
 void octree::upward() {
-  cudaVec<vec3> XMIN;
-  cudaVec<vec3> XMAX;
-  XMIN.alloc(numNodes);
-  XMAX.alloc(numNodes);
+  cudaVec<float4>  nodeLowerBounds;
+  cudaVec<float4>  nodeUpperBounds;
+  nodeLowerBounds.alloc(numNodes);
+  nodeUpperBounds.alloc(numNodes);
 
   int threads = 128;
   int blocks = ALIGN(numLeafs,threads);
-  P2M<<<blocks,threads,0,execStream>>>(numLeafs,leafNodes.devc(),Cell_LEAF.devc(),Cell_NLEAF.devc(),Cell_R.devc(),Cell_X.devc(),Body_X.devc(),Body_SRC.devc(),Multipole.devc(),XMIN.devc(),XMAX.devc());
+  P2M<<<blocks,threads,0,execStream>>>(numLeafs,leafNodes.devc(),nodeBodies.devc(),bodyPos.devc(),multipole.devc(),nodeLowerBounds.devc(),nodeUpperBounds.devc());
 
   nodeRange.d2h();
   for( int level=numLevels; level>=1; level-- ) {
     int totalOnThisLevel = nodeRange[level] - nodeRange[level-1];
     blocks = ALIGN(totalOnThisLevel,threads);
-    M2M<<<blocks,threads,0,execStream>>>(level,leafNodes.devc(),nodeRange.devc(),Cell_BEGIN.devc(),Cell_SIZE.devc(),Cell_R.devc(),Cell_X.devc(),Multipole.devc(),XMIN.devc(),XMAX.devc());
+    M2M<<<blocks,threads,0,execStream>>>(level,leafNodes.devc(),nodeRange.devc(),nodeChild.devc(),multipole.devc(),nodeLowerBounds.devc(),nodeUpperBounds.devc());
   }
 
   blocks = ALIGN(numNodes,threads);
-  rescale<<<blocks,threads,0,execStream>>>(numNodes,Multipole.devc(),XMIN.devc(),XMAX.devc(),Cell_BEGIN.devc(),Cell_SIZE.devc(),Cell_RCRIT.devc(),Cell_R.devc(),Cell_X.devc(),Cell_LEAF.devc(),Cell_NLEAF.devc());
+  rescale<<<blocks,threads,0,execStream>>>(numNodes,multipole.devc(),nodeLowerBounds.devc(),nodeUpperBounds.devc(),nodeChild.devc(),theta,openingAngle.devc(),nodeBodies.devc());
+  setGroups<<<numGroups,NCRIT>>>(numGroups,bodyPos.devc(),(int2*)groupRange.devc(),groupCenterInfo.devc(),groupSizeInfo.devc());
 }

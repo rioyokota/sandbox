@@ -27,48 +27,56 @@ private:
   b40c::radix_sort::Enactor *sort_enactor;
 
 public:
-  Sort90(uint size, uint *buffer);
+  Sort90(uint size, uint *generalBuffer);
   ~Sort90();
   void sort(uint4 *input, cudaVec<uint4> &output, int size);
 };
 
 class octree {
 private:
+  float eps2;
+  float theta;
   cudaStream_t execStream;
   Sort90 *sorter;
 
   int numBodies;
   int numLeafs;
   int numNodes;
+  int numGroups;
   int numLevels;
   union {
     uint4 *uint4buffer;
-    vec4 *vec4buffer;
+    float4 *float4buffer;
   };
-  cudaVec<uint4>  Body_ICELL;
-  cudaVec<uint>   Cell_BEGIN;
-  cudaVec<uint>   Cell_SIZE;
-  cudaVec<uint3>  Cell_ICELL;
-  cudaVec<uint>   Cell_LEVEL;
-  cudaVec<uint>   Cell_LEAF;
-  cudaVec<uint>   Cell_NLEAF;
-  cudaVec<float>  Cell_RCRIT;
-  cudaVec<float>  Cell_R;
-  cudaVec<vec3>   Cell_X;
+  cudaVec<uint4>  bodyKeys;
+  cudaVec<uint2>  nodeBodies;
+  cudaVec<uint4>  nodeKeys;
+  cudaVec<uint>   nodeChild;
   cudaVec<uint>   nodeRange;
   cudaVec<uint2>  levelRange;
   cudaVec<uint>   validRange;
   cudaVec<uint>   compactRange;
+
   cudaVec<uint>   leafNodes;
-  cudaVec<vecM>   Multipole;      
-  cudaVec<int>    buffer;
+  cudaVec<uint2>  groupRange;
+  cudaVec<float4> multipole;      
+
+  cudaVec<float>  openingAngle;
+  cudaVec<float4> groupSizeInfo;
+  cudaVec<float4> groupCenterInfo;
+
+  cudaVec<uint>   generalBuffer1;
+  float4 corner;
+
+  cudaVec<float3> XMIN;
+  cudaVec<float3> XMAX;
+  cudaVec<uint>   offset;
   cudaVec<uint>   workToDo;
   
 public:
-  cudaVec<vec3>   Body_X;
-  cudaVec<float>  Body_SRC;
-  cudaVec<vec4>   Body_TRG;
-  cudaVec<vec4>   Body2_TRG;
+  cudaVec<float4> bodyPos;
+  cudaVec<float4> bodyAcc;
+  cudaVec<float4> bodyAcc2;
 
 private:
   bool isPowerOfTwo(const int n) {
@@ -87,29 +95,33 @@ private:
   void traverse();
 
 public:
-  octree(const int _n) : numBodies(_n) {
+  octree(const int _n, const float _theta, const float _eps) : numBodies(_n), theta(_theta), eps2(_eps*_eps) {
     assert(isPowerOfTwo(NCRIT));
     cudaSetDevice(2);
-    Body_X.alloc(numBodies+1);
-    Body_SRC.alloc(numBodies+1);
-    Body_ICELL.alloc(numBodies+1);
-    Body_TRG.alloc(numBodies);
-    Body2_TRG.alloc(numBodies);
-    Cell_ICELL.alloc(numBodies);
-    Cell_LEVEL.alloc(numBodies);
-    Cell_LEAF.alloc(numBodies);
-    Cell_NLEAF.alloc(numBodies);
+    bodyPos.alloc(numBodies+1);
+    bodyKeys.alloc(numBodies+1);
+    bodyAcc.alloc(numBodies);
+    bodyAcc2.alloc(numBodies);
+    nodeBodies.alloc(numBodies);
+    nodeKeys.alloc(numBodies);
+    nodeChild.alloc(numBodies);
     nodeRange.alloc(MAXLEVELS*2);
     levelRange.alloc(MAXLEVELS);
     validRange.alloc(2*numBodies);
     compactRange.alloc(2*numBodies);
-    workToDo.alloc(1);
-    Body_TRG.zeros();
+    bodyAcc.zeros();
     CU_SAFE_CALL(cudaMalloc((uint4**)&uint4buffer, numBodies*sizeof(uint4)));
+
     int treeWalkStackSize = (LMEM_STACK_SIZE * NTHREAD + 2 * NTHREAD) * NBLOCK;
     int sortBufferSize = 4 * ALIGN(numBodies,128) * 128;
-    buffer.alloc(max(treeWalkStackSize,sortBufferSize));
-    sorter = new Sort90((uint)numBodies, (uint*)buffer.devc());
+    generalBuffer1.alloc(max(treeWalkStackSize,sortBufferSize));
+    sorter = new Sort90(numBodies, generalBuffer1.devc());
+
+    XMIN.alloc(64);
+    XMAX.alloc(64);
+    offset.alloc(NBLOCK);
+    workToDo.alloc(1);
+
   }
   ~octree() {
     delete sorter;

@@ -23,8 +23,11 @@ all: $(ORG)
 
 $(ORG): include/*.h
 
+clean:
+	find . -name "*.o" -o -name "*.out*" | xargs rm -rf
 cleanall:
-	@make -C .. cleanall
+	make clean
+	rm *.th_o
 commit:
 	@make -C .. commit
 save:

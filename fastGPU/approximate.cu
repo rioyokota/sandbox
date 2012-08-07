@@ -2,15 +2,13 @@
 #define laneId (threadIdx.x & (WARP_SIZE - 1))
 #define warpId (threadIdx.x >> WARP_SIZE2)
 #define IF(x) (-(int)(x))
-#define ABS(a) ((int(a) < 0) ? -(a) : (a))
 
-__device__ __forceinline__ int inclusiveScanInt(int* prefix, int value)
+__device__ __forceinline__ int inclusiveScanInt(int* prefix, int value) 
 {
   prefix[laneId] = value;
-  for( int i=0; i<WARP_SIZE2; i++ ) {
+  for (int i = 0; i < WARP_SIZE2; i++) {
     const int offset = 1 << i;
-    const int laneOffset = ABS(laneId-offset);
-    prefix[laneId] += prefix[laneOffset] & IF(laneId >= offset);
+    prefix[laneId] += prefix[laneId-offset] & IF(laneId >= offset);
   }
   return prefix[WARP_SIZE-1];
 }
@@ -56,8 +54,7 @@ __device__ __forceinline__ int inclusive_segscan_warp(
   shmem[laneId] = value;
   for( int i=0; i<WARP_SIZE2; i++ ) {
     const int offset = 1 << i;
-    const int laneOffset = ABS(laneId-offset);
-    shmem[laneId] += shmem[laneOffset] & IF(offset <= distance);
+    shmem[laneId] += shmem[laneId-offset] & IF(offset <= distance);
   }
   return shmem[WARP_SIZE - 1];
 }
@@ -79,296 +76,247 @@ __device__ __forceinline__ int ACCESS(const int i) {
   return (i & (LMEM_STACK_SIZE - 1)) * blockDim.x + threadIdx.x;
 }
 
-__device__ __forceinline__ void P2P(vec4 &acc, 
-                                    const vec3 targetX,
-                                    const vec3 sourceX,
-                                    const float sourceM) {
-  vec3 dist = targetX - sourceX;
-  const float R2 = norm(dist) + EPS2;
-  float invR = rsqrtf(R2);
-  const float invR2 = invR * invR;
-  invR *= sourceM;
-  float invR3 = invR * invR2;
-  acc[0] += invR;
-  acc[1] -= dist[0] * invR3;
-  acc[2] -= dist[1] * invR3;
-  acc[3] -= dist[2] * invR3;
+texture<uint, 1, cudaReadModeElementType> texNodeChild;
+texture<float, 1, cudaReadModeElementType> texOpening;
+texture<float4, 1, cudaReadModeElementType> texMultipole;
+texture<float4, 1, cudaReadModeElementType> texBody;
+
+__device__ __forceinline__ void P2P(
+    float4 &acc,  const float4 pos,
+    const float4 posj,
+    const float eps2) {
+  const float3 dr = make_float3(posj.x - pos.x, posj.y - pos.y, posj.z - pos.z);
+  const float r2     = dr.x*dr.x + dr.y*dr.y + dr.z*dr.z + eps2;
+  const float rinv   = rsqrtf(r2);
+  const float rinv2  = rinv*rinv;
+  const float mrinv  = posj.w * rinv;
+  const float mrinv3 = mrinv * rinv2;
+  acc.w -= mrinv;
+  acc.x += mrinv3 * dr.x;
+  acc.y += mrinv3 * dr.y;
+  acc.z += mrinv3 * dr.z;
 }
 
-__device__ __forceinline__ void M2P(vec4 &acc,
-                                    const vec3 targetX,
-                                    const vec3 sourceX,
-                                    const vecM M) {
-  vec3 dist = targetX - sourceX;
-  const float R2 = norm(dist) + EPS2;
-  float invR = rsqrtf(R2);
-  float invR2 = invR * invR;
-  invR *= M[0];
-  invR2 = -invR2;
-  vecL C;
-  C[0] = invR;
-  float invR3 = invR * invR2;
-  C[1] = dist[0] * invR3;
-  C[2] = dist[1] * invR3;
-  C[3] = dist[2] * invR3;
-  acc += make_vec4(C[0],C[1],C[2],C[3]);
-/*
-  float invR5 = 3 * invR3 * invR2;
-  float t = dist[0] * invR5;
-  C[4] = dist[0] * t + invR3;
-  C[5] = dist[1] * t;
-  C[6] = dist[2] * t;
-  t = dist[1] * invR5;
-  C[7] = dist[1] * t + invR3;
-  C[8] = dist[2] * t;
-  C[9] = dist[2] * dist[2] * invR5 + invR3;
-  float invR7 = 5 * invR5 * invR2;
-  t = dist[0] * dist[0] * invR7;
-  C[10] = dist[0] * (t + 3 * invR5);
-  C[11] = dist[1] * (t +     invR5);
-  C[12] = dist[2] * (t +     invR5);
-  t = dist[1] * dist[1] * invR7;
-  C[13] = dist[0] * (t +     invR5);
-  C[16] = dist[1] * (t + 3 * invR5);
-  C[17] = dist[2] * (t +     invR5);
-  t = dist[2] * dist[2] * invR7;
-  C[15] = dist[0] * (t +     invR5);
-  C[18] = dist[1] * (t +     invR5);
-  C[19] = dist[2] * (t + 3 * invR5);
-  C[14] = dist[0] * dist[1] * dist[2] * invR7;
-  acc[0] += C[4] *M[1] + C[5] *M[2] + C[6] *M[3] + C[7] *M[4] + C[8] *M[5] + C[9] *M[6];
-  acc[1] += C[10]*M[1] + C[11]*M[2] + C[12]*M[3] + C[13]*M[4] + C[14]*M[5] + C[15]*M[6];
-  acc[2] += C[11]*M[1] + C[13]*M[2] + C[14]*M[3] + C[16]*M[4] + C[17]*M[5] + C[18]*M[6];
-  acc[3] += C[12]*M[1] + C[14]*M[2] + C[15]*M[3] + C[17]*M[4] + C[18]*M[5] + C[19]*M[6];
-*/
+__device__ bool applyMAC(
+    const float4 sourceCenter, 
+    const float4 groupCenter, 
+    const float4 groupSize) {
+  float3 dr = make_float3(fabsf(groupCenter.x - sourceCenter.x) - (groupSize.x),
+                          fabsf(groupCenter.y - sourceCenter.y) - (groupSize.y),
+                          fabsf(groupCenter.z - sourceCenter.z) - (groupSize.z));
+  dr.x += fabsf(dr.x); dr.x *= 0.5f;
+  dr.y += fabsf(dr.y); dr.y *= 0.5f;
+  dr.z += fabsf(dr.z); dr.z *= 0.5f;
+  const float ds2 = dr.x*dr.x + dr.y*dr.y + dr.z*dr.z;
+  return ds2 <= fabsf(sourceCenter.w);
 }
 
-__device__ bool applyMAC(const vec3 sourceX,
-                         const vec3 targetX,
-                         const float Cell_RCRIT) {
-  vec3 dist = targetX - sourceX;
-  const float R2 = norm(dist);
-  return R2 <= fabsf(Cell_RCRIT);
-}
-
-__device__ void traverse(vec3 *Body_X,
-                         float *Body_SRC,
-                         vec3 &X,
-                         vec4 &TRG,
-                         uint *Cell_BEGIN,
-                         uint *Cell_SIZE,
-                         float *Cell_RCRIT,
-                         vec3 *Cell_X,
-                         vecM *Multipole,
-                         vec3 targetX,
-                         int *blockPtr) {
-  const int stackSize = LMEM_STACK_SIZE * NTHREAD;
-  int *approxNodes = blockPtr + stackSize + 2 * WARP_SIZE * warpId;
-  const uint numShrd = 10 + MTERM;
-  __shared__ int shmem[numShrd * NTHREAD];
-  int *numDirect = shmem + numShrd * WARP_SIZE * warpId;
-  int *prefix = &numDirect[WARP_SIZE];
-  int *stackShrd = &prefix[WARP_SIZE];
-  int *directNodes = &stackShrd[WARP_SIZE];
-  vec3 *sourceX = (vec3*)&directNodes[3*WARP_SIZE];
-  vecM *sourceM = (vecM*)&sourceX[WARP_SIZE];
+__device__ void traverse(
+    float4 &pos_i,
+    float4 &acc_i,
+    float4 targetCenter,
+    float4 targetSize,
+    float eps2,
+    uint2 rootRange,
+    int *shmem,
+    int *lmem) {
+  const int stackSize = LMEM_STACK_SIZE << NTHREAD2;
+  const int nWarps2 = NTHREAD2 - WARP_SIZE2;
+  int *approxNodes = lmem + stackSize + (NTHREAD >> (nWarps2 - 1)) * warpId;
+  int *numDirect = shmem;
+  int *stackShrd = numDirect + WARP_SIZE;
+  int *directNodes = stackShrd + WARP_SIZE;
+  float4 *pos_j = (float4*)&directNodes[3*WARP_SIZE];
+  int *prefix = (int*)&pos_j[WARP_SIZE];
 
   // stack
-  int *stackGlob = blockPtr;
+  int *stackGlob = lmem;
   // begin tree-walk
   int warpOffsetApprox = 0;
   int warpOffsetDirect = 0;
-  int numNodes = 1;
-  int beginStack = 0;
-  int endStack = 1;
-  stackGlob[threadIdx.x] = laneId;
-  // walk each level
-  while( numNodes > 0 ) {
-    int numNodesNew = 0;
-    int warpOffsetSplit = 0;
-    int numStack = endStack;
-    // walk a level
-    for( int iStack=beginStack; iStack<endStack; iStack++ ) {
-      bool valid = laneId < numNodes;
-      int node = stackGlob[ACCESS(iStack)] & IF(valid);
-      numNodes -= WARP_SIZE;
-      float RCRIT = Cell_RCRIT[node];
-      bool split = applyMAC(Cell_X[node], targetX, RCRIT);
-      bool leaf = RCRIT <= 0;
-      bool flag = split && !leaf && valid;
-      int begin = Cell_BEGIN[node];
-      int size = Cell_SIZE[node];
-      int numChild = size & IF(flag);
-      int sumChild = inclusiveScanInt(prefix, numChild);
-      int laneOffset = prefix[laneId];
-      laneOffset += warpOffsetSplit - numChild;
-      for( int i=0; i<numChild; i++ ) {
-        stackShrd[laneOffset+i] = begin+i;
-      }
-      warpOffsetSplit += sumChild;
-      while( warpOffsetSplit >= WARP_SIZE ) {
-        warpOffsetSplit -= WARP_SIZE;
-        stackGlob[ACCESS(numStack)] = stackShrd[warpOffsetSplit+laneId];
-        numStack++;
-        numNodesNew += WARP_SIZE;
-        if( (numStack - iStack) > LMEM_STACK_SIZE ) {
-          printf("overflow\n");
-          return;
+  for( int root=rootRange.x; root<rootRange.y; root+=WARP_SIZE ) {
+    int numNodes = min(rootRange.y-root, WARP_SIZE);
+    int beginStack = 0;
+    int endStack = 1;
+    stackGlob[threadIdx.x] = root + laneId;
+    // walk each level
+    while( numNodes > 0 ) {
+      int numNodesNew = 0;
+      int warpOffsetSplit = 0;
+      int numStack = endStack;
+      // walk a level
+      for( int iStack=beginStack; iStack<endStack; iStack++ ) {
+        bool valid = laneId < numNodes;
+        int node = stackGlob[ACCESS(iStack)];
+        numNodes -= WARP_SIZE;
+        float opening = tex1Dfetch(texOpening, node);
+        uint sourceData = tex1Dfetch(texNodeChild, node);
+        float4 sourceCenter = tex1Dfetch(texMultipole, node);
+        sourceCenter.w = opening;
+        bool split = applyMAC(sourceCenter, targetCenter, targetSize);
+        bool leaf = opening <= 0;
+        bool flag = split && !leaf && valid;
+        int child = sourceData & 0x0FFFFFFF;
+        int numChild = ((sourceData & 0xF0000000) >> 28) & IF(flag);
+        int sumChild = inclusiveScanInt(prefix, numChild);
+        int laneOffset = prefix[laneId];
+        laneOffset += warpOffsetSplit - numChild;
+        for( int i=0; i<numChild; i++ )
+          stackShrd[laneOffset+i] = child+i;
+        warpOffsetSplit += sumChild;
+        while( warpOffsetSplit >= WARP_SIZE ) {
+          warpOffsetSplit -= WARP_SIZE;
+          stackGlob[ACCESS(numStack)] = stackShrd[warpOffsetSplit+laneId];
+          numStack++;
+          numNodesNew += WARP_SIZE;
+          if( (numStack - iStack) > LMEM_STACK_SIZE ) return;
         }
-      }
 #if 1   // APPROX
-      flag = !split && valid;
-      laneOffset = exclusiveScanBit(flag);
-      if( flag ) approxNodes[warpOffsetApprox+laneOffset] = node;
-      warpOffsetApprox += reduceBit(flag);
-      if( warpOffsetApprox >= WARP_SIZE ) {
-        warpOffsetApprox -= WARP_SIZE;
-        node = approxNodes[warpOffsetApprox+laneId];
-        sourceX[laneId] = Cell_X[node];
-        sourceM[laneId] = Multipole[node];
-        for( int i=0; i<WARP_SIZE; i++ )
-          M2P(TRG, X, sourceX[i], sourceM[i]);
-      }
+        flag = !split && valid;
+        laneOffset = exclusiveScanBit(flag);
+        if( flag ) approxNodes[warpOffsetApprox+laneOffset] = node;
+        warpOffsetApprox += reduceBit(flag);
+        if( warpOffsetApprox >= WARP_SIZE ) {
+          warpOffsetApprox -= WARP_SIZE;
+          node = approxNodes[warpOffsetApprox+laneId];
+          pos_j[laneId] = tex1Dfetch(texMultipole, node);
+          for( int i=0; i<WARP_SIZE; i++ )
+            P2P(acc_i, pos_i, pos_j[i], eps2);
+        }
 #endif
 #if 1   // DIRECT
-      flag = split && leaf && valid;
-      int numBodies = size & IF(flag);
-      directNodes[laneId] = numDirect[laneId];
+        flag = split && leaf && valid;
+        const int jbody = sourceData & BODYMASK;
+        int numBodies = (((sourceData & INVBMASK) >> LEAFBIT)+1) & IF(flag);
+        directNodes[laneId] = numDirect[laneId];
 
-      int sumBodies = inclusiveScanInt(prefix, numBodies);
-      laneOffset = prefix[laneId];
-      if( flag ) prefix[exclusiveScanBit(flag)] = laneId;
-      numDirect[laneId] = laneOffset;
-      laneOffset -= numBodies;
-      int numFinished = 0;
-      while( sumBodies > 0 ) {
-        numBodies = min(sumBodies, 3*WARP_SIZE-warpOffsetDirect);
-        for( int i=warpOffsetDirect; i<warpOffsetDirect+numBodies; i+=WARP_SIZE )
-          directNodes[i+laneId] = 0;
-        if( flag && (numDirect[laneId] <= numBodies) && (laneOffset >= 0) )
-          directNodes[warpOffsetDirect+laneOffset] = -1-begin;
-        numFinished += inclusive_segscan_array(&directNodes[warpOffsetDirect], numBodies);
-        numBodies = numDirect[prefix[numFinished-1]];
-        sumBodies -= numBodies;
-        numDirect[laneId] -= numBodies;
+        int sumBodies = inclusiveScanInt(prefix, numBodies);
+        laneOffset = prefix[laneId];
+        if( flag ) prefix[exclusiveScanBit(flag)] = laneId;
+        numDirect[laneId] = laneOffset;
         laneOffset -= numBodies;
-        warpOffsetDirect += numBodies;
-        while( warpOffsetDirect >= WARP_SIZE ) {
-          warpOffsetDirect -= WARP_SIZE;
-          const int j = directNodes[warpOffsetDirect+laneId];
-          sourceX[laneId] = Body_X[j];
-          sourceM[laneId][0] = Body_SRC[j];
-          for( int i=0; i<WARP_SIZE; i++ )
-            P2P(TRG, X, sourceX[i], sourceM[i][0]);
+        int numFinished = 0;
+        while( sumBodies > 0 ) {
+          numBodies = min(sumBodies, 3*WARP_SIZE-warpOffsetDirect);
+          for( int i=warpOffsetDirect; i<warpOffsetDirect+numBodies; i+=WARP_SIZE )
+            directNodes[i+laneId] = 0;
+          if( flag && (numDirect[laneId] <= numBodies) && (laneOffset >= 0) )
+            directNodes[warpOffsetDirect+laneOffset] = -1-jbody;
+          numFinished += inclusive_segscan_array(&directNodes[warpOffsetDirect], numBodies);
+          numBodies = numDirect[prefix[numFinished-1]];
+          sumBodies -= numBodies;
+          numDirect[laneId] -= numBodies;
+          laneOffset -= numBodies;
+          warpOffsetDirect += numBodies;
+          while( warpOffsetDirect >= WARP_SIZE ) {
+            warpOffsetDirect -= WARP_SIZE;
+            pos_j[laneId] = tex1Dfetch(texBody,directNodes[warpOffsetDirect+laneId]);
+            for( int i=0; i<WARP_SIZE; i++ )
+              P2P(acc_i, pos_i, pos_j[i], eps2);
+          }
         }
-      }
-      numDirect[laneId] = directNodes[laneId];
+        numDirect[laneId] = directNodes[laneId];
 #endif
-    }
+      }
 
-    if( warpOffsetSplit > 0 ) {
-      stackGlob[ACCESS(numStack)] = stackShrd[laneId];
-      numStack++;
-      numNodesNew += warpOffsetSplit;
+      if( warpOffsetSplit > 0 ) { 
+        stackGlob[ACCESS(numStack)] = stackShrd[laneId];
+        numStack++; 
+        numNodesNew += warpOffsetSplit;
+      }
+      numNodes = numNodesNew;
+      beginStack = endStack;
+      endStack = numStack;
     }
-    numNodes = numNodesNew;
-    beginStack = endStack;
-    endStack = numStack;
   }
 
   if( warpOffsetApprox > 0 ) {
     if( laneId < warpOffsetApprox )  {
       const int node = approxNodes[laneId];
-      sourceX[laneId] = Cell_X[node];
-      sourceM[laneId] = Multipole[node];
+      pos_j[laneId] = tex1Dfetch(texMultipole, node);
     } else {
-      sourceX[laneId] = 1.0e10f;
-      sourceM[laneId] = 0.0f;
+      pos_j[laneId] = make_float4(1.0e10f, 1.0e10f, 1.0e10f, 0.0f);
     }
     for( int i=0; i<WARP_SIZE; i++ )
-      M2P(TRG, X, sourceX[i], sourceM[i]);
+      P2P(acc_i, pos_i, pos_j[i], eps2);
   }
 
   if( warpOffsetDirect > 0 ) {
     if( laneId < warpOffsetDirect ) {
-      const int j = numDirect[laneId];
-      sourceX[laneId] = Body_X[j];
-      sourceM[laneId][0] = Body_SRC[j];
+      const float4 posj = tex1Dfetch(texBody,numDirect[laneId]);
+      pos_j[laneId] = posj;
     } else {
-      sourceX[laneId] = 1.0e10f;
-      sourceM[laneId][0] = 0.0f;
+      pos_j[laneId] = make_float4(1.0e10f, 1.0e10f, 1.0e10f, 0.0f);
     }
-    for( int i=0; i<WARP_SIZE; i++ )
-      P2P(TRG, X, sourceX[i], sourceM[i][0]);
+    for( int i=0; i<WARP_SIZE; i++ ) 
+      P2P(acc_i, pos_i, pos_j[i], eps2);
   }
 }
 
-extern "C" __global__ void traverseKernel(const int numLeafs,
-                                          uint *leafNodes,
-                                          uint *Cell_BEGIN,
-                                          uint *Cell_SIZE,
-                                          float *Cell_RCRIT,
-                                          vec3 *Cell_X,
-                                          vecM *Multipole,
-                                          vec3 *Body_X,
-                                          float *Body_SRC,
-                                          vec4 *Body_TRG,
-                                          int *buffer,
-                                          uint *workToDo) {
-  __shared__ int warpLeaf[4];
-  int *leaf = warpLeaf + warpId;
-  int *blockPtr = buffer + blockIdx.x * (LMEM_STACK_SIZE * NTHREAD + 2 * NTHREAD);
+extern "C" __global__ void
+  traverseKernel(
+      const int numGroups,
+      float eps2,
+      uint2 *levelRange,
+      float4 *acc,
+      float4 *groupSizeInfo,
+      float4 *groupCenterInfo,
+      int    *MEM_BUF,
+      uint   *workToDo) {
+  __shared__ int wid[4];
+  __shared__ int shmem_pool[10*NTHREAD];
+  int *shmem = shmem_pool+10*WARP_SIZE*warpId;
+  int *lmem = &MEM_BUF[blockIdx.x*(LMEM_STACK_SIZE*NTHREAD+2*NTHREAD)];
   while(true) {
     if( laneId == 0 )
-      *leaf = atomicAdd(workToDo,1);
-    if( *leaf >= numLeafs ) return;
-    int node = leafNodes[*leaf];
-    const uint begin = Cell_BEGIN[node];
-    const uint size  = Cell_SIZE[node];
-    vec3 targetX = Cell_X[node];
-    bool valid = laneId < size;
-    int body = (begin + laneId) & IF(valid);
-    vec3 X = Body_X[body];
-    vec4 TRG = 0.0f;
-    traverse(Body_X, Body_SRC, X, TRG, Cell_BEGIN, Cell_SIZE, Cell_RCRIT, Cell_X, Multipole, targetX, blockPtr);
-    if( valid ) Body_TRG[body] = TRG;
+      wid[warpId] = atomicAdd(workToDo,1);
+    if( wid[warpId] >= numGroups ) return;
+    float4 groupSize = groupSizeInfo[wid[warpId]];
+    const int groupData = __float_as_int(groupSize.w);
+    const uint begin = groupData & CRITMASK;
+    const uint numGroup = ((groupData & INVCMASK) >> CRITBIT) + 1;
+    float4 groupCenter = groupCenterInfo[wid[warpId]];
+    uint body_i = begin + laneId % numGroup;
+    float4 pos_i = tex1Dfetch(texBody,body_i);
+    float4 acc_i = make_float4(0.0f, 0.0f, 0.0f, 0.0f);
+
+    traverse(pos_i, acc_i, groupCenter, groupSize, eps2, levelRange[2], shmem, lmem);
+    if( laneId < numGroup )
+      acc[body_i] = acc_i;
   }
 }
 
-extern "C" __global__ void directKernel(vec3 *Body_X, float *Body_SRC, vec4 *Body_TRG, const int N) {
+extern "C" __global__ void directKernel(float4 *bodyPos, float4 *bodyAcc, const int N, const float eps2) {
   uint idx = min(blockIdx.x * blockDim.x + threadIdx.x, N-1);
-  vec3 targetX = Body_X[idx];
-  vec4 TRG = 0.0f;
-  __shared__ vec3 shrdX[NTHREAD];
-  __shared__ float shrdM[NTHREAD];
-  vec3 *sourceX = shrdX + WARP_SIZE * warpId;
-  float *sourceM = shrdM + WARP_SIZE * warpId;
+  float4 pos_i = bodyPos[idx];
+  float4 acc_i = make_float4(0.0f, 0.0f, 0.0f, 0.0f);
+  __shared__ float4 shmem[NTHREAD];
+  float4 *pos_j = shmem + WARP_SIZE * warpId;
   const int numWarp = ALIGN(N, WARP_SIZE);
   for( int jwarp=0; jwarp<numWarp; jwarp++ ) {
     int jGlob = jwarp*WARP_SIZE+laneId;
-    int j = min(jGlob,N-1);
-    sourceX[laneId] = Body_X[j];
-    sourceM[laneId] = Body_SRC[j] * (jGlob < N);
+    pos_j[laneId] = bodyPos[min(jGlob,N-1)];
+    pos_j[laneId].w *= jGlob < N;
     for( int i=0; i<WARP_SIZE; i++ )
-      P2P(TRG, targetX, sourceX[i], sourceM[i]);
+      P2P(acc_i, pos_i, pos_j[i], eps2);
   }
-  Body_TRG[idx] = TRG;
+  bodyAcc[idx] = acc_i;
 }
 
 void octree::traverse() {
+  nodeChild.tex("texNodeChild");
+  openingAngle.tex("texOpening");
+  multipole.tex("texMultipole");
+  bodyPos.tex("texBody");
   workToDo.zeros();
   traverseKernel<<<NBLOCK,NTHREAD,0,execStream>>>(
-    numLeafs,
-    leafNodes.devc(),
-    Cell_BEGIN.devc(),
-    Cell_SIZE.devc(),
-    Cell_RCRIT.devc(),
-    Cell_X.devc(),
-    Multipole.devc(),
-    Body_X.devc(),
-    Body_SRC.devc(),
-    Body_TRG.devc(),
-    buffer.devc(),
+    numGroups,
+    eps2,
+    levelRange.devc(),
+    bodyAcc.devc(),
+    groupSizeInfo.devc(),
+    groupCenterInfo.devc(),
+    (int*)generalBuffer1.devc(),
     workToDo.devc()
   );
 }
@@ -376,29 +324,33 @@ void octree::traverse() {
 void octree::iterate() {
   CU_SAFE_CALL(cudaStreamCreate(&execStream));
   double t1 = get_time();
+  getBoundaries();
+  CU_SAFE_CALL(cudaStreamSynchronize(execStream));
+  printf("BOUND : %lf\n",get_time() - t1);;
+  t1 = get_time();
   getKeys();
   CU_SAFE_CALL(cudaStreamSynchronize(execStream));
   printf("INDEX : %lf\n",get_time() - t1);;
   t1 = get_time();
   sortKeys();
   CU_SAFE_CALL(cudaStreamSynchronize(execStream));
-  printf("SORT  : %lf\n",get_time() - t1);;
+  printf("KEYS  : %lf\n",get_time() - t1);;
   t1 = get_time();
   sortBodies();
   CU_SAFE_CALL(cudaStreamSynchronize(execStream));
-  printf("PERM  : %lf\n",get_time() - t1);;
+  printf("BODIES: %lf\n",get_time() - t1);;
   t1 = get_time();
   buildTree();
   CU_SAFE_CALL(cudaStreamSynchronize(execStream));
   printf("BUILD : %lf\n",get_time() - t1);;
   t1 = get_time();
-  allocateTreePropMemory();
-  CU_SAFE_CALL(cudaStreamSynchronize(execStream));
-  printf("ALLOC : %lf\n",get_time() - t1);;
-  t1 = get_time();
   linkTree();
   CU_SAFE_CALL(cudaStreamSynchronize(execStream));
   printf("LINK  : %lf\n",get_time() - t1);;
+  t1 = get_time();
+  allocateTreePropMemory();
+  CU_SAFE_CALL(cudaStreamSynchronize(execStream));
+  printf("ALLOC : %lf\n",get_time() - t1);;
   t1 = get_time();
   upward();
   CU_SAFE_CALL(cudaStreamSynchronize(execStream));
@@ -406,12 +358,12 @@ void octree::iterate() {
   t1 = get_time();
   traverse();
   CU_SAFE_CALL(cudaStreamSynchronize(execStream));
-  printf("TRAV  : %lf\n",get_time() - t1);;
+  printf("FMM   : %lf\n",get_time() - t1);;
 }
 
 void octree::direct() {
   int blocks = ALIGN(numBodies/100, NTHREAD);
-  directKernel<<<blocks,NTHREAD,0,execStream>>>(Body_X.devc(),Body_SRC.devc(),Body2_TRG.devc(),numBodies);
+  directKernel<<<blocks,NTHREAD,0,execStream>>>(bodyPos.devc(),bodyAcc2.devc(),numBodies,eps2);
   CU_SAFE_CALL(cudaStreamSynchronize(execStream));
   CU_SAFE_CALL(cudaStreamDestroy(execStream));
 }
