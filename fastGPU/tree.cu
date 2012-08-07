@@ -364,12 +364,12 @@ extern "C" __global__ void reorder(const int size, uint4 *index, float4 *input, 
 }
 
 extern "C" __global__ void P2M(const int numLeafs,
-                                        uint *leafNodes,
-                                        uint2 *nodeBodies,
-                                        float4 *bodyPos,
-                                        float4 *multipole,
-                                        float4 *nodeLowerBounds,
-                                        float4 *nodeUpperBounds) {
+                               uint *leafNodes,
+                               uint2 *nodeBodies,
+                               float4 *bodyPos,
+                               float4 *multipole,
+                               float4 *nodeLowerBounds,
+                               float4 *nodeUpperBounds) {
   const uint idx = blockIdx.x * blockDim.x + threadIdx.x;
   if (idx >= numLeafs) return;
   int nodeID = leafNodes[idx];
@@ -452,13 +452,13 @@ extern "C" __global__ void rescale(const int node_count,
   float3 boxSize = make_float3(fmaxf(fabs(boxCenter.x-xmin.x), fabs(boxCenter.x-xmax.x)),
                                fmaxf(fabs(boxCenter.y-xmin.y), fabs(boxCenter.y-xmax.y)),
                                fmaxf(fabs(boxCenter.z-xmin.z), fabs(boxCenter.z-xmax.z)));
-  float3 s3 = make_float3((boxCenter.x - mon.x), (boxCenter.y - mon.y), (boxCenter.z - mon.z));
-  float s = sqrt((s3.x*s3.x) + (s3.y*s3.y) + (s3.z*s3.z));
-  if(fabs(mon.w) < 1e-10) s = 0;
+  float3 dX = make_float3((boxCenter.x - mon.x), (boxCenter.y - mon.y), (boxCenter.z - mon.z));
+  float R = sqrt((dX.x*dX.x) + (dX.y*dX.y) + (dX.z*dX.z));
+  if(fabs(mon.w) < 1e-10) R = 0;
 
   float length = 2 * fmaxf(boxSize.x, fmaxf(boxSize.y, boxSize.z));
   if(length < 0.000001) length = 0.000001;
-  float cellOp = length / theta + s;
+  float cellOp = length / theta + R;
   cellOp = cellOp * cellOp;
   uint pfirst = nodeBodies[idx].x;
   uint nchild = nodeBodies[idx].y - pfirst;

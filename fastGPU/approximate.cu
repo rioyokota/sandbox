@@ -2,13 +2,15 @@
 #define laneId (threadIdx.x & (WARP_SIZE - 1))
 #define warpId (threadIdx.x >> WARP_SIZE2)
 #define IF(x) (-(int)(x))
+#define ABS(x) ((int(x) < 0 ) ? -(x) : (x))
 
 __device__ __forceinline__ int inclusiveScanInt(int* prefix, int value) 
 {
   prefix[laneId] = value;
   for (int i = 0; i < WARP_SIZE2; i++) {
     const int offset = 1 << i;
-    prefix[laneId] += prefix[laneId-offset] & IF(laneId >= offset);
+    const int laneOffset = ABS(laneId-offset);
+    prefix[laneId] += prefix[laneOffset] & IF(laneId >= offset);
   }
   return prefix[WARP_SIZE-1];
 }
@@ -54,7 +56,8 @@ __device__ __forceinline__ int inclusive_segscan_warp(
   shmem[laneId] = value;
   for( int i=0; i<WARP_SIZE2; i++ ) {
     const int offset = 1 << i;
-    shmem[laneId] += shmem[laneId-offset] & IF(offset <= distance);
+    const int laneOffset = ABS(laneId-offset);
+    shmem[laneId] += shmem[laneOffset] & IF(offset <= distance);
   }
   return shmem[WARP_SIZE - 1];
 }
@@ -121,8 +124,7 @@ __device__ void traverse(
     int *shmem,
     int *lmem) {
   const int stackSize = LMEM_STACK_SIZE << NTHREAD2;
-  const int nWarps2 = NTHREAD2 - WARP_SIZE2;
-  int *approxNodes = lmem + stackSize + (NTHREAD >> (nWarps2 - 1)) * warpId;
+  int *approxNodes = lmem + stackSize + 2 * WARP_SIZE * warpId;
   int *numDirect = shmem;
   int *stackShrd = numDirect + WARP_SIZE;
   int *directNodes = stackShrd + WARP_SIZE;
@@ -147,7 +149,7 @@ __device__ void traverse(
       // walk a level
       for( int iStack=beginStack; iStack<endStack; iStack++ ) {
         bool valid = laneId < numNodes;
-        int node = stackGlob[ACCESS(iStack)];
+        int node = stackGlob[ACCESS(iStack)] & IF(valid);
         numNodes -= WARP_SIZE;
         float opening = tex1Dfetch(texOpening, node);
         uint sourceData = tex1Dfetch(texNodeChild, node);
@@ -344,13 +346,13 @@ void octree::iterate() {
   CU_SAFE_CALL(cudaStreamSynchronize(execStream));
   printf("BUILD : %lf\n",get_time() - t1);;
   t1 = get_time();
-  linkTree();
-  CU_SAFE_CALL(cudaStreamSynchronize(execStream));
-  printf("LINK  : %lf\n",get_time() - t1);;
-  t1 = get_time();
   allocateTreePropMemory();
   CU_SAFE_CALL(cudaStreamSynchronize(execStream));
   printf("ALLOC : %lf\n",get_time() - t1);;
+  t1 = get_time();
+  linkTree();
+  CU_SAFE_CALL(cudaStreamSynchronize(execStream));
+  printf("LINK  : %lf\n",get_time() - t1);;
   t1 = get_time();
   upward();
   CU_SAFE_CALL(cudaStreamSynchronize(execStream));
