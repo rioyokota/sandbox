@@ -86,10 +86,9 @@ texture<float4, 1, cudaReadModeElementType> texBody;
 
 __device__ __forceinline__ void P2P(
     float4 &acc,  const float4 pos,
-    const float4 posj,
-    const float eps2) {
+    const float4 posj) {
   const float3 dr = make_float3(posj.x - pos.x, posj.y - pos.y, posj.z - pos.z);
-  const float r2     = dr.x*dr.x + dr.y*dr.y + dr.z*dr.z + eps2;
+  const float r2     = dr.x*dr.x + dr.y*dr.y + dr.z*dr.z + EPS2;
   const float rinv   = rsqrtf(r2);
   const float rinv2  = rinv*rinv;
   const float mrinv  = posj.w * rinv;
@@ -119,7 +118,6 @@ __device__ void traverse(
     float4 &acc_i,
     float4 targetCenter,
     float4 targetSize,
-    float eps2,
     uint2 rootRange,
     int *shmem,
     int *lmem) {
@@ -183,7 +181,7 @@ __device__ void traverse(
           node = approxNodes[warpOffsetApprox+laneId];
           pos_j[laneId] = tex1Dfetch(texMultipole, node);
           for( int i=0; i<WARP_SIZE; i++ )
-            P2P(acc_i, pos_i, pos_j[i], eps2);
+            P2P(acc_i, pos_i, pos_j[i]);
         }
 #endif
 #if 1   // DIRECT
@@ -214,7 +212,7 @@ __device__ void traverse(
             warpOffsetDirect -= WARP_SIZE;
             pos_j[laneId] = tex1Dfetch(texBody,directNodes[warpOffsetDirect+laneId]);
             for( int i=0; i<WARP_SIZE; i++ )
-              P2P(acc_i, pos_i, pos_j[i], eps2);
+              P2P(acc_i, pos_i, pos_j[i]);
           }
         }
         numDirect[laneId] = directNodes[laneId];
@@ -240,7 +238,7 @@ __device__ void traverse(
       pos_j[laneId] = make_float4(1.0e10f, 1.0e10f, 1.0e10f, 0.0f);
     }
     for( int i=0; i<WARP_SIZE; i++ )
-      P2P(acc_i, pos_i, pos_j[i], eps2);
+      P2P(acc_i, pos_i, pos_j[i]);
   }
 
   if( warpOffsetDirect > 0 ) {
@@ -251,14 +249,13 @@ __device__ void traverse(
       pos_j[laneId] = make_float4(1.0e10f, 1.0e10f, 1.0e10f, 0.0f);
     }
     for( int i=0; i<WARP_SIZE; i++ ) 
-      P2P(acc_i, pos_i, pos_j[i], eps2);
+      P2P(acc_i, pos_i, pos_j[i]);
   }
 }
 
 extern "C" __global__ void
   traverseKernel(
       const int numGroups,
-      float eps2,
       uint2 *levelRange,
       float4 *acc,
       float4 *groupSizeInfo,
@@ -282,13 +279,13 @@ extern "C" __global__ void
     float4 pos_i = tex1Dfetch(texBody,body_i);
     float4 acc_i = make_float4(0.0f, 0.0f, 0.0f, 0.0f);
 
-    traverse(pos_i, acc_i, groupCenter, groupSize, eps2, levelRange[2], shmem, lmem);
+    traverse(pos_i, acc_i, groupCenter, groupSize, levelRange[2], shmem, lmem);
     if( laneId < numGroup )
       acc[body_i] = acc_i;
   }
 }
 
-extern "C" __global__ void directKernel(float4 *bodyPos, float4 *bodyAcc, const int N, const float eps2) {
+extern "C" __global__ void directKernel(float4 *bodyPos, float4 *bodyAcc, const int N) {
   uint idx = min(blockIdx.x * blockDim.x + threadIdx.x, N-1);
   float4 pos_i = bodyPos[idx];
   float4 acc_i = make_float4(0.0f, 0.0f, 0.0f, 0.0f);
@@ -300,7 +297,7 @@ extern "C" __global__ void directKernel(float4 *bodyPos, float4 *bodyAcc, const 
     pos_j[laneId] = bodyPos[min(jGlob,N-1)];
     pos_j[laneId].w *= jGlob < N;
     for( int i=0; i<WARP_SIZE; i++ )
-      P2P(acc_i, pos_i, pos_j[i], eps2);
+      P2P(acc_i, pos_i, pos_j[i]);
   }
   bodyAcc[idx] = acc_i;
 }
@@ -313,7 +310,6 @@ void octree::traverse() {
   workToDo.zeros();
   traverseKernel<<<NBLOCK,NTHREAD,0,execStream>>>(
     numGroups,
-    eps2,
     levelRange.devc(),
     bodyAcc.devc(),
     groupSizeInfo.devc(),
@@ -365,7 +361,7 @@ void octree::iterate() {
 
 void octree::direct() {
   int blocks = ALIGN(numBodies/100, NTHREAD);
-  directKernel<<<blocks,NTHREAD,0,execStream>>>(bodyPos.devc(),bodyAcc2.devc(),numBodies,eps2);
+  directKernel<<<blocks,NTHREAD,0,execStream>>>(bodyPos.devc(),bodyAcc2.devc(),numBodies);
   CU_SAFE_CALL(cudaStreamSynchronize(execStream));
   CU_SAFE_CALL(cudaStreamDestroy(execStream));
 }

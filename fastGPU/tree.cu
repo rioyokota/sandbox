@@ -438,7 +438,6 @@ extern "C" __global__ void rescale(const int node_count,
                                            float4 *nodeLowerBounds,
                                            float4 *nodeUpperBounds,
                                            uint  *nodeChild,
-                                           float theta,
                                            float *openingAngle,
                                            uint2 *nodeBodies){
   const uint idx = blockIdx.x * blockDim.x + threadIdx.x;
@@ -458,7 +457,7 @@ extern "C" __global__ void rescale(const int node_count,
 
   float length = 2 * fmaxf(boxSize.x, fmaxf(boxSize.y, boxSize.z));
   if(length < 0.000001) length = 0.000001;
-  float cellOp = length / theta + R;
+  float cellOp = length / THETA + R;
   cellOp = cellOp * cellOp;
   uint pfirst = nodeBodies[idx].x;
   uint nchild = nodeBodies[idx].y - pfirst;
@@ -623,6 +622,6 @@ void octree::upward() {
   }
 
   blocks = ALIGN(numNodes,threads);
-  rescale<<<blocks,threads,0,execStream>>>(numNodes,multipole.devc(),nodeLowerBounds.devc(),nodeUpperBounds.devc(),nodeChild.devc(),theta,openingAngle.devc(),nodeBodies.devc());
+  rescale<<<blocks,threads,0,execStream>>>(numNodes,multipole.devc(),nodeLowerBounds.devc(),nodeUpperBounds.devc(),nodeChild.devc(),openingAngle.devc(),nodeBodies.devc());
   setGroups<<<numGroups,NCRIT>>>(numGroups,bodyPos.devc(),(int2*)groupRange.devc(),groupCenterInfo.devc(),groupSizeInfo.devc());
 }

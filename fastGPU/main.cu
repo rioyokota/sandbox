@@ -3,9 +3,7 @@
 int main() {
   for( int it=0; it<25; it++ ) {
     uint numBodies = uint(pow(10,(it+24)/8.0));
-    float eps      = 0.01f;
-    float theta    = 0.75f;
-    octree *tree = new octree(numBodies, theta, eps);
+    octree *tree = new octree(numBodies);
     printf("N     : %d\n",numBodies);
     for( uint i=0; i<numBodies; i++ ) {
       tree->bodyPos[i].w  = 1. / numBodies;

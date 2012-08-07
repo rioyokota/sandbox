@@ -34,8 +34,6 @@ public:
 
 class octree {
 private:
-  float eps2;
-  float theta;
   cudaStream_t execStream;
   Sort90 *sorter;
 
@@ -95,7 +93,7 @@ private:
   void traverse();
 
 public:
-  octree(const int _n, const float _theta, const float _eps) : numBodies(_n), theta(_theta), eps2(_eps*_eps) {
+  octree(const int _n) : numBodies(_n) {
     assert(isPowerOfTwo(NCRIT));
     cudaSetDevice(2);
     bodyPos.alloc(numBodies+1);
