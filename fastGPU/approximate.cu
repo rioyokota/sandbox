@@ -7,7 +7,7 @@
 __device__ __forceinline__ int inclusiveScanInt(int* prefix, int value) 
 {
   prefix[laneId] = value;
-  for (int i = 0; i < WARP_SIZE2; i++) {
+  for ( int i=0; i<WARP_SIZE2; i++ ) {
     const int offset = 1 << i;
     const int laneOffset = ABS(laneId-offset);
     prefix[laneId] += prefix[laneOffset] & IF(laneId >= offset);
@@ -87,37 +87,36 @@ texture<float4, 1, cudaReadModeElementType> texBody;
 __device__ __forceinline__ void P2P(
     float4 &acc,  const float4 pos,
     const float4 posj) {
-  const float3 dr = make_float3(posj.x - pos.x, posj.y - pos.y, posj.z - pos.z);
-  const float r2     = dr.x*dr.x + dr.y*dr.y + dr.z*dr.z + EPS2;
-  const float rinv   = rsqrtf(r2);
-  const float rinv2  = rinv*rinv;
-  const float mrinv  = posj.w * rinv;
-  const float mrinv3 = mrinv * rinv2;
-  acc.w -= mrinv;
-  acc.x += mrinv3 * dr.x;
-  acc.y += mrinv3 * dr.y;
-  acc.z += mrinv3 * dr.z;
+  const vec3 dX = make_vec3(posj.x - pos.x, posj.y - pos.y, posj.z - pos.z);
+  const float R2     = norm(dX) + EPS2;
+  const float invR   = rsqrtf(R2);
+  const float invR2  = invR * invR;
+  const float minvR  = posj.w * invR;
+  const float minvR3 = minvR * invR2;
+  acc.w -= minvR;
+  acc.x += minvR3 * dX[0];
+  acc.y += minvR3 * dX[1];
+  acc.z += minvR3 * dX[2];
 }
 
 __device__ bool applyMAC(
     const float4 sourceCenter, 
-    const float4 groupCenter, 
-    const float4 groupSize) {
-  float3 dr = make_float3(fabsf(groupCenter.x - sourceCenter.x) - (groupSize.x),
-                          fabsf(groupCenter.y - sourceCenter.y) - (groupSize.y),
-                          fabsf(groupCenter.z - sourceCenter.z) - (groupSize.z));
-  dr.x += fabsf(dr.x); dr.x *= 0.5f;
-  dr.y += fabsf(dr.y); dr.y *= 0.5f;
-  dr.z += fabsf(dr.z); dr.z *= 0.5f;
-  const float ds2 = dr.x*dr.x + dr.y*dr.y + dr.z*dr.z;
-  return ds2 <= fabsf(sourceCenter.w);
+    const vec4 groupCenter, 
+    const vec4 groupSize) {
+  vec3 dX = make_vec3(fabsf(groupCenter[0] - sourceCenter.x) - (groupSize[0]),
+                      fabsf(groupCenter[1] - sourceCenter.y) - (groupSize[1]),
+                      fabsf(groupCenter[2] - sourceCenter.z) - (groupSize[2]));
+  dX += fabsf(dX);
+  dX *= 0.5f;
+  const float R2 = norm(dX);
+  return R2 <= fabsf(sourceCenter.w);
 }
 
 __device__ void traverse(
     float4 &pos_i,
     float4 &acc_i,
-    float4 targetCenter,
-    float4 targetSize,
+    vec4 targetCenter,
+    vec4 targetSize,
     uint2 rootRange,
     int *shmem,
     int *lmem) {
@@ -258,8 +257,8 @@ extern "C" __global__ void
       const int numGroups,
       uint2 *levelRange,
       float4 *acc,
-      float4 *groupSizeInfo,
-      float4 *groupCenterInfo,
+      vec4 *groupSizeInfo,
+      vec4 *groupCenterInfo,
       int    *MEM_BUF,
       uint   *workToDo) {
   __shared__ int wid[4];
@@ -270,11 +269,11 @@ extern "C" __global__ void
     if( laneId == 0 )
       wid[warpId] = atomicAdd(workToDo,1);
     if( wid[warpId] >= numGroups ) return;
-    float4 groupSize = groupSizeInfo[wid[warpId]];
-    const int groupData = __float_as_int(groupSize.w);
+    vec4 groupSize = groupSizeInfo[wid[warpId]];
+    const int groupData = __float_as_int(groupSize[3]);
     const uint begin = groupData & CRITMASK;
     const uint numGroup = ((groupData & INVCMASK) >> CRITBIT) + 1;
-    float4 groupCenter = groupCenterInfo[wid[warpId]];
+    vec4 groupCenter = groupCenterInfo[wid[warpId]];
     uint body_i = begin + laneId % numGroup;
     float4 pos_i = tex1Dfetch(texBody,body_i);
     float4 acc_i = make_float4(0.0f, 0.0f, 0.0f, 0.0f);
