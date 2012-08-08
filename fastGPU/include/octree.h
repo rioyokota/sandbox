@@ -60,14 +60,14 @@ private:
   cudaVec<float4> multipole;      
 
   cudaVec<float>  openingAngle;
-  cudaVec<vec4>   groupSizeInfo;
-  cudaVec<vec4>   groupCenterInfo;
+  cudaVec<float4> groupSizeInfo;
+  cudaVec<float4> groupCenterInfo;
 
   cudaVec<uint>   generalBuffer1;
-  vec4 corner;
+  float4 corner;
 
-  cudaVec<vec3>   XMIN;
-  cudaVec<vec3>   XMAX;
+  cudaVec<float3> XMIN;
+  cudaVec<float3> XMAX;
   cudaVec<uint>   offset;
   cudaVec<uint>   workToDo;
   
