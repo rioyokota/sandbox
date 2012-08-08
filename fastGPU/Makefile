@@ -6,12 +6,12 @@ NVCC = nvcc -arch sm_21 -use_fast_math -Iinclude -Xcompiler "-fopenmp -O3"
 ORG = approximate.o \
 	main.o \
 	scanKernels.o \
-	sortKernels.th_o \
 	tree.o
+TORG = sortKernels.th_o
 
 .SUFFIXES: .o .cpp .cu
 
-all: $(ORG)
+all: $(ORG) $(TORG)
 	$(CXX) $^ -lcudart -L$(CUDA_INSTALL_PATH)/lib64
 	./a.out
 
