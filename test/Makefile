@@ -27,6 +27,9 @@ template: template.o
 pthreads: pthreads.o
 	$(CXX) $?
 	./a.out
+getopt: getopt.o
+	$(CXX) $?
+	./a.out
 hello: hello.asm
 	nasm $? -f elf
 	ld -m elf_i386 -s hello.o
