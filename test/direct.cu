@@ -82,7 +82,7 @@ int main() {
 
   std::cout << std::scientific << "SSE   : " << toc-tic << " s : " << OPS / (toc-tic) << " GFlops" << std::endl;
 
-// SSE P2P
+// ASM P2P
   PAPI_start(EventSet);
 
   tic = get_time();

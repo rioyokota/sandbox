@@ -15,6 +15,9 @@ sort: sort.o
 radixsort: radixsort.o
 	$(CXX) $?
 	./a.out
+radixbody: radixbody.o
+	$(CXX) $?
+	./a.out
 tree: tree.o
 	$(CXX) $?
 	./a.out
