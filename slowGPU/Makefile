@@ -1,4 +1,4 @@
-NVCC	= nvcc -arch sm_21 -use_fast_math --ptxas-options=-v -Xcompiler "-fopenmp -O3 -g"
+NVCC	= nvcc --compiler-bindir=/usr/bin/g++-4.4 -arch sm_21 -use_fast_math --ptxas-options=-v -Xcompiler "-fopenmp -O3 -g"
 
 all:	main.cu
 	$(NVCC) $?
