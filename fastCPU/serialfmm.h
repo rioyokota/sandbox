@@ -132,6 +132,7 @@ public:
     double tic, toc;
     tic = getTime();
     setRootCell(icells,jcells);
+    Xperiodic = 0;
     traverse(ROOT,ROOT2,true);
     toc = getTime();
     if( printNow ) printf("Traverse             : %lf\n",toc-tic);

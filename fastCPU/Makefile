@@ -6,6 +6,7 @@ LFLAGS	+= -DUSE_RMAX
 LFLAGS	+= -DUSE_BMAX
 LFLAGS	+= -DCOMcenter
 LFLAGS	+= -DDUAL
+LFLAGS  += -std=c++0x -DTBB -ltbb
 
 a	: main.cxx
 	$(CXX) $? $(LFLAGS) -lpapi
