@@ -17,6 +17,6 @@
 
 typedef double real;
 
-const int P = 3;
+const int P = 6;
 const int MTERM = P*(P+1)*(P+2)/6;
 const int LTERM = (P+1)*(P+2)*(P+3)/6;

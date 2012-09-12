@@ -23,7 +23,7 @@ int MPIRANK    = 0;                                             //!< MPI comm ra
 int MPISIZE    = 1;                                             //!< MPI comm size
 real THETA     = .5;                                            //!< Multipole acceptance criteria
 
-const int  P        = 3;                                        //!< Order of expansions
+const int  P        = 6;                                        //!< Order of expansions
 const int  NCRIT    = 10;                                       //!< Number of bodies per cell
 const real EPS2     = 0;                                        //!< Softening parameter (squared)
 
