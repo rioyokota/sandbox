@@ -5,6 +5,8 @@
 class SerialFMM : public Evaluator {
 protected:
   int MAXLEVEL;
+  vec3 X0;
+  real_t R0;
 
 private:
   int getMaxLevel(Bodies &bodies) {
@@ -33,15 +35,15 @@ private:
     }
   }
 
-  inline void initCell(Cell &cell, int child, B_iter LEAF, real diameter) {
+  inline void initCell(Cell &cell, int child, B_iter BODY, real_t diameter) {
     cell.NCHILD = 0;
-    cell.NCLEAF = 0;
-    cell.NDLEAF = 0;
+    cell.NCBODY = 0;
+    cell.NDBODY = 0;
     cell.CHILD  = child;
-    cell.LEAF   = LEAF;
-    int ix = int((LEAF->X[0] + R0 - X0[0]) / diameter);
-    int iy = int((LEAF->X[1] + R0 - X0[1]) / diameter);
-    int iz = int((LEAF->X[2] + R0 - X0[2]) / diameter);
+    cell.BODY   = BODY;
+    int ix = int((BODY->X[0] + R0 - X0[0]) / diameter);
+    int iy = int((BODY->X[1] + R0 - X0[1]) / diameter);
+    int iz = int((BODY->X[2] + R0 - X0[2]) / diameter);
     cell.X[0]   = diameter * (ix + .5) + X0[0] - R0;
     cell.X[1]   = diameter * (iy + .5) + X0[1] - R0;
     cell.X[2]   = diameter * (iz + .5) + X0[2] - R0;
@@ -64,8 +66,8 @@ private:
         C = cells.end()-1;
         I = IC;
       }
-      C->NCLEAF++;
-      C->NDLEAF++;
+      C->NCBODY++;
+      C->NDBODY++;
     }
   }
 
@@ -91,18 +93,18 @@ protected:
       int p = end - 1;
       d *= 2;
       for( int c=begin; c!=end; ++c ) {
-        B_iter B = cells[c].LEAF;
+        B_iter B = cells[c].BODY;
         int IC = B->ICELL / div;
         if( IC != I ) {
           Cell cell;
-          initCell(cell,c,cells[c].LEAF,d);
+          initCell(cell,c,cells[c].BODY,d);
           cell.ICELL = IC;
           cells.push_back(cell);
           p++;
           I = IC;
         }
         cells[p].NCHILD++;
-        cells[p].NDLEAF += cells[c].NDLEAF;
+        cells[p].NDBODY += cells[c].NDBODY;
         cells[c].PARENT = p;
       }
       begin = end;

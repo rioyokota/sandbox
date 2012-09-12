@@ -1,7 +1,7 @@
 CXX	= g++ -ggdb3 -Wall -Wextra -Wshadow -Wuninitialized -O3 -fopenmp -ffast-math -funroll-loops -fforce-addr
 
 LFLAGS	+= -DMUTUAL
-#LFLAGS	+= -DCOMkernel
+LFLAGS	+= -DCOMkernel
 #LFLAGS	+= -DERROR_OPT
 LFLAGS	+= -DUSE_RMAX
 LFLAGS	+= -DUSE_BMAX

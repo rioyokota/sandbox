@@ -19,16 +19,16 @@ public:
   }
 
 private:
-  real getBmax(vect const&X, C_iter C) const {
-    real rad = C->R;
-    real dx = rad+std::abs(X[0]-C->X[0]);
-    real dy = rad+std::abs(X[1]-C->X[1]);
-    real dz = rad+std::abs(X[2]-C->X[2]);
+  real_t getBmax(vec3 const&X, C_iter C) const {
+    real_t rad = C->R;
+    real_t dx = rad+std::abs(X[0]-C->X[0]);
+    real_t dy = rad+std::abs(X[1]-C->X[1]);
+    real_t dz = rad+std::abs(X[2]-C->X[2]);
     return std::sqrt( dx*dx + dy*dy + dz*dz );
   }
 
   void interact(C_iter C, CellQueue &cellQueue) {
-    if(C->NCHILD == 0 || C->NDLEAF < 64) {
+    if(C->NCHILD == 0 || C->NDBODY < 64) {
       P2P(C);
       NP2P++;
     } else {
@@ -37,8 +37,8 @@ private:
   }
 
   void interact(C_iter Ci, C_iter Cj, PairQueue &pairQueue, bool mutual=true) {
-    vect dX = Ci->X - Cj->X;
-    real Rq = norm(dX);
+    vec3 dX = Ci->X - Cj->X;
+    real_t Rq = norm(dX);
 #if DUAL
     if(Rq >= (Ci->RCRIT+Cj->RCRIT)*(Ci->RCRIT+Cj->RCRIT) && Rq != 0) {
       M2L(Ci,Cj,mutual);
@@ -82,9 +82,9 @@ protected:
   }
 
   void setCenter(C_iter C) const {
-    real m = 0;
-    vect X = 0;
-    for( B_iter B=C->LEAF; B!=C->LEAF+C->NCLEAF; ++B ) {
+    real_t m = 0;
+    vec3 X = 0;
+    for( B_iter B=C->BODY; B!=C->BODY+C->NCBODY; ++B ) {
       m += B->SRC;
       X += B->X * B->SRC;
     }
@@ -103,15 +103,15 @@ protected:
 
   void setRcrit(Cells &cells) {
 #if ERROR_OPT
-    real c = (1 - THETA) * (1 - THETA) / pow(THETA,P+2) / pow(std::abs(ROOT->M[0]),1.0/3);
+    real_t c = (1 - THETA) * (1 - THETA) / pow(THETA,P+2) / pow(std::abs(ROOT->M[0]),1.0/3);
 #endif
     for( C_iter C=cells.begin(); C!=cells.end(); ++C ) {
-      real x = 1.0 / THETA;
+      real_t x = 1.0 / THETA;
 #if ERROR_OPT
-      real a = c * pow(std::abs(C->M[0]),1.0/3);
+      real_t a = c * pow(std::abs(C->M[0]),1.0/3);
       for( int i=0; i<5; ++i ) {
-        real f = x * x - 2 * x + 1 - a * pow(x,-P);
-        real df = (P + 2) * x - 2 * (P + 1) + P / x;
+        real_t f = x * x - 2 * x + 1 - a * pow(x,-P);
+        real_t df = (P + 2) * x - 2 * (P + 1) + P / x;
         x -= f / df;
       }
 #endif
@@ -165,7 +165,7 @@ public:
       C->L = 0;
     }
     for( C_iter C=cells.begin(); C!=cells.end(); ++C ) {
-      real Rmax = 0;
+      real_t Rmax = 0;
       setCenter(C);
       P2M(C,Rmax);
       M2M(C,Rmax);
@@ -187,13 +187,13 @@ public:
     Cells cells;
     cells.resize(2);
     C_iter Ci = cells.begin(), Cj = cells.begin()+1;
-    Ci->LEAF = ibodies.begin();
-    Ci->NDLEAF = ibodies.size();
-    Cj->LEAF = jbodies.begin();
-    Cj->NDLEAF = jbodies.size();
+    Ci->BODY = ibodies.begin();
+    Ci->NDBODY = ibodies.size();
+    Cj->BODY = jbodies.begin();
+    Cj->NDBODY = jbodies.size();
     for( B_iter B=ibodies.begin(); B!=ibodies.end(); ++B ) B->TRG = 0;
     P2P(Ci,Cj,false);
-    real diff1 = 0, norm1 = 0, diff2 = 0, norm2 = 0;
+    real_t diff1 = 0, norm1 = 0, diff2 = 0, norm2 = 0;
     B_iter B2=jbodies.begin();
     for( B_iter B=ibodies.begin(); B!=ibodies.end(); ++B, ++B2 ) {
       B->TRG /= B->SRC;

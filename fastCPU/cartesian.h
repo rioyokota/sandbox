@@ -1,31 +1,4 @@
-/*
-Copyright (C) 2011 by Rio Yokota, Simon Layton, Lorena Barba
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in
-all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-THE SOFTWARE.
-*/
-#ifndef kernel_h
-#define kernel_h
-#include "types.h"
-
-#ifndef __GXX_EXPERIMENTAL_CXX0X__
-#define constexpr const
-#endif
+#include "kernel.h"
 
 struct float4 {
   float x;
@@ -53,33 +26,33 @@ struct float16 {
 
 template<typename T, int nx, int ny, int nz>
 struct Index {
-  static const int      I = Index<T,nx,ny+1,nz-1>::I + 1;
-  static constexpr real F = Index<T,nx,ny,nz-1>::F * nz;
+  static const int                I = Index<T,nx,ny+1,nz-1>::I + 1;
+  static const unsigned long long F = Index<T,nx,ny,nz-1>::F * nz;
 };
 
 template<typename T, int nx, int ny>
 struct Index<T,nx,ny,0> {
-  static const int      I = Index<T,nx+1,0,ny-1>::I + 1;
-  static constexpr real F = Index<T,nx,ny-1,0>::F * ny;
+  static const int                I = Index<T,nx+1,0,ny-1>::I + 1;
+  static const unsigned long long F = Index<T,nx,ny-1,0>::F * ny;
 };
 
 template<typename T, int nx>
 struct Index<T,nx,0,0> {
-  static const int      I = Index<T,0,0,nx-1>::I + 1;
-  static constexpr real F = Index<T,nx-1,0,0>::F * nx;
+  static const int                I = Index<T,0,0,nx-1>::I + 1;
+  static const unsigned long long F = Index<T,nx-1,0,0>::F * nx;
 };
 
 template<typename T>
 struct Index<T,0,0,0> {
-  static const int      I = 0;
-  static constexpr real F = 1.;
+  static const int                I = 0;
+  static const unsigned long long F = 1;
 };
 
 #if COMkernel
 template<>
-struct Index<Mset,2,0,0> {
-  static const int      I = 1;
-  static constexpr real F = 2.;
+struct Index<vecM,2,0,0> {
+  static const int                I = 1;
+  static const unsigned long long F = 2;
 };
 #endif
 
@@ -87,16 +60,16 @@ struct Index<Mset,2,0,0> {
 template<int n, int kx, int ky , int kz, int d>
 struct DerivativeTerm {
   static const int coef = 1 - 2 * n;
-  static inline real kernel(const Lset &C, const vect &dist) {
-    return coef * dist[d] * C[Index<Lset,kx,ky,kz>::I];
+  static inline real_t kernel(const vecL &C, const vec3 &dist) {
+    return coef * dist[d] * C[Index<vecL,kx,ky,kz>::I];
   }
 };
 
 template<int n, int kx, int ky , int kz>
 struct DerivativeTerm<n,kx,ky,kz,-1> {
   static const int coef = 1 - n;
-  static inline real kernel(const Lset &C, const vect&) {
-    return coef * C[Index<Lset,kx,ky,kz>::I];
+  static inline real_t kernel(const vecL &C, const vec3&) {
+    return coef * C[Index<vecL,kx,ky,kz>::I];
   }
 };
 
@@ -106,7 +79,7 @@ struct DerivativeSum {
   static const int nextflag = 5 - (kz < nz || kz == 1);
   static const int dim = kz == (nz-1) ? -1 : 2;
   static const int n = nx + ny + nz;
-  static inline real loop(const Lset &C, const vect &dist) {
+  static inline real_t loop(const vecL &C, const vec3 &dist) {
     return DerivativeSum<nx,ny,nz,nx,ny,kz-1,nextflag>::loop(C,dist)
          + DerivativeTerm<n,nx,ny,kz-1,dim>::kernel(C,dist);
   }
@@ -115,7 +88,7 @@ struct DerivativeSum {
 template<int nx, int ny, int nz, int kx, int ky, int kz>
 struct DerivativeSum<nx,ny,nz,kx,ky,kz,4> {
   static const int nextflag = 3 - (ny == 0);
-  static inline real loop(const Lset &C, const vect &dist) {
+  static inline real_t loop(const vecL &C, const vec3 &dist) {
     return DerivativeSum<nx,ny,nz,nx,ny,nz,nextflag>::loop(C,dist);
   }
 };
@@ -125,7 +98,7 @@ struct DerivativeSum<nx,ny,nz,kx,ky,kz,3> {
   static const int nextflag = 3 - (ky < ny || ky == 1);
   static const int dim = ky == (ny-1) ? -1 : 1;
   static const int n = nx + ny + nz;
-  static inline real loop(const Lset &C, const vect &dist) {
+  static inline real_t loop(const vecL &C, const vec3 &dist) {
     return DerivativeSum<nx,ny,nz,nx,ky-1,nz,nextflag>::loop(C,dist)
          + DerivativeTerm<n,nx,ky-1,nz,dim>::kernel(C,dist);
   }
@@ -134,7 +107,7 @@ struct DerivativeSum<nx,ny,nz,kx,ky,kz,3> {
 template<int nx, int ny, int nz, int kx, int ky, int kz>
 struct DerivativeSum<nx,ny,nz,kx,ky,kz,2> {
   static const int nextflag = 1 - (nx == 0);
-  static inline real loop(const Lset &C, const vect &dist) {
+  static inline real_t loop(const vecL &C, const vec3 &dist) {
     return DerivativeSum<nx,ny,nz,nx,ny,nz,nextflag>::loop(C,dist);
   }
 };
@@ -144,7 +117,7 @@ struct DerivativeSum<nx,ny,nz,kx,ky,kz,1> {
   static const int nextflag = 1 - (kx < nx || kx == 1);
   static const int dim = kx == (nx-1) ? -1 : 0;
   static const int n = nx + ny + nz;
-  static inline real loop(const Lset &C, const vect &dist) {
+  static inline real_t loop(const vecL &C, const vec3 &dist) {
     return DerivativeSum<nx,ny,nz,kx-1,ny,nz,nextflag>::loop(C,dist)
          + DerivativeTerm<n,kx-1,ny,nz,dim>::kernel(C,dist);
   }
@@ -152,14 +125,14 @@ struct DerivativeSum<nx,ny,nz,kx,ky,kz,1> {
 
 template<int nx, int ny, int nz, int kx, int ky, int kz>
 struct DerivativeSum<nx,ny,nz,kx,ky,kz,0> {
-  static inline real loop(const Lset&, const vect&) {
+  static inline real_t loop(const vecL&, const vec3&) {
     return 0;
   }
 };
 
 template<int nx, int ny, int nz, int kx, int ky>
 struct DerivativeSum<nx,ny,nz,kx,ky,0,5> {
-  static inline real loop(const Lset &C, const vect &dist) {
+  static inline real_t loop(const vecL &C, const vec3 &dist) {
     return DerivativeSum<nx,ny,nz,nx,ny,0,4>::loop(C,dist);
   }
 };
@@ -167,246 +140,233 @@ struct DerivativeSum<nx,ny,nz,kx,ky,0,5> {
 
 template<int nx, int ny, int nz, int kx=nx, int ky=ny, int kz=nz>
 struct MultipoleSum {
-  static inline real kernel(const Lset &C, const Mset &M) {
+  static inline real_t kernel(const vecL &C, const vecM &M) {
     return MultipoleSum<nx,ny,nz,kx,ky,kz-1>::kernel(C,M)
-         + C[Index<Lset,nx-kx,ny-ky,nz-kz>::I]*M[Index<Mset,kx,ky,kz>::I];
+         + C[Index<vecL,nx-kx,ny-ky,nz-kz>::I]*M[Index<vecM,kx,ky,kz>::I];
   }
 };
 
 template<int nx, int ny, int nz, int kx, int ky>
 struct MultipoleSum<nx,ny,nz,kx,ky,0> {
-  static inline real kernel(const Lset &C, const Mset &M) {
+  static inline real_t kernel(const vecL &C, const vecM &M) {
     return MultipoleSum<nx,ny,nz,kx,ky-1,nz>::kernel(C,M)
-         + C[Index<Lset,nx-kx,ny-ky,nz>::I]*M[Index<Mset,kx,ky,0>::I];
+         + C[Index<vecL,nx-kx,ny-ky,nz>::I]*M[Index<vecM,kx,ky,0>::I];
   }
 };
 
 template<int nx, int ny, int nz, int kx>
 struct MultipoleSum<nx,ny,nz,kx,0,0> {
-  static inline real kernel(const Lset &C, const Mset &M) {
+  static inline real_t kernel(const vecL &C, const vecM &M) {
     return MultipoleSum<nx,ny,nz,kx-1,ny,nz>::kernel(C,M)
-         + C[Index<Lset,nx-kx,ny,nz>::I]*M[Index<Mset,kx,0,0>::I];
+         + C[Index<vecL,nx-kx,ny,nz>::I]*M[Index<vecM,kx,0,0>::I];
   }
 };
 
 template<int nx, int ny, int nz>
 struct MultipoleSum<nx,ny,nz,0,0,0> {
-  static inline real kernel(const Lset&, const Mset&) { return 0; }
+  static inline real_t kernel(const vecL&, const vecM&) { return 0; }
 };
 
 #if COMkernel
 template<int nx, int ny, int nz>
 struct MultipoleSum<nx,ny,nz,0,0,1> {
-  static inline real kernel(const Lset&, const Mset&) { return 0; }
+  static inline real_t kernel(const vecL&, const vecM&) { return 0; }
 };
 
 template<int nx, int ny, int nz>
 struct MultipoleSum<nx,ny,nz,0,1,0> {
-  static inline real kernel(const Lset&, const Mset&) { return 0; }
+  static inline real_t kernel(const vecL&, const vecM&) { return 0; }
 };
 
 template<int nx, int ny, int nz>
 struct MultipoleSum<nx,ny,nz,1,0,0> {
-  static inline real kernel(const Lset&, const Mset&) { return 0; }
+  static inline real_t kernel(const vecL&, const vecM&) { return 0; }
 };
 #endif
 
 template<int nx, int ny, int nz, typename T, int kx=0, int ky=0, int kz=P-nx-ny-nz>
 struct LocalSum {
-  static inline real kernel(const T &M, const Lset &L) {
+  static inline real_t kernel(const T &M, const vecL &L) {
     return LocalSum<nx,ny,nz,T,kx,ky+1,kz-1>::kernel(M,L)
-         + M[Index<T,kx,ky,kz>::I] * L[Index<Lset,nx+kx,ny+ky,nz+kz>::I];
+         + M[Index<T,kx,ky,kz>::I] * L[Index<vecL,nx+kx,ny+ky,nz+kz>::I];
   }
 };
 
 template<int nx, int ny, int nz, typename T, int kx, int ky>
 struct LocalSum<nx,ny,nz,T,kx,ky,0> {
-  static inline real kernel(const T &M, const Lset &L) {
+  static inline real_t kernel(const T &M, const vecL &L) {
     return LocalSum<nx,ny,nz,T,kx+1,0,ky-1>::kernel(M,L)
-         + M[Index<T,kx,ky,0>::I] * L[Index<Lset,nx+kx,ny+ky,nz>::I];
+         + M[Index<T,kx,ky,0>::I] * L[Index<vecL,nx+kx,ny+ky,nz>::I];
   }
 };
 
 template<int nx, int ny, int nz, typename T, int kx>
 struct LocalSum<nx,ny,nz,T,kx,0,0> {
-  static inline real kernel(const T &M, const Lset &L) {
+  static inline real_t kernel(const T &M, const vecL &L) {
     return LocalSum<nx,ny,nz,T,0,0,kx-1>::kernel(M,L)
-         + M[Index<T,kx,0,0>::I] * L[Index<Lset,nx+kx,ny,nz>::I];
+         + M[Index<T,kx,0,0>::I] * L[Index<vecL,nx+kx,ny,nz>::I];
   }
 };
 
 template<int nx, int ny, int nz, typename T>
 struct LocalSum<nx,ny,nz,T,0,0,0> {
-  static inline real kernel(const T&, const Lset&) { return 0; }
+  static inline real_t kernel(const T&, const vecL&) { return 0; }
 };
 
 #if COMkernel
 template<int nx, int ny, int nz>
-struct LocalSum<nx,ny,nz,Mset,0,0,1> {
-  static inline real kernel(const Mset&, const Lset&) { return 0; }
+struct LocalSum<nx,ny,nz,vecM,0,0,1> {
+  static inline real_t kernel(const vecM&, const vecL&) { return 0; }
 };
 
 template<int nx, int ny, int nz>
-struct LocalSum<nx,ny,nz,Mset,0,1,0> {
-  static inline real kernel(const Mset&, const Lset&) { return 0; }
+struct LocalSum<nx,ny,nz,vecM,0,1,0> {
+  static inline real_t kernel(const vecM&, const vecL&) { return 0; }
 };
 
 template<int nx, int ny, int nz>
-struct LocalSum<nx,ny,nz,Mset,1,0,0> {
-  static inline real kernel(const Mset&, const Lset&) { return 0; }
+struct LocalSum<nx,ny,nz,vecM,1,0,0> {
+  static inline real_t kernel(const vecM&, const vecL&) { return 0; }
 };
 #endif
 
 
 template<int nx, int ny, int nz>
 struct Kernels {
-  static inline void power(Lset &C, const vect &dist) {
+  static inline void power(vecL &C, const vec3 &dist) {
     Kernels<nx,ny+1,nz-1>::power(C,dist);
-    C[Index<Lset,nx,ny,nz>::I] = C[Index<Lset,nx,ny,nz-1>::I] * dist[2] / nz;
+    C[Index<vecL,nx,ny,nz>::I] = C[Index<vecL,nx,ny,nz-1>::I] * dist[2] / nz;
   }
-  static inline void derivative(Lset &C, const vect &dist, const real &invR2) {
+  static inline void derivative(vecL &C, const vec3 &dist, const real_t &invR2) {
     static const int n = nx + ny + nz;
     Kernels<nx,ny+1,nz-1>::derivative(C,dist,invR2);
-    C[Index<Lset,nx,ny,nz>::I] = DerivativeSum<nx,ny,nz>::loop(C,dist) / n * invR2;
+    C[Index<vecL,nx,ny,nz>::I] = DerivativeSum<nx,ny,nz>::loop(C,dist) / n * invR2;
   }
-  static inline void scale(Lset &C) {
+  static inline void scale(vecL &C) {
     Kernels<nx,ny+1,nz-1>::scale(C);
-    C[Index<Lset,nx,ny,nz>::I] *= Index<Lset,nx,ny,nz>::F;
+    C[Index<vecL,nx,ny,nz>::I] *= Index<vecL,nx,ny,nz>::F;
   }
-  static inline void M2M(Mset &MI, const Lset &C, const Mset &MJ) {
+  static inline void M2M(vecM &MI, const vecL &C, const vecM &MJ) {
     Kernels<nx,ny+1,nz-1>::M2M(MI,C,MJ);
-    MI[Index<Mset,nx,ny,nz>::I] += MultipoleSum<nx,ny,nz>::kernel(C,MJ);
+    MI[Index<vecM,nx,ny,nz>::I] += MultipoleSum<nx,ny,nz>::kernel(C,MJ);
   }
-  static inline void M2L(Lset &L, const Lset &C, const Mset &M) {
+  static inline void M2L(vecL &L, const vecL &C, const vecM &M) {
     Kernels<nx,ny+1,nz-1>::M2L(L,C,M);
-    L[Index<Lset,nx,ny,nz>::I] += LocalSum<nx,ny,nz,Mset>::kernel(M,C);
+    L[Index<vecL,nx,ny,nz>::I] += LocalSum<nx,ny,nz,vecM>::kernel(M,C);
   }
-  static inline void M2P(B_iter B, const Lset &C, const Mset &M) {
-    Kernels<nx,ny+1,nz-1>::M2P(B,C,M);
-    B->TRG[Index<Lset,nx,ny,nz>::I] += LocalSum<nx,ny,nz,Mset>::kernel(M,C);
-  }
-  static inline void L2L(Lset &LI, const Lset &C, const Lset &LJ) {
+  static inline void L2L(vecL &LI, const vecL &C, const vecL &LJ) {
     Kernels<nx,ny+1,nz-1>::L2L(LI,C,LJ);
-    LI[Index<Lset,nx,ny,nz>::I] += LocalSum<nx,ny,nz,Lset>::kernel(C,LJ);
+    LI[Index<vecL,nx,ny,nz>::I] += LocalSum<nx,ny,nz,vecL>::kernel(C,LJ);
   }
-  static inline void L2P(B_iter B, const Lset &C, const Lset &L) {
+  static inline void L2P(B_iter B, const vecL &C, const vecL &L) {
     Kernels<nx,ny+1,nz-1>::L2P(B,C,L);
-    B->TRG[Index<Lset,nx,ny,nz>::I] += LocalSum<nx,ny,nz,Lset>::kernel(C,L);
+    B->TRG[Index<vecL,nx,ny,nz>::I] += LocalSum<nx,ny,nz,vecL>::kernel(C,L);
   }
 };
 
 template<int nx, int ny>
 struct Kernels<nx,ny,0> {
-  static inline void power(Lset &C, const vect &dist) {
+  static inline void power(vecL &C, const vec3 &dist) {
     Kernels<nx+1,0,ny-1>::power(C,dist);
-    C[Index<Lset,nx,ny,0>::I] = C[Index<Lset,nx,ny-1,0>::I] * dist[1] / ny;
+    C[Index<vecL,nx,ny,0>::I] = C[Index<vecL,nx,ny-1,0>::I] * dist[1] / ny;
   }
-  static inline void derivative(Lset &C, const vect &dist, const real &invR2) {
+  static inline void derivative(vecL &C, const vec3 &dist, const real_t &invR2) {
     static const int n = nx + ny;
     Kernels<nx+1,0,ny-1>::derivative(C,dist,invR2);
-    C[Index<Lset,nx,ny,0>::I] = DerivativeSum<nx,ny,0>::loop(C,dist) / n * invR2;
+    C[Index<vecL,nx,ny,0>::I] = DerivativeSum<nx,ny,0>::loop(C,dist) / n * invR2;
   }
-  static inline void scale(Lset &C) {
+  static inline void scale(vecL &C) {
     Kernels<nx+1,0,ny-1>::scale(C);
-    C[Index<Lset,nx,ny,0>::I] *= Index<Lset,nx,ny,0>::F;
+    C[Index<vecL,nx,ny,0>::I] *= Index<vecL,nx,ny,0>::F;
   }
-  static inline void M2M(Mset &MI, const Lset &C, const Mset &MJ) {
+  static inline void M2M(vecM &MI, const vecL &C, const vecM &MJ) {
     Kernels<nx+1,0,ny-1>::M2M(MI,C,MJ);
-    MI[Index<Mset,nx,ny,0>::I] += MultipoleSum<nx,ny,0>::kernel(C,MJ);
+    MI[Index<vecM,nx,ny,0>::I] += MultipoleSum<nx,ny,0>::kernel(C,MJ);
   }
-  static inline void M2L(Lset &L, const Lset &C, const Mset &M) {
+  static inline void M2L(vecL &L, const vecL &C, const vecM &M) {
     Kernels<nx+1,0,ny-1>::M2L(L,C,M);
-    L[Index<Lset,nx,ny,0>::I] += LocalSum<nx,ny,0,Mset>::kernel(M,C);
+    L[Index<vecL,nx,ny,0>::I] += LocalSum<nx,ny,0,vecM>::kernel(M,C);
   }
-  static inline void M2P(B_iter B, const Lset &C, const Mset &M) {
-    Kernels<nx+1,0,ny-1>::M2P(B,C,M);
-    B->TRG[Index<Lset,nx,ny,0>::I] += LocalSum<nx,ny,0,Mset>::kernel(M,C);
-  }
-  static inline void L2L(Lset &LI, const Lset &C, const Lset &LJ) {
+  static inline void L2L(vecL &LI, const vecL &C, const vecL &LJ) {
     Kernels<nx+1,0,ny-1>::L2L(LI,C,LJ);
-    LI[Index<Lset,nx,ny,0>::I] += LocalSum<nx,ny,0,Lset>::kernel(C,LJ);
+    LI[Index<vecL,nx,ny,0>::I] += LocalSum<nx,ny,0,vecL>::kernel(C,LJ);
   }
-  static inline void L2P(B_iter B, const Lset &C, const Lset &L) {
+  static inline void L2P(B_iter B, const vecL &C, const vecL &L) {
     Kernels<nx+1,0,ny-1>::L2P(B,C,L);
-    B->TRG[Index<Lset,nx,ny,0>::I] += LocalSum<nx,ny,0,Lset>::kernel(C,L);
+    B->TRG[Index<vecL,nx,ny,0>::I] += LocalSum<nx,ny,0,vecL>::kernel(C,L);
   }
 };
 
 template<int nx>
 struct Kernels<nx,0,0> {
-  static inline void power(Lset &C, const vect &dist) {
+  static inline void power(vecL &C, const vec3 &dist) {
     Kernels<0,0,nx-1>::power(C,dist);
-    C[Index<Lset,nx,0,0>::I] = C[Index<Lset,nx-1,0,0>::I] * dist[0] / nx;
+    C[Index<vecL,nx,0,0>::I] = C[Index<vecL,nx-1,0,0>::I] * dist[0] / nx;
   }
-  static inline void derivative(Lset &C, const vect &dist, const real &invR2) {
+  static inline void derivative(vecL &C, const vec3 &dist, const real_t &invR2) {
     static const int n = nx;
     Kernels<0,0,nx-1>::derivative(C,dist,invR2);
-    C[Index<Lset,nx,0,0>::I] = DerivativeSum<nx,0,0>::loop(C,dist) / n * invR2;
+    C[Index<vecL,nx,0,0>::I] = DerivativeSum<nx,0,0>::loop(C,dist) / n * invR2;
   }
-  static inline void scale(Lset &C) {
+  static inline void scale(vecL &C) {
     Kernels<0,0,nx-1>::scale(C);
-    C[Index<Lset,nx,0,0>::I] *= Index<Lset,nx,0,0>::F;
+    C[Index<vecL,nx,0,0>::I] *= Index<vecL,nx,0,0>::F;
   }
-  static inline void M2M(Mset &MI, const Lset &C, const Mset &MJ) {
+  static inline void M2M(vecM &MI, const vecL &C, const vecM &MJ) {
     Kernels<0,0,nx-1>::M2M(MI,C,MJ);
-    MI[Index<Mset,nx,0,0>::I] += MultipoleSum<nx,0,0>::kernel(C,MJ);
+    MI[Index<vecM,nx,0,0>::I] += MultipoleSum<nx,0,0>::kernel(C,MJ);
   }
-  static inline void M2L(Lset &L, const Lset &C, const Mset &M) {
+  static inline void M2L(vecL &L, const vecL &C, const vecM &M) {
     Kernels<0,0,nx-1>::M2L(L,C,M);
-    L[Index<Lset,nx,0,0>::I] += LocalSum<nx,0,0,Mset>::kernel(M,C);
+    L[Index<vecL,nx,0,0>::I] += LocalSum<nx,0,0,vecM>::kernel(M,C);
   }
-  static inline void M2P(B_iter B, const Lset &C, const Mset &M) {
-    Kernels<0,0,nx-1>::M2P(B,C,M);
-    B->TRG[Index<Lset,nx,0,0>::I] += LocalSum<nx,0,0,Mset>::kernel(M,C);
-  }
-  static inline void L2L(Lset &LI, const Lset &C, const Lset &LJ) {
+  static inline void L2L(vecL &LI, const vecL &C, const vecL &LJ) {
     Kernels<0,0,nx-1>::L2L(LI,C,LJ);
-    LI[Index<Lset,nx,0,0>::I] += LocalSum<nx,0,0,Lset>::kernel(C,LJ);
+    LI[Index<vecL,nx,0,0>::I] += LocalSum<nx,0,0,vecL>::kernel(C,LJ);
   }
-  static inline void L2P(B_iter B, const Lset &C, const Lset &L) {
+  static inline void L2P(B_iter B, const vecL &C, const vecL &L) {
     Kernels<0,0,nx-1>::L2P(B,C,L);
-    B->TRG[Index<Lset,nx,0,0>::I] += LocalSum<nx,0,0,Lset>::kernel(C,L);
+    B->TRG[Index<vecL,nx,0,0>::I] += LocalSum<nx,0,0,vecL>::kernel(C,L);
   }
 };
 
 template<>
 struct Kernels<0,0,0> {
-  static inline void power(Lset&, const vect&) {}
-  static inline void derivative(Lset&, const vect&, const real&) {}
-  static inline void scale(Lset&) {}
-  static inline void M2M(Mset&, const Lset&, const Mset&) {}
-  static inline void M2L(Lset&, const Lset&, const Mset&) {}
-  static inline void M2P(B_iter, const Lset&, const Mset&) {}
-  static inline void L2L(Lset&, const Lset&, const Lset&) {}
-  static inline void L2P(B_iter, const Lset&, const Lset&) {}
+  static inline void power(vecL&, const vec3&) {}
+  static inline void derivative(vecL&, const vec3&, const real_t&) {}
+  static inline void scale(vecL&) {}
+  static inline void M2M(vecM&, const vecL&, const vecM&) {}
+  static inline void M2L(vecL&, const vecL&, const vecM&) {}
+  static inline void L2L(vecL&, const vecL&, const vecL&) {}
+  static inline void L2P(B_iter, const vecL&, const vecL&) {}
 };
 
 
 template<int PP>
-inline void getCoef(Lset &C, const vect &dist, real &invR2, const real &invR) {
+inline void getCoef(vecL &C, const vec3 &dist, real_t &invR2, const real_t &invR) {
   C[0] = invR;
   Kernels<0,0,PP>::derivative(C,dist,invR2);
   Kernels<0,0,PP>::scale(C);
 }
 
 template<>
-inline void getCoef<1>(Lset &C, const vect &dist, real &invR2, const real &invR) {
+inline void getCoef<1>(vecL &C, const vec3 &dist, real_t &invR2, const real_t &invR) {
   C[0] = invR;
   invR2 = -invR2;
-  real x = dist[0], y = dist[1], z = dist[2];
-  real invR3 = invR * invR2;
+  real_t x = dist[0], y = dist[1], z = dist[2];
+  real_t invR3 = invR * invR2;
   C[1] = x * invR3;
   C[2] = y * invR3;
   C[3] = z * invR3;
 }
 
 template<>
-inline void getCoef<2>(Lset &C, const vect &dist, real &invR2, const real &invR) {
+inline void getCoef<2>(vecL &C, const vec3 &dist, real_t &invR2, const real_t &invR) {
   getCoef<1>(C,dist,invR2,invR);
-  real x = dist[0], y = dist[1], z = dist[2];
-  real invR3 = invR * invR2;
-  real invR5 = 3 * invR3 * invR2;
-  real t = x * invR5;
+  real_t x = dist[0], y = dist[1], z = dist[2];
+  real_t invR3 = invR * invR2;
+  real_t invR5 = 3 * invR3 * invR2;
+  real_t t = x * invR5;
   C[4] = x * t + invR3;
   C[5] = y * t;
   C[6] = z * t;
@@ -416,13 +376,13 @@ inline void getCoef<2>(Lset &C, const vect &dist, real &invR2, const real &invR)
   C[9] = z * z * invR5 + invR3;
 }
 template<>
-inline void getCoef<3>(Lset &C, const vect &dist, real &invR2, const real &invR) {
+inline void getCoef<3>(vecL &C, const vec3 &dist, real_t &invR2, const real_t &invR) {
   getCoef<2>(C,dist,invR2,invR);
-  real x = dist[0], y = dist[1], z = dist[2];
-  real invR3 = invR * invR2;
-  real invR5 = 3 * invR3 * invR2;
-  real invR7 = 5 * invR5 * invR2;
-  real t = x * x * invR7;
+  real_t x = dist[0], y = dist[1], z = dist[2];
+  real_t invR3 = invR * invR2;
+  real_t invR5 = 3 * invR3 * invR2;
+  real_t invR7 = 5 * invR5 * invR2;
+  real_t t = x * x * invR7;
   C[10] = x * (t + 3 * invR5);
   C[11] = y * (t +     invR5);
   C[12] = z * (t +     invR5);
@@ -438,14 +398,14 @@ inline void getCoef<3>(Lset &C, const vect &dist, real &invR2, const real &invR)
 }
 
 template<>
-inline void getCoef<4>(Lset &C, const vect &dist, real &invR2, const real &invR) {
+inline void getCoef<4>(vecL &C, const vec3 &dist, real_t &invR2, const real_t &invR) {
   getCoef<3>(C,dist,invR2,invR);
-  real x = dist[0], y = dist[1], z = dist[2];
-  real invR3 = invR * invR2;
-  real invR5 = 3 * invR3 * invR2;
-  real invR7 = 5 * invR5 * invR2;
-  real invR9 = 7 * invR7 * invR2;
-  real t = x * x * invR9;
+  real_t x = dist[0], y = dist[1], z = dist[2];
+  real_t invR3 = invR * invR2;
+  real_t invR5 = 3 * invR3 * invR2;
+  real_t invR7 = 5 * invR5 * invR2;
+  real_t invR9 = 7 * invR7 * invR2;
+  real_t t = x * x * invR9;
   C[20] = x * x * (t + 6 * invR7) + 3 * invR5;
   C[21] = x * y * (t + 3 * invR7);
   C[22] = x * z * (t + 3 * invR7);
@@ -466,15 +426,15 @@ inline void getCoef<4>(Lset &C, const vect &dist, real &invR2, const real &invR)
 }
 
 template<>
-inline void getCoef<5>(Lset &C, const vect &dist, real &invR2, const real &invR) {
+inline void getCoef<5>(vecL &C, const vec3 &dist, real_t &invR2, const real_t &invR) {
   getCoef<4>(C,dist,invR2,invR);
-  real x = dist[0], y = dist[1], z = dist[2];
-  real invR3 = invR * invR2;
-  real invR5 = 3 * invR3 * invR2;
-  real invR7 = 5 * invR5 * invR2;
-  real invR9 = 7 * invR7 * invR2;
-  real invR11 = 9 * invR9 * invR2;
-  real t = x * x * invR11;
+  real_t x = dist[0], y = dist[1], z = dist[2];
+  real_t invR3 = invR * invR2;
+  real_t invR5 = 3 * invR3 * invR2;
+  real_t invR7 = 5 * invR5 * invR2;
+  real_t invR9 = 7 * invR7 * invR2;
+  real_t invR11 = 9 * invR9 * invR2;
+  real_t t = x * x * invR11;
   C[35] = x * x * x * (t + 10 * invR9) + 15 * x * invR7;
   C[36] = x * x * y * (t +  6 * invR9) +  3 * y * invR7;
   C[37] = x * x * z * (t +  6 * invR9) +  3 * z * invR7;
@@ -501,16 +461,16 @@ inline void getCoef<5>(Lset &C, const vect &dist, real &invR2, const real &invR)
 }
 
 template<>
-inline void getCoef<6>(Lset &C, const vect &dist, real &invR2, const real &invR) {
+inline void getCoef<6>(vecL &C, const vec3 &dist, real_t &invR2, const real_t &invR) {
   getCoef<5>(C,dist,invR2,invR);
-  real x = dist[0], y = dist[1], z = dist[2];
-  real invR3 = invR * invR2;
-  real invR5 = 3 * invR3 * invR2;
-  real invR7 = 5 * invR5 * invR2;
-  real invR9 = 7 * invR7 * invR2;
-  real invR11 = 9 * invR9 * invR2;
-  real invR13 = 11 * invR11 * invR2;
-  real t = x * x * invR13;
+  real_t x = dist[0], y = dist[1], z = dist[2];
+  real_t invR3 = invR * invR2;
+  real_t invR5 = 3 * invR3 * invR2;
+  real_t invR7 = 5 * invR5 * invR2;
+  real_t invR9 = 7 * invR7 * invR2;
+  real_t invR11 = 9 * invR9 * invR2;
+  real_t invR13 = 11 * invR11 * invR2;
+  real_t t = x * x * invR13;
   C[56] = x * x * x * x * (t + 15 * invR11) + 45 * x * x * invR9 + 15 * invR7;
   C[57] = x * x * x * y * (t + 10 * invR11) + 15 * x * y * invR9;
   C[58] = x * x * x * z * (t + 10 * invR11) + 15 * x * z * invR9;
@@ -545,7 +505,7 @@ inline void getCoef<6>(Lset &C, const vect &dist, real &invR2, const real &invR)
 
 
 template<int PP>
-inline void sumM2L(Lset &L, const Lset &C, const Mset &M) {
+inline void sumM2L(vecL &L, const vecL &C, const vecM &M) {
   L += C;
 #if COMkernel
   for( int i=1; i<MTERM; ++i ) L[0] += M[i] * C[i+3];
@@ -556,12 +516,12 @@ inline void sumM2L(Lset &L, const Lset &C, const Mset &M) {
 }
 
 template<>
-inline void sumM2L<1>(Lset &L, const Lset &C, const Mset&) {
+inline void sumM2L<1>(vecL &L, const vecL &C, const vecM&) {
   L += C;
 }
 
 template<>
-inline void sumM2L<2>(Lset &L, const Lset &C, const Mset &M) {
+inline void sumM2L<2>(vecL &L, const vecL &C, const vecM &M) {
   sumM2L<1>(L,C,M);
 #if COMkernel
 #else
@@ -573,7 +533,7 @@ inline void sumM2L<2>(Lset &L, const Lset &C, const Mset &M) {
 }
 
 template<>
-inline void sumM2L<3>(Lset &L, const Lset &C, const Mset &M) {
+inline void sumM2L<3>(vecL &L, const vecL &C, const vecM &M) {
   sumM2L<2>(L,C,M);
 #if COMkernel
   L[0] += M[1]*C[4]+M[2]*C[5]+M[3]*C[6]+M[4]*C[7]+M[5]*C[8]+M[6]*C[9];
@@ -595,7 +555,7 @@ inline void sumM2L<3>(Lset &L, const Lset &C, const Mset &M) {
 }
 
 template<>
-inline void sumM2L<4>(Lset &L, const Lset &C, const Mset &M) {
+inline void sumM2L<4>(vecL &L, const vecL &C, const vecM &M) {
   sumM2L<3>(L,C,M);
 #if COMkernel
   L[0] += M[7]*C[10]+M[8]*C[11]+M[9]*C[12]+M[10]*C[13]+M[11]*C[14]+M[12]*C[15]+M[13]*C[16]+M[14]*C[17]+M[15]*C[18]+M[16]*C[19];
@@ -633,7 +593,7 @@ inline void sumM2L<4>(Lset &L, const Lset &C, const Mset &M) {
 }
 
 template<>
-inline void sumM2L<5>(Lset &L, const Lset &C, const Mset &M) {
+inline void sumM2L<5>(vecL &L, const vecL &C, const vecM &M) {
   sumM2L<4>(L,C,M);
 #if COMkernel
   L[0] += M[17]*C[20]+M[18]*C[21]+M[19]*C[22]+M[20]*C[23]+M[21]*C[24]+M[22]*C[25]+M[23]*C[26]+M[24]*C[27]+M[25]*C[28]+M[26]*C[29]+M[27]*C[30]+M[28]*C[31]+M[29]*C[32]+M[30]*C[33]+M[31]*C[34];
@@ -696,7 +656,7 @@ inline void sumM2L<5>(Lset &L, const Lset &C, const Mset &M) {
 }
 
 template<>
-inline void sumM2L<6>(Lset &L, const Lset &C, const Mset &M) {
+inline void sumM2L<6>(vecL &L, const vecL &C, const vecM &M) {
   sumM2L<5>(L,C,M);
 #if COMkernel
   L[0] += M[32]*C[35]+M[33]*C[36]+M[34]*C[37]+M[35]*C[38]+M[36]*C[39]+M[37]*C[40]+M[38]*C[41]+M[39]*C[42]+M[40]*C[43]+M[41]*C[44]+M[42]*C[45]+M[43]*C[46]+M[44]*C[47]+M[45]*C[48]+M[46]*C[49]+M[47]*C[50]+M[48]*C[51]+M[49]*C[52]+M[50]*C[53]+M[51]*C[54]+M[52]*C[55];
@@ -794,410 +754,529 @@ inline void sumM2L<6>(Lset &L, const Lset &C, const Mset &M) {
 #endif
 }
 
-template<int PP>
-inline void sumM2P(B_iter B, const Lset &C, const Mset &M) {
-  B->TRG[0] += C[0];
-  B->TRG[1] += C[1];
-  B->TRG[2] += C[2];
-  B->TRG[3] += C[3];
-#if COMkernel
-  for( int i=1; i<MTERM; ++i ) B->TRG[0] += M[i] * C[i+3];
-#else
-  for( int i=1; i<MTERM; ++i ) B->TRG[0] += M[i] * C[i];
+inline void flipCoef(vecL &C) {
+  for( int i=1; i!=4; ++i ) C[i] = -C[i];
+  for( int i=10; i!=20; ++i ) C[i] = -C[i];
+}
+
+#if __SSE__
+inline float vecSum4(__m128 reg) {
+  float mem[4];
+  _mm_store_ps(mem, reg);
+  return mem[0] + mem[1] + mem[2] + mem[3];
+}
 #endif
-  Kernels<0,0,1>::M2P(B,C,M);
-}
 
-template<>
-inline void sumM2P<1>(B_iter B, const Lset &C, const Mset&) {
-  B->TRG[0] += C[0];
-  B->TRG[1] += C[1];
-  B->TRG[2] += C[2];
-  B->TRG[3] += C[3];
+#if __AVX__
+inline float vecSum8(__m256 reg) {
+  float mem[8];
+  _mm256_store_ps(mem, reg);
+  return mem[0] + mem[1] + mem[2] + mem[3] + mem[4] + mem[5] + mem[6] + mem[7];
 }
-
-template<>
-inline void sumM2P<2>(B_iter B, const Lset &C, const Mset &M) {
-  sumM2P<1>(B,C,M);
-#if COMkernel
-#else
-  B->TRG[0] += M[1]*C[1]+M[2]*C[2]+M[3]*C[3];
-  B->TRG[1] += M[1]*C[4]+M[2]*C[5]+M[3]*C[6];
-  B->TRG[2] += M[1]*C[5]+M[2]*C[7]+M[3]*C[8];
-  B->TRG[3] += M[1]*C[6]+M[2]*C[8]+M[3]*C[9];
 #endif
-}
 
-template<>
-inline void sumM2P<3>(B_iter B, const Lset &C, const Mset &M) {
-  sumM2P<2>(B,C,M);
-#if COMkernel
-  B->TRG[0] += M[1]*C[4]+M[2]*C[5]+M[3]*C[6]+M[4]*C[7]+M[5]*C[8]+M[6]*C[9];
-  B->TRG[1] += M[1]*C[10]+M[2]*C[11]+M[3]*C[12]+M[4]*C[13]+M[5]*C[14]+M[6]*C[15];
-  B->TRG[2] += M[1]*C[11]+M[2]*C[13]+M[3]*C[14]+M[4]*C[16]+M[5]*C[17]+M[6]*C[18];
-  B->TRG[3] += M[1]*C[12]+M[2]*C[14]+M[3]*C[15]+M[4]*C[17]+M[5]*C[18]+M[6]*C[19];
-#else
-  B->TRG[0] += M[4]*C[4]+M[5]*C[5]+M[6]*C[6]+M[7]*C[7]+M[8]*C[8]+M[9]*C[9];
-  B->TRG[1] += M[4]*C[10]+M[5]*C[11]+M[6]*C[12]+M[7]*C[13]+M[8]*C[14]+M[9]*C[15];
-  B->TRG[2] += M[4]*C[11]+M[5]*C[13]+M[6]*C[14]+M[7]*C[16]+M[8]*C[17]+M[9]*C[18];
-  B->TRG[3] += M[4]*C[12]+M[5]*C[14]+M[6]*C[15]+M[7]*C[17]+M[8]*C[18]+M[9]*C[19];
-#endif
-}
+void Kernel::P2P(C_iter Ci, C_iter Cj, bool mutual) const {
+  B_iter Bi = Ci->BODY;
+  B_iter Bj = Cj->BODY;
+  int ni = Ci->NDBODY;
+  int nj = Cj->NDBODY;
+  int i = 0;
+#if __AVX__
+  for ( ; i<=ni-8; i+=8) {
+    __m256 pot = _mm256_setzero_ps();
+    __m256 ax = _mm256_setzero_ps();
+    __m256 ay = _mm256_setzero_ps();
+    __m256 az = _mm256_setzero_ps();
 
-template<>
-inline void sumM2P<4>(B_iter B, const Lset &C, const Mset &M) {
-  sumM2P<3>(B,C,M);
-#if COMkernel
-  B->TRG[0] += M[7]*C[10]+M[8]*C[11]+M[9]*C[12]+M[10]*C[13]+M[11]*C[14]+M[12]*C[15]+M[13]*C[16]+M[14]*C[17]+M[15]*C[18]+M[16]*C[19];
-  B->TRG[1] += M[7]*C[20]+M[8]*C[21]+M[9]*C[22]+M[10]*C[23]+M[11]*C[24]+M[12]*C[25]+M[13]*C[26]+M[14]*C[27]+M[15]*C[28]+M[16]*C[29];
-  B->TRG[2] += M[7]*C[21]+M[8]*C[23]+M[9]*C[24]+M[10]*C[26]+M[11]*C[27]+M[12]*C[28]+M[13]*C[30]+M[14]*C[31]+M[15]*C[32]+M[16]*C[33];
-  B->TRG[3] += M[7]*C[22]+M[8]*C[24]+M[9]*C[25]+M[10]*C[27]+M[11]*C[28]+M[12]*C[29]+M[13]*C[31]+M[14]*C[32]+M[15]*C[33]+M[16]*C[34];
-#else
-  B->TRG[0] += M[10]*C[10]+M[11]*C[11]+M[12]*C[12]+M[13]*C[13]+M[14]*C[14]+M[15]*C[15]+M[16]*C[16]+M[17]*C[17]+M[18]*C[18]+M[19]*C[19];
-  B->TRG[1] += M[10]*C[20]+M[11]*C[21]+M[12]*C[22]+M[13]*C[23]+M[14]*C[24]+M[15]*C[25]+M[16]*C[26]+M[17]*C[27]+M[18]*C[28]+M[19]*C[29];
-  B->TRG[2] += M[10]*C[21]+M[11]*C[23]+M[12]*C[24]+M[13]*C[26]+M[14]*C[27]+M[15]*C[28]+M[16]*C[30]+M[17]*C[31]+M[18]*C[32]+M[19]*C[33];
-  B->TRG[3] += M[10]*C[22]+M[11]*C[24]+M[12]*C[25]+M[13]*C[27]+M[14]*C[28]+M[15]*C[29]+M[16]*C[31]+M[17]*C[32]+M[18]*C[33]+M[19]*C[34];
-#endif
-}
+    __m256 xi = _mm256_setr_ps(Bi[i].X[0],Bi[i+1].X[0],Bi[i+2].X[0],Bi[i+3].X[0],
+      Bi[i+4].X[0],Bi[i+5].X[0],Bi[i+6].X[0],Bi[i+7].X[0]) - _mm256_set1_ps(Xperiodic[0]);
+    __m256 yi = _mm256_setr_ps(Bi[i].X[1],Bi[i+1].X[1],Bi[i+2].X[1],Bi[i+3].X[1],
+      Bi[i+4].X[1],Bi[i+5].X[1],Bi[i+6].X[1],Bi[i+7].X[1]) - _mm256_set1_ps(Xperiodic[1]);
+    __m256 zi = _mm256_setr_ps(Bi[i].X[2],Bi[i+1].X[2],Bi[i+2].X[2],Bi[i+3].X[2],
+      Bi[i+4].X[2],Bi[i+5].X[2],Bi[i+6].X[2],Bi[i+7].X[2]) - _mm256_set1_ps(Xperiodic[2]);
+    __m256 mi = _mm256_setr_ps(Bi[i].SRC,Bi[i+1].SRC,Bi[i+2].SRC,Bi[i+3].SRC,
+      Bi[i+4].SRC,Bi[i+5].SRC,Bi[i+6].SRC,Bi[i+7].SRC);
+    __m256 R2 = _mm256_set1_ps(EPS2);
 
-template<>
-inline void sumM2P<5>(B_iter B, const Lset &C, const Mset &M) {
-  sumM2P<4>(B,C,M);
-#if COMkernel
-  B->TRG[0] += M[17]*C[20]+M[18]*C[21]+M[19]*C[22]+M[20]*C[23]+M[21]*C[24]+M[22]*C[25]+M[23]*C[26]+M[24]*C[27]+M[25]*C[28]+M[26]*C[29]+M[27]*C[30]+M[28]*C[31]+M[29]*C[32]+M[30]*C[33]+M[31]*C[34];
-  B->TRG[1] += M[17]*C[35]+M[18]*C[36]+M[19]*C[37]+M[20]*C[38]+M[21]*C[39]+M[22]*C[40]+M[23]*C[41]+M[24]*C[42]+M[25]*C[43]+M[26]*C[44]+M[27]*C[45]+M[28]*C[46]+M[29]*C[47]+M[30]*C[48]+M[31]*C[49];
-  B->TRG[2] += M[17]*C[36]+M[18]*C[38]+M[19]*C[39]+M[20]*C[41]+M[21]*C[42]+M[22]*C[43]+M[23]*C[45]+M[24]*C[46]+M[25]*C[47]+M[26]*C[48]+M[27]*C[50]+M[28]*C[51]+M[29]*C[52]+M[30]*C[53]+M[31]*C[54];
-  B->TRG[3] += M[17]*C[37]+M[18]*C[39]+M[19]*C[40]+M[20]*C[42]+M[21]*C[43]+M[22]*C[44]+M[23]*C[46]+M[24]*C[47]+M[25]*C[48]+M[26]*C[49]+M[27]*C[51]+M[28]*C[52]+M[29]*C[53]+M[30]*C[54]+M[31]*C[55];
-#else
-  B->TRG[0] += M[20]*C[20]+M[21]*C[21]+M[22]*C[22]+M[23]*C[23]+M[24]*C[24]+M[25]*C[25]+M[26]*C[26]+M[27]*C[27]+M[28]*C[28]+M[29]*C[29]+M[30]*C[30]+M[31]*C[31]+M[32]*C[32]+M[33]*C[33]+M[34]*C[34];
-  B->TRG[1] += M[20]*C[35]+M[21]*C[36]+M[22]*C[37]+M[23]*C[38]+M[24]*C[39]+M[25]*C[40]+M[26]*C[41]+M[27]*C[42]+M[28]*C[43]+M[29]*C[44]+M[30]*C[45]+M[31]*C[46]+M[32]*C[47]+M[33]*C[48]+M[34]*C[49];
-  B->TRG[2] += M[20]*C[36]+M[21]*C[38]+M[22]*C[39]+M[23]*C[41]+M[24]*C[42]+M[25]*C[43]+M[26]*C[45]+M[27]*C[46]+M[28]*C[47]+M[29]*C[48]+M[30]*C[50]+M[31]*C[51]+M[32]*C[52]+M[33]*C[53]+M[34]*C[54];
-  B->TRG[3] += M[20]*C[37]+M[21]*C[39]+M[22]*C[40]+M[23]*C[42]+M[24]*C[43]+M[25]*C[44]+M[26]*C[46]+M[27]*C[47]+M[28]*C[48]+M[29]*C[49]+M[30]*C[51]+M[31]*C[52]+M[32]*C[53]+M[33]*C[54]+M[34]*C[55];
-#endif
-}
+    __m256 x2 = _mm256_set1_ps(Bj[0].X[0]);
+    x2 = _mm256_sub_ps(x2, xi);
+    __m256 y2 = _mm256_set1_ps(Bj[0].X[1]);
+    y2 = _mm256_sub_ps(y2, yi);
+    __m256 z2 = _mm256_set1_ps(Bj[0].X[2]);
+    z2 = _mm256_sub_ps(z2, zi);
+    __m256 mj = _mm256_set1_ps(Bj[0].SRC);
 
-template<>
-inline void sumM2P<6>(B_iter B, const Lset &C, const Mset &M) {
-  sumM2P<5>(B,C,M);
-#if COMkernel
-  B->TRG[0] += M[32]*C[35]+M[33]*C[36]+M[34]*C[37]+M[35]*C[38]+M[36]*C[39]+M[37]*C[40]+M[38]*C[41]+M[39]*C[42]+M[40]*C[43]+M[41]*C[44]+M[42]*C[45]+M[43]*C[46]+M[44]*C[47]+M[45]*C[48]+M[46]*C[49]+M[47]*C[50]+M[48]*C[51]+M[49]*C[52]+M[50]*C[53]+M[51]*C[54]+M[52]*C[55];
-  B->TRG[1] += M[32]*C[56]+M[33]*C[57]+M[34]*C[58]+M[35]*C[59]+M[36]*C[60]+M[37]*C[61]+M[38]*C[62]+M[39]*C[63]+M[40]*C[64]+M[41]*C[65]+M[42]*C[66]+M[43]*C[67]+M[44]*C[68]+M[45]*C[69]+M[46]*C[70]+M[47]*C[71]+M[48]*C[72]+M[49]*C[73]+M[50]*C[74]+M[51]*C[75]+M[52]*C[76];
-  B->TRG[2] += M[32]*C[57]+M[33]*C[59]+M[34]*C[60]+M[35]*C[62]+M[36]*C[63]+M[37]*C[64]+M[38]*C[66]+M[39]*C[67]+M[40]*C[68]+M[41]*C[69]+M[42]*C[71]+M[43]*C[72]+M[44]*C[73]+M[45]*C[74]+M[46]*C[75]+M[47]*C[77]+M[48]*C[78]+M[49]*C[79]+M[50]*C[80]+M[51]*C[81]+M[52]*C[82];
-  B->TRG[3] += M[32]*C[58]+M[33]*C[60]+M[34]*C[61]+M[35]*C[63]+M[36]*C[64]+M[37]*C[65]+M[38]*C[67]+M[39]*C[68]+M[40]*C[69]+M[41]*C[70]+M[42]*C[72]+M[43]*C[73]+M[44]*C[74]+M[45]*C[75]+M[46]*C[76]+M[47]*C[78]+M[48]*C[79]+M[49]*C[80]+M[50]*C[81]+M[51]*C[82]+M[52]*C[83];
-#else
-  B->TRG[0] += M[35]*C[35]+M[36]*C[36]+M[37]*C[37]+M[38]*C[38]+M[39]*C[39]+M[40]*C[40]+M[41]*C[41]+M[42]*C[42]+M[43]*C[43]+M[44]*C[44]+M[45]*C[45]+M[46]*C[46]+M[47]*C[47]+M[48]*C[48]+M[49]*C[49]+M[50]*C[50]+M[51]*C[51]+M[52]*C[52]+M[53]*C[53]+M[54]*C[54]+M[55]*C[55];
-  B->TRG[1] += M[35]*C[56]+M[36]*C[57]+M[37]*C[58]+M[38]*C[59]+M[39]*C[60]+M[40]*C[61]+M[41]*C[62]+M[42]*C[63]+M[43]*C[64]+M[44]*C[65]+M[45]*C[66]+M[46]*C[67]+M[47]*C[68]+M[48]*C[69]+M[49]*C[70]+M[50]*C[71]+M[51]*C[72]+M[52]*C[73]+M[53]*C[74]+M[54]*C[75]+M[55]*C[76];
-  B->TRG[2] += M[35]*C[57]+M[36]*C[59]+M[37]*C[60]+M[38]*C[62]+M[39]*C[63]+M[40]*C[64]+M[41]*C[66]+M[42]*C[67]+M[43]*C[68]+M[44]*C[69]+M[45]*C[71]+M[46]*C[72]+M[47]*C[73]+M[48]*C[74]+M[49]*C[75]+M[50]*C[77]+M[51]*C[78]+M[52]*C[79]+M[53]*C[80]+M[54]*C[81]+M[55]*C[82];
-  B->TRG[3] += M[35]*C[58]+M[36]*C[60]+M[37]*C[61]+M[38]*C[63]+M[39]*C[64]+M[40]*C[65]+M[41]*C[67]+M[42]*C[68]+M[43]*C[69]+M[44]*C[70]+M[45]*C[72]+M[46]*C[73]+M[47]*C[74]+M[48]*C[75]+M[49]*C[76]+M[50]*C[78]+M[51]*C[79]+M[52]*C[80]+M[53]*C[81]+M[54]*C[82]+M[55]*C[83];
-#endif
-}
+    __m256 xj = x2;
+    x2 = _mm256_mul_ps(x2, x2);
+    R2 = _mm256_add_ps(R2, x2);
+    __m256 yj = y2;
+    y2 = _mm256_mul_ps(y2, y2);
+    R2 = _mm256_add_ps(R2, y2);
+    __m256 zj = z2;
+    z2 = _mm256_mul_ps(z2, z2);
+    R2 = _mm256_add_ps(R2, z2);
 
-class Kernel {
-protected:
-  vect   X0;
-  real   R0;
-  C_iter Ci0;
-  C_iter Cj0;
+    x2 = _mm256_set1_ps(Bj[1].X[0]);
+    y2 = _mm256_set1_ps(Bj[1].X[1]);
+    z2 = _mm256_set1_ps(Bj[1].X[2]);
+    for (int j=0; j<nj; j++) {
+      __m256 invR = _mm256_rsqrt_ps(R2);
+      __m256 mask = _mm256_cmp_ps(R2, _mm256_setzero_ps(), _CMP_GT_OQ);
+      invR = _mm256_and_ps(invR, mask);
+      R2 = _mm256_set1_ps(EPS2);
+      x2 = _mm256_sub_ps(x2, xi);
+      y2 = _mm256_sub_ps(y2, yi);
+      z2 = _mm256_sub_ps(z2, zi);
 
-private:
-  inline void flipCoef(Lset &C) const {
-    for( int i=1; i!=4; ++i ) C[i] = -C[i];
-    for( int i=10; i!=20; ++i ) C[i] = -C[i];
-  }
+      mj = _mm256_mul_ps(mj, invR);
+      mj = _mm256_mul_ps(mj, mi);
+      pot = _mm256_add_ps(pot, mj);
+      if (mutual) Bj[j].TRG[0] += vecSum8(mj);
+      invR = _mm256_mul_ps(invR, invR);
+      invR = _mm256_mul_ps(invR, mj);
+      mj = _mm256_set1_ps(Bj[j+1].SRC);
 
-public:
-  Kernel() : X0(0), R0(0) {}
-  ~Kernel() {}
+      xj = _mm256_mul_ps(xj, invR);
+      ax = _mm256_add_ps(ax, xj);
+      if (mutual) Bj[j].TRG[1] -= vecSum8(xj);
+      xj = x2;
+      x2 = _mm256_mul_ps(x2, x2);
+      R2 = _mm256_add_ps(R2, x2);
+      x2 = _mm256_set1_ps(Bj[j+2].X[0]);
 
-#if 1
-  void P2P(C_iter Ci, C_iter Cj, bool mutual) const {
-    if( mutual ) {
-      for( B_iter Bi=Ci->LEAF; Bi!=Ci->LEAF+Ci->NDLEAF; ++Bi ) {
-        real P0 = 0;
-        vect F0 = 0;
-        for( B_iter Bj=Cj->LEAF; Bj!=Cj->LEAF+Cj->NDLEAF; ++Bj ) {
-          vect dX = Bi->X - Bj->X;
-          real R2 = norm(dX) + EPS2;
-          real invR2 = 1.0 / R2;
-          if( R2 == 0 ) invR2 = 0;
-          real invR = Bi->SRC * Bj->SRC * std::sqrt(invR2);
-          dX *= invR2 * invR;
-          P0 += invR;
-          F0 += dX;
-          Bj->TRG[0] += invR * mutual;
-          Bj->TRG[1] += dX[0] * mutual;
-          Bj->TRG[2] += dX[1] * mutual;
-          Bj->TRG[3] += dX[2] * mutual;
-        }
-        Bi->TRG[0] += P0;
-        Bi->TRG[1] -= F0[0];
-        Bi->TRG[2] -= F0[1];
-        Bi->TRG[3] -= F0[2];
-      }
-    } else {
-      for( int bi=0; bi<Ci->NDLEAF; bi+=4 ) {
-        B_iter Bi = Ci->LEAF + bi;
-        int nvec = std::min(Ci->NDLEAF-bi,4);
-        float16 target4;
-        for( int i=0; i<nvec; i++ ) {
-          target4.x[i] = Bi[i].X[0];
-          target4.y[i] = Bi[i].X[1];
-          target4.z[i] = Bi[i].X[2];
-          target4.w[i] = EPS2;
-        }
-        B_iter Bj = Cj->LEAF;
-        __m128 mi = _mm_load1_ps(&Bi->SRC);
-        __m128 zero = _mm_setzero_ps();
-        __m128 ax = _mm_setzero_ps();
-        __m128 ay = _mm_setzero_ps();
-        __m128 az = _mm_setzero_ps();
-        __m128 phi = _mm_setzero_ps();
-    
-        __m128 xi = _mm_load_ps(target4.x);
-        __m128 yi = _mm_load_ps(target4.y);
-        __m128 zi = _mm_load_ps(target4.z);
-        __m128 R2 = _mm_load_ps(target4.w);
-    
-        float4 source = make_float4(Bj);
-        __m128 x2 = _mm_load1_ps(&source.x);
-        x2 = _mm_sub_ps(x2, xi);
-        __m128 y2 = _mm_load1_ps(&source.y);
-        y2 = _mm_sub_ps(y2, yi);
-        __m128 z2 = _mm_load1_ps(&source.z);
-        z2 = _mm_sub_ps(z2, zi);
-        __m128 mj = _mm_load1_ps(&source.w);
-    
-        __m128 xj = x2;
-        x2 = _mm_mul_ps(x2, x2);
-        R2 = _mm_add_ps(R2, x2);
-        __m128 yj = y2;
-        y2 = _mm_mul_ps(y2, y2);
-        R2 = _mm_add_ps(R2, y2);
-        __m128 zj = z2;
-        z2 = _mm_mul_ps(z2, z2);
-        R2 = _mm_add_ps(R2, z2);
-    
-        source = make_float4(++Bj);
-        x2 = _mm_load_ps(&source.x);
-        y2 = x2;
-        z2 = x2;
-        for( int j=0; j<Cj->NDLEAF; j++ ) {
-          __m128 invR = _mm_rsqrt_ps(R2);
-          __m128 mask = _mm_cmpgt_ps(R2,zero);
-          invR = _mm_and_ps(invR,mask);
-          R2 = _mm_load_ps(target4.w);
-          x2 = _mm_shuffle_ps(x2, x2, 0x00);
-          x2 = _mm_sub_ps(x2, xi);
-          y2 = _mm_shuffle_ps(y2, y2, 0x55);
-          y2 = _mm_sub_ps(y2, yi);
-          z2 = _mm_shuffle_ps(z2, z2, 0xaa);
-          z2 = _mm_sub_ps(z2, zi);
-    
-          mj = _mm_mul_ps(mj, invR);
-          mj = _mm_mul_ps(mj, mi);
-          phi = _mm_add_ps(phi, mj);
-          invR = _mm_mul_ps(invR, invR);
-          invR = _mm_mul_ps(invR, mj);
-          mj = _mm_load_ps(&source.x);
-          mj = _mm_shuffle_ps(mj, mj, 0xff);
-    
-          source = make_float4(++Bj);
-          xj = _mm_mul_ps(xj, invR);
-          ax = _mm_add_ps(ax, xj);
-          xj = x2;
-          x2 = _mm_mul_ps(x2, x2);
-          R2 = _mm_add_ps(R2, x2);
-          x2 = _mm_load_ps(&source.x);
-    
-          yj = _mm_mul_ps(yj, invR);
-          ay = _mm_add_ps(ay, yj);
-          yj = y2;
-          y2 = _mm_mul_ps(y2, y2);
-          R2 = _mm_add_ps(R2, y2);
-          y2 = x2;
-    
-          zj = _mm_mul_ps(zj, invR);
-          az = _mm_add_ps(az, zj);
-          zj = z2;
-          z2 = _mm_mul_ps(z2, z2);
-          R2 = _mm_add_ps(R2, z2);
-          z2 = x2;
-        }
-        _mm_store_ps(target4.x, ax);
-        _mm_store_ps(target4.y, ay);
-        _mm_store_ps(target4.z, az);
-        _mm_store_ps(target4.w, phi);
-        for( int i=0; i<nvec; i++ ) {
-          Bi[i].TRG[0] += target4.w[i];
-          Bi[i].TRG[1] += target4.x[i];
-          Bi[i].TRG[2] += target4.y[i];
-          Bi[i].TRG[3] += target4.z[i];
-        }
-      }
+      yj = _mm256_mul_ps(yj, invR);
+      ay = _mm256_add_ps(ay, yj);
+      if (mutual) Bj[j].TRG[2] -= vecSum8(yj);
+      yj = y2;
+      y2 = _mm256_mul_ps(y2, y2);
+      R2 = _mm256_add_ps(R2, y2);
+      y2 = _mm256_set1_ps(Bj[j+2].X[1]);
+
+      zj = _mm256_mul_ps(zj, invR);
+      az = _mm256_add_ps(az, zj);
+      if (mutual) Bj[j].TRG[3] -= vecSum8(zj);
+      zj = z2;
+      z2 = _mm256_mul_ps(z2, z2);
+      R2 = _mm256_add_ps(R2, z2);
+      z2 = _mm256_set1_ps(Bj[j+2].X[2]);
+    }
+    for (int k=0; k<8; k++) {
+      Bi[i+k].TRG[0] += ((float*)&pot)[k];
+      Bi[i+k].TRG[1] += ((float*)&ax)[k];
+      Bi[i+k].TRG[2] += ((float*)&ay)[k];
+      Bi[i+k].TRG[3] += ((float*)&az)[k];
     }
   }
-#else
-  void P2P(C_iter Ci, C_iter Cj, bool mutual=true) const {
-    for( B_iter Bi=Ci->LEAF; Bi!=Ci->LEAF+Ci->NDLEAF; ++Bi ) {
-      real P0 = 0;
-      vect F0 = 0;
-      for( B_iter Bj=Cj->LEAF; Bj!=Cj->LEAF+Cj->NDLEAF; ++Bj ) {
-        vect dX = Bi->X - Bj->X;
-        real R2 = norm(dX) + EPS2;
-        real invR2 = 1.0 / R2;
-        if( R2 == 0 ) invR2 = 0;
-        real invR = Bi->SRC * Bj->SRC * std::sqrt(invR2);
+#endif // __AVX__
+
+#if __SSE__
+  for ( ; i<=ni-4; i+=4) {
+    __m128 pot = _mm_setzero_ps();
+    __m128 ax = _mm_setzero_ps();
+    __m128 ay = _mm_setzero_ps();
+    __m128 az = _mm_setzero_ps();
+
+    __m128 xi = _mm_setr_ps(Bi[i].X[0], Bi[i+1].X[0], Bi[i+2].X[0], Bi[i+3].X[0]) - _mm_load1_ps(&Xperiodic[0]);
+    __m128 yi = _mm_setr_ps(Bi[i].X[1], Bi[i+1].X[1], Bi[i+2].X[1], Bi[i+3].X[1]) - _mm_load1_ps(&Xperiodic[1]);
+    __m128 zi = _mm_setr_ps(Bi[i].X[2], Bi[i+1].X[2], Bi[i+2].X[2], Bi[i+3].X[2]) - _mm_load1_ps(&Xperiodic[2]);
+    __m128 mi = _mm_setr_ps(Bi[i].SRC,  Bi[i+1].SRC,  Bi[i+2].SRC,  Bi[i+3].SRC);
+    __m128 R2 = _mm_set1_ps(EPS2);
+
+    __m128 x2 = _mm_load1_ps(&Bj[0].X[0]);
+    x2 = _mm_sub_ps(x2, xi);
+    __m128 y2 = _mm_load1_ps(&Bj[0].X[1]);
+    y2 = _mm_sub_ps(y2, yi);
+    __m128 z2 = _mm_load1_ps(&Bj[0].X[2]);
+    z2 = _mm_sub_ps(z2, zi);
+    __m128 mj = _mm_load1_ps(&Bj[0].SRC);
+
+    __m128 xj = x2;
+    x2 = _mm_mul_ps(x2, x2);
+    R2 = _mm_add_ps(R2, x2);
+    __m128 yj = y2;
+    y2 = _mm_mul_ps(y2, y2);
+    R2 = _mm_add_ps(R2, y2);
+    __m128 zj = z2;
+    z2 = _mm_mul_ps(z2, z2);
+    R2 = _mm_add_ps(R2, z2);
+
+    x2 = _mm_load_ps(&Bj[1].X[0]);
+    y2 = x2;
+    z2 = x2;
+    for (int j=0; j<nj; j++) {
+      __m128 invR = _mm_rsqrt_ps(R2);
+      __m128 mask = _mm_cmpgt_ps(R2, _mm_setzero_ps());
+      invR = _mm_and_ps(invR, mask);
+      R2 = _mm_set1_ps(EPS2);
+      x2 = _mm_shuffle_ps(x2, x2, _MM_SHUFFLE(0,0,0,0));
+      x2 = _mm_sub_ps(x2, xi);
+      y2 = _mm_shuffle_ps(y2, y2, _MM_SHUFFLE(1,1,1,1));
+      y2 = _mm_sub_ps(y2, yi);
+      z2 = _mm_shuffle_ps(z2, z2, _MM_SHUFFLE(2,2,2,2));
+      z2 = _mm_sub_ps(z2, zi);
+
+      mj = _mm_mul_ps(mj, invR);
+      mj = _mm_mul_ps(mj, mi);
+      pot = _mm_add_ps(pot, mj);
+      if (mutual) Bj[j].TRG[0] += vecSum4(mj);
+      invR = _mm_mul_ps(invR, invR);
+      invR = _mm_mul_ps(invR, mj);
+      mj = _mm_load_ps(&Bj[j+1].X[0]);
+      mj = _mm_shuffle_ps(mj, mj, _MM_SHUFFLE(3,3,3,3));
+
+      xj = _mm_mul_ps(xj, invR);
+      ax = _mm_add_ps(ax, xj);
+      if (mutual) Bj[j].TRG[1] -= vecSum4(xj);
+      xj = x2;
+      x2 = _mm_mul_ps(x2, x2);
+      R2 = _mm_add_ps(R2, x2);
+      x2 = _mm_load_ps(&Bj[j+2].X[0]);
+
+      yj = _mm_mul_ps(yj, invR);
+      ay = _mm_add_ps(ay, yj);
+      if (mutual) Bj[j].TRG[2] -= vecSum4(yj);
+      yj = y2;
+      y2 = _mm_mul_ps(y2, y2);
+      R2 = _mm_add_ps(R2, y2);
+      y2 = x2;
+
+      zj = _mm_mul_ps(zj, invR);
+      az = _mm_add_ps(az, zj);
+      if (mutual) Bj[j].TRG[3] -= vecSum4(zj);
+      zj = z2;
+      z2 = _mm_mul_ps(z2, z2);
+      R2 = _mm_add_ps(R2, z2);
+      z2 = x2;
+    }
+    for (int k=0; k<4; k++) {
+      Bi[i+k].TRG[0] += ((float*)&pot)[k];
+      Bi[i+k].TRG[1] += ((float*)&ax)[k];
+      Bi[i+k].TRG[2] += ((float*)&ay)[k];
+      Bi[i+k].TRG[3] += ((float*)&az)[k];
+    }
+  }
+#endif // __SSE__
+
+  for ( ; i<ni; i++) {
+    real_t pot = 0;
+    vec3 acc = 0;
+    for (int j=0; j<nj; j++) {
+      vec3 dX = Bi[i].X - Bj[j].X - Xperiodic;
+      real_t R2 = norm(dX) + EPS2;
+      if (R2 != 0) {
+        real_t invR2 = 1.0f / R2;
+        real_t invR = Bi[i].SRC * Bj[j].SRC * sqrtf(invR2);
         dX *= invR2 * invR;
-        P0 += invR;
-        F0 += dX;
-        Bj->TRG[0] += invR * mutual;
-        Bj->TRG[1] += dX[0] * mutual;
-        Bj->TRG[2] += dX[1] * mutual;
-        Bj->TRG[3] += dX[2] * mutual;
+        pot += invR;
+        acc += dX;
+        if (mutual) {
+          Bj[j].TRG[0] += invR;
+          Bj[j].TRG[1] += dX[0];
+          Bj[j].TRG[2] += dX[1];
+          Bj[j].TRG[3] += dX[2];
+        }
       }
-      Bi->TRG[0] += P0;
-      Bi->TRG[1] -= F0[0];
-      Bi->TRG[2] -= F0[1];
-      Bi->TRG[3] -= F0[2];
+    }
+    Bi[i].TRG[0] += pot;
+    Bi[i].TRG[1] -= acc[0];
+    Bi[i].TRG[2] -= acc[1];
+    Bi[i].TRG[3] -= acc[2];
+  }
+}
+
+void Kernel::P2P(C_iter C) const {
+  B_iter B = C->BODY;
+  int n = C->NDBODY;
+  int i = 0;
+#if __AVX__
+  for ( ; i<=n-8; i+=8) {
+    __m256 pot = _mm256_setzero_ps();
+    __m256 ax = _mm256_setzero_ps();
+    __m256 ay = _mm256_setzero_ps();
+    __m256 az = _mm256_setzero_ps();
+
+    __m256 xi = _mm256_setr_ps(B[i].X[0],B[i+1].X[0],B[i+2].X[0],B[i+3].X[0],
+      B[i+4].X[0],B[i+5].X[0],B[i+6].X[0],B[i+7].X[0]) - _mm256_set1_ps(Xperiodic[0]);
+    __m256 yi = _mm256_setr_ps(B[i].X[1],B[i+1].X[1],B[i+2].X[1],B[i+3].X[1],
+      B[i+4].X[1],B[i+5].X[1],B[i+6].X[1],B[i+7].X[1]) - _mm256_set1_ps(Xperiodic[1]);
+    __m256 zi = _mm256_setr_ps(B[i].X[2],B[i+1].X[2],B[i+2].X[2],B[i+3].X[2],
+      B[i+4].X[2],B[i+5].X[2],B[i+6].X[2],B[i+7].X[2]) - _mm256_set1_ps(Xperiodic[2]);
+    __m256 mi = _mm256_setr_ps(B[i].SRC,B[i+1].SRC,B[i+2].SRC,B[i+3].SRC,
+      B[i+4].SRC,B[i+5].SRC,B[i+6].SRC,B[i+7].SRC);
+    __m256 R2 = _mm256_set1_ps(EPS2);
+
+    __m256 x2 = _mm256_set1_ps(B[i+1].X[0]);
+    x2 = _mm256_sub_ps(x2, xi);
+    __m256 y2 = _mm256_set1_ps(B[i+1].X[1]);
+    y2 = _mm256_sub_ps(y2, yi);
+    __m256 z2 = _mm256_set1_ps(B[i+1].X[2]);
+    z2 = _mm256_sub_ps(z2, zi);
+    __m256 mj = _mm256_set1_ps(B[i+1].SRC);
+
+    __m256 xj = x2;
+    x2 = _mm256_mul_ps(x2, x2);
+    R2 = _mm256_add_ps(R2, x2);
+    __m256 yj = y2;
+    y2 = _mm256_mul_ps(y2, y2);
+    R2 = _mm256_add_ps(R2, y2);
+    __m256 zj = z2;
+    z2 = _mm256_mul_ps(z2, z2);
+    R2 = _mm256_add_ps(R2, z2);
+
+    x2 = _mm256_set1_ps(B[i+2].X[0]);
+    y2 = _mm256_set1_ps(B[i+2].X[1]);
+    z2 = _mm256_set1_ps(B[i+2].X[2]);
+    for (int j=i+1; j<n; j++) {
+      __m256 invR = _mm256_rsqrt_ps(R2);
+      __m256 mask = _mm256_cmp_ps(_mm256_setr_ps(i, i+1, i+2, i+3, i+4, i+5, i+6, i+7),
+        _mm256_set1_ps(j), _CMP_LT_OQ);
+      mask = _mm256_and_ps(mask, _mm256_cmp_ps(R2, _mm256_setzero_ps(), _CMP_GT_OQ));
+      invR = _mm256_and_ps(invR, mask);
+      R2 = _mm256_set1_ps(EPS2);
+      x2 = _mm256_sub_ps(x2, xi);
+      y2 = _mm256_sub_ps(y2, yi);
+      z2 = _mm256_sub_ps(z2, zi);
+
+      mj = _mm256_mul_ps(mj, invR);
+      mj = _mm256_mul_ps(mj, mi);
+      pot = _mm256_add_ps(pot, mj);
+      B[j].TRG[0] += vecSum8(mj);
+      invR = _mm256_mul_ps(invR, invR);
+      invR = _mm256_mul_ps(invR, mj);
+      mj = _mm256_set1_ps(B[j+1].SRC);
+
+      xj = _mm256_mul_ps(xj, invR);
+      ax = _mm256_add_ps(ax, xj);
+      B[j].TRG[1] -= vecSum8(xj);
+      xj = x2;
+      x2 = _mm256_mul_ps(x2, x2);
+      R2 = _mm256_add_ps(R2, x2);
+      x2 = _mm256_set1_ps(B[j+2].X[0]);
+
+      yj = _mm256_mul_ps(yj, invR);
+      ay = _mm256_add_ps(ay, yj);
+      B[j].TRG[2] -= vecSum8(yj);
+      yj = y2;
+      y2 = _mm256_mul_ps(y2, y2);
+      R2 = _mm256_add_ps(R2, y2);
+      y2 = _mm256_set1_ps(B[j+2].X[1]);
+
+      zj = _mm256_mul_ps(zj, invR);
+      az = _mm256_add_ps(az, zj);
+      B[j].TRG[3] -= vecSum8(zj);
+      zj = z2;
+      z2 = _mm256_mul_ps(z2, z2);
+      R2 = _mm256_add_ps(R2, z2);
+      z2 = _mm256_set1_ps(B[j+2].X[2]);
+    }
+    for (int k=0; k<8; k++) {
+      B[i+k].TRG[0] += ((float*)&pot)[k];
+      B[i+k].TRG[1] += ((float*)&ax)[k];
+      B[i+k].TRG[2] += ((float*)&ay)[k];
+      B[i+k].TRG[3] += ((float*)&az)[k];
     }
   }
-#endif
+#endif // __AVX__
 
-  void P2P(C_iter C) const {
-    int NJ = C->NDLEAF;
-    for( B_iter Bi=C->LEAF; Bi!=C->LEAF+C->NDLEAF; ++Bi, --NJ ) {
-      real P0 = 0;
-      vect F0 = 0;
-      for( B_iter Bj=Bi+1; Bj!=Bi+NJ; ++Bj ) {
-        vect dX = Bi->X - Bj->X;
-        real R2 = norm(dX) + EPS2;
-        real invR2 = 1.0 / R2;
-        if( R2 == 0 ) invR2 = 0;
-        real invR = Bi->SRC * Bj->SRC * std::sqrt(invR2);
+#if __SSE__
+  for ( ; i<=n-4; i+=4) {
+    __m128 pot = _mm_setzero_ps();
+    __m128 ax = _mm_setzero_ps();
+    __m128 ay = _mm_setzero_ps();
+    __m128 az = _mm_setzero_ps();
+
+    __m128 xi = _mm_setr_ps(B[i].X[0], B[i+1].X[0], B[i+2].X[0], B[i+3].X[0]) - _mm_load1_ps(&Xperiodic[0]);
+    __m128 yi = _mm_setr_ps(B[i].X[1], B[i+1].X[1], B[i+2].X[1], B[i+3].X[1]) - _mm_load1_ps(&Xperiodic[1]);
+    __m128 zi = _mm_setr_ps(B[i].X[2], B[i+1].X[2], B[i+2].X[2], B[i+3].X[2]) - _mm_load1_ps(&Xperiodic[2]);
+    __m128 mi = _mm_setr_ps(B[i].SRC,  B[i+1].SRC,  B[i+2].SRC,  B[i+3].SRC);
+    __m128 R2 = _mm_set1_ps(EPS2);
+
+    __m128 x2 = _mm_load1_ps(&B[i+1].X[0]);
+    x2 = _mm_sub_ps(x2, xi);
+    __m128 y2 = _mm_load1_ps(&B[i+1].X[1]);
+    y2 = _mm_sub_ps(y2, yi);
+    __m128 z2 = _mm_load1_ps(&B[i+1].X[2]);
+    z2 = _mm_sub_ps(z2, zi);
+    __m128 mj = _mm_load1_ps(&B[i+1].SRC);
+
+    __m128 xj = x2;
+    x2 = _mm_mul_ps(x2, x2);
+    R2 = _mm_add_ps(R2, x2);
+    __m128 yj = y2;
+    y2 = _mm_mul_ps(y2, y2);
+    R2 = _mm_add_ps(R2, y2);
+    __m128 zj = z2;
+    z2 = _mm_mul_ps(z2, z2);
+    R2 = _mm_add_ps(R2, z2);
+
+    x2 = _mm_load_ps(&B[i+2].X[0]);
+    y2 = x2;
+    z2 = x2;
+    for (int j=i+1; j<n; j++) {
+      __m128 invR = _mm_rsqrt_ps(R2);
+      __m128 mask = _mm_cmplt_ps(_mm_setr_ps(i, i+1, i+2, i+3), _mm_set1_ps(j));
+      mask = _mm_and_ps(mask, _mm_cmpgt_ps(R2, _mm_setzero_ps()));
+      invR = _mm_and_ps(invR, mask);
+      R2 = _mm_set1_ps(EPS2);
+      x2 = _mm_shuffle_ps(x2, x2, _MM_SHUFFLE(0,0,0,0));
+      x2 = _mm_sub_ps(x2, xi);
+      y2 = _mm_shuffle_ps(y2, y2, _MM_SHUFFLE(1,1,1,1));
+      y2 = _mm_sub_ps(y2, yi);
+      z2 = _mm_shuffle_ps(z2, z2, _MM_SHUFFLE(2,2,2,2));
+      z2 = _mm_sub_ps(z2, zi);
+
+      mj = _mm_mul_ps(mj, invR);
+      mj = _mm_mul_ps(mj, mi);
+      pot = _mm_add_ps(pot, mj);
+      B[j].TRG[0] += vecSum4(mj);
+      invR = _mm_mul_ps(invR, invR);
+      invR = _mm_mul_ps(invR, mj);
+      mj = _mm_load_ps(&B[j+1].X[0]);
+      mj = _mm_shuffle_ps(mj, mj, _MM_SHUFFLE(3,3,3,3));
+
+      xj = _mm_mul_ps(xj, invR);
+      ax = _mm_add_ps(ax, xj);
+      B[j].TRG[1] -= vecSum4(xj);
+      xj = x2;
+      x2 = _mm_mul_ps(x2, x2);
+      R2 = _mm_add_ps(R2, x2);
+      x2 = _mm_load_ps(&B[j+2].X[0]);
+
+      yj = _mm_mul_ps(yj, invR);
+      ay = _mm_add_ps(ay, yj);
+      B[j].TRG[2] -= vecSum4(yj);
+      yj = y2;
+      y2 = _mm_mul_ps(y2, y2);
+      R2 = _mm_add_ps(R2, y2);
+      y2 = x2;
+
+      zj = _mm_mul_ps(zj, invR);
+      az = _mm_add_ps(az, zj);
+      B[j].TRG[3] -= vecSum4(zj);
+      zj = z2;
+      z2 = _mm_mul_ps(z2, z2);
+      R2 = _mm_add_ps(R2, z2);
+      z2 = x2;
+    }
+    for (int k=0; k<4; k++) {
+      B[i+k].TRG[0] += ((float*)&pot)[k];
+      B[i+k].TRG[1] += ((float*)&ax)[k];
+      B[i+k].TRG[2] += ((float*)&ay)[k];
+      B[i+k].TRG[3] += ((float*)&az)[k];
+    }
+  }
+#endif // __SSE__
+
+  for ( ; i<n; i++) {
+    real_t pot = 0;
+    vec3 acc = 0;
+    for (int j=i+1; j<n; j++) {
+      vec3 dX = B[i].X - B[j].X;
+      real_t R2 = norm(dX) + EPS2;
+      if (R2 != 0) {
+        real_t invR2 = 1.0 / R2;
+        real_t invR = B[i].SRC * B[j].SRC * sqrtf(invR2);
         dX *= invR2 * invR;
-        P0 += invR;
-        F0 += dX;
-        Bj->TRG[0] += invR;
-        Bj->TRG[1] += dX[0];
-        Bj->TRG[2] += dX[1];
-        Bj->TRG[3] += dX[2];
-      }
-      Bi->TRG[0] += P0;
-      Bi->TRG[1] -= F0[0];
-      Bi->TRG[2] -= F0[1];
-      Bi->TRG[3] -= F0[2];
-    }
-  }
-
-  void P2M(C_iter C, real &Rmax) const {
-    for( B_iter B=C->LEAF; B!=C->LEAF+C->NCLEAF; ++B ) {
-      vect dist = C->X - B->X;
-      real R = std::sqrt(norm(dist));
-      if( R > Rmax ) Rmax = R;
-      Lset M;
-      M[0] = B->SRC;
-      Kernels<0,0,P-1>::power(M,dist);
-#if COMkernel
-      C->M[0] += M[0];
-      for( int i=1; i<MTERM; ++i ) C->M[i] += M[i+3];
-#else
-      for( int i=0; i<MTERM; ++i ) C->M[i] += M[i];
-#endif
-    }
-#if USE_RMAX
-    C->RCRIT = std::min(C->R,Rmax);
-#else
-    C->RCRIT = C->R;
-#endif
-  }
-
-  void M2M(C_iter Ci, real &Rmax) const {
-    for( C_iter Cj=Cj0+Ci->CHILD; Cj!=Cj0+Ci->CHILD+Ci->NCHILD; ++Cj ) {
-      vect dist = Ci->X - Cj->X;
-      real R = std::sqrt(norm(dist)) + Cj->RCRIT;
-      if( R > Rmax ) Rmax = R;
-      Mset M;
-      Lset C;
-      C[0] = 1;
-      Kernels<0,0,P-1>::power(C,dist);
-      M = Cj->M;
-#if COMkernel
-      Ci->M[0] += C[0] * M[0];
-      for( int i=1; i<MTERM; ++i ) Ci->M[i] += C[i+3] * M[0];
-#else
-      for( int i=0; i<MTERM; ++i ) Ci->M[i] += C[i] * M[0];
-#endif
-      Kernels<0,0,P-1>::M2M(Ci->M,C,M);
-    }
-#if USE_RMAX
-    Ci->RCRIT = std::min(Ci->R,Rmax);
-#else
-    Ci->RCRIT = Ci->R;
-#endif
-  }
-
-  void M2L(C_iter Ci, C_iter Cj, bool mutual=true) const {
-    vect dist = Ci->X - Cj->X;
-    real invR2 = 1 / norm(dist);
-    real invR  = Ci->M[0] * Cj->M[0] * std::sqrt(invR2);
-    Lset C;
-    getCoef<P>(C,dist,invR2,invR);
-    sumM2L<P>(Ci->L,C,Cj->M);
-    if( mutual ) {
-      flipCoef(C);
-      sumM2L<P>(Cj->L,C,Ci->M);
-    }
-  }
-
-  void M2P(C_iter Ci, C_iter Cj, bool mutual=true) const {
-    for( B_iter B=Ci->LEAF; B!=Ci->LEAF+Ci->NDLEAF; ++B ) {
-      vect dist = B->X - Cj->X;
-      real invR2 = 1 / norm(dist);
-      real invR  = B->SRC * Cj->M[0] * std::sqrt(invR2);
-      Lset C;
-      getCoef<P>(C,dist,invR2,invR);
-      sumM2P<P>(B,C,Cj->M);
-    }
-    if( mutual ) {
-      for( B_iter B=Cj->LEAF; B!=Cj->LEAF+Cj->NDLEAF; ++B ) {
-        vect dist = B->X - Ci->X;
-        real invR2 = 1 / norm(dist);
-        real invR  = B->SRC * Ci->M[0] * std::sqrt(invR2);
-        Lset C;
-        getCoef<P>(C,dist,invR2,invR);
-        sumM2P<P>(B,C,Ci->M);
+        pot += invR;
+        acc += dX;
+        B[j].TRG[0] += invR;
+        B[j].TRG[1] += dX[0];
+        B[j].TRG[2] += dX[1];
+        B[j].TRG[3] += dX[2];
       }
     }
+    B[i].TRG[0] += pot;
+    B[i].TRG[1] -= acc[0];
+    B[i].TRG[2] -= acc[1];
+    B[i].TRG[3] -= acc[2];
   }
+}
 
-  void L2L(C_iter Ci) const {
-    C_iter Cj = Ci0 + Ci->PARENT;
-    vect dist = Ci->X - Cj->X;
-    Lset C;
+void Kernel::P2M(C_iter C, real_t &Rmax) const {
+  for( B_iter B=C->BODY; B!=C->BODY+C->NCBODY; ++B ) {
+    vec3 dist = C->X - B->X;
+    real_t R = std::sqrt(norm(dist));
+    if( R > Rmax ) Rmax = R;
+    vecL M;
+    M[0] = B->SRC;
+    Kernels<0,0,P-1>::power(M,dist);
+#if COMkernel
+    C->M[0] += M[0];
+    for( int i=1; i<MTERM; ++i ) C->M[i] += M[i+3];
+#else
+    for( int i=0; i<MTERM; ++i ) C->M[i] += M[i];
+#endif
+  }
+#if USE_RMAX
+  C->RCRIT = std::min(C->R,Rmax);
+#else
+  C->RCRIT = C->R;
+#endif
+}
+
+void Kernel::M2M(C_iter Ci, real_t &Rmax) const {
+  for( C_iter Cj=Cj0+Ci->CHILD; Cj!=Cj0+Ci->CHILD+Ci->NCHILD; ++Cj ) {
+    vec3 dist = Ci->X - Cj->X;
+    real_t R = std::sqrt(norm(dist)) + Cj->RCRIT;
+    if( R > Rmax ) Rmax = R;
+    vecM M;
+    vecL C;
+    C[0] = 1;
+    Kernels<0,0,P-1>::power(C,dist);
+    M = Cj->M;
+#if COMkernel
+    Ci->M[0] += C[0] * M[0];
+    for( int i=1; i<MTERM; ++i ) Ci->M[i] += C[i+3] * M[0];
+#else
+    for( int i=0; i<MTERM; ++i ) Ci->M[i] += C[i] * M[0];
+#endif
+    Kernels<0,0,P-1>::M2M(Ci->M,C,M);
+  }
+#if USE_RMAX
+  Ci->RCRIT = std::min(Ci->R,Rmax);
+#else
+  Ci->RCRIT = Ci->R;
+#endif
+}
+
+void Kernel::M2L(C_iter Ci, C_iter Cj, bool mutual=true) const {
+  vec3 dist = Ci->X - Cj->X;
+  real_t invR2 = 1 / norm(dist);
+  real_t invR  = Ci->M[0] * Cj->M[0] * std::sqrt(invR2);
+  vecL C;
+  getCoef<P>(C,dist,invR2,invR);
+  sumM2L<P>(Ci->L,C,Cj->M);
+  if( mutual ) {
+    flipCoef(C);
+    sumM2L<P>(Cj->L,C,Ci->M);
+  }
+}
+
+void Kernel::L2L(C_iter Ci) const {
+  C_iter Cj = Ci0 + Ci->PARENT;
+  vec3 dist = Ci->X - Cj->X;
+  vecL C;
+  C[0] = 1;
+  Kernels<0,0,P>::power(C,dist);
+  Ci->L /= Ci->M[0];
+  Ci->L += Cj->L;
+  for( int i=1; i<LTERM; ++i ) Ci->L[0] += C[i] * Cj->L[i];
+  Kernels<0,0,P-1>::L2L(Ci->L,C,Cj->L);
+}
+
+void Kernel::L2P(C_iter Ci) const {
+  for( B_iter B=Ci->BODY; B!=Ci->BODY+Ci->NCBODY; ++B ) {
+    vec3 dist = B->X - Ci->X;
+    vecL C, L;
     C[0] = 1;
     Kernels<0,0,P>::power(C,dist);
-    Ci->L /= Ci->M[0];
-    Ci->L += Cj->L;
-    for( int i=1; i<LTERM; ++i ) Ci->L[0] += C[i] * Cj->L[i];
-    Kernels<0,0,P-1>::L2L(Ci->L,C,Cj->L);
+    L = Ci->L;
+    B->TRG /= B->SRC;
+    B->TRG[0] += L[0];
+    B->TRG[1] += L[1];
+    B->TRG[2] += L[2];
+    B->TRG[3] += L[3];
+    for( int i=1; i<LTERM; ++i ) B->TRG[0] += C[i]*L[i];
+    Kernels<0,0,1>::L2P(B,C,L);
   }
-
-  void L2P(C_iter Ci) const {
-    for( B_iter B=Ci->LEAF; B!=Ci->LEAF+Ci->NCLEAF; ++B ) {
-      vect dist = B->X - Ci->X;
-      Lset C, L;
-      C[0] = 1;
-      Kernels<0,0,P>::power(C,dist);
-      L = Ci->L;
-      B->TRG /= B->SRC;
-      B->TRG[0] += L[0];
-      B->TRG[1] += L[1];
-      B->TRG[2] += L[2];
-      B->TRG[3] += L[3];
-      for( int i=1; i<LTERM; ++i ) B->TRG[0] += C[i]*L[i];
-      Kernels<0,0,1>::L2P(B,C,L);
-    }
-  }
-};
-
-#endif
+}
