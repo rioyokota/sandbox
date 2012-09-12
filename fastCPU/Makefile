@@ -1,6 +1,5 @@
-CXX	= g++ -ggdb3 -Wall -Wextra -Wshadow -Wuninitialized -O3 -fopenmp -ffast-math -funroll-loops -fforce-addr
+CXX	= g++ -ggdb3 -Wall -Wextra -Wshadow -Wuninitialized -O3 -msse4.2 -fopenmp -ffast-math -funroll-loops -fforce-addr
 
-LFLAGS	+= -DMUTUAL
 LFLAGS	+= -DCOMkernel
 #LFLAGS	+= -DERROR_OPT
 LFLAGS	+= -DUSE_RMAX

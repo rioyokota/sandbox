@@ -1,11 +1,14 @@
 #ifndef evaluator_h
 #define evaluator_h
 #include "cartesian.h"
+#include "thread.h"
 #define splitFirst(Ci,Cj) Cj->NCHILD == 0 || (Ci->NCHILD != 0 && Ci->RCRIT >= Cj->RCRIT)
 
 class Evaluator : public Kernel {
 private:
   int NM2L, NP2P;
+  int NSPAWN;
+
 protected:
   C_iter  ROOT, ROOT2;
 
@@ -27,44 +30,58 @@ private:
     return std::sqrt( dx*dx + dy*dy + dz*dz );
   }
 
-  void interact(C_iter C, CellQueue &cellQueue) {
-    if(C->NCHILD == 0 || C->NDBODY < 64) {
-      P2P(C);
-      NP2P++;
+  void traverse(C_iter CiBegin, C_iter CiEnd, C_iter CjBegin, C_iter CjEnd, bool mutual) {
+    if (CiEnd - CiBegin == 1 || CjEnd - CjBegin == 1) {
+      if (CiBegin == CjBegin) {
+        assert(CiEnd == CjEnd);
+        traverse(CiBegin, CjBegin, mutual);
+      } else {
+        for (C_iter Ci=CiBegin; Ci!=CiEnd; Ci++) {
+          for (C_iter Cj=CjBegin; Cj!=CjEnd; Cj++) {
+            traverse(Ci, Cj, mutual);
+          }
+        }
+      }
     } else {
-      cellQueue.push(C);
+      C_iter CiMid = CiBegin + (CiEnd - CiBegin) / 2;
+      C_iter CjMid = CjBegin + (CjEnd - CjBegin) / 2;
+      __init_tasks__;
+      spawn_task0(traverse(CiBegin, CiMid, CjBegin, CjMid, mutual));
+      traverse(CiMid, CiEnd, CjMid, CjEnd, mutual);
+      __sync_tasks__;
+      spawn_task0(traverse(CiBegin, CiMid, CjMid, CjEnd, mutual));
+      if (!mutual || CiBegin != CjBegin) {
+        traverse(CiMid, CiEnd, CjBegin, CjMid, mutual);
+      } else {
+        assert(CiEnd == CjEnd);
+      }
+      __sync_tasks__;
     }
   }
 
-  void interact(C_iter Ci, C_iter Cj, PairQueue &pairQueue, bool mutual=true) {
-    vec3 dX = Ci->X - Cj->X;
-    real_t Rq = norm(dX);
-#if DUAL
-    if(Rq >= (Ci->RCRIT+Cj->RCRIT)*(Ci->RCRIT+Cj->RCRIT) && Rq != 0) {
-      M2L(Ci,Cj,mutual);
-      NM2L++;
-    } else if(Ci->NCHILD == 0 && Cj->NCHILD == 0) {
-      P2P(Ci,Cj,mutual);
-      NP2P++;
+  void splitCell(C_iter Ci, C_iter Cj, bool mutual) {
+    if (Cj->NCHILD == 0) {
+      assert(Ci->NCHILD > 0);
+      for (C_iter ci=Ci0+Ci->CHILD; ci!=Ci0+Ci->CHILD+Ci->NCHILD; ci++ ) {
+        traverse(ci, Cj, mutual);
+      }
+    } else if (Ci->NCHILD == 0) {
+      assert(Cj->NCHILD > 0);
+      for (C_iter cj=Cj0+Cj->CHILD; cj!=Cj0+Cj->CHILD+Cj->NCHILD; cj++ ) {
+        traverse(Ci, cj, mutual);
+      }
+    } else if (Ci->NDBODY + Cj->NDBODY >= NSPAWN || (mutual && Ci == Cj)) {
+      traverse(Ci0+Ci->CHILD, Ci0+Ci->CHILD+Ci->NCHILD,
+               Cj0+Cj->CHILD, Cj0+Cj->CHILD+Cj->NCHILD, mutual);
+    } else if (Ci->RCRIT >= Cj->RCRIT) {
+      for (C_iter ci=Ci0+Ci->CHILD; ci!=Ci0+Ci->CHILD+Ci->NCHILD; ci++ ) {
+        traverse(ci, Cj, mutual);
+      }
     } else {
-      Pair pair(Ci,Cj);
-      pairQueue.push_back(pair);
+      for (C_iter cj=Cj0+Cj->CHILD; cj!=Cj0+Cj->CHILD+Cj->NCHILD; cj++ ) {
+        traverse(Ci, cj, mutual);
+      }
     }
-#else
-    if(Ci->RCRIT != Cj->RCRIT) {
-      Pair pair(Ci,Cj);
-      pairQueue.push_back(pair);
-    } else if(Rq >= (Ci->RCRIT+Cj->RCRIT)*(Ci->RCRIT+Cj->RCRIT) && Rq != 0) {
-      M2L(Ci,Cj,mutual);
-      NM2L++;
-    } else if(Ci->NCHILD == 0 && Cj->NCHILD == 0) {
-      P2P(Ci,Cj,mutual);
-      NP2P++;
-    } else {
-      Pair pair(Ci,Cj);
-      pairQueue.push_back(pair);
-    }
-#endif
   }
 
 protected:
@@ -101,6 +118,34 @@ protected:
 #endif
   }
 
+  void traverse(C_iter Ci, C_iter Cj, bool mutual) {
+    vec3 dX = Ci->X - Cj->X - Xperiodic;                        // Distance vector from source to target
+    real_t R2 = norm(dX);                                       // Scalar distance squared
+#if DUAL
+    {                                                           // Dummy bracket
+#else
+    if (Ci->RCRIT != Cj->RCRIT) {                               // If cell is not at the same level
+      splitCell(Ci, Cj, mutual);                                //  Split cell and call function recursively for child
+    } else {                                                    // If we don't care if cell is not at the same level
+#endif
+      if (R2 > (Ci->RCRIT+Cj->RCRIT)*(Ci->RCRIT+Cj->RCRIT)) {   //  If distance is far enough
+        M2L(Ci, Cj, mutual);                                    //   Use approximate kernels
+      } else if (Ci->NCHILD == 0 && Cj->NCHILD == 0) {          //  Else if both cells are bodies
+        if (Cj->NCBODY == 0) {                                  //   If the bodies weren't sent from remote node
+          M2L(Ci, Cj, mutual);                                  //    Use approximate kernels
+        } else {                                                //   Else if the bodies were sent
+          if (Ci == Cj) {                                       //    If source and target are same
+            P2P(Ci);                                            //     P2P kernel for single cell
+          } else {                                              //    Else if source and target are different
+            P2P(Ci, Cj, mutual);                                //     P2P kernel for pair of cells
+          }                                                     //    End if for same source and target
+        }                                                       //   End if for bodies
+      } else {                                                  //  Else if cells are close but not bodies
+        splitCell(Ci, Cj, mutual);                              //   Split cell and call function recursively for child
+      }                                                         //  End if for multipole acceptance
+    }                                                           // End if for same level cells
+  }
+
   void setRcrit(Cells &cells) {
 #if ERROR_OPT
     real_t c = (1 - THETA) * (1 - THETA) / pow(THETA,P+2) / pow(std::abs(ROOT->M[0]),1.0/3);
@@ -119,41 +164,8 @@ protected:
     }
   }
 
-  void traverse(PairQueue &pairQueue, bool mutual=true) {
-    while( !pairQueue.empty() ) {
-      Pair pair = pairQueue.front();
-      pairQueue.pop_front();
-      if(splitFirst(pair.first,pair.second)) {
-        C_iter C = pair.first;
-        for( C_iter Ci=Ci0+C->CHILD; Ci!=Ci0+C->CHILD+C->NCHILD; ++Ci ) {
-          interact(Ci,pair.second,pairQueue,mutual);
-        }
-      } else {
-        C_iter C = pair.second;
-        for( C_iter Cj=Cj0+C->CHILD; Cj!=Cj0+C->CHILD+C->NCHILD; ++Cj ) {
-          interact(pair.first,Cj,pairQueue,mutual);
-        }
-      }
-    }
-  }
-
-  void traverse(CellQueue &cellQueue) {
-    PairQueue pairQueue;
-    while( !cellQueue.empty() ) {
-      C_iter C = cellQueue.front();
-      cellQueue.pop();
-      for( C_iter Ci=Ci0+C->CHILD; Ci!=Ci0+C->CHILD+C->NCHILD; ++Ci ) {
-        interact(Ci,cellQueue);
-        for( C_iter Cj=Ci+1; Cj!=Cj0+C->CHILD+C->NCHILD; ++Cj ) {
-          interact(Ci,Cj,pairQueue);
-        }
-      }
-      traverse(pairQueue);
-    }
-  }
-
 public:
-  Evaluator() : NM2L(0), NP2P(0), printNow(true) {}
+  Evaluator() : NM2L(0), NP2P(0), NSPAWN(1000), printNow(true) {}
   ~Evaluator() {
     std::cout << "NM2L : " << NM2L << " NP2P : " << NP2P << std::endl;
   }

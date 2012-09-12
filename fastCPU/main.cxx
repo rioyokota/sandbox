@@ -14,7 +14,7 @@ int main() {
   srand48(0);
   for( B_iter B=bodies.begin(); B!=bodies.end(); ++B ) {      // Loop over bodies
     for( int d=0; d!=3; ++d ) {
-      B->X[d] = drand48();
+      B->X[d] = drand48() * 2 * M_PI - M_PI;
     }
     B->SRC = 1. / bodies.size();
     B->TRG = 0;
@@ -29,11 +29,7 @@ int main() {
 
   tic = FMM.getTime();
   FMM.bottomup(bodies,cells);
-#if MUTUAL
-  FMM.evaluate(cells);
-#else
   FMM.evaluate(cells,cells);
-#endif
   toc = FMM.getTime();
   if( FMM.printNow ) printf("FMM                  : %lf\n",toc-tic);
 

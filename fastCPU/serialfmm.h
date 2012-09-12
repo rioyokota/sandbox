@@ -74,7 +74,8 @@ private:
 protected:
   void setDomain(Bodies &bodies) {
     MAXLEVEL = getMaxLevel(bodies);
-    X0 = R0 = .5;
+    X0 = 0;
+    R0 = M_PI;
   }
 
   void buildTree(Bodies &bodies, Cells &cells) {
@@ -127,29 +128,11 @@ public:
     if( printNow ) printf("Upward pass          : %lf\n",toc-tic);
   }
 
-  void evaluate(Cells &cells) {
-    double tic, toc;
-    tic = getTime();
-    setRootCell(cells);
-    CellQueue cellQueue;
-    cellQueue.push(ROOT);
-    traverse(cellQueue);
-    toc = getTime();
-    if( printNow ) printf("Traverse             : %lf\n",toc-tic);
-    tic = getTime();
-    downwardPass(cells);
-    toc = getTime();
-    if( printNow ) printf("Downward pass        : %lf\n",toc-tic);
-  }
-
   void evaluate(Cells &icells, Cells &jcells) {
     double tic, toc;
     tic = getTime();
     setRootCell(icells,jcells);
-    Pair pair(ROOT,ROOT2);
-    PairQueue pairQueue;
-    pairQueue.push_front(pair);
-    traverse(pairQueue,false);
+    traverse(ROOT,ROOT2,true);
     toc = getTime();
     if( printNow ) printf("Traverse             : %lf\n",toc-tic);
     tic = getTime();
