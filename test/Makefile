@@ -1,6 +1,6 @@
 .SUFFIXES: .cxx .cu .o
 
-CXX = g++ -Wall -O3 -msse4.2 -fopenmp -ffast-math -funroll-loops -I/usr/include/vtk-5.8
+CXX = mpicxx -Wall -O3 -msse4.2 -fopenmp -ffast-math -funroll-loops -I/usr/include/vtk-5.8
 NVCC = nvcc --compiler-bindir=/usr/bin/g++-4.4 -O3 -use_fast_math -arch=sm_21 -lcuda --ptxas-options=-v -Xcompiler "-Wall -fopenmp -ffast-math -funroll-loops"
 VFLAGS = -lvtkCommon -lvtkCharts
 
@@ -43,6 +43,9 @@ hello: hello.asm
 sse: sse.o direct_sse.o direct_asm.o
 	$(NVCC) $? -lpapi
 	./a.out
+tau: tau.cxx
+	tau_cxx.sh tau.cxx
+	mpirun -np 8 ./a.out
 p2p: p2p.o
 	$(NVCC) $? -lpapi
 	./a.out
