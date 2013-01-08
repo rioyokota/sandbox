@@ -1,7 +1,7 @@
 .SUFFIXES: .cxx .cu .o
 
 CXX = mpicxx -Wall -O3 -msse4.2 -fopenmp -ffast-math -funroll-loops -I/usr/include/vtk-5.8
-NVCC = nvcc --compiler-bindir=/usr/bin/g++-4.4 -O3 -use_fast_math -arch=sm_21 -lcuda --ptxas-options=-v -Xcompiler "-Wall -fopenmp -ffast-math -funroll-loops"
+NVCC = nvcc -O3 -use_fast_math -arch=sm_21 -lcuda --ptxas-options=-v -Xcompiler "-Wall -fopenmp -ffast-math -funroll-loops"
 VFLAGS = -lvtkCommon -lvtkCharts
 
 .cxx.o	:
