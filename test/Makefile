@@ -40,6 +40,9 @@ hello: hello.asm
 	nasm $? -f elf
 	ld -m elf_i386 -s hello.o
 	./a.out
+mpi: mpi.o
+	$(CXX) $?
+	mpirun -np 2 ./a.out
 sse: sse.o direct_sse.o direct_asm.o
 	$(NVCC) $? -lpapi
 	./a.out
