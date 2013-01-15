@@ -39,12 +39,13 @@ void P2Psse(float4 *target, float4 *source, int ni, int nj, float eps2) {
     __m128 zj = z2;                       // zj = z2
     z2 = _mm_mul_ps(z2, z2);              // z2 = z2 * z2
     R2 = _mm_add_ps(R2, z2);              // R2 = R2 + z2
-  
+    __m128 invR;  
+
     x2 = _mm_load_ps(&source[1].x);       // x2 = next source->x,y,z,w 
     y2 = x2;                              // y2 = x2;
     z2 = x2;                              // z2 = x2;
-    for( int j=0; j<nj; j++ ) {
-      __m128 invR = _mm_rsqrt_ps(R2);     // invR = rsqrt(R2)       1
+    for( int j=0; j<nj-2; j++ ) {
+      invR = _mm_rsqrt_ps(R2);            // invR = rsqrt(R2)       1
       R2 = _mm_load1_ps(&eps2);           // R2 = eps2
       x2 = _mm_shuffle_ps(x2, x2, 0x00);  // x2 = source->x
       x2 = _mm_sub_ps(x2, xi);            // x2 = x2 - xi           2
@@ -81,6 +82,52 @@ void P2Psse(float4 *target, float4 *source, int ni, int nj, float eps2) {
       R2 = _mm_add_ps(R2, z2);            // R2 = R2 + z2          20
       z2 = x2;                            // z2 = x2
     }
+    invR = _mm_rsqrt_ps(R2);              // invR = rsqrt(R2)
+    R2 = _mm_load1_ps(&eps2);             // R2 = eps2
+    x2 = _mm_shuffle_ps(x2, x2, 0x00);    // x2 = source->x
+    x2 = _mm_sub_ps(x2, xi);              // x2 = x2 - xi
+    y2 = _mm_shuffle_ps(y2, y2, 0x55);    // y2 = source->y
+    y2 = _mm_sub_ps(y2, yi);              // y2 = y2 - yi
+    z2 = _mm_shuffle_ps(z2, z2, 0xaa);    // z2 = source->z
+    z2 = _mm_sub_ps(z2, zi);              // z2 = z2 - zi
+  
+    mj = _mm_mul_ps(mj, invR);            // mj = mj * invR
+    phi = _mm_add_ps(phi, mj);            // phi = phi + mj
+    invR = _mm_mul_ps(invR, invR);        // invR = invR * invR
+    invR = _mm_mul_ps(invR, mj);          // invR = invR * mj
+    mj = _mm_load_ps(&source[nj-1].x);    // mj = source->x,y,z,w
+    mj = _mm_shuffle_ps(mj, mj, 0xff);    // mj = source->w
+  
+    xj = _mm_mul_ps(xj, invR);            // xj = xj * invR
+    ax = _mm_add_ps(ax, xj);              // ax = ax + xj
+    xj = x2;                              // xj = x2
+    x2 = _mm_mul_ps(x2, x2);              // x2 = x2 * x2
+    R2 = _mm_add_ps(R2, x2);              // R2 = R2 + x2
+  
+    yj = _mm_mul_ps(yj, invR);            // yj = yj * invR
+    ay = _mm_add_ps(ay, yj);              // ay = ay + yj
+    yj = y2;                              // yj = y2
+    y2 = _mm_mul_ps(y2, y2);              // y2 = y2 * y2
+    R2 = _mm_add_ps(R2, y2);              // R2 = R2 + y2
+  
+    zj = _mm_mul_ps(zj, invR);            // zj = zj * invR
+    az = _mm_add_ps(az, zj);              // az = az + zj
+    zj = z2;                              // zj = z2
+    z2 = _mm_mul_ps(z2, z2);              // z2 = z2 * z2
+    R2 = _mm_add_ps(R2, z2);              // R2 = R2 + z2
+
+    invR = _mm_rsqrt_ps(R2);              // invR = rsqrt(R2)
+    mj = _mm_mul_ps(mj, invR);            // mj = mj * invR
+    phi = _mm_add_ps(phi, mj);            // phi = phi + mj
+    invR = _mm_mul_ps(invR, invR);        // invR = invR * invR
+    invR = _mm_mul_ps(invR, mj);          // invR = invR * mj
+
+    xj = _mm_mul_ps(xj, invR);            // xj = xj * invR
+    ax = _mm_add_ps(ax, xj);              // ax = ax + xj
+    yj = _mm_mul_ps(yj, invR);            // yj = yj * invR
+    ay = _mm_add_ps(ay, yj);              // ay = ay + yj
+    zj = _mm_mul_ps(zj, invR);            // zj = zj * invR
+    az = _mm_add_ps(az, zj);              // az = az + zj
     for( int k=0; k<4; k++ ) {
       target[i+k].x = ((float*)&ax)[k];   // target->x = ax
       target[i+k].y = ((float*)&ay)[k];   // target->y = ay
