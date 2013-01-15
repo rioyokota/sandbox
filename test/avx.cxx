@@ -76,7 +76,7 @@ int main() {
 
 // COMPARE RESULTS
   float pd = 0, pn = 0, fd = 0, fn = 0;
-  for( int i=0; i<100; i++ ) {
+  for( int i=0; i<N; i++ ) {
     targetSSE[i].w -= sourceHost[i].w / sqrtf(EPS2);
     targetAVX[i].w -= sourceHost[i].w / sqrtf(EPS2);
     pd += (targetSSE[i].w - targetAVX[i].w) * (targetSSE[i].w - targetAVX[i].w);

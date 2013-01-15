@@ -42,12 +42,13 @@ void P2Pavx(float4 *target, float4 *source, int ni, int nj, float eps2) {
     __m256 zj = z2;                                             // zj = z2
     z2 = _mm256_mul_ps(z2, z2);                                 // z2 = z2 * z2
     R2 = _mm256_add_ps(R2, z2);                                 // R2 = R2 + z2
+    __m256 invR;
   
     x2 = _mm256_set1_ps(source[1].x);
     y2 = _mm256_set1_ps(source[1].y);
     z2 = _mm256_set1_ps(source[1].z);
-    for( int j=0; j<nj; j++ ) {
-      __m256 invR = _mm256_rsqrt_ps(R2);                        // invR = rsqrt(R2)       1
+    for( int j=0; j<nj-2; j++ ) {
+      invR = _mm256_rsqrt_ps(R2);                               // invR = rsqrt(R2)       1
       R2 = _mm256_set1_ps(eps2);                                // R2 = eps2
       x2 = _mm256_sub_ps(x2, xi);                               // x2 = x2 - xi           2
       y2 = _mm256_sub_ps(y2, yi);                               // y2 = y2 - yi           3
@@ -80,6 +81,48 @@ void P2Pavx(float4 *target, float4 *source, int ni, int nj, float eps2) {
       R2 = _mm256_add_ps(R2, z2);                               // R2 = R2 + z2          20
       z2 = _mm256_set1_ps(source[j+2].z);
     }
+    invR = _mm256_rsqrt_ps(R2);                                 // invR = rsqrt(R2)
+    R2 = _mm256_set1_ps(eps2);                                  // R2 = eps2
+    x2 = _mm256_sub_ps(x2, xi);                                 // x2 = x2 - xi
+    y2 = _mm256_sub_ps(y2, yi);                                 // y2 = y2 - yi
+    z2 = _mm256_sub_ps(z2, zi);                                 // z2 = z2 - zi
+
+    mj = _mm256_mul_ps(mj, invR);                               // mj = mj * invR
+    pot = _mm256_add_ps(pot, mj);                               // pot = pot + mj
+    invR = _mm256_mul_ps(invR, invR);                           // invR = invR * invR
+    invR = _mm256_mul_ps(invR, mj);                             // invR = invR * mj
+    mj = _mm256_set1_ps(source[nj-1].w);
+
+    xj = _mm256_mul_ps(xj, invR);                               // xj = xj * invR
+    ax = _mm256_add_ps(ax, xj);                                 // ax = ax + xj
+    xj = x2;                                                    // xj = x2
+    x2 = _mm256_mul_ps(x2, x2);                                 // x2 = x2 * x2
+    R2 = _mm256_add_ps(R2, x2);                                 // R2 = R2 + x2
+
+    yj = _mm256_mul_ps(yj, invR);                               // yj = yj * invR
+    ay = _mm256_add_ps(ay, yj);                                 // ay = ay + yj
+    yj = y2;                                                    // yj = y2
+    y2 = _mm256_mul_ps(y2, y2);                                 // y2 = y2 * y2
+    R2 = _mm256_add_ps(R2, y2);                                 // R2 = R2 + y2
+
+    zj = _mm256_mul_ps(zj, invR);                               // zj = zj * invR
+    az = _mm256_add_ps(az, zj);                                 // az = az + zj
+    zj = z2;                                                    // zj = z2
+    z2 = _mm256_mul_ps(z2, z2);                                 // z2 = z2 * z2
+    R2 = _mm256_add_ps(R2, z2);                                 // R2 = R2 + z2
+
+    invR = _mm256_rsqrt_ps(R2);                                 // invR = rsqrt(R2)
+    mj = _mm256_mul_ps(mj, invR);                               // mj = mj * invR
+    pot = _mm256_add_ps(pot, mj);                               // pot = pot + mj
+    invR = _mm256_mul_ps(invR, invR);                           // invR = invR * invR
+    invR = _mm256_mul_ps(invR, mj);                             // invR = invR * mj
+
+    xj = _mm256_mul_ps(xj, invR);                               // xj = xj * invR
+    ax = _mm256_add_ps(ax, xj);                                 // ax = ax + xj
+    yj = _mm256_mul_ps(yj, invR);                               // yj = yj * invR
+    ay = _mm256_add_ps(ay, yj);                                 // ay = ay + yj
+    zj = _mm256_mul_ps(zj, invR);                               // zj = zj * invR
+    az = _mm256_add_ps(az, zj);                                 // az = az + zj
     for( int k=0; k<8; k++ ) {
       target[i+k].w = ((float*)&pot)[k];  // target->w = pot
       target[i+k].x = ((float*)&ax)[k];   // target->x = ax
