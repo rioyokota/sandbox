@@ -21,6 +21,9 @@ radixbody: radixbody.o
 tree: tree.o
 	$(CXX) $?
 	./a.out
+neighbor: neighbor.o
+	$(CXX) $?
+	./a.out
 binary: binary.o
 	$(CXX) $? $(VFLAGS)
 	./a.out
