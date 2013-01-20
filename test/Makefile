@@ -1,6 +1,7 @@
 .SUFFIXES: .cxx .cu .o
 
-CXX = mpicxx -Wall -O3 -mavx -fopenmp -ffast-math -funroll-loops -I/usr/include/vtk-5.8
+#CXX = mpicxx -Wall -O3 -mavx -fopenmp -ffast-math -funroll-loops -I/usr/include/vtk-5.8
+CXX = icc -Wall -mmic -O3 -openmp
 NVCC = nvcc -O3 -use_fast_math -arch=sm_21 -lcuda --ptxas-options=-v -Xcompiler "-Wall -fopenmp -ffast-math -funroll-loops"
 VFLAGS = -lvtkCommon -lvtkCharts
 
@@ -39,6 +40,8 @@ getopt: getopt.o
 avx: avx.o direct_sse.o direct_avx.o
 	$(CXX) $? -lpapi
 	./a.out
+mic: mic.o direct.o direct_mic.o
+	$(CXX) $?
 hello: hello.asm
 	nasm $? -f elf
 	ld -m elf_i386 -s hello.o
