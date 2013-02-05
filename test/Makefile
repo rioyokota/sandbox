@@ -1,7 +1,7 @@
 .SUFFIXES: .cxx .cu .o
 
-#CXX = mpicxx -Wall -O3 -mavx -fopenmp -ffast-math -funroll-loops -I/usr/include/vtk-5.8
-CXX = icc -Wall -mmic -O3 -openmp
+CXX = mpicxx -Wall -O3 -msse4.2 -fopenmp -ffast-math -funroll-loops -I/usr/include/vtk-5.8
+#CXX = icc -Wall -mmic -O3 -openmp
 NVCC = nvcc -O3 -use_fast_math -arch=sm_21 -lcuda --ptxas-options=-v -Xcompiler "-Wall -fopenmp -ffast-math -funroll-loops"
 VFLAGS = -lvtkCommon -lvtkCharts
 
@@ -35,6 +35,9 @@ pthreads: pthreads.o
 	$(CXX) $?
 	./a.out
 getopt: getopt.o
+	$(CXX) $?
+	./a.out
+nitadori: nitadori.o
 	$(CXX) $?
 	./a.out
 avx: avx.o direct_sse.o direct_avx.o
