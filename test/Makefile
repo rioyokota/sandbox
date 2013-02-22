@@ -52,6 +52,12 @@ hello: hello.asm
 mpi: mpi.o
 	$(CXX) $?
 	mpirun -np 2 ./a.out
+cpufmm: cpufmm.o
+	$(CXX) $?
+	./a.out
+cpufmm2d: cpufmm2d.o
+	$(CXX) $?
+	./a.out
 sse: sse.o direct_sse.o direct_asm.o
 	$(NVCC) $? -lpapi
 	./a.out
@@ -60,9 +66,6 @@ tau: tau.cxx
 	mpirun -np 8 ./a.out
 p2p: p2p.o
 	$(NVCC) $? -lpapi
-	./a.out
-cpufmm: cpufmm.o
-	$(NVCC) $?
 	./a.out
 gpufmm: gpufmm.o thrust.o
 	$(NVCC) $?
