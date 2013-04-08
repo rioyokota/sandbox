@@ -4,7 +4,7 @@
 #include <cstdlib>
 #include <sys/time.h>
 
-const int N = 128*10000;
+const int N = 128*100;
 const int NCRIT = 10;
 const int MAXLEVEL = N >= NCRIT ? 1 + int(log(N / NCRIT)/M_LN2/3) : 0;
 const float THETA = 0.75;
@@ -275,7 +275,7 @@ int main() {
   std::cout << "Build : " << toc-tic << std::endl;
 // Direct summation
   tic = get_time();
-#if 0
+#if 1
   Cell root = cells[ncell-1];
   P2P(bodies,root,root);
   for( int i=0; i<N; i++ ) {
