@@ -1,5 +1,6 @@
 #ifndef vec_h
 #define vec_h
+#include <iostream>
 #define for_i for( int i=0; i!=N; ++i )
 template<int N, typename T>
 class vec {
@@ -91,7 +92,7 @@ public:
     for_i c+=b[i]*b[i];
     return c;
   }
-};
+} __attribute__((aligned(0x1000)));
 
 #undef for_i
 #endif
