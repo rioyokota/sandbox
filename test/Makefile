@@ -2,7 +2,7 @@
 
 CXX = mpicxx -Wall -mavx -O3 -fopenmp -ffast-math -funroll-loops -I/usr/include/vtk-5.8
 #CXX = icc -gcc-name=gcc-4.6 -mavx -O3 -openmp -lstdc++
-#CXX = icc -Wall -mmic -O3 -openmp
+#CXX = icpc -Wall -mmic -O3 -openmp
 NVCC = nvcc -O3 -use_fast_math -arch=sm_30 -lcuda --ptxas-options=-v -Xcompiler "-Wall -fopenmp -ffast-math -funroll-loops"
 VFLAGS = -lvtkCommon -lvtkCharts
 
