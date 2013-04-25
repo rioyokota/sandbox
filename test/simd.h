@@ -72,7 +72,7 @@ public:
     return s;
   }
   friend fvec16 rsqrt(const fvec16 &v) {                         // reciprocal square root
-    return fvec16(_mm512_rsqrt_ps(v.data));
+    return fvec16(_mm512_rsqrt23_ps(v.data));
   }
 };
 #endif
