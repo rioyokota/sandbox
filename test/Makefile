@@ -80,8 +80,8 @@ gpufmm: gpufmm.o thrust.o
 openacc: openacc.c
 	pgcc -O3 -mp -acc -ta=nvidia $?
 	./a.out
-cleanall:
-	@make -C .. cleanall
+clean:
+	@make -C .. clean
 commit:
 	@make -C .. commit
 save:

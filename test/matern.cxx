@@ -8,6 +8,196 @@ using boost::math::binomial_coefficient;
 using boost::math::cyl_bessel_k;
 using boost::math::tgamma;
 
+const int P = 6;
+const double NU = 1.5;
+const int LTERM = (P+1)*(P+2)*(P+3)/6;
+
+typedef double real_t;
+typedef vec<3,real_t> vec3;
+typedef vec<LTERM,real_t> vecL;
+
+template<typename T, int nx, int ny, int nz>
+struct Index {
+  static const int                I = Index<T,nx,ny+1,nz-1>::I + 1;
+  static const unsigned long long F = Index<T,nx,ny,nz-1>::F * nz;
+};
+
+template<typename T, int nx, int ny>
+struct Index<T,nx,ny,0> {
+  static const int                I = Index<T,nx+1,0,ny-1>::I + 1;
+  static const unsigned long long F = Index<T,nx,ny-1,0>::F * ny;
+};
+
+template<typename T, int nx>
+struct Index<T,nx,0,0> {
+  static const int                I = Index<T,0,0,nx-1>::I + 1;
+  static const unsigned long long F = Index<T,nx-1,0,0>::F * nx;
+};
+
+template<typename T>
+struct Index<T,0,0,0> {
+  static const int                I = 0;
+  static const unsigned long long F = 1;
+};
+
+
+template<int kx, int ky , int kz, int d>
+struct DerivativeTerm {
+  static inline real_t kernel(const vecL &C, const vec3 &dX) {
+    return dX[d] * C[Index<vecL,kx,ky,kz>::I];
+  }
+};
+
+template<int kx, int ky , int kz>
+struct DerivativeTerm<kx,ky,kz,-1> {
+  static inline real_t kernel(const vecL &C, const vec3&) {
+    return -C[Index<vecL,kx,ky,kz>::I];
+  }
+};
+
+
+template<int nx, int ny, int nz, int kx=nx, int ky=ny, int kz=nz, int flag=5>
+struct DerivativeSum {
+  static const int nextflag = 5 - (kz < nz || kz == 1);
+  static const int dim = kz == (nz-1) ? -1 : 2;
+  static const int n = nx + ny + nz;
+  static inline real_t loop(const vecL &C, const vec3 &dX) {
+    return DerivativeSum<nx,ny,nz,nx,ny,kz-1,nextflag>::loop(C,dX)
+      + DerivativeTerm<nx,ny,kz-1,dim>::kernel(C,dX);
+  }
+};
+
+template<int nx, int ny, int nz, int kx, int ky, int kz>
+struct DerivativeSum<nx,ny,nz,kx,ky,kz,4> {
+  static const int nextflag = 3 - (ny == 0);
+  static inline real_t loop(const vecL &C, const vec3 &dX) {
+    return DerivativeSum<nx,ny,nz,nx,ny,nz,nextflag>::loop(C,dX);
+  }
+};
+
+template<int nx, int ny, int nz, int kx, int ky, int kz>
+struct DerivativeSum<nx,ny,nz,kx,ky,kz,3> {
+  static const int nextflag = 3 - (ky < ny || ky == 1);
+  static const int dim = ky == (ny-1) ? -1 : 1;
+  static const int n = nx + ny + nz;
+  static inline real_t loop(const vecL &C, const vec3 &dX) {
+    return DerivativeSum<nx,ny,nz,nx,ky-1,nz,nextflag>::loop(C,dX)
+      + DerivativeTerm<nx,ky-1,nz,dim>::kernel(C,dX);
+  }
+};
+
+template<int nx, int ny, int nz, int kx, int ky, int kz>
+struct DerivativeSum<nx,ny,nz,kx,ky,kz,2> {
+  static const int nextflag = 1 - (nx == 0);
+  static inline real_t loop(const vecL &C, const vec3 &dX) {
+    return DerivativeSum<nx,ny,nz,nx,ny,nz,nextflag>::loop(C,dX);
+  }
+};
+
+template<int nx, int ny, int nz, int kx, int ky, int kz>
+struct DerivativeSum<nx,ny,nz,kx,ky,kz,1> {
+  static const int nextflag = 1 - (kx < nx || kx == 1);
+  static const int dim = kx == (nx-1) ? -1 : 0;
+  static const int n = nx + ny + nz;
+  static inline real_t loop(const vecL &C, const vec3 &dX) {
+    return DerivativeSum<nx,ny,nz,kx-1,ny,nz,nextflag>::loop(C,dX)
+      + DerivativeTerm<kx-1,ny,nz,dim>::kernel(C,dX);
+  }
+};
+
+template<int nx, int ny, int nz, int kx, int ky, int kz>
+struct DerivativeSum<nx,ny,nz,kx,ky,kz,0> {
+  static inline real_t loop(const vecL&, const vec3&) {
+    return 0;
+  }
+};
+
+template<int nx, int ny, int nz, int kx, int ky>
+struct DerivativeSum<nx,ny,nz,kx,ky,0,5> {
+  static inline real_t loop(const vecL &C, const vec3 &dX) {
+    return DerivativeSum<nx,ny,nz,nx,ny,0,4>::loop(C,dX);
+  }
+};
+
+template<int np, int nx, int ny, int nz>
+struct Kernels {
+  static inline void derivative(vecL &C, vecL &G, const vec3 &dX, real_t &coef) {
+    static const int n = nx + ny + nz;
+    Kernels<np,nx,ny+1,nz-1>::derivative(C,G,dX,coef);
+    C[Index<vecL,nx,ny,nz>::I] = DerivativeSum<nx,ny,nz>::loop(G,dX) / n * coef;
+  }
+};
+
+template<int np, int nx, int ny>
+struct Kernels<np,nx,ny,0> {
+  static inline void derivative(vecL &C, vecL &G, const vec3 &dX, real_t &coef) {
+    static const int n = nx + ny;
+    Kernels<np,nx+1,0,ny-1>::derivative(C,G,dX,coef);
+    C[Index<vecL,nx,ny,0>::I] = DerivativeSum<nx,ny,0>::loop(G,dX) / n * coef;
+  }
+};
+
+template<int np, int nx>
+struct Kernels<np,nx,0,0> {
+  static inline void derivative(vecL &C, vecL &G, const vec3 &dX, real_t &coef) {
+    static const int n = nx;
+    Kernels<np,0,0,nx-1>::derivative(C,G,dX,coef);
+    C[Index<vecL,nx,0,0>::I] = DerivativeSum<nx,0,0>::loop(G,dX) / n * coef;
+  }
+};
+
+template<int np>
+struct Kernels<np,0,0,0> {
+  static inline void derivative(vecL &C, vecL &G, const vec3 &dX, real_t &coef) {
+    Kernels<np-1,0,0,np-1>::derivative(G,C,dX,coef);
+    static const double c = std::sqrt(2 * NU);
+    double R = c * std::sqrt(norm(dX));
+    double zR = (-0.577216-log(R/2)) * (R<0.413) + 1 * (R>=0.413);
+    static const double u = NU - P - 1 + np;
+    static const double gu = tgamma(1-u) / tgamma(u);
+    static const double aum = std::abs(u-1);
+    static const double gaum = 1 / tgamma(aum);
+    static const double au = std::abs(u);
+    static const double gau = 1 / tgamma(au);
+    if (aum < 1e-12) {
+      G[0] = cyl_bessel_k(0,R) / zR;
+    } else {
+      G[0] = std::pow(R/2,aum) * 2 * cyl_bessel_k(aum,R) * gaum;
+    }
+    if (au < 1e-12) {
+      C[0] = cyl_bessel_k(0,R) / zR;
+    } else {
+      C[0] = std::pow(R/2,au) * 2 * cyl_bessel_k(au,R) * gau;
+    }
+    double hu = 0;
+    if (u > 1) {
+      hu = 0.5 / (u-1);
+    } else if (NU == 0) {
+      hu = zR;
+    } else if (u > 0 && u < 1) {
+      hu = std::pow(R/2,2*u-2) / 2 * gu;
+    } else if (u == 0) {
+      hu = 1 / (R * R * zR);
+    } else {
+      hu = -2 * u / (R * R);
+    }
+    coef = c * c * hu;
+  }
+};
+
+template<>
+struct Kernels<0,0,0,0> {
+  static inline void derivative(vecL&, vecL&, const vec3&, const real_t&) {}
+};
+
+
+template<int PP>
+inline void getCoef2(vecL &C, const vec3 &dX) {
+  double coef;
+  vecL G;
+  Kernels<PP,0,0,PP>::derivative(C,G,dX,coef);
+}
+
 typedef vec<3,double> vec3;
 vec3 make_vec3(double a, double b, double c) {
   vec3 v;
@@ -23,24 +213,24 @@ double get_time() {
   return double(tv.tv_sec+tv.tv_usec*1e-6);
 }
 
-void matern(int ni, int nj, vec3 * XiL, vec3 XLM, vec3 * XjM, double nu, double ** f) {
-  double temp = powf(2,nu-1) * tgamma(nu);
+void matern(int ni, int nj, vec3 * XiL, vec3 XLM, vec3 * XjM, double ** f) {
+  double temp = powf(2,NU-1) * tgamma(NU);
   for (int i=0; i<ni; i++) {
     for (int j=0; j<nj; j++) {
       vec3 dX = (XiL[i] + XLM - XjM[j]);
-      double R = sqrt(norm(dX) * 2 * nu);
-      f[i][j] = powf(R,nu) * cyl_bessel_k(nu,R) / temp;
+      double R = sqrt(norm(dX) * 2 * NU);
+      f[i][j] = powf(R,NU) * cyl_bessel_k(NU,R) / temp;
       if (R < 1e-12) f[i][j] = 1;
     }
   }
 }
 
-void getCoef(vec3 XLM, double nu, int p, double *** G, double *** H) {
-  double c = sqrt(2 * nu);
+void getCoef(vec3 XLM, double *** G, double *** H) {
+  double c = sqrt(2 * NU);
   double R = c * sqrt(norm(XLM));
   double zR = (-0.577216-log(R/2)) * (R<0.413) + 1 * (R>=0.413);
-  for (int ip=1; ip<p+2; ip++) {
-    double u = nu - p - 2 + ip;
+  for (int ip=1; ip<P+2; ip++) {
+    double u = NU - P - 2 + ip;
     double au = std::abs(u);
     if (au < 1e-12) {
       H[0][0][0] = cyl_bessel_k(0,R) / zR;
@@ -48,12 +238,17 @@ void getCoef(vec3 XLM, double nu, int p, double *** G, double *** H) {
       H[0][0][0] = powf(R/2,au) * 2 * cyl_bessel_k(au,R) / tgamma(au);
     }
 
-    u = nu - p - 1 + ip;
+    u = NU - P - 1 + ip;
     au = std::abs(u);
-    double hu;
+    if (au < 1e-12) {
+      G[0][0][0] = cyl_bessel_k(0,R) / zR;
+    } else {
+      G[0][0][0] = powf(R/2,au) * 2 * cyl_bessel_k(au,R) / tgamma(au);
+    }
+    double hu = 0;
     if (u > 1) {
       hu = 0.5 / (u-1);
-    } else if (nu == 0) {
+    } else if (NU == 0) {
       hu = zR;
     } else if (u > 0 && u < 1) {
       hu = powf(R/2,2*u-2) / 2 * tgamma(1-u) / tgamma(u);
@@ -92,14 +287,10 @@ void getCoef(vec3 XLM, double nu, int p, double *** G, double *** H) {
 	}
       }
     }
-    if (au < 1e-12) {
-      G[0][0][0] = cyl_bessel_k(0,R) / zR;
-    } else {
-      G[0][0][0] = powf(R/2,au) * 2 * cyl_bessel_k(au,R) / tgamma(au);
-    }
-    for (int ix=0; ix<=p; ix++) {
-      for (int iy=0; iy<=p; iy++) {
-        for (int iz=0; iz<=p; iz++) {
+    for (int sumi=1; sumi<=ip; sumi++) {
+      for (int ix=sumi; ix>=0; ix--) {
+        for (int iz=0; iz<=sumi-ix; iz++) {
+          int iy = sumi - ix - iz;
           H[ix][iy][iz] = G[ix][iy][iz];
 	}
       }
@@ -107,13 +298,13 @@ void getCoef(vec3 XLM, double nu, int p, double *** G, double *** H) {
   }
 }
 
-double M2P(int p, double *** G, vec3 XiL, vec3 XjM) {
+double M2P(double *** G, vec3 XiL, vec3 XjM) {
   double f = 0;
-  for (int sumi=0; sumi<=p; sumi++) {
+  for (int sumi=0; sumi<=P; sumi++) {
     for (int ix=sumi; ix>=0; ix--) {
       for (int iz=0; iz<=sumi-ix; iz++) {
 	int iy = sumi - ix - iz;
-	for (int sumj=0; sumj<=p; sumj++) {
+	for (int sumj=0; sumj<=P; sumj++) {
 	  for (int jx=sumj; jx>=0; jx--) {
 	    for (int jz=0; jz<=sumj-jx; jz++) {
               int jy = sumj - jx - jz;
@@ -132,8 +323,6 @@ double M2P(int p, double *** G, vec3 XiL, vec3 XjM) {
 }
 
 int main() {
-  const double nu = 1.5;
-  const int p = 3;
   const vec3 XLM = make_vec3(0.7,0.3,0.4);
   const double ri = 0.2;
   const double rj = 0.4;
@@ -143,14 +332,14 @@ int main() {
   vec3 * XjM = new vec3 [nj];
   double ** f = new double * [ni];
   for (int i=0; i<ni; i++) f[i] = new double [nj];
-  double *** G = new double ** [2*p+2];
-  double *** H = new double ** [2*p+2];
-  for (int i=0; i<2*p+2; i++) {
-    G[i] = new double * [2*p+2];
-    H[i] = new double * [2*p+2];
-    for (int j=0; j<2*p+2; j++) {
-      G[i][j] = new double [2*p+2];
-      H[i][j] = new double [2*p+2];
+  double *** G = new double ** [2*P+2];
+  double *** H = new double ** [2*P+2];
+  for (int i=0; i<2*P+2; i++) {
+    G[i] = new double * [2*P+2];
+    H[i] = new double * [2*P+2];
+    for (int j=0; j<2*P+2; j++) {
+      G[i][j] = new double [2*P+2];
+      H[i][j] = new double [2*P+2];
     }
   }
 
@@ -166,22 +355,43 @@ int main() {
     XjM[i][2] = (i*2*rj/(nj-1) - rj) * XLM[2] / RLM;
   }
 
-  matern(ni,nj,XiL,XLM,XjM,nu,f);
+  matern(ni,nj,XiL,XLM,XjM,f);
 
-  getCoef(XLM,nu,2*p,G,H);
+  double tic = get_time();
+  for (int it=0; it<100; it++) getCoef(XLM,G,H);
+  double toc = get_time(); 
+  std::cout << "getCoef  : " << toc - tic << std::endl;
+  vecL C;
+  tic = get_time();
+  for (int it=0; it<100; it++) getCoef2<P+1>(C,XLM);
+  toc = get_time();
+  std::cout << "getCoef2 : " << toc - tic << std::endl;
 
   double dif = 0, val = 0;
+  for (int sumi=0,ic=0; sumi<=P; sumi++) {
+    for (int ix=sumi; ix>=0; ix--) {
+      for (int iz=0; iz<=sumi-ix; iz++,ic++) {
+	int iy = sumi - ix - iz;
+	//std::cout << ix << " " << iy << " " << iz << " " << G[ix][iy][iz] << " " << C[ic] << std::endl;
+        dif += (G[ix][iy][iz] - C[ic]) * (G[ix][iy][iz] - C[ic]);
+        val += G[ix][iy][iz] * G[ix][iy][iz];
+      }
+    }
+  }
+  std::cout << sqrt(dif/val) << std::endl;
+
+  dif = val = 0;
   for (int i=0; i<ni; i++) {
     for (int j=0; j<nj; j++) {
-      double f2 = M2P(p, G, XiL[i], XjM[j]);
+      double f2 = M2P(G, XiL[i], XjM[j]);
       dif += (f[i][j] - f2) * (f[i][j] - f2);
       val += f[i][j] * f[i][j];
     }
   }
   std::cout << sqrt(dif/val) << std::endl;
 
-  for (int i=0; i<2*p+2; i++) {
-    for (int j=0; j<2*p+2; j++) {
+  for (int i=0; i<2*P+2; i++) {
+    for (int j=0; j<2*P+2; j++) {
       delete[] G[i][j];
       delete[] H[i][j];
     }

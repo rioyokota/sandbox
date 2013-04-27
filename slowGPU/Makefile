@@ -4,8 +4,8 @@ all:	main.cu
 	$(NVCC) $?
 	./a.out
 
-cleanall:
-	@make -C .. cleanall
+clean:
+	@make -C .. clean
 commit:
 	@make -C .. commit
 save:
