@@ -213,14 +213,15 @@ double get_time() {
   return double(tv.tv_sec+tv.tv_usec*1e-6);
 }
 
-void matern(int ni, int nj, vec3 * XiL, vec3 XLM, vec3 * XjM, double ** f) {
+void matern(int ni, int nj, vec3 * XiL, vec3 XLM, vec3 * XjM, double * f) {
   double temp = powf(2,NU-1) * tgamma(NU);
   for (int i=0; i<ni; i++) {
+    f[i] = 0;
     for (int j=0; j<nj; j++) {
       vec3 dX = (XiL[i] + XLM - XjM[j]);
       double R = sqrt(norm(dX) * 2 * NU);
-      f[i][j] = powf(R,NU) * cyl_bessel_k(NU,R) / temp;
-      if (R < 1e-12) f[i][j] = 1;
+      f[i] += powf(R,NU) * cyl_bessel_k(NU,R) / temp;
+      if (R < 1e-12) f[i] += 1;
     }
   }
 }
@@ -330,8 +331,7 @@ int main() {
   const int nj = 30;
   vec3 * XiL = new vec3 [ni];
   vec3 * XjM = new vec3 [nj];
-  double ** f = new double * [ni];
-  for (int i=0; i<ni; i++) f[i] = new double [nj];
+  double * f = new double [ni];
   double *** G = new double ** [2*P+2];
   double *** H = new double ** [2*P+2];
   for (int i=0; i<2*P+2; i++) {
@@ -357,15 +357,9 @@ int main() {
 
   matern(ni,nj,XiL,XLM,XjM,f);
 
-  double tic = get_time();
-  for (int it=0; it<100; it++) getCoef(XLM,G,H);
-  double toc = get_time(); 
-  std::cout << "getCoef  : " << toc - tic << std::endl;
+  getCoef(XLM,G,H);
   vecL C;
-  tic = get_time();
-  for (int it=0; it<100; it++) getCoef2<P+1>(C,XLM);
-  toc = get_time();
-  std::cout << "getCoef2 : " << toc - tic << std::endl;
+  getCoef2<P+1>(C,XLM);
 
   double dif = 0, val = 0;
   for (int sumi=0,ic=0; sumi<=P; sumi++) {
@@ -382,11 +376,12 @@ int main() {
 
   dif = val = 0;
   for (int i=0; i<ni; i++) {
+    double f2 = 0;
     for (int j=0; j<nj; j++) {
-      double f2 = M2P(G, XiL[i], XjM[j]);
-      dif += (f[i][j] - f2) * (f[i][j] - f2);
-      val += f[i][j] * f[i][j];
+      f2 += M2P(G, XiL[i], XjM[j]);
     }
+    dif += (f[i] - f2) * (f[i] - f2);
+    val += f[i] * f[i];
   }
   std::cout << sqrt(dif/val) << std::endl;
 
@@ -400,7 +395,6 @@ int main() {
   }
   delete[] G;
   delete[] H;
-  for (int i=0; i<ni; i++) delete[] f[i];
   delete[] f;
   delete[] XjM;
   delete[] XiL;
