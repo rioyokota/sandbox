@@ -153,7 +153,7 @@ struct Kernels<np,0,0,0> {
     static const double c = std::sqrt(2 * NU);
     double R = c * std::sqrt(norm(dX));
     double zR = (-0.577216-log(R/2)) * (R<0.413) + 1 * (R>=0.413);
-    static const double u = NU - P - 1 + np;
+    static const double u = NU - P + np;
     static const double gu = tgamma(1-u) / tgamma(u);
     static const double aum = std::abs(u-1);
     static const double gaum = 1 / tgamma(aum);
@@ -230,8 +230,8 @@ void getCoef(vec3 XLM, double *** G, double *** H) {
   double c = sqrt(2 * NU);
   double R = c * sqrt(norm(XLM));
   double zR = (-0.577216-log(R/2)) * (R<0.413) + 1 * (R>=0.413);
-  for (int ip=1; ip<P+2; ip++) {
-    double u = NU - P - 2 + ip;
+  for (int ip=1; ip<P+1; ip++) {
+    double u = NU - P - 1 + ip;
     double au = std::abs(u);
     if (au < 1e-12) {
       H[0][0][0] = cyl_bessel_k(0,R) / zR;
@@ -239,7 +239,7 @@ void getCoef(vec3 XLM, double *** G, double *** H) {
       H[0][0][0] = powf(R/2,au) * 2 * cyl_bessel_k(au,R) / tgamma(au);
     }
 
-    u = NU - P - 1 + ip;
+    u = NU - P + ip;
     au = std::abs(u);
     if (au < 1e-12) {
       G[0][0][0] = cyl_bessel_k(0,R) / zR;
@@ -299,21 +299,36 @@ void getCoef(vec3 XLM, double *** G, double *** H) {
   }
 }
 
-double M2P(double *** G, vec3 XiL, vec3 XjM) {
+vecL P2M(double * factorial, vec3 XjM) {
+  vecL M = 0;
+  for (int sumi=0,ic=0; sumi<P; sumi++) {
+    for (int ix=sumi; ix>=0; ix--) {
+      for (int iz=0; iz<=sumi-ix; iz++,ic++) {
+        int iy = sumi - ix - iz;
+        M[ic] += powf(XjM[0],ix) / factorial[ix]
+	  * powf(XjM[1],iy) / factorial[iy]
+          * powf(XjM[2],iz) / factorial[iz];
+      }
+    }
+  }
+  return M;
+}
+
+double M2P(double * factorial, int *** I, double *** G, vecL C, vec3 XiL, vecL M) {
   double f = 0;
-  for (int sumi=0; sumi<=P; sumi++) {
+  for (int sumi=0; sumi<P; sumi++) {
     for (int ix=sumi; ix>=0; ix--) {
       for (int iz=0; iz<=sumi-ix; iz++) {
 	int iy = sumi - ix - iz;
-	for (int sumj=0; sumj<=P; sumj++) {
+	for (int sumj=0; sumj<P-sumi; sumj++) {
 	  for (int jx=sumj; jx>=0; jx--) {
 	    for (int jz=0; jz<=sumj-jx; jz++) {
               int jy = sumj - jx - jz;
               double mom = 
-		binomial_coefficient<double>(jx+ix,ix) * powf(-XiL[0],ix) * powf(XjM[0],jx) *
-		binomial_coefficient<double>(jy+iy,iy) * powf(-XiL[1],iy) * powf(XjM[1],jy) *
-		binomial_coefficient<double>(jz+iz,iz) * powf(-XiL[2],iz) * powf(XjM[2],jz);
-              f += G[jx+ix][jy+iy][jz+iz] * mom;
+		factorial[ix+jx] / factorial[ix] * powf(-XiL[0],ix) *
+		factorial[iy+jy] / factorial[iy] * powf(-XiL[1],iy) *
+		factorial[iz+jz] / factorial[iz] * powf(-XiL[2],iz) * M[I[jx][jy][jz]];
+              f += C[I[jx+ix][jy+iy][jz+iz]] * mom;
 	    }
 	  }
 	}
@@ -332,14 +347,32 @@ int main() {
   vec3 * XiL = new vec3 [ni];
   vec3 * XjM = new vec3 [nj];
   double * f = new double [ni];
+  double * factorial = new double [2*P+2];
+  int *** I = new int ** [2*P+2];
   double *** G = new double ** [2*P+2];
   double *** H = new double ** [2*P+2];
   for (int i=0; i<2*P+2; i++) {
+    I[i] = new int * [2*P+2];
     G[i] = new double * [2*P+2];
     H[i] = new double * [2*P+2];
     for (int j=0; j<2*P+2; j++) {
+      I[i][j] = new int [2*P+2];
       G[i][j] = new double [2*P+2];
       H[i][j] = new double [2*P+2];
+    }
+  }
+
+  factorial[0] = 1;
+  for (int i=1; i<2*P+2; i++) {
+    factorial[i] = i * factorial[i-1];
+  }
+
+  for (int sumi=0,ic=0; sumi<2*P+2; sumi++) {
+    for (int ix=sumi; ix>=0; ix--) {
+      for (int iz=0; iz<=sumi-ix; iz++,ic++) {
+        int iy = sumi - ix - iz;
+        I[ix][iy][iz] = ic;
+      }
     }
   }
 
@@ -357,12 +390,17 @@ int main() {
 
   matern(ni,nj,XiL,XLM,XjM,f);
 
+  vecL M = 0;
+  for (int j=0; j<nj; j++) {
+    M += P2M(factorial,XjM[j]);
+  }
+
   getCoef(XLM,G,H);
   vecL C;
-  getCoef2<P+1>(C,XLM);
+  getCoef2<P>(C,XLM);
 
   double dif = 0, val = 0;
-  for (int sumi=0,ic=0; sumi<=P; sumi++) {
+  for (int sumi=0,ic=0; sumi<P+1; sumi++) {
     for (int ix=sumi; ix>=0; ix--) {
       for (int iz=0; iz<=sumi-ix; iz++,ic++) {
 	int iy = sumi - ix - iz;
@@ -376,10 +414,7 @@ int main() {
 
   dif = val = 0;
   for (int i=0; i<ni; i++) {
-    double f2 = 0;
-    for (int j=0; j<nj; j++) {
-      f2 += M2P(G, XiL[i], XjM[j]);
-    }
+    double f2 = M2P(factorial, I, G, C, XiL[i], M);
     dif += (f[i] - f2) * (f[i] - f2);
     val += f[i] * f[i];
   }
@@ -387,14 +422,18 @@ int main() {
 
   for (int i=0; i<2*P+2; i++) {
     for (int j=0; j<2*P+2; j++) {
+      delete[] I[i][j];
       delete[] G[i][j];
       delete[] H[i][j];
     }
+    delete[] I[i];
     delete[] G[i];
     delete[] H[i];
   }
+  delete[] I;
   delete[] G;
   delete[] H;
+  delete[] factorial;
   delete[] f;
   delete[] XjM;
   delete[] XiL;
