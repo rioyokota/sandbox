@@ -1,19 +1,17 @@
 #include <boost/math/special_functions/bessel.hpp>
-#include <boost/math/special_functions/binomial.hpp>
 #include <boost/math/special_functions/gamma.hpp>
 #include <iostream>
 #include <sys/time.h>
 #include "vec.h"
-using boost::math::binomial_coefficient;
 using boost::math::cyl_bessel_k;
 using boost::math::tgamma;
 
+typedef double real_t;
 const int P = 6;
-const double NU = 1.5;
+const real_t NU = 1.5;
 const int MTERM = P*(P+1)*(P+2)/6;
 const int LTERM = (P+1)*(P+2)*(P+3)/6;
 
-typedef double real_t;
 typedef vec<3,real_t> vec3;
 typedef vec<MTERM,real_t> vecM;
 typedef vec<LTERM,real_t> vecL;
@@ -151,6 +149,7 @@ struct MultipoleSum<nx,ny,nz,0,0,0> {
   static inline real_t kernel(const vecL&, const vecM&) { return 0; }
 };
 
+
 template<int nx, int ny, int nz, typename T, int kx=0, int ky=0, int kz=P-nx-ny-nz>
 struct LocalSum {
   static inline real_t kernel(const T &M, const vecL &L) {
@@ -262,6 +261,7 @@ struct Kernels<0,0,0> {
   static inline void L2L(vecL&, const vecL&, const vecL&) {}
 };
 
+
 template<int np, int nx, int ny, int nz>
 struct Kernels2 {
   static inline void derivative(vecL &C, vecL &G, const vec3 &dX, real_t &coef) {
@@ -293,15 +293,15 @@ template<int np>
 struct Kernels2<np,0,0,0> {
   static inline void derivative(vecL &C, vecL &G, const vec3 &dX, real_t &coef) {
     Kernels2<np-1,0,0,np-1>::derivative(G,C,dX,coef);
-    static const double c = std::sqrt(2 * NU);
-    double R = c * std::sqrt(norm(dX));
-    double zR = (-0.577216-log(R/2)) * (R<0.413) + 1 * (R>=0.413);
-    static const double u = NU - P + np;
-    static const double gu = tgamma(1-u) / tgamma(u);
-    static const double aum = std::abs(u-1);
-    static const double gaum = 1 / tgamma(aum);
-    static const double au = std::abs(u);
-    static const double gau = 1 / tgamma(au);
+    static const real_t c = std::sqrt(2 * NU);
+    real_t R = c * std::sqrt(norm(dX));
+    real_t zR = (-0.577216-log(R/2)) * (R<0.413) + 1 * (R>=0.413);
+    static const real_t u = NU - P + np;
+    static const real_t gu = tgamma(1-u) / tgamma(u);
+    static const real_t aum = std::abs(u-1);
+    static const real_t gaum = 1 / tgamma(aum);
+    static const real_t au = std::abs(u);
+    static const real_t gau = 1 / tgamma(au);
     if (aum < 1e-12) {
       G[0] = cyl_bessel_k(0,R) / zR;
     } else {
@@ -312,7 +312,7 @@ struct Kernels2<np,0,0,0> {
     } else {
       C[0] = std::pow(R/2,au) * 2 * cyl_bessel_k(au,R) * gau;
     }
-    double hu = 0;
+    real_t hu = 0;
     if (u > 1) {
       hu = 0.5 / (u-1);
     } else if (NU == 0) {
@@ -336,14 +336,14 @@ struct Kernels2<0,0,0,0> {
 
 template<int PP>
 inline void getCoef(vecL &C, const vec3 &dX) {
-  double coef;
+  real_t coef;
   vecL G;
   Kernels2<PP,0,0,PP>::derivative(C,G,dX,coef);
   Kernels<0,0,PP>::scale(C);
 }
 
-typedef vec<3,double> vec3;
-vec3 make_vec3(double a, double b, double c) {
+typedef vec<3,real_t> vec3;
+vec3 make_vec3(real_t a, real_t b, real_t c) {
   vec3 v;
   v[0] = a;
   v[1] = b;
@@ -351,21 +351,24 @@ vec3 make_vec3(double a, double b, double c) {
   return v;
 }
 
-double get_time() {
+real_t get_time() {
   struct timeval tv;
   gettimeofday(&tv, NULL);
-  return double(tv.tv_sec+tv.tv_usec*1e-6);
+  return real_t(tv.tv_sec+tv.tv_usec*1e-6);
 }
 
-void matern(int ni, int nj, vec3 * XiL, vec3 XLM, vec3 * XjM, double * f) {
-  double temp = powf(2,NU-1) * tgamma(NU);
+void matern(int ni, int nj, vec3 * XiL, vec3 XLM, vec3 * XjM, real_t * f) {
+  real_t temp = std::pow(2,NU-1) * tgamma(NU);
   for (int i=0; i<ni; i++) {
     f[i] = 0;
     for (int j=0; j<nj; j++) {
       vec3 dX = (XiL[i] + XLM - XjM[j]);
-      double R = sqrt(norm(dX) * 2 * NU);
-      f[i] += powf(R,NU) * cyl_bessel_k(NU,R) / temp;
-      if (R < 1e-12) f[i] += 1;
+      real_t R = sqrt(norm(dX) * 2 * NU);
+      if (R < 1e-12) {
+        f[i] += 1;
+      } else {
+        f[i] += std::pow(R,NU) * cyl_bessel_k(NU,R) / temp;
+      }
     }
   }
 }
@@ -388,35 +391,33 @@ vecL M2L(vec3 XLM, vecM M) {
   return L;
 }
 
-double L2P(vec3 XiL, vecL L) {
+real_t L2P(vec3 XiL, vecL L) {
   vecL C;
   C[0] = 1;
   Kernels<0,0,P>::power(C,XiL);
-  double f = 0;
+  real_t f = 0;
   for (int i=0; i<LTERM; i++) f += C[i] * L[i];
   return f;
 }
 
 int main() {
-  const vec3 XLM = make_vec3(0.7,0.3,0.4);
-  const double ri = 0.2;
-  const double rj = 0.4;
+  const real_t scale = 0.2;
+  const vec3 XLM = 2 * scale;
   const int ni = 30;
   const int nj = 30;
   vec3 * XiL = new vec3 [ni];
   vec3 * XjM = new vec3 [nj];
-  double * f = new double [ni];
+  real_t * f = new real_t [ni];
 
-  double RLM = sqrt(XLM[0]*XLM[0]+XLM[1]*XLM[1]+XLM[2]*XLM[2]);
   for (int i=0; i<ni; i++) {
-    XiL[i][0] = (i*2*ri/(ni-1) - ri) * XLM[0] / RLM;
-    XiL[i][1] = (i*2*ri/(ni-1) - ri) * XLM[1] / RLM;
-    XiL[i][2] = (i*2*ri/(ni-1) - ri) * XLM[2] / RLM;
+    XiL[i][0] = (2*drand48() - 1) * scale;
+    XiL[i][1] = (2*drand48() - 1) * scale;
+    XiL[i][2] = (2*drand48() - 1) * scale;
   }
   for (int i=0; i<nj; i++) {
-    XjM[i][0] = (i*2*rj/(nj-1) - rj) * XLM[0] / RLM;
-    XjM[i][1] = (i*2*rj/(nj-1) - rj) * XLM[1] / RLM;
-    XjM[i][2] = (i*2*rj/(nj-1) - rj) * XLM[2] / RLM;
+    XjM[i][0] = (2*drand48() - 1) * scale;
+    XjM[i][1] = (2*drand48() - 1) * scale;
+    XjM[i][2] = (2*drand48() - 1) * scale;
   }
 
   matern(ni,nj,XiL,XLM,XjM,f);
@@ -434,9 +435,9 @@ int main() {
     } 
   }
 
-  double dif = 0, val = 0;
+  real_t dif = 0, val = 0;
   for (int i=0; i<ni; i++) {
-    double f2 = L2P(XiL[i], L);
+    real_t f2 = L2P(XiL[i], L);
     dif += (f[i] - f2) * (f[i] - f2);
     val += f[i] * f[i];
   }
