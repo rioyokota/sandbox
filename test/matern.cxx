@@ -10,10 +10,12 @@ using boost::math::tgamma;
 
 const int P = 6;
 const double NU = 1.5;
+const int MTERM = P*(P+1)*(P+2)/6;
 const int LTERM = (P+1)*(P+2)*(P+3)/6;
 
 typedef double real_t;
 typedef vec<3,real_t> vec3;
+typedef vec<MTERM,real_t> vecM;
 typedef vec<LTERM,real_t> vecL;
 
 template<typename T, int nx, int ny, int nz>
@@ -120,6 +122,65 @@ struct DerivativeSum<nx,ny,nz,kx,ky,0,5> {
 };
 
 
+template<int nx, int ny, int nz, int kx=nx, int ky=ny, int kz=nz>
+struct MultipoleSum {
+  static inline real_t kernel(const vecL &C, const vecM &M) {
+    return MultipoleSum<nx,ny,nz,kx,ky,kz-1>::kernel(C,M)
+      + C[Index<vecL,nx-kx,ny-ky,nz-kz>::I]*M[Index<vecM,kx,ky,kz>::I];
+  }
+};
+
+template<int nx, int ny, int nz, int kx, int ky>
+struct MultipoleSum<nx,ny,nz,kx,ky,0> {
+  static inline real_t kernel(const vecL &C, const vecM &M) {
+    return MultipoleSum<nx,ny,nz,kx,ky-1,nz>::kernel(C,M)
+      + C[Index<vecL,nx-kx,ny-ky,nz>::I]*M[Index<vecM,kx,ky,0>::I];
+  }
+};
+
+template<int nx, int ny, int nz, int kx>
+struct MultipoleSum<nx,ny,nz,kx,0,0> {
+  static inline real_t kernel(const vecL &C, const vecM &M) {
+    return MultipoleSum<nx,ny,nz,kx-1,ny,nz>::kernel(C,M)
+      + C[Index<vecL,nx-kx,ny,nz>::I]*M[Index<vecM,kx,0,0>::I];
+  }
+};
+
+template<int nx, int ny, int nz>
+struct MultipoleSum<nx,ny,nz,0,0,0> {
+  static inline real_t kernel(const vecL&, const vecM&) { return 0; }
+};
+
+template<int nx, int ny, int nz, typename T, int kx=0, int ky=0, int kz=P-nx-ny-nz>
+struct LocalSum {
+  static inline real_t kernel(const T &M, const vecL &L) {
+    return LocalSum<nx,ny,nz,T,kx,ky+1,kz-1>::kernel(M,L)
+      + M[Index<T,kx,ky,kz>::I] * L[Index<vecL,nx+kx,ny+ky,nz+kz>::I];
+  }
+};
+
+template<int nx, int ny, int nz, typename T, int kx, int ky>
+struct LocalSum<nx,ny,nz,T,kx,ky,0> {
+  static inline real_t kernel(const T &M, const vecL &L) {
+    return LocalSum<nx,ny,nz,T,kx+1,0,ky-1>::kernel(M,L)
+      + M[Index<T,kx,ky,0>::I] * L[Index<vecL,nx+kx,ny+ky,nz>::I];
+  }
+};
+
+template<int nx, int ny, int nz, typename T, int kx>
+struct LocalSum<nx,ny,nz,T,kx,0,0> {
+  static inline real_t kernel(const T &M, const vecL &L) {
+    return LocalSum<nx,ny,nz,T,0,0,kx-1>::kernel(M,L)
+      + M[Index<T,kx,0,0>::I] * L[Index<vecL,nx+kx,ny,nz>::I];
+  }
+};
+
+template<int nx, int ny, int nz, typename T>
+struct LocalSum<nx,ny,nz,T,0,0,0> {
+  static inline real_t kernel(const T&, const vecL&) { return 0; }
+};
+
+
 template<int nx, int ny, int nz>
 struct Kernels {
   static inline void power(vecL &C, const vec3 &dX) {
@@ -130,7 +191,6 @@ struct Kernels {
     Kernels<nx,ny+1,nz-1>::scale(C);
     C[Index<vecL,nx,ny,nz>::I] *= Index<vecL,nx,ny,nz>::F;
   }
-  /*
   static inline void M2M(vecM &MI, const vecL &C, const vecM &MJ) {
     Kernels<nx,ny+1,nz-1>::M2M(MI,C,MJ);
     MI[Index<vecM,nx,ny,nz>::I] += MultipoleSum<nx,ny,nz>::kernel(C,MJ);
@@ -143,11 +203,6 @@ struct Kernels {
     Kernels<nx,ny+1,nz-1>::L2L(LI,C,LJ);
     LI[Index<vecL,nx,ny,nz>::I] += LocalSum<nx,ny,nz,vecL>::kernel(C,LJ);
   }
-  static inline void L2P(B_iter B, const vecL &C, const vecL &L) {
-    Kernels<nx,ny+1,nz-1>::L2P(B,C,L);
-    B->TRG[Index<vecL,nx,ny,nz>::I] += LocalSum<nx,ny,nz,vecL>::kernel(C,L);
-  }
-  */
 };
 
 template<int nx, int ny>
@@ -160,7 +215,6 @@ struct Kernels<nx,ny,0> {
     Kernels<nx+1,0,ny-1>::scale(C);
     C[Index<vecL,nx,ny,0>::I] *= Index<vecL,nx,ny,0>::F;
   }
-  /*
   static inline void M2M(vecM &MI, const vecL &C, const vecM &MJ) {
     Kernels<nx+1,0,ny-1>::M2M(MI,C,MJ);
     MI[Index<vecM,nx,ny,0>::I] += MultipoleSum<nx,ny,0>::kernel(C,MJ);
@@ -173,11 +227,6 @@ struct Kernels<nx,ny,0> {
     Kernels<nx+1,0,ny-1>::L2L(LI,C,LJ);
     LI[Index<vecL,nx,ny,0>::I] += LocalSum<nx,ny,0,vecL>::kernel(C,LJ);
   }
-  static inline void L2P(B_iter B, const vecL &C, const vecL &L) {
-    Kernels<nx+1,0,ny-1>::L2P(B,C,L);
-    B->TRG[Index<vecL,nx,ny,0>::I] += LocalSum<nx,ny,0,vecL>::kernel(C,L);
-  }
-  */
 };
 
 template<int nx>
@@ -190,7 +239,6 @@ struct Kernels<nx,0,0> {
     Kernels<0,0,nx-1>::scale(C);
     C[Index<vecL,nx,0,0>::I] *= Index<vecL,nx,0,0>::F;
   }
-  /*
   static inline void M2M(vecM &MI, const vecL &C, const vecM &MJ) {
     Kernels<0,0,nx-1>::M2M(MI,C,MJ);
     MI[Index<vecM,nx,0,0>::I] += MultipoleSum<nx,0,0>::kernel(C,MJ);
@@ -203,23 +251,15 @@ struct Kernels<nx,0,0> {
     Kernels<0,0,nx-1>::L2L(LI,C,LJ);
     LI[Index<vecL,nx,0,0>::I] += LocalSum<nx,0,0,vecL>::kernel(C,LJ);
   }
-  static inline void L2P(B_iter B, const vecL &C, const vecL &L) {
-    Kernels<0,0,nx-1>::L2P(B,C,L);
-    B->TRG[Index<vecL,nx,0,0>::I] += LocalSum<nx,0,0,vecL>::kernel(C,L);
-  }
-  */
 };
 
 template<>
 struct Kernels<0,0,0> {
   static inline void power(vecL&, const vec3&) {}
   static inline void scale(vecL&) {}
-  /*
   static inline void M2M(vecM&, const vecL&, const vecM&) {}
   static inline void M2L(vecL&, const vecL&, const vecM&) {}
   static inline void L2L(vecL&, const vecL&, const vecL&) {}
-  static inline void L2P(B_iter, const vecL&, const vecL&) {}
-  */
 };
 
 template<int np, int nx, int ny, int nz>
@@ -330,57 +370,30 @@ void matern(int ni, int nj, vec3 * XiL, vec3 XLM, vec3 * XjM, double * f) {
   }
 }
 
-vecL P2M(double * factorial, vec3 XjM) {
-  vecL M = 0;
-  for (int sumi=0,ic=0; sumi<P; sumi++) {
-    for (int ix=sumi; ix>=0; ix--) {
-      for (int iz=0; iz<=sumi-ix; iz++,ic++) {
-        int iy = sumi - ix - iz;
-        M[ic] += powf(XjM[0],ix) / factorial[ix]
-	  * powf(XjM[1],iy) / factorial[iy]
-          * powf(XjM[2],iz) / factorial[iz];
-      }
-    }
-  }
+vecM P2M(vec3 XjM) {
+  vecM M;
+  vecL C = 0;
+  C[0] = 1;
+  Kernels<0,0,P>::power(C,XjM);
+  for (int i=0; i<MTERM; i++) M[i] = C[i];
   return M;
 }
 
-vecL M2L(int *** I, vec3 XLM, vecL M) {
+vecL M2L(vec3 XLM, vecM M) {
   vecL C, L=0;
   getCoef<P>(C,XLM);
-  for (int sumi=0; sumi<P; sumi++) {
-    for (int ix=sumi; ix>=0; ix--) {
-      for (int iz=0; iz<=sumi-ix; iz++) {
-        int iy = sumi - ix - iz;
-        real_t Ld = 0;
-        for (int sumj=0; sumj<P-sumi; sumj++) {
-          for (int jx=sumj; jx>=0; jx--) {
-            for (int jz=0; jz<=sumj-jx; jz++) {
-              int jy = sumj - jx - jz;
-              Ld += C[I[jx+ix][jy+iy][jz+iz]] * M[I[jx][jy][jz]];
-	    }
-	  }
-	}
-        L[I[ix][iy][iz]] = Ld;
-      }
-    }
-  }
+  for (int i=0; i<MTERM; i++) L[0] += M[i] * C[i];
+  for (int i=1; i<LTERM; i++) L[i] += M[0] * C[i];
+  Kernels<0,0,P-1>::M2L(L,C,M);
   return L;
 }
 
-double L2P(double * factorial, int *** I, vec3 XiL, vecL L) {
+double L2P(vec3 XiL, vecL L) {
+  vecL C;
+  C[0] = 1;
+  Kernels<0,0,P>::power(C,XiL);
   double f = 0;
-  for (int sumi=0; sumi<P; sumi++) {
-    for (int ix=sumi; ix>=0; ix--) {
-      for (int iz=0; iz<=sumi-ix; iz++) {
-	int iy = sumi - ix - iz;
-        f += 
-	  1 / factorial[ix] * powf(-XiL[0],ix) *
-	  1 / factorial[iy] * powf(-XiL[1],iy) *
-	  1 / factorial[iz] * powf(-XiL[2],iz) * L[I[ix][iy][iz]];
-      }
-    }
-  }
+  for (int i=0; i<LTERM; i++) f += C[i] * L[i];
   return f;
 }
 
@@ -393,28 +406,6 @@ int main() {
   vec3 * XiL = new vec3 [ni];
   vec3 * XjM = new vec3 [nj];
   double * f = new double [ni];
-  double * factorial = new double [2*P+2];
-  int *** I = new int ** [2*P+2];
-  for (int i=0; i<2*P+2; i++) {
-    I[i] = new int * [2*P+2];
-    for (int j=0; j<2*P+2; j++) {
-      I[i][j] = new int [2*P+2];
-    }
-  }
-
-  factorial[0] = 1;
-  for (int i=1; i<2*P+2; i++) {
-    factorial[i] = i * factorial[i-1];
-  }
-
-  for (int sumi=0,ic=0; sumi<2*P+2; sumi++) {
-    for (int ix=sumi; ix>=0; ix--) {
-      for (int iz=0; iz<=sumi-ix; iz++,ic++) {
-        int iy = sumi - ix - iz;
-        I[ix][iy][iz] = ic;
-      }
-    }
-  }
 
   double RLM = sqrt(XLM[0]*XLM[0]+XLM[1]*XLM[1]+XLM[2]*XLM[2]);
   for (int i=0; i<ni; i++) {
@@ -430,29 +421,27 @@ int main() {
 
   matern(ni,nj,XiL,XLM,XjM,f);
 
-  vecL M = 0;
+  vecM M = 0;
   for (int j=0; j<nj; j++) {
-    M += P2M(factorial,XjM[j]);
+    M += P2M(XjM[j]);
   }
 
-  vecL L = M2L(I,XLM,M);
+  vecL L = M2L(XLM,M);
+
+  for (int i=0; i<ni; i++) {
+    for (int d=0; d<3; d++) {
+      XiL[i][d] = -XiL[i][d];
+    } 
+  }
 
   double dif = 0, val = 0;
   for (int i=0; i<ni; i++) {
-    double f2 = L2P(factorial, I, XiL[i], L);
+    double f2 = L2P(XiL[i], L);
     dif += (f[i] - f2) * (f[i] - f2);
     val += f[i] * f[i];
   }
   std::cout << sqrt(dif/val) << std::endl;
 
-  for (int i=0; i<2*P+2; i++) {
-    for (int j=0; j<2*P+2; j++) {
-      delete[] I[i][j];
-    }
-    delete[] I[i];
-  }
-  delete[] I;
-  delete[] factorial;
   delete[] f;
   delete[] XjM;
   delete[] XiL;
