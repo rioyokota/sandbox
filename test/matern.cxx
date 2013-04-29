@@ -6,8 +6,8 @@
 using boost::math::cyl_bessel_k;
 using boost::math::tgamma;
 
-typedef double real_t;
-const int P = 6;
+typedef float real_t;
+const int P = 8;
 const real_t NU = 1.5;
 const int MTERM = P*(P+1)*(P+2)/6;
 const int LTERM = (P+1)*(P+2)*(P+3)/6;
@@ -377,7 +377,7 @@ vecM P2M(vec3 XjM) {
   vecM M;
   vecL C = 0;
   C[0] = 1;
-  Kernels<0,0,P>::power(C,XjM);
+  Kernels<0,0,P-1>::power(C,XjM);
   for (int i=0; i<MTERM; i++) M[i] = C[i];
   return M;
 }
@@ -401,8 +401,8 @@ real_t L2P(vec3 XiL, vecL L) {
 }
 
 int main() {
-  const real_t scale = 0.2;
-  const vec3 XLM = 2 * scale;
+  const real_t scale = 1;
+  const vec3 XLM = 4 * scale;
   const int ni = 30;
   const int nj = 30;
   vec3 * XiL = new vec3 [ni];
@@ -410,14 +410,15 @@ int main() {
   real_t * f = new real_t [ni];
 
   for (int i=0; i<ni; i++) {
-    XiL[i][0] = (2*drand48() - 1) * scale;
-    XiL[i][1] = (2*drand48() - 1) * scale;
-    XiL[i][2] = (2*drand48() - 1) * scale;
+    XiL[i][0] = (2 * drand48() - 1) * scale;
+    XiL[i][1] = (2 * drand48() - 1) * scale;
+    XiL[i][2] = (2 * drand48() - 1) * scale;
   }
+
   for (int i=0; i<nj; i++) {
-    XjM[i][0] = (2*drand48() - 1) * scale;
-    XjM[i][1] = (2*drand48() - 1) * scale;
-    XjM[i][2] = (2*drand48() - 1) * scale;
+    XjM[i][0] = (2 * drand48() - 1) * scale;
+    XjM[i][1] = (2 * drand48() - 1) * scale;
+    XjM[i][2] = (2 * drand48() - 1) * scale;
   }
 
   matern(ni,nj,XiL,XLM,XjM,f);
