@@ -9,6 +9,7 @@ using boost::math::tgamma;
 typedef float real_t;
 const int P = 8;
 const real_t NU = 1.5;
+const real_t SIGMA = 2;
 const int MTERM = P*(P+1)*(P+2)/6;
 const int LTERM = (P+1)*(P+2)*(P+3)/6;
 
@@ -51,7 +52,7 @@ struct DerivativeTerm {
 template<int kx, int ky , int kz>
 struct DerivativeTerm<kx,ky,kz,-1> {
   static inline real_t kernel(const vecL &C, const vec3&) {
-    return -C[Index<vecL,kx,ky,kz>::I];
+    return C[Index<vecL,kx,ky,kz>::I];
   }
 };
 
@@ -63,7 +64,7 @@ struct DerivativeSum {
   static const int n = nx + ny + nz;
   static inline real_t loop(const vecL &C, const vec3 &dX) {
     return DerivativeSum<nx,ny,nz,nx,ny,kz-1,nextflag>::loop(C,dX)
-      + DerivativeTerm<nx,ny,kz-1,dim>::kernel(C,dX);
+      - DerivativeTerm<nx,ny,kz-1,dim>::kernel(C,dX);
   }
 };
 
@@ -82,7 +83,7 @@ struct DerivativeSum<nx,ny,nz,kx,ky,kz,3> {
   static const int n = nx + ny + nz;
   static inline real_t loop(const vecL &C, const vec3 &dX) {
     return DerivativeSum<nx,ny,nz,nx,ky-1,nz,nextflag>::loop(C,dX)
-      + DerivativeTerm<nx,ky-1,nz,dim>::kernel(C,dX);
+      - DerivativeTerm<nx,ky-1,nz,dim>::kernel(C,dX);
   }
 };
 
@@ -101,7 +102,7 @@ struct DerivativeSum<nx,ny,nz,kx,ky,kz,1> {
   static const int n = nx + ny + nz;
   static inline real_t loop(const vecL &C, const vec3 &dX) {
     return DerivativeSum<nx,ny,nz,kx-1,ny,nz,nextflag>::loop(C,dX)
-      + DerivativeTerm<kx-1,ny,nz,dim>::kernel(C,dX);
+      - DerivativeTerm<kx-1,ny,nz,dim>::kernel(C,dX);
   }
 };
 
@@ -342,14 +343,6 @@ inline void getCoef(vecL &C, const vec3 &dX) {
   Kernels<0,0,PP>::scale(C);
 }
 
-typedef vec<3,real_t> vec3;
-vec3 make_vec3(real_t a, real_t b, real_t c) {
-  vec3 v;
-  v[0] = a;
-  v[1] = b;
-  v[2] = c;
-  return v;
-}
 
 real_t get_time() {
   struct timeval tv;
@@ -357,36 +350,36 @@ real_t get_time() {
   return real_t(tv.tv_sec+tv.tv_usec*1e-6);
 }
 
-void matern(int ni, int nj, vec3 * XiL, vec3 XLM, vec3 * XjM, real_t * f) {
+void matern(int ni, int nj, vec3 * XiL, vec3 XLM, vec3 * XMj, real_t * SRC, real_t * f) {
   real_t temp = std::pow(2,NU-1) * tgamma(NU);
   for (int i=0; i<ni; i++) {
     f[i] = 0;
     for (int j=0; j<nj; j++) {
-      vec3 dX = (XiL[i] + XLM - XjM[j]);
+      vec3 dX = (XiL[i] + XLM + XMj[j]) / SIGMA;
       real_t R = sqrt(norm(dX) * 2 * NU);
       if (R < 1e-12) {
-        f[i] += 1;
+        f[i] += SRC[j];
       } else {
-        f[i] += std::pow(R,NU) * cyl_bessel_k(NU,R) / temp;
+        f[i] += SRC[j] * std::pow(R,NU) * cyl_bessel_k(NU,R) / temp;
       }
     }
   }
 }
 
-vecM P2M(vec3 XjM) {
+vecM P2M(vec3 XMj, real_t SRC) {
   vecM M;
   vecL C = 0;
-  C[0] = 1;
-  Kernels<0,0,P-1>::power(C,XjM);
+  C[0] = SRC;
+  Kernels<0,0,P-1>::power(C,XMj/SIGMA);
   for (int i=0; i<MTERM; i++) M[i] = C[i];
   return M;
 }
 
 vecL M2L(vec3 XLM, vecM M) {
-  vecL C, L=0;
-  getCoef<P>(C,XLM);
-  for (int i=0; i<MTERM; i++) L[0] += M[i] * C[i];
-  for (int i=1; i<LTERM; i++) L[i] += M[0] * C[i];
+  vecL C;
+  getCoef<P>(C,XLM/SIGMA);
+  vecL L = C * M[0];
+  for (int i=1; i<MTERM; i++) L[0] += M[i] * C[i];
   Kernels<0,0,P-1>::M2L(L,C,M);
   return L;
 }
@@ -394,47 +387,42 @@ vecL M2L(vec3 XLM, vecM M) {
 real_t L2P(vec3 XiL, vecL L) {
   vecL C;
   C[0] = 1;
-  Kernels<0,0,P>::power(C,XiL);
+  Kernels<0,0,P>::power(C,XiL/SIGMA);
   real_t f = 0;
   for (int i=0; i<LTERM; i++) f += C[i] * L[i];
   return f;
 }
 
 int main() {
-  const real_t scale = 1;
-  const vec3 XLM = 4 * scale;
+  const vec3 XLM = 2 * M_PI;
   const int ni = 30;
   const int nj = 30;
   vec3 * XiL = new vec3 [ni];
-  vec3 * XjM = new vec3 [nj];
+  vec3 * XMj = new vec3 [nj];
+  real_t * SRC = new real_t [nj];
   real_t * f = new real_t [ni];
 
   for (int i=0; i<ni; i++) {
-    XiL[i][0] = (2 * drand48() - 1) * scale;
-    XiL[i][1] = (2 * drand48() - 1) * scale;
-    XiL[i][2] = (2 * drand48() - 1) * scale;
+    XiL[i][0] = (drand48() - .5) * M_PI;
+    XiL[i][1] = (drand48() - .5) * M_PI;
+    XiL[i][2] = (drand48() - .5) * M_PI;
   }
 
   for (int i=0; i<nj; i++) {
-    XjM[i][0] = (2 * drand48() - 1) * scale;
-    XjM[i][1] = (2 * drand48() - 1) * scale;
-    XjM[i][2] = (2 * drand48() - 1) * scale;
+    XMj[i][0] = (drand48() - .5) * M_PI;
+    XMj[i][1] = (drand48() - .5) * M_PI;
+    XMj[i][2] = (drand48() - .5) * M_PI;
+    SRC[i] = drand48();
   }
 
-  matern(ni,nj,XiL,XLM,XjM,f);
+  matern(ni,nj,XiL,XLM,XMj,SRC,f);
 
   vecM M = 0;
   for (int j=0; j<nj; j++) {
-    M += P2M(XjM[j]);
+    M += P2M(XMj[j],SRC[j]);
   }
 
   vecL L = M2L(XLM,M);
-
-  for (int i=0; i<ni; i++) {
-    for (int d=0; d<3; d++) {
-      XiL[i][d] = -XiL[i][d];
-    } 
-  }
 
   real_t dif = 0, val = 0;
   for (int i=0; i<ni; i++) {
@@ -445,6 +433,7 @@ int main() {
   std::cout << sqrt(dif/val) << std::endl;
 
   delete[] f;
-  delete[] XjM;
+  delete[] SRC;
+  delete[] XMj;
   delete[] XiL;
 }
