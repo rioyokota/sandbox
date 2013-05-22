@@ -191,9 +191,10 @@ public:
     Multipole.h2d();
     Local.h2d();
     Branch.h2d();
-    Branch.tex("texBranch");
+    Branch.bindTexture(texBranch);
     tic = getTime();
     traverse<<<Branch.size(),NCRIT>>>(numCells,Ibodies.devc(),Jbodies.devc(),Cells.devc(),Multipole.devc(),Local.devc());
+    Branch.unbindTexture(texBranch);
     Ibodies.d2h();
     Local.d2h();
     toc = getTime();
