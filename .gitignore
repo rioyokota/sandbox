@@ -1,7 +1,4 @@
 *.a
 *.dat
 *.o
-*.th_o
 *.out
-*.swp
-.Apple*
