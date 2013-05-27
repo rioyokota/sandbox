@@ -1,8 +1,9 @@
 .SUFFIXES: .cxx .cu .o
 
-CXX = mpicxx -Wall -O3 -msse4.2 -fopenmp -ffast-math -funroll-loops -I/usr/include/vtk-5.8
-#CXX = icc -Wall -mmic -O3 -openmp
-NVCC = nvcc -O3 -use_fast_math -arch=sm_21 -lcuda --ptxas-options=-v -Xcompiler "-Wall -fopenmp -ffast-math -funroll-loops"
+CXX = mpicxx -Wall -O3 -fopenmp -ffast-math -funroll-loops -I/usr/include/vtk-5.8
+#CXX = icc -gcc-name=gcc-4.6 -mavx -O3 -openmp -lstdc++
+#CXX = icpc -Wall -mmic -O3 -openmp
+NVCC = nvcc -O3 -use_fast_math -arch=sm_30 -lcuda --ptxas-options=-v -Xcompiler "-Wall -fopenmp -ffast-math -funroll-loops"
 VFLAGS = -lvtkCommon -lvtkCharts
 
 .cxx.o	:
@@ -38,6 +39,9 @@ getopt: getopt.o
 	$(CXX) $?
 	./a.out
 nitadori: nitadori.o
+	$(CXX) $?
+	./a.out
+matern: matern.o
 	$(CXX) $?
 	./a.out
 avx: avx.o direct_sse.o direct_avx.o
@@ -76,8 +80,8 @@ gpufmm: gpufmm.o thrust.o
 openacc: openacc.c
 	pgcc -O3 -mp -acc -ta=nvidia $?
 	./a.out
-cleanall:
-	@make -C .. cleanall
+clean:
+	@make -C .. clean
 commit:
 	@make -C .. commit
 save:
