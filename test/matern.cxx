@@ -7,7 +7,7 @@ using boost::math::cyl_bessel_k;
 using boost::math::tgamma;
 
 typedef float real_t;
-const int P = 8;
+const int P = 3;
 const real_t NU = 1.5;
 const real_t SIGMA = 2;
 const int MTERM = P*(P+1)*(P+2)/6;
@@ -40,6 +40,47 @@ struct Index<T,0,0,0> {
   static const int                I = 0;
   static const unsigned long long F = 1;
 };
+
+
+template<int m>
+struct BesselSum {
+  static const long long factorial = BesselSum<m-1>::factorial * m;
+  static inline real_t gamma(real_t nu) {
+    return (nu + m + 1) * BesselSum<m-1>::gamma(nu);
+  }
+  static inline real_t pow(real_t z) {
+    return z * z * BesselSum<m-1>::pow(z);
+  }
+  static inline real_t loop(real_t nu, real_t z) {
+    return pow(z/2) / (factorial * gamma(nu)) * BesselSum<m-1>::loop(nu,z);
+  }
+};
+
+
+template<>
+struct BesselSum<0> {
+  static const long long factorial = 1;
+  static inline real_t gamma(real_t nu) {
+    return tgamma(nu+1);
+  }
+  static inline real_t pow(real_t) {
+    return 1;
+  }
+  static inline real_t loop(real_t nu, real_t) {
+    return 1 / gamma(nu);
+  }
+};
+
+
+real_t BesselI(real_t nu, real_t z) {
+  return std::pow(z/2,nu) * BesselSum<2>::loop(nu,z);
+}
+
+
+real_t BesselK(real_t nu, real_t z) {
+  static const real_t coef = M_PI / 2 / std::sin(nu * M_PI);
+  return coef * (BesselI(-nu,z) - BesselI(nu,z));
+}
 
 
 template<int kx, int ky , int kz, int d>
@@ -431,6 +472,8 @@ int main() {
     val += f[i] * f[i];
   }
   std::cout << sqrt(dif/val) << std::endl;
+
+  std::cout << cyl_bessel_k(NU,0.1) << " " << BesselK(NU,0.1) << std::endl;
 
   delete[] f;
   delete[] SRC;

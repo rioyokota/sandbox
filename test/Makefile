@@ -1,6 +1,6 @@
 .SUFFIXES: .cxx .cu .o
 
-CXX = mpicxx -Wall -O3 -fopenmp -ffast-math -funroll-loops -I/usr/include/vtk-5.8
+CXX = mpicxx -Wall -O3 -fopenmp -msse4a -ffast-math -funroll-loops -I/usr/include/vtk-5.8
 #CXX = icc -gcc-name=gcc-4.6 -mavx -O3 -openmp -lstdc++
 #CXX = icpc -Wall -mmic -O3 -openmp
 NVCC = nvcc -O3 -use_fast_math -arch=sm_30 -lcuda --ptxas-options=-v -Xcompiler "-Wall -fopenmp -ffast-math -funroll-loops"
@@ -49,6 +49,9 @@ avx: avx.o direct_sse.o direct_avx.o
 	./a.out
 mic: mic.o direct.o direct_mic.o
 	$(CXX) $?
+vec: vec.o
+	$(CXX) $?
+	./a.out
 hello: hello.asm
 	nasm $? -f elf
 	ld -m elf_i386 -s hello.o
@@ -62,7 +65,7 @@ cpufmm: cpufmm.o
 cpufmm2d: cpufmm2d.o
 	$(CXX) $?
 	./a.out
-sse: sse.o direct_sse.o direct_asm.o
+sse: sse.cu direct_sse.o direct_asm.o
 	$(NVCC) $? -lpapi
 	./a.out
 tau: tau.cxx
