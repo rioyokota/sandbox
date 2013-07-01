@@ -62,7 +62,7 @@ cpufmm: cpufmm.o
 cpufmm2d: cpufmm2d.o
 	$(CXX) $?
 	./a.out
-sse: sse.o direct_sse.o direct_asm.o
+sse: sse.cu direct_sse.o direct_asm.o
 	$(NVCC) $? -lpapi
 	./a.out
 tau: tau.cxx
