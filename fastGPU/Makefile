@@ -10,15 +10,15 @@ OBJ = $(SRC:%.cu=%.o)
 
 all: $(OBJ)
 	$(NVCC) $^ $(LFLAGS)
-	./a.out -n 16777216 --plummer
+	./a.out
 
 %.o: %.cu
 	$(NVCC) -rdc=true -c $<
 
 computeForces.o: computeForces.cu
-	$(NVCC) -c $< -ftz=true -rdc=true
+	$(NVCC) -rdc=true -ftz=true -c $<
 
 clean:
-	/bin/rm -rf *.o *.out *.a *.cu_o 
+	/bin/rm -rf *.o *.out
 
 $(CUOBJ): Treecode.h Particle4.h cuda_primitives.h cudamem.h

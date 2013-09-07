@@ -25,9 +25,6 @@ struct Plummer{
 					ifs.read((char *)&mass[0], n*sizeof(double));
 					ifs.read((char *)& pos[0], n*sizeof(dvec3));
 					ifs.read((char *)& vel[0], n*sizeof(dvec3));
-					if(!ifs.fail()){
-						fprintf(stdout, "plummer : read from %s\n", filename);
-					}
 					return;
 				}
 			}
@@ -126,9 +123,6 @@ struct Plummer{
 				ofs.write((char *)&mass[0], n*sizeof(double));
 				ofs.write((char *)& pos[0], n*sizeof(dvec3));
 				ofs.write((char *)& vel[0], n*sizeof(dvec3));
-				if(!ofs.fail()){
-					fprintf(stdout, "plummer : wrote to %s\n", filename);
-				}
 			}
 		}
 	}

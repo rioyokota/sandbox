@@ -264,7 +264,7 @@ void Treecode<real_t>::makeGroups(int levelSplit, const int nCrit)
     if (i < levelSplit)
       mask |= 0x7;
   }
-  printf("mask= %llx  \n", mask);
+  //printf("mask= %llx  \n", mask);
 
   /* sort particles by PH key */
   thrust::device_ptr<unsigned long long> keys_beg(d_keys);
@@ -312,14 +312,13 @@ void Treecode<real_t>::makeGroups(int levelSplit, const int nCrit)
   kernelSuccess("makeGroups");
   const double t1 = rtc();
   const double dt = t1 - t0;
-  fprintf(stderr, " makeGroups done in %g sec : %g Mptcl/sec\n",  dt, nPtcl/1e6/dt);
+  fprintf(stdout,"Make groups          : %.7f s\n", dt);
   CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&nGroups, makeGroups::groupCounter, sizeof(int)));
 #if 0
   assert(0);
 #endif
 
-
-  fprintf(stderr, "nGroup= %d <nCrit>= %g \n", nGroups, nPtcl*1.0/nGroups);
+  //fprintf(stderr, "nGroup= %d <nCrit>= %g \n", nGroups, nPtcl*1.0/nGroups);
 #if 0
   {
     std::vector<int2> groups(nGroups);

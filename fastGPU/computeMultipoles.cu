@@ -204,8 +204,6 @@ void Treecode<real_t>::computeMultipoles()
   const int NWARP    = 1<<(NTHREAD2-WARP_SIZE2);
   const int nblock   = (nCells-1)/NWARP + 1;
 
-  printf("nblock= %d \n", nblock);
-
   CUDA_SAFE_CALL(cudaFuncSetCacheConfig(&multipoles::computeCellMultipoles<NTHREAD2,real_t>,cudaFuncCachePreferL1));
   cudaDeviceSynchronize();
   const double t0 = rtc();
@@ -222,16 +220,14 @@ void Treecode<real_t>::computeMultipoles()
 #endif
   kernelSuccess("cellMultipole");
   const double dt = rtc() - t0;
-  fprintf(stderr, " cellMultipole done in %g sec : %g Mptcl/sec  %g Mcell/sec\n",  dt, nPtcl/1e6/dt, nCells/1e6/dt);
+  fprintf(stdout,"Upward pass          : %.7f s\n", dt);
 
+#if 0
   unsigned int nflops;
   const double SCALEDP = WARP_SIZE*10.0*5;
   const double SCALESP = WARP_SIZE*(5*6.0 + 15.0);
   CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&nflops, multipoles::nflops, sizeof(int)));
-  fprintf(stderr, "flop_rate: DP= %g, SP= %g, tot= %g GFLOP/s \n", 
-      nflops*SCALEDP/1e9/dt,
-      nflops*SCALESP/1e9/dt,
-      nflops*(SCALESP+SCALEDP)/1e9/dt);
+#endif
 
 #if 0
   {

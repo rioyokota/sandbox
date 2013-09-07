@@ -9,9 +9,16 @@ int main(int argc, char * argv[])
   const int seed = 19810614;
   const real_t eps   = 0.05;
   const real_t theta = 0.75;
+  const int ncrit = 64;
+  const int nleaf = 64;
   Tree tree(eps, theta);
 
-  fprintf(stdout, "Using Plummer model with nPtcl= %d\n", nPtcl);
+  fprintf(stdout,"--- FMM Parameters ---------------\n");
+  fprintf(stdout,"numBodies            : %d\n",nPtcl);
+  fprintf(stdout,"P                    : %d\n",3);
+  fprintf(stdout,"theta                : %f\n",theta);
+  fprintf(stdout,"ncrit                : %d\n",ncrit);
+  fprintf(stdout,"nleaf                : %d\n",nleaf);
   const Plummer data(nPtcl, seed);
   tree.alloc(nPtcl);
   for (int i = 0; i < nPtcl; i++) {
@@ -37,62 +44,30 @@ int main(int argc, char * argv[])
     tree.h_ptclAcc2[i] = make_float4(0,0,0,0);
   }
 
-#if 1
-  {
-    double mtot = 0.0;
-    typename vec<3,real_t>::type bmin = {+1e10};
-    typename vec<3,real_t>::type bmax = {-1e10};
-    for (int i = 0; i < nPtcl; i++)
-    {
-      const Tree::Particle pos = tree.h_ptclPos[i];
-      mtot += pos.mass();
-      bmin.x = std::min(bmin.x, pos.x());
-      bmin.y = std::min(bmin.y, pos.y());
-      bmin.z = std::min(bmin.z, pos.z());
-      bmax.x = std::max(bmax.x, pos.x());
-      bmax.y = std::max(bmax.y, pos.y());
-      bmax.z = std::max(bmax.z, pos.z());
-    }
-    fprintf(stderr, " Total mass = %g \n", mtot);
-    fprintf(stderr, "  bmin= %g %g %g \n", bmin.x, bmin.y, bmin.z);
-    fprintf(stderr, "  bmax= %g %g %g \n", bmax.x, bmax.y, bmax.z);
-  }
-#endif
-
   tree.ptcl_h2d();
 
+  fprintf(stdout,"--- FMM Profiling ----------------\n");
   double t0 = rtc();
-  tree.buildTree(64);          /* pass nLeaf, accepted 16, 24, 32, 48, 64 */
+  tree.buildTree(nleaf); // pass nLeaf, accepted 16, 24, 32, 48, 64
   tree.computeMultipoles();
-  tree.makeGroups(5, 64);     /* pass nCrit */
-#if 1
-  for (int k = 0; k < 1; k++)
-  {
-    t0 = rtc();
-    const double4 interactions = tree.computeForces();
-    double dt = rtc() - t0;
+  tree.makeGroups(5, ncrit); // pass nCrit
+  const double4 interactions = tree.computeForces();
+  double dt = rtc() - t0;
 #ifdef QUADRUPOLE
-    const int FLOPS_QUAD = 64;
+  const int FLOPS_QUAD = 64;
 #else
-    const int FLOPS_QUAD = 20;
+  const int FLOPS_QUAD = 20;
 #endif
-
-    fprintf(stderr, " direct: <n>= %g  max= %g  approx: <n>=%g max= %g :: perf= %g TFLOP/s \n",
-        interactions.x, interactions.y, 
-        interactions.z, interactions.w,
-        (interactions.x*20 + interactions.z*FLOPS_QUAD)*tree.get_nPtcl()/dt/1e12);
-
-  }
-#else
-  tree.computeForces();
-#endif
-  fprintf(stderr,"direct summation ...\n");
+  float flops = (interactions.x*20 + interactions.z*FLOPS_QUAD)*tree.get_nPtcl()/dt/1e12;
+  fprintf(stdout,"--- Total runtime ----------------\n");
+  fprintf(stdout,"Total FMM            : %.7f s (%.7f TFlops)\n",dt,flops);
   const int numTarget = 512; // Number of threads per block will be set to this value
   const int numBlock = 64;
   t0 = rtc();
   tree.computeDirect(numTarget,numBlock);
-  double dt = rtc() - t0;
-  fprintf(stderr,"time= %g  perf= %g TFLOP/S\n",dt,20.*numTarget*nPtcl/dt/1e12);
+  dt = rtc() - t0;
+  flops = 20.*numTarget*nPtcl/dt/1e12;
+  fprintf(stdout,"Total Direct         : %.7f s (%.7f TFlops)\n",dt,flops);
   tree.ptcl_d2h();
 
   for (int i=0; i<numTarget; i++) {
@@ -118,11 +93,15 @@ int main(int argc, char * argv[])
       + tree.h_ptclAcc2[i].y * tree.h_ptclAcc2[i].y
       + tree.h_ptclAcc2[i].z * tree.h_ptclAcc2[i].z;
   }
-  printf("pot : %g\n",sqrt(diffp/normp));
-  printf("acc : %g\n",sqrt(diffa/norma));
-  fprintf(stderr, " nLeaf= %d  nCrit= %d\n", tree.get_nLeaf(), tree.get_nCrit());
-
-
+  fprintf(stdout,"--- FMM vs. direct ---------------\n");
+  fprintf(stdout,"Rel. L2 Error (pot)  : %.7e\n",sqrt(diffp/normp));
+  fprintf(stdout,"Rel. L2 Error (acc)  : %.7e\n",sqrt(diffa/norma));
+  fprintf(stdout,"--- Tree stats -------------------\n");
+  fprintf(stdout,"Bodies               : %d\n",tree.get_nPtcl());
+  fprintf(stdout,"Cells                : %d\n",tree.get_nCells());
+  fprintf(stdout,"Tree depth           : %d\n",tree.get_nLevels());
+  fprintf(stdout,"--- Traversal stats --------------\n");
+  fprintf(stdout,"P2P mean list length : %g (max %g)\n", interactions.x, interactions.y);
+  fprintf(stdout,"M2P mean list length : %g (max %g)\n", interactions.z, interactions.w);
   return 0;
-
 }

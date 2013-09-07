@@ -486,28 +486,6 @@ namespace treeBuild
         {
           dim3 grid, block;
           computeGridAndBlockSize(grid, block, nCellmax);
-#if 0
-          cudaStream_t stream;
-          cudaStreamCreateWithFlags(&stream, cudaStreamNonBlocking);
-
-          grid.y = nSubNodes.y;  /* each y-coordinate of the grid will be busy for each parent cell */
-          atomicAdd(&n_scheduled,1);
-          atomicAdd(&n_in_que, 1);
-          atomicMax(&n_in_que_max, n_in_que);
-#if defined(FASTMODE) && NWARPS==8
-          if (nCellmax <= block.x)
-          {
-            grid.x = 1;
-            buildOctantSingle<NLEAF,T><<<grid,block,0,stream>>>
-              (box, cellIndexBase+blockIdx.y, cellFirstChildIndex,
-               octant_mask, octCounterNbase, buff, ptcl, level+1);
-          }
-          else
-#endif
-            buildOctant<NLEAF,T,false><<<grid,block,0,stream>>>
-              (box, cellIndexBase+blockIdx.y, cellFirstChildIndex,
-               octant_mask, octCounterNbase, buff, ptcl, level+1);
-#else
           grid.y = nSubNodes.y;  /* each y-coordinate of the grid will be busy for each parent cell */
 #if defined(FASTMODE) && NWARPS==8
           if (nCellmax <= block.x)
@@ -522,7 +500,6 @@ namespace treeBuild
             buildOctant<NLEAF,T,false><<<grid,block>>>
               (box, cellIndexBase+blockIdx.y, cellFirstChildIndex,
                octant_mask, octCounterNbase, buff, ptcl, level+1);
-#endif
           const cudaError_t err = cudaGetLastError();
           if (err != cudaSuccess)
           {
@@ -553,11 +530,7 @@ namespace treeBuild
             {
               Particle4<T> pos = buff[i];
               Particle4<T> vel = ((Particle4<T>*)ptclVel_tmp)[pos.get_idx()];
-#ifdef PSHFL_SANITY_CHECK
-              pos.mass() = T(pos.get_idx());
-#else
               pos.mass() = vel.mass();
-#endif
               ptcl[i] = pos;
               buff[i] = vel;
             }
@@ -569,11 +542,7 @@ namespace treeBuild
             {
               Particle4<T> pos = buff[i];
               Particle4<T> vel = ((Particle4<T>*)ptclVel_tmp)[pos.get_idx()];
-#ifdef PSHFL_SANITY_CHECK
-              pos.mass() = T(pos.get_idx());
-#else
               pos.mass() = vel.mass();
-#endif
               buff[i] = pos;
               ptcl[i] = vel;
             }
@@ -652,7 +621,7 @@ namespace treeBuild
       assert(cudaGetLastError() == cudaSuccess);
       cudaDeviceSynchronize();
 
-#if 1
+#if 0
       int total = 0;
       for (int k = 8; k < 16; k++)
       {
@@ -701,13 +670,6 @@ namespace treeBuild
         (*domain, 0, 0, 0, octCounterN, ptcl, buff);
       assert(cudaDeviceSynchronize() == cudaSuccess);
 #endif
-
-      printf(" nptcl  = %d\n", n);
-      printf(" nb_leaf= %d\n", nbodies_leaf);
-      printf(" nnodes = %d\n", nnodes);
-      printf(" nleaves= %d\n", nleaves);
-      printf(" ncells=  %d\n",  ncells);
-      printf(" nlevels= %d\n", nlevels);
 
       if (ncells_return != NULL)
         *ncells_return = ncells;
@@ -859,7 +821,7 @@ void Treecode<real_t>::buildTree(const int nLeaf)
       (nPtcl, d_minmax, d_domain, d_ptclPos);
     kernelSuccess("cudaDomainSize");
     const double dt = rtc() - t0;
-    fprintf(stderr, " cudaDomainSize done in %g sec : %g Mptcl/sec\n",  dt, nPtcl/1e6/dt);
+    fprintf(stdout,"Get bounds           : %.7f s\n",  dt);
   }
 
   /*** build tree ***/
@@ -922,8 +884,7 @@ void Treecode<real_t>::buildTree(const int nLeaf)
     CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&nCells,  treeBuild::ncells, sizeof(int)));
     CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&nNodes,  treeBuild::nnodes, sizeof(int)));
     CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&nLeaves, treeBuild::nleaves, sizeof(int)));
-    fprintf(stderr, " buildOctree done in %g sec : %g Mptcl/sec\n",  dt, nPtcl/1e6/dt);
-    std::swap(d_ptclPos_tmp.ptr, d_ptclVel.ptr);
+    fprintf(stdout,"Grow tree            : %.7f s\n",  dt);
   }
 
   /* sort nodes by level */
@@ -957,7 +918,7 @@ void Treecode<real_t>::buildTree(const int nLeaf)
     kernelSuccess("shuffle");
     const double t1 = rtc();
     const double dt = t1 - t0;
-    fprintf(stderr, " shuffle done in %g sec : %g Mptcl/sec\n",  dt, nPtcl/1e6/dt);
+    fprintf(stdout,"Link tree            : %.7f s\n", dt);
 #if 0
     int nnn;
     CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&nnn, treeBuild::leafIdx_counter, sizeof(int)));
@@ -966,12 +927,9 @@ void Treecode<real_t>::buildTree(const int nLeaf)
     std::vector<int> leaf(nLeaves);
     d_leafList.d2h(&leaf[0]);
     for (int i = 0; i < nLeaves; i++)
-      printf("leaf= %d :  %d \n",i, leaf[i]);
-
+      printf("leaf= %d : %d \n",i, leaf[i]);
 #endif
   }
-
-
 
 #if 0  /* tree consistency */
   {
@@ -988,7 +946,6 @@ void Treecode<real_t>::buildTree(const int nLeaf)
       int jk = 0;
       for (int j = lv.x; j <= lv.y; j++)
         keys[jk++] = ((unsigned long long)cells[j].pbeg() << 32) | cells[j].pend();
-      //      thrust::sort(&keys[0], &keys[jk]);
       int np = 0;
       for (int j = 0; j < jk ;j++)
       {
@@ -1020,8 +977,6 @@ void Treecode<real_t>::buildTree(const int nLeaf)
     for (int i = 0; i < 8; i++)
       currLevel.push_back(i);
 
-
-
     for (int i= 1; i < 32; i++)
     {
       const int2 lv = levels[i];
@@ -1029,7 +984,6 @@ void Treecode<real_t>::buildTree(const int nLeaf)
       int jk = 0;
       for (int j = lv.x; j <= lv.y; j++)
         keys[jk++] = ((unsigned long long)cells[j].pbeg() << 32) | cells[j].pend();
-      //      thrust::sort(&keys[0], &keys[jk]);
       int np = 0;
       for (int j = 0; j < jk ;j++)
       {

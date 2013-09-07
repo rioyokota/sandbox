@@ -137,6 +137,8 @@ struct Treecode
     int get_nPtcl() const { return nPtcl; }
     int get_nCrit() const { return nCrit; }
     int get_nLeaf() const { return nLeaf; }
+    int get_nCells() const { return nCells; }
+    int get_nLevels() const { return nLevels; }
 
   host_mem<Particle> h_ptclPos, h_ptclVel, h_ptclAcc;
   host_mem<float4> h_ptclAcc2;
@@ -189,12 +191,12 @@ struct Treecode
     /* allocate stack memory */ 
     node_max = nPtcl/10;
     stack_size = (8+8+8+64+8)*node_max;
-    fprintf(stderr, "stack_size= %g MB \n", sizeof(int)*stack_size/1024.0/1024.0);
+    fprintf(stdout,"Stack size           : %g MB\n",sizeof(int)*stack_size/1024.0/1024.0);
     d_stack_memory_pool.alloc(stack_size);
   
     /* allocate celldata memory */
     cell_max = nPtcl;
-    fprintf(stderr, "celldata= %g MB \n", cell_max*sizeof(CellData)/1024.0/1024.0);
+    fprintf(stdout,"Cell data            : %g MB\n",cell_max*sizeof(CellData)/1024.0/1024.0);
     d_cellDataList.alloc(cell_max);
     d_cellDataList_tmp.alloc(cell_max);
     d_key.alloc(cell_max);

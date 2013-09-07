@@ -680,9 +680,7 @@ double4 Treecode<real_t>::computeForces(const bool INTCOUNT)
   cuda_mem<int> d_gmem_pool;
 
   const int nblock = 8*13;
-  printf("---1--\n");
   d_gmem_pool.alloc(CELL_LIST_MEM_PER_WARP*nblock*(NTHREAD/WARP_SIZE));
-  printf("---2--\n");
 
 #if 0
   CUDA_SAFE_CALL(cudaMemset(d_ptclAcc, 0, sizeof(Particle)*nPtcl));
@@ -741,11 +739,8 @@ double4 Treecode<real_t>::computeForces(const bool INTCOUNT)
   kernelSuccess("treewalk");
   const double t1 = rtc();
   const double dt = t1 - t0;
-  fprintf(stderr, " treewalk done in %g sec : %g Mptcl/sec\n",  dt, nPtcl/1e6/dt);
-
 
   double4 interactions = {0.0, 0.0, 0.0, 0.0};
-
   if (INTCOUNT)
   {
     unsigned long long direct_sum, approx_sum;
@@ -759,8 +754,15 @@ double4 Treecode<real_t>::computeForces(const bool INTCOUNT)
     interactions.y = direct_max;
     interactions.z = approx_sum*1.0/nPtcl;
     interactions.w = approx_max;
-    fprintf(stderr, " grav potential= %g \n", grav_potential);
   }
+
+#ifdef QUADRUPOLE
+  const int FLOPS_QUAD = 64;
+#else
+  const int FLOPS_QUAD = 20;
+#endif
+  float flops = (interactions.x*20 + interactions.z*FLOPS_QUAD)*nPtcl/dt/1e12;
+  fprintf(stdout,"Traverse             : %.7f s (%.7f TFlops)\n",dt,flops);
 
   unbindTexture(computeForces::texPtcl);
   unbindTexture(computeForces::texCellQuad1);
