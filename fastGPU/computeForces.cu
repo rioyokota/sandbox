@@ -302,7 +302,7 @@ namespace computeForces
           if (childScatter.y + nCells - cellListBlock > (CELL_LIST_MEM_PER_WARP<<SHIFT))
             return make_uint2(0xFFFFFFFF,0xFFFFFFFF);
 
-#if 0
+#if 1
           /* if so populate next level stack in gmem */
           if (splitNode)
           {

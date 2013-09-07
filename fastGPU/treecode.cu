@@ -62,7 +62,7 @@ int main(int argc, char * argv[])
   fprintf(stdout,"--- Total runtime ----------------\n");
   fprintf(stdout,"Total FMM            : %.7f s (%.7f TFlops)\n",dt,flops);
   const int numTarget = 512; // Number of threads per block will be set to this value
-  const int numBlock = 64;
+  const int numBlock = 128;
   t0 = rtc();
   tree.computeDirect(numTarget,numBlock);
   dt = rtc() - t0;

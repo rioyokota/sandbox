@@ -1,10 +1,9 @@
-.SUFFIXES: .o .cpp .ptx .cu
+.SUFFIXES: .cu
 
-CXX = g++ -O3 -g -Wall -Wstrict-aliasing=2 
-NVCC = nvcc -g -O3 -arch=sm_35
-LFLAGS = -lcudadevrt 
+NVCC = nvcc -g -O3 -arch=sm_35 -rdc=true -ftz=true
+LFLAGS = -lcudadevrt
 
-SRC = treecode.cu buildTree.cu computeMultipoles.cu makeGroups.cu computeForces.cu moveParticles.cu computeEnergies.cu
+SRC = treecode.cu buildTree.cu computeMultipoles.cu makeGroups.cu computeForces.cu
 
 OBJ = $(SRC:%.cu=%.o)
 
@@ -13,12 +12,9 @@ all: $(OBJ)
 	./a.out
 
 %.o: %.cu
-	$(NVCC) -rdc=true -c $<
-
-computeForces.o: computeForces.cu
-	$(NVCC) -rdc=true -ftz=true -c $<
+	$(NVCC) -c $<
 
 clean:
 	/bin/rm -rf *.o *.out
 
-$(CUOBJ): Treecode.h Particle4.h cuda_primitives.h cudamem.h
+$(OBJ): Treecode.h Particle4.h cuda_primitives.h cudamem.h
