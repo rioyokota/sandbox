@@ -23,31 +23,18 @@ namespace computeForces
   /****** Opening criterion ******/
   /*******************************/
 
-  //Improved Barnes Hut criterium
-  static __device__ bool split_node_grav_impbh(
-      const float4 sourceCenter, 
-      const float3 groupCenter, 
-      const float3 groupSize)
-  {
-    //Compute the distance between the group and the cell
-    float3 dr = make_float3(
-        fabsf(groupCenter.x - sourceCenter.x) - (groupSize.x),
-        fabsf(groupCenter.y - sourceCenter.y) - (groupSize.y),
-        fabsf(groupCenter.z - sourceCenter.z) - (groupSize.z)
-        );
-
+  static __device__ bool applyMAC(
+    const float4 sourceCenter, 
+    const float3 targetCenter, 
+    const float3 targetSize) {
+    float3 dr = make_float3(fabsf(targetCenter.x - sourceCenter.x) - (targetSize.x),
+                            fabsf(targetCenter.y - sourceCenter.y) - (targetSize.y),
+                            fabsf(targetCenter.z - sourceCenter.z) - (targetSize.z));
     dr.x += fabsf(dr.x); dr.x *= 0.5f;
     dr.y += fabsf(dr.y); dr.y *= 0.5f;
     dr.z += fabsf(dr.z); dr.z *= 0.5f;
-
-    //Distance squared, no need to do sqrt since opening criteria has been squared
     const float ds2 = dr.x*dr.x + dr.y*dr.y + dr.z*dr.z;
-
-#if 1
-    return (ds2 < fabsf(sourceCenter.w));
-#else
-    return true;
-#endif
+    return ds2 < fabsf(sourceCenter.w);
   }
 
   /******* force due to monopoles *********/
@@ -228,8 +215,8 @@ namespace computeForces
     uint2 treewalk_warp(
         typename vec<4,real_t>::type acc_i[NI],
         const float3 _pos_i[NI],
-        const float3 groupCentre,
-        const float3 groupSize,
+        const float3 targetCenter,
+        const float3 targetSize,
         const float eps2,
         const int2 top_cells,
         int *shmem,
@@ -278,7 +265,7 @@ namespace computeForces
         const float4   sourceCenter = tex1Dfetch(texSourceCenter, cellIdx);
         const CellData cellData = tex1Dfetch(texCellData, cellIdx);
 
-        const bool splitCell = split_node_grav_impbh(sourceCenter, groupCentre, groupSize) ||
+        const bool splitCell = applyMAC(sourceCenter, targetCenter, targetSize) ||
           (cellData.pend() - cellData.pbeg() < 3); /* force to open leaves with less than 3 particles */
 
         /**********************************************/
@@ -544,14 +531,14 @@ namespace computeForces
         rmax.z = __shfl(rmax.z,0);
 
         const real_t half = static_cast<real_t>(0.5f);
-        const real3_t cvec = {half*(rmax.x+rmin.x), half*(rmax.y+rmin.y), half*(rmax.z+rmin.z)};
+        const real3_t targetCenter = {half*(rmax.x+rmin.x), half*(rmax.y+rmin.y), half*(rmax.z+rmin.z)};
         const real3_t hvec = {half*(rmax.x-rmin.x), half*(rmax.y-rmin.y), half*(rmax.z-rmin.z)};
 
         real4_acc iAcc[NI] = {vec<4,real_acc>::null()};
 
         uint2 counters;
         counters =  treewalk_warp<NTHREAD2,NI,real_acc>
-          (iAcc, iPos, cvec, hvec, eps2, top_cells, shmem, gmem);
+          (iAcc, iPos, targetCenter, hvec, eps2, top_cells, shmem, gmem);
 
         assert(!(counters.x == 0xFFFFFFFF && counters.y == 0xFFFFFFFF));
 
