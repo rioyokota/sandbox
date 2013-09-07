@@ -1,7 +1,7 @@
 .SUFFIXES: .o .cpp .ptx .cu
 
 CXX = g++ -O3 -g -Wall -Wstrict-aliasing=2 
-NVCC = nvcc -g -O3 -Xptxas=-v -arch=sm_35
+NVCC = nvcc -g -O3 -arch=sm_35
 LFLAGS = -lcudadevrt 
 
 SRC = treecode.cu buildTree.cu computeMultipoles.cu makeGroups.cu computeForces.cu moveParticles.cu computeEnergies.cu
