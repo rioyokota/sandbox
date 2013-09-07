@@ -177,10 +177,10 @@ namespace multipoles
         const real_t cellOp2 = cellOp*cellOp;
 
         atomicAdd(&nflops, nflop);
-        sizeList[cellIdx] = make_float4(com.x, com.y, com.z, cellOp2);
 
         typedef typename vec<4,real_t>::type real4_t;
         typedef typename vec<2,real_t>::type real2_t;
+        sizeList[cellIdx] = (real4_t){com.x, com.y, com.z, cellOp2};
         monopoleList[cellIdx] = (real4_t){M.x, M.y, M.z, M.w};  
         const double4 q0 = Q.get_q0();
         const double2 q1 = Q.get_q1();

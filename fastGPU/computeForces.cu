@@ -15,11 +15,9 @@ namespace computeForces
   texture<float2, 1, cudaReadModeElementType> texCellQuad1;
   texture<float4, 1, cudaReadModeElementType> texPtcl;
 
-  template<int SHIFT>
-    __forceinline__ static __device__ int ringAddr(const int i)
-    {
-      return (i & ((CELL_LIST_MEM_PER_WARP<<SHIFT) - 1));
-    }
+  static __device__ __forceinline__ int ringAddr(const int i) {
+    return i & (CELL_LIST_MEM_PER_WARP - 1);
+  }
 
 
   /*******************************/
@@ -226,7 +224,7 @@ namespace computeForces
 
 
 
-  template<int SHIFT, int BLOCKDIM2, int NI, typename real_t>
+  template<int BLOCKDIM2, int NI, typename real_t>
     static __device__ 
     uint2 treewalk_warp(
         typename vec<4,real_t>::type acc_i[NI],
@@ -258,7 +256,7 @@ namespace computeForces
 
       for (int root_cell = top_cells.x; root_cell < top_cells.y; root_cell += WARP_SIZE)
         if (root_cell + laneIdx < top_cells.y)
-          cellList[ringAddr<SHIFT>(root_cell - top_cells.x + laneIdx)] = root_cell + laneIdx;
+          cellList[ringAddr(root_cell - top_cells.x + laneIdx)] = root_cell + laneIdx;
 
       int nCells = top_cells.y - top_cells.x;
 
@@ -274,7 +272,7 @@ namespace computeForces
         /* extract cell index from the current level cell list */
         const int cellListIdx = cellListBlock + laneIdx;
         const bool useCell    = cellListIdx < nCells;
-        const int cellIdx     = cellList[ringAddr<SHIFT>(cellListOffset + cellListIdx)];
+        const int cellIdx     = cellList[ringAddr(cellListOffset + cellListIdx)];
         cellListBlock += min(WARP_SIZE, nCells - cellListBlock);
 
         /* read from gmem cell's info */
@@ -299,7 +297,7 @@ namespace computeForces
           const int2 childScatter = warpIntExclusiveScan(nChild & (-splitNode));
 
           /* make sure we still have available stack space */
-          if (childScatter.y + nCells - cellListBlock > (CELL_LIST_MEM_PER_WARP<<SHIFT))
+          if (childScatter.y + nCells - cellListBlock > CELL_LIST_MEM_PER_WARP)
             return make_uint2(0xFFFFFFFF,0xFFFFFFFF);
 
 #if 1
@@ -308,7 +306,7 @@ namespace computeForces
           {
             const int scatterIdx = cellListOffset + nCells + nextLevelCellCounter + childScatter.x;
             for (int i = 0; i < nChild; i++)
-              cellList[ringAddr<SHIFT>(scatterIdx + i)] = firstChild + i;
+              cellList[ringAddr(scatterIdx + i)] = firstChild + i;
           }
 #else  /* use scan operation to accomplish steps above, doesn't bring performance benefit */
           int nChildren  = childScatter.y;
@@ -325,7 +323,7 @@ namespace computeForces
             }
             scanVal = inclusive_segscan_warp(tmpList[laneIdx], scanVal.y);
             if (laneIdx < nChildren)
-              cellList[ringAddr<SHIFT>(offset + nProcessed + laneIdx)] = scanVal.x;
+              cellList[ringAddr(offset + nProcessed + laneIdx)] = scanVal.x;
             nChildren  -= WARP_SIZE;
             nProcessed += WARP_SIZE;
           }
@@ -470,8 +468,6 @@ namespace computeForces
   __device__ unsigned long long g_approx_sum = 0;
   __device__ unsigned int       g_approx_max = 0;
 
-  __device__ double grav_potential = 0.0;
-
   template<int NTHREAD2, bool STATS, int NI>
     __launch_bounds__(1<<NTHREAD2, 1024/(1<<NTHREAD2))
     static __global__ 
@@ -526,14 +522,12 @@ namespace computeForces
         const int np   = group.np();
 
         real3_t iPos[NI];
-        real_t  iMass[NI];
 
 #pragma unroll
         for (int i = 0; i < NI; i++)
         {
           const Particle4<real_t> ptcl = ptclPos[min(pbeg + i*WARP_SIZE+laneIdx, pbeg+np-1)];
           iPos [i] = make_float3(ptcl.x(), ptcl.y(), ptcl.z());
-          iMass[i] = ptcl.mass();
         }
 
         real3_t rmin = {iPos[0].x, iPos[0].y, iPos[0].z};
@@ -554,12 +548,10 @@ namespace computeForces
         const real3_t cvec = {half*(rmax.x+rmin.x), half*(rmax.y+rmin.y), half*(rmax.z+rmin.z)};
         const real3_t hvec = {half*(rmax.x-rmin.x), half*(rmax.y-rmin.y), half*(rmax.z-rmin.z)};
 
-        const int SHIFT = 0;
-
         real4_acc iAcc[NI] = {vec<4,real_acc>::null()};
 
         uint2 counters;
-        counters =  treewalk_warp<SHIFT,NTHREAD2,NI,real_acc>
+        counters =  treewalk_warp<NTHREAD2,NI,real_acc>
           (iAcc, iPos, cvec, hvec, eps2, top_cells, shmem, gmem);
 
         assert(!(counters.x == 0xFFFFFFFF && counters.y == 0xFFFFFFFF));
@@ -569,17 +561,13 @@ namespace computeForces
         {
           int direct_max = counters.y;
           int direct_sum = 0;
-
           int approx_max = counters.x;
           int approx_sum = 0;
-
-          real_acc gpot = static_cast<real_acc>(0.0f);
 
 #pragma unroll
           for (int i = 0; i < NI; i++)
             if (i*WARP_SIZE + pidx < pbeg + np)
             {
-              gpot       += iAcc[i].w*iMass[i];
               approx_sum += counters.x;
               direct_sum += counters.y;
             }
@@ -589,22 +577,16 @@ namespace computeForces
           {
             direct_max  = max(direct_max, __shfl_xor(direct_max, 1<<i));
             direct_sum += __shfl_xor(direct_sum, 1<<i);
-
             approx_max  = max(approx_max, __shfl_xor(approx_max, 1<<i));
             approx_sum += __shfl_xor(approx_sum, 1<<i);
-
-            gpot += shfl_xor(gpot, 1<<i);
           }
 
           if (laneIdx == 0)
           {
             atomicMax(&g_direct_max,                     direct_max);
             atomicAdd(&g_direct_sum, (unsigned long long)direct_sum);
-
             atomicMax(&g_approx_max,                     approx_max);
             atomicAdd(&g_approx_sum, (unsigned long long)approx_sum);
-
-            atomicAdd_double(&grav_potential, static_cast<real_acc>(0.5f)*gpot);
           }
         }
 
@@ -691,7 +673,6 @@ double4 Treecode<real_t>::computeForces(const bool INTCOUNT)
   const double t0 = rtc();
   unsigned long long lzero = 0;
   unsigned int       uzero = 0;
-  double              fzero = 0.0;
   CUDA_SAFE_CALL(cudaMemcpyToSymbol(computeForces::retired_groupCount, &value, sizeof(int)));
   if (INTCOUNT)
   {
@@ -699,7 +680,6 @@ double4 Treecode<real_t>::computeForces(const bool INTCOUNT)
     CUDA_SAFE_CALL(cudaMemcpyToSymbol(computeForces::g_direct_max, &uzero, sizeof(unsigned int)));
     CUDA_SAFE_CALL(cudaMemcpyToSymbol(computeForces::g_approx_sum, &lzero, sizeof(unsigned long long)));
     CUDA_SAFE_CALL(cudaMemcpyToSymbol(computeForces::g_approx_max, &uzero, sizeof(unsigned int)));
-    CUDA_SAFE_CALL(cudaMemcpyToSymbol(computeForces::grav_potential, &fzero, sizeof(double)));
   }
 
   if (INTCOUNT)
@@ -745,11 +725,10 @@ double4 Treecode<real_t>::computeForces(const bool INTCOUNT)
   {
     unsigned long long direct_sum, approx_sum;
     unsigned int direct_max, approx_max;
-    CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&direct_sum,     computeForces::g_direct_sum, sizeof(unsigned long long)));
-    CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&direct_max,     computeForces::g_direct_max, sizeof(unsigned int)));
-    CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&approx_sum,     computeForces::g_approx_sum, sizeof(unsigned long long)));
-    CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&approx_max,     computeForces::g_approx_max, sizeof(unsigned int)));
-    CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&grav_potential, computeForces::grav_potential, sizeof(double)));
+    CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&direct_sum, computeForces::g_direct_sum, sizeof(unsigned long long)));
+    CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&direct_max, computeForces::g_direct_max, sizeof(unsigned int)));
+    CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&approx_sum, computeForces::g_approx_sum, sizeof(unsigned long long)));
+    CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&approx_max, computeForces::g_approx_max, sizeof(unsigned int)));
     interactions.x = direct_sum*1.0/nPtcl;
     interactions.y = direct_max;
     interactions.z = approx_sum*1.0/nPtcl;
