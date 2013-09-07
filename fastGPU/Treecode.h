@@ -158,7 +158,7 @@ struct Treecode
   cuda_mem<int>  d_key, d_value;
 
 
-  cuda_mem<real4_t> d_cellSize,  d_cellMonopole;
+  cuda_mem<real4_t> d_sourceCenter, d_cellMonopole;
   cuda_mem<real4_t> d_cellQuad0;
   cuda_mem<real2_t> d_cellQuad1;
 

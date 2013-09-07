@@ -194,7 +194,7 @@ namespace multipoles
   template<typename real_t>
 void Treecode<real_t>::computeMultipoles()
 {
-  d_cellSize    .realloc(nCells);
+  d_sourceCenter    .realloc(nCells);
   d_cellMonopole.realloc(nCells);
   d_cellQuad0   .realloc(nCells);
   d_cellQuad1   .realloc(nCells);
@@ -211,12 +211,12 @@ void Treecode<real_t>::computeMultipoles()
   multipoles::computeCellMultipoles<NTHREAD2,real_t><<<nblock,NTHREAD>>>(
       nPtcl, nCells, d_cellDataList, (float4*)d_ptclPos.ptr,
       1.0/theta,
-      d_cellSize, d_cellMonopole, d_cellQuad0, d_cellQuad1);
+      d_sourceCenter, d_cellMonopole, d_cellQuad0, d_cellQuad1);
 #else
   multipoles::computeCellMultipoles<NTHREAD2,real_t><<<nblock,NTHREAD>>>(
       nPtcl, nCells, d_cellDataList, d_ptclPos,
       1.0/theta,
-      d_cellSize, d_cellMonopole, d_cellQuad0, d_cellQuad1);
+      d_sourceCenter, d_cellMonopole, d_cellQuad0, d_cellQuad1);
 #endif
   kernelSuccess("cellMultipole");
   const double dt = rtc() - t0;
@@ -231,10 +231,10 @@ void Treecode<real_t>::computeMultipoles()
 
 #if 0
   {
-    std::vector<float4> cellSize(nCells), cellMonopole(nCells);
+    std::vector<float4> sourceCenter(nCells), cellMonopole(nCells);
     std::vector<float4> cellQuad0(nCells);
     std::vector<float2> cellQuad1(nCells);
-    d_cellSize.d2h(&cellSize[0]);
+    d_sourceCenter.d2h(&sourceCenter[0]);
     d_cellMonopole.d2h(&cellMonopole[0]);
     d_cellQuad0.d2h(&cellQuad0[0]);
     d_cellQuad1.d2h(&cellQuad1[0]);
@@ -243,7 +243,7 @@ void Treecode<real_t>::computeMultipoles()
     for (int i = 0; i < nCells; i++)
     {
       printf("cell= %d:   size= %g %g %g | %g \n",
-          i, cellSize[i].x, cellSize[i].y, cellSize[i].z, cellSize[i].w);
+          i, sourceCenter[i].x, sourceCenter[i].y, sourceCenter[i].z, sourceCenter[i].w);
     }
     assert(0);
 #endif
@@ -255,7 +255,7 @@ void Treecode<real_t>::computeMultipoles()
     for (int i = 0; i < 8; i++)
     {
       const float4 m = cellMonopole[i];
-      const float4 c = cellSize    [i];
+      const float4 c = sourceCenter[i];
       const Quadrupole<real_t> q(cellQuad0[i], cellQuad1[i]);
       const float h = sqrt(c.w)*0.5;
       bmin.x = std::min(bmin.x, c.x - h);

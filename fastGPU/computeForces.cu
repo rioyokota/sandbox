@@ -9,7 +9,7 @@ namespace computeForces
 #define CELL_LIST_MEM_PER_WARP (4096*32)
   
   texture<uint4,  1, cudaReadModeElementType> texCellData;
-  texture<float4, 1, cudaReadModeElementType> texCellSize;
+  texture<float4, 1, cudaReadModeElementType> texSourceCenter;
   texture<float4, 1, cudaReadModeElementType> texCellMonopole;
   texture<float4, 1, cudaReadModeElementType> texCellQuad0;
   texture<float2, 1, cudaReadModeElementType> texCellQuad1;
@@ -19,22 +19,21 @@ namespace computeForces
     return i & (CELL_LIST_MEM_PER_WARP - 1);
   }
 
-
   /*******************************/
   /****** Opening criterion ******/
   /*******************************/
 
   //Improved Barnes Hut criterium
   static __device__ bool split_node_grav_impbh(
-      const float4 cellSize, 
+      const float4 sourceCenter, 
       const float3 groupCenter, 
       const float3 groupSize)
   {
     //Compute the distance between the group and the cell
     float3 dr = make_float3(
-        fabsf(groupCenter.x - cellSize.x) - (groupSize.x),
-        fabsf(groupCenter.y - cellSize.y) - (groupSize.y),
-        fabsf(groupCenter.z - cellSize.z) - (groupSize.z)
+        fabsf(groupCenter.x - sourceCenter.x) - (groupSize.x),
+        fabsf(groupCenter.y - sourceCenter.y) - (groupSize.y),
+        fabsf(groupCenter.z - sourceCenter.z) - (groupSize.z)
         );
 
     dr.x += fabsf(dr.x); dr.x *= 0.5f;
@@ -45,7 +44,7 @@ namespace computeForces
     const float ds2 = dr.x*dr.x + dr.y*dr.y + dr.z*dr.z;
 
 #if 1
-    return (ds2 < fabsf(cellSize.w));
+    return (ds2 < fabsf(sourceCenter.w));
 #else
     return true;
 #endif
@@ -276,10 +275,10 @@ namespace computeForces
         cellListBlock += min(WARP_SIZE, nCells - cellListBlock);
 
         /* read from gmem cell's info */
-        const float4   cellSize = tex1Dfetch(texCellSize, cellIdx);
+        const float4   sourceCenter = tex1Dfetch(texSourceCenter, cellIdx);
         const CellData cellData = tex1Dfetch(texCellData, cellIdx);
 
-        const bool splitCell = split_node_grav_impbh(cellSize, groupCentre, groupSize) ||
+        const bool splitCell = split_node_grav_impbh(sourceCenter, groupCentre, groupSize) ||
           (cellData.pend() - cellData.pbeg() < 3); /* force to open leaves with less than 3 particles */
 
         /**********************************************/
@@ -651,7 +650,7 @@ template<typename real_t>
 double4 Treecode<real_t>::computeForces(const bool INTCOUNT)
 {
   bindTexture(computeForces::texCellData,     (uint4* )d_cellDataList.ptr, nCells);
-  bindTexture(computeForces::texCellSize,     d_cellSize.ptr,     nCells);
+  bindTexture(computeForces::texSourceCenter,     d_sourceCenter.ptr, nCells);
   bindTexture(computeForces::texCellMonopole, d_cellMonopole.ptr, nCells);
   bindTexture(computeForces::texCellQuad0,    d_cellQuad0.ptr,    nCells);
   bindTexture(computeForces::texCellQuad1,    d_cellQuad1.ptr,    nCells);
@@ -747,7 +746,7 @@ double4 Treecode<real_t>::computeForces(const bool INTCOUNT)
   unbindTexture(computeForces::texCellQuad1);
   unbindTexture(computeForces::texCellQuad0);
   unbindTexture(computeForces::texCellMonopole);
-  unbindTexture(computeForces::texCellSize);
+  unbindTexture(computeForces::texSourceCenter);
   unbindTexture(computeForces::texCellData);
 
   return interactions;
