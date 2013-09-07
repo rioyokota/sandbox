@@ -19,13 +19,7 @@ namespace computeForces
     return i & (CELL_LIST_MEM_PER_WARP - 1);
   }
 
-  /*******************************/
-  /****** Opening criterion ******/
-  /*******************************/
-
-  static __device__ bool applyMAC(
-    const float4 sourceCenter, 
-    const float3 targetCenter, 
+  static __device__ bool applyMAC(const float4 sourceCenter, const float3 targetCenter, 
     const float3 targetSize) {
     float3 dr = make_float3(fabsf(targetCenter.x - sourceCenter.x) - (targetSize.x),
                             fabsf(targetCenter.y - sourceCenter.y) - (targetSize.y),
@@ -37,16 +31,10 @@ namespace computeForces
     return ds2 < fabsf(sourceCenter.w);
   }
 
-  /******* force due to monopoles *********/
+  static __device__ __forceinline__ float4 add_acc(float4 acc, const float3 pos,
+    const float massj, const float3 posj, const float eps2) {
 
-  template<typename real_t>
-  static __device__ __forceinline__ typename vec<4,real_t>::type add_acc(
-      typename vec<4,real_t>::type acc,  const float3 pos,
-      const float massj, const float3 posj,
-      const float eps2)
-  {
     const float3 dr = make_float3(posj.x - pos.x, posj.y - pos.y, posj.z - pos.z);
-
     const float r2     = dr.x*dr.x + dr.y*dr.y + dr.z*dr.z + eps2;
     const float rinv   = rsqrtf(r2);
     const float rinv2  = rinv*rinv;
@@ -61,19 +49,11 @@ namespace computeForces
     return acc;
   }
 
+  static __device__ __forceinline__ float4 add_acc(float4 acc, const float3 pos,
+    const float mass, const float3 com, const float4 Q0,  const float2 Q1, float eps2) {
 
-  /******* force due to quadrupoles *********/
-
-  template<typename real_t>
-  static __device__ __forceinline__ typename vec<4,real_t>::type add_acc(
-      typename vec<4,real_t>::type acc, 
-      const float3 pos,
-      const float mass, const float3 com,
-      const float4 Q0,  const float2 Q1, float eps2) 
-  {
     const float3 dr = make_float3(pos.x - com.x, pos.y - com.y, pos.z - com.z);
     const float  r2 = dr.x*dr.x + dr.y*dr.y + dr.z*dr.z + eps2;
-
     const float rinv  = rsqrtf(r2);
     const float rinv2 = rinv *rinv;
     const float mrinv  =  mass*rinv;
@@ -113,9 +93,9 @@ namespace computeForces
 
 
   /******* evalue forces from particles *******/
-  template<int NI, bool FULL, typename real_t>
+  template<int NI, bool FULL>
     static __device__ __forceinline__ void directAcc(
-        typename vec<4,real_t>::type acc_i[NI], 
+        float4 acc_i[NI], 
         const float3 pos_i[NI],
         const int ptclIdx,
         const float eps2)
@@ -135,16 +115,16 @@ namespace computeForces
         const float3 jpos  = make_float3(jM0.x, jM0.y, jM0.z);
 #pragma unroll
         for (int k = 0; k < NI; k++)
-          acc_i[k] = add_acc<real_t>(acc_i[k], pos_i[k], jmass, jpos, eps2);
+          acc_i[k] = add_acc(acc_i[k], pos_i[k], jmass, jpos, eps2);
       }
 #endif
     }
 
   /******* evalue forces from cells *******/
 #ifdef  QUADRUPOLE
-  template<int NI, bool FULL, typename real_t>
+  template<int NI, bool FULL>
     static __device__ __forceinline__ void approxAcc(
-        typename vec<4,real_t>::type acc_i[NI], 
+        float4 acc_i[NI], 
         const float3 pos_i[NI],
         const int cellIdx,
         const float eps2)
@@ -175,12 +155,12 @@ namespace computeForces
         const float3 jpos  = make_float3(jM0.x, jM0.y, jM0.z);
 #pragma unroll
         for (int k = 0; k < NI; k++)
-          acc_i[k] = add_acc<real_t>(acc_i[k], pos_i[k], jmass, jpos, jQ0, jQ1, eps2);
+          acc_i[k] = add_acc(acc_i[k], pos_i[k], jmass, jpos, jQ0, jQ1, eps2);
       }
 #endif
     }
 #else
-  template<int NI, bool FULL, typename real_t>
+  template<int NI, bool FULL>
     static __device__ __forceinline__ void approxAcc(
         float4 acc_i[NI], 
         const float3 pos_i[NI],
@@ -202,7 +182,7 @@ namespace computeForces
         const float3 jpos  = make_float3(jM0.x, jM0.y, jM0.z);
 #pragma unroll
         for (int k = 0; k < NI; k++)
-          acc_i[k] = add_acc<real_t>(acc_i[k], pos_i[k], jmass, jpos, eps2);
+          acc_i[k] = add_acc(acc_i[k], pos_i[k], jmass, jpos, eps2);
       }
 #endif
     }
@@ -210,10 +190,10 @@ namespace computeForces
 
 
 
-  template<int BLOCKDIM2, int NI, typename real_t>
+  template<int BLOCKDIM2, int NI>
     static __device__ 
     uint2 treewalk_warp(
-        typename vec<4,real_t>::type acc_i[NI],
+        float4 acc_i[NI],
         const float3 _pos_i[NI],
         const float3 targetCenter,
         const float3 targetSize,
@@ -339,7 +319,7 @@ namespace computeForces
           if (approxCounter >= WARP_SIZE)
           {
             /* evalute cells stored in shmem */
-            approxAcc<NI,true,real_t>(acc_i, pos_i, tmpList[laneIdx], eps2);
+            approxAcc<NI,true>(acc_i, pos_i, tmpList[laneIdx], eps2);
 
             approxCounter -= WARP_SIZE;
             const int scatterIdx = approxCounter + approxScatter.x - approxScatter.y;
@@ -382,7 +362,7 @@ namespace computeForces
 
             if (nParticle >= WARP_SIZE)
             {
-              directAcc<NI,true, real_t>(acc_i, pos_i, ptclIdx, eps2);
+              directAcc<NI,true>(acc_i, pos_i, ptclIdx, eps2);
               nParticle  -= WARP_SIZE;
               nProcessed += WARP_SIZE;
               interactionCounters.y += WARP_SIZE;
@@ -399,7 +379,7 @@ namespace computeForces
               if (directCounter >= WARP_SIZE)
               {
                 /* evalute cells stored in shmem */
-                directAcc<NI,true, real_t>(acc_i, pos_i, tmpList[laneIdx], eps2);
+                directAcc<NI,true>(acc_i, pos_i, tmpList[laneIdx], eps2);
                 directCounter -= WARP_SIZE;
                 const int scatterIdx = directCounter + laneIdx - nParticle;
                 if (scatterIdx >= 0)
@@ -428,7 +408,7 @@ namespace computeForces
 #if 1
       if (approxCounter > 0)
       {
-        approxAcc<NI,false, real_t>(acc_i, pos_i, laneIdx < approxCounter ? approxCellIdx : -1, eps2);
+        approxAcc<NI,false>(acc_i, pos_i, laneIdx < approxCounter ? approxCellIdx : -1, eps2);
         interactionCounters.x += approxCounter;
         approxCounter = 0;
       }
@@ -437,7 +417,7 @@ namespace computeForces
 #if 1
       if (directCounter > 0)
       {
-        directAcc<NI,false,real_t>(acc_i, pos_i, laneIdx < directCounter ? directPtclIdx : -1, eps2);
+        directAcc<NI,false>(acc_i, pos_i, laneIdx < directCounter ? directPtclIdx : -1, eps2);
         interactionCounters.y += directCounter;
         directCounter = 0;
       }
@@ -467,17 +447,6 @@ namespace computeForces
         __out Particle4<float> *acc,
         __out int    *gmem_pool)
     {
-      typedef float real_t;
-      typedef typename vec<3,real_t>::type real3_t;
-      typedef typename vec<4,real_t>::type real4_t;
-
-#if 0
-      typedef double real_acc;
-#else
-      typedef float real_acc;
-#endif
-      typedef typename vec<4,real_acc>::type real4_acc;
-
       const int NTHREAD = 1<<NTHREAD2;
       const int shMemSize = NTHREAD;
       __shared__ int shmem_pool[shMemSize];
@@ -507,21 +476,21 @@ namespace computeForces
         const int pbeg = group.pbeg();
         const int np   = group.np();
 
-        real3_t iPos[NI];
+        float3 iPos[NI];
 
 #pragma unroll
         for (int i = 0; i < NI; i++)
         {
-          const Particle4<real_t> ptcl = ptclPos[min(pbeg + i*WARP_SIZE+laneIdx, pbeg+np-1)];
+          const Particle4<float> ptcl = ptclPos[min(pbeg + i*WARP_SIZE+laneIdx, pbeg+np-1)];
           iPos [i] = make_float3(ptcl.x(), ptcl.y(), ptcl.z());
         }
 
-        real3_t rmin = {iPos[0].x, iPos[0].y, iPos[0].z};
-        real3_t rmax = rmin; 
+        float3 rmin = {iPos[0].x, iPos[0].y, iPos[0].z};
+        float3 rmax = rmin; 
 
 #pragma unroll
         for (int i = 0; i < NI; i++) 
-          addBoxSize(rmin, rmax, Position<real_t>(iPos[i].x, iPos[i].y, iPos[i].z));
+          addBoxSize(rmin, rmax, Position<float>(iPos[i].x, iPos[i].y, iPos[i].z));
 
         rmin.x = __shfl(rmin.x,0);
         rmin.y = __shfl(rmin.y,0);
@@ -530,14 +499,14 @@ namespace computeForces
         rmax.y = __shfl(rmax.y,0);
         rmax.z = __shfl(rmax.z,0);
 
-        const real_t half = static_cast<real_t>(0.5f);
-        const real3_t targetCenter = {half*(rmax.x+rmin.x), half*(rmax.y+rmin.y), half*(rmax.z+rmin.z)};
-        const real3_t hvec = {half*(rmax.x-rmin.x), half*(rmax.y-rmin.y), half*(rmax.z-rmin.z)};
+        const float half = 0.5f;
+        const float3 targetCenter = {half*(rmax.x+rmin.x), half*(rmax.y+rmin.y), half*(rmax.z+rmin.z)};
+        const float3 hvec = {half*(rmax.x-rmin.x), half*(rmax.y-rmin.y), half*(rmax.z-rmin.z)};
 
-        real4_acc iAcc[NI] = {vec<4,real_acc>::null()};
+        float4 iAcc[NI] = {vec<4,float>::null()};
 
         uint2 counters;
-        counters =  treewalk_warp<NTHREAD2,NI,real_acc>
+        counters =  treewalk_warp<NTHREAD2,NI>
           (iAcc, iPos, targetCenter, hvec, eps2, top_cells, shmem, gmem);
 
         assert(!(counters.x == 0xFFFFFFFF && counters.y == 0xFFFFFFFF));
@@ -580,7 +549,7 @@ namespace computeForces
         for (int i = 0; i < NI; i++)
           if (pidx + i*WARP_SIZE< pbeg + np)
           {
-            const real4_t iacc = {iAcc[i].x, iAcc[i].y, iAcc[i].z, iAcc[i].w};
+            const float4 iacc = {iAcc[i].x, iAcc[i].y, iAcc[i].z, iAcc[i].w};
             acc[i*WARP_SIZE + pidx] = iacc;
           }
       }
