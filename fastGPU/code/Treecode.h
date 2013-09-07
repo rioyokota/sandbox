@@ -1,7 +1,6 @@
 #pragma once
 
-#include "anyoption.h"
-#include "read_tipsy.h"
+#include <assert.h>
 #include "cudamem.h"
 #include "plummer.h"
 #include "Particle4.h"

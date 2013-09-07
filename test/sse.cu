@@ -24,15 +24,16 @@ extern void P2Pasm(float4 *target, float4 *source, int ni, int nj, float eps2);
 __global__ void P2Pdevice(float4 *target, float4 *source) {
   int i = blockIdx.x * THREADS + threadIdx.x;
   float4 t = {0,0,0,0};
+  float4 si = source[i];
   __shared__ float4 s[THREADS];
   for ( int jb=0; jb<N/THREADS; jb++ ) {
     __syncthreads();
     s[threadIdx.x] = source[jb*THREADS+threadIdx.x];
     __syncthreads();
     for( int j=0; j<THREADS; j++ ) {
-      float dx = s[j].x - source[i].x;
-      float dy = s[j].y - source[i].y;
-      float dz = s[j].z - source[i].z;
+      float dx = s[j].x - si.x;
+      float dy = s[j].y - si.y;
+      float dz = s[j].z - si.z;
       float R2 = dx * dx + dy * dy + dz * dz + EPS2;
       float invR = rsqrtf(R2);
       t.w += s[j].w * invR;

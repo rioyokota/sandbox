@@ -2,44 +2,11 @@
 
 int main(int argc, char * argv[])
 {
-  std::string fileName = "";
-  int seed = 19810614;
-  int nPtcl = -1;
-  {
-    AnyOption opt;
-#define ADDUSAGE(line) {{std::stringstream oss; oss << line; opt.addUsage(oss.str());}}
-		ADDUSAGE(" ");
-		ADDUSAGE("Usage");
-		ADDUSAGE(" ");
-		ADDUSAGE(" -h  --help             Prints this help ");
-		ADDUSAGE(" -i  --infile #         Input snapshot filename [tipsy format]");
-    ADDUSAGE(" -n  --plummer #        Generate plummer model with a given number of particles");
-    ADDUSAGE(" -s  --seed    #        Random seed [" << seed << "]"); 
-		ADDUSAGE(" ");
-#undef  ADDUSAGE
-
-    opt.setFlag( "help" ,   'h');
-    opt.setOption( "infile",  'i');
-		opt.setOption( "plummer", 'n' );
-		opt.setOption( "seed", 's' );
-		
-    opt.processCommandArgs( argc, argv );
-
-		if( ! opt.hasOptions() || opt.getFlag("help") || opt.getFlag('h')) 
-    {
-			opt.printUsage();
-			exit(0);
-		}
-		
-		char *optarg = NULL;
-    if ((optarg = opt.getValue("plummer"))) nPtcl = atoi(optarg);
-    if ((optarg = opt.getValue("seed")))    seed = atoi(optarg);
-    if ((optarg = opt.getValue("infile")))  fileName = std::string(optarg);
-  }
-
   typedef float real_t;
   typedef Treecode<real_t> Tree;
 
+  const int nPtcl = 16777216;
+  const int seed = 19810614;
   const real_t eps   = 0.05;
   const real_t theta = 0.75;
   Tree tree(eps, theta);
