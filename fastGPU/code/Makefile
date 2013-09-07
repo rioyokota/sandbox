@@ -1,71 +1,24 @@
-CXX = g++
-CC  = gcc
-LD  = g++
-F90  = ifort
-
 .SUFFIXES: .o .cpp .ptx .cu
 
-CUDA_TK  = /usr/local/cuda
+CXX = g++ -O3 -g -Wall -Wstrict-aliasing=2 
+NVCC = nvcc -g -O3 -Xptxas=-v -arch=sm_35
+LFLAGS = -lcudadevrt 
 
-OFLAGS = -O3 -g -Wall  
-CXXFLAGS =   $(OFLAGS)  -Wstrict-aliasing=2 
+SRC = treecode.cu buildTree.cu computeMultipoles.cu makeGroups.cu computeForces.cu moveParticles.cu computeEnergies.cu
 
+OBJ = $(SRC:%.cu=%.o)
 
-NVCC = $(CUDA_TK)/bin/nvcc   -g -O3
-NVCCFLAGS  =  -Xptxas=-v  -arch=sm_35 
-NVCCFLAGS += -I./thrust
-NVCCLDFLAGS = -lcudadevrt -arch=sm_35 
+all: $(OBJ)
+	$(NVCC) $^ $(LFLAGS)
+	./a.out -n 16777216 --plummer
 
-INCLUDEPATH = ./include
-CXXFLAGS  += -I$(INCLUDEPATH)
-NVCCFLAGS += -I$(INCLUDEPATH)
+%.o: %.cu
+	$(NVCC) -rdc=true -c $<
 
-CUDASRCPATH = ./
-CUDASRC = treecode.cu \
-					buildTree.cu \
-					computeMultipoles.cu \
-					makeGroups.cu \
-					computeForces.cu \
-					moveParticles.cu \
-					computeEnergies.cu
-
-SRCPATH = ./
-SRC = anyoption.cpp
-
-
-OBJ = $(SRC:%.cpp=%.o)
-CUOBJ = $(CUDASRC:%.cu=%.o)
-
-PROG = treecode
-
-all:	  $(OBJ)  $(CUOBJ) $(PROG)
-	./treecode -n 16777216 --plummer
-kernels:  $(CUDAOBJ)
-
-$(PROG): $(OBJ) $(CUOBJ)
-	$(NVCC)  $^ -o $@  $(NVCCLDFLAGS)
-
-%.o: $(SRCPATH)/%.cpp
-	$(CXX) $(CXXFLAGS) -c $< -o $@
-
-%.o:  $(CUDASRCPATH)/%.cu
-	$(NVCC) $(NVCCFLAGS) -rdc=true -c $< -o $@
-
-computeForces.o: $(CUDASRCPATH)/computeForces.cu
-	$(NVCC) $(NVCCFLAGS) -c $< -o $@ -ftz=true -rdc=true
-
+computeForces.o: computeForces.cu
+	$(NVCC) -c $< -ftz=true -rdc=true
 
 clean:
-	/bin/rm -rf *.o  $(PROG) *.a *.cu_o 
-
-clean_all:
-	/bin/rm -rf *.o  $(PROG) *.a *.cu_o  *~
+	/bin/rm -rf *.o *.out *.a *.cu_o 
 
 $(CUOBJ): Treecode.h Particle4.h cuda_primitives.h cudamem.h
-
-
-
-
-
-
-
