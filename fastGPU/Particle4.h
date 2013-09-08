@@ -1,10 +1,7 @@
 #pragma once
 
-
 #define WARP_SIZE2 5
 #define WARP_SIZE 32
-
-/**************************************************************/
 
 struct float6 {
   float xx;
@@ -35,36 +32,6 @@ template<> struct vec<3,double> { typedef double3 type;  __host__ __device__ sta
 template<> struct vec<2,float>  { typedef float2  type;  __host__ __device__ static float2 null() {return make_float2(0.0f, 0.0f);} };
 template<> struct vec<2,double> { typedef double2 type;  __host__ __device__ static double2 null() {return make_double2(0.0, 0.0);} };
 
-/**************************************************************/
-
-/*
-template<typename T>
-struct Position
-{
-  T x, y, z;
-  __host__ __device__ Position() {}
-  __host__ __device__ Position(const T _x) : x(_x), y(_x), z(_x) {}
-
-  __host__ __device__ Position(const T _x, const T _y, const T _z) : x(_x), y(_y), z(_z) {}
-  static __host__ __device__ Position min(const Position &lhs, const Position &rhs) 
-  {
-    return Position( 
-        fmin(lhs.x, rhs.x),
-        fmin(lhs.y, rhs.y),
-        fmin(lhs.z, rhs.z));
-  }
-  static __host__ __device__ Position max(const Position &lhs, const Position &rhs) 
-  {
-    return Position( 
-        fmax(lhs.x, rhs.x),
-        fmax(lhs.y, rhs.y),
-        fmax(lhs.z, rhs.z));
-  }
-};
-*/
-
-/**************************************************************/
-
 struct Box
 {
   float3 centre;
@@ -72,78 +39,6 @@ struct Box
   __device__ Box() {}
   __device__ Box(const float3 &c, float hs) : centre(c), hsize(hs) {}
 };
-
-/**************************************************************/
-
-template<typename T> 
-struct Particle4
-{
-
-  private:
-    typedef typename vec<4,T>::type vec4;
-    vec4 packed_data;
-  public:
-
-  __host__ __device__ Particle4() {}
-  __host__ __device__ Particle4(const vec4 data) : packed_data(data) {}
-  __host__ __device__ T x   ()  const { return packed_data.x;}
-  __host__ __device__ T y   ()  const { return packed_data.y;}
-  __host__ __device__ T z   ()  const { return packed_data.z;}
-  __host__ __device__ T mass()  const { return packed_data.w;}
-  __forceinline__ __device__ int get_idx() const;
-  __forceinline__ __device__ int set_idx(const int);
-  __forceinline__ __device__ int get_oct() const;
-  __forceinline__ __device__ int set_oct(const int);
-
-  __host__ __device__ T& x    () { return packed_data.x;}
-  __host__ __device__ T& y    () { return packed_data.y;}
-  __host__ __device__ T& z    () { return packed_data.z;}
-  __host__ __device__ T& mass () { return packed_data.w;}
-};
-
-template<> __device__ __forceinline__ int Particle4<float>::get_idx() const
-{
-  return (__float_as_int(packed_data.w) >> 4) & 0xF0000000;
-}
-template<> __device__ __forceinline__ int Particle4<float>::get_oct() const
-{
-  return __float_as_int(packed_data.w) & 0xF;
-}
-template<> __device__ __forceinline__ int Particle4<float>::set_idx(const int idx)
-{
-  const int oct = get_oct();
-  packed_data.w = __int_as_float((idx << 4) | oct);
-  return idx;
-}
-template<> __device__ __forceinline__ int Particle4<float>::set_oct(const int oct)
-{
-  const int idx = get_idx();
-  packed_data.w = __int_as_float((idx << 4) | oct);
-  return oct;
-}
-
-template<> __device__ __forceinline__ int Particle4<double>::get_idx() const
-{
-  return ((unsigned long long)(packed_data.w) >> 4) & 0xF0000000;
-}
-template<> __device__ __forceinline__ int Particle4<double>::get_oct() const
-{
-  return (unsigned long long)(packed_data.w) & 0xF;
-}
-template<> __device__ __forceinline__ int Particle4<double>::set_idx(const int idx)
-{
-  const int oct = get_oct();
-  packed_data.w = (unsigned long long)((idx << 4) | oct);
-  return idx;
-}
-template<> __device__ __forceinline__ int Particle4<double>::set_oct(const int oct)
-{
-  const int idx = get_idx();
-  packed_data.w = (unsigned long long)((idx << 4) | oct);
-  return oct;
-}
-
-/**************************************************************/
 
 static __host__ __device__ __forceinline__ int Octant(const float3 &lhs, const float3 &rhs)
 {
@@ -163,5 +58,3 @@ static __device__ __forceinline__ Box ChildBox(const Box &box, const int oct)
         ), 
       s);
 }
-
-/**************************************************************/

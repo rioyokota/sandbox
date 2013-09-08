@@ -21,21 +21,21 @@ int main(int argc, char * argv[])
   const Plummer data(nPtcl, seed);
   tree.alloc(nPtcl);
   for (int i = 0; i < nPtcl; i++) {
-    typename Tree::Particle ptclPos, ptclVel, ptclAcc;
-    ptclPos.x()    = data.pos[i].x;
-    ptclPos.y()    = data.pos[i].y;
-    ptclPos.z()    = data.pos[i].z;
-    ptclPos.mass() = data.mass[i];
+    float4 ptclPos, ptclVel, ptclAcc;
+    ptclPos.x    = data.pos[i].x;
+    ptclPos.y    = data.pos[i].y;
+    ptclPos.z    = data.pos[i].z;
+    ptclPos.w    = data.mass[i];
 
-    ptclVel.x()    = data.vel[i].x;
-    ptclVel.y()    = data.vel[i].y;
-    ptclVel.z()    = data.vel[i].z;
-    ptclVel.mass() = data.mass[i];
+    ptclVel.x    = data.vel[i].x;
+    ptclVel.y    = data.vel[i].y;
+    ptclVel.z    = data.vel[i].z;
+    ptclVel.w    = data.mass[i];
 
-    ptclAcc.x()    = 0;
-    ptclAcc.y()    = 0;
-    ptclAcc.z()    = 0;
-    ptclAcc.mass() = 0;
+    ptclAcc.x    = 0;
+    ptclAcc.y    = 0;
+    ptclAcc.z    = 0;
+    ptclAcc.w    = 0;
 
     tree.h_ptclPos[i] = ptclPos;
     tree.h_ptclVel[i] = ptclVel;
@@ -83,10 +83,10 @@ int main(int argc, char * argv[])
   double diffp = 0, diffa = 0;
   double normp = 0, norma = 0;
   for (int i=0; i<numTarget; i++) {
-    diffp += (tree.h_ptclAcc[i].mass() - tree.h_ptclAcc2[i].w) * (tree.h_ptclAcc[i].mass() - tree.h_ptclAcc2[i].w);
-    diffa += (tree.h_ptclAcc[i].x() - tree.h_ptclAcc2[i].x) * (tree.h_ptclAcc[i].x() - tree.h_ptclAcc2[i].x)
-      + (tree.h_ptclAcc[i].y() - tree.h_ptclAcc2[i].y) * (tree.h_ptclAcc[i].y() - tree.h_ptclAcc2[i].y)
-      + (tree.h_ptclAcc[i].z() - tree.h_ptclAcc2[i].z) * (tree.h_ptclAcc[i].z() - tree.h_ptclAcc2[i].z);
+    diffp += (tree.h_ptclAcc[i].w - tree.h_ptclAcc2[i].w) * (tree.h_ptclAcc[i].w - tree.h_ptclAcc2[i].w);
+    diffa += (tree.h_ptclAcc[i].x - tree.h_ptclAcc2[i].x) * (tree.h_ptclAcc[i].x - tree.h_ptclAcc2[i].x)
+      + (tree.h_ptclAcc[i].y - tree.h_ptclAcc2[i].y) * (tree.h_ptclAcc[i].y - tree.h_ptclAcc2[i].y)
+      + (tree.h_ptclAcc[i].z - tree.h_ptclAcc2[i].z) * (tree.h_ptclAcc[i].z - tree.h_ptclAcc2[i].z);
     normp += tree.h_ptclAcc2[i].w * tree.h_ptclAcc2[i].w;
     norma += tree.h_ptclAcc2[i].x * tree.h_ptclAcc2[i].x
       + tree.h_ptclAcc2[i].y * tree.h_ptclAcc2[i].y

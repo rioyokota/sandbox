@@ -442,8 +442,8 @@ namespace computeForces
         const float eps2,
         const int start_level,
         const int2 *level_begIdx,
-        const Particle4<float> *ptclPos,
-        Particle4<float> *acc,
+        const float4 *ptclPos,
+        float4 *acc,
         int    *gmem_pool)
     {
       const int NTHREAD = 1<<NTHREAD2;
@@ -480,8 +480,8 @@ namespace computeForces
 #pragma unroll
         for (int i = 0; i < NI; i++)
         {
-          const Particle4<float> ptcl = ptclPos[min(pbeg + i*WARP_SIZE+laneIdx, pbeg+np-1)];
-          iPos [i] = make_float3(ptcl.x(), ptcl.y(), ptcl.z());
+          const float4 ptcl = ptclPos[min(pbeg + i*WARP_SIZE+laneIdx, pbeg+np-1)];
+          iPos [i] = make_float3(ptcl.x, ptcl.y, ptcl.z);
         }
 
         float3 rmin = {iPos[0].x, iPos[0].y, iPos[0].z};
@@ -617,7 +617,7 @@ float4 Treecode::computeForces(const bool INTCOUNT) {
   d_gmem_pool.alloc(CELL_LIST_MEM_PER_WARP*nblock*(NTHREAD/WARP_SIZE));
 
 #if 0
-  CUDA_SAFE_CALL(cudaMemset(d_ptclAcc, 0, sizeof(Particle)*nPtcl));
+  CUDA_SAFE_CALL(cudaMemset(d_ptclAcc, 0, sizeof(float4)*nPtcl));
 #endif
   const int starting_level = 1;
   int value = 0;

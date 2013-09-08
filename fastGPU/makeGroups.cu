@@ -110,14 +110,14 @@ namespace makeGroups
     void computeKeys(
         const int n,
         const Box *d_domain,
-        const Particle4<float> *ptclPos,
+        const float4 *ptclPos,
         unsigned long long *keys,
         int *values)
     {
       const int idx = blockIdx.x*blockDim.x + threadIdx.x;
       if (idx >= n) return;
 
-      const Particle4<float> ptcl = ptclPos[idx];
+      const float4 ptcl = ptclPos[idx];
 
       const Box domain = d_domain[0];
       const float inv_domain_size = 0.5f / domain.hsize;
@@ -125,9 +125,9 @@ namespace makeGroups
                            domain.centre.y - domain.hsize,
 			   domain.centre.z - domain.hsize};
 
-      const int xc = static_cast<int>((ptcl.x() - bmin.x) * inv_domain_size * (1<<NBINS));
-      const int yc = static_cast<int>((ptcl.y() - bmin.y) * inv_domain_size * (1<<NBINS));
-      const int zc = static_cast<int>((ptcl.z() - bmin.z) * inv_domain_size * (1<<NBINS));
+      const int xc = static_cast<int>((ptcl.x - bmin.x) * inv_domain_size * (1<<NBINS));
+      const int yc = static_cast<int>((ptcl.y - bmin.y) * inv_domain_size * (1<<NBINS));
+      const int zc = static_cast<int>((ptcl.z - bmin.z) * inv_domain_size * (1<<NBINS));
 
       keys  [idx] = get_key<NBINS>(make_int3(xc,yc,zc));
       values[idx] = idx;
@@ -275,7 +275,7 @@ void Treecode::makeGroups(int levelSplit, const int nCrit)
 #endif
 
 #if 1
-  makeGroups::shuffle<Particle><<<nblock,nthread>>>(nPtcl, d_value, d_ptclPos, d_ptclPos_tmp);
+  makeGroups::shuffle<float4><<<nblock,nthread>>>(nPtcl, d_value, d_ptclPos, d_ptclPos_tmp);
 
   cuda_mem<int> d_ptclBegIdx, d_ptclEndIdx;
   cuda_mem<unsigned long long> d_keys_inv;

@@ -82,7 +82,7 @@ namespace treeBuild
         const int n,
         float3 *minmax_ptr,
         Box      *box_ptr,
-        const Particle4<float> *ptclPos)
+        const float4 *ptclPos)
     {
       const int NTHREAD = 1<<NTHREAD2;
       const int NBLOCK  = NTHREAD;
@@ -94,8 +94,7 @@ namespace treeBuild
       for (int i = nbeg; i < n; i += NBLOCK*NTHREAD)
         if (i < n)
         {
-          const Particle4<float> p = ptclPos[i];
-          const float3 pos = {p.x(), p.y(), p.z()};
+          const float4 pos = ptclPos[i];
           bmin.x = fmin(bmin.x, pos.x);
           bmin.y = fmin(bmin.y, pos.y);
           bmin.z = fmin(bmin.z, pos.z);
@@ -179,8 +178,8 @@ namespace treeBuild
         const int cellIndexBase,
         const int octantMask,
         int *octCounterBase,
-        Particle4<float> *ptcl,
-        Particle4<float> *buff,
+        float4 *ptcl,
+        float4 *buff,
         const int level = 0)
     {
       /* compute laneIdx & warpIdx for each of the threads:
@@ -230,13 +229,14 @@ namespace treeBuild
       const int nBeg_block = nBeg + blockIdx.x * blockDim.x;
       for (int i = nBeg_block; i < nEnd; i += gridDim.x * blockDim.x)
       {
-        Particle4<float> p4 = ptcl[min(i+threadIdx.x, nEnd-1)];
+        float4 p4 = ptcl[min(i+threadIdx.x, nEnd-1)];
 
-        int p4octant = p4.get_oct();
+        int p4octant = __float_as_int(p4.w) & 0xF;
         if (STOREIDX)
         {
-          p4.set_idx(i + threadIdx.x);
-          p4octant = Octant(box.centre, make_float3(p4.x(), p4.y(), p4.z()));
+          const int oct = __float_as_int(p4.w) & 0xF;
+          p4.w = __int_as_float(((i + threadIdx.x) << 4) | oct);
+          p4octant = Octant(box.centre, make_float3(p4.x, p4.y, p4.z));
         }
 
         p4octant = i+threadIdx.x < nEnd ? p4octant : 0xF; 
@@ -244,8 +244,9 @@ namespace treeBuild
         /* compute suboctant of the octant into which particle will fall */
         if (p4octant < 8)
         {
-          const int p4subOctant = Octant(shChildBox[p4octant].centre, make_float3(p4.x(), p4.y(), p4.z()));
-          p4.set_oct(p4subOctant);
+          const int p4subOctant = Octant(shChildBox[p4octant].centre, make_float3(p4.x, p4.y, p4.z));
+          const int idx = (__float_as_int(p4.w) >> 4) & 0xF0000000;
+          p4.w = __int_as_float((idx << 4) | p4subOctant);
         }
 
         /* compute number of particles in each of the octants that will be processed by thead block */
@@ -295,7 +296,7 @@ namespace treeBuild
           const int sum = warpBinReduce(p4octant == octant);
           if (sum > 0)
           {
-            const int subOctant = p4octant == octant ? p4.get_oct() : -1;
+            const int subOctant = p4octant == octant ? (__float_as_int(p4.w) & 0xF) : -1;
 #pragma unroll
             for (int k = 0; k < 8; k += 4)
             {
@@ -532,9 +533,10 @@ namespace treeBuild
           for (int i = nBeg1+laneIdx; i < nEnd1; i += WARP_SIZE)
             if (i < nEnd1)
             {
-              Particle4<float> pos = buff[i];
-              Particle4<float> vel = ((Particle4<float>*)ptclVel_tmp)[pos.get_idx()];
-              pos.mass() = vel.mass();
+              float4 pos = buff[i];
+              int index = (__float_as_int(pos.w) >> 4) & 0xF0000000;
+              float4 vel = ((float4*)ptclVel_tmp)[index];
+              pos.w = vel.w;
               ptcl[i] = pos;
               buff[i] = vel;
             }
@@ -544,9 +546,10 @@ namespace treeBuild
           for (int i = nBeg1+laneIdx; i < nEnd1; i += WARP_SIZE)
             if (i < nEnd1)
             {
-              Particle4<float> pos = buff[i];
-              Particle4<float> vel = ((Particle4<float>*)ptclVel_tmp)[pos.get_idx()];
-              pos.mass() = vel.mass();
+              float4 pos = buff[i];
+              int index = (__float_as_int(pos.w) >> 4) & 0xF0000000;
+              float4 vel = ((float4*)ptclVel_tmp)[index];
+              pos.w = vel.w;
               buff[i] = pos;
               ptcl[i] = vel;
             }
@@ -559,15 +562,15 @@ namespace treeBuild
         const int n,
         int *octCounter,
         const Box box,
-        const Particle4<float> *ptclPos)
+        const float4 *ptclPos)
     {
       int np_octant[8] = {0};
       const int beg = blockIdx.x * blockDim.x + threadIdx.x;
       for (int i = beg; i < n; i += gridDim.x * blockDim.x)
         if (i < n)
         {
-          const Particle4<float> p = ptclPos[i];
-          const float3 pos = make_float3(p.x(), p.y(), p.z());
+          const float4 p = ptclPos[i];
+          const float3 pos = make_float3(p.x, p.y, p.z);
           const int octant = Octant(box.centre, pos);
           np_octant[0] += (octant == 0);
           np_octant[1] += (octant == 1);
@@ -598,9 +601,9 @@ namespace treeBuild
         const Box *domain,
         CellData *d_cellDataList,
         int *stack_memory_pool,
-        Particle4<float> *ptcl,
-        Particle4<float> *buff,
-        Particle4<float> *d_ptclVel,
+        float4 *ptcl,
+        float4 *buff,
+        float4 *d_ptclVel,
         int *ncells_return = NULL)
     {
       cellDataList = d_cellDataList;

@@ -2,8 +2,8 @@
 
 #include <assert.h>
 #include "cudamem.h"
-#include "plummer.h"
 #include "Particle4.h"
+#include "plummer.h"
 #include "rtc.h"
 #include <string>
 #include <sstream>
@@ -87,8 +87,6 @@ struct CellData
 
 struct Treecode
 {
-  typedef Particle4<float> Particle;
-
   float theta, eps2;
   private:
   int nPtcl, nLevels, nCells, nLeaves, nNodes, nGroups, nCrit, nLeaf;
@@ -100,10 +98,10 @@ struct Treecode
     int get_nCells() const { return nCells; }
     int get_nLevels() const { return nLevels; }
 
-  host_mem<Particle> h_ptclPos, h_ptclVel, h_ptclAcc;
+  host_mem<float4> h_ptclPos, h_ptclVel, h_ptclAcc;
   host_mem<float4> h_ptclAcc2;
-  std::vector<Particle> ptcl0;
-  cuda_mem<Particle> d_ptclPos, d_ptclVel, d_ptclPos_tmp, d_ptclAcc;
+  std::vector<float4> ptcl0;
+  cuda_mem<float4> d_ptclPos, d_ptclVel, d_ptclPos_tmp, d_ptclAcc;
   cuda_mem<float4> d_ptclAcc2;
   cuda_mem<Box> d_domain;
   cuda_mem<float3> d_minmax;
