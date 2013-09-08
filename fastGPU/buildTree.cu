@@ -77,28 +77,28 @@ namespace treeBuild
       return sum;
     }
 
-  template<const int NTHREAD2, typename T>
+  template<const int NTHREAD2>
     static __global__ void computeBoundingBox(
         const int n,
-        Position<T> *minmax_ptr,
-        Box<T>      *box_ptr,
-        const Particle4<T> *ptclPos)
+        Position<float> *minmax_ptr,
+        Box<float>      *box_ptr,
+        const Particle4<float> *ptclPos)
     {
       const int NTHREAD = 1<<NTHREAD2;
       const int NBLOCK  = NTHREAD;
 
-      Position<T> bmin(T(+1e10)), bmax(T(-1e10));
+      Position<float> bmin(+1e10f), bmax(-1e10f);
 
       const int nbeg = blockIdx.x * NTHREAD + threadIdx.x;
       for (int i = nbeg; i < n; i += NBLOCK*NTHREAD)
         if (i < n)
         {
-          const Particle4<T> p = ptclPos[i];
-          const Position<T> pos(p.x(), p.y(), p.z());
-          bmin = Position<T>::min(bmin, pos);
-          bmax = Position<T>::max(bmax, pos);
-        }   
-
+          const Particle4<float> p = ptclPos[i];
+          const Position<float> pos(p.x(), p.y(), p.z());
+          bmin = Position<float>::min(bmin, pos);
+          bmax = Position<float>::max(bmax, pos);
+        }  
+ 
       float2 res;
       res = minmax_block<NTHREAD2>(make_float2(bmin.x, bmax.x)); bmin.x = res.x; bmax.x = res.y;
       res = minmax_block<NTHREAD2>(make_float2(bmin.y, bmax.y)); bmin.y = res.x; bmax.y = res.y;
@@ -141,23 +141,23 @@ namespace treeBuild
           printf("bmin= %g %g %g \n", bmin.x, bmin.y, bmin.z);
           printf("bmax= %g %g %g \n", bmax.x, bmax.y, bmax.z);
 #endif
-          const Position<T> cvec((bmax.x+bmin.x)*T(0.5), (bmax.y+bmin.y)*T(0.5), (bmax.z+bmin.z)*T(0.5));
-          const Position<T> hvec((bmax.x-bmin.x)*T(0.5), (bmax.y-bmin.y)*T(0.5), (bmax.z-bmin.z)*T(0.5));
-          const T h = fmax(hvec.z, fmax(hvec.y, hvec.x));
-          T hsize = T(1.0);
-          while (hsize > h) hsize *= T(0.5);
-          while (hsize < h) hsize *= T(2.0);
+          const Position<float> cvec((bmax.x+bmin.x)*0.5f, (bmax.y+bmin.y)*0.5f, (bmax.z+bmin.z)*0.5f);
+          const Position<float> hvec((bmax.x-bmin.x)*0.5f, (bmax.y-bmin.y)*0.5f, (bmax.z-bmin.z)*0.5f);
+          const float h = fmax(hvec.z, fmax(hvec.y, hvec.x));
+          float hsize = 1.0f;
+          while (hsize > h) hsize *= 0.5f;
+          while (hsize < h) hsize *= 2.0f;
 
           const int NMAXLEVEL = 20;
 
-          const T hquant = hsize / T(1<<NMAXLEVEL);
+          const float hquant = hsize / float(1<<NMAXLEVEL);
           const long long nx = (long long)(cvec.x/hquant);
           const long long ny = (long long)(cvec.y/hquant);
           const long long nz = (long long)(cvec.z/hquant);
 
-          const Position<T> centre(hquant * T(nx), hquant * T(ny), hquant * T(nz));
+          const Position<float> centre(hquant * float(nx), hquant * float(ny), hquant * float(nz));
 
-          *box_ptr = Box<T>(centre, hsize);
+          *box_ptr = Box<float>(centre, hsize);
           retirementCount = 0;
         }
       }
@@ -165,20 +165,19 @@ namespace treeBuild
 
   /*******************/
 
-  template<int NLEAF, typename T, bool STOREIDX>
+  template<int NLEAF, bool STOREIDX>
     static __global__ void 
     __launch_bounds__( 256, 8)
     buildOctant(
-        Box<T> box,
+        Box<float> box,
         const int cellParentIndex,
         const int cellIndexBase,
         const int octantMask,
         int *octCounterBase,
-        Particle4<T> *ptcl,
-        Particle4<T> *buff,
+        Particle4<float> *ptcl,
+        Particle4<float> *buff,
         const int level = 0)
     {
-      typedef typename vec<4,T>::type T4;
       /* compute laneIdx & warpIdx for each of the threads:
        *   the thread block contains only 8 warps
        *   a warp is responsible for a single octant of the cell 
@@ -209,7 +208,7 @@ namespace treeBuild
       __shared__ int nShChildrenFine[NWARPS][9][8];
       __shared__ int nShChildren[8][8];
 
-      Box<T> *shChildBox = (Box<T>*)&nShChildren[0][0];
+      Box<float> *shChildBox = (Box<float>*)&nShChildren[0][0];
 
       int *shdata = (int*)&nShChildrenFine[0][0][0];
 #pragma unroll 
@@ -226,13 +225,13 @@ namespace treeBuild
       const int nBeg_block = nBeg + blockIdx.x * blockDim.x;
       for (int i = nBeg_block; i < nEnd; i += gridDim.x * blockDim.x)
       {
-        Particle4<T> p4 = ptcl[min(i+threadIdx.x, nEnd-1)];
+        Particle4<float> p4 = ptcl[min(i+threadIdx.x, nEnd-1)];
 
         int p4octant = p4.get_oct();
         if (STOREIDX)
         {
           p4.set_idx(i + threadIdx.x);
-          p4octant = Octant(box.centre, Position<T>(p4.x(), p4.y(), p4.z()));
+          p4octant = Octant(box.centre, Position<float>(p4.x(), p4.y(), p4.z()));
         }
 
         p4octant = i+threadIdx.x < nEnd ? p4octant : 0xF; 
@@ -240,7 +239,7 @@ namespace treeBuild
         /* compute suboctant of the octant into which particle will fall */
         if (p4octant < 8)
         {
-          const int p4subOctant = Octant(shChildBox[p4octant].centre, Position<T>(p4.x(), p4.y(), p4.z()));
+          const int p4subOctant = Octant(shChildBox[p4octant].centre, Position<float>(p4.x(), p4.y(), p4.z()));
           p4.set_oct(p4subOctant);
         }
 
@@ -491,13 +490,13 @@ namespace treeBuild
           if (nCellmax <= block.x)
           {
             grid.x = 1;
-            buildOctantSingle<NLEAF,T><<<grid,block>>>
+            buildOctantSingle<NLEAF><<<grid,block>>>
               (box, cellIndexBase+blockIdx.y, cellFirstChildIndex,
                octant_mask, octCounterNbase, buff, ptcl, level+1);
           }
           else
 #endif
-            buildOctant<NLEAF,T,false><<<grid,block>>>
+            buildOctant<NLEAF,false><<<grid,block>>>
               (box, cellIndexBase+blockIdx.y, cellFirstChildIndex,
                octant_mask, octCounterNbase, buff, ptcl, level+1);
           const cudaError_t err = cudaGetLastError();
@@ -528,8 +527,8 @@ namespace treeBuild
           for (int i = nBeg1+laneIdx; i < nEnd1; i += WARP_SIZE)
             if (i < nEnd1)
             {
-              Particle4<T> pos = buff[i];
-              Particle4<T> vel = ((Particle4<T>*)ptclVel_tmp)[pos.get_idx()];
+              Particle4<float> pos = buff[i];
+              Particle4<float> vel = ((Particle4<float>*)ptclVel_tmp)[pos.get_idx()];
               pos.mass() = vel.mass();
               ptcl[i] = pos;
               buff[i] = vel;
@@ -540,8 +539,8 @@ namespace treeBuild
           for (int i = nBeg1+laneIdx; i < nEnd1; i += WARP_SIZE)
             if (i < nEnd1)
             {
-              Particle4<T> pos = buff[i];
-              Particle4<T> vel = ((Particle4<T>*)ptclVel_tmp)[pos.get_idx()];
+              Particle4<float> pos = buff[i];
+              Particle4<float> vel = ((Particle4<float>*)ptclVel_tmp)[pos.get_idx()];
               pos.mass() = vel.mass();
               buff[i] = pos;
               ptcl[i] = vel;
@@ -554,16 +553,16 @@ namespace treeBuild
     static __global__ void countAtRootNode(
         const int n,
         int *octCounter,
-        const Box<T> box,
-        const Particle4<T> *ptclPos)
+        const Box<float> box,
+        const Particle4<float> *ptclPos)
     {
       int np_octant[8] = {0};
       const int beg = blockIdx.x * blockDim.x + threadIdx.x;
       for (int i = beg; i < n; i += gridDim.x * blockDim.x)
         if (i < n)
         {
-          const Particle4<T> p = ptclPos[i];
-          const Position<T> pos(p.x(), p.y(), p.z());
+          const Particle4<float> p = ptclPos[i];
+          const Position<float> pos(p.x(), p.y(), p.z());
           const int octant = Octant(box.centre, pos);
           np_octant[0] += (octant == 0);
           np_octant[1] += (octant == 1);
@@ -588,15 +587,15 @@ namespace treeBuild
       }
     }
 
-  template<int NLEAF, typename T>
+  template<int NLEAF>
     static __global__ void buildOctree(
         const int n,
-        const Box<T> *domain,
+        const Box<float> *domain,
         CellData *d_cellDataList,
         int *stack_memory_pool,
-        Particle4<T> *ptcl,
-        Particle4<T> *buff,
-        Particle4<T> *d_ptclVel,
+        Particle4<float> *ptcl,
+        Particle4<float> *buff,
+        Particle4<float> *d_ptclVel,
         int *ncells_return = NULL)
     {
       cellDataList = d_cellDataList;
@@ -617,7 +616,7 @@ namespace treeBuild
       int *octCounter = new int[8+8];
       for (int k = 0; k < 16; k++)
         octCounter[k] = 0;
-      countAtRootNode<T><<<256, 256>>>(n, octCounter, *domain, ptcl);
+      countAtRootNode<float><<<256, 256>>>(n, octCounter, *domain, ptcl);
       assert(cudaGetLastError() == cudaSuccess);
       cudaDeviceSynchronize();
 
@@ -666,7 +665,7 @@ namespace treeBuild
       dim3 grid, block;
       computeGridAndBlockSize(grid, block, n);
 #if 1
-      buildOctant<NLEAF,T,true><<<grid, block>>>
+      buildOctant<NLEAF,true><<<grid, block>>>
         (*domain, 0, 0, 0, octCounterN, ptcl, buff);
       assert(cudaDeviceSynchronize() == cudaSuccess);
 #endif
@@ -802,7 +801,7 @@ namespace treeBuild
 }
 
 
-  template<typename real_t>
+template<typename real_t>
 void Treecode<real_t>::buildTree(const int nLeaf)
 {
   this->nLeaf = nLeaf;
@@ -817,7 +816,7 @@ void Treecode<real_t>::buildTree(const int nLeaf)
     assert(2*NBLOCK <= 2048);  /* see Treecode constructor for d_minmax allocation */
     cudaDeviceSynchronize();
     const double t0 = rtc();
-    treeBuild::computeBoundingBox<NTHREAD2,real_t><<<NBLOCK,NTHREAD,NTHREAD*sizeof(float2)>>>
+    treeBuild::computeBoundingBox<NTHREAD2><<<NBLOCK,NTHREAD,NTHREAD*sizeof(float2)>>>
       (nPtcl, d_minmax, d_domain, d_ptclPos);
     kernelSuccess("cudaDomainSize");
     const double dt = rtc() - t0;
@@ -831,20 +830,20 @@ void Treecode<real_t>::buildTree(const int nLeaf)
 
   cudaDeviceSetLimit(cudaLimitDevRuntimePendingLaunchCount,16384);
 
-  CUDA_SAFE_CALL(cudaFuncSetCacheConfig(&treeBuild::buildOctant<16,real_t,true>,  cudaFuncCachePreferShared));
-  CUDA_SAFE_CALL(cudaFuncSetCacheConfig(&treeBuild::buildOctant<16,real_t,false>, cudaFuncCachePreferShared));
+  CUDA_SAFE_CALL(cudaFuncSetCacheConfig(&treeBuild::buildOctant<16,true>,  cudaFuncCachePreferShared));
+  CUDA_SAFE_CALL(cudaFuncSetCacheConfig(&treeBuild::buildOctant<16,false>, cudaFuncCachePreferShared));
 
-  CUDA_SAFE_CALL(cudaFuncSetCacheConfig(&treeBuild::buildOctant<24,real_t,true>,  cudaFuncCachePreferShared));
-  CUDA_SAFE_CALL(cudaFuncSetCacheConfig(&treeBuild::buildOctant<24,real_t,false>, cudaFuncCachePreferShared));
+  CUDA_SAFE_CALL(cudaFuncSetCacheConfig(&treeBuild::buildOctant<24,true>,  cudaFuncCachePreferShared));
+  CUDA_SAFE_CALL(cudaFuncSetCacheConfig(&treeBuild::buildOctant<24,false>, cudaFuncCachePreferShared));
 
-  CUDA_SAFE_CALL(cudaFuncSetCacheConfig(&treeBuild::buildOctant<32,real_t,true>,  cudaFuncCachePreferShared));
-  CUDA_SAFE_CALL(cudaFuncSetCacheConfig(&treeBuild::buildOctant<32,real_t,false>, cudaFuncCachePreferShared));
+  CUDA_SAFE_CALL(cudaFuncSetCacheConfig(&treeBuild::buildOctant<32,true>,  cudaFuncCachePreferShared));
+  CUDA_SAFE_CALL(cudaFuncSetCacheConfig(&treeBuild::buildOctant<32,false>, cudaFuncCachePreferShared));
 
-  CUDA_SAFE_CALL(cudaFuncSetCacheConfig(&treeBuild::buildOctant<48,real_t,true>,  cudaFuncCachePreferShared));
-  CUDA_SAFE_CALL(cudaFuncSetCacheConfig(&treeBuild::buildOctant<48,real_t,false>, cudaFuncCachePreferShared));
+  CUDA_SAFE_CALL(cudaFuncSetCacheConfig(&treeBuild::buildOctant<48,true>,  cudaFuncCachePreferShared));
+  CUDA_SAFE_CALL(cudaFuncSetCacheConfig(&treeBuild::buildOctant<48,false>, cudaFuncCachePreferShared));
 
-  CUDA_SAFE_CALL(cudaFuncSetCacheConfig(&treeBuild::buildOctant<64,real_t,true>,  cudaFuncCachePreferShared));
-  CUDA_SAFE_CALL(cudaFuncSetCacheConfig(&treeBuild::buildOctant<64,real_t,false>, cudaFuncCachePreferShared));
+  CUDA_SAFE_CALL(cudaFuncSetCacheConfig(&treeBuild::buildOctant<64,true>,  cudaFuncCachePreferShared));
+  CUDA_SAFE_CALL(cudaFuncSetCacheConfig(&treeBuild::buildOctant<64,false>, cudaFuncCachePreferShared));
 
   CUDA_SAFE_CALL(cudaDeviceSetSharedMemConfig(cudaSharedMemBankSizeEightByte));
 
@@ -855,23 +854,23 @@ void Treecode<real_t>::buildTree(const int nLeaf)
     switch(nLeaf)
     {
       case 16:
-        treeBuild::buildOctree<16,real_t><<<1,1>>>(
+        treeBuild::buildOctree<16><<<1,1>>>(
             nPtcl, d_domain, d_cellDataList, d_stack_memory_pool, d_ptclPos, d_ptclPos_tmp, d_ptclVel);
         break;
       case 24:
-        treeBuild::buildOctree<24,real_t><<<1,1>>>(
+        treeBuild::buildOctree<24><<<1,1>>>(
             nPtcl, d_domain, d_cellDataList, d_stack_memory_pool, d_ptclPos, d_ptclPos_tmp, d_ptclVel);
         break;
       case 32:
-        treeBuild::buildOctree<32,real_t><<<1,1>>>(
+        treeBuild::buildOctree<32><<<1,1>>>(
             nPtcl, d_domain, d_cellDataList, d_stack_memory_pool, d_ptclPos, d_ptclPos_tmp, d_ptclVel);
         break;
       case 48:
-        treeBuild::buildOctree<48,real_t><<<1,1>>>(
+        treeBuild::buildOctree<48><<<1,1>>>(
             nPtcl, d_domain, d_cellDataList, d_stack_memory_pool, d_ptclPos, d_ptclPos_tmp, d_ptclVel);
         break;
       case 64:
-        treeBuild::buildOctree<64,real_t><<<1,1>>>(
+        treeBuild::buildOctree<64><<<1,1>>>(
             nPtcl, d_domain, d_cellDataList, d_stack_memory_pool, d_ptclPos, d_ptclPos_tmp, d_ptclVel);
         break;
       default:
