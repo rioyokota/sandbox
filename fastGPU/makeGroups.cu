@@ -233,8 +233,7 @@ namespace makeGroups
 
 };
 
-  template<typename real_t>
-void Treecode<real_t>::makeGroups(int levelSplit, const int nCrit)
+void Treecode::makeGroups(int levelSplit, const int nCrit)
 {
   this->nCrit = nCrit;
   const int nthread = 256;
@@ -337,6 +336,4 @@ void Treecode<real_t>::makeGroups(int levelSplit, const int nCrit)
 #endif
 
 }
-
-#include "TreecodeInstances.h"
 

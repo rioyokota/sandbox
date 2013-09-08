@@ -2,13 +2,12 @@
 
 int main(int argc, char * argv[])
 {
-  typedef float real_t;
-  typedef Treecode<real_t> Tree;
+  typedef Treecode Tree;
 
   const int nPtcl = 16777216;
   const int seed = 19810614;
-  const real_t eps   = 0.05;
-  const real_t theta = 0.75;
+  const float eps   = 0.05;
+  const float theta = 0.75;
   const int ncrit = 64;
   const int nleaf = 64;
   Tree tree(eps, theta);

@@ -85,12 +85,11 @@ struct CellData
     }
 };
 
-template<typename real_t>
 struct Treecode
 {
-  typedef Particle4<real_t> Particle;
+  typedef Particle4<float> Particle;
 
-  real_t theta, eps2;
+  float theta, eps2;
   private:
   int nPtcl, nLevels, nCells, nLeaves, nNodes, nGroups, nCrit, nLeaf;
 
@@ -106,8 +105,8 @@ struct Treecode
   std::vector<Particle> ptcl0;
   cuda_mem<Particle> d_ptclPos, d_ptclVel, d_ptclPos_tmp, d_ptclAcc;
   cuda_mem<float4> d_ptclAcc2;
-  cuda_mem<Box<real_t> > d_domain;
-  cuda_mem<Position<real_t> > d_minmax;
+  cuda_mem<Box<float> > d_domain;
+  cuda_mem<Position<float> > d_minmax;
   cuda_mem<int2> d_level_begIdx;
 
   int node_max, cell_max, stack_size;
@@ -123,7 +122,7 @@ struct Treecode
   cuda_mem<float4> d_cellQuad0;
   cuda_mem<float2> d_cellQuad1;
 
-  Treecode(const real_t _eps = 0.01, const real_t _theta = 0.75, const int _ncrit = 2*WARP_SIZE)
+  Treecode(const float _eps = 0.01, const float _theta = 0.75, const int _ncrit = 2*WARP_SIZE)
   {
     eps2  = _eps*_eps;
     theta = _theta;

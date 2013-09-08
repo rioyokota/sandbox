@@ -801,8 +801,7 @@ namespace treeBuild
 }
 
 
-template<typename real_t>
-void Treecode<real_t>::buildTree(const int nLeaf)
+void Treecode::buildTree(const int nLeaf)
 {
   this->nLeaf = nLeaf;
   assert(nLeaf == 16 || nLeaf == 24 || nLeaf == 32 || nLeaf == 48 || nLeaf == 64);
@@ -1054,5 +1053,3 @@ void Treecode<real_t>::buildTree(const int nLeaf)
   }
 #endif
 }
-
-#include "TreecodeInstances.h"

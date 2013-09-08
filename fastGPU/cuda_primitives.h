@@ -1,26 +1,6 @@
 #pragma once
   
-
-
-template<typename real_t>
-static __device__ __forceinline__ real_t shfl_xor(const real_t x, const int lane, const int warpSize = WARP_SIZE);
-
-  template<>
-static __device__ __forceinline__ double shfl_xor<double>(const double x, const int lane, const int warpSize)
-{
-  return __hiloint2double(
-      __shfl_xor(__double2hiint(x), lane, warpSize),
-      __shfl_xor(__double2loint(x), lane, warpSize));
-}
-  template<>
-static __device__ __forceinline__ float shfl_xor<float>(const float x, const int lane, const int warpSize)
-{
-  return __shfl_xor(x, lane, warpSize);
-}
-
-/*********************/
-
-  template<typename Tex, typename T>
+template<typename Tex, typename T>
 static void bindTexture(Tex &tex, const T *ptr, const int size)
 {
   tex.addressMode[0] = cudaAddressModeWrap;
@@ -53,24 +33,23 @@ static __forceinline__ __device__ double atomicAdd_double(double *address, const
 
 /**************************/
 
-template<typename real_t>
-  static __device__ __forceinline__ 
-void addBoxSize(typename vec<3,real_t>::type &_rmin, typename vec<3,real_t>::type &_rmax, const Position<real_t> pos)
+static __device__ __forceinline__ 
+void addBoxSize(float3 &_rmin, float3 &_rmax, const Position<float> pos)
 {
-  typename vec<3,real_t>::type rmin = {pos.x, pos.y, pos.z};
-  typename vec<3,real_t>::type rmax = rmin;
+  float3 rmin = {pos.x, pos.y, pos.z};
+  float3 rmax = rmin;
 
 #pragma unroll
   for (int i = WARP_SIZE2-1; i >= 0; i--)
   {
-    rmin.x = min(rmin.x, shfl_xor(rmin.x, 1<<i, WARP_SIZE));
-    rmax.x = max(rmax.x, shfl_xor(rmax.x, 1<<i, WARP_SIZE));
+    rmin.x = min(rmin.x, __shfl_xor(rmin.x, 1<<i, WARP_SIZE));
+    rmax.x = max(rmax.x, __shfl_xor(rmax.x, 1<<i, WARP_SIZE));
 
-    rmin.y = min(rmin.y, shfl_xor(rmin.y, 1<<i, WARP_SIZE));
-    rmax.y = max(rmax.y, shfl_xor(rmax.y, 1<<i, WARP_SIZE));
+    rmin.y = min(rmin.y, __shfl_xor(rmin.y, 1<<i, WARP_SIZE));
+    rmax.y = max(rmax.y, __shfl_xor(rmax.y, 1<<i, WARP_SIZE));
 
-    rmin.z = min(rmin.z, shfl_xor(rmin.z, 1<<i, WARP_SIZE));
-    rmax.z = max(rmax.z, shfl_xor(rmax.z, 1<<i, WARP_SIZE));
+    rmin.z = min(rmin.z, __shfl_xor(rmin.z, 1<<i, WARP_SIZE));
+    rmax.z = max(rmax.z, __shfl_xor(rmax.z, 1<<i, WARP_SIZE));
   }
 
   _rmin.x = min(_rmin.x, rmin.x);

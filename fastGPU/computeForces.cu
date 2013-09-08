@@ -601,8 +601,7 @@ namespace computeForces
   }
 }
 
-template<typename real_t>
-float4 Treecode<real_t>::computeForces(const bool INTCOUNT) {
+float4 Treecode::computeForces(const bool INTCOUNT) {
   bindTexture(computeForces::texCellData,     (uint4* )d_cellDataList.ptr, nCells);
   bindTexture(computeForces::texSourceCenter,     d_sourceCenter.ptr, nCells);
   bindTexture(computeForces::texCellMonopole, d_cellMonopole.ptr, nCells);
@@ -705,13 +704,10 @@ float4 Treecode<real_t>::computeForces(const bool INTCOUNT) {
   return interactions;
 }
 
-  template<typename real_t>
-  void Treecode<real_t>::computeDirect(const int numTarget, const int numBlock)
+void Treecode::computeDirect(const int numTarget, const int numBlock)
 {
   bindTexture(computeForces::texPtcl,d_ptclPos_tmp.ptr,nPtcl);
   computeForces::direct<<<numBlock,numTarget>>>(nPtcl, eps2, d_ptclAcc2);
   unbindTexture(computeForces::texPtcl);
   cudaDeviceSynchronize();
 }
-
-#include "TreecodeInstances.h"

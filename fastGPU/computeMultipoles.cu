@@ -12,10 +12,10 @@ namespace multipoles {
     float4 M = {m*x,m*y,m*z,m};
 #pragma unroll
     for (int i=WARP_SIZE2-1; i>=0; i--) {
-      M.x += shfl_xor(M.x, 1<<i);
-      M.y += shfl_xor(M.y, 1<<i);
-      M.z += shfl_xor(M.z, 1<<i);
-      M.w += shfl_xor(M.w, 1<<i);
+      M.x += __shfl_xor(M.x, 1<<i);
+      M.y += __shfl_xor(M.y, 1<<i);
+      M.z += __shfl_xor(M.z, 1<<i);
+      M.w += __shfl_xor(M.w, 1<<i);
     }
     _M.x += M.x;
     _M.y += M.y;
@@ -37,12 +37,12 @@ namespace multipoles {
     Q.yz = m * y*z;
 #pragma unroll
     for (int i=WARP_SIZE2-1; i>=0; i--) {
-      Q.xx += shfl_xor(Q.xx, 1<<i);
-      Q.yy += shfl_xor(Q.yy, 1<<i);
-      Q.zz += shfl_xor(Q.zz, 1<<i);
-      Q.xy += shfl_xor(Q.xy, 1<<i);
-      Q.xz += shfl_xor(Q.xz, 1<<i);
-      Q.yz += shfl_xor(Q.yz, 1<<i);
+      Q.xx += __shfl_xor(Q.xx, 1<<i);
+      Q.yy += __shfl_xor(Q.yy, 1<<i);
+      Q.zz += __shfl_xor(Q.zz, 1<<i);
+      Q.xy += __shfl_xor(Q.xy, 1<<i);
+      Q.xz += __shfl_xor(Q.xz, 1<<i);
+      Q.yz += __shfl_xor(Q.yz, 1<<i);
     }
     _Q.xx += Q.xx;
     _Q.yy += Q.yy;
@@ -134,8 +134,7 @@ namespace multipoles {
 
 };
 
-template<typename real_t>
-void Treecode<real_t>::computeMultipoles()
+void Treecode::computeMultipoles()
 {
   d_sourceCenter    .realloc(nCells);
   d_cellMonopole.realloc(nCells);
@@ -159,6 +158,3 @@ void Treecode<real_t>::computeMultipoles()
   fprintf(stdout,"Upward pass          : %.7f s\n", dt);
 
 }
-
-#include "TreecodeInstances.h"
-
