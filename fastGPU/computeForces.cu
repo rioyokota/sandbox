@@ -3,6 +3,8 @@
 
 #include "cuda_primitives.h"
 
+#define IF(x) (-(int)(x))
+
 namespace computeForces
 {
 
@@ -89,23 +91,6 @@ namespace computeForces
     return acc;
   }
 
-
-  /******* evalue forces from particles *******/
-  template<int NI, bool FULL>
-  static __device__ __forceinline__ void directAcc(float4 acc_i[NI], const float3 pos_i[NI],
-    const int ptclIdx, const float eps2)
-  {
-    const float4 M0 = (FULL || ptclIdx >= 0) ? tex1Dfetch(texPtcl, ptclIdx) : make_float4(0.0f, 0.0f, 0.0f, 0.0f);
-
-    for (int j=0; j<WARP_SIZE; j++) {
-      const float4 pos_j = make_float4(__shfl(M0.x, j), __shfl(M0.y, j), __shfl(M0.z, j), __shfl(M0.w,j));
-#pragma unroll
-      for (int k=0; k<NI; k++)
-	acc_i[k] = P2P(acc_i[k], pos_i[k], pos_j, eps2);
-    }
-  }
-
-  /******* evalue forces from cells *******/
 #ifdef QUADRUPOLE
   template<int NI, bool FULL>
     static __device__ __forceinline__ void approxAcc(
@@ -332,7 +317,13 @@ namespace computeForces
 
             if (nParticle >= WARP_SIZE)
             {
-              directAcc<NI,true>(acc_i, pos_i, ptclIdx, eps2);
+	      const float4 M0 = tex1Dfetch(texPtcl, ptclIdx);
+	      for (int j=0; j<WARP_SIZE; j++) {
+		const float4 pos_j = make_float4(__shfl(M0.x, j), __shfl(M0.y, j), __shfl(M0.z, j), __shfl(M0.w,j));
+#pragma unroll
+		for (int k=0; k<NI; k++)
+		  acc_i[k] = P2P(acc_i[k], pos_i[k], pos_j, eps2);
+	      }
               nParticle  -= WARP_SIZE;
               nProcessed += WARP_SIZE;
               interactionCounters.y += WARP_SIZE;
@@ -349,7 +340,13 @@ namespace computeForces
               if (directCounter >= WARP_SIZE)
               {
                 /* evalute cells stored in shmem */
-                directAcc<NI,true>(acc_i, pos_i, tmpList[laneIdx], eps2);
+		const float4 M0 = tex1Dfetch(texPtcl, tmpList[laneIdx]);
+		for (int j=0; j<WARP_SIZE; j++) {
+		  const float4 pos_j = make_float4(__shfl(M0.x, j), __shfl(M0.y, j), __shfl(M0.z, j), __shfl(M0.w,j));
+#pragma unroll
+		  for (int k=0; k<NI; k++)
+		    acc_i[k] = P2P(acc_i[k], pos_i[k], pos_j, eps2);
+		}
                 directCounter -= WARP_SIZE;
                 const int scatterIdx = directCounter + laneIdx - nParticle;
                 if (scatterIdx >= 0)
@@ -387,7 +384,14 @@ namespace computeForces
 #if 1
       if (directCounter > 0)
       {
-        directAcc<NI,false>(acc_i, pos_i, laneIdx < directCounter ? directPtclIdx : -1, eps2);
+        const int ptclIdx = laneIdx < directCounter ? directPtclIdx : -1;
+	const float4 M0 = ptclIdx >= 0 ? tex1Dfetch(texPtcl, ptclIdx) : make_float4(0.0f, 0.0f, 0.0f, 0.0f);
+	for (int j=0; j<WARP_SIZE; j++) {
+	  const float4 pos_j = make_float4(__shfl(M0.x, j), __shfl(M0.y, j), __shfl(M0.z, j), __shfl(M0.w,j));
+#pragma unroll
+	  for (int k=0; k<NI; k++)
+	    acc_i[k] = P2P(acc_i[k], pos_i[k], pos_j, eps2);
+	}
         interactionCounters.y += directCounter;
         directCounter = 0;
       }

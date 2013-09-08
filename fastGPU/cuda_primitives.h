@@ -72,8 +72,7 @@ static __device__ __forceinline__ int lanemask_lt()
 static __device__ __forceinline__ uint shfl_scan_add_step(uint partial, uint up_offset)
 {
   uint result;
-  asm(
-      "{.reg .u32 r0;"
+  asm("{.reg .u32 r0;"
       ".reg .pred p;"
       "shfl.up.b32 r0|p, %1, %2, 0;"
       "@p add.u32 r0, r0, %3;"
