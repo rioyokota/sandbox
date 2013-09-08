@@ -105,23 +105,23 @@ namespace makeGroups
 #endif
     }
 
-  template<int NBINS, typename real_t>
+  template<int NBINS>
     static __global__ 
     void computeKeys(
         const int n,
-        const Box<real_t> *d_domain,
-        const Particle4<real_t> *ptclPos,
+        const Box<float> *d_domain,
+        const Particle4<float> *ptclPos,
         unsigned long long *keys,
         int *values)
     {
       const int idx = blockIdx.x*blockDim.x + threadIdx.x;
       if (idx >= n) return;
 
-      const Particle4<real_t> ptcl = ptclPos[idx];
+      const Particle4<float> ptcl = ptclPos[idx];
 
-      const Box<real_t> domain = d_domain[0];
-      const real_t inv_domain_size = static_cast<real_t>(0.5f)/domain.hsize;
-      const Position<real_t> bmin(
+      const Box<float> domain = d_domain[0];
+      const float inv_domain_size = 0.5f / domain.hsize;
+      const Position<float> bmin(
           domain.centre.x - domain.hsize,
           domain.centre.y - domain.hsize,
           domain.centre.z - domain.hsize);
@@ -254,7 +254,7 @@ void Treecode<real_t>::makeGroups(int levelSplit, const int nCrit)
 
   cudaDeviceSynchronize();
   const double t0 = rtc();
-  makeGroups::computeKeys<NBINS,real_t><<<nblock,nthread>>>(nPtcl, d_domain, d_ptclPos, d_keys, d_values);
+  makeGroups::computeKeys<NBINS><<<nblock,nthread>>>(nPtcl, d_domain, d_ptclPos, d_keys, d_values);
 
   levelSplit = std::max(1,levelSplit);  /* pick the coarse segment boundaries at the levelSplit */
   unsigned long long mask= 0;
