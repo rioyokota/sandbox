@@ -1,7 +1,6 @@
 #include "Treecode.h"
 
-#define NWARPS_OCTREE2 3
-#define NWARPS2 NWARPS_OCTREE2
+#define NWARPS2 3
 #define NWARPS  (1<<NWARPS2)
 
 #include <thrust/device_ptr.h>
@@ -14,7 +13,7 @@ namespace treeBuild
 
   static __forceinline__ __device__ void computeGridAndBlockSize(dim3 &grid, dim3 &block, const int np)
   {
-    const int NTHREADS = (1<<NWARPS_OCTREE2) * WARP_SIZE;
+    const int NTHREADS = (1<<NWARPS2) * WARP_SIZE;
     block = dim3(NTHREADS);
     assert(np > 0);
     grid = dim3(min(max(np/(NTHREADS*4),1), 512));

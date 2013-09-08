@@ -4,11 +4,10 @@
 #include <cmath>
 #include <cstdlib>
 #include <fstream>
-#include "vector3.h"
 
 struct Plummer{
 	std::vector<double> mass;
-	std::vector<dvec3> pos, vel;
+	std::vector<double3> pos, vel;
 	Plummer(
 			unsigned long n, 
 			unsigned int  seed = 19810614, 
@@ -23,8 +22,8 @@ struct Plummer{
 				ifs.read((char *)&stmp, sizeof(unsigned long));
 				if(n == ntmp  && seed == stmp){
 					ifs.read((char *)&mass[0], n*sizeof(double));
-					ifs.read((char *)& pos[0], n*sizeof(dvec3));
-					ifs.read((char *)& vel[0], n*sizeof(dvec3));
+					ifs.read((char *)& pos[0], n*sizeof(double3));
+					ifs.read((char *)& vel[0], n*sizeof(double3));
 					return;
 				}
 			}
@@ -66,13 +65,13 @@ struct Plummer{
 				double M = 1.0;
 				mass[i] = M/n;
 
-				pos[i][0] = X;
-				pos[i][1] = Y;
-				pos[i][2] = Z;
+				pos[i].x = X;
+				pos[i].y = Y;
+				pos[i].z = Z;
 
-				vel[i][0] = Vx;
-				vel[i][1] = Vy;
-				vel[i][2] = Vz;
+				vel[i].x = Vx;
+				vel[i].y = Vy;
+				vel[i].z = Vz;
 
 				/*
 				tmp_i = ldiv(i, 256);
@@ -97,20 +96,24 @@ struct Plummer{
 
 		for(i=0; i<n; i++) {
 			mcm += mass[i];
-			for(int k=0;k<3;k++) {
-				xcm[k] += mass[i] * pos[i][k]; 
-				vcm[k] += mass[i] * vel[i][k]; 
-			} /* k */ 
+			xcm[0] += mass[i] * pos[i].x; 
+			xcm[1] += mass[i] * pos[i].y; 
+			xcm[2] += mass[i] * pos[i].z; 
+			vcm[0] += mass[i] * vel[i].x; 
+			vcm[1] += mass[i] * vel[i].y; 
+			vcm[2] += mass[i] * vel[i].z; 
 		}  /* i */
 		for(int k=0;k<3;k++) {
 			xcm[k] /= mcm; vcm[k] /= mcm;
 		} /* k */
 
 		for(i=0; i<n; i++) {
-			for(int k=0;k<3;k++) {
-				pos[i][k] -= xcm[k]; 
-				vel[i][k] -= vcm[k]; 
-			} /* k */ 
+			pos[i].x -= xcm[0]; 
+			pos[i].y -= xcm[1]; 
+			pos[i].z -= xcm[2]; 
+			vel[i].x -= vcm[0]; 
+			vel[i].y -= vcm[1]; 
+			vel[i].z -= vcm[2]; 
 		} /* i */ 
 		printf("\n");
 		{
@@ -121,8 +124,8 @@ struct Plummer{
 				ofs.write((char *)&ntmp, sizeof(unsigned long));
 				ofs.write((char *)&stmp, sizeof(unsigned long));
 				ofs.write((char *)&mass[0], n*sizeof(double));
-				ofs.write((char *)& pos[0], n*sizeof(dvec3));
-				ofs.write((char *)& vel[0], n*sizeof(dvec3));
+				ofs.write((char *)& pos[0], n*sizeof(double3));
+				ofs.write((char *)& vel[0], n*sizeof(double3));
 			}
 		}
 	}
