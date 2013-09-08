@@ -11,16 +11,12 @@
 namespace treeBuild
 {
   static __device__ __forceinline__ int Octant(const float4 &lhs, const float4 &rhs) {
-  return
-    ((lhs.x <= rhs.x) << 0) +
-    ((lhs.y <= rhs.y) << 1) +
-    ((lhs.z <= rhs.z) << 2);
+    return ((lhs.x <= rhs.x) << 0) + ((lhs.y <= rhs.y) << 1) + ((lhs.z <= rhs.z) << 2);
   };
 
   static __device__ __forceinline__ float4 ChildBox(const float4 &box, const int oct) {
     const float s = 0.5f * box.w;
-    return make_float4(
-		       box.x + s * ((oct&1) ? 1.0f : -1.0f),
+    return make_float4(box.x + s * ((oct&1) ? 1.0f : -1.0f),
 		       box.y + s * ((oct&2) ? 1.0f : -1.0f),
 		       box.z + s * ((oct&4) ? 1.0f : -1.0f),
 		       s);

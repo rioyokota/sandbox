@@ -38,19 +38,16 @@ static inline double get_time() {
   return double(tv.tv_sec+tv.tv_usec*1e-6);                   // Combine seconds and microseconds and return                                                
 }
 
-static void kernelSuccess(const char kernel[] = "kernel")
-{
+static void kernelSuccess(const char kernel[] = "kernel") {
   cudaDeviceSynchronize();
   const cudaError_t err = cudaGetLastError();
-  if (err != cudaSuccess)
-  {
+  if (err != cudaSuccess) {
     fprintf(stderr, "%s launch failed: %s\n", kernel, cudaGetErrorString(err));
     assert(0);
   }
 }
 
-struct CellData
-{
+struct CellData {
   private:
     enum {NLEAF_SHIFT = 29};
     enum {NLEAF_MASK  = ~(0x7U << NLEAF_SHIFT)};
@@ -97,9 +94,9 @@ struct CellData
 
 struct Treecode
 {
-  float theta, eps2;
   private:
-  int nPtcl, nLevels, nCells, nLeaves, nNodes, nGroups, nCrit, nLeaf;
+    int nPtcl, nLevels, nCells, nLeaves, nNodes, nGroups, nCrit, nLeaf;
+    float theta, eps2;
 
   public:
     int get_nPtcl() const { return nPtcl; }
@@ -110,7 +107,6 @@ struct Treecode
 
   host_mem<float4> h_ptclPos, h_ptclVel, h_ptclAcc;
   host_mem<float4> h_ptclAcc2;
-  std::vector<float4> ptcl0;
   cuda_mem<float4> d_ptclPos, d_ptclVel, d_ptclPos_tmp, d_ptclAcc;
   cuda_mem<float4> d_ptclAcc2;
   cuda_mem<float4> d_domain;
@@ -122,10 +118,7 @@ struct Treecode
   cuda_mem<CellData> d_cellDataList, d_cellDataList_tmp;
   cuda_mem<int2> d_groupList;
   cuda_mem<int>  d_leafList;
-
   cuda_mem<int>  d_key, d_value;
-
-
   cuda_mem<float4> d_sourceCenter, d_cellMonopole;
   cuda_mem<float4> d_cellQuad0;
   cuda_mem<float2> d_cellQuad1;
@@ -148,6 +141,7 @@ struct Treecode
     h_ptclVel.alloc(nPtcl);
     h_ptclAcc.alloc(nPtcl);
     h_ptclAcc2.alloc(nPtcl);
+
     d_ptclPos.alloc(nPtcl);
     d_ptclVel.alloc(nPtcl);
     d_ptclPos_tmp.alloc(nPtcl);
@@ -169,8 +163,7 @@ struct Treecode
     d_value.alloc(cell_max);
   };
 
-  void ptcl_d2h()
-  {
+  void ptcl_d2h() {
     d_ptclPos_tmp.d2h(h_ptclPos);
     d_ptclVel.d2h(h_ptclVel);
     d_ptclAcc.d2h(h_ptclAcc);
@@ -178,15 +171,11 @@ struct Treecode
   }
 
 
-  void ptcl_h2d()
-  {
+  void ptcl_h2d() {
     d_ptclPos.h2d(h_ptclPos);
     d_ptclVel.h2d(h_ptclVel);
     d_ptclAcc.h2d(h_ptclAcc);
     d_ptclAcc2.h2d(h_ptclAcc2);
-    ptcl0.resize(nPtcl);
-    for (int i = 0; i < nPtcl; i++)
-      ptcl0[i] = h_ptclPos[i];
   }
 
   void buildTree(const int nLeaf = 16);
@@ -194,9 +183,6 @@ struct Treecode
   void makeGroups(int levelSplit = 1, const int nCrit = 64);
   float4 computeForces(const bool INTCOUNT = true);
   void computeDirect(const int numTarget, const int numBlock);
-  void moveParticles();
-  void computeEnergies();
-
 };
 
 

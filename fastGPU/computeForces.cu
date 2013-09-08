@@ -20,7 +20,8 @@ namespace computeForces
   }
 
   static __device__ bool applyMAC(const float4 sourceCenter, const float3 targetCenter, 
-    const float3 targetSize) {
+    const float3 targetSize)
+  {
     float3 dr = make_float3(fabsf(targetCenter.x - sourceCenter.x) - (targetSize.x),
                             fabsf(targetCenter.y - sourceCenter.y) - (targetSize.y),
                             fabsf(targetCenter.z - sourceCenter.z) - (targetSize.z));
@@ -31,27 +32,25 @@ namespace computeForces
     return ds2 < fabsf(sourceCenter.w);
   }
 
-  static __device__ __forceinline__ float4 add_acc(float4 acc, const float3 pos,
-    const float massj, const float3 posj, const float eps2) {
-
+  static __device__ __forceinline__ float4 P2P(float4 acc, const float3 pos,
+    const float4 posj, const float eps2)
+  {
     const float3 dr = make_float3(posj.x - pos.x, posj.y - pos.y, posj.z - pos.z);
     const float r2     = dr.x*dr.x + dr.y*dr.y + dr.z*dr.z + eps2;
     const float rinv   = rsqrtf(r2);
     const float rinv2  = rinv*rinv;
-    const float mrinv  = massj * rinv;
+    const float mrinv  = posj.w * rinv;
     const float mrinv3 = mrinv * rinv2;
-
     acc.w -= mrinv;
     acc.x += mrinv3 * dr.x;
     acc.y += mrinv3 * dr.y;
     acc.z += mrinv3 * dr.z;
-
     return acc;
   }
 
-  static __device__ __forceinline__ float4 add_acc(float4 acc, const float3 pos,
-    const float mass, const float3 com, const float4 Q0,  const float2 Q1, float eps2) {
-
+  static __device__ __forceinline__ float4 M2P(float4 acc, const float3 pos,
+    const float mass, const float3 com, const float4 Q0,  const float2 Q1, float eps2)
+  {
     const float3 dr = make_float3(pos.x - com.x, pos.y - com.y, pos.z - com.z);
     const float  r2 = dr.x*dr.x + dr.y*dr.y + dr.z*dr.z + eps2;
     const float rinv  = rsqrtf(r2);
@@ -59,7 +58,7 @@ namespace computeForces
     const float mrinv  =  mass*rinv;
     const float mrinv3 = rinv2*mrinv;
     const float mrinv5 = rinv2*mrinv3; 
-    const float mrinv7 = rinv2*mrinv5;   // 16
+    const float mrinv7 = rinv2*mrinv5; // 16
 
     float  D0  =  mrinv;
     float  D1  = -mrinv3;
@@ -78,50 +77,36 @@ namespace computeForces
         q11*dr.x + q12*dr.y + q13*dr.z,
         q12*dr.x + q22*dr.y + q23*dr.z,
         q13*dr.x + q23*dr.y + q33*dr.z);
-    const float qRR = qR.x*dr.x + qR.y*dr.y + qR.z*dr.z;  // 22
+    const float qRR = qR.x*dr.x + qR.y*dr.y + qR.z*dr.z; // 22
 
     acc.w  -= D0 + 0.5f*(D1*q + D2*qRR);
     float C = D1 + 0.5f*(D2*q + D3*qRR);
     acc.x  += C*dr.x + D2*qR.x;
     acc.y  += C*dr.y + D2*qR.y;
-    acc.z  += C*dr.z + D2*qR.z;               // 23
+    acc.z  += C*dr.z + D2*qR.z; // 23
 
     // total: 16 + 3 + 22 + 23 = 64 flops 
-
     return acc;
   }
 
 
   /******* evalue forces from particles *******/
   template<int NI, bool FULL>
-    static __device__ __forceinline__ void directAcc(
-        float4 acc_i[NI], 
-        const float3 pos_i[NI],
-        const int ptclIdx,
-        const float eps2)
-    {
-#if 1
-#if 1
-      const float4 M0 = (FULL || ptclIdx >= 0) ? tex1Dfetch(texPtcl, ptclIdx) : make_float4(0.0f, 0.0f, 0.0f, 0.0f);
-#else
-      const float4 M0 = make_float4(0.0f, 0.0f, 0.0f, 0.0f);
-#endif
+  static __device__ __forceinline__ void directAcc(float4 acc_i[NI], const float3 pos_i[NI],
+    const int ptclIdx, const float eps2)
+  {
+    const float4 M0 = (FULL || ptclIdx >= 0) ? tex1Dfetch(texPtcl, ptclIdx) : make_float4(0.0f, 0.0f, 0.0f, 0.0f);
 
-//#pragma unroll
-      for (int j = 0; j < WARP_SIZE; j++)
-      {
-        const float4 jM0 = make_float4(__shfl(M0.x, j), __shfl(M0.y, j), __shfl(M0.z, j), __shfl(M0.w,j));
-        const float  jmass = jM0.w;
-        const float3 jpos  = make_float3(jM0.x, jM0.y, jM0.z);
+    for (int j=0; j<WARP_SIZE; j++) {
+      const float4 pos_j = make_float4(__shfl(M0.x, j), __shfl(M0.y, j), __shfl(M0.z, j), __shfl(M0.w,j));
 #pragma unroll
-        for (int k = 0; k < NI; k++)
-          acc_i[k] = add_acc(acc_i[k], pos_i[k], jmass, jpos, eps2);
-      }
-#endif
+      for (int k=0; k<NI; k++)
+	acc_i[k] = P2P(acc_i[k], pos_i[k], pos_j, eps2);
     }
+  }
 
   /******* evalue forces from cells *******/
-#ifdef  QUADRUPOLE
+#ifdef QUADRUPOLE
   template<int NI, bool FULL>
     static __device__ __forceinline__ void approxAcc(
         float4 acc_i[NI], 
@@ -129,7 +114,6 @@ namespace computeForces
         const int cellIdx,
         const float eps2)
     {
-#if 1
       float4 M0, Q0;
       float2 Q1;
       if (FULL || cellIdx >= 0)
@@ -144,7 +128,6 @@ namespace computeForces
         Q1 = make_float2(0.0f, 0.0f);
       }
 
-//#pragma unroll
       for (int j = 0; j < WARP_SIZE; j++)
       {
         const float4 jM0 = make_float4(__shfl(M0.x, j), __shfl(M0.y, j), __shfl(M0.z, j), __shfl(M0.w,j));
@@ -154,36 +137,24 @@ namespace computeForces
         const float3 jpos  = make_float3(jM0.x, jM0.y, jM0.z);
 #pragma unroll
         for (int k = 0; k < NI; k++)
-          acc_i[k] = add_acc(acc_i[k], pos_i[k], jmass, jpos, jQ0, jQ1, eps2);
+          acc_i[k] = M2P(acc_i[k], pos_i[k], jmass, jpos, jQ0, jQ1, eps2);
       }
-#endif
     }
 #else
   template<int NI, bool FULL>
-    static __device__ __forceinline__ void approxAcc(
+  static __device__ __forceinline__ void approxAcc(
         float4 acc_i[NI], 
         const float3 pos_i[NI],
         const int cellIdx,
         const float eps2)
-    {
-#if 1
-#if 1
+  {
       const float4 M0 = (FULL || cellIdx >= 0) ? tex1Dfetch(texCellMonopole, cellIdx) : make_float4(0.0f, 0.0f, 0.0f, 0.0f);
-#else
-      const float4 M0 = make_float4(0.0f, 0.0f, 0.0f, 0.0f);
-#endif
-
-//#pragma unroll
-      for (int j = 0; j < WARP_SIZE; j++)
-      {
-        const float4 jM0 = make_float4(__shfl(M0.x, j), __shfl(M0.y, j), __shfl(M0.z, j), __shfl(M0.w,j));
-        const float  jmass = jM0.w;
-        const float3 jpos  = make_float3(jM0.x, jM0.y, jM0.z);
+      for (int j=0; j<WARP_SIZE; j++) {
+        const float4 pos_j = make_float4(__shfl(M0.x, j), __shfl(M0.y, j), __shfl(M0.z, j), __shfl(M0.w,j));
 #pragma unroll
         for (int k = 0; k < NI; k++)
-          acc_i[k] = add_acc(acc_i[k], pos_i[k], jmass, jpos, eps2);
+          acc_i[k] = P2P(acc_i[k], pos_i[k], pos_j, eps2);
       }
-#endif
     }
 #endif
 
