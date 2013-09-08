@@ -196,7 +196,7 @@ namespace makeGroups
     void make_groups(const int n, const int nCrit,
         const int *ptclBegIdx, 
         const int *ptclEndIdx,
-        GroupData *groupList)
+        int2 *groupList)
     {
       const int gidx = blockDim.x * blockIdx.x + threadIdx.x;
       if (gidx >= n) return;
@@ -217,7 +217,7 @@ namespace makeGroups
       {
         const int groupIdx = atomicAdd(&groupCounter,1);
         const int ptclEnd = ptclEndIdx[n-1-gidx];
-        groupList[groupIdx] = GroupData(groupBeg, min(nCrit, ptclEnd - groupBeg));
+        groupList[groupIdx] = make_int2(groupBeg, min(nCrit, ptclEnd - groupBeg));
       }
     }
 
@@ -319,7 +319,7 @@ void Treecode::makeGroups(int levelSplit, const int nCrit)
 #if 0
   {
     std::vector<int2> groups(nGroups);
-    d_groupList.d2h((GroupData*)&groups[0], nGroups);
+    d_groupList.d2h((int2*)&groups[0], nGroups);
     int np_in_group = 0;
     for (int i = 0 ;i < nGroups; i++)
     {

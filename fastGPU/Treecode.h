@@ -49,22 +49,6 @@ static void kernelSuccess(const char kernel[] = "kernel")
   }
 }
 
-struct GroupData
-{
-  private:
-    int2 packed_data;
-  public:
-    __host__ __device__ GroupData(const int2 data) : packed_data(data) {}
-    __host__ __device__ GroupData(const int pbeg, const int np)
-    {
-      packed_data.x = pbeg;
-      packed_data.y = np;
-    }
-
-    __host__ __device__ int pbeg() const {return packed_data.x;}
-    __host__ __device__ int np  () const {return packed_data.y;}
-};
-
 struct CellData
 {
   private:
@@ -136,7 +120,7 @@ struct Treecode
   int node_max, cell_max, stack_size;
   cuda_mem<int>  d_stack_memory_pool;
   cuda_mem<CellData> d_cellDataList, d_cellDataList_tmp;
-  cuda_mem<GroupData> d_groupList;
+  cuda_mem<int2> d_groupList;
   cuda_mem<int>  d_leafList;
 
   cuda_mem<int>  d_key, d_value;

@@ -438,7 +438,7 @@ namespace computeForces
     static __global__ 
     void treewalk(
         const int nGroups,
-        const GroupData *groupList,
+        const int2 *groupList,
         const float eps2,
         const int start_level,
         const int2 *level_begIdx,
@@ -471,16 +471,16 @@ namespace computeForces
         if (groupIdx >= nGroups) 
           return;
 
-        const GroupData group = groupList[groupIdx];
-        const int pbeg = group.pbeg();
-        const int np   = group.np();
+        const int2 group = groupList[groupIdx];
+        const int begin = group.x;
+        const int end   = group.x+group.y;
 
         float3 iPos[NI];
 
 #pragma unroll
         for (int i = 0; i < NI; i++)
         {
-          const float4 ptcl = ptclPos[min(pbeg + i*WARP_SIZE+laneIdx, pbeg+np-1)];
+          const float4 ptcl = ptclPos[min(begin + i*WARP_SIZE+laneIdx, end-1)];
           iPos [i] = make_float3(ptcl.x, ptcl.y, ptcl.z);
         }
 
@@ -510,7 +510,7 @@ namespace computeForces
 
         assert(!(counters.x == 0xFFFFFFFF && counters.y == 0xFFFFFFFF));
 
-        const int pidx = pbeg + laneIdx;
+        const int pidx = begin + laneIdx;
         if (STATS)
         {
           int direct_max = counters.y;
@@ -520,7 +520,7 @@ namespace computeForces
 
 #pragma unroll
           for (int i = 0; i < NI; i++)
-            if (i*WARP_SIZE + pidx < pbeg + np)
+            if (i*WARP_SIZE + pidx < end)
             {
               approx_sum += counters.x;
               direct_sum += counters.y;
@@ -546,7 +546,7 @@ namespace computeForces
 
 #pragma unroll
         for (int i = 0; i < NI; i++)
-          if (pidx + i*WARP_SIZE< pbeg + np)
+          if (pidx + i*WARP_SIZE< end)
           {
             const float4 iacc = {iAcc[i].x, iAcc[i].y, iAcc[i].z, iAcc[i].w};
             acc[i*WARP_SIZE + pidx] = iacc;
