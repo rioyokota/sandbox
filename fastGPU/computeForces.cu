@@ -444,8 +444,8 @@ namespace computeForces
         const int start_level,
         const int2 *level_begIdx,
         const Particle4<float> *ptclPos,
-        __out Particle4<float> *acc,
-        __out int    *gmem_pool)
+        Particle4<float> *acc,
+        int    *gmem_pool)
     {
       const int NTHREAD = 1<<NTHREAD2;
       const int shMemSize = NTHREAD;
@@ -603,8 +603,7 @@ namespace computeForces
 }
 
 template<typename real_t>
-double4 Treecode<real_t>::computeForces(const bool INTCOUNT)
-{
+float4 Treecode<real_t>::computeForces(const bool INTCOUNT) {
   bindTexture(computeForces::texCellData,     (uint4* )d_cellDataList.ptr, nCells);
   bindTexture(computeForces::texSourceCenter,     d_sourceCenter.ptr, nCells);
   bindTexture(computeForces::texCellMonopole, d_cellMonopole.ptr, nCells);
@@ -672,10 +671,9 @@ double4 Treecode<real_t>::computeForces(const bool INTCOUNT)
       assert(0);
   }
   kernelSuccess("treewalk");
-  const double t1 = rtc();
-  const double dt = t1 - t0;
+  const double dt = rtc() - t0;
 
-  double4 interactions = {0.0, 0.0, 0.0, 0.0};
+  float4 interactions = {0.0, 0.0, 0.0, 0.0};
   if (INTCOUNT)
   {
     unsigned long long direct_sum, approx_sum;

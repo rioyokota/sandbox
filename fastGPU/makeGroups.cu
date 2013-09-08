@@ -111,8 +111,8 @@ namespace makeGroups
         const int n,
         const Box<real_t> *d_domain,
         const Particle4<real_t> *ptclPos,
-        __out unsigned long long *keys,
-        __out int *values)
+        unsigned long long *keys,
+        int *values)
     {
       const int idx = blockIdx.x*blockDim.x + threadIdx.x;
       if (idx >= n) return;
@@ -310,8 +310,7 @@ void Treecode<real_t>::makeGroups(int levelSplit, const int nCrit)
 #endif
 
   kernelSuccess("makeGroups");
-  const double t1 = rtc();
-  const double dt = t1 - t0;
+  const double dt = rtc() - t0;
   fprintf(stdout,"Make groups          : %.7f s\n", dt);
   CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&nGroups, makeGroups::groupCounter, sizeof(int)));
 #if 0

@@ -80,8 +80,8 @@ namespace treeBuild
   template<const int NTHREAD2, typename T>
     static __global__ void computeBoundingBox(
         const int n,
-        __out Position<T> *minmax_ptr,
-        __out Box<T>      *box_ptr,
+        Position<T> *minmax_ptr,
+        Box<T>      *box_ptr,
         const Particle4<T> *ptclPos)
     {
       const int NTHREAD = 1<<NTHREAD2;
@@ -173,7 +173,7 @@ namespace treeBuild
         const int cellParentIndex,
         const int cellIndexBase,
         const int octantMask,
-        __out int *octCounterBase,
+        int *octCounterBase,
         Particle4<T> *ptcl,
         Particle4<T> *buff,
         const int level = 0)
@@ -553,7 +553,7 @@ namespace treeBuild
   template<typename T>
     static __global__ void countAtRootNode(
         const int n,
-        __out int *octCounter,
+        int *octCounter,
         const Box<T> box,
         const Particle4<T> *ptclPos)
     {
@@ -878,8 +878,7 @@ void Treecode<real_t>::buildTree(const int nLeaf)
         assert(0);
     }
     kernelSuccess("buildOctree");
-    const double t1 = rtc();
-    const double dt = t1 - t0;
+    const double dt = rtc() - t0;
     CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&nLevels, treeBuild::nlevels, sizeof(int)));
     CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&nCells,  treeBuild::ncells, sizeof(int)));
     CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&nNodes,  treeBuild::nnodes, sizeof(int)));
@@ -916,8 +915,7 @@ void Treecode<real_t>::buildTree(const int nLeaf)
     treeBuild::collect_leaves<NTHREAD2><<<nblock1,NTHREAD>>>(nCells, d_cellDataList, d_leafList);
 
     kernelSuccess("shuffle");
-    const double t1 = rtc();
-    const double dt = t1 - t0;
+    const double dt = rtc() - t0;
     fprintf(stdout,"Link tree            : %.7f s\n", dt);
 #if 0
     int nnn;

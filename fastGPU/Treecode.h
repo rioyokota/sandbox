@@ -8,8 +8,6 @@
 #include <string>
 #include <sstream>
 
-#define __out
-
 #if 1
 #define QUADRUPOLE
 #endif
@@ -91,13 +89,11 @@ template<typename real_t>
 struct Quadrupole
 {
   private:
-    typedef typename vec<4,real_t>::type real4_t;
-    typedef typename vec<2,real_t>::type real2_t;
-    real4_t q0;
-    real2_t q1;
+    typename vec<4,real_t>::type q0;
+    typename vec<2,real_t>::type q1;
 
   public:
-    __host__ __device__ Quadrupole(const real4_t _q0, const real2_t _q1) : q0(_q0), q1(_q1) {}
+    __host__ __device__ Quadrupole(const typename vec<4,real_t>::type _q0, const typename vec<2,real_t>::type _q1) : q0(_q0), q1(_q1) {}
     __host__ __device__ Quadrupole() : q0(vec<4,real_t>::null()), q1(vec<2,real_t>::null()) {}
 
     __host__ __device__ real_t xx() const {return q0.x;}
@@ -114,8 +110,8 @@ struct Quadrupole
     __host__ __device__ real_t& xz() {return q1.x;}
     __host__ __device__ real_t& yz() {return q1.y;}
 
-    __host__ __device__ real4_t get_q0() const {return q0;}
-    __host__ __device__ real2_t get_q1() const {return q1;}
+    __host__ __device__ typename vec<4,real_t>::type get_q0() const {return q0;}
+    __host__ __device__ typename vec<2,real_t>::type get_q1() const {return q1;}
 };
 
 
@@ -123,11 +119,6 @@ template<typename real_t>
 struct Treecode
 {
   typedef Particle4<real_t> Particle;
-
-  typedef typename vec<4,real_t>::type real4_t;
-  typedef typename vec<3,real_t>::type real3_t;
-  typedef typename vec<2,real_t>::type real2_t;
-
 
   real_t theta, eps2;
   private:
@@ -158,11 +149,9 @@ struct Treecode
   cuda_mem<int>  d_key, d_value;
 
 
-  cuda_mem<real4_t> d_sourceCenter, d_cellMonopole;
-  cuda_mem<real4_t> d_cellQuad0;
-  cuda_mem<real2_t> d_cellQuad1;
-
-  double grav_potential;
+  cuda_mem<float4> d_sourceCenter, d_cellMonopole;
+  cuda_mem<float4> d_cellQuad0;
+  cuda_mem<float2> d_cellQuad1;
 
   Treecode(const real_t _eps = 0.01, const real_t _theta = 0.75, const int _ncrit = 2*WARP_SIZE)
   {
@@ -226,7 +215,7 @@ struct Treecode
   void buildTree(const int nLeaf = 16);
   void computeMultipoles();
   void makeGroups(int levelSplit = 1, const int nCrit = 64);
-  double4 computeForces(const bool INTCOUNT = true);
+  float4 computeForces(const bool INTCOUNT = true);
   void computeDirect(const int numTarget, const int numBlock);
   void moveParticles();
   void computeEnergies();

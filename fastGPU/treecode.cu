@@ -51,7 +51,7 @@ int main(int argc, char * argv[])
   tree.buildTree(nleaf); // pass nLeaf, accepted 16, 24, 32, 48, 64
   tree.computeMultipoles();
   tree.makeGroups(5, ncrit); // pass nCrit
-  const double4 interactions = tree.computeForces();
+  const float4 interactions = tree.computeForces();
   double dt = rtc() - t0;
 #ifdef QUADRUPOLE
   const int FLOPS_QUAD = 64;
