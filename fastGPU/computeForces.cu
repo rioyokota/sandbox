@@ -502,7 +502,7 @@ namespace computeForces
         const float3 targetCenter = {half*(rmax.x+rmin.x), half*(rmax.y+rmin.y), half*(rmax.z+rmin.z)};
         const float3 hvec = {half*(rmax.x-rmin.x), half*(rmax.y-rmin.y), half*(rmax.z-rmin.z)};
 
-        float4 iAcc[NI] = {vec<4,float>::null()};
+        float4 iAcc[NI] = {0.0f, 0.0f, 0.0f, 0.0f};
 
         uint2 counters;
         counters =  treewalk_warp<NTHREAD2,NI>

@@ -2,7 +2,6 @@
 
 #include <assert.h>
 #include "cudamem.h"
-#include "Particle4.h"
 #include "plummer.h"
 #include <string>
 #include <sstream>
@@ -11,6 +10,27 @@
 #if 1
 #define QUADRUPOLE
 #endif
+
+#define WARP_SIZE2 5
+#define WARP_SIZE 32
+
+struct float6 {
+  float xx;
+  float yy;
+  float zz;
+  float xy;
+  float xz;
+  float yz;
+};
+
+struct double6 {
+  double xx;
+  double yy;
+  double zz;
+  double xy;
+  double xz;
+  double yz;
+};
 
 static inline double get_time() {
   struct timeval tv;                                          // Time value                                                                                 
@@ -109,7 +129,7 @@ struct Treecode
   std::vector<float4> ptcl0;
   cuda_mem<float4> d_ptclPos, d_ptclVel, d_ptclPos_tmp, d_ptclAcc;
   cuda_mem<float4> d_ptclAcc2;
-  cuda_mem<Box> d_domain;
+  cuda_mem<float4> d_domain;
   cuda_mem<float3> d_minmax;
   cuda_mem<int2> d_level_begIdx;
 

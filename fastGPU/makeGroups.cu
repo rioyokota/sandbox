@@ -109,7 +109,7 @@ namespace makeGroups
     static __global__ 
     void computeKeys(
         const int n,
-        const Box *d_domain,
+        const float4 *d_domain,
         const float4 *ptclPos,
         unsigned long long *keys,
         int *values)
@@ -119,11 +119,11 @@ namespace makeGroups
 
       const float4 ptcl = ptclPos[idx];
 
-      const Box domain = d_domain[0];
-      const float inv_domain_size = 0.5f / domain.hsize;
-      const float3 bmin = {domain.centre.x - domain.hsize,
-                           domain.centre.y - domain.hsize,
-			   domain.centre.z - domain.hsize};
+      const float4 domain = d_domain[0];
+      const float inv_domain_size = 0.5f / domain.w;
+      const float3 bmin = {domain.x - domain.w,
+                           domain.y - domain.w,
+			   domain.z - domain.w};
 
       const int xc = static_cast<int>((ptcl.x - bmin.x) * inv_domain_size * (1<<NBINS));
       const int yc = static_cast<int>((ptcl.y - bmin.y) * inv_domain_size * (1<<NBINS));

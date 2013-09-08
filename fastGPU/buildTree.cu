@@ -10,8 +10,23 @@
 
 namespace treeBuild
 {
+  static __device__ __forceinline__ int Octant(const float4 &lhs, const float4 &rhs) {
+  return
+    ((lhs.x <= rhs.x) << 0) +
+    ((lhs.y <= rhs.y) << 1) +
+    ((lhs.z <= rhs.z) << 2);
+  };
 
-  static __forceinline__ __device__ void computeGridAndBlockSize(dim3 &grid, dim3 &block, const int np)
+  static __device__ __forceinline__ float4 ChildBox(const float4 &box, const int oct) {
+    const float s = 0.5f * box.w;
+    return make_float4(
+		       box.x + s * ((oct&1) ? 1.0f : -1.0f),
+		       box.y + s * ((oct&2) ? 1.0f : -1.0f),
+		       box.z + s * ((oct&4) ? 1.0f : -1.0f),
+		       s);
+  }
+
+  static __device__ __forceinline__ void computeGridAndBlockSize(dim3 &grid, dim3 &block, const int np)
   {
     const int NTHREADS = (1<<NWARPS2) * WARP_SIZE;
     block = dim3(NTHREADS);
@@ -80,7 +95,7 @@ namespace treeBuild
     static __global__ void computeBoundingBox(
         const int n,
         float3 *minmax_ptr,
-        Box      *box_ptr,
+        float4 *box_ptr,
         const float4 *ptclPos)
     {
       const int NTHREAD = 1<<NTHREAD2;
@@ -158,9 +173,9 @@ namespace treeBuild
           const long long ny = (long long)(cvec.y/hquant);
           const long long nz = (long long)(cvec.z/hquant);
 
-          const float3 centre = {hquant * float(nx), hquant * float(ny), hquant * float(nz)};
+          const float4 box = {hquant * float(nx), hquant * float(ny), hquant * float(nz), hsize};
 
-          *box_ptr = Box(centre, hsize);
+          *box_ptr = box;
           retirementCount = 0;
         }
       }
@@ -172,7 +187,7 @@ namespace treeBuild
     static __global__ void 
     __launch_bounds__( 256, 8)
     buildOctant(
-        Box box,
+        float4 box,
         const int cellParentIndex,
         const int cellIndexBase,
         const int octantMask,
@@ -211,7 +226,7 @@ namespace treeBuild
       __shared__ int nShChildrenFine[NWARPS][9][8];
       __shared__ int nShChildren[8][8];
 
-      Box *shChildBox = (Box*)&nShChildren[0][0];
+      float4 *shChildBox = (float4*)&nShChildren[0][0];
 
       int *shdata = (int*)&nShChildrenFine[0][0][0];
 #pragma unroll 
@@ -235,7 +250,7 @@ namespace treeBuild
         {
           const int oct = __float_as_int(p4.w) & 0xF;
           p4.w = __int_as_float(((i + threadIdx.x) << 4) | oct);
-          p4octant = Octant(box.centre, make_float3(p4.x, p4.y, p4.z));
+          p4octant = Octant(box, p4);
         }
 
         p4octant = i+threadIdx.x < nEnd ? p4octant : 0xF; 
@@ -243,7 +258,7 @@ namespace treeBuild
         /* compute suboctant of the octant into which particle will fall */
         if (p4octant < 8)
         {
-          const int p4subOctant = Octant(shChildBox[p4octant].centre, make_float3(p4.x, p4.y, p4.z));
+          const int p4subOctant = Octant(shChildBox[p4octant], p4);
           const int idx = (__float_as_int(p4.w) >> 4) & 0xF0000000;
           p4.w = __int_as_float((idx << 4) | p4subOctant);
         }
@@ -560,7 +575,7 @@ namespace treeBuild
     static __global__ void countAtRootNode(
         const int n,
         int *octCounter,
-        const Box box,
+        const float4 box,
         const float4 *ptclPos)
     {
       int np_octant[8] = {0};
@@ -568,9 +583,8 @@ namespace treeBuild
       for (int i = beg; i < n; i += gridDim.x * blockDim.x)
         if (i < n)
         {
-          const float4 p = ptclPos[i];
-          const float3 pos = make_float3(p.x, p.y, p.z);
-          const int octant = Octant(box.centre, pos);
+          const float4 pos = ptclPos[i];
+          const int octant = Octant(box, pos);
           np_octant[0] += (octant == 0);
           np_octant[1] += (octant == 1);
           np_octant[2] += (octant == 2);
@@ -597,7 +611,7 @@ namespace treeBuild
   template<int NLEAF>
     static __global__ void buildOctree(
         const int n,
-        const Box *domain,
+        const float4 *domain,
         CellData *d_cellDataList,
         int *stack_memory_pool,
         float4 *ptcl,
@@ -609,16 +623,6 @@ namespace treeBuild
       ptclVel_tmp  = (void*)d_ptclVel;
 
       memPool = stack_memory_pool;
-#if 0
-      printf("n=          %d\n", n);
-      printf("d_node_max= %d\n", d_node_max);
-      printf("d_cell_max= %d\n", d_cell_max);
-      printf("GPU: box_centre= %g %g %g   hsize= %g\n",
-          domain->centre.x,
-          domain->centre.y,
-          domain->centre.z,
-          domain->hsize);
-#endif
 
       int *octCounter = new int[8+8];
       for (int k = 0; k < 16; k++)
@@ -626,16 +630,6 @@ namespace treeBuild
       countAtRootNode<float><<<256, 256>>>(n, octCounter, *domain, ptcl);
       assert(cudaGetLastError() == cudaSuccess);
       cudaDeviceSynchronize();
-
-#if 0
-      int total = 0;
-      for (int k = 8; k < 16; k++)
-      {
-        printf("octCounter[%d]= %d\n", k-8, octCounter[k]);
-        total += octCounter[k];
-      }
-      printf("total= %d  n= %d\n", total, n);
-#endif
 
       int *octCounterN = new int[8+8+8+64+8];
 #pragma unroll
@@ -649,12 +643,6 @@ namespace treeBuild
 #pragma unroll
       for (int k = 8; k < 64; k++)
         octCounterN[8+16+k] = 0;
-
-#if 0
-      for (int k = 0; k < 8; k++)
-        printf("k= %d n = %d offset= %d \n",
-            k, octCounterN[8+k], octCounterN[8+8+k]);
-#endif
 
 #ifdef IOCOUNT
       io_words = 0;
