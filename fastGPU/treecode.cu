@@ -52,12 +52,7 @@ int main(int argc, char * argv[])
   tree.makeGroups(5, ncrit); // pass nCrit
   const float4 interactions = tree.computeForces();
   double dt = get_time() - t0;
-#ifdef QUADRUPOLE
-  const int FLOPS_QUAD = 64;
-#else
-  const int FLOPS_QUAD = 20;
-#endif
-  float flops = (interactions.x*20 + interactions.z*FLOPS_QUAD)*tree.get_nPtcl()/dt/1e12;
+  float flops = (interactions.x*20 + interactions.z*64)*tree.get_nPtcl()/dt/1e12;
   fprintf(stdout,"--- Total runtime ----------------\n");
   fprintf(stdout,"Total FMM            : %.7f s (%.7f TFlops)\n",dt,flops);
   const int numTarget = 512; // Number of threads per block will be set to this value

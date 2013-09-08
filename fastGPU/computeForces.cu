@@ -91,7 +91,6 @@ namespace computeForces
     return acc;
   }
 
-#ifdef QUADRUPOLE
   template<int NI, bool FULL>
     static __device__ __forceinline__ void approxAcc(
         float4 acc_i[NI], 
@@ -125,25 +124,6 @@ namespace computeForces
           acc_i[k] = M2P(acc_i[k], pos_i[k], jmass, jpos, jQ0, jQ1, eps2);
       }
     }
-#else
-  template<int NI, bool FULL>
-  static __device__ __forceinline__ void approxAcc(
-        float4 acc_i[NI], 
-        const float3 pos_i[NI],
-        const int cellIdx,
-        const float eps2)
-  {
-      const float4 M0 = (FULL || cellIdx >= 0) ? tex1Dfetch(texCellMonopole, cellIdx) : make_float4(0.0f, 0.0f, 0.0f, 0.0f);
-      for (int j=0; j<WARP_SIZE; j++) {
-        const float4 pos_j = make_float4(__shfl(M0.x, j), __shfl(M0.y, j), __shfl(M0.z, j), __shfl(M0.w,j));
-#pragma unroll
-        for (int k = 0; k < NI; k++)
-          acc_i[k] = P2P(acc_i[k], pos_i[k], pos_j, eps2);
-      }
-    }
-#endif
-
-
 
   template<int BLOCKDIM2, int NI>
     static __device__ 
@@ -661,12 +641,7 @@ float4 Treecode::computeForces(const bool INTCOUNT) {
     interactions.w = approx_max;
   }
 
-#ifdef QUADRUPOLE
-  const int FLOPS_QUAD = 64;
-#else
-  const int FLOPS_QUAD = 20;
-#endif
-  float flops = (interactions.x*20 + interactions.z*FLOPS_QUAD)*nPtcl/dt/1e12;
+  float flops = (interactions.x*20 + interactions.z*64)*nPtcl/dt/1e12;
   fprintf(stdout,"Traverse             : %.7f s (%.7f TFlops)\n",dt,flops);
 
   unbindTexture(computeForces::texPtcl);

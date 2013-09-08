@@ -7,10 +7,6 @@
 #include <sstream>
 #include <sys/time.h>
 
-#if 1
-#define QUADRUPOLE
-#endif
-
 #define WARP_SIZE2 5
 #define WARP_SIZE 32
 
