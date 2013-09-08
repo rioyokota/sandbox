@@ -54,18 +54,18 @@ namespace multipoles {
 
   __device__ unsigned int nflops = 0;
 
-  template<int NTHREAD2, typename real_t>
+  template<int NTHREAD2>
   static __global__ __launch_bounds__(1<<NTHREAD2, 1024/(1<<NTHREAD2))
   void computeCellMultipoles(
     const int nPtcl,
     const int nCells,
     const CellData *cells,
     const float4* __restrict__ ptclPos,
-    const real_t inv_theta,
-    typename vec<4,real_t>::type *sizeList,
-    typename vec<4,real_t>::type *monopoleList,
-    typename vec<4,real_t>::type *quadrpl0List,
-    typename vec<2,real_t>::type *quadrpl1List)
+    const float inv_theta,
+    float4 *sizeList,
+    float4 *monopoleList,
+    float4 *quadrpl0List,
+    float2 *quadrpl1List)
   {
     const int warpIdx = threadIdx.x >> WARP_SIZE2;
     const int laneIdx = threadIdx.x & (WARP_SIZE-1);
@@ -78,32 +78,24 @@ namespace multipoles {
 
     const CellData cell = cells[cellIdx];
 
-    const real_t huge = static_cast<real_t>(1e10f);
-    typename vec<3,real_t>::type rmin = {+huge,+huge,+huge};
-    typename vec<3,real_t>::type rmax = {-huge,-huge,-huge};
+    const float huge = 1e10f;
+    float3 rmin = {+huge,+huge,+huge};
+    float3 rmax = {-huge,-huge,-huge};
     double4 M;
     double6 Q;
 
     unsigned int nflop = 0;
-#if 0
-    if (cell.isNode())
-    {
-    }
-    else
-#endif
-    {
-      const int firstBody = cell.pbeg();
-      const int  lastBody = cell.pend();
+    const int firstBody = cell.pbeg();
+    const int  lastBody = cell.pend();
 
-      for (int i = firstBody; i < lastBody; i += WARP_SIZE)
-      {
-	nflop++;
-	float4 ptcl = ptclPos[min(i+laneIdx,lastBody-1)];
-	if (i + laneIdx >= lastBody) ptcl.w = 0.0f;
-	addBoxSize(rmin, rmax, Position<real_t>(ptcl.x,ptcl.y,ptcl.z));
-	addMonopole(M, ptcl);
-	addQuadrupole(Q, ptcl);
-      }
+    for (int i = firstBody; i < lastBody; i += WARP_SIZE)
+    {
+      nflop++;
+      float4 ptcl = ptclPos[min(i+laneIdx,lastBody-1)];
+      if (i + laneIdx >= lastBody) ptcl.w = 0.0f;
+      addBoxSize(rmin, rmax, Position<float>(ptcl.x,ptcl.y,ptcl.z));
+      addMonopole(M, ptcl);
+      addQuadrupole(Q, ptcl);
     }
 
 
@@ -120,16 +112,16 @@ namespace multipoles {
       Q.xz = Q.xz*inv_mass - M.x*M.z;
       Q.yz = Q.yz*inv_mass - M.y*M.z;
 
-      const Position<real_t> cvec((rmax.x+rmin.x)*real_t(0.5f), (rmax.y+rmin.y)*real_t(0.5f), (rmax.z+rmin.z)*real_t(0.5f));
-      const Position<real_t> hvec((rmax.x-rmin.x)*real_t(0.5f), (rmax.y-rmin.y)*real_t(0.5f), (rmax.z-rmin.z)*real_t(0.5f));
-      const Position<real_t> com(M.x, M.y, M.z);
-      const real_t dx = cvec.x - com.x;
-      const real_t dy = cvec.y - com.y;
-      const real_t dz = cvec.z - com.z;
-      const real_t  s = sqrt(dx*dx + dy*dy + dz*dz);
-      const real_t  l = max(static_cast<real_t>(2.0f)*max(hvec.x, max(hvec.y, hvec.z)), static_cast<real_t>(1.0e-6f));
-      const real_t cellOp = l*inv_theta + s;
-      const real_t cellOp2 = cellOp*cellOp;
+      const Position<float> cvec((rmax.x+rmin.x)*0.5f, (rmax.y+rmin.y)*0.5f, (rmax.z+rmin.z)*0.5f);
+      const Position<float> hvec((rmax.x-rmin.x)*0.5f, (rmax.y-rmin.y)*0.5f, (rmax.z-rmin.z)*0.5f);
+      const Position<float> com(M.x, M.y, M.z);
+      const float dx = cvec.x - com.x;
+      const float dy = cvec.y - com.y;
+      const float dz = cvec.z - com.z;
+      const float  s = sqrt(dx*dx + dy*dy + dz*dz);
+      const float  l = max(2.0f*max(hvec.x, max(hvec.y, hvec.z)), 1.0e-6f);
+      const float cellOp = l*inv_theta + s;
+      const float cellOp2 = cellOp*cellOp;
 
       atomicAdd(&nflops, nflop);
 
@@ -142,7 +134,7 @@ namespace multipoles {
 
 };
 
-  template<typename real_t>
+template<typename real_t>
 void Treecode<real_t>::computeMultipoles()
 {
   d_sourceCenter    .realloc(nCells);
@@ -155,10 +147,10 @@ void Treecode<real_t>::computeMultipoles()
   const int NWARP    = 1<<(NTHREAD2-WARP_SIZE2);
   const int nblock   = (nCells-1)/NWARP + 1;
 
-  CUDA_SAFE_CALL(cudaFuncSetCacheConfig(&multipoles::computeCellMultipoles<NTHREAD2,real_t>,cudaFuncCachePreferL1));
+  CUDA_SAFE_CALL(cudaFuncSetCacheConfig(&multipoles::computeCellMultipoles<NTHREAD2>,cudaFuncCachePreferL1));
   cudaDeviceSynchronize();
   const double t0 = rtc();
-  multipoles::computeCellMultipoles<NTHREAD2,real_t><<<nblock,NTHREAD>>>(
+  multipoles::computeCellMultipoles<NTHREAD2><<<nblock,NTHREAD>>>(
       nPtcl, nCells, d_cellDataList, (float4*)d_ptclPos.ptr,
       1.0/theta,
       d_sourceCenter, d_cellMonopole, d_cellQuad0, d_cellQuad1);

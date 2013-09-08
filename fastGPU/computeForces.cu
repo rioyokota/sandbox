@@ -135,9 +135,8 @@ namespace computeForces
       if (FULL || cellIdx >= 0)
       {
         M0 = tex1Dfetch(texCellMonopole, cellIdx);
-        const Quadrupole<float> Q(tex1Dfetch(texCellQuad0,cellIdx), tex1Dfetch(texCellQuad1,cellIdx));
-        Q0 = Q.get_q0();
-        Q1 = Q.get_q1();
+        Q0 = tex1Dfetch(texCellQuad0,cellIdx);
+        Q1 = tex1Dfetch(texCellQuad1,cellIdx);
       }
       else
       {
