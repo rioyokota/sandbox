@@ -4,13 +4,19 @@
 #include "cudamem.h"
 #include "Particle4.h"
 #include "plummer.h"
-#include "rtc.h"
 #include <string>
 #include <sstream>
+#include <sys/time.h>
 
 #if 1
 #define QUADRUPOLE
 #endif
+
+static inline double get_time() {
+  struct timeval tv;                                          // Time value                                                                                 
+  gettimeofday(&tv, NULL);                                    // Get time of day in seconds and microseconds                                                
+  return double(tv.tv_sec+tv.tv_usec*1e-6);                   // Combine seconds and microseconds and return                                                
+}
 
 static void kernelSuccess(const char kernel[] = "kernel")
 {

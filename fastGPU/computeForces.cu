@@ -622,7 +622,7 @@ float4 Treecode::computeForces(const bool INTCOUNT) {
   const int starting_level = 1;
   int value = 0;
   cudaDeviceSynchronize();
-  const double t0 = rtc();
+  const double t0 = get_time();
   unsigned long long lzero = 0;
   unsigned int       uzero = 0;
   CUDA_SAFE_CALL(cudaMemcpyToSymbol(computeForces::retired_groupCount, &value, sizeof(int)));
@@ -669,7 +669,7 @@ float4 Treecode::computeForces(const bool INTCOUNT) {
       assert(0);
   }
   kernelSuccess("treewalk");
-  const double dt = rtc() - t0;
+  const double dt = get_time() - t0;
 
   float4 interactions = {0.0, 0.0, 0.0, 0.0};
   if (INTCOUNT)

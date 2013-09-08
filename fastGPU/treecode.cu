@@ -46,12 +46,12 @@ int main(int argc, char * argv[])
   tree.ptcl_h2d();
 
   fprintf(stdout,"--- FMM Profiling ----------------\n");
-  double t0 = rtc();
+  double t0 = get_time();
   tree.buildTree(nleaf); // pass nLeaf, accepted 16, 24, 32, 48, 64
   tree.computeMultipoles();
   tree.makeGroups(5, ncrit); // pass nCrit
   const float4 interactions = tree.computeForces();
-  double dt = rtc() - t0;
+  double dt = get_time() - t0;
 #ifdef QUADRUPOLE
   const int FLOPS_QUAD = 64;
 #else
@@ -62,9 +62,9 @@ int main(int argc, char * argv[])
   fprintf(stdout,"Total FMM            : %.7f s (%.7f TFlops)\n",dt,flops);
   const int numTarget = 512; // Number of threads per block will be set to this value
   const int numBlock = 128;
-  t0 = rtc();
+  t0 = get_time();
   tree.computeDirect(numTarget,numBlock);
-  dt = rtc() - t0;
+  dt = get_time() - t0;
   flops = 20.*numTarget*nPtcl/dt/1e12;
   fprintf(stdout,"Total Direct         : %.7f s (%.7f TFlops)\n",dt,flops);
   tree.ptcl_d2h();

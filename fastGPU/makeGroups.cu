@@ -251,7 +251,7 @@ void Treecode::makeGroups(int levelSplit, const int nCrit)
   const int NBINS = 21; 
 
   cudaDeviceSynchronize();
-  const double t0 = rtc();
+  const double t0 = get_time();
   makeGroups::computeKeys<NBINS><<<nblock,nthread>>>(nPtcl, d_domain, d_ptclPos, d_keys, d_values);
 
   levelSplit = std::max(1,levelSplit);  /* pick the coarse segment boundaries at the levelSplit */
@@ -308,7 +308,7 @@ void Treecode::makeGroups(int levelSplit, const int nCrit)
 #endif
 
   kernelSuccess("makeGroups");
-  const double dt = rtc() - t0;
+  const double dt = get_time() - t0;
   fprintf(stdout,"Make groups          : %.7f s\n", dt);
   CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&nGroups, makeGroups::groupCounter, sizeof(int)));
 #if 0

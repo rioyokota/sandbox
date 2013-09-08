@@ -821,11 +821,11 @@ void Treecode::buildTree(const int nLeaf)
 
     assert(2*NBLOCK <= 2048);  /* see Treecode constructor for d_minmax allocation */
     cudaDeviceSynchronize();
-    const double t0 = rtc();
+    const double t0 = get_time();
     treeBuild::computeBoundingBox<NTHREAD2><<<NBLOCK,NTHREAD,NTHREAD*sizeof(float2)>>>
       (nPtcl, d_minmax, d_domain, d_ptclPos);
     kernelSuccess("cudaDomainSize");
-    const double dt = rtc() - t0;
+    const double dt = get_time() - t0;
     fprintf(stdout,"Get bounds           : %.7f s\n",  dt);
   }
 
@@ -856,7 +856,7 @@ void Treecode::buildTree(const int nLeaf)
   {
     CUDA_SAFE_CALL(cudaMemset(d_stack_memory_pool,0,stack_size*sizeof(int)));
     cudaDeviceSynchronize();
-    const double t0 = rtc();
+    const double t0 = get_time();
     switch(nLeaf)
     {
       case 16:
@@ -883,7 +883,7 @@ void Treecode::buildTree(const int nLeaf)
         assert(0);
     }
     kernelSuccess("buildOctree");
-    const double dt = rtc() - t0;
+    const double dt = get_time() - t0;
     CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&nLevels, treeBuild::nlevels, sizeof(int)));
     CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&nCells,  treeBuild::ncells, sizeof(int)));
     CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&nNodes,  treeBuild::nnodes, sizeof(int)));
@@ -894,7 +894,7 @@ void Treecode::buildTree(const int nLeaf)
   /* sort nodes by level */
   {
     cudaDeviceSynchronize();
-    const double t0 = rtc();
+    const double t0 = get_time();
     const int nthread = 256;
     const int nblock  = (nCells-1)/nthread  + 1;
     treeBuild::get_cell_levels<<<nblock,nthread>>>(nCells, d_cellDataList, d_cellDataList_tmp, d_key, d_value);
@@ -920,7 +920,7 @@ void Treecode::buildTree(const int nLeaf)
     treeBuild::collect_leaves<NTHREAD2><<<nblock1,NTHREAD>>>(nCells, d_cellDataList, d_leafList);
 
     kernelSuccess("shuffle");
-    const double dt = rtc() - t0;
+    const double dt = get_time() - t0;
     fprintf(stdout,"Link tree            : %.7f s\n", dt);
 #if 0
     int nnn;
