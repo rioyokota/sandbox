@@ -23,33 +23,33 @@ namespace multipoles {
     _M.w += M.w;
   }
 
-  static __device__ __forceinline__ void addQuadrupole(Quadrupole<double> &_Q, const float4 ptcl) {
+  static __device__ __forceinline__ void addQuadrupole(double6 &_Q, const float4 ptcl) {
     const float x = ptcl.x;
     const float y = ptcl.y;
     const float z = ptcl.z;
     const float m = ptcl.w;
-    Quadrupole<float> Q;
-    Q.xx() = m * x*x;
-    Q.yy() = m * y*y;
-    Q.zz() = m * z*z;
-    Q.xy() = m * x*y;
-    Q.xz() = m * x*z;
-    Q.yz() = m * y*z;
+    float6 Q;
+    Q.xx = m * x*x;
+    Q.yy = m * y*y;
+    Q.zz = m * z*z;
+    Q.xy = m * x*y;
+    Q.xz = m * x*z;
+    Q.yz = m * y*z;
 #pragma unroll
     for (int i=WARP_SIZE2-1; i>=0; i--) {
-      Q.xx() += shfl_xor(Q.xx(), 1<<i);
-      Q.yy() += shfl_xor(Q.yy(), 1<<i);
-      Q.zz() += shfl_xor(Q.zz(), 1<<i);
-      Q.xy() += shfl_xor(Q.xy(), 1<<i);
-      Q.xz() += shfl_xor(Q.xz(), 1<<i);
-      Q.yz() += shfl_xor(Q.yz(), 1<<i);
+      Q.xx += shfl_xor(Q.xx, 1<<i);
+      Q.yy += shfl_xor(Q.yy, 1<<i);
+      Q.zz += shfl_xor(Q.zz, 1<<i);
+      Q.xy += shfl_xor(Q.xy, 1<<i);
+      Q.xz += shfl_xor(Q.xz, 1<<i);
+      Q.yz += shfl_xor(Q.yz, 1<<i);
     }
-    _Q.xx() += Q.xx();
-    _Q.yy() += Q.yy();
-    _Q.zz() += Q.zz();
-    _Q.xy() += Q.xy();
-    _Q.xz() += Q.xz();
-    _Q.yz() += Q.yz();
+    _Q.xx += Q.xx;
+    _Q.yy += Q.yy;
+    _Q.zz += Q.zz;
+    _Q.xy += Q.xy;
+    _Q.xz += Q.xz;
+    _Q.yz += Q.yz;
   }
 
   __device__ unsigned int nflops = 0;
@@ -81,8 +81,8 @@ namespace multipoles {
     const real_t huge = static_cast<real_t>(1e10f);
     typename vec<3,real_t>::type rmin = {+huge,+huge,+huge};
     typename vec<3,real_t>::type rmax = {-huge,-huge,-huge};
-    double4 M = {0.0};
-    Quadrupole<double> Q;
+    double4 M;
+    double6 Q;
 
     unsigned int nflop = 0;
 #if 0
@@ -113,12 +113,12 @@ namespace multipoles {
       M.x *= inv_mass;
       M.y *= inv_mass;
       M.z *= inv_mass;
-      Q.xx() = Q.xx()*inv_mass - M.x*M.x;
-      Q.yy() = Q.yy()*inv_mass - M.y*M.y;
-      Q.zz() = Q.zz()*inv_mass - M.z*M.z;
-      Q.xy() = Q.xy()*inv_mass - M.x*M.y;
-      Q.xz() = Q.xz()*inv_mass - M.x*M.z;
-      Q.yz() = Q.yz()*inv_mass - M.y*M.z;
+      Q.xx = Q.xx*inv_mass - M.x*M.x;
+      Q.yy = Q.yy*inv_mass - M.y*M.y;
+      Q.zz = Q.zz*inv_mass - M.z*M.z;
+      Q.xy = Q.xy*inv_mass - M.x*M.y;
+      Q.xz = Q.xz*inv_mass - M.x*M.z;
+      Q.yz = Q.yz*inv_mass - M.y*M.z;
 
       const Position<real_t> cvec((rmax.x+rmin.x)*real_t(0.5f), (rmax.y+rmin.y)*real_t(0.5f), (rmax.z+rmin.z)*real_t(0.5f));
       const Position<real_t> hvec((rmax.x-rmin.x)*real_t(0.5f), (rmax.y-rmin.y)*real_t(0.5f), (rmax.z-rmin.z)*real_t(0.5f));
@@ -135,10 +135,8 @@ namespace multipoles {
 
       sizeList[cellIdx] = (float4){com.x, com.y, com.z, cellOp2};
       monopoleList[cellIdx] = (float4){M.x, M.y, M.z, M.w};  
-      const double4 q0 = Q.get_q0();
-      const double2 q1 = Q.get_q1();
-      quadrpl0List[cellIdx] = (float4){q0.x, q0.y, q0.z, q0.w};
-      quadrpl1List[cellIdx] = (float2){q1.x, q1.y};
+      quadrpl0List[cellIdx] = (float4){Q.xx, Q.yy, Q.zz, Q.xy};
+      quadrpl1List[cellIdx] = (float2){Q.xz, Q.yz};
     }
   }
 
@@ -168,78 +166,6 @@ void Treecode<real_t>::computeMultipoles()
   const double dt = rtc() - t0;
   fprintf(stdout,"Upward pass          : %.7f s\n", dt);
 
-#if 0
-  unsigned int nflops;
-  const double SCALEDP = WARP_SIZE*10.0*5;
-  const double SCALESP = WARP_SIZE*(5*6.0 + 15.0);
-  CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&nflops, multipoles::nflops, sizeof(int)));
-#endif
-
-#if 0
-  {
-    std::vector<float4> sourceCenter(nCells), cellMonopole(nCells);
-    std::vector<float4> cellQuad0(nCells);
-    std::vector<float2> cellQuad1(nCells);
-    d_sourceCenter.d2h(&sourceCenter[0]);
-    d_cellMonopole.d2h(&cellMonopole[0]);
-    d_cellQuad0.d2h(&cellQuad0[0]);
-    d_cellQuad1.d2h(&cellQuad1[0]);
-
-#if 0
-    for (int i = 0; i < nCells; i++)
-    {
-      printf("cell= %d:   size= %g %g %g | %g \n",
-          i, sourceCenter[i].x, sourceCenter[i].y, sourceCenter[i].z, sourceCenter[i].w);
-    }
-    assert(0);
-#endif
-
-    float3 bmin = {+1e10f}, bmax = {-1e10f};
-    double mtot = 0.0;
-    double3 com = {0.0};
-    Quadrupole<double> Q;
-    for (int i = 0; i < 8; i++)
-    {
-      const float4 m = cellMonopole[i];
-      const float4 c = sourceCenter[i];
-      const Quadrupole<real_t> q(cellQuad0[i], cellQuad1[i]);
-      const float h = sqrt(c.w)*0.5;
-      bmin.x = std::min(bmin.x, c.x - h);
-      bmin.y = std::min(bmin.y, c.y - h);
-      bmin.z = std::min(bmin.z, c.z - h);
-      bmax.x = std::max(bmax.x, c.x + h);
-      bmax.y = std::max(bmax.y, c.y + h);
-      bmax.z = std::max(bmax.z, c.z + h);
-      mtot += m.w;
-      com.x += m.x*m.w;
-      com.y += m.y*m.w;
-      com.z += m.z*m.w;
-      Q.xx() += q.xx();
-      Q.yy() += q.yy();
-      Q.zz() += q.zz();
-      Q.xy() += q.xy();
-      Q.xz() += q.xz();
-      Q.yz() += q.yz();
-      fprintf(stderr," cell= %d  m= %g \n", i, m.w);
-    }
-    const double inv_mass = 1.0/mtot;
-    com.x *= inv_mass;
-    com.y *= inv_mass;
-    com.z *= inv_mass;
-    Q.xx() = Q.xx()*inv_mass - com.x*com.x;
-    Q.yy() = Q.yy()*inv_mass - com.x*com.x;
-    Q.zz() = Q.zz()*inv_mass - com.x*com.x;
-    Q.xy() = Q.xy()*inv_mass - com.x*com.x;
-    Q.xz() = Q.xz()*inv_mass - com.x*com.x;
-    Q.yz() = Q.yz()*inv_mass - com.x*com.x;
-    printf("bmin= %g %g %g \n", bmin.x, bmin.y, bmin.z);
-    printf("bmax= %g %g %g \n", bmax.x, bmax.y, bmax.z);
-    printf("mtot= %g\n", mtot);
-    printf("com = %g %g %g\n", com.x, com.y, com.z);
-    printf("Q0= %g %g %g  \n", Q.xx(), Q.yy(), Q.zz());
-    printf("Q1= %g %g %g  \n", Q.xy(), Q.xz(), Q.yz());
-  }
-#endif
 }
 
 #include "TreecodeInstances.h"

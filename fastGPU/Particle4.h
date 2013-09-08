@@ -6,6 +6,24 @@
 
 /**************************************************************/
 
+struct float6 {
+  float xx;
+  float yy;
+  float zz;
+  float xy;
+  float xz;
+  float yz;
+};
+
+struct double6 {
+  double xx;
+  double yy;
+  double zz;
+  double xy;
+  double xz;
+  double yz;
+};
+
 template<int N, typename T> struct vec;
 
 template<> struct vec<4,float>  { typedef float4  type;  __host__ __device__ static float4 null() {return make_float4(0.0f, 0.0f, 0.0f, 0.0f);} };
