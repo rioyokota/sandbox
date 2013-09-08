@@ -34,9 +34,9 @@ static __forceinline__ __device__ double atomicAdd_double(double *address, const
 /**************************/
 
 static __device__ __forceinline__ 
-void addBoxSize(float3 &_rmin, float3 &_rmax, const Position<float> pos)
+void addBoxSize(float3 &_rmin, float3 &_rmax, const float3 pos)
 {
-  float3 rmin = {pos.x, pos.y, pos.z};
+  float3 rmin = pos;
   float3 rmax = rmin;
 
 #pragma unroll

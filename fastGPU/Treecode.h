@@ -105,8 +105,8 @@ struct Treecode
   std::vector<Particle> ptcl0;
   cuda_mem<Particle> d_ptclPos, d_ptclVel, d_ptclPos_tmp, d_ptclAcc;
   cuda_mem<float4> d_ptclAcc2;
-  cuda_mem<Box<float> > d_domain;
-  cuda_mem<Position<float> > d_minmax;
+  cuda_mem<Box> d_domain;
+  cuda_mem<float3> d_minmax;
   cuda_mem<int2> d_level_begIdx;
 
   int node_max, cell_max, stack_size;

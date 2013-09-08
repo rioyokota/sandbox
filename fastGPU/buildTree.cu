@@ -80,23 +80,28 @@ namespace treeBuild
   template<const int NTHREAD2>
     static __global__ void computeBoundingBox(
         const int n,
-        Position<float> *minmax_ptr,
-        Box<float>      *box_ptr,
+        float3 *minmax_ptr,
+        Box      *box_ptr,
         const Particle4<float> *ptclPos)
     {
       const int NTHREAD = 1<<NTHREAD2;
       const int NBLOCK  = NTHREAD;
 
-      Position<float> bmin(+1e10f), bmax(-1e10f);
+      float3 bmin = {+1e10f, +1e10f, +1e10f};
+      float3 bmax = {-1e10f, -1e10f, -1e10f};
 
       const int nbeg = blockIdx.x * NTHREAD + threadIdx.x;
       for (int i = nbeg; i < n; i += NBLOCK*NTHREAD)
         if (i < n)
         {
           const Particle4<float> p = ptclPos[i];
-          const Position<float> pos(p.x(), p.y(), p.z());
-          bmin = Position<float>::min(bmin, pos);
-          bmax = Position<float>::max(bmax, pos);
+          const float3 pos = {p.x(), p.y(), p.z()};
+          bmin.x = fmin(bmin.x, pos.x);
+          bmin.y = fmin(bmin.y, pos.y);
+          bmin.z = fmin(bmin.z, pos.z);
+          bmax.x = fmax(bmax.x, pos.x);
+          bmax.y = fmax(bmax.y, pos.y);
+          bmax.z = fmax(bmax.z, pos.z);
         }  
  
       float2 res;
@@ -141,8 +146,8 @@ namespace treeBuild
           printf("bmin= %g %g %g \n", bmin.x, bmin.y, bmin.z);
           printf("bmax= %g %g %g \n", bmax.x, bmax.y, bmax.z);
 #endif
-          const Position<float> cvec((bmax.x+bmin.x)*0.5f, (bmax.y+bmin.y)*0.5f, (bmax.z+bmin.z)*0.5f);
-          const Position<float> hvec((bmax.x-bmin.x)*0.5f, (bmax.y-bmin.y)*0.5f, (bmax.z-bmin.z)*0.5f);
+          const float3 cvec = {(bmax.x+bmin.x)*0.5f, (bmax.y+bmin.y)*0.5f, (bmax.z+bmin.z)*0.5f};
+          const float3 hvec = {(bmax.x-bmin.x)*0.5f, (bmax.y-bmin.y)*0.5f, (bmax.z-bmin.z)*0.5f};
           const float h = fmax(hvec.z, fmax(hvec.y, hvec.x));
           float hsize = 1.0f;
           while (hsize > h) hsize *= 0.5f;
@@ -155,9 +160,9 @@ namespace treeBuild
           const long long ny = (long long)(cvec.y/hquant);
           const long long nz = (long long)(cvec.z/hquant);
 
-          const Position<float> centre(hquant * float(nx), hquant * float(ny), hquant * float(nz));
+          const float3 centre = {hquant * float(nx), hquant * float(ny), hquant * float(nz)};
 
-          *box_ptr = Box<float>(centre, hsize);
+          *box_ptr = Box(centre, hsize);
           retirementCount = 0;
         }
       }
@@ -169,7 +174,7 @@ namespace treeBuild
     static __global__ void 
     __launch_bounds__( 256, 8)
     buildOctant(
-        Box<float> box,
+        Box box,
         const int cellParentIndex,
         const int cellIndexBase,
         const int octantMask,
@@ -208,7 +213,7 @@ namespace treeBuild
       __shared__ int nShChildrenFine[NWARPS][9][8];
       __shared__ int nShChildren[8][8];
 
-      Box<float> *shChildBox = (Box<float>*)&nShChildren[0][0];
+      Box *shChildBox = (Box*)&nShChildren[0][0];
 
       int *shdata = (int*)&nShChildrenFine[0][0][0];
 #pragma unroll 
@@ -231,7 +236,7 @@ namespace treeBuild
         if (STOREIDX)
         {
           p4.set_idx(i + threadIdx.x);
-          p4octant = Octant(box.centre, Position<float>(p4.x(), p4.y(), p4.z()));
+          p4octant = Octant(box.centre, make_float3(p4.x(), p4.y(), p4.z()));
         }
 
         p4octant = i+threadIdx.x < nEnd ? p4octant : 0xF; 
@@ -239,7 +244,7 @@ namespace treeBuild
         /* compute suboctant of the octant into which particle will fall */
         if (p4octant < 8)
         {
-          const int p4subOctant = Octant(shChildBox[p4octant].centre, Position<float>(p4.x(), p4.y(), p4.z()));
+          const int p4subOctant = Octant(shChildBox[p4octant].centre, make_float3(p4.x(), p4.y(), p4.z()));
           p4.set_oct(p4subOctant);
         }
 
@@ -553,7 +558,7 @@ namespace treeBuild
     static __global__ void countAtRootNode(
         const int n,
         int *octCounter,
-        const Box<float> box,
+        const Box box,
         const Particle4<float> *ptclPos)
     {
       int np_octant[8] = {0};
@@ -562,7 +567,7 @@ namespace treeBuild
         if (i < n)
         {
           const Particle4<float> p = ptclPos[i];
-          const Position<float> pos(p.x(), p.y(), p.z());
+          const float3 pos = make_float3(p.x(), p.y(), p.z());
           const int octant = Octant(box.centre, pos);
           np_octant[0] += (octant == 0);
           np_octant[1] += (octant == 1);
@@ -590,7 +595,7 @@ namespace treeBuild
   template<int NLEAF>
     static __global__ void buildOctree(
         const int n,
-        const Box<float> *domain,
+        const Box *domain,
         CellData *d_cellDataList,
         int *stack_memory_pool,
         Particle4<float> *ptcl,

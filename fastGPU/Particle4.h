@@ -37,6 +37,7 @@ template<> struct vec<2,double> { typedef double2 type;  __host__ __device__ sta
 
 /**************************************************************/
 
+/*
 template<typename T>
 struct Position
 {
@@ -60,16 +61,16 @@ struct Position
         fmax(lhs.z, rhs.z));
   }
 };
+*/
 
 /**************************************************************/
 
-template<typename T>
 struct Box
 {
-  Position<T> centre;
-  T hsize;
+  float3 centre;
+  float hsize;
   __device__ Box() {}
-  __device__ Box(const Position<T> &c, T hs) : centre(c), hsize(hs) {}
+  __device__ Box(const float3 &c, float hs) : centre(c), hsize(hs) {}
 };
 
 /**************************************************************/
@@ -144,8 +145,7 @@ template<> __device__ __forceinline__ int Particle4<double>::set_oct(const int o
 
 /**************************************************************/
 
-  template<typename T>
-static __host__ __device__ __forceinline__ int Octant(const Position<T> &lhs, const Position<T> &rhs)
+static __host__ __device__ __forceinline__ int Octant(const float3 &lhs, const float3 &rhs)
 {
   return 
     ((lhs.x <= rhs.x) << 0) +
@@ -153,14 +153,13 @@ static __host__ __device__ __forceinline__ int Octant(const Position<T> &lhs, co
     ((lhs.z <= rhs.z) << 2);
 };
 
-  template<typename T>
-static __device__ __forceinline__ Box<T> ChildBox(const Box<T> &box, const int oct)
+static __device__ __forceinline__ Box ChildBox(const Box &box, const int oct)
 {
-  const T s = T(0.5) * box.hsize;
-  return Box<T>(Position<T>(
-        box.centre.x + s * ((oct&1) ? T(1.0) : T(-1.0)),
-        box.centre.y + s * ((oct&2) ? T(1.0) : T(-1.0)),
-        box.centre.z + s * ((oct&4) ? T(1.0) : T(-1.0))
+  const float s = 0.5f * box.hsize;
+  return Box(make_float3(
+        box.centre.x + s * ((oct&1) ? 1.0f : -1.0f),
+        box.centre.y + s * ((oct&2) ? 1.0f : -1.0f),
+        box.centre.z + s * ((oct&4) ? 1.0f : -1.0f)
         ), 
       s);
 }

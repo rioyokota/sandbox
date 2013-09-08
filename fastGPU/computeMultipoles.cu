@@ -93,7 +93,7 @@ namespace multipoles {
       nflop++;
       float4 ptcl = ptclPos[min(i+laneIdx,lastBody-1)];
       if (i + laneIdx >= lastBody) ptcl.w = 0.0f;
-      addBoxSize(rmin, rmax, Position<float>(ptcl.x,ptcl.y,ptcl.z));
+      addBoxSize(rmin, rmax, make_float3(ptcl.x,ptcl.y,ptcl.z));
       addMonopole(M, ptcl);
       addQuadrupole(Q, ptcl);
     }
@@ -112,9 +112,9 @@ namespace multipoles {
       Q.xz = Q.xz*inv_mass - M.x*M.z;
       Q.yz = Q.yz*inv_mass - M.y*M.z;
 
-      const Position<float> cvec((rmax.x+rmin.x)*0.5f, (rmax.y+rmin.y)*0.5f, (rmax.z+rmin.z)*0.5f);
-      const Position<float> hvec((rmax.x-rmin.x)*0.5f, (rmax.y-rmin.y)*0.5f, (rmax.z-rmin.z)*0.5f);
-      const Position<float> com(M.x, M.y, M.z);
+      const float3 cvec = {(rmax.x+rmin.x)*0.5f, (rmax.y+rmin.y)*0.5f, (rmax.z+rmin.z)*0.5f};
+      const float3 hvec = {(rmax.x-rmin.x)*0.5f, (rmax.y-rmin.y)*0.5f, (rmax.z-rmin.z)*0.5f};
+      const float3 com = {M.x, M.y, M.z};
       const float dx = cvec.x - com.x;
       const float dy = cvec.y - com.y;
       const float dz = cvec.z - com.z;

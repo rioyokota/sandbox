@@ -489,7 +489,7 @@ namespace computeForces
 
 #pragma unroll
         for (int i = 0; i < NI; i++) 
-          addBoxSize(rmin, rmax, Position<float>(iPos[i].x, iPos[i].y, iPos[i].z));
+          addBoxSize(rmin, rmax, make_float3(iPos[i].x, iPos[i].y, iPos[i].z));
 
         rmin.x = __shfl(rmin.x,0);
         rmin.y = __shfl(rmin.y,0);
