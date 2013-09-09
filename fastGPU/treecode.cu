@@ -92,7 +92,7 @@ int main(int argc, char * argv[])
   fprintf(stdout,"Rel. L2 Error (acc)  : %.7e\n",sqrt(diffa/norma));
   fprintf(stdout,"--- Tree stats -------------------\n");
   fprintf(stdout,"Bodies               : %d\n",tree.get_nPtcl());
-  fprintf(stdout,"Cells                : %d\n",tree.get_nCells());
+  fprintf(stdout,"Cells                : %d\n",tree.getNumSources());
   fprintf(stdout,"Tree depth           : %d\n",tree.get_nLevels());
   fprintf(stdout,"--- Traversal stats --------------\n");
   fprintf(stdout,"P2P mean list length : %g (max %g)\n", interactions.x, interactions.y);

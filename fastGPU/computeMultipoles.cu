@@ -58,7 +58,7 @@ namespace multipoles {
   static __global__ __launch_bounds__(1<<NTHREAD2, 1024/(1<<NTHREAD2))
     void computeCellMultipoles(
 			       const int nPtcl,
-			       const int nCells,
+			       const int numSources,
 			       const CellData *cells,
 			       const float4* __restrict__ ptclPos,
 			       const float inv_theta,
@@ -72,7 +72,7 @@ namespace multipoles {
 
     const int NWARP2  = NTHREAD2 - WARP_SIZE2;
     const int cellIdx = (blockIdx.x<<NWARP2) + warpIdx;
-    if (cellIdx >= nCells) return;
+    if (cellIdx >= numSources) return;
 
     /* a warp compute properties of each cell */
 
@@ -136,20 +136,20 @@ namespace multipoles {
 
 void Treecode::computeMultipoles()
 {
-  d_sourceCenter    .realloc(nCells);
-  d_cellMonopole.realloc(nCells);
-  d_cellQuad0   .realloc(nCells);
-  d_cellQuad1   .realloc(nCells);
+  d_sourceCenter    .realloc(numSources);
+  d_cellMonopole.realloc(numSources);
+  d_cellQuad0   .realloc(numSources);
+  d_cellQuad1   .realloc(numSources);
 
   const int NTHREAD2 = 8;
   const int NTHREAD  = 1<< NTHREAD2;
   const int NWARP    = 1<<(NTHREAD2-WARP_SIZE2);
-  const int nblock   = (nCells-1)/NWARP + 1;
+  const int nblock   = (numSources-1)/NWARP + 1;
 
   CUDA_SAFE_CALL(cudaFuncSetCacheConfig(&multipoles::computeCellMultipoles<NTHREAD2>,cudaFuncCachePreferL1));
   cudaDeviceSynchronize();
   const double t0 = get_time();
-  multipoles::computeCellMultipoles<NTHREAD2><<<nblock,NTHREAD>>>(nPtcl, nCells, d_cellDataList, (float4*)d_ptclPos.ptr,
+  multipoles::computeCellMultipoles<NTHREAD2><<<nblock,NTHREAD>>>(nPtcl, numSources, d_cellDataList, (float4*)d_ptclPos.ptr,
 								  1.0/theta,
 								  d_sourceCenter, d_cellMonopole, d_cellQuad0, d_cellQuad1);
   kernelSuccess("cellMultipole");

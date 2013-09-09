@@ -239,7 +239,7 @@ void Treecode::makeGroups(int levelSplit, const int nCrit)
 
   d_key.realloc(2.0*nPtcl);
   d_value.realloc(nPtcl);
-  d_groupList.realloc(nPtcl); //nCells);
+  d_groupList.realloc(nPtcl);
 
   unsigned long long *d_keys = (unsigned long long*)d_key.ptr;
   int *d_values = d_value.ptr;

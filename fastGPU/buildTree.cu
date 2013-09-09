@@ -869,7 +869,7 @@ void Treecode::buildTree(const int nLeaf)
     kernelSuccess("buildOctree");
     const double dt = get_time() - t0;
     CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&nLevels, treeBuild::nlevels, sizeof(int)));
-    CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&nCells,  treeBuild::ncells, sizeof(int)));
+    CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&numSources,  treeBuild::ncells, sizeof(int)));
     CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&nNodes,  treeBuild::nnodes, sizeof(int)));
     CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&nLeaves, treeBuild::nleaves, sizeof(int)));
     fprintf(stdout,"Grow tree            : %.7f s\n",  dt);
@@ -880,28 +880,28 @@ void Treecode::buildTree(const int nLeaf)
     cudaDeviceSynchronize();
     const double t0 = get_time();
     const int nthread = 256;
-    const int nblock  = (nCells-1)/nthread  + 1;
-    treeBuild::get_cell_levels<<<nblock,nthread>>>(nCells, d_cellDataList, d_cellDataList_tmp, d_key, d_value);
+    const int nblock  = (numSources-1)/nthread  + 1;
+    treeBuild::get_cell_levels<<<nblock,nthread>>>(numSources, d_cellDataList, d_cellDataList_tmp, d_key, d_value);
 
     thrust::device_ptr<int> keys_beg(d_key.ptr);
-    thrust::device_ptr<int> keys_end(d_key.ptr + nCells);
+    thrust::device_ptr<int> keys_end(d_key.ptr + numSources);
     thrust::device_ptr<int> vals_beg(d_value.ptr);
 
     thrust::stable_sort_by_key(keys_beg, keys_end, vals_beg); 
 
     /* compute begining & end of each level */
-    treeBuild::getLevelRange<<<nblock,nthread,(nthread+2)*sizeof(int)>>>(nCells, d_key, d_levelRange);
+    treeBuild::getLevelRange<<<nblock,nthread,(nthread+2)*sizeof(int)>>>(numSources, d_key, d_levelRange);
 
-    treeBuild::write_newIdx <<<nblock,nthread>>>(nCells, d_value, d_key);
-    treeBuild::shuffle_cells<<<nblock,nthread>>>(nCells, d_value, d_key, d_cellDataList_tmp, d_cellDataList);
+    treeBuild::write_newIdx <<<nblock,nthread>>>(numSources, d_value, d_key);
+    treeBuild::shuffle_cells<<<nblock,nthread>>>(numSources, d_value, d_key, d_cellDataList_tmp, d_cellDataList);
 
     /* group leaves */
 
     d_leafList.realloc(nLeaves);
     const int NTHREAD2 = 8;
     const int NTHREAD  = 256;
-    const int nblock1 = (nCells-1)/NTHREAD+1;
-    treeBuild::collect_leaves<NTHREAD2><<<nblock1,NTHREAD>>>(nCells, d_cellDataList, d_leafList);
+    const int nblock1 = (numSources-1)/NTHREAD+1;
+    treeBuild::collect_leaves<NTHREAD2><<<nblock1,NTHREAD>>>(numSources, d_cellDataList, d_leafList);
 
     kernelSuccess("shuffle");
     const double dt = get_time() - t0;

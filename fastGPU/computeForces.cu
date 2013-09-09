@@ -134,13 +134,11 @@ namespace computeForces {
 		      const float3 targetSize,
 		      const float eps2,
 		      const int2 rootRange,
-		      int *shmem,
+		      volatile int *tempQueue,
 		      int *cellQueue) {
     const int laneIdx = threadIdx.x & (WARP_SIZE-1);
 
     uint2 counters = {0,0};
-
-    volatile int *tempQueue = shmem;
 
     int approxCellIdx, directPtclIdx;
 
@@ -151,20 +149,20 @@ namespace computeForces {
       if (root + laneIdx < rootRange.y)
 	cellQueue[ringAddr(root - rootRange.x + laneIdx)] = root + laneIdx;
 
-    int nCells = rootRange.y - rootRange.x;
+    int numSources = rootRange.y - rootRange.x;
 
-    int cellQueueBlock        = 0;
+    int cellQueueBlock       = 0;
     int nextLevelCellCounter = 0;
 
     unsigned int cellQueueOffset = 0;
 
     /* process level with n_cells */
-    while (nCells > 0) {
+    while (numSources > 0) {
       /* extract cell index from the current level cell list */
       const int cellQueueIdx = cellQueueBlock + laneIdx;
-      const bool useCell    = cellQueueIdx < nCells;
+      const bool useCell    = cellQueueIdx < numSources;
       const int cellIdx     = cellQueue[ringAddr(cellQueueOffset + cellQueueIdx)];
-      cellQueueBlock += min(WARP_SIZE, nCells - cellQueueBlock);
+      cellQueueBlock += min(WARP_SIZE, numSources - cellQueueBlock);
 
       /* read from gmem cell's info */
       const float4   sourceCenter = tex1Dfetch(texCellCenter, cellIdx);
@@ -187,13 +185,13 @@ namespace computeForces {
       int2 childScatter = warpIntExclusiveScan(nChild & (-splitNode));
 
       /* make sure we still have available stack space */
-      if (childScatter.y + nCells - cellQueueBlock > CELL_LIST_MEM_PER_WARP)
+      if (childScatter.y + numSources - cellQueueBlock > CELL_LIST_MEM_PER_WARP)
 	return make_uint2(0xFFFFFFFF,0xFFFFFFFF);
 
       /* if so populate next level stack in gmem */
       if (splitNode)
 	{
-	  const int scatterIdx = cellQueueOffset + nCells + nextLevelCellCounter + childScatter.x;
+	  const int scatterIdx = cellQueueOffset + numSources + nextLevelCellCounter + childScatter.x;
 	  for (int i = 0; i < nChild; i++)
 	    cellQueue[ringAddr(scatterIdx + i)] = firstChild + i;
 	}
@@ -301,9 +299,9 @@ namespace computeForces {
 	}
 
       /* if the current level is processed, schedule the next level */
-      if (cellQueueBlock >= nCells) {
-	cellQueueOffset += nCells;
-	nCells = nextLevelCellCounter;
+      if (cellQueueBlock >= numSources) {
+	cellQueueOffset += numSources;
+	numSources = nextLevelCellCounter;
 	cellQueueBlock = nextLevelCellCounter = 0;
       }
 
@@ -491,11 +489,11 @@ namespace computeForces {
 }
 
 float4 Treecode::computeForces() {
-  bindTexture(computeForces::texCell,(uint4*)d_cellDataList.ptr, nCells);
-  bindTexture(computeForces::texCellCenter,  d_sourceCenter.ptr, nCells);
-  bindTexture(computeForces::texMonopole,    d_cellMonopole.ptr, nCells);
-  bindTexture(computeForces::texQuad0,       d_cellQuad0.ptr,    nCells);
-  bindTexture(computeForces::texQuad1,       d_cellQuad1.ptr,    nCells);
+  bindTexture(computeForces::texCell,(uint4*)d_cellDataList.ptr, numSources);
+  bindTexture(computeForces::texCellCenter,  d_sourceCenter.ptr, numSources);
+  bindTexture(computeForces::texMonopole,    d_cellMonopole.ptr, numSources);
+  bindTexture(computeForces::texQuad0,       d_cellQuad0.ptr,    numSources);
+  bindTexture(computeForces::texQuad1,       d_cellQuad1.ptr,    numSources);
   bindTexture(computeForces::texBody,        d_ptclPos.ptr,      nPtcl);
 
   const int NTHREAD2 = 7;
