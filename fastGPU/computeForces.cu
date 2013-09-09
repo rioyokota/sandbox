@@ -3,13 +3,10 @@
 
 #include "cuda_primitives.h"
 
+#define CELL_LIST_MEM_PER_WARP (4096*32)
 #define IF(x) (-(int)(x))
 
-namespace computeForces
-{
-
-#define CELL_LIST_MEM_PER_WARP (4096*32)
-  
+namespace computeForces {  
   texture<uint4,  1, cudaReadModeElementType> texCellData;
   texture<float4, 1, cudaReadModeElementType> texSourceCenter;
   texture<float4, 1, cudaReadModeElementType> texCellMonopole;
@@ -17,13 +14,27 @@ namespace computeForces
   texture<float2, 1, cudaReadModeElementType> texCellQuad1;
   texture<float4, 1, cudaReadModeElementType> texPtcl;
 
-  static __device__ __forceinline__ int ringAddr(const int i) {
+  static __device__ __forceinline__
+  float6 make_float6(float xx, float yy, float zz, float xy, float xz, float yz) {
+    float6 v;
+    v.xx = xx;
+    v.yy = yy;
+    v.zz = zz;
+    v.xy = xy;
+    v.xz = xz;
+    v.yz = yz;
+    return v;
+  }
+
+  static __device__ __forceinline__
+  int ringAddr(const int i) {
     return i & (CELL_LIST_MEM_PER_WARP - 1);
   }
 
-  static __device__ bool applyMAC(const float4 sourceCenter, const float3 targetCenter, 
-    const float3 targetSize)
-  {
+  static __device__
+  bool applyMAC(const float4 sourceCenter,
+                const float3 targetCenter,
+                const float3 targetSize) {
     float3 dr = make_float3(fabsf(targetCenter.x - sourceCenter.x) - (targetSize.x),
                             fabsf(targetCenter.y - sourceCenter.y) - (targetSize.y),
                             fabsf(targetCenter.z - sourceCenter.z) - (targetSize.z));
@@ -34,9 +45,11 @@ namespace computeForces
     return ds2 < fabsf(sourceCenter.w);
   }
 
-  static __device__ __forceinline__ float4 P2P(float4 acc, const float3 pos,
-    const float4 posj, const float eps2)
-  {
+  static __device__ __forceinline__
+  float4 P2P(float4 acc,
+             const float3 pos,
+	     const float4 posj,
+	     const float eps2) {
     const float3 dr = make_float3(posj.x - pos.x, posj.y - pos.y, posj.z - pos.z);
     const float r2     = dr.x*dr.x + dr.y*dr.y + dr.z*dr.z + eps2;
     const float rinv   = rsqrtf(r2);
@@ -50,9 +63,12 @@ namespace computeForces
     return acc;
   }
 
-  static __device__ __forceinline__ float4 M2P(float4 acc, const float3 pos,
-    const float4 M0, const float4 Q0,  const float2 Q1, float eps2)
-  {
+  static __device__ __forceinline__
+  float4 M2P(float4 acc,
+	     const float3 pos,
+	     const float4 M0,
+	     const float6 Q0,
+	     float eps2) {
     const float3 dr = make_float3(pos.x - M0.x, pos.y - M0.y, pos.z - M0.z);
     const float  r2 = dr.x * dr.x + dr.y * dr.y + dr.z * dr.z + eps2;
     const float rinv  = rsqrtf(r2);
@@ -60,40 +76,37 @@ namespace computeForces
     const float mrinv  = M0.w * rinv;
     const float mrinv3 = rinv2 * mrinv;
     const float mrinv5 = rinv2 * mrinv3; 
-    const float mrinv7 = rinv2 * mrinv5; // 16
-
-    float  D0  =  mrinv;
-    float  D1  = -mrinv3;
-    float  D2  =  mrinv5 * 3.0f;
-    float  D3  = -mrinv7 * 15.0f; // 3
-
-    const float q11 = Q0.x;
-    const float q22 = Q0.y;
-    const float q33 = Q0.z;
-    const float q12 = Q0.w;
-    const float q13 = Q1.x;
-    const float q23 = Q1.y;
-
+    const float mrinv7 = rinv2 * mrinv5;
+    const float  D0 =  mrinv;
+    const float  D1 = -mrinv3;
+    const float  D2 =  mrinv5 * 3.0f;
+    const float  D3 = -mrinv7 * 15.0f;
+    const float q11 = Q0.xx;
+    const float q22 = Q0.yy;
+    const float q33 = Q0.zz;
+    const float q12 = Q0.xy;
+    const float q13 = Q0.xz;
+    const float q23 = Q0.yz;
     const float  q  = q11 + q22 + q33;
     const float3 qR = make_float3(
       q11 * dr.x + q12 * dr.y + q13 * dr.z,
       q12 * dr.x + q22 * dr.y + q23 * dr.z,
       q13 * dr.x + q23 * dr.y + q33 * dr.z);
-    const float qRR = qR.x * dr.x + qR.y * dr.y + qR.z * dr.z; // 22
-
+    const float qRR = qR.x * dr.x + qR.y * dr.y + qR.z * dr.z;
     acc.w  -= D0 + 0.5f * (D1*q + D2 * qRR);
-    float C = D1 + 0.5f * (D2*q + D3 * qRR);
+    const float C = D1 + 0.5f * (D2*q + D3 * qRR);
     acc.x  += C * dr.x + D2 * qR.x;
     acc.y  += C * dr.y + D2 * qR.y;
-    acc.z  += C * dr.z + D2 * qR.z; // 23
-
-    // total: 16 + 3 + 22 + 23 = 64 flops 
+    acc.z  += C * dr.z + D2 * qR.z;
     return acc;
   }
 
   template<int NI, bool FULL>
-  static __device__ __forceinline__ void approxAcc(float4 acc_i[NI], const float3 pos_i[NI],
-    const int cellIdx, const float eps2) {
+  static __device__ __forceinline__
+  void approxAcc(float4 acc_i[NI],
+		 const float3 pos_i[NI],
+		 const int cellIdx,
+		 const float eps2) {
     float4 M0, Q0;
     float2 Q1;
     if (FULL || cellIdx >= 0) {
@@ -106,18 +119,24 @@ namespace computeForces
     }
     for (int j=0; j<WARP_SIZE; j++) {
       const float4 jM0 = make_float4(__shfl(M0.x, j), __shfl(M0.y, j), __shfl(M0.z, j), __shfl(M0.w,j));
-      const float4 jQ0 = make_float4(__shfl(Q0.x, j), __shfl(Q0.y, j), __shfl(Q0.z, j), __shfl(Q0.w,j));
-      const float2 jQ1 = make_float2(__shfl(Q1.x, j), __shfl(Q1.y, j));
+      const float6 jQ0 = make_float6(__shfl(Q0.x, j), __shfl(Q0.y, j), __shfl(Q0.z, j), __shfl(Q0.w,j),
+				     __shfl(Q1.x, j), __shfl(Q1.y, j));
 #pragma unroll
       for (int k=0; k<NI; k++)
-	acc_i[k] = M2P(acc_i[k], pos_i[k], jM0, jQ0, jQ1, eps2);
+	acc_i[k] = M2P(acc_i[k], pos_i[k], jM0, jQ0, eps2);
     }
   }
 
   template<int BLOCKDIM2, int NI>
-  static __device__ uint2 treewalk_warp(float4 acc_i[NI], const float3 pos_i[NI],
-    const float3 targetCenter, const float3 targetSize, const float eps2, const int2 top_cells,
-    int *shmem, int *cellList) {
+  static __device__
+  uint2 treewalk_warp(float4 acc_i[NI],
+		      const float3 pos_i[NI],
+		      const float3 targetCenter,
+		      const float3 targetSize,
+		      const float eps2,
+		      const int2 top_cells,
+		      int *shmem,
+		      int *cellList) {
     const int laneIdx = threadIdx.x & (WARP_SIZE-1);
 
     uint2 counters = {0,0};
@@ -129,8 +148,7 @@ namespace computeForces
     int directCounter = 0;
     int approxCounter = 0;
 
-
-    for (int root_cell = top_cells.x; root_cell < top_cells.y; root_cell += WARP_SIZE)
+    for (int root_cell=top_cells.x; root_cell<top_cells.y; root_cell+=WARP_SIZE)
       if (root_cell + laneIdx < top_cells.y)
 	cellList[ringAddr(root_cell - top_cells.x + laneIdx)] = root_cell + laneIdx;
 
@@ -372,7 +390,7 @@ namespace computeForces
         const float eps2,
         const int start_level,
         const int2 *level_begIdx,
-        const float4 *ptclPos,
+        const float4 *pos,
         float4 *acc,
         int    *gmem_pool)
     {
@@ -391,8 +409,7 @@ namespace computeForces
       int2 top_cells = level_begIdx[start_level];
       top_cells.y++;
 
-      while(1)
-      {
+      while (1) {
         int groupIdx = 0;
         if (laneIdx == 0)
           groupIdx = atomicAdd(&retired_groupCount, 1);
@@ -405,22 +422,17 @@ namespace computeForces
         const int begin = group.x;
         const int end   = group.x+group.y;
 
-        float3 iPos[NI];
-
+        float3 pos_i[NI];
 #pragma unroll
-        for (int i = 0; i < NI; i++)
-        {
-          const float4 ptcl = ptclPos[min(begin + i*WARP_SIZE+laneIdx, end-1)];
-          iPos [i] = make_float3(ptcl.x, ptcl.y, ptcl.z);
+        for (int i=0; i<NI; i++) {
+          const float4 ptcl = pos[min(begin+i*WARP_SIZE+laneIdx,end-1)];
+          pos_i[i] = make_float3(ptcl.x, ptcl.y, ptcl.z);
         }
-
-        float3 rmin = {iPos[0].x, iPos[0].y, iPos[0].z};
+        float3 rmin = pos_i[0];
         float3 rmax = rmin; 
-
 #pragma unroll
         for (int i = 0; i < NI; i++) 
-          addBoxSize(rmin, rmax, make_float3(iPos[i].x, iPos[i].y, iPos[i].z));
-
+          addBoxSize(rmin, rmax, pos_i[i]);
         rmin.x = __shfl(rmin.x,0);
         rmin.y = __shfl(rmin.y,0);
         rmin.z = __shfl(rmin.z,0);
@@ -432,11 +444,10 @@ namespace computeForces
         const float3 targetCenter = {half*(rmax.x+rmin.x), half*(rmax.y+rmin.y), half*(rmax.z+rmin.z)};
         const float3 hvec = {half*(rmax.x-rmin.x), half*(rmax.y-rmin.y), half*(rmax.z-rmin.z)};
 
-        float4 iAcc[NI] = {0.0f, 0.0f, 0.0f, 0.0f};
+        float4 acc_i[NI] = {0.0f, 0.0f, 0.0f, 0.0f};
 
-        uint2 counters;
-        counters =  treewalk_warp<NTHREAD2,NI>
-          (iAcc, iPos, targetCenter, hvec, eps2, top_cells, shmem, gmem);
+        uint2 counters = treewalk_warp<NTHREAD2,NI>
+          (acc_i, pos_i, targetCenter, hvec, eps2, top_cells, shmem, gmem);
 
         assert(!(counters.x == 0xFFFFFFFF && counters.y == 0xFFFFFFFF));
 
@@ -473,20 +484,16 @@ namespace computeForces
 	}
 
 #pragma unroll
-        for (int i = 0; i < NI; i++)
-          if (pidx + i*WARP_SIZE< end)
-          {
-            const float4 iacc = {iAcc[i].x, iAcc[i].y, iAcc[i].z, iAcc[i].w};
-            acc[i*WARP_SIZE + pidx] = iacc;
-          }
+        for (int i=0; i<NI; i++)
+          if (pidx + i * WARP_SIZE < end)
+            acc[i*WARP_SIZE + pidx] = acc_i[i];
       }
     }
 
   static __global__
   void direct(const int numSource,
               const float eps2,
-	      float4 *acc)
-  {
+	      float4 *acc) {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     int offset = blockIdx.x * numSource / gridDim.x;
     float pots, axs, ays ,azs;
@@ -530,12 +537,12 @@ namespace computeForces
 }
 
 float4 Treecode::computeForces() {
-  bindTexture(computeForces::texCellData,     (uint4* )d_cellDataList.ptr, nCells);
-  bindTexture(computeForces::texSourceCenter,     d_sourceCenter.ptr, nCells);
-  bindTexture(computeForces::texCellMonopole, d_cellMonopole.ptr, nCells);
-  bindTexture(computeForces::texCellQuad0,    d_cellQuad0.ptr,    nCells);
-  bindTexture(computeForces::texCellQuad1,    d_cellQuad1.ptr,    nCells);
-  bindTexture(computeForces::texPtcl,         d_ptclPos.ptr,      nPtcl);
+  bindTexture(computeForces::texCellData,(uint4*)d_cellDataList.ptr, nCells);
+  bindTexture(computeForces::texSourceCenter,    d_sourceCenter.ptr, nCells);
+  bindTexture(computeForces::texCellMonopole,    d_cellMonopole.ptr, nCells);
+  bindTexture(computeForces::texCellQuad0,       d_cellQuad0.ptr,    nCells);
+  bindTexture(computeForces::texCellQuad1,       d_cellQuad1.ptr,    nCells);
+  bindTexture(computeForces::texPtcl,            d_ptclPos.ptr,      nPtcl);
 
   const int NTHREAD2 = 7;
   const int NTHREAD  = 1<<NTHREAD2;
@@ -544,9 +551,6 @@ float4 Treecode::computeForces() {
   const int nblock = 8*13;
   d_gmem_pool.alloc(CELL_LIST_MEM_PER_WARP*nblock*(NTHREAD/WARP_SIZE));
 
-#if 0
-  CUDA_SAFE_CALL(cudaMemset(d_ptclAcc, 0, sizeof(float4)*nPtcl));
-#endif
   const int starting_level = 1;
   int value = 0;
   cudaDeviceSynchronize();
