@@ -110,14 +110,14 @@ namespace groupTargets
   void computeKeys(
 		   const int n,
 		   const float4 *d_domain,
-		   const float4 *ptclPos,
+		   const float4 *bodyPos,
 		   unsigned long long *keys,
 		   int *values)
   {
     const int idx = blockIdx.x*blockDim.x + threadIdx.x;
     if (idx >= n) return;
 
-    const float4 ptcl = ptclPos[idx];
+    const float4 body = bodyPos[idx];
 
     const float4 domain = d_domain[0];
     const float inv_domain_size = 0.5f / domain.w;
@@ -125,9 +125,9 @@ namespace groupTargets
 			 domain.y - domain.w,
 			 domain.z - domain.w};
 
-    const int xc = static_cast<int>((ptcl.x - bmin.x) * inv_domain_size * (1<<NBINS));
-    const int yc = static_cast<int>((ptcl.y - bmin.y) * inv_domain_size * (1<<NBINS));
-    const int zc = static_cast<int>((ptcl.z - bmin.z) * inv_domain_size * (1<<NBINS));
+    const int xc = static_cast<int>((body.x - bmin.x) * inv_domain_size * (1<<NBINS));
+    const int yc = static_cast<int>((body.y - bmin.y) * inv_domain_size * (1<<NBINS));
+    const int zc = static_cast<int>((body.z - bmin.z) * inv_domain_size * (1<<NBINS));
 
     keys  [idx] = get_key<NBINS>(make_int3(xc,yc,zc));
     values[idx] = idx;
@@ -139,8 +139,8 @@ namespace groupTargets
 		 const unsigned long long mask,
 		 unsigned long long *keys,
 		 unsigned long long *keys_inv,
-		 int *ptclBegIdx,
-		 int *ptclEndIdx)
+		 int *bodyBegIdx,
+		 int *bodyEndIdx)
   {
     const int gidx = blockIdx.x*blockDim.x + threadIdx.x;
     if (gidx >= n) return;
@@ -179,14 +179,14 @@ namespace groupTargets
     const unsigned long long nextKey = shKeys[idx+1];
 
     if (currKey != prevKey || gidx == 0)
-      ptclBegIdx[gidx] = gidx;
+      bodyBegIdx[gidx] = gidx;
     else
-      ptclBegIdx[gidx] = 0;
+      bodyBegIdx[gidx] = 0;
 
     if (currKey != nextKey || gidx == n-1)
-      ptclEndIdx[n-1-gidx] = gidx+1;
+      bodyEndIdx[n-1-gidx] = gidx+1;
     else
-      ptclEndIdx[n-1-gidx] = 0;
+      bodyEndIdx[n-1-gidx] = 0;
 
   }
 
@@ -194,18 +194,18 @@ namespace groupTargets
 
   static __global__
   void make_groups(const int n, const int nCrit,
-		   const int *ptclBegIdx, 
-		   const int *ptclEndIdx,
+		   const int *bodyBegIdx, 
+		   const int *bodyEndIdx,
 		   int2 *targetCells)
   {
     const int gidx = blockDim.x * blockIdx.x + threadIdx.x;
     if (gidx >= n) return;
 
-    const int ptclBeg = ptclBegIdx[gidx];
-    assert(gidx >= ptclBeg);
+    const int bodyBeg = bodyBegIdx[gidx];
+    assert(gidx >= bodyBeg);
 
-    const int igroup   = (gidx - ptclBeg)/nCrit;
-    const int groupBeg = ptclBeg + igroup * nCrit;
+    const int igroup   = (gidx - bodyBeg)/nCrit;
+    const int groupBeg = bodyBeg + igroup * nCrit;
 
 #if 0
     if (gidx < 100)
@@ -216,8 +216,8 @@ namespace groupTargets
     if (gidx == groupBeg)
       {
         const int groupIdx = atomicAdd(&groupCounter,1);
-        const int ptclEnd = ptclEndIdx[n-1-gidx];
-        targetCells[groupIdx] = make_int2(groupBeg, min(nCrit, ptclEnd - groupBeg));
+        const int bodyEnd = bodyEndIdx[n-1-gidx];
+        targetCells[groupIdx] = make_int2(groupBeg, min(nCrit, bodyEnd - groupBeg));
       }
   }
 
@@ -237,9 +237,9 @@ void Treecode::groupTargets(int levelSplit, const int nCrit)
   this->nCrit = nCrit;
   const int nthread = 256;
 
-  d_key.realloc(2.0*nPtcl);
-  d_value.realloc(nPtcl);
-  d_targetCells.realloc(nPtcl);
+  d_key.realloc(2.0*nBody);
+  d_value.realloc(nBody);
+  d_targetCells.realloc(nBody);
 
   unsigned long long *d_keys = (unsigned long long*)d_key.ptr;
   int *d_values = d_value.ptr;
@@ -247,12 +247,12 @@ void Treecode::groupTargets(int levelSplit, const int nCrit)
   numTargets = 0;
   CUDA_SAFE_CALL(cudaMemcpyToSymbol(groupTargets::groupCounter, &numTargets, sizeof(int)));
 
-  const int nblock  = (nPtcl-1)/nthread + 1;
+  const int nblock  = (nBody-1)/nthread + 1;
   const int NBINS = 21; 
 
   cudaDeviceSynchronize();
   const double t0 = get_time();
-  groupTargets::computeKeys<NBINS><<<nblock,nthread>>>(nPtcl, d_domain, d_ptclPos, d_keys, d_values);
+  groupTargets::computeKeys<NBINS><<<nblock,nthread>>>(nBody, d_domain, d_bodyPos, d_keys, d_values);
 
   levelSplit = std::max(1,levelSplit);  /* pick the coarse segment boundaries at the levelSplit */
   unsigned long long mask= 0;
@@ -266,7 +266,7 @@ void Treecode::groupTargets(int levelSplit, const int nCrit)
 
   /* sort particles by PH key */
   thrust::device_ptr<unsigned long long> keys_beg(d_keys);
-  thrust::device_ptr<unsigned long long> keys_end(d_keys + nPtcl);
+  thrust::device_ptr<unsigned long long> keys_end(d_keys + nBody);
   thrust::device_ptr<int> vals_beg(d_value.ptr);
 #if 1
   thrust::sort_by_key(keys_beg, keys_end, vals_beg); 
@@ -275,36 +275,36 @@ void Treecode::groupTargets(int levelSplit, const int nCrit)
 #endif
 
 #if 1
-  groupTargets::shuffle<float4><<<nblock,nthread>>>(nPtcl, d_value, d_ptclPos, d_ptclPos_tmp);
+  groupTargets::shuffle<float4><<<nblock,nthread>>>(nBody, d_value, d_bodyPos, d_bodyPos_tmp);
 
-  cuda_mem<int> d_ptclBegIdx, d_ptclEndIdx;
+  cuda_mem<int> d_bodyBegIdx, d_bodyEndIdx;
   cuda_mem<unsigned long long> d_keys_inv;
-  d_ptclBegIdx.alloc(nPtcl);
-  d_ptclEndIdx.alloc(nPtcl);
-  d_keys_inv.alloc(nPtcl);
-  groupTargets::mask_keys<<<nblock,nthread,(nthread+2)*sizeof(unsigned long long)>>>(nPtcl, mask, d_keys, d_keys_inv, d_ptclBegIdx, d_ptclEndIdx);
+  d_bodyBegIdx.alloc(nBody);
+  d_bodyEndIdx.alloc(nBody);
+  d_keys_inv.alloc(nBody);
+  groupTargets::mask_keys<<<nblock,nthread,(nthread+2)*sizeof(unsigned long long)>>>(nBody, mask, d_keys, d_keys_inv, d_bodyBegIdx, d_bodyEndIdx);
 
-  thrust::device_ptr<int> valuesBeg(d_ptclBegIdx.ptr);
-  thrust::device_ptr<int> valuesEnd(d_ptclEndIdx.ptr);
+  thrust::device_ptr<int> valuesBeg(d_bodyBegIdx.ptr);
+  thrust::device_ptr<int> valuesEnd(d_bodyEndIdx.ptr);
   thrust::inclusive_scan_by_key(keys_beg,     keys_end,    valuesBeg, valuesBeg);
 
   thrust::device_ptr<unsigned long long> keys_inv_beg(d_keys_inv.ptr);
-  thrust::device_ptr<unsigned long long> keys_inv_end(d_keys_inv.ptr + nPtcl);
+  thrust::device_ptr<unsigned long long> keys_inv_end(d_keys_inv.ptr + nBody);
   thrust::inclusive_scan_by_key(keys_inv_beg, keys_inv_end, valuesEnd, valuesEnd);
 
 #if 0
-  std::vector<int> beg(nPtcl), end(nPtcl);
-  std::vector<unsigned long long> h_keys(nPtcl);
-  d_ptclBegIdx.d2h(&beg[0]);
-  d_ptclEndIdx.d2h(&end[0]);
-  d_key.d2h((int*)&h_keys[0],2*nPtcl);
-  for (int i = 0; i < nPtcl; i++)
+  std::vector<int> beg(nBody), end(nBody);
+  std::vector<unsigned long long> h_keys(nBody);
+  d_bodyBegIdx.d2h(&beg[0]);
+  d_bodyEndIdx.d2h(&end[0]);
+  d_key.d2h((int*)&h_keys[0],2*nBody);
+  for (int i = 0; i < nBody; i++)
     {
-      printf("i= %d : keys= %llx beg= %d  end= %d\n", i, h_keys[i], beg[i], end[nPtcl-1-i]);
+      printf("i= %d : keys= %llx beg= %d  end= %d\n", i, h_keys[i], beg[i], end[nBody-1-i]);
     }
 #endif
 
-  groupTargets::make_groups<<<nblock,nthread>>>(nPtcl, nCrit, d_ptclBegIdx, d_ptclEndIdx, d_targetCells);
+  groupTargets::make_groups<<<nblock,nthread>>>(nBody, nCrit, d_bodyBegIdx, d_bodyEndIdx, d_targetCells);
 #endif
 
   kernelSuccess("groupTargets");
@@ -315,7 +315,7 @@ void Treecode::groupTargets(int levelSplit, const int nCrit)
   assert(0);
 #endif
 
-  //fprintf(stderr, "nGroup= %d <nCrit>= %g \n", numTargets, nPtcl*1.0/numTargets);
+  //fprintf(stderr, "nGroup= %d <nCrit>= %g \n", numTargets, nBody*1.0/numTargets);
 #if 0
   {
     std::vector<int2> groups(numTargets);
@@ -329,7 +329,7 @@ void Treecode::groupTargets(int levelSplit, const int nCrit)
 	np_in_group += groups[i].y;
 #endif
       }
-    printf("np_in_group= %d    np= %d\n", np_in_group, nPtcl);
+    printf("np_in_group= %d    np= %d\n", np_in_group, nBody);
     assert(0);
   }
 #endif

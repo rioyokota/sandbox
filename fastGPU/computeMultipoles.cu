@@ -4,11 +4,11 @@
 
 namespace multipoles {
 
-  static __device__ __forceinline__ void addMonopole(double4 &_M, const float4 ptcl) {
-    const float x = ptcl.x;
-    const float y = ptcl.y;
-    const float z = ptcl.z;
-    const float m = ptcl.w;
+  static __device__ __forceinline__ void addMonopole(double4 &_M, const float4 body) {
+    const float x = body.x;
+    const float y = body.y;
+    const float z = body.z;
+    const float m = body.w;
     float4 M = {m*x,m*y,m*z,m};
 #pragma unroll
     for (int i=WARP_SIZE2-1; i>=0; i--) {
@@ -23,11 +23,11 @@ namespace multipoles {
     _M.w += M.w;
   }
 
-  static __device__ __forceinline__ void addQuadrupole(double6 &_Q, const float4 ptcl) {
-    const float x = ptcl.x;
-    const float y = ptcl.y;
-    const float z = ptcl.z;
-    const float m = ptcl.w;
+  static __device__ __forceinline__ void addQuadrupole(double6 &_Q, const float4 body) {
+    const float x = body.x;
+    const float y = body.y;
+    const float z = body.z;
+    const float m = body.w;
     float6 Q;
     Q.xx = m * x*x;
     Q.yy = m * y*y;
@@ -56,10 +56,10 @@ namespace multipoles {
 
   template<int NTHREAD2>
   static __global__ __launch_bounds__(1<<NTHREAD2, 1024/(1<<NTHREAD2))
-    void computeCellMultipoles(const int nPtcl,
+    void computeCellMultipoles(const int nBody,
 			       const int numSources,
 			       const CellData *cells,
-			       const float4* __restrict__ ptclPos,
+			       const float4* __restrict__ bodyPos,
 			       const float inv_theta,
 			       float4 *sourceCenter,
 			       float4 *monopole,
@@ -90,11 +90,11 @@ namespace multipoles {
     for (int i = firstBody; i < lastBody; i += WARP_SIZE)
       {
 	nflop++;
-	float4 ptcl = ptclPos[min(i+laneIdx,lastBody-1)];
-	if (i + laneIdx >= lastBody) ptcl.w = 0.0f;
-	addBoxSize(rmin, rmax, make_float3(ptcl.x,ptcl.y,ptcl.z));
-	addMonopole(M, ptcl);
-	addQuadrupole(Q, ptcl);
+	float4 body = bodyPos[min(i+laneIdx,lastBody-1)];
+	if (i + laneIdx >= lastBody) body.w = 0.0f;
+	addBoxSize(rmin, rmax, make_float3(body.x,body.y,body.z));
+	addMonopole(M, body);
+	addQuadrupole(Q, body);
       }
 
 
@@ -148,7 +148,7 @@ void Treecode::computeMultipoles()
   CUDA_SAFE_CALL(cudaFuncSetCacheConfig(&multipoles::computeCellMultipoles<NTHREAD2>,cudaFuncCachePreferL1));
   cudaDeviceSynchronize();
   const double t0 = get_time();
-  multipoles::computeCellMultipoles<NTHREAD2><<<nblock,NTHREAD>>>(nPtcl, numSources, d_sourceCells, (float4*)d_ptclPos.ptr,
+  multipoles::computeCellMultipoles<NTHREAD2><<<nblock,NTHREAD>>>(nBody, numSources, d_sourceCells, (float4*)d_bodyPos.ptr,
 								  1.0/theta,
 								  d_sourceCenter, d_Monopole, d_Quadrupole0, d_Quadrupole1);
   kernelSuccess("computeCellMultipoles");

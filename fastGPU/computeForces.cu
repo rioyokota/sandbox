@@ -140,7 +140,7 @@ namespace computeForces {
 
     uint2 counters = {0,0};
 
-    int approxCellIdx, directPtclIdx;
+    int approxCellIdx, directBodyIdx;
 
     int directCounter = 0;
     int approxCounter = 0;
@@ -252,11 +252,11 @@ namespace computeForces {
 	      tempQueue[childScatter.x - nProcessed] = -1-firstBody;
 	    }
 	  scanVal = inclusive_segscan_warp(tempQueue[laneIdx], scanVal.y);
-	  const int  ptclIdx = scanVal.x;
+	  const int  bodyIdx = scanVal.x;
 
 	  if (nParticle >= WARP_SIZE)
 	    {
-	      const float4 M0 = tex1Dfetch(texBody, ptclIdx);
+	      const float4 M0 = tex1Dfetch(texBody, bodyIdx);
 	      for (int j=0; j<WARP_SIZE; j++) {
 		const float4 pos_j = make_float4(__shfl(M0.x, j), __shfl(M0.y, j), __shfl(M0.z, j), __shfl(M0.w,j));
 #pragma unroll
@@ -270,9 +270,9 @@ namespace computeForces {
 	  else 
 	    {
 	      const int scatterIdx = directCounter + laneIdx;
-	      tempQueue[laneIdx] = directPtclIdx;
+	      tempQueue[laneIdx] = directBodyIdx;
 	      if (scatterIdx < WARP_SIZE)
-		tempQueue[scatterIdx] = ptclIdx;
+		tempQueue[scatterIdx] = bodyIdx;
 
 	      directCounter += nParticle;
 
@@ -289,10 +289,10 @@ namespace computeForces {
 		  directCounter -= WARP_SIZE;
 		  const int scatterIdx = directCounter + laneIdx - nParticle;
 		  if (scatterIdx >= 0)
-		    tempQueue[scatterIdx] = ptclIdx;
+		    tempQueue[scatterIdx] = bodyIdx;
 		  counters.y += WARP_SIZE;
 		}
-	      directPtclIdx = tempQueue[laneIdx];
+	      directBodyIdx = tempQueue[laneIdx];
 
 	      nParticle = 0;
 	    }
@@ -314,8 +314,8 @@ namespace computeForces {
     }
 
     if (directCounter > 0) {
-      const int ptclIdx = laneIdx < directCounter ? directPtclIdx : -1;
-      const float4 M0 = ptclIdx >= 0 ? tex1Dfetch(texBody, ptclIdx) : make_float4(0.0f, 0.0f, 0.0f, 0.0f);
+      const int bodyIdx = laneIdx < directCounter ? directBodyIdx : -1;
+      const float4 M0 = bodyIdx >= 0 ? tex1Dfetch(texBody, bodyIdx) : make_float4(0.0f, 0.0f, 0.0f, 0.0f);
       for (int j=0; j<WARP_SIZE; j++) {
 	const float4 pos_j = make_float4(__shfl(M0.x, j), __shfl(M0.y, j), __shfl(M0.z, j), __shfl(M0.w,j));
 #pragma unroll
@@ -375,8 +375,8 @@ namespace computeForces {
       float3 pos_i[NI];
 #pragma unroll
       for (int i=0; i<NI; i++) {
-	const float4 ptcl = pos[min(begin+i*WARP_SIZE+laneIdx,end-1)];
-	pos_i[i] = make_float3(ptcl.x, ptcl.y, ptcl.z);
+	const float4 body = pos[min(begin+i*WARP_SIZE+laneIdx,end-1)];
+	pos_i[i] = make_float3(body.x, body.y, body.z);
       }
       float3 rmin = pos_i[0];
       float3 rmax = rmin; 
@@ -492,7 +492,7 @@ float4 Treecode::computeForces() {
   bindTexture(computeForces::texMonopole,    d_Monopole.ptr,     numSources);
   bindTexture(computeForces::texQuad0,       d_Quadrupole0.ptr,  numSources);
   bindTexture(computeForces::texQuad1,       d_Quadrupole1.ptr,  numSources);
-  bindTexture(computeForces::texBody,        d_ptclPos.ptr,      nPtcl);
+  bindTexture(computeForces::texBody,        d_bodyPos.ptr,      nBody);
 
   const int NTHREAD2 = 7;
   const int NTHREAD  = 1<<NTHREAD2;
@@ -505,7 +505,7 @@ float4 Treecode::computeForces() {
   const double t0 = get_time();
   CUDA_SAFE_CALL(cudaFuncSetCacheConfig(&computeForces::traverse<NTHREAD2,2>, cudaFuncCachePreferL1));
   computeForces::traverse<NTHREAD2,2><<<nblock,NTHREAD>>>(numTargets, d_targetCells, eps2, d_levelRange,
-							  d_ptclPos_tmp, d_ptclAcc,
+							  d_bodyPos_tmp, d_bodyAcc,
 							  d_gmem_pool);
   kernelSuccess("traverse");
   const double dt = get_time() - t0;
@@ -517,11 +517,11 @@ float4 Treecode::computeForces() {
   CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&sumM2P, computeForces::sumM2PGlob, sizeof(unsigned long long)));
   CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&maxM2P, computeForces::maxM2PGlob, sizeof(unsigned int)));
   float4 interactions;
-  interactions.x = sumP2P * 1.0 / nPtcl;
+  interactions.x = sumP2P * 1.0 / nBody;
   interactions.y = maxP2P;
-  interactions.z = sumM2P * 1.0 / nPtcl;
+  interactions.z = sumM2P * 1.0 / nBody;
   interactions.w = maxM2P;
-  float flops = (interactions.x * 20 + interactions.z * 64) * nPtcl / dt / 1e12;
+  float flops = (interactions.x * 20 + interactions.z * 64) * nBody / dt / 1e12;
   fprintf(stdout,"Traverse             : %.7f s (%.7f TFlops)\n",dt,flops);
 
   unbindTexture(computeForces::texBody);
@@ -535,8 +535,8 @@ float4 Treecode::computeForces() {
 
 void Treecode::computeDirect(const int numTarget, const int numBlock)
 {
-  bindTexture(computeForces::texBody,d_ptclPos_tmp.ptr,nPtcl);
-  computeForces::direct<<<numBlock,numTarget>>>(nPtcl, eps2, d_ptclAcc2);
+  bindTexture(computeForces::texBody,d_bodyPos_tmp.ptr,nBody);
+  computeForces::direct<<<numBlock,numTarget>>>(nBody, eps2, d_bodyAcc2);
   unbindTexture(computeForces::texBody);
   cudaDeviceSynchronize();
 }

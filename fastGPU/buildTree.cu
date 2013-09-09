@@ -43,7 +43,7 @@ namespace treeBuild
 
   __device__   int *memPool;
   __device__   CellData *sourceCells;
-  __device__   void *ptclVel_tmp;
+  __device__   void *bodyVel_tmp;
 
   template<int NTHREAD2>
   static __device__ float2 minmax_block(float2 sum)
@@ -92,7 +92,7 @@ namespace treeBuild
 					    const int n,
 					    float3 *minmax_ptr,
 					    float4 *box_ptr,
-					    const float4 *ptclPos)
+					    const float4 *bodyPos)
   {
     const int NTHREAD = 1<<NTHREAD2;
     const int NBLOCK  = NTHREAD;
@@ -104,7 +104,7 @@ namespace treeBuild
     for (int i = nbeg; i < n; i += NBLOCK*NTHREAD)
       if (i < n)
         {
-          const float4 pos = ptclPos[i];
+          const float4 pos = bodyPos[i];
           bmin.x = fmin(bmin.x, pos.x);
           bmin.y = fmin(bmin.y, pos.y);
           bmin.z = fmin(bmin.z, pos.z);
@@ -188,7 +188,7 @@ namespace treeBuild
 	      const int cellIndexBase,
 	      const int octantMask,
 	      int *octCounterBase,
-	      float4 *ptcl,
+	      float4 *body,
 	      float4 *buff,
 	      const int level = 0)
   {
@@ -239,7 +239,7 @@ namespace treeBuild
     const int nBeg_block = nBeg + blockIdx.x * blockDim.x;
     for (int i = nBeg_block; i < nEnd; i += gridDim.x * blockDim.x)
       {
-        float4 p4 = ptcl[min(i+threadIdx.x, nEnd-1)];
+        float4 p4 = body[min(i+threadIdx.x, nEnd-1)];
 
         int p4octant = __float_as_int(p4.w) & 0xF;
         if (STOREIDX)
@@ -508,13 +508,13 @@ namespace treeBuild
 		grid.x = 1;
 		buildOctantSingle<NLEAF><<<grid,block>>>
 		  (box, cellIndexBase+blockIdx.y, cellFirstChildIndex,
-		   octant_mask, octCounterNbase, buff, ptcl, level+1);
+		   octant_mask, octCounterNbase, buff, body, level+1);
 	      }
 	    else
 #endif
 	      buildOctant<NLEAF,false><<<grid,block>>>
 		(box, cellIndexBase+blockIdx.y, cellFirstChildIndex,
-		 octant_mask, octCounterNbase, buff, ptcl, level+1);
+		 octant_mask, octCounterNbase, buff, body, level+1);
 	    const cudaError_t err = cudaGetLastError();
 	    if (err != cudaSuccess)
 	      {
@@ -545,9 +545,9 @@ namespace treeBuild
 		{
 		  float4 pos = buff[i];
 		  int index = (__float_as_int(pos.w) >> 4) & 0xF0000000;
-		  float4 vel = ((float4*)ptclVel_tmp)[index];
+		  float4 vel = ((float4*)bodyVel_tmp)[index];
 		  pos.w = vel.w;
-		  ptcl[i] = pos;
+		  body[i] = pos;
 		  buff[i] = vel;
 		}
 	  }
@@ -558,10 +558,10 @@ namespace treeBuild
 		{
 		  float4 pos = buff[i];
 		  int index = (__float_as_int(pos.w) >> 4) & 0xF0000000;
-		  float4 vel = ((float4*)ptclVel_tmp)[index];
+		  float4 vel = ((float4*)bodyVel_tmp)[index];
 		  pos.w = vel.w;
 		  buff[i] = pos;
-		  ptcl[i] = vel;
+		  body[i] = vel;
 		}
 	  }
       }
@@ -572,14 +572,14 @@ namespace treeBuild
 					 const int n,
 					 int *octCounter,
 					 const float4 box,
-					 const float4 *ptclPos)
+					 const float4 *bodyPos)
   {
     int np_octant[8] = {0};
     const int beg = blockIdx.x * blockDim.x + threadIdx.x;
     for (int i = beg; i < n; i += gridDim.x * blockDim.x)
       if (i < n)
         {
-          const float4 pos = ptclPos[i];
+          const float4 pos = bodyPos[i];
           const int octant = Octant(box, pos);
           np_octant[0] += (octant == 0);
           np_octant[1] += (octant == 1);
@@ -610,20 +610,20 @@ namespace treeBuild
 				     const float4 *domain,
 				     CellData *d_sourceCells,
 				     int *stack_memory_pool,
-				     float4 *ptcl,
+				     float4 *body,
 				     float4 *buff,
-				     float4 *d_ptclVel,
+				     float4 *d_bodyVel,
 				     int *ncells_return = NULL)
   {
     sourceCells = d_sourceCells;
-    ptclVel_tmp  = (void*)d_ptclVel;
+    bodyVel_tmp  = (void*)d_bodyVel;
 
     memPool = stack_memory_pool;
 
     int *octCounter = new int[8+8];
     for (int k = 0; k < 16; k++)
       octCounter[k] = 0;
-    countAtRootNode<float><<<256, 256>>>(n, octCounter, *domain, ptcl);
+    countAtRootNode<float><<<256, 256>>>(n, octCounter, *domain, body);
     assert(cudaGetLastError() == cudaSuccess);
     cudaDeviceSynchronize();
 
@@ -657,7 +657,7 @@ namespace treeBuild
     computeGridAndBlockSize(grid, block, n);
 #if 1
     buildOctant<NLEAF,true><<<grid, block>>>
-      (*domain, 0, 0, 0, octCounterN, ptcl, buff);
+      (*domain, 0, 0, 0, octCounterN, body, buff);
     assert(cudaDeviceSynchronize() == cudaSuccess);
 #endif
 
@@ -807,7 +807,7 @@ void Treecode::buildTree(const int nLeaf)
     cudaDeviceSynchronize();
     const double t0 = get_time();
     treeBuild::computeBoundingBox<NTHREAD2><<<NBLOCK,NTHREAD,NTHREAD*sizeof(float2)>>>
-      (nPtcl, d_minmax, d_domain, d_ptclPos);
+      (nBody, d_minmax, d_domain, d_bodyPos);
     kernelSuccess("cudaDomainSize");
     const double dt = get_time() - t0;
     fprintf(stdout,"Get bounds           : %.7f s\n",  dt);
@@ -845,23 +845,23 @@ void Treecode::buildTree(const int nLeaf)
       {
       case 16:
         treeBuild::buildOctree<16><<<1,1>>>(
-					    nPtcl, d_domain, d_sourceCells, d_stack_memory_pool, d_ptclPos, d_ptclPos_tmp, d_ptclVel);
+					    nBody, d_domain, d_sourceCells, d_stack_memory_pool, d_bodyPos, d_bodyPos_tmp, d_bodyVel);
         break;
       case 24:
         treeBuild::buildOctree<24><<<1,1>>>(
-					    nPtcl, d_domain, d_sourceCells, d_stack_memory_pool, d_ptclPos, d_ptclPos_tmp, d_ptclVel);
+					    nBody, d_domain, d_sourceCells, d_stack_memory_pool, d_bodyPos, d_bodyPos_tmp, d_bodyVel);
         break;
       case 32:
         treeBuild::buildOctree<32><<<1,1>>>(
-					    nPtcl, d_domain, d_sourceCells, d_stack_memory_pool, d_ptclPos, d_ptclPos_tmp, d_ptclVel);
+					    nBody, d_domain, d_sourceCells, d_stack_memory_pool, d_bodyPos, d_bodyPos_tmp, d_bodyVel);
         break;
       case 48:
         treeBuild::buildOctree<48><<<1,1>>>(
-					    nPtcl, d_domain, d_sourceCells, d_stack_memory_pool, d_ptclPos, d_ptclPos_tmp, d_ptclVel);
+					    nBody, d_domain, d_sourceCells, d_stack_memory_pool, d_bodyPos, d_bodyPos_tmp, d_bodyVel);
         break;
       case 64:
         treeBuild::buildOctree<64><<<1,1>>>(
-					    nPtcl, d_domain, d_sourceCells, d_stack_memory_pool, d_ptclPos, d_ptclPos_tmp, d_ptclVel);
+					    nBody, d_domain, d_sourceCells, d_stack_memory_pool, d_bodyPos, d_bodyPos_tmp, d_bodyVel);
         break;
       default:
         assert(0);

@@ -91,20 +91,20 @@ public:
 struct Treecode
 {
 private:
-  int nPtcl, numLevels, numSources, numLeaves, numTargets, nCrit, nLeaf;
+  int nBody, numLevels, numSources, numLeaves, numTargets, nCrit, nLeaf;
   float theta, eps2;
 
 public:
-  int get_nPtcl() const { return nPtcl; }
+  int get_nBody() const { return nBody; }
   int get_nCrit() const { return nCrit; }
   int get_nLeaf() const { return nLeaf; }
   int getNumSources() const { return numSources; }
   int getNumLevels() const { return numLevels; }
 
-  host_mem<float4> h_ptclPos, h_ptclVel, h_ptclAcc;
-  host_mem<float4> h_ptclAcc2;
-  cuda_mem<float4> d_ptclPos, d_ptclVel, d_ptclPos_tmp, d_ptclAcc;
-  cuda_mem<float4> d_ptclAcc2;
+  host_mem<float4> h_bodyPos, h_bodyVel, h_bodyAcc;
+  host_mem<float4> h_bodyAcc2;
+  cuda_mem<float4> d_bodyPos, d_bodyVel, d_bodyPos_tmp, d_bodyAcc;
+  cuda_mem<float4> d_bodyAcc2;
   cuda_mem<float4> d_domain;
   cuda_mem<float3> d_minmax;
   cuda_mem<int2> d_levelRange;
@@ -129,28 +129,28 @@ public:
     d_levelRange.alloc(32);
   }
 
-  void alloc(const int nPtcl)
+  void alloc(const int nBody)
   {
-    this->nPtcl = nPtcl;
-    h_ptclPos.alloc(nPtcl);
-    h_ptclVel.alloc(nPtcl);
-    h_ptclAcc.alloc(nPtcl);
-    h_ptclAcc2.alloc(nPtcl);
+    this->nBody = nBody;
+    h_bodyPos.alloc(nBody);
+    h_bodyVel.alloc(nBody);
+    h_bodyAcc.alloc(nBody);
+    h_bodyAcc2.alloc(nBody);
 
-    d_ptclPos.alloc(nPtcl);
-    d_ptclVel.alloc(nPtcl);
-    d_ptclPos_tmp.alloc(nPtcl);
-    d_ptclAcc.alloc(nPtcl);
-    d_ptclAcc2.alloc(nPtcl);
+    d_bodyPos.alloc(nBody);
+    d_bodyVel.alloc(nBody);
+    d_bodyPos_tmp.alloc(nBody);
+    d_bodyAcc.alloc(nBody);
+    d_bodyAcc2.alloc(nBody);
  
     /* allocate stack memory */ 
-    node_max = nPtcl/10;
+    node_max = nBody/10;
     stack_size = (8+8+8+64+8)*node_max;
     fprintf(stdout,"Stack size           : %g MB\n",sizeof(int)*stack_size/1024.0/1024.0);
     d_stack_memory_pool.alloc(stack_size);
   
     /* allocate celldata memory */
-    cell_max = nPtcl;
+    cell_max = nBody;
     fprintf(stdout,"Cell data            : %g MB\n",cell_max*sizeof(CellData)/1024.0/1024.0);
     d_sourceCells.alloc(cell_max);
     d_sourceCells_tmp.alloc(cell_max);
@@ -158,19 +158,19 @@ public:
     d_value.alloc(cell_max);
   };
 
-  void ptcl_d2h() {
-    d_ptclPos_tmp.d2h(h_ptclPos);
-    d_ptclVel.d2h(h_ptclVel);
-    d_ptclAcc.d2h(h_ptclAcc);
-    d_ptclAcc2.d2h(h_ptclAcc2);
+  void body_d2h() {
+    d_bodyPos_tmp.d2h(h_bodyPos);
+    d_bodyVel.d2h(h_bodyVel);
+    d_bodyAcc.d2h(h_bodyAcc);
+    d_bodyAcc2.d2h(h_bodyAcc2);
   }
 
 
-  void ptcl_h2d() {
-    d_ptclPos.h2d(h_ptclPos);
-    d_ptclVel.h2d(h_ptclVel);
-    d_ptclAcc.h2d(h_ptclAcc);
-    d_ptclAcc2.h2d(h_ptclAcc2);
+  void body_h2d() {
+    d_bodyPos.h2d(h_bodyPos);
+    d_bodyVel.h2d(h_bodyVel);
+    d_bodyAcc.h2d(h_bodyAcc);
+    d_bodyAcc2.h2d(h_bodyAcc2);
   }
 
   void buildTree(const int nLeaf = 16);
