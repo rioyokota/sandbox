@@ -177,7 +177,7 @@ struct Treecode
   void buildTree(const int nLeaf = 16);
   void computeMultipoles();
   void makeGroups(int levelSplit = 1, const int nCrit = 64);
-  float4 computeForces(const bool INTCOUNT = true);
+  float4 computeForces();
   void computeDirect(const int numTarget, const int numBlock);
 };
 
