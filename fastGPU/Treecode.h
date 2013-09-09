@@ -49,7 +49,7 @@ struct CellData {
     enum {NLEAF_MASK  = ~(0x7U << NLEAF_SHIFT)};
     enum {LEVEL_SHIFT = 27};
     enum {LEVEL_MASK  = ~(0x1FU << LEVEL_SHIFT)};
-    uint4 packed_data;
+    uint4 data;
   public:
     __host__ __device__ CellData(
         const int level,
@@ -62,29 +62,29 @@ struct CellData {
       int packed_firstleaf_n = 0xFFFFFFFF;
       if (n != 0xFFFFFFFF)
         packed_firstleaf_n = first | ((unsigned int)n << NLEAF_SHIFT);
-      packed_data = make_uint4(parentCell | (level << LEVEL_SHIFT), packed_firstleaf_n, nBeg, nEnd);
+      data = make_uint4(parentCell | (level << LEVEL_SHIFT), packed_firstleaf_n, nBeg, nEnd);
     }
 
-    __host__ __device__ CellData(const uint4 data) : packed_data(data) {}
+    __host__ __device__ CellData(const uint4 data) : data(data) {}
 
-    __host__ __device__ int n()      const {return (packed_data.y >> NLEAF_SHIFT)+1;}
-    __host__ __device__ int first()  const {return packed_data.y  & NLEAF_MASK;}
-    __host__ __device__ int parent() const {return packed_data.x  & LEVEL_MASK;}
-    __host__ __device__ int level()  const {return packed_data.x >> LEVEL_SHIFT;}
-    __host__ __device__ int pbeg()   const {return packed_data.z;}
-    __host__ __device__ int pend()   const {return packed_data.w;}
+    __host__ __device__ int n()      const {return (data.y >> NLEAF_SHIFT)+1;}
+    __host__ __device__ int first()  const {return data.y & NLEAF_MASK;}
+    __host__ __device__ int parent() const {return data.x & LEVEL_MASK;}
+    __host__ __device__ int level()  const {return data.x >> LEVEL_SHIFT;}
+    __host__ __device__ int pbeg()   const {return data.z;}
+    __host__ __device__ int pend()   const {return data.w;}
 
-    __host__ __device__ bool isLeaf() const {return packed_data.y == 0xFFFFFFFF;}
+    __host__ __device__ bool isLeaf() const {return data.y == 0xFFFFFFFF;}
     __host__ __device__ bool isNode() const {return !isLeaf();}
 
     __host__ __device__ void update_first(const int first) 
     {
       const int _n = n()-1;
-      packed_data.y = first | ((unsigned int)_n << NLEAF_SHIFT);
+      data.y = first | ((unsigned int)_n << NLEAF_SHIFT);
     }
     __host__ __device__ void update_parent(const int parent)
     {
-      packed_data.x = parent | (level() << LEVEL_SHIFT);
+      data.x = parent | (level() << LEVEL_SHIFT);
     }
 };
 

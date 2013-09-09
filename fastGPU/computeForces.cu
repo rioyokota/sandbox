@@ -7,12 +7,12 @@
 #define IF(x) (-(int)(x))
 
 namespace computeForces {  
-  texture<uint4,  1, cudaReadModeElementType> texCellData;
-  texture<float4, 1, cudaReadModeElementType> texSourceCenter;
-  texture<float4, 1, cudaReadModeElementType> texCellMonopole;
-  texture<float4, 1, cudaReadModeElementType> texCellQuad0;
-  texture<float2, 1, cudaReadModeElementType> texCellQuad1;
-  texture<float4, 1, cudaReadModeElementType> texPtcl;
+  texture<uint4,  1, cudaReadModeElementType> texCell;
+  texture<float4, 1, cudaReadModeElementType> texBody;
+  texture<float4, 1, cudaReadModeElementType> texCellCenter;
+  texture<float4, 1, cudaReadModeElementType> texMonopole;
+  texture<float4, 1, cudaReadModeElementType> texQuad0;
+  texture<float2, 1, cudaReadModeElementType> texQuad1;
 
   static __device__ __forceinline__
   float6 make_float6(float xx, float yy, float zz, float xy, float xz, float yz) {
@@ -110,9 +110,9 @@ namespace computeForces {
     float4 M0, Q0;
     float2 Q1;
     if (FULL || cellIdx >= 0) {
-      M0 = tex1Dfetch(texCellMonopole, cellIdx);
-      Q0 = tex1Dfetch(texCellQuad0,    cellIdx);
-      Q1 = tex1Dfetch(texCellQuad1,    cellIdx);
+      M0 = tex1Dfetch(texMonopole, cellIdx);
+      Q0 = tex1Dfetch(texQuad0,    cellIdx);
+      Q1 = tex1Dfetch(texQuad1,    cellIdx);
     } else {
       M0 = Q0 = make_float4(0.0f, 0.0f, 0.0f, 0.0f);
       Q1 = make_float2(0.0f, 0.0f);
@@ -170,8 +170,8 @@ namespace computeForces {
       cellListBlock += min(WARP_SIZE, nCells - cellListBlock);
 
       /* read from gmem cell's info */
-      const float4   sourceCenter = tex1Dfetch(texSourceCenter, cellIdx);
-      const CellData cellData = tex1Dfetch(texCellData, cellIdx);
+      const float4   sourceCenter = tex1Dfetch(texCellCenter, cellIdx);
+      const CellData cellData = tex1Dfetch(texCell, cellIdx);
 
       const bool splitCell = applyMAC(sourceCenter, targetCenter, targetSize) ||
 	(cellData.pend() - cellData.pbeg() < 3); /* force to open leaves with less than 3 particles */
@@ -290,7 +290,7 @@ namespace computeForces {
 
 	  if (nParticle >= WARP_SIZE)
 	  {
-	    const float4 M0 = tex1Dfetch(texPtcl, ptclIdx);
+	    const float4 M0 = tex1Dfetch(texBody, ptclIdx);
 	    for (int j=0; j<WARP_SIZE; j++) {
 	      const float4 pos_j = make_float4(__shfl(M0.x, j), __shfl(M0.y, j), __shfl(M0.z, j), __shfl(M0.w,j));
 #pragma unroll
@@ -313,7 +313,7 @@ namespace computeForces {
 	    if (directCounter >= WARP_SIZE)
 	    {
 	      /* evalute cells stored in shmem */
-	      const float4 M0 = tex1Dfetch(texPtcl, tmpList[laneIdx]);
+	      const float4 M0 = tex1Dfetch(texBody, tmpList[laneIdx]);
 	      for (int j=0; j<WARP_SIZE; j++) {
 		const float4 pos_j = make_float4(__shfl(M0.x, j), __shfl(M0.y, j), __shfl(M0.z, j), __shfl(M0.w,j));
 #pragma unroll
@@ -358,7 +358,7 @@ namespace computeForces {
     if (directCounter > 0)
     {
       const int ptclIdx = laneIdx < directCounter ? directPtclIdx : -1;
-      const float4 M0 = ptclIdx >= 0 ? tex1Dfetch(texPtcl, ptclIdx) : make_float4(0.0f, 0.0f, 0.0f, 0.0f);
+      const float4 M0 = ptclIdx >= 0 ? tex1Dfetch(texBody, ptclIdx) : make_float4(0.0f, 0.0f, 0.0f, 0.0f);
       for (int j=0; j<WARP_SIZE; j++) {
 	const float4 pos_j = make_float4(__shfl(M0.x, j), __shfl(M0.y, j), __shfl(M0.z, j), __shfl(M0.w,j));
 #pragma unroll
@@ -498,11 +498,11 @@ namespace computeForces {
     int offset = blockIdx.x * numSource / gridDim.x;
     float pots, axs, ays ,azs;
     float potc, axc, ayc ,azc;
-    float4 si = tex1Dfetch(texPtcl, threadIdx.x);
+    float4 si = tex1Dfetch(texBody, threadIdx.x);
     __shared__ float4 s[512];
     for ( int jb=0; jb<numSource/blockDim.x/gridDim.x; jb++ ) {
       __syncthreads();
-      s[threadIdx.x] = tex1Dfetch(texPtcl, offset+jb*blockDim.x+threadIdx.x);
+      s[threadIdx.x] = tex1Dfetch(texBody, offset+jb*blockDim.x+threadIdx.x);
       __syncthreads();
       for( int j=0; j<blockDim.x; j++ ) {
 	float dx = s[j].x - si.x;
@@ -537,12 +537,12 @@ namespace computeForces {
 }
 
 float4 Treecode::computeForces() {
-  bindTexture(computeForces::texCellData,(uint4*)d_cellDataList.ptr, nCells);
-  bindTexture(computeForces::texSourceCenter,    d_sourceCenter.ptr, nCells);
-  bindTexture(computeForces::texCellMonopole,    d_cellMonopole.ptr, nCells);
-  bindTexture(computeForces::texCellQuad0,       d_cellQuad0.ptr,    nCells);
-  bindTexture(computeForces::texCellQuad1,       d_cellQuad1.ptr,    nCells);
-  bindTexture(computeForces::texPtcl,            d_ptclPos.ptr,      nPtcl);
+  bindTexture(computeForces::texCell,(uint4*)d_cellDataList.ptr, nCells);
+  bindTexture(computeForces::texCellCenter,    d_sourceCenter.ptr, nCells);
+  bindTexture(computeForces::texMonopole,    d_cellMonopole.ptr, nCells);
+  bindTexture(computeForces::texQuad0,       d_cellQuad0.ptr,    nCells);
+  bindTexture(computeForces::texQuad1,       d_cellQuad1.ptr,    nCells);
+  bindTexture(computeForces::texBody,            d_ptclPos.ptr,      nPtcl);
 
   const int NTHREAD2 = 7;
   const int NTHREAD  = 1<<NTHREAD2;
@@ -586,20 +586,20 @@ float4 Treecode::computeForces() {
   float flops = (interactions.x*20 + interactions.z*64)*nPtcl/dt/1e12;
   fprintf(stdout,"Traverse             : %.7f s (%.7f TFlops)\n",dt,flops);
 
-  unbindTexture(computeForces::texPtcl);
-  unbindTexture(computeForces::texCellQuad1);
-  unbindTexture(computeForces::texCellQuad0);
-  unbindTexture(computeForces::texCellMonopole);
-  unbindTexture(computeForces::texSourceCenter);
-  unbindTexture(computeForces::texCellData);
+  unbindTexture(computeForces::texQuad1);
+  unbindTexture(computeForces::texQuad0);
+  unbindTexture(computeForces::texMonopole);
+  unbindTexture(computeForces::texCellCenter);
+  unbindTexture(computeForces::texBody);
+  unbindTexture(computeForces::texCell);
 
   return interactions;
 }
 
 void Treecode::computeDirect(const int numTarget, const int numBlock)
 {
-  bindTexture(computeForces::texPtcl,d_ptclPos_tmp.ptr,nPtcl);
+  bindTexture(computeForces::texBody,d_ptclPos_tmp.ptr,nPtcl);
   computeForces::direct<<<numBlock,numTarget>>>(nPtcl, eps2, d_ptclAcc2);
-  unbindTexture(computeForces::texPtcl);
+  unbindTexture(computeForces::texBody);
   cudaDeviceSynchronize();
 }
