@@ -88,10 +88,9 @@ namespace computeForces {
     const float q13 = Q0.xz;
     const float q23 = Q0.yz;
     const float  q  = q11 + q22 + q33;
-    const float3 qR = make_float3(
-      q11 * dr.x + q12 * dr.y + q13 * dr.z,
-      q12 * dr.x + q22 * dr.y + q23 * dr.z,
-      q13 * dr.x + q23 * dr.y + q33 * dr.z);
+    const float3 qR = make_float3(q11 * dr.x + q12 * dr.y + q13 * dr.z,
+				  q12 * dr.x + q22 * dr.y + q23 * dr.z,
+				  q13 * dr.x + q23 * dr.y + q33 * dr.z);
     const float qRR = qR.x * dr.x + qR.y * dr.y + qR.z * dr.z;
     acc.w  -= D0 + 0.5f * (D1*q + D2 * qRR);
     const float C = D1 + 0.5f * (D2*q + D3 * qRR);
@@ -148,9 +147,9 @@ namespace computeForces {
     int directCounter = 0;
     int approxCounter = 0;
 
-    for (int root_cell=rootRange.x; root_cell<rootRange.y; root_cell+=WARP_SIZE)
-      if (root_cell + laneIdx < rootRange.y)
-	cellList[ringAddr(root_cell - rootRange.x + laneIdx)] = root_cell + laneIdx;
+    for (int root=rootRange.x; root<rootRange.y; root+=WARP_SIZE)
+      if (root + laneIdx < rootRange.y)
+	cellList[ringAddr(root - rootRange.x + laneIdx)] = root + laneIdx;
 
     int nCells = rootRange.y - rootRange.x;
 
@@ -162,212 +161,212 @@ namespace computeForces {
     /* process level with n_cells */
 #if 1
     while (nCells > 0)
-    {
-      /* extract cell index from the current level cell list */
-      const int cellListIdx = cellListBlock + laneIdx;
-      const bool useCell    = cellListIdx < nCells;
-      const int cellIdx     = cellList[ringAddr(cellListOffset + cellListIdx)];
-      cellListBlock += min(WARP_SIZE, nCells - cellListBlock);
-
-      /* read from gmem cell's info */
-      const float4   sourceCenter = tex1Dfetch(texCellCenter, cellIdx);
-      const CellData cellData = tex1Dfetch(texCell, cellIdx);
-
-      const bool splitCell = applyMAC(sourceCenter, targetCenter, targetSize) ||
-	(cellData.pend() - cellData.pbeg() < 3); /* force to open leaves with less than 3 particles */
-
-      /**********************************************/
-      /* split cells that satisfy opening condition */
-      /**********************************************/
-
-      const bool isNode = cellData.isNode();
-
       {
-	const int firstChild = cellData.first();
-	const int nChild= cellData.n();
-	bool splitNode  = isNode && splitCell && useCell;
+	/* extract cell index from the current level cell list */
+	const int cellListIdx = cellListBlock + laneIdx;
+	const bool useCell    = cellListIdx < nCells;
+	const int cellIdx     = cellList[ringAddr(cellListOffset + cellListIdx)];
+	cellListBlock += min(WARP_SIZE, nCells - cellListBlock);
 
-	/* use exclusive scan to compute scatter addresses for each of the child cells */
-	const int2 childScatter = warpIntExclusiveScan(nChild & (-splitNode));
+	/* read from gmem cell's info */
+	const float4   sourceCenter = tex1Dfetch(texCellCenter, cellIdx);
+	const CellData cellData = tex1Dfetch(texCell, cellIdx);
 
-	/* make sure we still have available stack space */
-	if (childScatter.y + nCells - cellListBlock > CELL_LIST_MEM_PER_WARP)
-	  return make_uint2(0xFFFFFFFF,0xFFFFFFFF);
+	const bool splitCell = applyMAC(sourceCenter, targetCenter, targetSize) ||
+	  (cellData.pend() - cellData.pbeg() < 3); /* force to open leaves with less than 3 particles */
+
+	/**********************************************/
+	/* split cells that satisfy opening condition */
+	/**********************************************/
+
+	const bool isNode = cellData.isNode();
+
+	{
+	  const int firstChild = cellData.first();
+	  const int nChild= cellData.n();
+	  bool splitNode  = isNode && splitCell && useCell;
+
+	  /* use exclusive scan to compute scatter addresses for each of the child cells */
+	  const int2 childScatter = warpIntExclusiveScan(nChild & (-splitNode));
+
+	  /* make sure we still have available stack space */
+	  if (childScatter.y + nCells - cellListBlock > CELL_LIST_MEM_PER_WARP)
+	    return make_uint2(0xFFFFFFFF,0xFFFFFFFF);
 
 #if 1
-	/* if so populate next level stack in gmem */
-	if (splitNode)
-	{
-	  const int scatterIdx = cellListOffset + nCells + nextLevelCellCounter + childScatter.x;
-	  for (int i = 0; i < nChild; i++)
-	    cellList[ringAddr(scatterIdx + i)] = firstChild + i;
-	}
-#else  /* use scan operation to accomplish steps above, doesn't bring performance benefit */
-	int nChildren  = childScatter.y;
-	int nProcessed = 0;
-	int2 scanVal   = {0,0};
-	const int offset = cellListOffset + nCells + nextLevelCellCounter;
-	while (nChildren > 0)
-	{
-	  tmpList[laneIdx] = 1;
-	  if (splitNode && (childScatter.x - nProcessed < WARP_SIZE))
-	  {
-	    splitNode = false;
-	    tmpList[childScatter.x - nProcessed] = -1-firstChild;
-	  }
-	  scanVal = inclusive_segscan_warp(tmpList[laneIdx], scanVal.y);
-	  if (laneIdx < nChildren)
-	    cellList[ringAddr(offset + nProcessed + laneIdx)] = scanVal.x;
-	  nChildren  -= WARP_SIZE;
-	  nProcessed += WARP_SIZE;
-	}
-#endif
-	nextLevelCellCounter += childScatter.y;  /* increment nextLevelCounter by total # of children */
-      }
-
-#if 1
-      {
-	/***********************************/
-	/******       APPROX          ******/
-	/***********************************/
-
-	/* see which thread's cell can be used for approximate force calculation */
-	const bool approxCell    = !splitCell && useCell;
-	const int2 approxScatter = warpBinExclusiveScan(approxCell);
-
-	/* store index of the cell */
-	const int scatterIdx = approxCounter + approxScatter.x;
-	tmpList[laneIdx] = approxCellIdx;
-	if (approxCell && scatterIdx < WARP_SIZE)
-	  tmpList[scatterIdx] = cellIdx;
-
-	approxCounter += approxScatter.y;
-
-	/* compute approximate forces */
-	if (approxCounter >= WARP_SIZE)
-	{
-	  /* evalute cells stored in shmem */
-	  approxAcc<NI,true>(acc_i, pos_i, tmpList[laneIdx], eps2);
-
-	  approxCounter -= WARP_SIZE;
-	  const int scatterIdx = approxCounter + approxScatter.x - approxScatter.y;
-	  if (approxCell && scatterIdx >= 0)
-	    tmpList[scatterIdx] = cellIdx;
-	  counters.x += WARP_SIZE;
-	}
-	approxCellIdx = tmpList[laneIdx];
-      }
-#endif
-
-#if 1
-      {
-	/***********************************/
-	/******       DIRECT          ******/
-	/***********************************/
-
-	const bool isLeaf = !isNode;
-	bool isDirect = splitCell && isLeaf && useCell;
-
-	const int firstBody = cellData.pbeg();
-	const int     nBody = cellData.pend() - cellData.pbeg();
-
-	const int2 childScatter = warpIntExclusiveScan(nBody & (-isDirect));
-	int nParticle  = childScatter.y;
-	int nProcessed = 0;
-	int2 scanVal   = {0,0};
-
-	/* conduct segmented scan for all leaves that need to be expanded */
-	while (nParticle > 0)
-	{
-	  tmpList[laneIdx] = 1;
-	  if (isDirect && (childScatter.x - nProcessed < WARP_SIZE))
-	  {
-	    isDirect = false;
-	    tmpList[childScatter.x - nProcessed] = -1-firstBody;
-	  }
-	  scanVal = inclusive_segscan_warp(tmpList[laneIdx], scanVal.y);
-	  const int  ptclIdx = scanVal.x;
-
-	  if (nParticle >= WARP_SIZE)
-	  {
-	    const float4 M0 = tex1Dfetch(texBody, ptclIdx);
-	    for (int j=0; j<WARP_SIZE; j++) {
-	      const float4 pos_j = make_float4(__shfl(M0.x, j), __shfl(M0.y, j), __shfl(M0.z, j), __shfl(M0.w,j));
-#pragma unroll
-	      for (int k=0; k<NI; k++)
-		acc_i[k] = P2P(acc_i[k], pos_i[k], pos_j, eps2);
+	  /* if so populate next level stack in gmem */
+	  if (splitNode)
+	    {
+	      const int scatterIdx = cellListOffset + nCells + nextLevelCellCounter + childScatter.x;
+	      for (int i = 0; i < nChild; i++)
+		cellList[ringAddr(scatterIdx + i)] = firstChild + i;
 	    }
-	    nParticle  -= WARP_SIZE;
-	    nProcessed += WARP_SIZE;
-	    counters.y += WARP_SIZE;
-	  }
-	  else 
-	  {
-	    const int scatterIdx = directCounter + laneIdx;
-	    tmpList[laneIdx] = directPtclIdx;
-	    if (scatterIdx < WARP_SIZE)
-	      tmpList[scatterIdx] = ptclIdx;
+#else  /* use scan operation to accomplish steps above, doesn't bring performance benefit */
+	  int nChildren  = childScatter.y;
+	  int nProcessed = 0;
+	  int2 scanVal   = {0,0};
+	  const int offset = cellListOffset + nCells + nextLevelCellCounter;
+	  while (nChildren > 0)
+	    {
+	      tmpList[laneIdx] = 1;
+	      if (splitNode && (childScatter.x - nProcessed < WARP_SIZE))
+		{
+		  splitNode = false;
+		  tmpList[childScatter.x - nProcessed] = -1-firstChild;
+		}
+	      scanVal = inclusive_segscan_warp(tmpList[laneIdx], scanVal.y);
+	      if (laneIdx < nChildren)
+		cellList[ringAddr(offset + nProcessed + laneIdx)] = scanVal.x;
+	      nChildren  -= WARP_SIZE;
+	      nProcessed += WARP_SIZE;
+	    }
+#endif
+	  nextLevelCellCounter += childScatter.y;  /* increment nextLevelCounter by total # of children */
+	}
 
-	    directCounter += nParticle;
+#if 1
+	{
+	  /***********************************/
+	  /******       APPROX          ******/
+	  /***********************************/
 
-	    if (directCounter >= WARP_SIZE)
+	  /* see which thread's cell can be used for approximate force calculation */
+	  const bool approxCell    = !splitCell && useCell;
+	  const int2 approxScatter = warpBinExclusiveScan(approxCell);
+
+	  /* store index of the cell */
+	  const int scatterIdx = approxCounter + approxScatter.x;
+	  tmpList[laneIdx] = approxCellIdx;
+	  if (approxCell && scatterIdx < WARP_SIZE)
+	    tmpList[scatterIdx] = cellIdx;
+
+	  approxCounter += approxScatter.y;
+
+	  /* compute approximate forces */
+	  if (approxCounter >= WARP_SIZE)
 	    {
 	      /* evalute cells stored in shmem */
-	      const float4 M0 = tex1Dfetch(texBody, tmpList[laneIdx]);
-	      for (int j=0; j<WARP_SIZE; j++) {
-		const float4 pos_j = make_float4(__shfl(M0.x, j), __shfl(M0.y, j), __shfl(M0.z, j), __shfl(M0.w,j));
-#pragma unroll
-		for (int k=0; k<NI; k++)
-		  acc_i[k] = P2P(acc_i[k], pos_i[k], pos_j, eps2);
-	      }
-	      directCounter -= WARP_SIZE;
-	      const int scatterIdx = directCounter + laneIdx - nParticle;
-	      if (scatterIdx >= 0)
-		tmpList[scatterIdx] = ptclIdx;
-	      counters.y += WARP_SIZE;
-	    }
-	    directPtclIdx = tmpList[laneIdx];
+	      approxAcc<NI,true>(acc_i, pos_i, tmpList[laneIdx], eps2);
 
-	    nParticle = 0;
-	  }
+	      approxCounter -= WARP_SIZE;
+	      const int scatterIdx = approxCounter + approxScatter.x - approxScatter.y;
+	      if (approxCell && scatterIdx >= 0)
+		tmpList[scatterIdx] = cellIdx;
+	      counters.x += WARP_SIZE;
+	    }
+	  approxCellIdx = tmpList[laneIdx];
 	}
-      }
 #endif
 
-      /* if the current level is processed, schedule the next level */
-      if (cellListBlock >= nCells)
-      {
-	cellListOffset += nCells;
-	nCells = nextLevelCellCounter;
-	cellListBlock = nextLevelCellCounter = 0;
-      }
+#if 1
+	{
+	  /***********************************/
+	  /******       DIRECT          ******/
+	  /***********************************/
 
-    }  /* level completed */
+	  const bool isLeaf = !isNode;
+	  bool isDirect = splitCell && isLeaf && useCell;
+
+	  const int firstBody = cellData.pbeg();
+	  const int     nBody = cellData.pend() - cellData.pbeg();
+
+	  const int2 childScatter = warpIntExclusiveScan(nBody & (-isDirect));
+	  int nParticle  = childScatter.y;
+	  int nProcessed = 0;
+	  int2 scanVal   = {0,0};
+
+	  /* conduct segmented scan for all leaves that need to be expanded */
+	  while (nParticle > 0)
+	    {
+	      tmpList[laneIdx] = 1;
+	      if (isDirect && (childScatter.x - nProcessed < WARP_SIZE))
+		{
+		  isDirect = false;
+		  tmpList[childScatter.x - nProcessed] = -1-firstBody;
+		}
+	      scanVal = inclusive_segscan_warp(tmpList[laneIdx], scanVal.y);
+	      const int  ptclIdx = scanVal.x;
+
+	      if (nParticle >= WARP_SIZE)
+		{
+		  const float4 M0 = tex1Dfetch(texBody, ptclIdx);
+		  for (int j=0; j<WARP_SIZE; j++) {
+		    const float4 pos_j = make_float4(__shfl(M0.x, j), __shfl(M0.y, j), __shfl(M0.z, j), __shfl(M0.w,j));
+#pragma unroll
+		    for (int k=0; k<NI; k++)
+		      acc_i[k] = P2P(acc_i[k], pos_i[k], pos_j, eps2);
+		  }
+		  nParticle  -= WARP_SIZE;
+		  nProcessed += WARP_SIZE;
+		  counters.y += WARP_SIZE;
+		}
+	      else 
+		{
+		  const int scatterIdx = directCounter + laneIdx;
+		  tmpList[laneIdx] = directPtclIdx;
+		  if (scatterIdx < WARP_SIZE)
+		    tmpList[scatterIdx] = ptclIdx;
+
+		  directCounter += nParticle;
+
+		  if (directCounter >= WARP_SIZE)
+		    {
+		      /* evalute cells stored in shmem */
+		      const float4 M0 = tex1Dfetch(texBody, tmpList[laneIdx]);
+		      for (int j=0; j<WARP_SIZE; j++) {
+			const float4 pos_j = make_float4(__shfl(M0.x, j), __shfl(M0.y, j), __shfl(M0.z, j), __shfl(M0.w,j));
+#pragma unroll
+			for (int k=0; k<NI; k++)
+			  acc_i[k] = P2P(acc_i[k], pos_i[k], pos_j, eps2);
+		      }
+		      directCounter -= WARP_SIZE;
+		      const int scatterIdx = directCounter + laneIdx - nParticle;
+		      if (scatterIdx >= 0)
+			tmpList[scatterIdx] = ptclIdx;
+		      counters.y += WARP_SIZE;
+		    }
+		  directPtclIdx = tmpList[laneIdx];
+
+		  nParticle = 0;
+		}
+	    }
+	}
+#endif
+
+	/* if the current level is processed, schedule the next level */
+	if (cellListBlock >= nCells)
+	  {
+	    cellListOffset += nCells;
+	    nCells = nextLevelCellCounter;
+	    cellListBlock = nextLevelCellCounter = 0;
+	  }
+
+      }  /* level completed */
 #endif
 
 #if 1
     if (approxCounter > 0)
-    {
-      approxAcc<NI,false>(acc_i, pos_i, laneIdx < approxCounter ? approxCellIdx : -1, eps2);
-      counters.x += approxCounter;
-      approxCounter = 0;
-    }
+      {
+	approxAcc<NI,false>(acc_i, pos_i, laneIdx < approxCounter ? approxCellIdx : -1, eps2);
+	counters.x += approxCounter;
+	approxCounter = 0;
+      }
 #endif
 
 #if 1
     if (directCounter > 0)
-    {
-      const int ptclIdx = laneIdx < directCounter ? directPtclIdx : -1;
-      const float4 M0 = ptclIdx >= 0 ? tex1Dfetch(texBody, ptclIdx) : make_float4(0.0f, 0.0f, 0.0f, 0.0f);
-      for (int j=0; j<WARP_SIZE; j++) {
-	const float4 pos_j = make_float4(__shfl(M0.x, j), __shfl(M0.y, j), __shfl(M0.z, j), __shfl(M0.w,j));
+      {
+	const int ptclIdx = laneIdx < directCounter ? directPtclIdx : -1;
+	const float4 M0 = ptclIdx >= 0 ? tex1Dfetch(texBody, ptclIdx) : make_float4(0.0f, 0.0f, 0.0f, 0.0f);
+	for (int j=0; j<WARP_SIZE; j++) {
+	  const float4 pos_j = make_float4(__shfl(M0.x, j), __shfl(M0.y, j), __shfl(M0.z, j), __shfl(M0.w,j));
 #pragma unroll
-	for (int k=0; k<NI; k++)
-	  acc_i[k] = P2P(acc_i[k], pos_i[k], pos_j, eps2);
+	  for (int k=0; k<NI; k++)
+	    acc_i[k] = P2P(acc_i[k], pos_i[k], pos_j, eps2);
+	}
+	counters.y += directCounter;
+	directCounter = 0;
       }
-      counters.y += directCounter;
-      directCounter = 0;
-    }
 #endif
 
     return counters;
@@ -385,85 +384,85 @@ namespace computeForces {
   __launch_bounds__(1<<NTHREAD2, 1024/(1<<NTHREAD2))
     static __global__ 
     void treewalk(
-	const int nGroups,
-        const int2 *groupList,
-        const float eps2,
-        const int2 *levelRange,
-        const float4 *pos,
-        float4 *acc,
-        int    *gmem_pool)
-    {
-      const int NTHREAD = 1<<NTHREAD2;
-      const int shMemSize = NTHREAD;
-      __shared__ int shmem_pool[shMemSize];
+		  const int nGroups,
+		  const int2 *groupList,
+		  const float eps2,
+		  const int2 *levelRange,
+		  const float4 *pos,
+		  float4 *acc,
+		  int    *gmem_pool)
+  {
+    const int NTHREAD = 1<<NTHREAD2;
+    const int shMemSize = NTHREAD;
+    __shared__ int shmem_pool[shMemSize];
 
-      const int laneIdx = threadIdx.x & (WARP_SIZE-1);
-      const int warpIdx = threadIdx.x >> WARP_SIZE2;
+    const int laneIdx = threadIdx.x & (WARP_SIZE-1);
+    const int warpIdx = threadIdx.x >> WARP_SIZE2;
 
-      const int NWARP2 = NTHREAD2 - WARP_SIZE2;
-      const int sh_offs = (shMemSize >> NWARP2) * warpIdx;
-      int *shmem = shmem_pool + sh_offs;
-      int *gmem  =  gmem_pool + CELL_LIST_MEM_PER_WARP*((blockIdx.x<<NWARP2) + warpIdx);
+    const int NWARP2 = NTHREAD2 - WARP_SIZE2;
+    const int sh_offs = (shMemSize >> NWARP2) * warpIdx;
+    int *shmem = shmem_pool + sh_offs;
+    int *gmem  =  gmem_pool + CELL_LIST_MEM_PER_WARP*((blockIdx.x<<NWARP2) + warpIdx);
 
-      while (1) {
-        int groupIdx = 0;
-        if (laneIdx == 0)
-          groupIdx = atomicAdd(&retired_groupCount, 1);
-        groupIdx = __shfl(groupIdx, 0, WARP_SIZE);
+    while (1) {
+      int groupIdx = 0;
+      if (laneIdx == 0)
+	groupIdx = atomicAdd(&retired_groupCount, 1);
+      groupIdx = __shfl(groupIdx, 0, WARP_SIZE);
 
-        if (groupIdx >= nGroups) 
-          return;
+      if (groupIdx >= nGroups) 
+	return;
 
-        const int2 group = groupList[groupIdx];
-        const int begin = group.x;
-        const int end   = group.x+group.y;
+      const int2 group = groupList[groupIdx];
+      const int begin = group.x;
+      const int end   = group.x+group.y;
 
-        float3 pos_i[NI];
+      float3 pos_i[NI];
 #pragma unroll
-        for (int i=0; i<NI; i++) {
-          const float4 ptcl = pos[min(begin+i*WARP_SIZE+laneIdx,end-1)];
-          pos_i[i] = make_float3(ptcl.x, ptcl.y, ptcl.z);
-        }
-        float3 rmin = pos_i[0];
-        float3 rmax = rmin; 
+      for (int i=0; i<NI; i++) {
+	const float4 ptcl = pos[min(begin+i*WARP_SIZE+laneIdx,end-1)];
+	pos_i[i] = make_float3(ptcl.x, ptcl.y, ptcl.z);
+      }
+      float3 rmin = pos_i[0];
+      float3 rmax = rmin; 
 #pragma unroll
-        for (int i = 0; i < NI; i++) 
-          addBoxSize(rmin, rmax, pos_i[i]);
-        rmin.x = __shfl(rmin.x,0);
-        rmin.y = __shfl(rmin.y,0);
-        rmin.z = __shfl(rmin.z,0);
-        rmax.x = __shfl(rmax.x,0);
-        rmax.y = __shfl(rmax.y,0);
-        rmax.z = __shfl(rmax.z,0);
+      for (int i = 0; i < NI; i++) 
+	addBoxSize(rmin, rmax, pos_i[i]);
+      rmin.x = __shfl(rmin.x,0);
+      rmin.y = __shfl(rmin.y,0);
+      rmin.z = __shfl(rmin.z,0);
+      rmax.x = __shfl(rmax.x,0);
+      rmax.y = __shfl(rmax.y,0);
+      rmax.z = __shfl(rmax.z,0);
 
-        const float half = 0.5f;
-        const float3 targetCenter = {half*(rmax.x+rmin.x), half*(rmax.y+rmin.y), half*(rmax.z+rmin.z)};
-        const float3 hvec = {half*(rmax.x-rmin.x), half*(rmax.y-rmin.y), half*(rmax.z-rmin.z)};
+      const float half = 0.5f;
+      const float3 targetCenter = {half*(rmax.x+rmin.x), half*(rmax.y+rmin.y), half*(rmax.z+rmin.z)};
+      const float3 hvec = {half*(rmax.x-rmin.x), half*(rmax.y-rmin.y), half*(rmax.z-rmin.z)};
 
-        float4 acc_i[NI] = {0.0f, 0.0f, 0.0f, 0.0f};
+      float4 acc_i[NI] = {0.0f, 0.0f, 0.0f, 0.0f};
 
-        uint2 counters = treewalk_warp<NTHREAD2,NI>
-          (acc_i, pos_i, targetCenter, hvec, eps2, levelRange[2], shmem, gmem);
+      uint2 counters = treewalk_warp<NTHREAD2,NI>
+	(acc_i, pos_i, targetCenter, hvec, eps2, levelRange[1], shmem, gmem);
 
-        assert(!(counters.x == 0xFFFFFFFF && counters.y == 0xFFFFFFFF));
+      assert(!(counters.x == 0xFFFFFFFF && counters.y == 0xFFFFFFFF));
 
-        const int pidx = begin + laneIdx;
+      const int pidx = begin + laneIdx;
 
-	int maxP2P = counters.y;
-	int sumP2P = 0;
-	int maxM2P = counters.x;
-	int sumM2P = 0;
+      int maxP2P = counters.y;
+      int sumP2P = 0;
+      int maxM2P = counters.x;
+      int sumM2P = 0;
 
 #pragma unroll
-	for (int i = 0; i < NI; i++)
-	  if (i*WARP_SIZE + pidx < end)
+      for (int i = 0; i < NI; i++)
+	if (i*WARP_SIZE + pidx < end)
 	  {
 	    sumM2P += counters.x;
 	    sumP2P += counters.y;
 	  }
 
 #pragma unroll
-	for (int i = WARP_SIZE2-1; i >= 0; i--)
+      for (int i = WARP_SIZE2-1; i >= 0; i--)
 	{
 	  maxP2P  = max(maxP2P, __shfl_xor(maxP2P, 1<<i));
 	  sumP2P += __shfl_xor(sumP2P, 1<<i);
@@ -471,7 +470,7 @@ namespace computeForces {
 	  sumM2P += __shfl_xor(sumM2P, 1<<i);
 	}
 
-	if (laneIdx == 0)
+      if (laneIdx == 0)
 	{
 	  atomicMax(&d_maxP2P,                     maxP2P);
 	  atomicAdd(&d_sumP2P, (unsigned long long)sumP2P);
@@ -480,11 +479,11 @@ namespace computeForces {
 	}
 
 #pragma unroll
-        for (int i=0; i<NI; i++)
-          if (pidx + i * WARP_SIZE < end)
-            acc[i*WARP_SIZE + pidx] = acc_i[i];
-      }
+      for (int i=0; i<NI; i++)
+	if (pidx + i * WARP_SIZE < end)
+	  acc[i*WARP_SIZE + pidx] = acc_i[i];
     }
+  }
 
   static __global__
   void direct(const int numSource,
@@ -551,9 +550,9 @@ float4 Treecode::computeForces() {
   const double t0 = get_time();
   CUDA_SAFE_CALL(cudaFuncSetCacheConfig(&computeForces::treewalk<NTHREAD2,2>, cudaFuncCachePreferL1));
   computeForces::treewalk<NTHREAD2,2><<<nblock,NTHREAD>>>(
-    nGroups, d_groupList, eps2, d_levelRange,
-    d_ptclPos_tmp, d_ptclAcc,
-    d_gmem_pool);
+							  nGroups, d_groupList, eps2, d_levelRange,
+							  d_ptclPos_tmp, d_ptclAcc,
+							  d_gmem_pool);
   kernelSuccess("treewalk");
   const double dt = get_time() - t0;
 

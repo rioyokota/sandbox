@@ -1,7 +1,7 @@
 #pragma once
   
 template<typename Tex, typename T>
-static void bindTexture(Tex &tex, const T *ptr, const int size)
+  static void bindTexture(Tex &tex, const T *ptr, const int size)
 {
   tex.addressMode[0] = cudaAddressModeWrap;
   tex.addressMode[1] = cudaAddressModeWrap;
@@ -10,7 +10,7 @@ static void bindTexture(Tex &tex, const T *ptr, const int size)
   CUDA_SAFE_CALL(cudaBindTexture(0, tex, ptr, size*sizeof(T)));
 }
 
-  template<typename Tex>
+template<typename Tex>
 static void unbindTexture(Tex &tex)
 {
   CUDA_SAFE_CALL(cudaUnbindTexture(tex));
@@ -23,11 +23,11 @@ static __forceinline__ __device__ double atomicAdd_double(double *address, const
   unsigned long long int* address_as_ull = (unsigned long long int*)address;
   unsigned long long int old = *address_as_ull, assumed;
   do
-  {
-    assumed = old;
-    old = atomicCAS(address_as_ull, assumed,
-        __double_as_longlong(val + __longlong_as_double(assumed)));
-  } while (assumed != old);
+    {
+      assumed = old;
+      old = atomicCAS(address_as_ull, assumed,
+		      __double_as_longlong(val + __longlong_as_double(assumed)));
+    } while (assumed != old);
   return __longlong_as_double(old);
 }
 
@@ -41,16 +41,16 @@ void addBoxSize(float3 &_rmin, float3 &_rmax, const float3 pos)
 
 #pragma unroll
   for (int i = WARP_SIZE2-1; i >= 0; i--)
-  {
-    rmin.x = min(rmin.x, __shfl_xor(rmin.x, 1<<i, WARP_SIZE));
-    rmax.x = max(rmax.x, __shfl_xor(rmax.x, 1<<i, WARP_SIZE));
+    {
+      rmin.x = min(rmin.x, __shfl_xor(rmin.x, 1<<i, WARP_SIZE));
+      rmax.x = max(rmax.x, __shfl_xor(rmax.x, 1<<i, WARP_SIZE));
 
-    rmin.y = min(rmin.y, __shfl_xor(rmin.y, 1<<i, WARP_SIZE));
-    rmax.y = max(rmax.y, __shfl_xor(rmax.y, 1<<i, WARP_SIZE));
+      rmin.y = min(rmin.y, __shfl_xor(rmin.y, 1<<i, WARP_SIZE));
+      rmax.y = max(rmax.y, __shfl_xor(rmax.y, 1<<i, WARP_SIZE));
 
-    rmin.z = min(rmin.z, __shfl_xor(rmin.z, 1<<i, WARP_SIZE));
-    rmax.z = max(rmax.z, __shfl_xor(rmax.z, 1<<i, WARP_SIZE));
-  }
+      rmin.z = min(rmin.z, __shfl_xor(rmin.z, 1<<i, WARP_SIZE));
+      rmax.z = max(rmax.z, __shfl_xor(rmax.z, 1<<i, WARP_SIZE));
+    }
 
   _rmin.x = min(_rmin.x, rmin.x);
   _rmin.y = min(_rmin.y, rmin.y);
@@ -80,7 +80,7 @@ static __device__ __forceinline__ uint shfl_scan_add_step(uint partial, uint up_
       : "=r"(result) : "r"(partial), "r"(up_offset), "r"(partial));
   return result;
 }
-  template <const int levels>
+template <const int levels>
 static __device__ __forceinline__ uint inclusive_scan_warp(const int sum)
 {
   uint mysum = sum;
@@ -123,9 +123,9 @@ static __device__ __forceinline__ int lanemask_le()
   return mask;
 }
 static __device__ __forceinline__ int ShflSegScanStepB(
-    int partial,
-    uint distance,
-    uint up_offset)
+						       int partial,
+						       uint distance,
+						       uint up_offset)
 {
   asm(
       "{.reg .u32 r0;"
@@ -137,7 +137,7 @@ static __device__ __forceinline__ int ShflSegScanStepB(
       : "=r"(partial) : "r"(partial), "r"(up_offset), "r"(distance));
   return partial;
 }
-  template<const int SIZE2>
+template<const int SIZE2>
 static __device__ __forceinline__ int inclusive_segscan_warp_step(int value, const int distance)
 {
   for (int i = 0; i < SIZE2; i++)
@@ -145,7 +145,7 @@ static __device__ __forceinline__ int inclusive_segscan_warp_step(int value, con
   return value;
 }
 static __device__ __forceinline__ int2 inclusive_segscan_warp(
-    const int packed_value, const int carryValue)
+							      const int packed_value, const int carryValue)
 {
   const int  flag = packed_value < 0;
   const int  mask = -flag;

@@ -2,20 +2,20 @@
 
 #include <cstdio>
 
-#define CUDA_SAFE_CALL(call) {                                         \
-  cudaError err = call;                                                \
-  if( cudaSuccess != err) {                                            \
-  fprintf(stderr, "Cuda error in file '%s' in line %i : %s.\n",        \
-	  __FILE__, __LINE__, cudaGetErrorString( err) );              \
-  exit(EXIT_FAILURE);                                                  \
-  } }
+#define CUDA_SAFE_CALL(call) {						\
+    cudaError err = call;						\
+    if( cudaSuccess != err) {						\
+      fprintf(stderr, "Cuda error in file '%s' in line %i : %s.\n",	\
+	      __FILE__, __LINE__, cudaGetErrorString( err) );		\
+      exit(EXIT_FAILURE);						\
+    } }
 
 template<typename T>
 struct cuda_mem
 {
   size_t n;
   T *ptr;
-  cuda_mem() : ptr(NULL), n(0) {}
+cuda_mem() : ptr(NULL), n(0) {}
 #if 1
   ~cuda_mem() {if (ptr != NULL) free();}
 #endif
@@ -74,7 +74,7 @@ struct host_mem
 {
   size_t n;
   T *ptr;
-  host_mem() : ptr(NULL), n(0) {}
+host_mem() : ptr(NULL), n(0) {}
 #if 1
   ~host_mem() {if (ptr != NULL) free();}
 #endif

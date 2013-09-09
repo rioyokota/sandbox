@@ -56,16 +56,16 @@ namespace multipoles {
 
   template<int NTHREAD2>
   static __global__ __launch_bounds__(1<<NTHREAD2, 1024/(1<<NTHREAD2))
-  void computeCellMultipoles(
-    const int nPtcl,
-    const int nCells,
-    const CellData *cells,
-    const float4* __restrict__ ptclPos,
-    const float inv_theta,
-    float4 *sizeList,
-    float4 *monopoleList,
-    float4 *quadrpl0List,
-    float2 *quadrpl1List)
+    void computeCellMultipoles(
+			       const int nPtcl,
+			       const int nCells,
+			       const CellData *cells,
+			       const float4* __restrict__ ptclPos,
+			       const float inv_theta,
+			       float4 *sizeList,
+			       float4 *monopoleList,
+			       float4 *quadrpl0List,
+			       float2 *quadrpl1List)
   {
     const int warpIdx = threadIdx.x >> WARP_SIZE2;
     const int laneIdx = threadIdx.x & (WARP_SIZE-1);
@@ -89,47 +89,47 @@ namespace multipoles {
     const int  lastBody = cell.pend();
 
     for (int i = firstBody; i < lastBody; i += WARP_SIZE)
-    {
-      nflop++;
-      float4 ptcl = ptclPos[min(i+laneIdx,lastBody-1)];
-      if (i + laneIdx >= lastBody) ptcl.w = 0.0f;
-      addBoxSize(rmin, rmax, make_float3(ptcl.x,ptcl.y,ptcl.z));
-      addMonopole(M, ptcl);
-      addQuadrupole(Q, ptcl);
-    }
+      {
+	nflop++;
+	float4 ptcl = ptclPos[min(i+laneIdx,lastBody-1)];
+	if (i + laneIdx >= lastBody) ptcl.w = 0.0f;
+	addBoxSize(rmin, rmax, make_float3(ptcl.x,ptcl.y,ptcl.z));
+	addMonopole(M, ptcl);
+	addQuadrupole(Q, ptcl);
+      }
 
 
     if (laneIdx == 0)
-    {
-      const double inv_mass = 1.0/M.w;
-      M.x *= inv_mass;
-      M.y *= inv_mass;
-      M.z *= inv_mass;
-      Q.xx = Q.xx*inv_mass - M.x*M.x;
-      Q.yy = Q.yy*inv_mass - M.y*M.y;
-      Q.zz = Q.zz*inv_mass - M.z*M.z;
-      Q.xy = Q.xy*inv_mass - M.x*M.y;
-      Q.xz = Q.xz*inv_mass - M.x*M.z;
-      Q.yz = Q.yz*inv_mass - M.y*M.z;
+      {
+	const double inv_mass = 1.0/M.w;
+	M.x *= inv_mass;
+	M.y *= inv_mass;
+	M.z *= inv_mass;
+	Q.xx = Q.xx*inv_mass - M.x*M.x;
+	Q.yy = Q.yy*inv_mass - M.y*M.y;
+	Q.zz = Q.zz*inv_mass - M.z*M.z;
+	Q.xy = Q.xy*inv_mass - M.x*M.y;
+	Q.xz = Q.xz*inv_mass - M.x*M.z;
+	Q.yz = Q.yz*inv_mass - M.y*M.z;
 
-      const float3 cvec = {(rmax.x+rmin.x)*0.5f, (rmax.y+rmin.y)*0.5f, (rmax.z+rmin.z)*0.5f};
-      const float3 hvec = {(rmax.x-rmin.x)*0.5f, (rmax.y-rmin.y)*0.5f, (rmax.z-rmin.z)*0.5f};
-      const float3 com = {M.x, M.y, M.z};
-      const float dx = cvec.x - com.x;
-      const float dy = cvec.y - com.y;
-      const float dz = cvec.z - com.z;
-      const float  s = sqrt(dx*dx + dy*dy + dz*dz);
-      const float  l = max(2.0f*max(hvec.x, max(hvec.y, hvec.z)), 1.0e-6f);
-      const float cellOp = l*inv_theta + s;
-      const float cellOp2 = cellOp*cellOp;
+	const float3 cvec = {(rmax.x+rmin.x)*0.5f, (rmax.y+rmin.y)*0.5f, (rmax.z+rmin.z)*0.5f};
+	const float3 hvec = {(rmax.x-rmin.x)*0.5f, (rmax.y-rmin.y)*0.5f, (rmax.z-rmin.z)*0.5f};
+	const float3 com = {M.x, M.y, M.z};
+	const float dx = cvec.x - com.x;
+	const float dy = cvec.y - com.y;
+	const float dz = cvec.z - com.z;
+	const float  s = sqrt(dx*dx + dy*dy + dz*dz);
+	const float  l = max(2.0f*max(hvec.x, max(hvec.y, hvec.z)), 1.0e-6f);
+	const float cellOp = l*inv_theta + s;
+	const float cellOp2 = cellOp*cellOp;
 
-      atomicAdd(&nflops, nflop);
+	atomicAdd(&nflops, nflop);
 
-      sizeList[cellIdx] = (float4){com.x, com.y, com.z, cellOp2};
-      monopoleList[cellIdx] = (float4){M.x, M.y, M.z, M.w};  
-      quadrpl0List[cellIdx] = (float4){Q.xx, Q.yy, Q.zz, Q.xy};
-      quadrpl1List[cellIdx] = (float2){Q.xz, Q.yz};
-    }
+	sizeList[cellIdx] = (float4){com.x, com.y, com.z, cellOp2};
+	monopoleList[cellIdx] = (float4){M.x, M.y, M.z, M.w};  
+	quadrpl0List[cellIdx] = (float4){Q.xx, Q.yy, Q.zz, Q.xy};
+	quadrpl1List[cellIdx] = (float2){Q.xz, Q.yz};
+      }
   }
 
 };
@@ -149,10 +149,9 @@ void Treecode::computeMultipoles()
   CUDA_SAFE_CALL(cudaFuncSetCacheConfig(&multipoles::computeCellMultipoles<NTHREAD2>,cudaFuncCachePreferL1));
   cudaDeviceSynchronize();
   const double t0 = get_time();
-  multipoles::computeCellMultipoles<NTHREAD2><<<nblock,NTHREAD>>>(
-      nPtcl, nCells, d_cellDataList, (float4*)d_ptclPos.ptr,
-      1.0/theta,
-      d_sourceCenter, d_cellMonopole, d_cellQuad0, d_cellQuad1);
+  multipoles::computeCellMultipoles<NTHREAD2><<<nblock,NTHREAD>>>(nPtcl, nCells, d_cellDataList, (float4*)d_ptclPos.ptr,
+								  1.0/theta,
+								  d_sourceCenter, d_cellMonopole, d_cellQuad0, d_cellQuad1);
   kernelSuccess("cellMultipole");
   const double dt = get_time() - t0;
   fprintf(stdout,"Upward pass          : %.7f s\n", dt);
