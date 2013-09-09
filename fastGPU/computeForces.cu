@@ -487,11 +487,11 @@ namespace computeForces {
 }
 
 float4 Treecode::computeForces() {
-  bindTexture(computeForces::texCell,(uint4*)d_sourceCells.ptr, numSources);
+  bindTexture(computeForces::texCell,(uint4*)d_sourceCells.ptr,  numSources);
   bindTexture(computeForces::texCellCenter,  d_sourceCenter.ptr, numSources);
-  bindTexture(computeForces::texMonopole,    d_cellMonopole.ptr, numSources);
-  bindTexture(computeForces::texQuad0,       d_cellQuad0.ptr,    numSources);
-  bindTexture(computeForces::texQuad1,       d_cellQuad1.ptr,    numSources);
+  bindTexture(computeForces::texMonopole,    d_Monopole.ptr,     numSources);
+  bindTexture(computeForces::texQuad0,       d_Quadrupole0.ptr,  numSources);
+  bindTexture(computeForces::texQuad1,       d_Quadrupole1.ptr,  numSources);
   bindTexture(computeForces::texBody,        d_ptclPos.ptr,      nPtcl);
 
   const int NTHREAD2 = 7;

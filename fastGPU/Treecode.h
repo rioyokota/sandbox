@@ -115,9 +115,9 @@ public:
   cuda_mem<int2> d_targetCells;
   cuda_mem<int>  d_leafCells;
   cuda_mem<int>  d_key, d_value;
-  cuda_mem<float4> d_sourceCenter, d_cellMonopole;
-  cuda_mem<float4> d_cellQuad0;
-  cuda_mem<float2> d_cellQuad1;
+  cuda_mem<float4> d_sourceCenter, d_Monopole;
+  cuda_mem<float4> d_Quadrupole0;
+  cuda_mem<float2> d_Quadrupole1;
 
   Treecode(const float _eps = 0.01, const float _theta = 0.75, const int _ncrit = 2*WARP_SIZE)
   {

@@ -136,9 +136,9 @@ namespace multipoles {
 void Treecode::computeMultipoles()
 {
   d_sourceCenter.realloc(numSources);
-  d_cellMonopole.realloc(numSources);
-  d_cellQuad0   .realloc(numSources);
-  d_cellQuad1   .realloc(numSources);
+  d_Monopole.realloc(numSources);
+  d_Quadrupole0.realloc(numSources);
+  d_Quadrupole1.realloc(numSources);
 
   const int NTHREAD2 = 8;
   const int NTHREAD  = 1<< NTHREAD2;
@@ -150,8 +150,8 @@ void Treecode::computeMultipoles()
   const double t0 = get_time();
   multipoles::computeCellMultipoles<NTHREAD2><<<nblock,NTHREAD>>>(nPtcl, numSources, d_sourceCells, (float4*)d_ptclPos.ptr,
 								  1.0/theta,
-								  d_sourceCenter, d_cellMonopole, d_cellQuad0, d_cellQuad1);
-  kernelSuccess("cellMultipole");
+								  d_sourceCenter, d_Monopole, d_Quadrupole0, d_Quadrupole1);
+  kernelSuccess("computeCellMultipoles");
   const double dt = get_time() - t0;
   fprintf(stdout,"Upward pass          : %.7f s\n", dt);
 
