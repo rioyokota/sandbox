@@ -405,11 +405,11 @@ namespace treeBuild
 
     /* compute number of children that needs to be further split, and cmopute their offsets */
     const int2 nSubNodes = warpBinExclusiveScan(npCell > NLEAF);
-    const int2 nLeaves   = warpBinExclusiveScan(npCell > 0 && npCell <= NLEAF);
+    const int2 numLeaves   = warpBinExclusiveScan(npCell > 0 && npCell <= NLEAF);
     if (warpIdx == 0 && laneIdx < 8)
       {
         shmem[8 +laneIdx] = nSubNodes.x;
-        shmem[16+laneIdx] = nLeaves.x;
+        shmem[16+laneIdx] = numLeaves.x;
       }
 
     int nCellmax = npCell;
@@ -868,10 +868,9 @@ void Treecode::buildTree(const int nLeaf)
       }
     kernelSuccess("buildOctree");
     const double dt = get_time() - t0;
-    CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&nLevels, treeBuild::nlevels, sizeof(int)));
+    CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&numLevels, treeBuild::nlevels, sizeof(int)));
     CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&numSources,  treeBuild::ncells, sizeof(int)));
-    CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&nNodes,  treeBuild::nnodes, sizeof(int)));
-    CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&nLeaves, treeBuild::nleaves, sizeof(int)));
+    CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&numLeaves, treeBuild::nleaves, sizeof(int)));
     fprintf(stdout,"Grow tree            : %.7f s\n",  dt);
   }
 
@@ -897,7 +896,7 @@ void Treecode::buildTree(const int nLeaf)
 
     /* group leaves */
 
-    d_leafList.realloc(nLeaves);
+    d_leafList.realloc(numLeaves);
     const int NTHREAD2 = 8;
     const int NTHREAD  = 256;
     const int nblock1 = (numSources-1)/NTHREAD+1;

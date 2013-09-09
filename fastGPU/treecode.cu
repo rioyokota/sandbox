@@ -93,7 +93,7 @@ int main(int argc, char * argv[])
   fprintf(stdout,"--- Tree stats -------------------\n");
   fprintf(stdout,"Bodies               : %d\n",tree.get_nPtcl());
   fprintf(stdout,"Cells                : %d\n",tree.getNumSources());
-  fprintf(stdout,"Tree depth           : %d\n",tree.get_nLevels());
+  fprintf(stdout,"Tree depth           : %d\n",tree.getNumLevels());
   fprintf(stdout,"--- Traversal stats --------------\n");
   fprintf(stdout,"P2P mean list length : %g (max %g)\n", interactions.x, interactions.y);
   fprintf(stdout,"M2P mean list length : %g (max %g)\n", interactions.z, interactions.w);

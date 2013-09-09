@@ -91,7 +91,7 @@ public:
 struct Treecode
 {
 private:
-  int nPtcl, nLevels, numSources, nLeaves, nNodes, nGroups, nCrit, nLeaf;
+  int nPtcl, numLevels, numSources, numLeaves, nGroups, nCrit, nLeaf;
   float theta, eps2;
 
 public:
@@ -99,7 +99,7 @@ public:
   int get_nCrit() const { return nCrit; }
   int get_nLeaf() const { return nLeaf; }
   int getNumSources() const { return numSources; }
-  int get_nLevels() const { return nLevels; }
+  int getNumLevels() const { return numLevels; }
 
   host_mem<float4> h_ptclPos, h_ptclVel, h_ptclAcc;
   host_mem<float4> h_ptclAcc2;
