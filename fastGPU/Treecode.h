@@ -91,7 +91,7 @@ public:
 struct Treecode
 {
 private:
-  int nPtcl, numLevels, numSources, numLeaves, nGroups, nCrit, nLeaf;
+  int nPtcl, numLevels, numSources, numLeaves, numTargets, nCrit, nLeaf;
   float theta, eps2;
 
 public:
@@ -111,8 +111,8 @@ public:
 
   int node_max, cell_max, stack_size;
   cuda_mem<int>  d_stack_memory_pool;
-  cuda_mem<CellData> d_cellDataList, d_cellDataList_tmp;
-  cuda_mem<int2> d_groupList;
+  cuda_mem<CellData> d_sourceCells, d_sourceCells_tmp;
+  cuda_mem<int2> d_targetCells;
   cuda_mem<int>  d_leafList;
   cuda_mem<int>  d_key, d_value;
   cuda_mem<float4> d_sourceCenter, d_cellMonopole;
@@ -152,8 +152,8 @@ public:
     /* allocate celldata memory */
     cell_max = nPtcl;
     fprintf(stdout,"Cell data            : %g MB\n",cell_max*sizeof(CellData)/1024.0/1024.0);
-    d_cellDataList.alloc(cell_max);
-    d_cellDataList_tmp.alloc(cell_max);
+    d_sourceCells.alloc(cell_max);
+    d_sourceCells_tmp.alloc(cell_max);
     d_key.alloc(cell_max);
     d_value.alloc(cell_max);
   };
@@ -175,7 +175,7 @@ public:
 
   void buildTree(const int nLeaf = 16);
   void computeMultipoles();
-  void makeGroups(int levelSplit = 1, const int nCrit = 64);
+  void groupTargets(int levelSplit = 1, const int nCrit = 64);
   float4 computeForces();
   void computeDirect(const int numTarget, const int numBlock);
 };

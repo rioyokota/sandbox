@@ -42,7 +42,7 @@ namespace treeBuild
   __device__ unsigned int ncells = 0;
 
   __device__   int *memPool;
-  __device__   CellData *cellDataList;
+  __device__   CellData *sourceCells;
   __device__   void *ptclVel_tmp;
 
   template<int NTHREAD2>
@@ -440,7 +440,7 @@ namespace treeBuild
         const CellData cellData(level,cellParentIndex, nBeg, nEnd, cellFirstChildIndex, nChildrenCell-1);
         assert(cellData.first() < ncells);
         assert(cellData.isNode());
-        cellDataList[cellIndexBase + blockIdx.y] = cellData;
+        sourceCells[cellIndexBase + blockIdx.y] = cellData;
         shmem[16+9] = cellFirstChildIndex;
       }
 
@@ -536,7 +536,7 @@ namespace treeBuild
 	    atomicAdd(&nbodies_leaf, nEnd1-nBeg1);
 	    const CellData leafData(level+1, cellIndexBase+blockIdx.y, nBeg1, nEnd1);
 	    assert(!leafData.isNode());
-	    cellDataList[cellFirstChildIndex + nSubNodes.y + leafOffset] = leafData;
+	    sourceCells[cellFirstChildIndex + nSubNodes.y + leafOffset] = leafData;
 	  }
         if (!(level&1))
 	  {
@@ -608,14 +608,14 @@ namespace treeBuild
   static __global__ void buildOctree(
 				     const int n,
 				     const float4 *domain,
-				     CellData *d_cellDataList,
+				     CellData *d_sourceCells,
 				     int *stack_memory_pool,
 				     float4 *ptcl,
 				     float4 *buff,
 				     float4 *d_ptclVel,
 				     int *ncells_return = NULL)
   {
-    cellDataList = d_cellDataList;
+    sourceCells = d_sourceCells;
     ptclVel_tmp  = (void*)d_ptclVel;
 
     memPool = stack_memory_pool;
@@ -845,23 +845,23 @@ void Treecode::buildTree(const int nLeaf)
       {
       case 16:
         treeBuild::buildOctree<16><<<1,1>>>(
-					    nPtcl, d_domain, d_cellDataList, d_stack_memory_pool, d_ptclPos, d_ptclPos_tmp, d_ptclVel);
+					    nPtcl, d_domain, d_sourceCells, d_stack_memory_pool, d_ptclPos, d_ptclPos_tmp, d_ptclVel);
         break;
       case 24:
         treeBuild::buildOctree<24><<<1,1>>>(
-					    nPtcl, d_domain, d_cellDataList, d_stack_memory_pool, d_ptclPos, d_ptclPos_tmp, d_ptclVel);
+					    nPtcl, d_domain, d_sourceCells, d_stack_memory_pool, d_ptclPos, d_ptclPos_tmp, d_ptclVel);
         break;
       case 32:
         treeBuild::buildOctree<32><<<1,1>>>(
-					    nPtcl, d_domain, d_cellDataList, d_stack_memory_pool, d_ptclPos, d_ptclPos_tmp, d_ptclVel);
+					    nPtcl, d_domain, d_sourceCells, d_stack_memory_pool, d_ptclPos, d_ptclPos_tmp, d_ptclVel);
         break;
       case 48:
         treeBuild::buildOctree<48><<<1,1>>>(
-					    nPtcl, d_domain, d_cellDataList, d_stack_memory_pool, d_ptclPos, d_ptclPos_tmp, d_ptclVel);
+					    nPtcl, d_domain, d_sourceCells, d_stack_memory_pool, d_ptclPos, d_ptclPos_tmp, d_ptclVel);
         break;
       case 64:
         treeBuild::buildOctree<64><<<1,1>>>(
-					    nPtcl, d_domain, d_cellDataList, d_stack_memory_pool, d_ptclPos, d_ptclPos_tmp, d_ptclVel);
+					    nPtcl, d_domain, d_sourceCells, d_stack_memory_pool, d_ptclPos, d_ptclPos_tmp, d_ptclVel);
         break;
       default:
         assert(0);
@@ -880,7 +880,7 @@ void Treecode::buildTree(const int nLeaf)
     const double t0 = get_time();
     const int nthread = 256;
     const int nblock  = (numSources-1)/nthread  + 1;
-    treeBuild::get_cell_levels<<<nblock,nthread>>>(numSources, d_cellDataList, d_cellDataList_tmp, d_key, d_value);
+    treeBuild::get_cell_levels<<<nblock,nthread>>>(numSources, d_sourceCells, d_sourceCells_tmp, d_key, d_value);
 
     thrust::device_ptr<int> keys_beg(d_key.ptr);
     thrust::device_ptr<int> keys_end(d_key.ptr + numSources);
@@ -892,7 +892,7 @@ void Treecode::buildTree(const int nLeaf)
     treeBuild::getLevelRange<<<nblock,nthread,(nthread+2)*sizeof(int)>>>(numSources, d_key, d_levelRange);
 
     treeBuild::write_newIdx <<<nblock,nthread>>>(numSources, d_value, d_key);
-    treeBuild::shuffle_cells<<<nblock,nthread>>>(numSources, d_value, d_key, d_cellDataList_tmp, d_cellDataList);
+    treeBuild::shuffle_cells<<<nblock,nthread>>>(numSources, d_value, d_key, d_sourceCells_tmp, d_sourceCells);
 
     /* group leaves */
 
@@ -900,7 +900,7 @@ void Treecode::buildTree(const int nLeaf)
     const int NTHREAD2 = 8;
     const int NTHREAD  = 256;
     const int nblock1 = (numSources-1)/NTHREAD+1;
-    treeBuild::collect_leaves<NTHREAD2><<<nblock1,NTHREAD>>>(numSources, d_cellDataList, d_leafList);
+    treeBuild::collect_leaves<NTHREAD2><<<nblock1,NTHREAD>>>(numSources, d_sourceCells, d_leafList);
 
     kernelSuccess("shuffle");
     const double dt = get_time() - t0;

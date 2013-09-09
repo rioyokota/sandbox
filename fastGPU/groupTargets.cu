@@ -4,7 +4,7 @@
 #include <thrust/sort.h>
 #include <thrust/scan.h>
 
-namespace makeGroups
+namespace groupTargets
 {
 
   template<typename T>
@@ -196,7 +196,7 @@ namespace makeGroups
   void make_groups(const int n, const int nCrit,
 		   const int *ptclBegIdx, 
 		   const int *ptclEndIdx,
-		   int2 *groupList)
+		   int2 *targetCells)
   {
     const int gidx = blockDim.x * blockIdx.x + threadIdx.x;
     if (gidx >= n) return;
@@ -217,7 +217,7 @@ namespace makeGroups
       {
         const int groupIdx = atomicAdd(&groupCounter,1);
         const int ptclEnd = ptclEndIdx[n-1-gidx];
-        groupList[groupIdx] = make_int2(groupBeg, min(nCrit, ptclEnd - groupBeg));
+        targetCells[groupIdx] = make_int2(groupBeg, min(nCrit, ptclEnd - groupBeg));
       }
   }
 
@@ -232,27 +232,27 @@ namespace makeGroups
 
 };
 
-void Treecode::makeGroups(int levelSplit, const int nCrit)
+void Treecode::groupTargets(int levelSplit, const int nCrit)
 {
   this->nCrit = nCrit;
   const int nthread = 256;
 
   d_key.realloc(2.0*nPtcl);
   d_value.realloc(nPtcl);
-  d_groupList.realloc(nPtcl);
+  d_targetCells.realloc(nPtcl);
 
   unsigned long long *d_keys = (unsigned long long*)d_key.ptr;
   int *d_values = d_value.ptr;
 
-  nGroups = 0;
-  CUDA_SAFE_CALL(cudaMemcpyToSymbol(makeGroups::groupCounter, &nGroups, sizeof(int)));
+  numTargets = 0;
+  CUDA_SAFE_CALL(cudaMemcpyToSymbol(groupTargets::groupCounter, &numTargets, sizeof(int)));
 
   const int nblock  = (nPtcl-1)/nthread + 1;
   const int NBINS = 21; 
 
   cudaDeviceSynchronize();
   const double t0 = get_time();
-  makeGroups::computeKeys<NBINS><<<nblock,nthread>>>(nPtcl, d_domain, d_ptclPos, d_keys, d_values);
+  groupTargets::computeKeys<NBINS><<<nblock,nthread>>>(nPtcl, d_domain, d_ptclPos, d_keys, d_values);
 
   levelSplit = std::max(1,levelSplit);  /* pick the coarse segment boundaries at the levelSplit */
   unsigned long long mask= 0;
@@ -271,18 +271,18 @@ void Treecode::makeGroups(int levelSplit, const int nCrit)
 #if 1
   thrust::sort_by_key(keys_beg, keys_end, vals_beg); 
 #else
-  thrust::sort_by_key(keys_beg, keys_end, vals_beg, makeGroups::keyCompare());
+  thrust::sort_by_key(keys_beg, keys_end, vals_beg, groupTargets::keyCompare());
 #endif
 
 #if 1
-  makeGroups::shuffle<float4><<<nblock,nthread>>>(nPtcl, d_value, d_ptclPos, d_ptclPos_tmp);
+  groupTargets::shuffle<float4><<<nblock,nthread>>>(nPtcl, d_value, d_ptclPos, d_ptclPos_tmp);
 
   cuda_mem<int> d_ptclBegIdx, d_ptclEndIdx;
   cuda_mem<unsigned long long> d_keys_inv;
   d_ptclBegIdx.alloc(nPtcl);
   d_ptclEndIdx.alloc(nPtcl);
   d_keys_inv.alloc(nPtcl);
-  makeGroups::mask_keys<<<nblock,nthread,(nthread+2)*sizeof(unsigned long long)>>>(nPtcl, mask, d_keys, d_keys_inv, d_ptclBegIdx, d_ptclEndIdx);
+  groupTargets::mask_keys<<<nblock,nthread,(nthread+2)*sizeof(unsigned long long)>>>(nPtcl, mask, d_keys, d_keys_inv, d_ptclBegIdx, d_ptclEndIdx);
 
   thrust::device_ptr<int> valuesBeg(d_ptclBegIdx.ptr);
   thrust::device_ptr<int> valuesEnd(d_ptclEndIdx.ptr);
@@ -304,24 +304,24 @@ void Treecode::makeGroups(int levelSplit, const int nCrit)
     }
 #endif
 
-  makeGroups::make_groups<<<nblock,nthread>>>(nPtcl, nCrit, d_ptclBegIdx, d_ptclEndIdx, d_groupList);
+  groupTargets::make_groups<<<nblock,nthread>>>(nPtcl, nCrit, d_ptclBegIdx, d_ptclEndIdx, d_targetCells);
 #endif
 
-  kernelSuccess("makeGroups");
+  kernelSuccess("groupTargets");
   const double dt = get_time() - t0;
   fprintf(stdout,"Make groups          : %.7f s\n", dt);
-  CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&nGroups, makeGroups::groupCounter, sizeof(int)));
+  CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&numTargets, groupTargets::groupCounter, sizeof(int)));
 #if 0
   assert(0);
 #endif
 
-  //fprintf(stderr, "nGroup= %d <nCrit>= %g \n", nGroups, nPtcl*1.0/nGroups);
+  //fprintf(stderr, "nGroup= %d <nCrit>= %g \n", numTargets, nPtcl*1.0/numTargets);
 #if 0
   {
-    std::vector<int2> groups(nGroups);
-    d_groupList.d2h((int2*)&groups[0], nGroups);
+    std::vector<int2> groups(numTargets);
+    d_targetCells.d2h((int2*)&groups[0], numTargets);
     int np_in_group = 0;
-    for (int i = 0 ;i < nGroups; i++)
+    for (int i = 0 ;i < numTargets; i++)
       {
 #if 0
 	printf("groupdIdx= %d  :: pbeg= %d  np =%d \n", i, groups[i].x, groups[i].y);

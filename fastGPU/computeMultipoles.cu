@@ -149,7 +149,7 @@ void Treecode::computeMultipoles()
   CUDA_SAFE_CALL(cudaFuncSetCacheConfig(&multipoles::computeCellMultipoles<NTHREAD2>,cudaFuncCachePreferL1));
   cudaDeviceSynchronize();
   const double t0 = get_time();
-  multipoles::computeCellMultipoles<NTHREAD2><<<nblock,NTHREAD>>>(nPtcl, numSources, d_cellDataList, (float4*)d_ptclPos.ptr,
+  multipoles::computeCellMultipoles<NTHREAD2><<<nblock,NTHREAD>>>(nPtcl, numSources, d_sourceCells, (float4*)d_ptclPos.ptr,
 								  1.0/theta,
 								  d_sourceCenter, d_cellMonopole, d_cellQuad0, d_cellQuad1);
   kernelSuccess("cellMultipole");

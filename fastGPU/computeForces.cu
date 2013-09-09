@@ -329,20 +329,18 @@ namespace computeForces {
     return counters;
   }
 
-  __device__ unsigned int retired_groupCount = 0;
-
-  __device__ unsigned long long d_sumP2P = 0;
-  __device__ unsigned int       d_maxP2P = 0;
-
-  __device__ unsigned long long d_sumM2P = 0;
-  __device__ unsigned int       d_maxM2P = 0;
+  __device__ unsigned int retiredTargetCount = 0;
+  __device__ unsigned long long sumP2PGlob = 0;
+  __device__ unsigned int       maxP2PGlob = 0;
+  __device__ unsigned long long sumM2PGlob = 0;
+  __device__ unsigned int       maxM2PGlob = 0;
 
   template<int NTHREAD2, int NI>
   __launch_bounds__(1<<NTHREAD2, 1024/(1<<NTHREAD2))
     static __global__ 
     void traverse(
-		  const int nGroups,
-		  const int2 *groupList,
+		  const int numTargets,
+		  const int2 *targetCells,
 		  const float eps2,
 		  const int2 *levelRange,
 		  const float4 *pos,
@@ -362,17 +360,17 @@ namespace computeForces {
     int *gmem  =  gmem_pool + CELL_LIST_MEM_PER_WARP*((blockIdx.x<<NWARP2) + warpIdx);
 
     while (1) {
-      int groupIdx = 0;
+      int targetIdx = 0;
       if (laneIdx == 0)
-	groupIdx = atomicAdd(&retired_groupCount, 1);
-      groupIdx = __shfl(groupIdx, 0, WARP_SIZE);
+	targetIdx = atomicAdd(&retiredTargetCount, 1);
+      targetIdx = __shfl(targetIdx, 0, WARP_SIZE);
 
-      if (groupIdx >= nGroups) 
+      if (targetIdx >= numTargets) 
 	return;
 
-      const int2 group = groupList[groupIdx];
-      const int begin = group.x;
-      const int end   = group.x+group.y;
+      const int2 target = targetCells[targetIdx];
+      const int begin = target.x;
+      const int end   = target.x+target.y;
 
       float3 pos_i[NI];
 #pragma unroll
@@ -429,10 +427,10 @@ namespace computeForces {
 
       if (laneIdx == 0)
 	{
-	  atomicMax(&d_maxP2P,                     maxP2P);
-	  atomicAdd(&d_sumP2P, (unsigned long long)sumP2P);
-	  atomicMax(&d_maxM2P,                     maxM2P);
-	  atomicAdd(&d_sumM2P, (unsigned long long)sumM2P);
+	  atomicMax(&maxP2PGlob,                     maxP2P);
+	  atomicAdd(&sumP2PGlob, (unsigned long long)sumP2P);
+	  atomicMax(&maxM2PGlob,                     maxM2P);
+	  atomicAdd(&sumM2PGlob, (unsigned long long)sumM2P);
 	}
 
 #pragma unroll
@@ -489,7 +487,7 @@ namespace computeForces {
 }
 
 float4 Treecode::computeForces() {
-  bindTexture(computeForces::texCell,(uint4*)d_cellDataList.ptr, numSources);
+  bindTexture(computeForces::texCell,(uint4*)d_sourceCells.ptr, numSources);
   bindTexture(computeForces::texCellCenter,  d_sourceCenter.ptr, numSources);
   bindTexture(computeForces::texMonopole,    d_cellMonopole.ptr, numSources);
   bindTexture(computeForces::texQuad0,       d_cellQuad0.ptr,    numSources);
@@ -506,7 +504,7 @@ float4 Treecode::computeForces() {
   cudaDeviceSynchronize();
   const double t0 = get_time();
   CUDA_SAFE_CALL(cudaFuncSetCacheConfig(&computeForces::traverse<NTHREAD2,2>, cudaFuncCachePreferL1));
-  computeForces::traverse<NTHREAD2,2><<<nblock,NTHREAD>>>(nGroups, d_groupList, eps2, d_levelRange,
+  computeForces::traverse<NTHREAD2,2><<<nblock,NTHREAD>>>(numTargets, d_targetCells, eps2, d_levelRange,
 							  d_ptclPos_tmp, d_ptclAcc,
 							  d_gmem_pool);
   kernelSuccess("traverse");
@@ -514,10 +512,10 @@ float4 Treecode::computeForces() {
 
   unsigned long long sumP2P, sumM2P;
   unsigned int maxP2P, maxM2P;
-  CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&sumP2P, computeForces::d_sumP2P, sizeof(unsigned long long)));
-  CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&maxP2P, computeForces::d_maxP2P, sizeof(unsigned int)));
-  CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&sumM2P, computeForces::d_sumM2P, sizeof(unsigned long long)));
-  CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&maxM2P, computeForces::d_maxM2P, sizeof(unsigned int)));
+  CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&sumP2P, computeForces::sumP2PGlob, sizeof(unsigned long long)));
+  CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&maxP2P, computeForces::maxP2PGlob, sizeof(unsigned int)));
+  CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&sumM2P, computeForces::sumM2PGlob, sizeof(unsigned long long)));
+  CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&maxM2P, computeForces::maxM2PGlob, sizeof(unsigned int)));
   float4 interactions;
   interactions.x = sumP2P * 1.0 / nPtcl;
   interactions.y = maxP2P;

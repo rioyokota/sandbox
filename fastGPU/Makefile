@@ -3,7 +3,7 @@
 NVCC = nvcc -g -O3 -arch=sm_35 -rdc=true -ftz=true
 LFLAGS = -lcudadevrt
 
-SRC = treecode.cu buildTree.cu computeMultipoles.cu makeGroups.cu computeForces.cu
+SRC = treecode.cu buildTree.cu computeMultipoles.cu groupTargets.cu computeForces.cu
 
 OBJ = $(SRC:%.cu=%.o)
 

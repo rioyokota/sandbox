@@ -49,7 +49,7 @@ int main(int argc, char * argv[])
   double t0 = get_time();
   tree.buildTree(nleaf); // pass nLeaf, accepted 16, 24, 32, 48, 64
   tree.computeMultipoles();
-  tree.makeGroups(5, ncrit); // pass nCrit
+  tree.groupTargets(5, ncrit); // pass nCrit
   const float4 interactions = tree.computeForces();
   double dt = get_time() - t0;
   float flops = (interactions.x*20 + interactions.z*64)*tree.get_nPtcl()/dt/1e12;
