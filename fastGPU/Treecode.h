@@ -113,7 +113,7 @@ public:
   cuda_mem<int>  d_stack_memory_pool;
   cuda_mem<CellData> d_sourceCells, d_sourceCells_tmp;
   cuda_mem<int2> d_targetCells;
-  cuda_mem<int>  d_leafList;
+  cuda_mem<int>  d_leafCells;
   cuda_mem<int>  d_key, d_value;
   cuda_mem<float4> d_sourceCenter, d_cellMonopole;
   cuda_mem<float4> d_cellQuad0;

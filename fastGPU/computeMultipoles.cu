@@ -56,16 +56,15 @@ namespace multipoles {
 
   template<int NTHREAD2>
   static __global__ __launch_bounds__(1<<NTHREAD2, 1024/(1<<NTHREAD2))
-    void computeCellMultipoles(
-			       const int nPtcl,
+    void computeCellMultipoles(const int nPtcl,
 			       const int numSources,
 			       const CellData *cells,
 			       const float4* __restrict__ ptclPos,
 			       const float inv_theta,
-			       float4 *sizeList,
-			       float4 *monopoleList,
-			       float4 *quadrpl0List,
-			       float2 *quadrpl1List)
+			       float4 *sourceCenter,
+			       float4 *monopole,
+			       float4 *quadrupole0,
+			       float2 *quadrupole1)
   {
     const int warpIdx = threadIdx.x >> WARP_SIZE2;
     const int laneIdx = threadIdx.x & (WARP_SIZE-1);
@@ -125,10 +124,10 @@ namespace multipoles {
 
 	atomicAdd(&nflops, nflop);
 
-	sizeList[cellIdx] = (float4){com.x, com.y, com.z, cellOp2};
-	monopoleList[cellIdx] = (float4){M.x, M.y, M.z, M.w};  
-	quadrpl0List[cellIdx] = (float4){Q.xx, Q.yy, Q.zz, Q.xy};
-	quadrpl1List[cellIdx] = (float2){Q.xz, Q.yz};
+	sourceCenter[cellIdx] = (float4){com.x, com.y, com.z, cellOp2};
+	monopole[cellIdx]     = (float4){M.x, M.y, M.z, M.w};  
+	quadrupole0[cellIdx]  = (float4){Q.xx, Q.yy, Q.zz, Q.xy};
+	quadrupole1[cellIdx]  = (float2){Q.xz, Q.yz};
       }
   }
 
@@ -136,7 +135,7 @@ namespace multipoles {
 
 void Treecode::computeMultipoles()
 {
-  d_sourceCenter    .realloc(numSources);
+  d_sourceCenter.realloc(numSources);
   d_cellMonopole.realloc(numSources);
   d_cellQuad0   .realloc(numSources);
   d_cellQuad1   .realloc(numSources);
