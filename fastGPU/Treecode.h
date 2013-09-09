@@ -91,13 +91,12 @@ public:
 struct Treecode
 {
 private:
-  int nBody, numLevels, numSources, numLeaves, numTargets, nCrit, nLeaf;
+  int numBody, numLevels, numSources, numLeaves, numTargets;
+  int nCrit, nLeaf;
   float theta, eps2;
 
 public:
-  int get_nBody() const { return nBody; }
-  int get_nCrit() const { return nCrit; }
-  int get_nLeaf() const { return nLeaf; }
+  int getNumBody() const { return numBody; }
   int getNumSources() const { return numSources; }
   int getNumLevels() const { return numLevels; }
 
@@ -129,28 +128,28 @@ public:
     d_levelRange.alloc(32);
   }
 
-  void alloc(const int nBody)
+  void alloc(const int numBody)
   {
-    this->nBody = nBody;
-    h_bodyPos.alloc(nBody);
-    h_bodyVel.alloc(nBody);
-    h_bodyAcc.alloc(nBody);
-    h_bodyAcc2.alloc(nBody);
+    this->numBody = numBody;
+    h_bodyPos.alloc(numBody);
+    h_bodyVel.alloc(numBody);
+    h_bodyAcc.alloc(numBody);
+    h_bodyAcc2.alloc(numBody);
 
-    d_bodyPos.alloc(nBody);
-    d_bodyVel.alloc(nBody);
-    d_bodyPos_tmp.alloc(nBody);
-    d_bodyAcc.alloc(nBody);
-    d_bodyAcc2.alloc(nBody);
+    d_bodyPos.alloc(numBody);
+    d_bodyVel.alloc(numBody);
+    d_bodyPos_tmp.alloc(numBody);
+    d_bodyAcc.alloc(numBody);
+    d_bodyAcc2.alloc(numBody);
  
     /* allocate stack memory */ 
-    node_max = nBody/10;
+    node_max = numBody / 10;
     stack_size = (8+8+8+64+8)*node_max;
     fprintf(stdout,"Stack size           : %g MB\n",sizeof(int)*stack_size/1024.0/1024.0);
     d_stack_memory_pool.alloc(stack_size);
   
     /* allocate celldata memory */
-    cell_max = nBody;
+    cell_max = numBody;
     fprintf(stdout,"Cell data            : %g MB\n",cell_max*sizeof(CellData)/1024.0/1024.0);
     d_sourceCells.alloc(cell_max);
     d_sourceCells_tmp.alloc(cell_max);

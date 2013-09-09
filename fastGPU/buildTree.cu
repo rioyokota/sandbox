@@ -807,7 +807,7 @@ void Treecode::buildTree(const int nLeaf)
     cudaDeviceSynchronize();
     const double t0 = get_time();
     treeBuild::computeBoundingBox<NTHREAD2><<<NBLOCK,NTHREAD,NTHREAD*sizeof(float2)>>>
-      (nBody, d_minmax, d_domain, d_bodyPos);
+      (numBody, d_minmax, d_domain, d_bodyPos);
     kernelSuccess("cudaDomainSize");
     const double dt = get_time() - t0;
     fprintf(stdout,"Get bounds           : %.7f s\n",  dt);
@@ -845,23 +845,23 @@ void Treecode::buildTree(const int nLeaf)
       {
       case 16:
         treeBuild::buildOctree<16><<<1,1>>>(
-					    nBody, d_domain, d_sourceCells, d_stack_memory_pool, d_bodyPos, d_bodyPos_tmp, d_bodyVel);
+					    numBody, d_domain, d_sourceCells, d_stack_memory_pool, d_bodyPos, d_bodyPos_tmp, d_bodyVel);
         break;
       case 24:
         treeBuild::buildOctree<24><<<1,1>>>(
-					    nBody, d_domain, d_sourceCells, d_stack_memory_pool, d_bodyPos, d_bodyPos_tmp, d_bodyVel);
+					    numBody, d_domain, d_sourceCells, d_stack_memory_pool, d_bodyPos, d_bodyPos_tmp, d_bodyVel);
         break;
       case 32:
         treeBuild::buildOctree<32><<<1,1>>>(
-					    nBody, d_domain, d_sourceCells, d_stack_memory_pool, d_bodyPos, d_bodyPos_tmp, d_bodyVel);
+					    numBody, d_domain, d_sourceCells, d_stack_memory_pool, d_bodyPos, d_bodyPos_tmp, d_bodyVel);
         break;
       case 48:
         treeBuild::buildOctree<48><<<1,1>>>(
-					    nBody, d_domain, d_sourceCells, d_stack_memory_pool, d_bodyPos, d_bodyPos_tmp, d_bodyVel);
+					    numBody, d_domain, d_sourceCells, d_stack_memory_pool, d_bodyPos, d_bodyPos_tmp, d_bodyVel);
         break;
       case 64:
         treeBuild::buildOctree<64><<<1,1>>>(
-					    nBody, d_domain, d_sourceCells, d_stack_memory_pool, d_bodyPos, d_bodyPos_tmp, d_bodyVel);
+					    numBody, d_domain, d_sourceCells, d_stack_memory_pool, d_bodyPos, d_bodyPos_tmp, d_bodyVel);
         break;
       default:
         assert(0);

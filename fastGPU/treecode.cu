@@ -4,7 +4,7 @@ int main(int argc, char * argv[])
 {
   typedef Treecode Tree;
 
-  const int nBody = 16777216;
+  const int numBody = 16777216;
   const int seed = 19810614;
   const float eps   = 0.05;
   const float theta = 0.75;
@@ -13,14 +13,14 @@ int main(int argc, char * argv[])
   Tree tree(eps, theta);
 
   fprintf(stdout,"--- FMM Parameters ---------------\n");
-  fprintf(stdout,"numBodies            : %d\n",nBody);
+  fprintf(stdout,"numBodies            : %d\n",numBody);
   fprintf(stdout,"P                    : %d\n",3);
   fprintf(stdout,"theta                : %f\n",theta);
   fprintf(stdout,"ncrit                : %d\n",ncrit);
   fprintf(stdout,"nleaf                : %d\n",nleaf);
-  const Plummer data(nBody, seed);
-  tree.alloc(nBody);
-  for (int i = 0; i < nBody; i++) {
+  const Plummer data(numBody, seed);
+  tree.alloc(numBody);
+  for (int i = 0; i < numBody; i++) {
     float4 bodyPos, bodyVel, bodyAcc;
     bodyPos.x    = data.pos[i].x;
     bodyPos.y    = data.pos[i].y;
@@ -52,7 +52,7 @@ int main(int argc, char * argv[])
   tree.groupTargets(5, ncrit); // pass nCrit
   const float4 interactions = tree.computeForces();
   double dt = get_time() - t0;
-  float flops = (interactions.x*20 + interactions.z*64)*tree.get_nBody()/dt/1e12;
+  float flops = (interactions.x * 20 + interactions.z * 64) * tree.getNumBody() / dt / 1e12;
   fprintf(stdout,"--- Total runtime ----------------\n");
   fprintf(stdout,"Total FMM            : %.7f s (%.7f TFlops)\n",dt,flops);
   const int numTarget = 512; // Number of threads per block will be set to this value
@@ -60,7 +60,7 @@ int main(int argc, char * argv[])
   t0 = get_time();
   tree.computeDirect(numTarget,numBlock);
   dt = get_time() - t0;
-  flops = 20.*numTarget*nBody/dt/1e12;
+  flops = 20.*numTarget*numBody/dt/1e12;
   fprintf(stdout,"Total Direct         : %.7f s (%.7f TFlops)\n",dt,flops);
   tree.body_d2h();
 
@@ -91,7 +91,7 @@ int main(int argc, char * argv[])
   fprintf(stdout,"Rel. L2 Error (pot)  : %.7e\n",sqrt(diffp/normp));
   fprintf(stdout,"Rel. L2 Error (acc)  : %.7e\n",sqrt(diffa/norma));
   fprintf(stdout,"--- Tree stats -------------------\n");
-  fprintf(stdout,"Bodies               : %d\n",tree.get_nBody());
+  fprintf(stdout,"Bodies               : %d\n",tree.getNumBody());
   fprintf(stdout,"Cells                : %d\n",tree.getNumSources());
   fprintf(stdout,"Tree depth           : %d\n",tree.getNumLevels());
   fprintf(stdout,"--- Traversal stats --------------\n");

@@ -235,9 +235,9 @@ namespace computeForces {
       bool isDirect = splitCell && isLeaf && useCell;
 
       const int firstBody = cellData.pbeg();
-      const int     nBody = cellData.pend() - cellData.pbeg();
+      const int     numBody = cellData.pend() - cellData.pbeg();
 
-      childScatter = warpIntExclusiveScan(nBody & (-isDirect));
+      childScatter = warpIntExclusiveScan(numBody & (-isDirect));
       int nParticle  = childScatter.y;
       int nProcessed = 0;
       int2 scanVal   = {0,0};
@@ -492,7 +492,7 @@ float4 Treecode::computeForces() {
   bindTexture(computeForces::texMonopole,    d_Monopole.ptr,     numSources);
   bindTexture(computeForces::texQuad0,       d_Quadrupole0.ptr,  numSources);
   bindTexture(computeForces::texQuad1,       d_Quadrupole1.ptr,  numSources);
-  bindTexture(computeForces::texBody,        d_bodyPos.ptr,      nBody);
+  bindTexture(computeForces::texBody,        d_bodyPos.ptr,      numBody);
 
   const int NTHREAD2 = 7;
   const int NTHREAD  = 1<<NTHREAD2;
@@ -517,11 +517,11 @@ float4 Treecode::computeForces() {
   CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&sumM2P, computeForces::sumM2PGlob, sizeof(unsigned long long)));
   CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&maxM2P, computeForces::maxM2PGlob, sizeof(unsigned int)));
   float4 interactions;
-  interactions.x = sumP2P * 1.0 / nBody;
+  interactions.x = sumP2P * 1.0 / numBody;
   interactions.y = maxP2P;
-  interactions.z = sumM2P * 1.0 / nBody;
+  interactions.z = sumM2P * 1.0 / numBody;
   interactions.w = maxM2P;
-  float flops = (interactions.x * 20 + interactions.z * 64) * nBody / dt / 1e12;
+  float flops = (interactions.x * 20 + interactions.z * 64) * numBody / dt / 1e12;
   fprintf(stdout,"Traverse             : %.7f s (%.7f TFlops)\n",dt,flops);
 
   unbindTexture(computeForces::texBody);
@@ -535,8 +535,8 @@ float4 Treecode::computeForces() {
 
 void Treecode::computeDirect(const int numTarget, const int numBlock)
 {
-  bindTexture(computeForces::texBody,d_bodyPos_tmp.ptr,nBody);
-  computeForces::direct<<<numBlock,numTarget>>>(nBody, eps2, d_bodyAcc2);
+  bindTexture(computeForces::texBody,d_bodyPos_tmp.ptr,numBody);
+  computeForces::direct<<<numBlock,numTarget>>>(numBody, eps2, d_bodyAcc2);
   unbindTexture(computeForces::texBody);
   cudaDeviceSynchronize();
 }
