@@ -31,7 +31,7 @@ namespace computeForces {
     return i & (CELL_LIST_MEM_PER_WARP - 1);
   }
 
-  static __device__
+  static __device__ __forceinline__
   bool applyMAC(const float4 sourceCenter,
                 const float3 targetCenter,
                 const float3 targetSize) {
@@ -63,7 +63,7 @@ namespace computeForces {
     return acc;
   }
 
-  static __device__ __forceinline__
+  static __device__
   float4 M2P(float4 acc,
 	     const float3 pos,
 	     const float4 M0,
@@ -102,7 +102,7 @@ namespace computeForces {
   }
 
   template<int NI, bool FULL>
-  static __device__ __forceinline__
+  static __device__
   void approxAcc(float4 acc_i[NI],
 		 const float3 pos_i[NI],
 		 const int cellIdx,
