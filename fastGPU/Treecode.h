@@ -126,8 +126,7 @@ struct Treecode
     nCrit = _ncrit;
     d_domain.alloc(1);
     d_minmax.alloc(2048);
-    d_levelRange.alloc(32);  /* max 32 levels */
-    CUDA_SAFE_CALL(cudaMemset(d_levelRange,0, 32*sizeof(int2)));
+    d_levelRange.alloc(32);
   }
 
   void alloc(const int nPtcl)

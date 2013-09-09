@@ -8,11 +8,11 @@
 
 namespace computeForces {  
   texture<uint4,  1, cudaReadModeElementType> texCell;
-  texture<float4, 1, cudaReadModeElementType> texBody;
   texture<float4, 1, cudaReadModeElementType> texCellCenter;
   texture<float4, 1, cudaReadModeElementType> texMonopole;
   texture<float4, 1, cudaReadModeElementType> texQuad0;
   texture<float2, 1, cudaReadModeElementType> texQuad1;
+  texture<float4, 1, cudaReadModeElementType> texBody;
 
   static __device__ __forceinline__
   float6 make_float6(float xx, float yy, float zz, float xy, float xz, float yz) {
@@ -375,11 +375,11 @@ namespace computeForces {
 
   __device__ unsigned int retired_groupCount = 0;
 
-  __device__ unsigned long long g_direct_sum = 0;
-  __device__ unsigned int       g_direct_max = 0;
+  __device__ unsigned long long d_sumP2P = 0;
+  __device__ unsigned int       d_maxP2P = 0;
 
-  __device__ unsigned long long g_approx_sum = 0;
-  __device__ unsigned int       g_approx_max = 0;
+  __device__ unsigned long long d_sumM2P = 0;
+  __device__ unsigned int       d_maxM2P = 0;
 
   template<int NTHREAD2, int NI>
   __launch_bounds__(1<<NTHREAD2, 1024/(1<<NTHREAD2))
@@ -388,7 +388,6 @@ namespace computeForces {
 	const int nGroups,
         const int2 *groupList,
         const float eps2,
-        const int start_level,
         const int2 *levelRange,
         const float4 *pos,
         float4 *acc,
@@ -405,9 +404,6 @@ namespace computeForces {
       const int sh_offs = (shMemSize >> NWARP2) * warpIdx;
       int *shmem = shmem_pool + sh_offs;
       int *gmem  =  gmem_pool + CELL_LIST_MEM_PER_WARP*((blockIdx.x<<NWARP2) + warpIdx);
-
-      int2 rootRange = levelRange[start_level];
-      rootRange.y++;
 
       while (1) {
         int groupIdx = 0;
@@ -447,40 +443,40 @@ namespace computeForces {
         float4 acc_i[NI] = {0.0f, 0.0f, 0.0f, 0.0f};
 
         uint2 counters = treewalk_warp<NTHREAD2,NI>
-          (acc_i, pos_i, targetCenter, hvec, eps2, rootRange, shmem, gmem);
+          (acc_i, pos_i, targetCenter, hvec, eps2, levelRange[2], shmem, gmem);
 
         assert(!(counters.x == 0xFFFFFFFF && counters.y == 0xFFFFFFFF));
 
         const int pidx = begin + laneIdx;
 
-	int direct_max = counters.y;
-	int direct_sum = 0;
-	int approx_max = counters.x;
-	int approx_sum = 0;
+	int maxP2P = counters.y;
+	int sumP2P = 0;
+	int maxM2P = counters.x;
+	int sumM2P = 0;
 
 #pragma unroll
 	for (int i = 0; i < NI; i++)
 	  if (i*WARP_SIZE + pidx < end)
 	  {
-	    approx_sum += counters.x;
-	    direct_sum += counters.y;
+	    sumM2P += counters.x;
+	    sumP2P += counters.y;
 	  }
 
 #pragma unroll
 	for (int i = WARP_SIZE2-1; i >= 0; i--)
 	{
-	  direct_max  = max(direct_max, __shfl_xor(direct_max, 1<<i));
-	  direct_sum += __shfl_xor(direct_sum, 1<<i);
-	  approx_max  = max(approx_max, __shfl_xor(approx_max, 1<<i));
-	  approx_sum += __shfl_xor(approx_sum, 1<<i);
+	  maxP2P  = max(maxP2P, __shfl_xor(maxP2P, 1<<i));
+	  sumP2P += __shfl_xor(sumP2P, 1<<i);
+	  maxM2P  = max(maxM2P, __shfl_xor(maxM2P, 1<<i));
+	  sumM2P += __shfl_xor(sumM2P, 1<<i);
 	}
 
 	if (laneIdx == 0)
 	{
-	  atomicMax(&g_direct_max,                     direct_max);
-	  atomicAdd(&g_direct_sum, (unsigned long long)direct_sum);
-	  atomicMax(&g_approx_max,                     approx_max);
-	  atomicAdd(&g_approx_sum, (unsigned long long)approx_sum);
+	  atomicMax(&d_maxP2P,                     maxP2P);
+	  atomicAdd(&d_sumP2P, (unsigned long long)sumP2P);
+	  atomicMax(&d_maxM2P,                     maxM2P);
+	  atomicAdd(&d_sumM2P, (unsigned long long)sumM2P);
 	}
 
 #pragma unroll
@@ -538,11 +534,11 @@ namespace computeForces {
 
 float4 Treecode::computeForces() {
   bindTexture(computeForces::texCell,(uint4*)d_cellDataList.ptr, nCells);
-  bindTexture(computeForces::texCellCenter,    d_sourceCenter.ptr, nCells);
+  bindTexture(computeForces::texCellCenter,  d_sourceCenter.ptr, nCells);
   bindTexture(computeForces::texMonopole,    d_cellMonopole.ptr, nCells);
   bindTexture(computeForces::texQuad0,       d_cellQuad0.ptr,    nCells);
   bindTexture(computeForces::texQuad1,       d_cellQuad1.ptr,    nCells);
-  bindTexture(computeForces::texBody,            d_ptclPos.ptr,      nPtcl);
+  bindTexture(computeForces::texBody,        d_ptclPos.ptr,      nPtcl);
 
   const int NTHREAD2 = 7;
   const int NTHREAD  = 1<<NTHREAD2;
@@ -551,48 +547,36 @@ float4 Treecode::computeForces() {
   const int nblock = 8*13;
   d_gmem_pool.alloc(CELL_LIST_MEM_PER_WARP*nblock*(NTHREAD/WARP_SIZE));
 
-  const int starting_level = 1;
-  int value = 0;
   cudaDeviceSynchronize();
   const double t0 = get_time();
-  unsigned long long lzero = 0;
-  unsigned int       uzero = 0;
-  CUDA_SAFE_CALL(cudaMemcpyToSymbol(computeForces::retired_groupCount, &value, sizeof(int)));
-  CUDA_SAFE_CALL(cudaMemcpyToSymbol(computeForces::g_direct_sum, &lzero, sizeof(unsigned long long)));
-  CUDA_SAFE_CALL(cudaMemcpyToSymbol(computeForces::g_direct_max, &uzero, sizeof(unsigned int)));
-  CUDA_SAFE_CALL(cudaMemcpyToSymbol(computeForces::g_approx_sum, &lzero, sizeof(unsigned long long)));
-  CUDA_SAFE_CALL(cudaMemcpyToSymbol(computeForces::g_approx_max, &uzero, sizeof(unsigned int)));
-
   CUDA_SAFE_CALL(cudaFuncSetCacheConfig(&computeForces::treewalk<NTHREAD2,2>, cudaFuncCachePreferL1));
   computeForces::treewalk<NTHREAD2,2><<<nblock,NTHREAD>>>(
-    nGroups, d_groupList, eps2, starting_level, d_levelRange,
+    nGroups, d_groupList, eps2, d_levelRange,
     d_ptclPos_tmp, d_ptclAcc,
     d_gmem_pool);
   kernelSuccess("treewalk");
   const double dt = get_time() - t0;
 
-  float4 interactions = {0.0, 0.0, 0.0, 0.0};
-  unsigned long long direct_sum, approx_sum;
-  unsigned int direct_max, approx_max;
-  CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&direct_sum, computeForces::g_direct_sum, sizeof(unsigned long long)));
-  CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&direct_max, computeForces::g_direct_max, sizeof(unsigned int)));
-  CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&approx_sum, computeForces::g_approx_sum, sizeof(unsigned long long)));
-  CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&approx_max, computeForces::g_approx_max, sizeof(unsigned int)));
-  interactions.x = direct_sum*1.0/nPtcl;
-  interactions.y = direct_max;
-  interactions.z = approx_sum*1.0/nPtcl;
-  interactions.w = approx_max;
-
-  float flops = (interactions.x*20 + interactions.z*64)*nPtcl/dt/1e12;
+  unsigned long long sumP2P, sumM2P;
+  unsigned int maxP2P, maxM2P;
+  CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&sumP2P, computeForces::d_sumP2P, sizeof(unsigned long long)));
+  CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&maxP2P, computeForces::d_maxP2P, sizeof(unsigned int)));
+  CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&sumM2P, computeForces::d_sumM2P, sizeof(unsigned long long)));
+  CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&maxM2P, computeForces::d_maxM2P, sizeof(unsigned int)));
+  float4 interactions;
+  interactions.x = sumP2P * 1.0 / nPtcl;
+  interactions.y = maxP2P;
+  interactions.z = sumM2P * 1.0 / nPtcl;
+  interactions.w = maxM2P;
+  float flops = (interactions.x * 20 + interactions.z * 64) * nPtcl / dt / 1e12;
   fprintf(stdout,"Traverse             : %.7f s (%.7f TFlops)\n",dt,flops);
 
+  unbindTexture(computeForces::texBody);
   unbindTexture(computeForces::texQuad1);
   unbindTexture(computeForces::texQuad0);
   unbindTexture(computeForces::texMonopole);
   unbindTexture(computeForces::texCellCenter);
-  unbindTexture(computeForces::texBody);
   unbindTexture(computeForces::texCell);
-
   return interactions;
 }
 

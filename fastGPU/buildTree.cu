@@ -696,7 +696,7 @@ namespace treeBuild
 
 
   static __global__ void
-    getLevelRange(const int n, const int levels[], int2 level_begendIdx[])
+    getLevelRange(const int n, const int levels[], int2 levelRange[])
     {
       const int gidx = blockIdx.x*blockDim.x + threadIdx.x;
       if (gidx >= n) return;
@@ -722,11 +722,11 @@ namespace treeBuild
       const int currLevel = shLevels[idx];
       const int prevLevel = shLevels[idx-1];
       if (currLevel != prevLevel || gidx == 0)
-        level_begendIdx[currLevel].x = gidx;
+        levelRange[currLevel].x = gidx;
 
       const int nextLevel = shLevels[idx+1];
       if (currLevel != nextLevel || gidx == n-1)
-        level_begendIdx[currLevel].y = gidx;
+        levelRange[currLevel].y = gidx+1;
     }
   
   __device__  unsigned int leafIdx_counter = 0;
