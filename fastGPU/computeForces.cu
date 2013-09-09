@@ -134,7 +134,7 @@ namespace computeForces {
 		      const float3 targetCenter,
 		      const float3 targetSize,
 		      const float eps2,
-		      const int2 top_cells,
+		      const int2 rootRange,
 		      int *shmem,
 		      int *cellList) {
     const int laneIdx = threadIdx.x & (WARP_SIZE-1);
@@ -148,11 +148,11 @@ namespace computeForces {
     int directCounter = 0;
     int approxCounter = 0;
 
-    for (int root_cell=top_cells.x; root_cell<top_cells.y; root_cell+=WARP_SIZE)
-      if (root_cell + laneIdx < top_cells.y)
-	cellList[ringAddr(root_cell - top_cells.x + laneIdx)] = root_cell + laneIdx;
+    for (int root_cell=rootRange.x; root_cell<rootRange.y; root_cell+=WARP_SIZE)
+      if (root_cell + laneIdx < rootRange.y)
+	cellList[ringAddr(root_cell - rootRange.x + laneIdx)] = root_cell + laneIdx;
 
-    int nCells = top_cells.y - top_cells.x;
+    int nCells = rootRange.y - rootRange.x;
 
     int cellListBlock        = 0;
     int nextLevelCellCounter = 0;
@@ -382,14 +382,14 @@ namespace computeForces {
   __device__ unsigned int       g_approx_max = 0;
 
   template<int NTHREAD2, int NI>
-    __launch_bounds__(1<<NTHREAD2, 1024/(1<<NTHREAD2))
+  __launch_bounds__(1<<NTHREAD2, 1024/(1<<NTHREAD2))
     static __global__ 
     void treewalk(
-        const int nGroups,
+	const int nGroups,
         const int2 *groupList,
         const float eps2,
         const int start_level,
-        const int2 *level_begIdx,
+        const int2 *levelRange,
         const float4 *pos,
         float4 *acc,
         int    *gmem_pool)
@@ -406,8 +406,8 @@ namespace computeForces {
       int *shmem = shmem_pool + sh_offs;
       int *gmem  =  gmem_pool + CELL_LIST_MEM_PER_WARP*((blockIdx.x<<NWARP2) + warpIdx);
 
-      int2 top_cells = level_begIdx[start_level];
-      top_cells.y++;
+      int2 rootRange = levelRange[start_level];
+      rootRange.y++;
 
       while (1) {
         int groupIdx = 0;
@@ -447,7 +447,7 @@ namespace computeForces {
         float4 acc_i[NI] = {0.0f, 0.0f, 0.0f, 0.0f};
 
         uint2 counters = treewalk_warp<NTHREAD2,NI>
-          (acc_i, pos_i, targetCenter, hvec, eps2, top_cells, shmem, gmem);
+          (acc_i, pos_i, targetCenter, hvec, eps2, rootRange, shmem, gmem);
 
         assert(!(counters.x == 0xFFFFFFFF && counters.y == 0xFFFFFFFF));
 
@@ -565,7 +565,7 @@ float4 Treecode::computeForces() {
 
   CUDA_SAFE_CALL(cudaFuncSetCacheConfig(&computeForces::treewalk<NTHREAD2,2>, cudaFuncCachePreferL1));
   computeForces::treewalk<NTHREAD2,2><<<nblock,NTHREAD>>>(
-    nGroups, d_groupList, eps2, starting_level, d_level_begIdx,
+    nGroups, d_groupList, eps2, starting_level, d_levelRange,
     d_ptclPos_tmp, d_ptclAcc,
     d_gmem_pool);
   kernelSuccess("treewalk");

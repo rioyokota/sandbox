@@ -696,7 +696,7 @@ namespace treeBuild
 
 
   static __global__ void
-    compute_level_begIdx(const int n, const int levels[], int2 level_begendIdx[])
+    getLevelRange(const int n, const int levels[], int2 level_begendIdx[])
     {
       const int gidx = blockIdx.x*blockDim.x + threadIdx.x;
       if (gidx >= n) return;
@@ -890,7 +890,7 @@ void Treecode::buildTree(const int nLeaf)
     thrust::stable_sort_by_key(keys_beg, keys_end, vals_beg); 
 
     /* compute begining & end of each level */
-    treeBuild::compute_level_begIdx<<<nblock,nthread,(nthread+2)*sizeof(int)>>>(nCells, d_key, d_level_begIdx);
+    treeBuild::getLevelRange<<<nblock,nthread,(nthread+2)*sizeof(int)>>>(nCells, d_key, d_levelRange);
 
     treeBuild::write_newIdx <<<nblock,nthread>>>(nCells, d_value, d_key);
     treeBuild::shuffle_cells<<<nblock,nthread>>>(nCells, d_value, d_key, d_cellDataList_tmp, d_cellDataList);
