@@ -15,10 +15,8 @@ struct cuda_mem
 {
   size_t n;
   T *ptr;
-cuda_mem() : ptr(NULL), n(0) {}
-#if 1
+  cuda_mem() : ptr(NULL), n(0) {}
   ~cuda_mem() {if (ptr != NULL) free();}
-#endif
   void alloc(const size_t size)
   {
     assert(ptr == NULL);
@@ -74,10 +72,8 @@ struct host_mem
 {
   size_t n;
   T *ptr;
-host_mem() : ptr(NULL), n(0) {}
-#if 1
+  host_mem() : ptr(NULL), n(0) {}
   ~host_mem() {if (ptr != NULL) free();}
-#endif
   void alloc(const size_t size)
   {
     assert(ptr == NULL);
