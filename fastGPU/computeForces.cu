@@ -178,7 +178,7 @@ namespace computeForces {
       const bool isNode = cellData.isNode();
 
       const int firstChild = cellData.first();
-      const int nChild= cellData.n();
+      const int nChild= cellData.nchild();
       bool splitNode  = isNode && splitCell && useCell;
 
       /* use exclusive scan to compute scatter addresses for each of the child cells */

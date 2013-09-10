@@ -53,7 +53,7 @@ private:
 public:
   __host__ __device__ CellData(
 			       const int level,
-			       const unsigned int parentCell,
+			       const unsigned int parent,
 			       const unsigned int nBeg,
 			       const unsigned int nEnd,
 			       const unsigned int first = 0xFFFFFFFF,
@@ -62,12 +62,12 @@ public:
     int packed_firstleaf_n = 0xFFFFFFFF;
     if (n != 0xFFFFFFFF)
       packed_firstleaf_n = first | ((unsigned int)n << NLEAF_SHIFT);
-    data = make_uint4(parentCell | (level << LEVEL_SHIFT), packed_firstleaf_n, nBeg, nEnd);
+    data = make_uint4(parent | (level << LEVEL_SHIFT), packed_firstleaf_n, nBeg, nEnd);
   }
 
   __host__ __device__ CellData(const uint4 data) : data(data) {}
 
-  __host__ __device__ int n()      const {return (data.y >> NLEAF_SHIFT)+1;}
+  __host__ __device__ int nchild() const {return (data.y >> NLEAF_SHIFT)+1;}
   __host__ __device__ int first()  const {return data.y & NLEAF_MASK;}
   __host__ __device__ int parent() const {return data.x & LEVEL_MASK;}
   __host__ __device__ int level()  const {return data.x >> LEVEL_SHIFT;}
@@ -77,13 +77,10 @@ public:
   __host__ __device__ bool isLeaf() const {return data.y == 0xFFFFFFFF;}
   __host__ __device__ bool isNode() const {return !isLeaf();}
 
-  __host__ __device__ void update_first(const int first)
-  {
-    const int _n = n()-1;
-    data.y = first | ((unsigned int)_n << NLEAF_SHIFT);
+  __host__ __device__ void update_first(const unsigned int first) {
+    data.y = first | (nchild()-1 << NLEAF_SHIFT);
   }
-  __host__ __device__ void update_parent(const int parent)
-  {
+  __host__ __device__ void update_parent(const unsigned int parent) {
     data.x = parent | (level() << LEVEL_SHIFT);
   }
 };
