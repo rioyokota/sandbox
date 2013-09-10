@@ -505,7 +505,7 @@ float4 Treecode::computeForces() {
   const double t0 = get_time();
   CUDA_SAFE_CALL(cudaFuncSetCacheConfig(&computeForces::traverse<NTHREAD2,2>, cudaFuncCachePreferL1));
   computeForces::traverse<NTHREAD2,2><<<nblock,NTHREAD>>>(numTargets, d_targetCells, eps2, d_levelRange,
-							  d_bodyPos_tmp, d_bodyAcc,
+							  d_bodyPos2, d_bodyAcc,
 							  d_gmem_pool);
   kernelSuccess("traverse");
   const double dt = get_time() - t0;
@@ -535,7 +535,7 @@ float4 Treecode::computeForces() {
 
 void Treecode::computeDirect(const int numTarget, const int numBlock)
 {
-  bindTexture(computeForces::texBody,d_bodyPos_tmp.ptr,numBody);
+  bindTexture(computeForces::texBody,d_bodyPos2.ptr,numBody);
   computeForces::direct<<<numBlock,numTarget>>>(numBody, eps2, d_bodyAcc2);
   unbindTexture(computeForces::texBody);
   cudaDeviceSynchronize();

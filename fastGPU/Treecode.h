@@ -29,9 +29,9 @@ struct double6 {
 };
 
 static inline double get_time() {
-  struct timeval tv;                                          // Time value                                                                                 
-  gettimeofday(&tv, NULL);                                    // Get time of day in seconds and microseconds                                                
-  return double(tv.tv_sec+tv.tv_usec*1e-6);                   // Combine seconds and microseconds and return                                                
+  struct timeval tv;                                          // Time value
+  gettimeofday(&tv, NULL);                                    // Get time of day in seconds and microseconds
+  return double(tv.tv_sec+tv.tv_usec*1e-6);                   // Combine seconds and microseconds and return
 }
 
 static void kernelSuccess(const char kernel[] = "kernel") {
@@ -77,7 +77,7 @@ public:
   __host__ __device__ bool isLeaf() const {return data.y == 0xFFFFFFFF;}
   __host__ __device__ bool isNode() const {return !isLeaf();}
 
-  __host__ __device__ void update_first(const int first) 
+  __host__ __device__ void update_first(const int first)
   {
     const int _n = n()-1;
     data.y = first | ((unsigned int)_n << NLEAF_SHIFT);
@@ -100,17 +100,15 @@ public:
   int getNumSources() const { return numSources; }
   int getNumLevels() const { return numLevels; }
 
-  host_mem<float4> h_bodyPos, h_bodyVel, h_bodyAcc;
-  host_mem<float4> h_bodyAcc2;
-  cuda_mem<float4> d_bodyPos, d_bodyVel, d_bodyPos_tmp, d_bodyAcc;
-  cuda_mem<float4> d_bodyAcc2;
+  host_mem<float4> h_bodyPos, h_bodyVel, h_bodyAcc, h_bodyAcc2;
+  cuda_mem<float4> d_bodyPos, d_bodyVel, d_bodyPos2, d_bodyAcc, d_bodyAcc2;
   cuda_mem<float4> d_domain;
   cuda_mem<float3> d_minmax;
   cuda_mem<int2> d_levelRange;
 
   int node_max, cell_max, stack_size;
   cuda_mem<int>  d_stack_memory_pool;
-  cuda_mem<CellData> d_sourceCells, d_sourceCells_tmp;
+  cuda_mem<CellData> d_sourceCells, d_sourceCells2;
   cuda_mem<int2> d_targetCells;
   cuda_mem<int>  d_leafCells;
   cuda_mem<int>  d_key, d_value;
@@ -138,27 +136,27 @@ public:
 
     d_bodyPos.alloc(numBody);
     d_bodyVel.alloc(numBody);
-    d_bodyPos_tmp.alloc(numBody);
+    d_bodyPos2.alloc(numBody);
     d_bodyAcc.alloc(numBody);
     d_bodyAcc2.alloc(numBody);
- 
-    /* allocate stack memory */ 
+
+    /* allocate stack memory */
     node_max = numBody / 10;
     stack_size = (8+8+8+64+8)*node_max;
     fprintf(stdout,"Stack size           : %g MB\n",sizeof(int)*stack_size/1024.0/1024.0);
     d_stack_memory_pool.alloc(stack_size);
-  
+
     /* allocate celldata memory */
     cell_max = numBody;
     fprintf(stdout,"Cell data            : %g MB\n",cell_max*sizeof(CellData)/1024.0/1024.0);
     d_sourceCells.alloc(cell_max);
-    d_sourceCells_tmp.alloc(cell_max);
+    d_sourceCells2.alloc(cell_max);
     d_key.alloc(cell_max);
     d_value.alloc(cell_max);
   };
 
   void body_d2h() {
-    d_bodyPos_tmp.d2h(h_bodyPos);
+    d_bodyPos2.d2h(h_bodyPos);
     d_bodyVel.d2h(h_bodyVel);
     d_bodyAcc.d2h(h_bodyAcc);
     d_bodyAcc2.d2h(h_bodyAcc2);

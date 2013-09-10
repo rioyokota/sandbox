@@ -43,7 +43,7 @@ namespace treeBuild
 
   __device__   int *memPool;
   __device__   CellData *sourceCells;
-  __device__   void *bodyVel_tmp;
+  __device__   void *bodyVel2;
 
   template<int NTHREAD2>
   static __device__ float2 minmax_block(float2 sum)
@@ -545,7 +545,7 @@ namespace treeBuild
 		{
 		  float4 pos = buff[i];
 		  int index = (__float_as_int(pos.w) >> 4) & 0xF0000000;
-		  float4 vel = ((float4*)bodyVel_tmp)[index];
+		  float4 vel = ((float4*)bodyVel2)[index];
 		  pos.w = vel.w;
 		  body[i] = pos;
 		  buff[i] = vel;
@@ -558,7 +558,7 @@ namespace treeBuild
 		{
 		  float4 pos = buff[i];
 		  int index = (__float_as_int(pos.w) >> 4) & 0xF0000000;
-		  float4 vel = ((float4*)bodyVel_tmp)[index];
+		  float4 vel = ((float4*)bodyVel2)[index];
 		  pos.w = vel.w;
 		  buff[i] = pos;
 		  body[i] = vel;
@@ -616,7 +616,7 @@ namespace treeBuild
 				     int *ncells_return = NULL)
   {
     sourceCells = d_sourceCells;
-    bodyVel_tmp  = (void*)d_bodyVel;
+    bodyVel2  = (void*)d_bodyVel;
 
     memPool = stack_memory_pool;
 
@@ -673,7 +673,7 @@ namespace treeBuild
 
 
   static __global__ void
-  get_cell_levels(const int n, const CellData sourceCells[], CellData sourceCells_tmp[], int key[], int value[])
+  get_cell_levels(const int n, const CellData sourceCells[], CellData sourceCells2[], int key[], int value[])
   {
     const int idx = blockIdx.x*blockDim.x + threadIdx.x;
     if (idx >= n) return;
@@ -681,7 +681,7 @@ namespace treeBuild
     const CellData cell = sourceCells[idx];
     key  [idx] = cell.level();
     value[idx] = idx;
-    sourceCells_tmp[idx] = cell;
+    sourceCells2[idx] = cell;
   }
 
   static __global__ void
@@ -731,13 +731,13 @@ namespace treeBuild
   
   __device__  unsigned int leafIdx_counter = 0;
   static __global__ void
-  shuffle_cells(const int n, const int value[], const int moved_to_idx[], const CellData sourceCells_tmp[], CellData sourceCells[])
+  shuffle_cells(const int n, const int value[], const int moved_to_idx[], const CellData sourceCells2[], CellData sourceCells[])
   {
     const int idx = blockIdx.x*blockDim.x + threadIdx.x;
     if (idx >= n) return;
 
     const int mapIdx = value[idx];
-    CellData cell = sourceCells_tmp[mapIdx];
+    CellData cell = sourceCells2[mapIdx];
     if (cell.isNode())
       {
         const int firstOld = cell.first();
@@ -845,23 +845,23 @@ void Treecode::buildTree(const int nLeaf)
       {
       case 16:
         treeBuild::buildOctree<16><<<1,1>>>(
-					    numBody, d_domain, d_sourceCells, d_stack_memory_pool, d_bodyPos, d_bodyPos_tmp, d_bodyVel);
+					    numBody, d_domain, d_sourceCells, d_stack_memory_pool, d_bodyPos, d_bodyPos2, d_bodyVel);
         break;
       case 24:
         treeBuild::buildOctree<24><<<1,1>>>(
-					    numBody, d_domain, d_sourceCells, d_stack_memory_pool, d_bodyPos, d_bodyPos_tmp, d_bodyVel);
+					    numBody, d_domain, d_sourceCells, d_stack_memory_pool, d_bodyPos, d_bodyPos2, d_bodyVel);
         break;
       case 32:
         treeBuild::buildOctree<32><<<1,1>>>(
-					    numBody, d_domain, d_sourceCells, d_stack_memory_pool, d_bodyPos, d_bodyPos_tmp, d_bodyVel);
+					    numBody, d_domain, d_sourceCells, d_stack_memory_pool, d_bodyPos, d_bodyPos2, d_bodyVel);
         break;
       case 48:
         treeBuild::buildOctree<48><<<1,1>>>(
-					    numBody, d_domain, d_sourceCells, d_stack_memory_pool, d_bodyPos, d_bodyPos_tmp, d_bodyVel);
+					    numBody, d_domain, d_sourceCells, d_stack_memory_pool, d_bodyPos, d_bodyPos2, d_bodyVel);
         break;
       case 64:
         treeBuild::buildOctree<64><<<1,1>>>(
-					    numBody, d_domain, d_sourceCells, d_stack_memory_pool, d_bodyPos, d_bodyPos_tmp, d_bodyVel);
+					    numBody, d_domain, d_sourceCells, d_stack_memory_pool, d_bodyPos, d_bodyPos2, d_bodyVel);
         break;
       default:
         assert(0);
@@ -880,7 +880,7 @@ void Treecode::buildTree(const int nLeaf)
     const double t0 = get_time();
     const int nthread = 256;
     const int nblock  = (numSources-1)/nthread  + 1;
-    treeBuild::get_cell_levels<<<nblock,nthread>>>(numSources, d_sourceCells, d_sourceCells_tmp, d_key, d_value);
+    treeBuild::get_cell_levels<<<nblock,nthread>>>(numSources, d_sourceCells, d_sourceCells2, d_key, d_value);
 
     thrust::device_ptr<int> keys_beg(d_key.ptr);
     thrust::device_ptr<int> keys_end(d_key.ptr + numSources);
@@ -892,7 +892,7 @@ void Treecode::buildTree(const int nLeaf)
     treeBuild::getLevelRange<<<nblock,nthread,(nthread+2)*sizeof(int)>>>(numSources, d_key, d_levelRange);
 
     treeBuild::write_newIdx <<<nblock,nthread>>>(numSources, d_value, d_key);
-    treeBuild::shuffle_cells<<<nblock,nthread>>>(numSources, d_value, d_key, d_sourceCells_tmp, d_sourceCells);
+    treeBuild::shuffle_cells<<<nblock,nthread>>>(numSources, d_value, d_key, d_sourceCells2, d_sourceCells);
 
     /* group leaves */
 

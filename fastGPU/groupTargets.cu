@@ -275,7 +275,7 @@ void Treecode::groupTargets(int levelSplit, const int nCrit)
 #endif
 
 #if 1
-  groupTargets::shuffle<float4><<<nblock,nthread>>>(numBody, d_value, d_bodyPos, d_bodyPos_tmp);
+  groupTargets::shuffle<float4><<<nblock,nthread>>>(numBody, d_value, d_bodyPos, d_bodyPos2);
 
   cuda_mem<int> d_bodyBegIdx, d_bodyEndIdx;
   cuda_mem<unsigned long long> d_keys_inv;
