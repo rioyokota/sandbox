@@ -84,18 +84,17 @@ namespace multipoles {
     double6 Q;
 
     unsigned int nflop = 0;
-    const int firstBody = cell.pbeg();
-    const int  lastBody = cell.pend();
+    const int bodyBegin = cell.body();
+    const int bodyEnd = cell.body() + cell.nbody();
 
-    for (int i = firstBody; i < lastBody; i += WARP_SIZE)
-      {
-	nflop++;
-	float4 body = bodyPos[min(i+laneIdx,lastBody-1)];
-	if (i + laneIdx >= lastBody) body.w = 0.0f;
-	addBoxSize(rmin, rmax, make_float3(body.x,body.y,body.z));
-	addMonopole(M, body);
-	addQuadrupole(Q, body);
-      }
+    for (int i=bodyBegin; i<bodyEnd; i+=WARP_SIZE) {
+      nflop++;
+      float4 body = bodyPos[min(i+laneIdx,bodyEnd-1)];
+      if (i + laneIdx >= bodyEnd) body.w = 0.0f;
+      addBoxSize(rmin, rmax, make_float3(body.x,body.y,body.z));
+      addMonopole(M, body);
+      addQuadrupole(Q, body);
+    }
 
 
     if (laneIdx == 0)

@@ -169,7 +169,7 @@ namespace computeForces {
       const CellData cellData = tex1Dfetch(texCell, cellIdx);
 
       const bool splitCell = applyMAC(sourceCenter, targetCenter, targetSize) ||
-	(cellData.pend() - cellData.pbeg() < 3); /* force to open leaves with less than 3 particles */
+	(cellData.nbody() < 3); /* force to open leaves with less than 3 particles */
 
       /**********************************************/
       /* split cells that satisfy opening condition */
@@ -234,8 +234,8 @@ namespace computeForces {
       const bool isLeaf = !isNode;
       bool isDirect = splitCell && isLeaf && useCell;
 
-      const int firstBody = cellData.pbeg();
-      const int     numBody = cellData.pend() - cellData.pbeg();
+      const int body = cellData.body();
+      const int numBody = cellData.nbody();
 
       childScatter = warpIntExclusiveScan(numBody & (-isDirect));
       int nParticle  = childScatter.y;
@@ -249,7 +249,7 @@ namespace computeForces {
 	  if (isDirect && (childScatter.x - nProcessed < WARP_SIZE))
 	    {
 	      isDirect = false;
-	      tempQueue[childScatter.x - nProcessed] = -1-firstBody;
+	      tempQueue[childScatter.x - nProcessed] = -1-body;
 	    }
 	  scanVal = inclusive_segscan_warp(tempQueue[laneIdx], scanVal.y);
 	  const int  bodyIdx = scanVal.x;

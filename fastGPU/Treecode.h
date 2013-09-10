@@ -51,28 +51,28 @@ private:
   enum {LEVEL_MASK  = ~(0x1FU << LEVEL_SHIFT)};
   uint4 data;
 public:
-  __host__ __device__ CellData(
-			       const int level,
+  __host__ __device__ CellData(const int level,
 			       const unsigned int parent,
-			       const unsigned int nBeg,
-			       const unsigned int nEnd,
-			       const unsigned int first = 0xFFFFFFFF,
-			       const unsigned int n = 0xFFFFFFFF)
+			       const unsigned int body,
+			       const unsigned int nbody,
+			       const unsigned int child = 0xFFFFFFFF,
+			       const unsigned int nchild = 0xFFFFFFFF)
   {
-    int packed_firstleaf_n = 0xFFFFFFFF;
-    if (n != 0xFFFFFFFF)
-      packed_firstleaf_n = first | ((unsigned int)n << NLEAF_SHIFT);
-    data = make_uint4(parent | (level << LEVEL_SHIFT), packed_firstleaf_n, nBeg, nEnd);
+    int childPack = 0xFFFFFFFF;
+    if (nchild != 0xFFFFFFFF)
+      childPack = child | ((unsigned int)nchild << NLEAF_SHIFT);
+    const int parentPack = parent | (level << LEVEL_SHIFT);
+    data = make_uint4(parentPack, childPack, body, nbody);
   }
 
   __host__ __device__ CellData(const uint4 data) : data(data) {}
 
-  __host__ __device__ int nchild() const {return (data.y >> NLEAF_SHIFT)+1;}
-  __host__ __device__ int child()  const {return data.y & NLEAF_MASK;}
-  __host__ __device__ int parent() const {return data.x & LEVEL_MASK;}
   __host__ __device__ int level()  const {return data.x >> LEVEL_SHIFT;}
-  __host__ __device__ int pbeg()   const {return data.z;}
-  __host__ __device__ int pend()   const {return data.w;}
+  __host__ __device__ int parent() const {return data.x & LEVEL_MASK;}
+  __host__ __device__ int child()  const {return data.y & NLEAF_MASK;}
+  __host__ __device__ int nchild() const {return (data.y >> NLEAF_SHIFT)+1;}
+  __host__ __device__ int body()   const {return data.z;}
+  __host__ __device__ int nbody()  const {return data.w;}
 
   __host__ __device__ bool isLeaf() const {return data.y == 0xFFFFFFFF;}
   __host__ __device__ bool isNode() const {return !isLeaf();}

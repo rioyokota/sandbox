@@ -437,7 +437,7 @@ namespace treeBuild
         /*** keep in mind, the 0-level will be overwritten ***/
         assert(nChildrenCell > 0);
         assert(nChildrenCell <= 8);
-        const CellData cellData(level,cellParentIndex, nBeg, nEnd, cellFirstChildIndex, nChildrenCell-1);
+        const CellData cellData(level,cellParentIndex, nBeg, nEnd-nBeg, cellFirstChildIndex, nChildrenCell-1);
         assert(cellData.child() < ncells);
         assert(cellData.isNode());
         sourceCells[cellIndexBase + blockIdx.y] = cellData;
@@ -534,7 +534,7 @@ namespace treeBuild
 	  {
 	    atomicAdd(&nleaves,1);
 	    atomicAdd(&nbodies_leaf, nEnd1-nBeg1);
-	    const CellData leafData(level+1, cellIndexBase+blockIdx.y, nBeg1, nEnd1);
+	    const CellData leafData(level+1, cellIndexBase+blockIdx.y, nBeg1, nEnd1-nBeg1);
 	    assert(!leafData.isNode());
 	    sourceCells[cellFirstChildIndex + nSubNodes.y + leafOffset] = leafData;
 	  }
