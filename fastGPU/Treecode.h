@@ -45,8 +45,8 @@ static void kernelSuccess(const char kernel[] = "kernel") {
 
 struct CellData {
 private:
-  enum {NLEAF_SHIFT = 29};
-  enum {NLEAF_MASK  = ~(0x7U << NLEAF_SHIFT)};
+  enum {CHILD_SHIFT = 29};
+  enum {CHILD_MASK  = ~(0x7U << CHILD_SHIFT)};
   enum {LEVEL_SHIFT = 27};
   enum {LEVEL_MASK  = ~(0x1FU << LEVEL_SHIFT)};
   uint4 data;
@@ -55,13 +55,11 @@ public:
 			       const unsigned int parent,
 			       const unsigned int body,
 			       const unsigned int nbody,
-			       const unsigned int child = 0xFFFFFFFF,
-			       const unsigned int nchild = 0xFFFFFFFF)
+			       const unsigned int child = 0,
+			       const unsigned int nchild = 0)
   {
-    int childPack = 0xFFFFFFFF;
-    if (nchild != 0xFFFFFFFF)
-      childPack = child | ((unsigned int)nchild << NLEAF_SHIFT);
     const int parentPack = parent | (level << LEVEL_SHIFT);
+    const int childPack = child | (nchild << CHILD_SHIFT);
     data = make_uint4(parentPack, childPack, body, nbody);
   }
 
@@ -69,16 +67,16 @@ public:
 
   __host__ __device__ int level()  const {return data.x >> LEVEL_SHIFT;}
   __host__ __device__ int parent() const {return data.x & LEVEL_MASK;}
-  __host__ __device__ int child()  const {return data.y & NLEAF_MASK;}
-  __host__ __device__ int nchild() const {return (data.y >> NLEAF_SHIFT)+1;}
+  __host__ __device__ int child()  const {return data.y & CHILD_MASK;}
+  __host__ __device__ int nchild() const {return (data.y >> CHILD_SHIFT)+1;}
   __host__ __device__ int body()   const {return data.z;}
   __host__ __device__ int nbody()  const {return data.w;}
 
-  __host__ __device__ bool isLeaf() const {return data.y == 0xFFFFFFFF;}
+  __host__ __device__ bool isLeaf() const {return data.y == 0;}
   __host__ __device__ bool isNode() const {return !isLeaf();}
 
   __host__ __device__ void update_first(const unsigned int first) {
-    data.y = first | (nchild()-1 << NLEAF_SHIFT);
+    data.y = first | (nchild()-1 << CHILD_SHIFT);
   }
   __host__ __device__ void update_parent(const unsigned int parent) {
     data.x = parent | (level() << LEVEL_SHIFT);
