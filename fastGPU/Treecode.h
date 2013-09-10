@@ -68,7 +68,7 @@ public:
   __host__ __device__ CellData(const uint4 data) : data(data) {}
 
   __host__ __device__ int nchild() const {return (data.y >> NLEAF_SHIFT)+1;}
-  __host__ __device__ int first()  const {return data.y & NLEAF_MASK;}
+  __host__ __device__ int child()  const {return data.y & NLEAF_MASK;}
   __host__ __device__ int parent() const {return data.x & LEVEL_MASK;}
   __host__ __device__ int level()  const {return data.x >> LEVEL_SHIFT;}
   __host__ __device__ int pbeg()   const {return data.z;}

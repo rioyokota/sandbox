@@ -177,7 +177,7 @@ namespace computeForces {
 
       const bool isNode = cellData.isNode();
 
-      const int firstChild = cellData.first();
+      const int firstChild = cellData.child();
       const int nChild= cellData.nchild();
       bool splitNode  = isNode && splitCell && useCell;
 

@@ -438,7 +438,7 @@ namespace treeBuild
         assert(nChildrenCell > 0);
         assert(nChildrenCell <= 8);
         const CellData cellData(level,cellParentIndex, nBeg, nEnd, cellFirstChildIndex, nChildrenCell-1);
-        assert(cellData.first() < ncells);
+        assert(cellData.child() < ncells);
         assert(cellData.isNode());
         sourceCells[cellIndexBase + blockIdx.y] = cellData;
         shmem[16+9] = cellFirstChildIndex;
@@ -740,7 +740,7 @@ namespace treeBuild
     CellData cell = sourceCells2[mapIdx];
     if (cell.isNode())
       {
-        const int firstOld = cell.first();
+        const int firstOld = cell.child();
         const int firstNew = moved_to_idx[firstOld];
         cell.update_first(firstNew);
       }
