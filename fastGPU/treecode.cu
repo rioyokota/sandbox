@@ -4,7 +4,7 @@ int main(int argc, char * argv[])
 {
   typedef Treecode Tree;
 
-  const int numBody = 16777216;
+  const int numBodies = 16777216;
   const int seed = 19810614;
   const float eps   = 0.05;
   const float THETA = 0.75;
@@ -13,14 +13,14 @@ int main(int argc, char * argv[])
   Tree tree(eps, THETA);
 
   fprintf(stdout,"--- FMM Parameters ---------------\n");
-  fprintf(stdout,"numBodies            : %d\n",numBody);
+  fprintf(stdout,"numBodies            : %d\n",numBodies);
   fprintf(stdout,"P                    : %d\n",3);
   fprintf(stdout,"THETA                : %f\n",THETA);
   fprintf(stdout,"NCRIT                : %d\n",NCRIT);
   fprintf(stdout,"NLEAF                : %d\n",NLEAF);
-  const Plummer data(numBody, seed);
-  tree.alloc(numBody);
-  for (int i = 0; i < numBody; i++) {
+  const Plummer data(numBodies, seed);
+  tree.alloc(numBodies);
+  for (int i = 0; i < numBodies; i++) {
     float4 bodyPos, bodyVel, bodyAcc;
     bodyPos.x    = data.pos[i].x;
     bodyPos.y    = data.pos[i].y;
@@ -60,7 +60,7 @@ int main(int argc, char * argv[])
   t0 = get_time();
   tree.computeDirect(numTarget,numBlock);
   dt = get_time() - t0;
-  flops = 20.*numTarget*numBody/dt/1e12;
+  flops = 20.*numTarget*numBodies/dt/1e12;
   fprintf(stdout,"Total Direct         : %.7f s (%.7f TFlops)\n",dt,flops);
   tree.body_d2h();
 

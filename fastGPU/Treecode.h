@@ -43,14 +43,14 @@ static void kernelSuccess(const char kernel[] = "kernel") {
   }
 }
 
-struct CellData {
-private:
+class CellData {
+ private:
   enum {CHILD_SHIFT = 29};
   enum {CHILD_MASK  = ~(0x7U << CHILD_SHIFT)};
   enum {LEVEL_SHIFT = 27};
   enum {LEVEL_MASK  = ~(0x1FU << LEVEL_SHIFT)};
   uint4 data;
-public:
+ public:
   __host__ __device__ CellData(const unsigned int level,
 			       const unsigned int parent,
 			       const unsigned int body,
@@ -65,15 +65,15 @@ public:
 
   __host__ __device__ CellData(const uint4 data) : data(data) {}
 
-  __host__ __device__ int level()  const {return data.x >> LEVEL_SHIFT;}
-  __host__ __device__ int parent() const {return data.x & LEVEL_MASK;}
-  __host__ __device__ int child()  const {return data.y & CHILD_MASK;}
-  __host__ __device__ int nchild() const {return (data.y >> CHILD_SHIFT)+1;}
-  __host__ __device__ int body()   const {return data.z;}
-  __host__ __device__ int nbody()  const {return data.w;}
+  __host__ __device__ int level()  const { return data.x >> LEVEL_SHIFT; }
+  __host__ __device__ int parent() const { return data.x & LEVEL_MASK; }
+  __host__ __device__ int child()  const { return data.y & CHILD_MASK; }
+  __host__ __device__ int nchild() const { return (data.y >> CHILD_SHIFT)+1; }
+  __host__ __device__ int body()   const { return data.z; }
+  __host__ __device__ int nbody()  const { return data.w; }
 
-  __host__ __device__ bool isLeaf() const {return data.y == 0;}
-  __host__ __device__ bool isNode() const {return !isLeaf();}
+  __host__ __device__ bool isLeaf() const { return data.y == 0; }
+  __host__ __device__ bool isNode() const { return !isLeaf(); }
 
   __host__ __device__ void setParent(const unsigned int parent) {
     data.x = parent | (level() << LEVEL_SHIFT);
@@ -83,15 +83,17 @@ public:
   }
 };
 
-struct Treecode
-{
-private:
-  int numBody, numLevels, numSources, numLeaves, numTargets;
+class Treecode {
+ private:
+  int numLeaves, numTargets;
   int NCRIT, NLEAF;
   float THETA, EPS2;
 
-public:
-  int getNumBody() const { return numBody; }
+ public:
+  int numBodies;
+  int numSources;
+  int numLevels;
+  int getNumBody() const { return numBodies; }
   int getNumSources() const { return numSources; }
   int getNumLevels() const { return numLevels; }
 
@@ -120,28 +122,28 @@ public:
     d_levelRange.alloc(32);
   }
 
-  void alloc(const int numBody)
+  void alloc(const int numBodies)
   {
-    this->numBody = numBody;
-    h_bodyPos.alloc(numBody);
-    h_bodyVel.alloc(numBody);
-    h_bodyAcc.alloc(numBody);
-    h_bodyAcc2.alloc(numBody);
+    this->numBodies = numBodies;
+    h_bodyPos.alloc(numBodies);
+    h_bodyVel.alloc(numBodies);
+    h_bodyAcc.alloc(numBodies);
+    h_bodyAcc2.alloc(numBodies);
 
-    d_bodyPos.alloc(numBody);
-    d_bodyVel.alloc(numBody);
-    d_bodyPos2.alloc(numBody);
-    d_bodyAcc.alloc(numBody);
-    d_bodyAcc2.alloc(numBody);
+    d_bodyPos.alloc(numBodies);
+    d_bodyVel.alloc(numBodies);
+    d_bodyPos2.alloc(numBodies);
+    d_bodyAcc.alloc(numBodies);
+    d_bodyAcc2.alloc(numBodies);
 
     /* allocate stack memory */
-    maxNode = numBody / 10;
+    maxNode = numBodies / 10;
     stackSize = (8+8+8+64+8)*maxNode;
     fprintf(stdout,"Stack size           : %g MB\n",sizeof(int)*stackSize/1024.0/1024.0);
     d_stack_memory_pool.alloc(stackSize);
 
     /* allocate celldata memory */
-    maxCell = numBody;
+    maxCell = numBodies;
     fprintf(stdout,"Cell data            : %g MB\n",maxCell*sizeof(CellData)/1024.0/1024.0);
     d_sourceCells.alloc(maxCell);
     d_sourceCells2.alloc(maxCell);

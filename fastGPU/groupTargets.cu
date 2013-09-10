@@ -195,9 +195,9 @@ void Treecode::groupTargets(int levelSplit, const int NCRIT)
   this->NCRIT = NCRIT;
   const int nthread = 256;
 
-  d_key.realloc(2.0*numBody);
-  d_value.realloc(numBody);
-  d_targetCells.realloc(numBody);
+  d_key.realloc(2.0*numBodies);
+  d_value.realloc(numBodies);
+  d_targetCells.realloc(numBodies);
 
   unsigned long long *d_keys = (unsigned long long*)d_key.ptr;
   int *d_values = d_value.ptr;
@@ -205,12 +205,12 @@ void Treecode::groupTargets(int levelSplit, const int NCRIT)
   numTargets = 0;
   CUDA_SAFE_CALL(cudaMemcpyToSymbol(groupTargets::groupCounter, &numTargets, sizeof(int)));
 
-  const int nblock  = (numBody-1)/nthread + 1;
+  const int nblock  = (numBodies-1)/nthread + 1;
   const int NBINS = 21; 
 
   cudaDeviceSynchronize();
   const double t0 = get_time();
-  groupTargets::computeKeys<NBINS><<<nblock,nthread>>>(numBody, d_domain, d_bodyPos, d_keys, d_values);
+  groupTargets::computeKeys<NBINS><<<nblock,nthread>>>(numBodies, d_domain, d_bodyPos, d_keys, d_values);
 
   levelSplit = std::max(1,levelSplit);  /* pick the coarse segment boundaries at the levelSplit */
   unsigned long long mask= 0;
@@ -223,7 +223,7 @@ void Treecode::groupTargets(int levelSplit, const int NCRIT)
 
   /* sort particles by PH key */
   thrust::device_ptr<unsigned long long> keys_beg(d_keys);
-  thrust::device_ptr<unsigned long long> keys_end(d_keys + numBody);
+  thrust::device_ptr<unsigned long long> keys_end(d_keys + numBodies);
   thrust::device_ptr<int> vals_beg(d_value.ptr);
 #if 1
   thrust::sort_by_key(keys_beg, keys_end, vals_beg); 
@@ -232,24 +232,24 @@ void Treecode::groupTargets(int levelSplit, const int NCRIT)
 #endif
 
 #if 1
-  groupTargets::shuffle<float4><<<nblock,nthread>>>(numBody, d_value, d_bodyPos, d_bodyPos2);
+  groupTargets::shuffle<float4><<<nblock,nthread>>>(numBodies, d_value, d_bodyPos, d_bodyPos2);
 
   cuda_mem<int> d_bodyBegIdx, d_bodyEndIdx;
   cuda_mem<unsigned long long> d_keys_inv;
-  d_bodyBegIdx.alloc(numBody);
-  d_bodyEndIdx.alloc(numBody);
-  d_keys_inv.alloc(numBody);
-  groupTargets::mask_keys<<<nblock,nthread,(nthread+2)*sizeof(unsigned long long)>>>(numBody, mask, d_keys, d_keys_inv, d_bodyBegIdx, d_bodyEndIdx);
+  d_bodyBegIdx.alloc(numBodies);
+  d_bodyEndIdx.alloc(numBodies);
+  d_keys_inv.alloc(numBodies);
+  groupTargets::mask_keys<<<nblock,nthread,(nthread+2)*sizeof(unsigned long long)>>>(numBodies, mask, d_keys, d_keys_inv, d_bodyBegIdx, d_bodyEndIdx);
 
   thrust::device_ptr<int> valuesBeg(d_bodyBegIdx.ptr);
   thrust::device_ptr<int> valuesEnd(d_bodyEndIdx.ptr);
   thrust::inclusive_scan_by_key(keys_beg,     keys_end,    valuesBeg, valuesBeg);
 
   thrust::device_ptr<unsigned long long> keys_inv_beg(d_keys_inv.ptr);
-  thrust::device_ptr<unsigned long long> keys_inv_end(d_keys_inv.ptr + numBody);
+  thrust::device_ptr<unsigned long long> keys_inv_end(d_keys_inv.ptr + numBodies);
   thrust::inclusive_scan_by_key(keys_inv_beg, keys_inv_end, valuesEnd, valuesEnd);
 
-  groupTargets::make_groups<<<nblock,nthread>>>(numBody, NCRIT, d_bodyBegIdx, d_bodyEndIdx, d_targetCells);
+  groupTargets::make_groups<<<nblock,nthread>>>(numBodies, NCRIT, d_bodyBegIdx, d_bodyEndIdx, d_targetCells);
 #endif
 
   kernelSuccess("groupTargets");

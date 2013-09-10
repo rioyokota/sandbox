@@ -56,7 +56,7 @@ namespace multipoles {
 
   template<int NTHREAD2>
   static __global__ __launch_bounds__(1<<NTHREAD2, 1024/(1<<NTHREAD2))
-    void computeCellMultipoles(const int numBody,
+    void computeCellMultipoles(const int numBodies,
 			       const int numSources,
 			       const CellData *cells,
 			       const float4* __restrict__ bodyPos,
@@ -147,7 +147,7 @@ void Treecode::computeMultipoles()
   CUDA_SAFE_CALL(cudaFuncSetCacheConfig(&multipoles::computeCellMultipoles<NTHREAD2>,cudaFuncCachePreferL1));
   cudaDeviceSynchronize();
   const double t0 = get_time();
-  multipoles::computeCellMultipoles<NTHREAD2><<<nblock,NTHREAD>>>(numBody, numSources, d_sourceCells, (float4*)d_bodyPos.ptr,
+  multipoles::computeCellMultipoles<NTHREAD2><<<nblock,NTHREAD>>>(numBodies, numSources, d_sourceCells, (float4*)d_bodyPos.ptr,
 								  1.0 / THETA,
 								  d_sourceCenter, d_Monopole, d_Quadrupole0, d_Quadrupole1);
   kernelSuccess("computeCellMultipoles");
