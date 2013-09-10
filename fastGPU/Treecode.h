@@ -51,15 +51,15 @@ private:
   enum {LEVEL_MASK  = ~(0x1FU << LEVEL_SHIFT)};
   uint4 data;
 public:
-  __host__ __device__ CellData(const int level,
+  __host__ __device__ CellData(const unsigned int level,
 			       const unsigned int parent,
 			       const unsigned int body,
 			       const unsigned int nbody,
 			       const unsigned int child = 0,
 			       const unsigned int nchild = 0)
   {
-    const int parentPack = parent | (level << LEVEL_SHIFT);
-    const int childPack = child | (nchild << CHILD_SHIFT);
+    const unsigned int parentPack = parent | (level << LEVEL_SHIFT);
+    const unsigned int childPack = child | (nchild << CHILD_SHIFT);
     data = make_uint4(parentPack, childPack, body, nbody);
   }
 
@@ -75,11 +75,11 @@ public:
   __host__ __device__ bool isLeaf() const {return data.y == 0;}
   __host__ __device__ bool isNode() const {return !isLeaf();}
 
-  __host__ __device__ void update_first(const unsigned int first) {
-    data.y = first | (nchild()-1 << CHILD_SHIFT);
-  }
-  __host__ __device__ void update_parent(const unsigned int parent) {
+  __host__ __device__ void setParent(const unsigned int parent) {
     data.x = parent | (level() << LEVEL_SHIFT);
+  }
+  __host__ __device__ void setChild(const unsigned int child) {
+    data.y = child | (nchild()-1 << CHILD_SHIFT);
   }
 };
 

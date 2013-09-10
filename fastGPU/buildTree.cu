@@ -535,7 +535,7 @@ namespace treeBuild
 	    atomicAdd(&nleaves,1);
 	    atomicAdd(&nbodies_leaf, nEnd1-nBeg1);
 	    const CellData leafData(level+1, cellIndexBase+blockIdx.y, nBeg1, nEnd1-nBeg1);
-	    assert(!leafData.isNode());
+	    assert(leafData.isLeaf());
 	    sourceCells[cellFirstChildIndex + nSubNodes.y + leafOffset] = leafData;
 	  }
         if (!(level&1))
@@ -742,10 +742,10 @@ namespace treeBuild
       {
         const int firstOld = cell.child();
         const int firstNew = moved_to_idx[firstOld];
-        cell.update_first(firstNew);
+        cell.setChild(firstNew);
       }
     if (cell.parent() > 0)
-      cell.update_parent(moved_to_idx[cell.parent()]);
+      cell.setParent(moved_to_idx[cell.parent()]);
 
     sourceCells[idx] = cell;
 
