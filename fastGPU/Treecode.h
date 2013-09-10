@@ -29,9 +29,9 @@ struct double6 {
 };
 
 static inline double get_time() {
-  struct timeval tv;                                          // Time value
-  gettimeofday(&tv, NULL);                                    // Get time of day in seconds and microseconds
-  return double(tv.tv_sec+tv.tv_usec*1e-6);                   // Combine seconds and microseconds and return
+  struct timeval tv;
+  gettimeofday(&tv, NULL);
+  return double(tv.tv_sec + tv.tv_usec * 1e-6);
 }
 
 static void kernelSuccess(const char kernel[] = "kernel") {
@@ -45,10 +45,10 @@ static void kernelSuccess(const char kernel[] = "kernel") {
 
 class CellData {
  private:
-  enum {CHILD_SHIFT = 29};
-  enum {CHILD_MASK  = ~(0x7U << CHILD_SHIFT)};
-  enum {LEVEL_SHIFT = 27};
-  enum {LEVEL_MASK  = ~(0x1FU << LEVEL_SHIFT)};
+  static const int CHILD_SHIFT = 29;
+  static const int CHILD_MASK  = ~(0x7U << CHILD_SHIFT);
+  static const int LEVEL_SHIFT = 27;
+  static const int LEVEL_MASK  = ~(0x1FU << LEVEL_SHIFT);
   uint4 data;
  public:
   __host__ __device__ CellData(const unsigned int level,
