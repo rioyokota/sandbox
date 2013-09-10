@@ -106,7 +106,7 @@ public:
   cuda_mem<float3> d_minmax;
   cuda_mem<int2> d_levelRange;
 
-  int node_max, cell_max, stack_size;
+  int maxNode, maxCell, stackSize;
   cuda_mem<int>  d_stack_memory_pool;
   cuda_mem<CellData> d_sourceCells, d_sourceCells2;
   cuda_mem<int2> d_targetCells;
@@ -116,11 +116,10 @@ public:
   cuda_mem<float4> d_Quadrupole0;
   cuda_mem<float2> d_Quadrupole1;
 
-  Treecode(const float _eps = 0.01, const float _THETA = 0.75, const int _ncrit = 2*WARP_SIZE)
-  {
-    EPS2  = _eps*_eps;
-    THETA = _THETA;
-    NCRIT = _ncrit;
+  Treecode(const float eps = 0.01, const float theta = 0.75, const int ncrit = 2*WARP_SIZE) {
+    EPS2  = eps * eps;
+    THETA = theta;
+    NCRIT = ncrit;
     d_domain.alloc(1);
     d_minmax.alloc(2048);
     d_levelRange.alloc(32);
@@ -141,18 +140,18 @@ public:
     d_bodyAcc2.alloc(numBody);
 
     /* allocate stack memory */
-    node_max = numBody / 10;
-    stack_size = (8+8+8+64+8)*node_max;
-    fprintf(stdout,"Stack size           : %g MB\n",sizeof(int)*stack_size/1024.0/1024.0);
-    d_stack_memory_pool.alloc(stack_size);
+    maxNode = numBody / 10;
+    stackSize = (8+8+8+64+8)*maxNode;
+    fprintf(stdout,"Stack size           : %g MB\n",sizeof(int)*stackSize/1024.0/1024.0);
+    d_stack_memory_pool.alloc(stackSize);
 
     /* allocate celldata memory */
-    cell_max = numBody;
-    fprintf(stdout,"Cell data            : %g MB\n",cell_max*sizeof(CellData)/1024.0/1024.0);
-    d_sourceCells.alloc(cell_max);
-    d_sourceCells2.alloc(cell_max);
-    d_key.alloc(cell_max);
-    d_value.alloc(cell_max);
+    maxCell = numBody;
+    fprintf(stdout,"Cell data            : %g MB\n",maxCell*sizeof(CellData)/1024.0/1024.0);
+    d_sourceCells.alloc(maxCell);
+    d_sourceCells2.alloc(maxCell);
+    d_key.alloc(maxCell);
+    d_value.alloc(maxCell);
   };
 
   void body_d2h() {

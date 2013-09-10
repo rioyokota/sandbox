@@ -32,8 +32,8 @@ namespace treeBuild
 
   __device__ unsigned int retirementCount = 0;
 
-  __constant__ int d_node_max;
-  __constant__ int d_cell_max;
+  __constant__ int d_maxNode;
+  __constant__ int d_maxCell;
 
   __device__ unsigned int nnodes = 0;
   __device__ unsigned int nleaves = 0;
@@ -422,7 +422,7 @@ namespace treeBuild
       {
         shmem[16+8] = atomicAdd(&nnodes,nSubNodes.y);
 #if 1   /* temp solution, a better one is to use RingBuffer */
-        assert(shmem[16+8] < d_node_max);
+        assert(shmem[16+8] < d_maxNode);
 #endif
       }
 
@@ -432,7 +432,7 @@ namespace treeBuild
       {
         const int cellFirstChildIndex = atomicAdd(&ncells, nChildrenCell);
 #if 1
-        assert(cellFirstChildIndex + nChildrenCell < d_cell_max);
+        assert(cellFirstChildIndex + nChildrenCell < d_maxCell);
 #endif
         /*** keep in mind, the 0-level will be overwritten ***/
         assert(nChildrenCell > 0);
@@ -815,8 +815,8 @@ void Treecode::buildTree(const int NLEAF)
 
   /*** build tree ***/
 
-  CUDA_SAFE_CALL(cudaMemcpyToSymbol(treeBuild::d_node_max, &node_max, sizeof(int), 0, cudaMemcpyHostToDevice));
-  CUDA_SAFE_CALL(cudaMemcpyToSymbol(treeBuild::d_cell_max, &cell_max, sizeof(int), 0, cudaMemcpyHostToDevice));
+  CUDA_SAFE_CALL(cudaMemcpyToSymbol(treeBuild::d_maxNode, &maxNode, sizeof(int), 0, cudaMemcpyHostToDevice));
+  CUDA_SAFE_CALL(cudaMemcpyToSymbol(treeBuild::d_maxCell, &maxCell, sizeof(int), 0, cudaMemcpyHostToDevice));
 
   cudaDeviceSetLimit(cudaLimitDevRuntimePendingLaunchCount,16384);
 
@@ -838,7 +838,7 @@ void Treecode::buildTree(const int NLEAF)
   CUDA_SAFE_CALL(cudaDeviceSetSharedMemConfig(cudaSharedMemBankSizeEightByte));
 
   {
-    CUDA_SAFE_CALL(cudaMemset(d_stack_memory_pool,0,stack_size*sizeof(int)));
+    CUDA_SAFE_CALL(cudaMemset(d_stack_memory_pool,0,stackSize*sizeof(int)));
     cudaDeviceSynchronize();
     const double t0 = get_time();
     switch(NLEAF)
