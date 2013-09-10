@@ -12,29 +12,20 @@ namespace groupTargets
   {
     const int gidx = blockDim.x*blockIdx.x + threadIdx.x;
     if (gidx >= n) return;
-
     out[gidx] = in[map[gidx]];
   }
 
   template<int NBITS>
-  static __device__ unsigned long long get_key(int3 crd)
-  {
+  static __device__ unsigned long long getHilbert(int3 crd) {
     int i,xi, yi, zi;
     int mask;
     unsigned long long key;
-
-    //0= 000, 1=001, 2=011, 3=010, 4=110, 5=111, 6=101, 7=100
-    //000=0=0, 001=1=1, 011=3=2, 010=2=3, 110=6=4, 111=7=5, 101=5=6, 100=4=7
     const int C[8] = {0, 1, 7, 6, 3, 2, 4, 5};
 
     int temp;
 
     mask = 1 << (NBITS - 1);
     key  = 0;
-
-#if 0
-    uint4 key_new;
-#endif
 
 #pragma unroll
     for(i = 0; i < NBITS; i++, mask >>= 1)
@@ -81,28 +72,9 @@ namespace groupTargets
 	  }   
 
         key = (key<<3) + Cvalue;
-
-#if 0
-        if(i == 19)
-	  {
-	    key_new.y = key;
-	    key = 0;
-	  }
-        if(i == 9)
-	  {
-	    key_new.x = key;
-	    key = 0;
-	  }
-#endif
       } //end for
 
-#if 0
-    key_new.z = key;
-
-    return key_new;
-#else
     return key;
-#endif
   }
 
   template<int NBINS>
@@ -129,7 +101,7 @@ namespace groupTargets
     const int yc = static_cast<int>((body.y - bmin.y) * inv_domain_size * (1<<NBINS));
     const int zc = static_cast<int>((body.z - bmin.z) * inv_domain_size * (1<<NBINS));
 
-    keys  [idx] = get_key<NBINS>(make_int3(xc,yc,zc));
+    keys  [idx] = getHilbert<NBINS>(make_int3(xc,yc,zc));
     values[idx] = idx;
   }
 
@@ -145,14 +117,6 @@ namespace groupTargets
     const int gidx = blockIdx.x*blockDim.x + threadIdx.x;
     if (gidx >= n) return;
 
-#if 0
-    if (gidx < 100)
-      {
-        printf("gidx= %d : keys= %llx  maks= %llx  res= %llx\n",
-	       gidx, keys[gidx], mask, keys[gidx] & mask);
-      }
-
-#endif
     keys[gidx] &= mask;
     keys_inv[n-gidx-1] = keys[gidx];
 
@@ -193,7 +157,7 @@ namespace groupTargets
   __device__ unsigned int groupCounter= 0;
 
   static __global__
-  void make_groups(const int n, const int nCrit,
+  void make_groups(const int n, const int NCRIT,
 		   const int *bodyBegIdx, 
 		   const int *bodyEndIdx,
 		   int2 *targetCells)
@@ -204,20 +168,14 @@ namespace groupTargets
     const int bodyBeg = bodyBegIdx[gidx];
     assert(gidx >= bodyBeg);
 
-    const int igroup   = (gidx - bodyBeg)/nCrit;
-    const int groupBeg = bodyBeg + igroup * nCrit;
-
-#if 0
-    if (gidx < 100)
-      printf("gidx= %d  groupBeg =%d\n",gidx, groupBeg);
-    return;
-#endif
+    const int igroup   = (gidx - bodyBeg)/NCRIT;
+    const int groupBeg = bodyBeg + igroup * NCRIT;
 
     if (gidx == groupBeg)
       {
         const int groupIdx = atomicAdd(&groupCounter,1);
         const int bodyEnd = bodyEndIdx[n-1-gidx];
-        targetCells[groupIdx] = make_int2(groupBeg, min(nCrit, bodyEnd - groupBeg));
+        targetCells[groupIdx] = make_int2(groupBeg, min(NCRIT, bodyEnd - groupBeg));
       }
   }
 
@@ -232,9 +190,9 @@ namespace groupTargets
 
 };
 
-void Treecode::groupTargets(int levelSplit, const int nCrit)
+void Treecode::groupTargets(int levelSplit, const int NCRIT)
 {
-  this->nCrit = nCrit;
+  this->NCRIT = NCRIT;
   const int nthread = 256;
 
   d_key.realloc(2.0*numBody);
@@ -262,7 +220,6 @@ void Treecode::groupTargets(int levelSplit, const int nCrit)
       if (i < levelSplit)
 	mask |= 0x7;
     }
-  //printf("mask= %llx  \n", mask);
 
   /* sort particles by PH key */
   thrust::device_ptr<unsigned long long> keys_beg(d_keys);
@@ -292,46 +249,11 @@ void Treecode::groupTargets(int levelSplit, const int nCrit)
   thrust::device_ptr<unsigned long long> keys_inv_end(d_keys_inv.ptr + numBody);
   thrust::inclusive_scan_by_key(keys_inv_beg, keys_inv_end, valuesEnd, valuesEnd);
 
-#if 0
-  std::vector<int> beg(numBody), end(numBody);
-  std::vector<unsigned long long> h_keys(numBody);
-  d_bodyBegIdx.d2h(&beg[0]);
-  d_bodyEndIdx.d2h(&end[0]);
-  d_key.d2h((int*)&h_keys[0],2*numBody);
-  for (int i = 0; i < numBody; i++)
-    {
-      printf("i= %d : keys= %llx beg= %d  end= %d\n", i, h_keys[i], beg[i], end[numBody-1-i]);
-    }
-#endif
-
-  groupTargets::make_groups<<<nblock,nthread>>>(numBody, nCrit, d_bodyBegIdx, d_bodyEndIdx, d_targetCells);
+  groupTargets::make_groups<<<nblock,nthread>>>(numBody, NCRIT, d_bodyBegIdx, d_bodyEndIdx, d_targetCells);
 #endif
 
   kernelSuccess("groupTargets");
   const double dt = get_time() - t0;
   fprintf(stdout,"Make groups          : %.7f s\n", dt);
   CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&numTargets, groupTargets::groupCounter, sizeof(int)));
-#if 0
-  assert(0);
-#endif
-
-  //fprintf(stderr, "nGroup= %d <nCrit>= %g \n", numTargets, numBody*1.0/numTargets);
-#if 0
-  {
-    std::vector<int2> groups(numTargets);
-    d_targetCells.d2h((int2*)&groups[0], numTargets);
-    int np_in_group = 0;
-    for (int i = 0 ;i < numTargets; i++)
-      {
-#if 0
-	printf("groupdIdx= %d  :: pbeg= %d  np =%d \n", i, groups[i].x, groups[i].y);
-#else
-	np_in_group += groups[i].y;
-#endif
-      }
-    printf("np_in_group= %d    np= %d\n", np_in_group, numBody);
-    assert(0);
-  }
-#endif
-
 }

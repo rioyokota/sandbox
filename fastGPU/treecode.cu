@@ -7,17 +7,17 @@ int main(int argc, char * argv[])
   const int numBody = 16777216;
   const int seed = 19810614;
   const float eps   = 0.05;
-  const float theta = 0.75;
-  const int ncrit = 64;
-  const int nleaf = 64;
-  Tree tree(eps, theta);
+  const float THETA = 0.75;
+  const int NCRIT = 64;
+  const int NLEAF = 64;
+  Tree tree(eps, THETA);
 
   fprintf(stdout,"--- FMM Parameters ---------------\n");
   fprintf(stdout,"numBodies            : %d\n",numBody);
   fprintf(stdout,"P                    : %d\n",3);
-  fprintf(stdout,"theta                : %f\n",theta);
-  fprintf(stdout,"ncrit                : %d\n",ncrit);
-  fprintf(stdout,"nleaf                : %d\n",nleaf);
+  fprintf(stdout,"THETA                : %f\n",THETA);
+  fprintf(stdout,"NCRIT                : %d\n",NCRIT);
+  fprintf(stdout,"NLEAF                : %d\n",NLEAF);
   const Plummer data(numBody, seed);
   tree.alloc(numBody);
   for (int i = 0; i < numBody; i++) {
@@ -47,9 +47,9 @@ int main(int argc, char * argv[])
 
   fprintf(stdout,"--- FMM Profiling ----------------\n");
   double t0 = get_time();
-  tree.buildTree(nleaf); // pass nLeaf, accepted 16, 24, 32, 48, 64
+  tree.buildTree(NLEAF); // pass NLEAF, accepted 16, 24, 32, 48, 64
   tree.computeMultipoles();
-  tree.groupTargets(5, ncrit); // pass nCrit
+  tree.groupTargets(5, NCRIT);
   const float4 interactions = tree.computeForces();
   double dt = get_time() - t0;
   float flops = (interactions.x * 20 + interactions.z * 64) * tree.getNumBody() / dt / 1e12;

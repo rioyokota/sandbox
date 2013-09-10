@@ -60,7 +60,7 @@ namespace multipoles {
 			       const int numSources,
 			       const CellData *cells,
 			       const float4* __restrict__ bodyPos,
-			       const float inv_theta,
+			       const float invTheta,
 			       float4 *sourceCenter,
 			       float4 *monopole,
 			       float4 *quadrupole0,
@@ -119,7 +119,7 @@ namespace multipoles {
 	const float dz = cvec.z - com.z;
 	const float  s = sqrt(dx*dx + dy*dy + dz*dz);
 	const float  l = max(2.0f*max(hvec.x, max(hvec.y, hvec.z)), 1.0e-6f);
-	const float cellOp = l*inv_theta + s;
+	const float cellOp = l*invTheta + s;
 	const float cellOp2 = cellOp*cellOp;
 
 	atomicAdd(&nflops, nflop);
@@ -149,7 +149,7 @@ void Treecode::computeMultipoles()
   cudaDeviceSynchronize();
   const double t0 = get_time();
   multipoles::computeCellMultipoles<NTHREAD2><<<nblock,NTHREAD>>>(numBody, numSources, d_sourceCells, (float4*)d_bodyPos.ptr,
-								  1.0/theta,
+								  1.0 / THETA,
 								  d_sourceCenter, d_Monopole, d_Quadrupole0, d_Quadrupole1);
   kernelSuccess("computeCellMultipoles");
   const double dt = get_time() - t0;

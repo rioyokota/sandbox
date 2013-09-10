@@ -49,9 +49,9 @@ namespace computeForces {
   float4 P2P(float4 acc,
              const float3 pos,
 	     const float4 posj,
-	     const float eps2) {
+	     const float EPS2) {
     const float3 dr = make_float3(posj.x - pos.x, posj.y - pos.y, posj.z - pos.z);
-    const float r2     = dr.x*dr.x + dr.y*dr.y + dr.z*dr.z + eps2;
+    const float r2     = dr.x*dr.x + dr.y*dr.y + dr.z*dr.z + EPS2;
     const float rinv   = rsqrtf(r2);
     const float rinv2  = rinv*rinv;
     const float mrinv  = posj.w * rinv;
@@ -68,9 +68,9 @@ namespace computeForces {
 	     const float3 pos,
 	     const float4 M0,
 	     const float6 Q0,
-	     float eps2) {
+	     float EPS2) {
     const float3 dr = make_float3(pos.x - M0.x, pos.y - M0.y, pos.z - M0.z);
-    const float  r2 = dr.x * dr.x + dr.y * dr.y + dr.z * dr.z + eps2;
+    const float  r2 = dr.x * dr.x + dr.y * dr.y + dr.z * dr.z + EPS2;
     const float rinv  = rsqrtf(r2);
     const float rinv2 = rinv * rinv;
     const float mrinv  = M0.w * rinv;
@@ -105,7 +105,7 @@ namespace computeForces {
   void approxAcc(float4 acc_i[NI],
 		 const float3 pos_i[NI],
 		 const int cellIdx,
-		 const float eps2) {
+		 const float EPS2) {
     float4 M0, Q0;
     float2 Q1;
     if (FULL || cellIdx >= 0) {
@@ -122,7 +122,7 @@ namespace computeForces {
 				     __shfl(Q1.x, j), __shfl(Q1.y, j));
 #pragma unroll
       for (int k=0; k<NI; k++)
-	acc_i[k] = M2P(acc_i[k], pos_i[k], jM0, jQ0, eps2);
+	acc_i[k] = M2P(acc_i[k], pos_i[k], jM0, jQ0, EPS2);
     }
   }
 
@@ -132,7 +132,7 @@ namespace computeForces {
 		      const float3 pos_i[NI],
 		      const float3 targetCenter,
 		      const float3 targetSize,
-		      const float eps2,
+		      const float EPS2,
 		      const int2 rootRange,
 		      volatile int *tempQueue,
 		      int *cellQueue) {
@@ -217,7 +217,7 @@ namespace computeForces {
       if (approxCounter >= WARP_SIZE)
 	{
 	  /* evalute cells stored in shmem */
-	  approxAcc<NI,true>(acc_i, pos_i, tempQueue[laneIdx], eps2);
+	  approxAcc<NI,true>(acc_i, pos_i, tempQueue[laneIdx], EPS2);
 
 	  approxCounter -= WARP_SIZE;
 	  const int scatterIdx = approxCounter + approxScatter.x - approxScatter.y;
@@ -261,7 +261,7 @@ namespace computeForces {
 		const float4 pos_j = make_float4(__shfl(M0.x, j), __shfl(M0.y, j), __shfl(M0.z, j), __shfl(M0.w,j));
 #pragma unroll
 		for (int k=0; k<NI; k++)
-		  acc_i[k] = P2P(acc_i[k], pos_i[k], pos_j, eps2);
+		  acc_i[k] = P2P(acc_i[k], pos_i[k], pos_j, EPS2);
 	      }
 	      nParticle  -= WARP_SIZE;
 	      nProcessed += WARP_SIZE;
@@ -284,7 +284,7 @@ namespace computeForces {
 		    const float4 pos_j = make_float4(__shfl(M0.x, j), __shfl(M0.y, j), __shfl(M0.z, j), __shfl(M0.w,j));
 #pragma unroll
 		    for (int k=0; k<NI; k++)
-		      acc_i[k] = P2P(acc_i[k], pos_i[k], pos_j, eps2);
+		      acc_i[k] = P2P(acc_i[k], pos_i[k], pos_j, EPS2);
 		  }
 		  directCounter -= WARP_SIZE;
 		  const int scatterIdx = directCounter + laneIdx - nParticle;
@@ -308,7 +308,7 @@ namespace computeForces {
     }  /* level completed */
 
     if (approxCounter > 0) {
-      approxAcc<NI,false>(acc_i, pos_i, laneIdx < approxCounter ? approxCellIdx : -1, eps2);
+      approxAcc<NI,false>(acc_i, pos_i, laneIdx < approxCounter ? approxCellIdx : -1, EPS2);
       counters.x += approxCounter;
       approxCounter = 0;
     }
@@ -320,7 +320,7 @@ namespace computeForces {
 	const float4 pos_j = make_float4(__shfl(M0.x, j), __shfl(M0.y, j), __shfl(M0.z, j), __shfl(M0.w,j));
 #pragma unroll
 	for (int k=0; k<NI; k++)
-	  acc_i[k] = P2P(acc_i[k], pos_i[k], pos_j, eps2);
+	  acc_i[k] = P2P(acc_i[k], pos_i[k], pos_j, EPS2);
       }
       counters.y += directCounter;
       directCounter = 0;
@@ -341,7 +341,7 @@ namespace computeForces {
     void traverse(
 		  const int numTargets,
 		  const int2 *targetCells,
-		  const float eps2,
+		  const float EPS2,
 		  const int2 *levelRange,
 		  const float4 *pos,
 		  float4 *acc,
@@ -397,7 +397,7 @@ namespace computeForces {
       float4 acc_i[NI] = {0.0f, 0.0f, 0.0f, 0.0f};
 
       uint2 counters = traverse_warp<NTHREAD2,NI>
-	(acc_i, pos_i, targetCenter, hvec, eps2, levelRange[1], shmem, gmem);
+	(acc_i, pos_i, targetCenter, hvec, EPS2, levelRange[1], shmem, gmem);
 
       assert(!(counters.x == 0xFFFFFFFF && counters.y == 0xFFFFFFFF));
 
@@ -442,7 +442,7 @@ namespace computeForces {
 
   static __global__
   void direct(const int numSource,
-              const float eps2,
+              const float EPS2,
 	      float4 *acc) {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     int offset = blockIdx.x * numSource / gridDim.x;
@@ -458,7 +458,7 @@ namespace computeForces {
 	float dx = s[j].x - si.x;
 	float dy = s[j].y - si.y;
 	float dz = s[j].z - si.z;
-	float R2 = dx * dx + dy * dy + dz * dz + eps2;
+	float R2 = dx * dx + dy * dy + dz * dz + EPS2;
 	float invR = rsqrtf(R2);
         float y = - s[j].w * invR - potc;
         float t = pots + y;
@@ -504,7 +504,7 @@ float4 Treecode::computeForces() {
   cudaDeviceSynchronize();
   const double t0 = get_time();
   CUDA_SAFE_CALL(cudaFuncSetCacheConfig(&computeForces::traverse<NTHREAD2,2>, cudaFuncCachePreferL1));
-  computeForces::traverse<NTHREAD2,2><<<nblock,NTHREAD>>>(numTargets, d_targetCells, eps2, d_levelRange,
+  computeForces::traverse<NTHREAD2,2><<<nblock,NTHREAD>>>(numTargets, d_targetCells, EPS2, d_levelRange,
 							  d_bodyPos2, d_bodyAcc,
 							  d_gmem_pool);
   kernelSuccess("traverse");
@@ -536,7 +536,7 @@ float4 Treecode::computeForces() {
 void Treecode::computeDirect(const int numTarget, const int numBlock)
 {
   bindTexture(computeForces::texBody,d_bodyPos2.ptr,numBody);
-  computeForces::direct<<<numBlock,numTarget>>>(numBody, eps2, d_bodyAcc2);
+  computeForces::direct<<<numBlock,numTarget>>>(numBody, EPS2, d_bodyAcc2);
   unbindTexture(computeForces::texBody);
   cudaDeviceSynchronize();
 }

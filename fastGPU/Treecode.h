@@ -92,8 +92,8 @@ struct Treecode
 {
 private:
   int numBody, numLevels, numSources, numLeaves, numTargets;
-  int nCrit, nLeaf;
-  float theta, eps2;
+  int NCRIT, NLEAF;
+  float THETA, EPS2;
 
 public:
   int getNumBody() const { return numBody; }
@@ -116,11 +116,11 @@ public:
   cuda_mem<float4> d_Quadrupole0;
   cuda_mem<float2> d_Quadrupole1;
 
-  Treecode(const float _eps = 0.01, const float _theta = 0.75, const int _ncrit = 2*WARP_SIZE)
+  Treecode(const float _eps = 0.01, const float _THETA = 0.75, const int _ncrit = 2*WARP_SIZE)
   {
-    eps2  = _eps*_eps;
-    theta = _theta;
-    nCrit = _ncrit;
+    EPS2  = _eps*_eps;
+    THETA = _THETA;
+    NCRIT = _ncrit;
     d_domain.alloc(1);
     d_minmax.alloc(2048);
     d_levelRange.alloc(32);
@@ -170,9 +170,9 @@ public:
     d_bodyAcc2.h2d(h_bodyAcc2);
   }
 
-  void buildTree(const int nLeaf = 16);
+  void buildTree(const int NLEAF = 16);
   void computeMultipoles();
-  void groupTargets(int levelSplit = 1, const int nCrit = 64);
+  void groupTargets(int levelSplit = 1, const int NCRIT = 64);
   float4 computeForces();
   void computeDirect(const int numTarget, const int numBlock);
 };

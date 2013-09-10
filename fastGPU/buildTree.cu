@@ -792,10 +792,10 @@ namespace treeBuild
 }
 
 
-void Treecode::buildTree(const int nLeaf)
+void Treecode::buildTree(const int NLEAF)
 {
-  this->nLeaf = nLeaf;
-  assert(nLeaf == 16 || nLeaf == 24 || nLeaf == 32 || nLeaf == 48 || nLeaf == 64);
+  this->NLEAF = NLEAF;
+  assert(NLEAF == 16 || NLEAF == 24 || NLEAF == 32 || NLEAF == 48 || NLEAF == 64);
   /* compute bounding box */
 
   {
@@ -841,7 +841,7 @@ void Treecode::buildTree(const int nLeaf)
     CUDA_SAFE_CALL(cudaMemset(d_stack_memory_pool,0,stack_size*sizeof(int)));
     cudaDeviceSynchronize();
     const double t0 = get_time();
-    switch(nLeaf)
+    switch(NLEAF)
       {
       case 16:
         treeBuild::buildOctree<16><<<1,1>>>(
