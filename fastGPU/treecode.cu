@@ -23,7 +23,6 @@ int main(int argc, char * argv[])
   host_mem<float4> h_bodyPos;
   h_bodyPos.alloc(numBodies);
   
-  tree.alloc(numBodies);
   for (int i = 0; i < numBodies; i++) {
     float4 bodyPos;
     bodyPos.x    = data.pos[i].x;
@@ -32,8 +31,16 @@ int main(int argc, char * argv[])
     bodyPos.w    = data.mass[i];
     h_bodyPos[i] = bodyPos;
   }
-  tree.d_bodyPos.h2d(h_bodyPos);
-  tree.d_bodyAcc.h2d(h_bodyPos);
+  cuda_mem<float4> d_bodyPos;
+  cuda_mem<float4> d_bodyPos2;
+  cuda_mem<float4> d_bodyAcc;
+  cuda_mem<float4> d_bodyAcc2;
+  d_bodyPos.alloc(numBodies);
+  d_bodyPos2.alloc(numBodies);
+  d_bodyAcc.alloc(numBodies);
+  d_bodyAcc2.alloc(numBodies);
+  d_bodyPos.h2d(h_bodyPos);
+  d_bodyAcc.h2d(h_bodyPos);
 
   cuda_mem<CellData> d_sourceCells;
   cuda_mem<int2> d_targetCells;
@@ -50,16 +57,17 @@ int main(int argc, char * argv[])
 
   fprintf(stdout,"--- FMM Profiling ----------------\n");
   double t0 = get_time();
-  int2 numLS = tree.buildTree(numBodies, d_domain, d_levelRange, d_sourceCells, nleaf); // pass nleaf, accepted 16, 24, 32, 48, 64
+  int2 numLS = tree.buildTree(numBodies, d_bodyPos, d_bodyPos2, d_bodyAcc, d_domain, d_levelRange, d_sourceCells, nleaf); // pass nleaf, accepted 16, 24, 32, 48, 64
   int numLevels = numLS.x;
   int numSources = numLS.y;
   d_sourceCenter.alloc(numSources);
   d_Monopole.alloc(numSources);
   d_Quadrupole0.alloc(numSources);
   d_Quadrupole1.alloc(numSources);
-  tree.computeMultipoles(numBodies, numSources, theta, d_sourceCells, d_sourceCenter, d_Monopole, d_Quadrupole0, d_Quadrupole1);
-  int numTargets = tree.groupTargets(numBodies, d_domain, d_targetCells, 5, ncrit);
-  const float4 interactions = tree.computeForces(numBodies, numTargets, numSources, eps, d_sourceCells, d_targetCells, d_sourceCenter, d_Monopole, d_Quadrupole0, d_Quadrupole1, d_levelRange);
+  tree.computeMultipoles(numBodies, numSources, theta, d_bodyPos, d_sourceCells, d_sourceCenter, d_Monopole, d_Quadrupole0, d_Quadrupole1);
+  int numTargets = tree.groupTargets(numBodies, d_bodyPos, d_bodyPos2, d_domain, d_targetCells, 5, ncrit);
+  const float4 interactions = tree.computeForces(numBodies, numTargets, numSources, eps, d_bodyPos, d_bodyPos2, d_bodyAcc,
+						 d_sourceCells, d_targetCells, d_sourceCenter, d_Monopole, d_Quadrupole0, d_Quadrupole1, d_levelRange);
   double dt = get_time() - t0;
   float flops = (interactions.x * 20 + interactions.z * 64) * numBodies / dt / 1e12;
   fprintf(stdout,"--- Total runtime ----------------\n");
@@ -67,15 +75,15 @@ int main(int argc, char * argv[])
   const int numTarget = 512; // Number of threads per block will be set to this value
   const int numBlock = 128;
   t0 = get_time();
-  tree.computeDirect(numBodies, numTarget, numBlock, eps);
+  tree.computeDirect(numBodies, numTarget, numBlock, eps, d_bodyPos2, d_bodyAcc2);
   dt = get_time() - t0;
   flops = 20.*numTarget*numBodies/dt/1e12;
   fprintf(stdout,"Total Direct         : %.7f s (%.7f TFlops)\n",dt,flops);
   host_mem<float4> h_bodyAcc, h_bodyAcc2;
   h_bodyAcc.alloc(numBodies);
   h_bodyAcc2.alloc(numBodies);
-  tree.d_bodyAcc.d2h(h_bodyAcc);
-  tree.d_bodyAcc2.d2h(h_bodyAcc2);
+  d_bodyAcc.d2h(h_bodyAcc);
+  d_bodyAcc2.d2h(h_bodyAcc2);
 
   for (int i=0; i<numTarget; i++) {
     float4 bodyAcc = h_bodyAcc2[i];

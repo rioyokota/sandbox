@@ -85,21 +85,17 @@ class CellData {
 
 class Treecode {
  public:
-  cuda_mem<float4> d_bodyPos, d_bodyPos2, d_bodyAcc, d_bodyAcc2;
-
-  void alloc(const int numBodies) {
-    d_bodyPos.alloc(numBodies);
-    d_bodyPos2.alloc(numBodies);
-    d_bodyAcc.alloc(numBodies);
-    d_bodyAcc2.alloc(numBodies);
-  };
-
-  int2 buildTree(const int numBodies, float4 * d_domain, int2 * d_levelRange, CellData * d_sourceCells, const int NLEAF = 16);
+  int2 buildTree(const int numBodies, float4 * d_bodyPos, float4 * d_bodyPos2, float4 * d_bosyAcc,
+		 float4 * d_domain, int2 * d_levelRange, CellData * d_sourceCells, const int NLEAF = 16);
   void computeMultipoles(const int numBodies, const int numSources, const float theta,
-			CellData * d_sourceCells, float4 * d_sourceCenter, float4 * d_Monopole, float4 * d_Quadrupole0, float2 * d_Quadrupole1);
-  int groupTargets(const int numBodies, float4 * d_domain, int2 * d_targetCells, int levelSplit = 1, const int NCRIT = 64);
-  float4 computeForces(const int numBodies, const int numTargets, const int numSources, const float eps, CellData * d_sourceCells,
-		       int2 * d_targetCells, float4 * d_sourceCenter, float4 * d_Monopole,
+			 float4 * d_bodyPos, CellData * d_sourceCells, float4 * d_sourceCenter,
+			 float4 * d_Monopole, float4 * d_Quadrupole0, float2 * d_Quadrupole1);
+  int groupTargets(const int numBodies, float4 * d_bodyPos, float4 * d_bodyPos2,
+		   float4 * d_domain, int2 * d_targetCells, int levelSplit = 1, const int NCRIT = 64);
+  float4 computeForces(const int numBodies, const int numTargets, const int numSources, const float eps,
+		       float4 * d_bodyPos, float4 * d_bodyPos2, float4 * d_bodyAcc,
+		       CellData * d_sourceCells, int2 * d_targetCells, float4 * d_sourceCenter, float4 * d_Monopole,
 		       float4 * d_Quadrupole0, float2 * d_Quadrupole1, int2 * d_levelRange);
-  void computeDirect(const int numBodies, const int numTarget, const int numBlock, const float eps);
+  void computeDirect(const int numBodies, const int numTarget, const int numBlock, const float eps,
+		     float4 * d_bodyPos2, float4 * d_bodyAcc2);
 };

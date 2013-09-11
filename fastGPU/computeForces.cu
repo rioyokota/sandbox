@@ -490,6 +490,9 @@ float4 Treecode::computeForces(const int numBodies,
 			       const int numTargets,
 			       const int numSources,
 			       const float eps,
+			       float4 * d_bodyPos,
+			       float4 * d_bodyPos2,
+			       float4 * d_bodyAcc,
 			       CellData * d_sourceCells,
 			       int2 * d_targetCells,
 			       float4 * d_sourceCenter,
@@ -502,7 +505,7 @@ float4 Treecode::computeForces(const int numBodies,
   bindTexture(computeForces::texMonopole,    d_Monopole,    numSources);
   bindTexture(computeForces::texQuad0,       d_Quadrupole0, numSources);
   bindTexture(computeForces::texQuad1,       d_Quadrupole1, numSources);
-  bindTexture(computeForces::texBody,        d_bodyPos.ptr, numBodies);
+  bindTexture(computeForces::texBody,        d_bodyPos,     numBodies);
 
   const int NTHREAD2 = 7;
   const int NTHREAD  = 1<<NTHREAD2;
@@ -543,8 +546,9 @@ float4 Treecode::computeForces(const int numBodies,
   return interactions;
 }
 
-void Treecode::computeDirect(const int numBodies, const int numTarget, const int numBlock, const float eps) {
-  bindTexture(computeForces::texBody,d_bodyPos2.ptr,numBodies);
+void Treecode::computeDirect(const int numBodies, const int numTarget, const int numBlock, const float eps,
+			     float4 * d_bodyPos2, float4 * d_bodyAcc2) {
+  bindTexture(computeForces::texBody,d_bodyPos2,numBodies);
   computeForces::direct<<<numBlock,numTarget>>>(numBodies, eps*eps, d_bodyAcc2);
   unbindTexture(computeForces::texBody);
   cudaDeviceSynchronize();

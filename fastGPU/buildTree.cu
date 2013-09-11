@@ -768,7 +768,9 @@ namespace treeBuild
 }
 
 
-int2 Treecode::buildTree(const int numBodies, float4 * d_domain, int2 * d_levelRange, CellData * d_sourceCells, const int NLEAF) {
+int2 Treecode::buildTree(const int numBodies,
+			 float4 * d_bodyPos, float4 * d_bodyPos2, float4 * d_bodyAcc,
+			 float4 * d_domain, int2 * d_levelRange, CellData * d_sourceCells, const int NLEAF) {
   const int NTHREAD2 = 8;
   const int NTHREAD  = 1 << NTHREAD2;
 
