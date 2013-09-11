@@ -1,12 +1,10 @@
-#include "Treecode.h"
+#pragma once
 
 #define NWARPS2 3
 #define NWARPS  (1<<NWARPS2)
 
 #include <thrust/device_ptr.h>
 #include <thrust/sort.h>
-
-#include "cuda_primitives.h"
 
 namespace treeBuild
 {
@@ -765,114 +763,113 @@ namespace treeBuild
     if (cell.isLeaf())
       leafCells[shdata[0] + scatter] = gidx;
   }
-}
 
+  int2 buildTree(const int numBodies,
+		 float4 * d_bodyPos, float4 * d_bodyPos2, float4 * d_bodyAcc,
+		 float4 * d_domain, int2 * d_levelRange, CellData * d_sourceCells, const int NLEAF) {
+    const int NTHREAD2 = 8;
+    const int NTHREAD  = 1 << NTHREAD2;
 
-int2 Treecode::buildTree(const int numBodies,
-			 float4 * d_bodyPos, float4 * d_bodyPos2, float4 * d_bodyAcc,
-			 float4 * d_domain, int2 * d_levelRange, CellData * d_sourceCells, const int NLEAF) {
-  const int NTHREAD2 = 8;
-  const int NTHREAD  = 1 << NTHREAD2;
+    cuda_mem<float3> d_minmax;
+    cuda_mem<int> d_stack_memory_pool;
+    cuda_mem<CellData> d_sourceCells2;
+    cuda_mem<int> d_leafCells;
+    cuda_mem<int> d_key, d_value;
 
-  cuda_mem<float3> d_minmax;
-  cuda_mem<int> d_stack_memory_pool;
-  cuda_mem<CellData> d_sourceCells2;
-  cuda_mem<int> d_leafCells;
-  cuda_mem<int> d_key, d_value;
+    d_minmax.alloc(2048);
+    const int maxNode = numBodies / 10;
+    const int stackSize = (8+8+8+64+8)*maxNode;
+    fprintf(stdout,"Stack size           : %g MB\n",sizeof(int)*stackSize/1024.0/1024.0);
+    d_stack_memory_pool.alloc(stackSize);
+    d_sourceCells2.alloc(numBodies);
 
-  d_minmax.alloc(2048);
-  const int maxNode = numBodies / 10;
-  const int stackSize = (8+8+8+64+8)*maxNode;
-  fprintf(stdout,"Stack size           : %g MB\n",sizeof(int)*stackSize/1024.0/1024.0);
-  d_stack_memory_pool.alloc(stackSize);
-  d_sourceCells2.alloc(numBodies);
+    fprintf(stdout,"Cell data            : %g MB\n",numBodies*sizeof(CellData)/1024.0/1024.0);
+    d_key.alloc(numBodies);
+    d_value.alloc(numBodies);
 
-  fprintf(stdout,"Cell data            : %g MB\n",numBodies*sizeof(CellData)/1024.0/1024.0);
-  d_key.alloc(numBodies);
-  d_value.alloc(numBodies);
+    cudaDeviceSynchronize();
+    double t0 = get_time();
+    computeBoundingBox<NTHREAD2><<<NTHREAD,NTHREAD,NTHREAD*sizeof(float2)>>>
+      (numBodies, d_minmax, d_domain, d_bodyPos);
+    kernelSuccess("cudaDomainSize");
+    double dt = get_time() - t0;
+    fprintf(stdout,"Get bounds           : %.7f s\n",  dt);
 
-  cudaDeviceSynchronize();
-  double t0 = get_time();
-  treeBuild::computeBoundingBox<NTHREAD2><<<NTHREAD,NTHREAD,NTHREAD*sizeof(float2)>>>
-    (numBodies, d_minmax, d_domain, d_bodyPos);
-  kernelSuccess("cudaDomainSize");
-  double dt = get_time() - t0;
-  fprintf(stdout,"Get bounds           : %.7f s\n",  dt);
+    /*** build tree ***/
 
-  /*** build tree ***/
+    CUDA_SAFE_CALL(cudaMemcpyToSymbol(d_maxNode, &maxNode, sizeof(int), 0, cudaMemcpyHostToDevice));
 
-  CUDA_SAFE_CALL(cudaMemcpyToSymbol(treeBuild::d_maxNode, &maxNode, sizeof(int), 0, cudaMemcpyHostToDevice));
+    cudaDeviceSetLimit(cudaLimitDevRuntimePendingLaunchCount,16384);
 
-  cudaDeviceSetLimit(cudaLimitDevRuntimePendingLaunchCount,16384);
+    CUDA_SAFE_CALL(cudaFuncSetCacheConfig(&buildOctant<16,true>,  cudaFuncCachePreferShared));
+    CUDA_SAFE_CALL(cudaFuncSetCacheConfig(&buildOctant<16,false>, cudaFuncCachePreferShared));
 
-  CUDA_SAFE_CALL(cudaFuncSetCacheConfig(&treeBuild::buildOctant<16,true>,  cudaFuncCachePreferShared));
-  CUDA_SAFE_CALL(cudaFuncSetCacheConfig(&treeBuild::buildOctant<16,false>, cudaFuncCachePreferShared));
+    CUDA_SAFE_CALL(cudaFuncSetCacheConfig(&buildOctant<24,true>,  cudaFuncCachePreferShared));
+    CUDA_SAFE_CALL(cudaFuncSetCacheConfig(&buildOctant<24,false>, cudaFuncCachePreferShared));
 
-  CUDA_SAFE_CALL(cudaFuncSetCacheConfig(&treeBuild::buildOctant<24,true>,  cudaFuncCachePreferShared));
-  CUDA_SAFE_CALL(cudaFuncSetCacheConfig(&treeBuild::buildOctant<24,false>, cudaFuncCachePreferShared));
+    CUDA_SAFE_CALL(cudaFuncSetCacheConfig(&buildOctant<32,true>,  cudaFuncCachePreferShared));
+    CUDA_SAFE_CALL(cudaFuncSetCacheConfig(&buildOctant<32,false>, cudaFuncCachePreferShared));
 
-  CUDA_SAFE_CALL(cudaFuncSetCacheConfig(&treeBuild::buildOctant<32,true>,  cudaFuncCachePreferShared));
-  CUDA_SAFE_CALL(cudaFuncSetCacheConfig(&treeBuild::buildOctant<32,false>, cudaFuncCachePreferShared));
+    CUDA_SAFE_CALL(cudaFuncSetCacheConfig(&buildOctant<48,true>,  cudaFuncCachePreferShared));
+    CUDA_SAFE_CALL(cudaFuncSetCacheConfig(&buildOctant<48,false>, cudaFuncCachePreferShared));
 
-  CUDA_SAFE_CALL(cudaFuncSetCacheConfig(&treeBuild::buildOctant<48,true>,  cudaFuncCachePreferShared));
-  CUDA_SAFE_CALL(cudaFuncSetCacheConfig(&treeBuild::buildOctant<48,false>, cudaFuncCachePreferShared));
+    CUDA_SAFE_CALL(cudaFuncSetCacheConfig(&buildOctant<64,true>,  cudaFuncCachePreferShared));
+    CUDA_SAFE_CALL(cudaFuncSetCacheConfig(&buildOctant<64,false>, cudaFuncCachePreferShared));
 
-  CUDA_SAFE_CALL(cudaFuncSetCacheConfig(&treeBuild::buildOctant<64,true>,  cudaFuncCachePreferShared));
-  CUDA_SAFE_CALL(cudaFuncSetCacheConfig(&treeBuild::buildOctant<64,false>, cudaFuncCachePreferShared));
+    CUDA_SAFE_CALL(cudaDeviceSetSharedMemConfig(cudaSharedMemBankSizeEightByte));
 
-  CUDA_SAFE_CALL(cudaDeviceSetSharedMemConfig(cudaSharedMemBankSizeEightByte));
+    CUDA_SAFE_CALL(cudaMemset(d_stack_memory_pool,0,stackSize*sizeof(int)));
+    cudaDeviceSynchronize();
+    t0 = get_time();
+    switch (NLEAF) {
+    case 16:
+      buildOctree<16><<<1,1>>>(numBodies, d_domain, d_sourceCells, d_stack_memory_pool, d_bodyPos, d_bodyPos2, d_bodyAcc);
+      break;
+    case 24:
+      buildOctree<24><<<1,1>>>(numBodies, d_domain, d_sourceCells, d_stack_memory_pool, d_bodyPos, d_bodyPos2, d_bodyAcc);
+      break;
+    case 32:
+      buildOctree<32><<<1,1>>>(numBodies, d_domain, d_sourceCells, d_stack_memory_pool, d_bodyPos, d_bodyPos2, d_bodyAcc);
+      break;
+    case 48:
+      buildOctree<48><<<1,1>>>(numBodies, d_domain, d_sourceCells, d_stack_memory_pool, d_bodyPos, d_bodyPos2, d_bodyAcc);
+      break;
+    case 64:
+      buildOctree<64><<<1,1>>>(numBodies, d_domain, d_sourceCells, d_stack_memory_pool, d_bodyPos, d_bodyPos2, d_bodyAcc);
+      break;
+    default:
+      assert(0);
+    }
+    kernelSuccess("buildOctree");
+    dt = get_time() - t0;
+    int numLevels, numSources, numLeaves;
+    CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&numLevels, nlevels,sizeof(int)));
+    CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&numSources,ncells, sizeof(int)));
+    CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&numLeaves, nleaves,sizeof(int)));
+    fprintf(stdout,"Grow tree            : %.7f s\n",  dt);
 
-  CUDA_SAFE_CALL(cudaMemset(d_stack_memory_pool,0,stackSize*sizeof(int)));
-  cudaDeviceSynchronize();
-  t0 = get_time();
-  switch (NLEAF) {
-  case 16:
-    treeBuild::buildOctree<16><<<1,1>>>(numBodies, d_domain, d_sourceCells, d_stack_memory_pool, d_bodyPos, d_bodyPos2, d_bodyAcc);
-    break;
-  case 24:
-    treeBuild::buildOctree<24><<<1,1>>>(numBodies, d_domain, d_sourceCells, d_stack_memory_pool, d_bodyPos, d_bodyPos2, d_bodyAcc);
-    break;
-  case 32:
-    treeBuild::buildOctree<32><<<1,1>>>(numBodies, d_domain, d_sourceCells, d_stack_memory_pool, d_bodyPos, d_bodyPos2, d_bodyAcc);
-    break;
-  case 48:
-    treeBuild::buildOctree<48><<<1,1>>>(numBodies, d_domain, d_sourceCells, d_stack_memory_pool, d_bodyPos, d_bodyPos2, d_bodyAcc);
-    break;
-  case 64:
-    treeBuild::buildOctree<64><<<1,1>>>(numBodies, d_domain, d_sourceCells, d_stack_memory_pool, d_bodyPos, d_bodyPos2, d_bodyAcc);
-    break;
-  default:
-    assert(0);
+    /* sort nodes by level */
+    cudaDeviceSynchronize();
+    t0 = get_time();
+    const int NBLOCK = (numSources-1) / NTHREAD + 1;
+    get_cell_levels<<<NBLOCK,NTHREAD>>>(numSources, d_sourceCells, d_sourceCells2, d_key, d_value);
+    thrust::device_ptr<int> keys_beg(d_key.ptr);
+    thrust::device_ptr<int> keys_end(d_key.ptr + numSources);
+    thrust::device_ptr<int> vals_beg(d_value.ptr);
+    thrust::stable_sort_by_key(keys_beg, keys_end, vals_beg); 
+
+    /* compute begining & end of each level */
+    getLevelRange<<<NBLOCK,NTHREAD,(NTHREAD+2)*sizeof(int)>>>(numSources, d_key, d_levelRange);
+    write_newIdx <<<NBLOCK,NTHREAD>>>(numSources, d_value, d_key);
+    shuffle_cells<<<NBLOCK,NTHREAD>>>(numSources, d_value, d_key, d_sourceCells2, d_sourceCells);
+
+    /* group leaves */
+    d_leafCells.alloc(numLeaves);
+    collect_leaves<NTHREAD2><<<NBLOCK,NTHREAD>>>(numSources, d_sourceCells, d_leafCells);
+    kernelSuccess("shuffle");
+    dt = get_time() - t0;
+    fprintf(stdout,"Link tree            : %.7f s\n", dt);
+    int2 numLS = {numLevels, numSources};
+    return numLS;
   }
-  kernelSuccess("buildOctree");
-  dt = get_time() - t0;
-  int numLevels, numSources, numLeaves;
-  CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&numLevels, treeBuild::nlevels,sizeof(int)));
-  CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&numSources,treeBuild::ncells, sizeof(int)));
-  CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&numLeaves, treeBuild::nleaves,sizeof(int)));
-  fprintf(stdout,"Grow tree            : %.7f s\n",  dt);
-
-  /* sort nodes by level */
-  cudaDeviceSynchronize();
-  t0 = get_time();
-  const int NBLOCK = (numSources-1) / NTHREAD + 1;
-  treeBuild::get_cell_levels<<<NBLOCK,NTHREAD>>>(numSources, d_sourceCells, d_sourceCells2, d_key, d_value);
-  thrust::device_ptr<int> keys_beg(d_key.ptr);
-  thrust::device_ptr<int> keys_end(d_key.ptr + numSources);
-  thrust::device_ptr<int> vals_beg(d_value.ptr);
-  thrust::stable_sort_by_key(keys_beg, keys_end, vals_beg); 
-
-  /* compute begining & end of each level */
-  treeBuild::getLevelRange<<<NBLOCK,NTHREAD,(NTHREAD+2)*sizeof(int)>>>(numSources, d_key, d_levelRange);
-  treeBuild::write_newIdx <<<NBLOCK,NTHREAD>>>(numSources, d_value, d_key);
-  treeBuild::shuffle_cells<<<NBLOCK,NTHREAD>>>(numSources, d_value, d_key, d_sourceCells2, d_sourceCells);
-
-  /* group leaves */
-  d_leafCells.alloc(numLeaves);
-  treeBuild::collect_leaves<NTHREAD2><<<NBLOCK,NTHREAD>>>(numSources, d_sourceCells, d_leafCells);
-  kernelSuccess("shuffle");
-  dt = get_time() - t0;
-  fprintf(stdout,"Link tree            : %.7f s\n", dt);
-  int2 numLS = {numLevels, numSources};
-  return numLS;
 }

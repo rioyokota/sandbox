@@ -1,7 +1,6 @@
-#include "Treecode.h"
-#include <algorithm>
+#pragma once
 
-#include "cuda_primitives.h"
+#include <algorithm>
 
 #define CELL_LIST_MEM_PER_WARP (4096*32)
 #define IF(x) (-(int)(x))
@@ -484,72 +483,72 @@ namespace computeForces {
     acc[i].z = azs + azc;
     acc[i].w = pots + potc;
   }
-}
 
-float4 Treecode::computeForces(const int numBodies,
-			       const int numTargets,
-			       const int numSources,
-			       const float eps,
-			       float4 * d_bodyPos,
-			       float4 * d_bodyPos2,
-			       float4 * d_bodyAcc,
-			       CellData * d_sourceCells,
-			       int2 * d_targetCells,
-			       float4 * d_sourceCenter,
-			       float4 * d_Monopole,
-			       float4 * d_Quadrupole0,
-			       float2 * d_Quadrupole1,
-			       int2 * d_levelRange) {
-  bindTexture(computeForces::texCell,(uint4*)d_sourceCells, numSources);
-  bindTexture(computeForces::texCellCenter,  d_sourceCenter,numSources);
-  bindTexture(computeForces::texMonopole,    d_Monopole,    numSources);
-  bindTexture(computeForces::texQuad0,       d_Quadrupole0, numSources);
-  bindTexture(computeForces::texQuad1,       d_Quadrupole1, numSources);
-  bindTexture(computeForces::texBody,        d_bodyPos,     numBodies);
+  float4 computeForces(const int numBodies,
+		       const int numTargets,
+		       const int numSources,
+		       const float eps,
+		       float4 * d_bodyPos,
+		       float4 * d_bodyPos2,
+		       float4 * d_bodyAcc,
+		       CellData * d_sourceCells,
+		       int2 * d_targetCells,
+		       float4 * d_sourceCenter,
+		       float4 * d_Monopole,
+		       float4 * d_Quadrupole0,
+		       float2 * d_Quadrupole1,
+		       int2 * d_levelRange) {
+    bindTexture(texCell,(uint4*)d_sourceCells, numSources);
+    bindTexture(texCellCenter,  d_sourceCenter,numSources);
+    bindTexture(texMonopole,    d_Monopole,    numSources);
+    bindTexture(texQuad0,       d_Quadrupole0, numSources);
+    bindTexture(texQuad1,       d_Quadrupole1, numSources);
+    bindTexture(texBody,        d_bodyPos,     numBodies);
 
-  const int NTHREAD2 = 7;
-  const int NTHREAD  = 1<<NTHREAD2;
-  cuda_mem<int> d_gmem_pool;
+    const int NTHREAD2 = 7;
+    const int NTHREAD  = 1<<NTHREAD2;
+    cuda_mem<int> d_gmem_pool;
 
-  const int nblock = 8*13;
-  d_gmem_pool.alloc(CELL_LIST_MEM_PER_WARP*nblock*(NTHREAD/WARP_SIZE));
+    const int nblock = 8*13;
+    d_gmem_pool.alloc(CELL_LIST_MEM_PER_WARP*nblock*(NTHREAD/WARP_SIZE));
 
-  cudaDeviceSynchronize();
-  const double t0 = get_time();
-  CUDA_SAFE_CALL(cudaFuncSetCacheConfig(&computeForces::traverse<NTHREAD2,2>, cudaFuncCachePreferL1));
-  computeForces::traverse<NTHREAD2,2><<<nblock,NTHREAD>>>(numTargets, d_targetCells, eps*eps, d_levelRange,
-							  d_bodyPos2, d_bodyAcc,
-							  d_gmem_pool);
-  kernelSuccess("traverse");
-  const double dt = get_time() - t0;
+    cudaDeviceSynchronize();
+    const double t0 = get_time();
+    CUDA_SAFE_CALL(cudaFuncSetCacheConfig(&traverse<NTHREAD2,2>, cudaFuncCachePreferL1));
+    traverse<NTHREAD2,2><<<nblock,NTHREAD>>>(numTargets, d_targetCells, eps*eps, d_levelRange,
+							    d_bodyPos2, d_bodyAcc,
+							    d_gmem_pool);
+    kernelSuccess("traverse");
+    const double dt = get_time() - t0;
 
-  unsigned long long sumP2P, sumM2P;
-  unsigned int maxP2P, maxM2P;
-  CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&sumP2P, computeForces::sumP2PGlob, sizeof(unsigned long long)));
-  CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&maxP2P, computeForces::maxP2PGlob, sizeof(unsigned int)));
-  CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&sumM2P, computeForces::sumM2PGlob, sizeof(unsigned long long)));
-  CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&maxM2P, computeForces::maxM2PGlob, sizeof(unsigned int)));
-  float4 interactions;
-  interactions.x = sumP2P * 1.0 / numBodies;
-  interactions.y = maxP2P;
-  interactions.z = sumM2P * 1.0 / numBodies;
-  interactions.w = maxM2P;
-  float flops = (interactions.x * 20 + interactions.z * 64) * numBodies / dt / 1e12;
-  fprintf(stdout,"Traverse             : %.7f s (%.7f TFlops)\n",dt,flops);
+    unsigned long long sumP2P, sumM2P;
+    unsigned int maxP2P, maxM2P;
+    CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&sumP2P, sumP2PGlob, sizeof(unsigned long long)));
+    CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&maxP2P, maxP2PGlob, sizeof(unsigned int)));
+    CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&sumM2P, sumM2PGlob, sizeof(unsigned long long)));
+    CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&maxM2P, maxM2PGlob, sizeof(unsigned int)));
+    float4 interactions;
+    interactions.x = sumP2P * 1.0 / numBodies;
+    interactions.y = maxP2P;
+    interactions.z = sumM2P * 1.0 / numBodies;
+    interactions.w = maxM2P;
+    float flops = (interactions.x * 20 + interactions.z * 64) * numBodies / dt / 1e12;
+    fprintf(stdout,"Traverse             : %.7f s (%.7f TFlops)\n",dt,flops);
 
-  unbindTexture(computeForces::texBody);
-  unbindTexture(computeForces::texQuad1);
-  unbindTexture(computeForces::texQuad0);
-  unbindTexture(computeForces::texMonopole);
-  unbindTexture(computeForces::texCellCenter);
-  unbindTexture(computeForces::texCell);
-  return interactions;
-}
+    unbindTexture(texBody);
+    unbindTexture(texQuad1);
+    unbindTexture(texQuad0);
+    unbindTexture(texMonopole);
+    unbindTexture(texCellCenter);
+    unbindTexture(texCell);
+    return interactions;
+  }
 
-void Treecode::computeDirect(const int numBodies, const int numTarget, const int numBlock, const float eps,
-			     float4 * d_bodyPos2, float4 * d_bodyAcc2) {
-  bindTexture(computeForces::texBody,d_bodyPos2,numBodies);
-  computeForces::direct<<<numBlock,numTarget>>>(numBodies, eps*eps, d_bodyAcc2);
-  unbindTexture(computeForces::texBody);
-  cudaDeviceSynchronize();
+  void computeDirect(const int numBodies, const int numTarget, const int numBlock, const float eps,
+		     float4 * d_bodyPos2, float4 * d_bodyAcc2) {
+    bindTexture(texBody,d_bodyPos2,numBodies);
+    direct<<<numBlock,numTarget>>>(numBodies, eps*eps, d_bodyAcc2);
+    unbindTexture(texBody);
+    cudaDeviceSynchronize();
+  }
 }

@@ -3,11 +3,7 @@
 NVCC = nvcc -g -O3 -arch=sm_35 -rdc=true -ftz=true
 LFLAGS = -lcudadevrt
 
-SRC = treecode.cu buildTree.cu computeMultipoles.cu groupTargets.cu computeForces.cu
-
-OBJ = $(SRC:%.cu=%.o)
-
-all: $(OBJ)
+all: main.o
 	$(NVCC) $^ $(LFLAGS)
 	./a.out
 
@@ -17,4 +13,4 @@ all: $(OBJ)
 clean:
 	/bin/rm -rf *.o *.out
 
-$(OBJ): Treecode.h cuda_primitives.h cudamem.h plummer.h
+$(OBJ): Treecode.h cuda_primitives.h cudamem.h plummer.h buildtree.h upwardpass.h grouptargets.h traversal.h
