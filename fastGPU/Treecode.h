@@ -85,7 +85,7 @@ class CellData {
 
 class Treecode {
  private:
-  int numLeaves, numTargets;
+  int numTargets;
 
  public:
   int numBodies;
@@ -107,8 +107,9 @@ class Treecode {
 
   void buildTree(float4 * d_domain, int2 * d_levelRange, CellData * d_sourceCells, const int NLEAF = 16);
   void computeMultipoles(const float theta, CellData * d_sourceCells, float4 * d_sourceCenter, float4 * d_Monopole, float4 * d_Quadrupole0, float2 * d_Quadrupole1);
-  void groupTargets(float4 * d_domain, int2 * d_targetCells, int levelSplit = 1, const int NCRIT = 64);
-  float4 computeForces(const float eps, CellData * d_sourceCells, int2 * d_targetCells, float4 * d_sourceCenter, float4 * d_Monopole,
+  int groupTargets(float4 * d_domain, int2 * d_targetCells, int levelSplit = 1, const int NCRIT = 64);
+  float4 computeForces(const int numTargets, const float eps, CellData * d_sourceCells,
+		       int2 * d_targetCells, float4 * d_sourceCenter, float4 * d_Monopole,
 		       float4 * d_Quadrupole0, float2 * d_Quadrupole1, int2 * d_levelRange);
   void computeDirect(const int numTarget, const int numBlock, const float eps);
 };

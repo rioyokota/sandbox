@@ -56,8 +56,8 @@ int main(int argc, char * argv[])
   d_Quadrupole0.alloc(tree.numSources);
   d_Quadrupole1.alloc(tree.numSources);
   tree.computeMultipoles(theta, d_sourceCells, d_sourceCenter, d_Monopole, d_Quadrupole0, d_Quadrupole1);
-  tree.groupTargets(d_domain, d_targetCells, 5, ncrit);
-  const float4 interactions = tree.computeForces(eps, d_sourceCells, d_targetCells, d_sourceCenter, d_Monopole, d_Quadrupole0, d_Quadrupole1, d_levelRange);
+  int numTargets = tree.groupTargets(d_domain, d_targetCells, 5, ncrit);
+  const float4 interactions = tree.computeForces(numTargets, eps, d_sourceCells, d_targetCells, d_sourceCenter, d_Monopole, d_Quadrupole0, d_Quadrupole1, d_levelRange);
   double dt = get_time() - t0;
   float flops = (interactions.x * 20 + interactions.z * 64) * tree.getNumBody() / dt / 1e12;
   fprintf(stdout,"--- Total runtime ----------------\n");

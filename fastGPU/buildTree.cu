@@ -844,6 +844,7 @@ void Treecode::buildTree(float4 * d_domain, int2 * d_levelRange, CellData * d_so
   }
   kernelSuccess("buildOctree");
   dt = get_time() - t0;
+  int numLeaves;
   CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&numLevels, treeBuild::nlevels,sizeof(int)));
   CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&numSources,treeBuild::ncells, sizeof(int)));
   CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&numLeaves, treeBuild::nleaves,sizeof(int)));

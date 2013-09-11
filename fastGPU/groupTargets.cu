@@ -190,7 +190,7 @@ namespace groupTargets
 
 };
 
-void Treecode::groupTargets(float4 * d_domain, int2 * d_targetCells, int levelSplit, const int NCRIT)
+int Treecode::groupTargets(float4 * d_domain, int2 * d_targetCells, int levelSplit, const int NCRIT)
 {
   const int nthread = 256;
   cuda_mem<int> d_key, d_value;
@@ -200,9 +200,6 @@ void Treecode::groupTargets(float4 * d_domain, int2 * d_targetCells, int levelSp
 
   unsigned long long *d_keys = (unsigned long long*)d_key.ptr;
   int *d_values = d_value.ptr;
-
-  numTargets = 0;
-  CUDA_SAFE_CALL(cudaMemcpyToSymbol(groupTargets::groupCounter, &numTargets, sizeof(int)));
 
   const int nblock  = (numBodies-1)/nthread + 1;
   const int NBINS = 21; 
@@ -254,5 +251,7 @@ void Treecode::groupTargets(float4 * d_domain, int2 * d_targetCells, int levelSp
   kernelSuccess("groupTargets");
   const double dt = get_time() - t0;
   fprintf(stdout,"Make groups          : %.7f s\n", dt);
+  int numTargets;
   CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&numTargets, groupTargets::groupCounter, sizeof(int)));
+  return numTargets;
 }
