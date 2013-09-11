@@ -795,23 +795,16 @@ namespace treeBuild
 void Treecode::buildTree(const int NLEAF)
 {
   this->NLEAF = NLEAF;
-  assert(NLEAF == 16 || NLEAF == 24 || NLEAF == 32 || NLEAF == 48 || NLEAF == 64);
-  /* compute bounding box */
+  const int NTHREAD2 = 8;
+  const int NTHREAD  = 1<<NTHREAD2;
 
-  {
-    const int NTHREAD2 = 8;
-    const int NTHREAD  = 1<<NTHREAD2;
-    const int NBLOCK   = NTHREAD;
-
-    assert(2*NBLOCK <= 2048);  /* see Treecode constructor for d_minmax allocation */
-    cudaDeviceSynchronize();
-    const double t0 = get_time();
-    treeBuild::computeBoundingBox<NTHREAD2><<<NBLOCK,NTHREAD,NTHREAD*sizeof(float2)>>>
-      (numBodies, d_minmax, d_domain, d_bodyPos);
-    kernelSuccess("cudaDomainSize");
-    const double dt = get_time() - t0;
-    fprintf(stdout,"Get bounds           : %.7f s\n",  dt);
-  }
+  cudaDeviceSynchronize();
+  double t0 = get_time();
+  treeBuild::computeBoundingBox<NTHREAD2><<<NTHREAD,NTHREAD,NTHREAD*sizeof(float2)>>>
+    (numBodies, d_minmax, d_domain, d_bodyPos);
+  kernelSuccess("cudaDomainSize");
+  double dt = get_time() - t0;
+  fprintf(stdout,"Get bounds           : %.7f s\n",  dt);
 
   /*** build tree ***/
 
@@ -837,68 +830,55 @@ void Treecode::buildTree(const int NLEAF)
 
   CUDA_SAFE_CALL(cudaDeviceSetSharedMemConfig(cudaSharedMemBankSizeEightByte));
 
-  {
-    CUDA_SAFE_CALL(cudaMemset(d_stack_memory_pool,0,stackSize*sizeof(int)));
-    cudaDeviceSynchronize();
-    const double t0 = get_time();
-    switch(NLEAF)
-      {
-      case 16:
-        treeBuild::buildOctree<16><<<1,1>>>(numBodies, d_domain, d_sourceCells, d_stack_memory_pool, d_bodyPos, d_bodyPos2, d_bodyVel);
-        break;
-      case 24:
-        treeBuild::buildOctree<24><<<1,1>>>(numBodies, d_domain, d_sourceCells, d_stack_memory_pool, d_bodyPos, d_bodyPos2, d_bodyVel);
-        break;
-      case 32:
-        treeBuild::buildOctree<32><<<1,1>>>(numBodies, d_domain, d_sourceCells, d_stack_memory_pool, d_bodyPos, d_bodyPos2, d_bodyVel);
-        break;
-      case 48:
-        treeBuild::buildOctree<48><<<1,1>>>(numBodies, d_domain, d_sourceCells, d_stack_memory_pool, d_bodyPos, d_bodyPos2, d_bodyVel);
-        break;
-      case 64:
-        treeBuild::buildOctree<64><<<1,1>>>(numBodies, d_domain, d_sourceCells, d_stack_memory_pool, d_bodyPos, d_bodyPos2, d_bodyVel);
-        break;
-      default:
-        assert(0);
-      }
-    kernelSuccess("buildOctree");
-    const double dt = get_time() - t0;
-    CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&numLevels, treeBuild::nlevels, sizeof(int)));
-    CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&numSources,  treeBuild::ncells, sizeof(int)));
-    CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&numLeaves, treeBuild::nleaves, sizeof(int)));
-    fprintf(stdout,"Grow tree            : %.7f s\n",  dt);
-  }
+  CUDA_SAFE_CALL(cudaMemset(d_stack_memory_pool,0,stackSize*sizeof(int)));
+  cudaDeviceSynchronize();
+  t0 = get_time();
+  switch(NLEAF)
+    {
+    case 16:
+      treeBuild::buildOctree<16><<<1,1>>>(numBodies, d_domain, d_sourceCells, d_stack_memory_pool, d_bodyPos, d_bodyPos2, d_bodyVel);
+      break;
+    case 24:
+      treeBuild::buildOctree<24><<<1,1>>>(numBodies, d_domain, d_sourceCells, d_stack_memory_pool, d_bodyPos, d_bodyPos2, d_bodyVel);
+      break;
+    case 32:
+      treeBuild::buildOctree<32><<<1,1>>>(numBodies, d_domain, d_sourceCells, d_stack_memory_pool, d_bodyPos, d_bodyPos2, d_bodyVel);
+      break;
+    case 48:
+      treeBuild::buildOctree<48><<<1,1>>>(numBodies, d_domain, d_sourceCells, d_stack_memory_pool, d_bodyPos, d_bodyPos2, d_bodyVel);
+      break;
+    case 64:
+      treeBuild::buildOctree<64><<<1,1>>>(numBodies, d_domain, d_sourceCells, d_stack_memory_pool, d_bodyPos, d_bodyPos2, d_bodyVel);
+      break;
+    default:
+      assert(0);
+    }
+  kernelSuccess("buildOctree");
+  dt = get_time() - t0;
+  CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&numLevels, treeBuild::nlevels, sizeof(int)));
+  CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&numSources,  treeBuild::ncells, sizeof(int)));
+  CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&numLeaves, treeBuild::nleaves, sizeof(int)));
+  fprintf(stdout,"Grow tree            : %.7f s\n",  dt);
 
   /* sort nodes by level */
-  {
-    cudaDeviceSynchronize();
-    const double t0 = get_time();
-    const int nthread = 256;
-    const int nblock  = (numSources-1)/nthread  + 1;
-    treeBuild::get_cell_levels<<<nblock,nthread>>>(numSources, d_sourceCells, d_sourceCells2, d_key, d_value);
+  cudaDeviceSynchronize();
+  t0 = get_time();
+  const int NBLOCK  = (numSources-1) / NTHREAD + 1;
+  treeBuild::get_cell_levels<<<NBLOCK,NTHREAD>>>(numSources, d_sourceCells, d_sourceCells2, d_key, d_value);
+  thrust::device_ptr<int> keys_beg(d_key.ptr);
+  thrust::device_ptr<int> keys_end(d_key.ptr + numSources);
+  thrust::device_ptr<int> vals_beg(d_value.ptr);
+  thrust::stable_sort_by_key(keys_beg, keys_end, vals_beg); 
 
-    thrust::device_ptr<int> keys_beg(d_key.ptr);
-    thrust::device_ptr<int> keys_end(d_key.ptr + numSources);
-    thrust::device_ptr<int> vals_beg(d_value.ptr);
+  /* compute begining & end of each level */
+  treeBuild::getLevelRange<<<NBLOCK,NTHREAD,(NTHREAD+2)*sizeof(int)>>>(numSources, d_key, d_levelRange);
+  treeBuild::write_newIdx <<<NBLOCK,NTHREAD>>>(numSources, d_value, d_key);
+  treeBuild::shuffle_cells<<<NBLOCK,NTHREAD>>>(numSources, d_value, d_key, d_sourceCells2, d_sourceCells);
 
-    thrust::stable_sort_by_key(keys_beg, keys_end, vals_beg); 
-
-    /* compute begining & end of each level */
-    treeBuild::getLevelRange<<<nblock,nthread,(nthread+2)*sizeof(int)>>>(numSources, d_key, d_levelRange);
-
-    treeBuild::write_newIdx <<<nblock,nthread>>>(numSources, d_value, d_key);
-    treeBuild::shuffle_cells<<<nblock,nthread>>>(numSources, d_value, d_key, d_sourceCells2, d_sourceCells);
-
-    /* group leaves */
-
-    d_leafCells.realloc(numLeaves);
-    const int NTHREAD2 = 8;
-    const int NTHREAD  = 256;
-    const int nblock1 = (numSources-1)/NTHREAD+1;
-    treeBuild::collect_leaves<NTHREAD2><<<nblock1,NTHREAD>>>(numSources, d_sourceCells, d_leafCells);
-
-    kernelSuccess("shuffle");
-    const double dt = get_time() - t0;
-    fprintf(stdout,"Link tree            : %.7f s\n", dt);
-  }
+  /* group leaves */
+  d_leafCells.realloc(numLeaves);
+  treeBuild::collect_leaves<NTHREAD2><<<NBLOCK,NTHREAD>>>(numSources, d_sourceCells, d_leafCells);
+  kernelSuccess("shuffle");
+  dt = get_time() - t0;
+  fprintf(stdout,"Link tree            : %.7f s\n", dt);
 }
