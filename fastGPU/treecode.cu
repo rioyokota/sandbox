@@ -7,15 +7,15 @@ int main(int argc, char * argv[])
   const int numBodies = 16777216;
   const int seed = 19810614;
   const float eps   = 0.05;
-  const float THETA = 0.75;
+  const float theta = 0.75;
   const int NCRIT = 64;
   const int NLEAF = 64;
-  Tree tree(eps, THETA);
+  Tree tree(eps);
 
   fprintf(stdout,"--- FMM Parameters ---------------\n");
   fprintf(stdout,"numBodies            : %d\n",numBodies);
   fprintf(stdout,"P                    : %d\n",3);
-  fprintf(stdout,"THETA                : %f\n",THETA);
+  fprintf(stdout,"theta                : %f\n",theta);
   fprintf(stdout,"NCRIT                : %d\n",NCRIT);
   fprintf(stdout,"NLEAF                : %d\n",NLEAF);
   const Plummer data(numBodies, seed);
@@ -55,7 +55,7 @@ int main(int argc, char * argv[])
   d_Monopole.alloc(tree.numSources);
   d_Quadrupole0.alloc(tree.numSources);
   d_Quadrupole1.alloc(tree.numSources);
-  tree.computeMultipoles(d_sourceCells, d_sourceCenter, d_Monopole, d_Quadrupole0, d_Quadrupole1);
+  tree.computeMultipoles(theta, d_sourceCells, d_sourceCenter, d_Monopole, d_Quadrupole0, d_Quadrupole1);
   tree.groupTargets(d_domain, d_targetCells, 5, NCRIT);
   const float4 interactions = tree.computeForces(d_sourceCells, d_targetCells, d_sourceCenter, d_Monopole, d_Quadrupole0, d_Quadrupole1, d_levelRange);
   double dt = get_time() - t0;

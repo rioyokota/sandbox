@@ -132,7 +132,7 @@ namespace multipoles {
 
 };
 
-void Treecode::computeMultipoles(CellData * d_sourceCells, float4 * d_sourceCenter, float4 * d_Monopole, float4 * d_Quadrupole0, float2 * d_Quadrupole1) {
+void Treecode::computeMultipoles(const float theta, CellData * d_sourceCells, float4 * d_sourceCenter, float4 * d_Monopole, float4 * d_Quadrupole0, float2 * d_Quadrupole1) {
   const int NTHREAD2 = 8;
   const int NTHREAD  = 1<< NTHREAD2;
   const int NWARP    = 1<<(NTHREAD2-WARP_SIZE2);
@@ -141,8 +141,8 @@ void Treecode::computeMultipoles(CellData * d_sourceCells, float4 * d_sourceCent
   CUDA_SAFE_CALL(cudaFuncSetCacheConfig(&multipoles::computeCellMultipoles<NTHREAD2>,cudaFuncCachePreferL1));
   cudaDeviceSynchronize();
   const double t0 = get_time();
-  multipoles::computeCellMultipoles<NTHREAD2><<<nblock,NTHREAD>>>(numBodies, numSources, d_sourceCells, (float4*)d_bodyPos.ptr,
-								  1.0 / THETA,
+  multipoles::computeCellMultipoles<NTHREAD2><<<nblock,NTHREAD>>>(numBodies, numSources, d_sourceCells, d_bodyPos,
+								  1.0 / theta,
 								  d_sourceCenter, d_Monopole, d_Quadrupole0, d_Quadrupole1);
   kernelSuccess("computeCellMultipoles");
   const double dt = get_time() - t0;
