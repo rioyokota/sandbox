@@ -15,4 +15,7 @@ all: $(OBJ)
 	$(NVCC) -c $<
 
 clean:
-	/bin/rm -rf *.o *.out
+	rm -rf main.o
+
+cleanall:
+	rm -rf *.o *.out
