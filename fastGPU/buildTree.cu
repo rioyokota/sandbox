@@ -792,10 +792,19 @@ void Treecode::buildTree(float4 * d_domain, int2 * d_levelRange, const int NLEAF
 {
   this->NLEAF = NLEAF;
   const int NTHREAD2 = 8;
-  const int NTHREAD  = 1<<NTHREAD2;
+  const int NTHREAD  = 1 << NTHREAD2;
 
   cuda_mem<float3> d_minmax;
+  cuda_mem<int> d_stack_memory_pool;
+  cuda_mem<CellData> d_sourceCells2;
+
   d_minmax.alloc(2048);
+  maxNode = numBodies / 10;
+  stackSize = (8+8+8+64+8)*maxNode;
+  fprintf(stdout,"Stack size           : %g MB\n",sizeof(int)*stackSize/1024.0/1024.0);
+  d_stack_memory_pool.alloc(stackSize);
+  d_sourceCells2.alloc(numBodies);
+
   cudaDeviceSynchronize();
   double t0 = get_time();
   treeBuild::computeBoundingBox<NTHREAD2><<<NTHREAD,NTHREAD,NTHREAD*sizeof(float2)>>>

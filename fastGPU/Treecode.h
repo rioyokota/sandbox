@@ -100,8 +100,7 @@ class Treecode {
   cuda_mem<float4> d_bodyPos, d_bodyPos2, d_bodyAcc, d_bodyAcc2;
 
   int maxNode, maxCell, stackSize;
-  cuda_mem<int>  d_stack_memory_pool;
-  cuda_mem<CellData> d_sourceCells, d_sourceCells2;
+  cuda_mem<CellData> d_sourceCells;
   cuda_mem<int2> d_targetCells;
   cuda_mem<int>  d_leafCells;
   cuda_mem<int>  d_key, d_value;
@@ -123,17 +122,10 @@ class Treecode {
     d_bodyAcc.alloc(numBodies);
     d_bodyAcc2.alloc(numBodies);
 
-    /* allocate stack memory */
-    maxNode = numBodies / 10;
-    stackSize = (8+8+8+64+8)*maxNode;
-    fprintf(stdout,"Stack size           : %g MB\n",sizeof(int)*stackSize/1024.0/1024.0);
-    d_stack_memory_pool.alloc(stackSize);
-
     /* allocate celldata memory */
     maxCell = numBodies;
     fprintf(stdout,"Cell data            : %g MB\n",maxCell*sizeof(CellData)/1024.0/1024.0);
     d_sourceCells.alloc(maxCell);
-    d_sourceCells2.alloc(maxCell);
     d_key.alloc(maxCell);
     d_value.alloc(maxCell);
   };
