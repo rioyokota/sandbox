@@ -3,7 +3,11 @@
 NVCC = nvcc -g -O3 -arch=sm_35 -rdc=true -ftz=true
 LFLAGS = -lcudadevrt
 
-all: main.o
+SRC = thrust.cu main.cu
+
+OBJ = $(SRC:%.cu=%.o)
+
+all: $(OBJ)
 	$(NVCC) $^ $(LFLAGS)
 	./a.out
 

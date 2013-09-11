@@ -191,12 +191,13 @@ namespace groupTargets
   int groupTargets(const int numBodies, float4 * d_bodyPos, float4 * d_bodyPos2,
 		   float4 * d_domain, int2 * d_targetCells, int levelSplit, const int NCRIT) {
     const int nthread = 256;
-    cuda_mem<int> d_key, d_value;
+    cuda_mem<unsigned long long> d_key;
+    cuda_mem<int> d_value;
 
-    d_key.alloc(2.0*numBodies);
+    d_key.alloc(numBodies);
     d_value.alloc(numBodies);
 
-    unsigned long long *d_keys = (unsigned long long*)d_key.ptr;
+    unsigned long long *d_keys = d_key.ptr;
     int *d_values = d_value.ptr;
 
     const int nblock  = (numBodies-1)/nthread + 1;
