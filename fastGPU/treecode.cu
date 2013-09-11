@@ -50,7 +50,9 @@ int main(int argc, char * argv[])
 
   fprintf(stdout,"--- FMM Profiling ----------------\n");
   double t0 = get_time();
-  int numSources = tree.buildTree(numBodies, d_domain, d_levelRange, d_sourceCells, nleaf); // pass nleaf, accepted 16, 24, 32, 48, 64
+  int2 numLS = tree.buildTree(numBodies, d_domain, d_levelRange, d_sourceCells, nleaf); // pass nleaf, accepted 16, 24, 32, 48, 64
+  int numLevels = numLS.x;
+  int numSources = numLS.y;
   d_sourceCenter.alloc(numSources);
   d_Monopole.alloc(numSources);
   d_Quadrupole0.alloc(numSources);
@@ -104,7 +106,7 @@ int main(int argc, char * argv[])
   fprintf(stdout,"--- Tree stats -------------------\n");
   fprintf(stdout,"Bodies               : %d\n",numBodies);
   fprintf(stdout,"Cells                : %d\n",numSources);
-  fprintf(stdout,"Tree depth           : %d\n",tree.getNumLevels());
+  fprintf(stdout,"Tree depth           : %d\n",numLevels);
   fprintf(stdout,"--- Traversal stats --------------\n");
   fprintf(stdout,"P2P mean list length : %g (max %g)\n", interactions.x, interactions.y);
   fprintf(stdout,"M2P mean list length : %g (max %g)\n", interactions.z, interactions.w);

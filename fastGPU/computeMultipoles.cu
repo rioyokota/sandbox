@@ -149,5 +149,4 @@ void Treecode::computeMultipoles(const int numBodies, const int numSources, cons
   kernelSuccess("computeCellMultipoles");
   const double dt = get_time() - t0;
   fprintf(stdout,"Upward pass          : %.7f s\n", dt);
-
 }

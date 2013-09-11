@@ -768,7 +768,7 @@ namespace treeBuild
 }
 
 
-int Treecode::buildTree(const int numBodies, float4 * d_domain, int2 * d_levelRange, CellData * d_sourceCells, const int NLEAF) {
+int2 Treecode::buildTree(const int numBodies, float4 * d_domain, int2 * d_levelRange, CellData * d_sourceCells, const int NLEAF) {
   const int NTHREAD2 = 8;
   const int NTHREAD  = 1 << NTHREAD2;
 
@@ -844,7 +844,7 @@ int Treecode::buildTree(const int numBodies, float4 * d_domain, int2 * d_levelRa
   }
   kernelSuccess("buildOctree");
   dt = get_time() - t0;
-  int numSources, numLeaves;
+  int numLevels, numSources, numLeaves;
   CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&numLevels, treeBuild::nlevels,sizeof(int)));
   CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&numSources,treeBuild::ncells, sizeof(int)));
   CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&numLeaves, treeBuild::nleaves,sizeof(int)));
@@ -871,5 +871,6 @@ int Treecode::buildTree(const int numBodies, float4 * d_domain, int2 * d_levelRa
   kernelSuccess("shuffle");
   dt = get_time() - t0;
   fprintf(stdout,"Link tree            : %.7f s\n", dt);
-  return numSources;
+  int2 numLS = {numLevels, numSources};
+  return numLS;
 }

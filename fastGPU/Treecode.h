@@ -85,9 +85,6 @@ class CellData {
 
 class Treecode {
  public:
-  int numLevels;
-  int getNumLevels() const { return numLevels; }
-
   cuda_mem<float4> d_bodyPos, d_bodyPos2, d_bodyAcc, d_bodyAcc2;
 
   void alloc(const int numBodies) {
@@ -97,8 +94,9 @@ class Treecode {
     d_bodyAcc2.alloc(numBodies);
   };
 
-  int buildTree(const int numBodies, float4 * d_domain, int2 * d_levelRange, CellData * d_sourceCells, const int NLEAF = 16);
-  void computeMultipoles(const int numBodies, const int numSources, const float theta, CellData * d_sourceCells, float4 * d_sourceCenter, float4 * d_Monopole, float4 * d_Quadrupole0, float2 * d_Quadrupole1);
+  int2 buildTree(const int numBodies, float4 * d_domain, int2 * d_levelRange, CellData * d_sourceCells, const int NLEAF = 16);
+  void computeMultipoles(const int numBodies, const int numSources, const float theta,
+			CellData * d_sourceCells, float4 * d_sourceCenter, float4 * d_Monopole, float4 * d_Quadrupole0, float2 * d_Quadrupole1);
   int groupTargets(const int numBodies, float4 * d_domain, int2 * d_targetCells, int levelSplit = 1, const int NCRIT = 64);
   float4 computeForces(const int numBodies, const int numTargets, const int numSources, const float eps, CellData * d_sourceCells,
 		       int2 * d_targetCells, float4 * d_sourceCenter, float4 * d_Monopole,
