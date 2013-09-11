@@ -97,7 +97,7 @@ class Treecode {
   int getNumSources() const { return numSources; }
   int getNumLevels() const { return numLevels; }
 
-  cuda_mem<float4> d_bodyPos, d_bodyVel, d_bodyPos2, d_bodyAcc, d_bodyAcc2;
+  cuda_mem<float4> d_bodyPos, d_bodyPos2, d_bodyAcc, d_bodyAcc2;
   cuda_mem<float4> d_domain;
   cuda_mem<int2> d_levelRange;
 
@@ -123,7 +123,6 @@ class Treecode {
   {
     this->numBodies = numBodies;
     d_bodyPos.alloc(numBodies);
-    d_bodyVel.alloc(numBodies);
     d_bodyPos2.alloc(numBodies);
     d_bodyAcc.alloc(numBodies);
     d_bodyAcc2.alloc(numBodies);

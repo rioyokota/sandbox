@@ -20,40 +20,21 @@ int main(int argc, char * argv[])
   fprintf(stdout,"NLEAF                : %d\n",NLEAF);
   const Plummer data(numBodies, seed);
 
-  host_mem<float4> h_bodyPos, h_bodyVel, h_bodyAcc, h_bodyAcc2;
+  host_mem<float4> h_bodyPos;
   h_bodyPos.alloc(numBodies);
-  h_bodyVel.alloc(numBodies);
-  h_bodyAcc.alloc(numBodies);
-  h_bodyAcc2.alloc(numBodies);
-
+  
   tree.alloc(numBodies);
   for (int i = 0; i < numBodies; i++) {
-    float4 bodyPos, bodyVel, bodyAcc;
+    float4 bodyPos;
     bodyPos.x    = data.pos[i].x;
     bodyPos.y    = data.pos[i].y;
     bodyPos.z    = data.pos[i].z;
     bodyPos.w    = data.mass[i];
-
-    bodyVel.x    = data.vel[i].x;
-    bodyVel.y    = data.vel[i].y;
-    bodyVel.z    = data.vel[i].z;
-    bodyVel.w    = data.mass[i];
-
-    bodyAcc.x    = 0;
-    bodyAcc.y    = 0;
-    bodyAcc.z    = 0;
-    bodyAcc.w    = 0;
-
     h_bodyPos[i] = bodyPos;
-    h_bodyVel[i] = bodyVel;
-    h_bodyAcc[i] = bodyAcc;
-    h_bodyAcc2[i] = make_float4(0,0,0,0);
   }
 
   tree.d_bodyPos.h2d(h_bodyPos);
-  tree.d_bodyVel.h2d(h_bodyVel);
-  tree.d_bodyAcc.h2d(h_bodyAcc);
-  tree.d_bodyAcc2.h2d(h_bodyAcc2);
+  tree.d_bodyAcc2.h2d(h_bodyPos);
 
   fprintf(stdout,"--- FMM Profiling ----------------\n");
   double t0 = get_time();
@@ -72,8 +53,9 @@ int main(int argc, char * argv[])
   dt = get_time() - t0;
   flops = 20.*numTarget*numBodies/dt/1e12;
   fprintf(stdout,"Total Direct         : %.7f s (%.7f TFlops)\n",dt,flops);
-  tree.d_bodyPos2.d2h(h_bodyPos);
-  tree.d_bodyVel.d2h(h_bodyVel);
+  host_mem<float4> h_bodyAcc, h_bodyAcc2;
+  h_bodyAcc.alloc(numBodies);
+  h_bodyAcc2.alloc(numBodies);
   tree.d_bodyAcc.d2h(h_bodyAcc);
   tree.d_bodyAcc2.d2h(h_bodyAcc2);
 

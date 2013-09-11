@@ -612,11 +612,11 @@ namespace treeBuild
 				     int *stack_memory_pool,
 				     float4 *body,
 				     float4 *buff,
-				     float4 *d_bodyVel,
+				     float4 *d_bodyAcc2,
 				     int *ncells_return = NULL)
   {
     sourceCells = d_sourceCells;
-    bodyVel2  = (void*)d_bodyVel;
+    bodyVel2  = (void*)d_bodyAcc2;
 
     memPool = stack_memory_pool;
 
@@ -838,19 +838,19 @@ void Treecode::buildTree(const int NLEAF)
   switch(NLEAF)
     {
     case 16:
-      treeBuild::buildOctree<16><<<1,1>>>(numBodies, d_domain, d_sourceCells, d_stack_memory_pool, d_bodyPos, d_bodyPos2, d_bodyVel);
+      treeBuild::buildOctree<16><<<1,1>>>(numBodies, d_domain, d_sourceCells, d_stack_memory_pool, d_bodyPos, d_bodyPos2, d_bodyAcc2);
       break;
     case 24:
-      treeBuild::buildOctree<24><<<1,1>>>(numBodies, d_domain, d_sourceCells, d_stack_memory_pool, d_bodyPos, d_bodyPos2, d_bodyVel);
+      treeBuild::buildOctree<24><<<1,1>>>(numBodies, d_domain, d_sourceCells, d_stack_memory_pool, d_bodyPos, d_bodyPos2, d_bodyAcc2);
       break;
     case 32:
-      treeBuild::buildOctree<32><<<1,1>>>(numBodies, d_domain, d_sourceCells, d_stack_memory_pool, d_bodyPos, d_bodyPos2, d_bodyVel);
+      treeBuild::buildOctree<32><<<1,1>>>(numBodies, d_domain, d_sourceCells, d_stack_memory_pool, d_bodyPos, d_bodyPos2, d_bodyAcc2);
       break;
     case 48:
-      treeBuild::buildOctree<48><<<1,1>>>(numBodies, d_domain, d_sourceCells, d_stack_memory_pool, d_bodyPos, d_bodyPos2, d_bodyVel);
+      treeBuild::buildOctree<48><<<1,1>>>(numBodies, d_domain, d_sourceCells, d_stack_memory_pool, d_bodyPos, d_bodyPos2, d_bodyAcc2);
       break;
     case 64:
-      treeBuild::buildOctree<64><<<1,1>>>(numBodies, d_domain, d_sourceCells, d_stack_memory_pool, d_bodyPos, d_bodyPos2, d_bodyVel);
+      treeBuild::buildOctree<64><<<1,1>>>(numBodies, d_domain, d_sourceCells, d_stack_memory_pool, d_bodyPos, d_bodyPos2, d_bodyAcc2);
       break;
     default:
       assert(0);
