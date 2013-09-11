@@ -3,11 +3,11 @@
 NVCC = nvcc -g -O3 -arch=sm_35 -rdc=true -ftz=true
 LFLAGS = -lcudadevrt
 
-SRC = thrust.cu main.cu
+SRC = thrust.cu serial.cu
 
 OBJ = $(SRC:%.cu=%.o)
 
-all: $(OBJ)
+serial: $(OBJ)
 	$(NVCC) $^ $(LFLAGS)
 	./a.out
 
@@ -15,7 +15,7 @@ all: $(OBJ)
 	$(NVCC) -c $<
 
 clean:
-	rm -rf main.o
+	rm -f serial.o
 
 cleanall:
-	rm -rf *.o *.out
+	rm -f *.o *.out
