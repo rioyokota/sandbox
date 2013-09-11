@@ -33,7 +33,6 @@ namespace treeBuild
   __device__ unsigned int retirementCount = 0;
 
   __constant__ int d_maxNode;
-  __constant__ int d_maxCell;
 
   __device__ unsigned int nnodes = 0;
   __device__ unsigned int nleaves = 0;
@@ -427,9 +426,6 @@ namespace treeBuild
     if (threadIdx.x == 0 && nChildrenCell > 0)
       {
         const int cellFirstChildIndex = atomicAdd(&ncells, nChildrenCell);
-#if 1
-        assert(cellFirstChildIndex + nChildrenCell < d_maxCell);
-#endif
         /*** keep in mind, the 0-level will be overwritten ***/
         assert(nChildrenCell > 0);
         assert(nChildrenCell <= 8);
@@ -772,7 +768,7 @@ namespace treeBuild
 }
 
 
-void Treecode::buildTree(float4 * d_domain, int2 * d_levelRange, const int NLEAF)
+void Treecode::buildTree(float4 * d_domain, int2 * d_levelRange, CellData * d_sourceCells, const int NLEAF)
 {
   this->NLEAF = NLEAF;
   const int NTHREAD2 = 8;
@@ -782,6 +778,7 @@ void Treecode::buildTree(float4 * d_domain, int2 * d_levelRange, const int NLEAF
   cuda_mem<int> d_stack_memory_pool;
   cuda_mem<CellData> d_sourceCells2;
   cuda_mem<int> d_leafCells;
+  cuda_mem<int> d_key, d_value;
 
   d_minmax.alloc(2048);
   maxNode = numBodies / 10;
@@ -789,6 +786,10 @@ void Treecode::buildTree(float4 * d_domain, int2 * d_levelRange, const int NLEAF
   fprintf(stdout,"Stack size           : %g MB\n",sizeof(int)*stackSize/1024.0/1024.0);
   d_stack_memory_pool.alloc(stackSize);
   d_sourceCells2.alloc(numBodies);
+
+  fprintf(stdout,"Cell data            : %g MB\n",numBodies*sizeof(CellData)/1024.0/1024.0);
+  d_key.alloc(numBodies);
+  d_value.alloc(numBodies);
 
   cudaDeviceSynchronize();
   double t0 = get_time();
@@ -801,7 +802,6 @@ void Treecode::buildTree(float4 * d_domain, int2 * d_levelRange, const int NLEAF
   /*** build tree ***/
 
   CUDA_SAFE_CALL(cudaMemcpyToSymbol(treeBuild::d_maxNode, &maxNode, sizeof(int), 0, cudaMemcpyHostToDevice));
-  CUDA_SAFE_CALL(cudaMemcpyToSymbol(treeBuild::d_maxCell, &maxCell, sizeof(int), 0, cudaMemcpyHostToDevice));
 
   cudaDeviceSetLimit(cudaLimitDevRuntimePendingLaunchCount,16384);
 

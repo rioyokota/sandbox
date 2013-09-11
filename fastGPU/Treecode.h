@@ -99,10 +99,7 @@ class Treecode {
 
   cuda_mem<float4> d_bodyPos, d_bodyPos2, d_bodyAcc, d_bodyAcc2;
 
-  int maxNode, maxCell, stackSize;
-  cuda_mem<CellData> d_sourceCells;
-  cuda_mem<int2> d_targetCells;
-  cuda_mem<int>  d_key, d_value;
+  int maxNode, stackSize;
 
   Treecode(const float eps = 0.01, const float theta = 0.75, const int ncrit = 2*WARP_SIZE) {
     EPS2  = eps * eps;
@@ -110,25 +107,18 @@ class Treecode {
     NCRIT = ncrit;
   }
 
-  void alloc(const int numBodies)
-  {
+  void alloc(const int numBodies) {
     this->numBodies = numBodies;
     d_bodyPos.alloc(numBodies);
     d_bodyPos2.alloc(numBodies);
     d_bodyAcc.alloc(numBodies);
     d_bodyAcc2.alloc(numBodies);
-
-    /* allocate celldata memory */
-    maxCell = numBodies;
-    fprintf(stdout,"Cell data            : %g MB\n",maxCell*sizeof(CellData)/1024.0/1024.0);
-    d_sourceCells.alloc(maxCell);
-    d_key.alloc(maxCell);
-    d_value.alloc(maxCell);
   };
 
-  void buildTree(float4 * d_domain, int2 * d_levelRange, const int NLEAF = 16);
-  void computeMultipoles(float4 * d_sourceCenter, float4 * d_Monopole, float4 * d_Quadrupole0, float2 * d_Quadrupole1);
-  void groupTargets(float4 * d_domain, int levelSplit = 1, const int NCRIT = 64);
-  float4 computeForces(float4 * d_sourceCenter, float4 * d_Monopole, float4 * d_Quadrupole0, float2 * d_Quadrupole1, int2 * d_levelRange);
+  void buildTree(float4 * d_domain, int2 * d_levelRange, CellData * d_sourceCells, const int NLEAF = 16);
+  void computeMultipoles(CellData * d_sourceCells, float4 * d_sourceCenter, float4 * d_Monopole, float4 * d_Quadrupole0, float2 * d_Quadrupole1);
+  void groupTargets(float4 * d_domain, int2 * d_targetCells, int levelSplit = 1, const int NCRIT = 64);
+  float4 computeForces(CellData * d_sourceCells, int2 * d_targetCells, float4 * d_sourceCenter, float4 * d_Monopole,
+		       float4 * d_Quadrupole0, float2 * d_Quadrupole1, int2 * d_levelRange);
   void computeDirect(const int numTarget, const int numBlock);
 };

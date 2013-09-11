@@ -190,14 +190,14 @@ namespace groupTargets
 
 };
 
-void Treecode::groupTargets(float4 * d_domain, int levelSplit, const int NCRIT)
+void Treecode::groupTargets(float4 * d_domain, int2 * d_targetCells, int levelSplit, const int NCRIT)
 {
   this->NCRIT = NCRIT;
   const int nthread = 256;
+  cuda_mem<int> d_key, d_value;
 
-  d_key.realloc(2.0*numBodies);
-  d_value.realloc(numBodies);
-  d_targetCells.realloc(numBodies);
+  d_key.alloc(2.0*numBodies);
+  d_value.alloc(numBodies);
 
   unsigned long long *d_keys = (unsigned long long*)d_key.ptr;
   int *d_values = d_value.ptr;
