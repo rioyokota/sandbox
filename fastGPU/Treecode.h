@@ -142,9 +142,9 @@ class Treecode {
     d_value.alloc(maxCell);
   };
 
-  void buildTree(const int NLEAF = 16);
+  void buildTree(float4 * d_domain, const int NLEAF = 16);
   void computeMultipoles();
-  void groupTargets(int levelSplit = 1, const int NCRIT = 64);
+  void groupTargets(float4 * d_domain, int levelSplit = 1, const int NCRIT = 64);
   float4 computeForces();
   void computeDirect(const int numTarget, const int numBlock);
 };

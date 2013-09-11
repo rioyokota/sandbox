@@ -32,15 +32,17 @@ int main(int argc, char * argv[])
     bodyPos.w    = data.mass[i];
     h_bodyPos[i] = bodyPos;
   }
-
   tree.d_bodyPos.h2d(h_bodyPos);
   tree.d_bodyAcc2.h2d(h_bodyPos);
 
+  cuda_mem<float4> d_domain;
+  d_domain.alloc(1);
+
   fprintf(stdout,"--- FMM Profiling ----------------\n");
   double t0 = get_time();
-  tree.buildTree(NLEAF); // pass NLEAF, accepted 16, 24, 32, 48, 64
+  tree.buildTree(d_domain, NLEAF); // pass NLEAF, accepted 16, 24, 32, 48, 64
   tree.computeMultipoles();
-  tree.groupTargets(5, NCRIT);
+  tree.groupTargets(d_domain, 5, NCRIT);
   const float4 interactions = tree.computeForces();
   double dt = get_time() - t0;
   float flops = (interactions.x * 20 + interactions.z * 64) * tree.getNumBody() / dt / 1e12;

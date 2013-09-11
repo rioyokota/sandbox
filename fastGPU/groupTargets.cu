@@ -190,7 +190,7 @@ namespace groupTargets
 
 };
 
-void Treecode::groupTargets(int levelSplit, const int NCRIT)
+void Treecode::groupTargets(float4 * d_domain, int levelSplit, const int NCRIT)
 {
   this->NCRIT = NCRIT;
   const int nthread = 256;

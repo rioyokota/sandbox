@@ -151,10 +151,6 @@ namespace treeBuild
 
         if (threadIdx.x == 0)
 	  {
-#if 0
-	    printf("bmin= %g %g %g \n", bmin.x, bmin.y, bmin.z);
-	    printf("bmax= %g %g %g \n", bmax.x, bmax.y, bmax.z);
-#endif
 	    const float3 cvec = {(bmax.x+bmin.x)*0.5f, (bmax.y+bmin.y)*0.5f, (bmax.z+bmin.z)*0.5f};
 	    const float3 hvec = {(bmax.x-bmin.x)*0.5f, (bmax.y-bmin.y)*0.5f, (bmax.z-bmin.z)*0.5f};
 	    const float h = fmax(hvec.z, fmax(hvec.y, hvec.x));
@@ -792,7 +788,7 @@ namespace treeBuild
 }
 
 
-void Treecode::buildTree(const int NLEAF)
+void Treecode::buildTree(float4 * d_domain, const int NLEAF)
 {
   this->NLEAF = NLEAF;
   const int NTHREAD2 = 8;
