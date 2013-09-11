@@ -102,7 +102,6 @@ class Treecode {
   int maxNode, maxCell, stackSize;
   cuda_mem<CellData> d_sourceCells;
   cuda_mem<int2> d_targetCells;
-  cuda_mem<int>  d_leafCells;
   cuda_mem<int>  d_key, d_value;
   cuda_mem<float4> d_sourceCenter, d_Monopole;
   cuda_mem<float4> d_Quadrupole0;

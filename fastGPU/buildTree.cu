@@ -797,6 +797,7 @@ void Treecode::buildTree(float4 * d_domain, int2 * d_levelRange, const int NLEAF
   cuda_mem<float3> d_minmax;
   cuda_mem<int> d_stack_memory_pool;
   cuda_mem<CellData> d_sourceCells2;
+  cuda_mem<int> d_leafCells;
 
   d_minmax.alloc(2048);
   maxNode = numBodies / 10;
@@ -883,7 +884,7 @@ void Treecode::buildTree(float4 * d_domain, int2 * d_levelRange, const int NLEAF
   treeBuild::shuffle_cells<<<NBLOCK,NTHREAD>>>(numSources, d_value, d_key, d_sourceCells2, d_sourceCells);
 
   /* group leaves */
-  d_leafCells.realloc(numLeaves);
+  d_leafCells.alloc(numLeaves);
   treeBuild::collect_leaves<NTHREAD2><<<NBLOCK,NTHREAD>>>(numSources, d_sourceCells, d_leafCells);
   kernelSuccess("shuffle");
   dt = get_time() - t0;
