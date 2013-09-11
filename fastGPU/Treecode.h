@@ -99,7 +99,6 @@ class Treecode {
 
   cuda_mem<float4> d_bodyPos, d_bodyVel, d_bodyPos2, d_bodyAcc, d_bodyAcc2;
   cuda_mem<float4> d_domain;
-  cuda_mem<float3> d_minmax;
   cuda_mem<int2> d_levelRange;
 
   int maxNode, maxCell, stackSize;
@@ -117,7 +116,6 @@ class Treecode {
     THETA = theta;
     NCRIT = ncrit;
     d_domain.alloc(1);
-    d_minmax.alloc(2048);
     d_levelRange.alloc(32);
   }
 

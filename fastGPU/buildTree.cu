@@ -798,6 +798,8 @@ void Treecode::buildTree(const int NLEAF)
   const int NTHREAD2 = 8;
   const int NTHREAD  = 1<<NTHREAD2;
 
+  cuda_mem<float3> d_minmax;
+  d_minmax.alloc(2048);
   cudaDeviceSynchronize();
   double t0 = get_time();
   treeBuild::computeBoundingBox<NTHREAD2><<<NTHREAD,NTHREAD,NTHREAD*sizeof(float2)>>>
