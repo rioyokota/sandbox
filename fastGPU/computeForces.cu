@@ -486,7 +486,7 @@ namespace computeForces {
   }
 }
 
-float4 Treecode::computeForces() {
+float4 Treecode::computeForces(int2 * d_levelRange) {
   bindTexture(computeForces::texCell,(uint4*)d_sourceCells.ptr,  numSources);
   bindTexture(computeForces::texCellCenter,  d_sourceCenter.ptr, numSources);
   bindTexture(computeForces::texMonopole,    d_Monopole.ptr,     numSources);

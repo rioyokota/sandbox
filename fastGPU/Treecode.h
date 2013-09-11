@@ -98,8 +98,6 @@ class Treecode {
   int getNumLevels() const { return numLevels; }
 
   cuda_mem<float4> d_bodyPos, d_bodyPos2, d_bodyAcc, d_bodyAcc2;
-  cuda_mem<float4> d_domain;
-  cuda_mem<int2> d_levelRange;
 
   int maxNode, maxCell, stackSize;
   cuda_mem<int>  d_stack_memory_pool;
@@ -115,8 +113,6 @@ class Treecode {
     EPS2  = eps * eps;
     THETA = theta;
     NCRIT = ncrit;
-    d_domain.alloc(1);
-    d_levelRange.alloc(32);
   }
 
   void alloc(const int numBodies)
@@ -142,9 +138,9 @@ class Treecode {
     d_value.alloc(maxCell);
   };
 
-  void buildTree(float4 * d_domain, const int NLEAF = 16);
+  void buildTree(float4 * d_domain, int2 * d_levelRange, const int NLEAF = 16);
   void computeMultipoles();
   void groupTargets(float4 * d_domain, int levelSplit = 1, const int NCRIT = 64);
-  float4 computeForces();
+  float4 computeForces(int2 * d_levelRange);
   void computeDirect(const int numTarget, const int numBlock);
 };
