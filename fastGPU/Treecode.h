@@ -38,7 +38,7 @@ static void kernelSuccess(const char kernel[] = "kernel") {
   cudaDeviceSynchronize();
   const cudaError_t err = cudaGetLastError();
   if (err != cudaSuccess) {
-    fprintf(stderr, "%s launch failed: %s\n", kernel, cudaGetErrorString(err));
+    fprintf(stderr,"%s launch failed: %s\n", kernel, cudaGetErrorString(err));
     assert(0);
   }
 }

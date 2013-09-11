@@ -33,7 +33,7 @@ int main(int argc, char * argv[])
     h_bodyPos[i] = bodyPos;
   }
   tree.d_bodyPos.h2d(h_bodyPos);
-  tree.d_bodyAcc2.h2d(h_bodyPos);
+  tree.d_bodyAcc.h2d(h_bodyPos);
 
   cuda_mem<float4> d_domain;
   cuda_mem<int2> d_levelRange;

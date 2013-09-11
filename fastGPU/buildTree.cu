@@ -498,25 +498,9 @@ namespace treeBuild
 	    dim3 grid, block;
 	    computeGridAndBlockSize(grid, block, nCellmax);
 	    grid.y = nSubNodes.y;  /* each y-coordinate of the grid will be busy for each parent cell */
-#if defined(FASTMODE) && NWARPS==8
-	    if (nCellmax <= block.x)
-	      {
-		grid.x = 1;
-		buildOctantSingle<NLEAF><<<grid,block>>>
-		  (box, cellIndexBase+blockIdx.y, cellFirstChildIndex,
-		   octant_mask, octCounterNbase, buff, body, level+1);
-	      }
-	    else
-#endif
-	      buildOctant<NLEAF,false><<<grid,block>>>
-		(box, cellIndexBase+blockIdx.y, cellFirstChildIndex,
-		 octant_mask, octCounterNbase, buff, body, level+1);
-	    const cudaError_t err = cudaGetLastError();
-	    if (err != cudaSuccess)
-	      {
-		printf(" launch failed 1: %s  level= %d n =%d \n", cudaGetErrorString(err), level);
-		assert(0);
-	      }
+	    buildOctant<NLEAF,false><<<grid,block>>>
+	      (box, cellIndexBase+blockIdx.y, cellFirstChildIndex,
+	       octant_mask, octCounterNbase, buff, body, level+1);
 	  }
       }
 
@@ -608,11 +592,11 @@ namespace treeBuild
 				     int *stack_memory_pool,
 				     float4 *body,
 				     float4 *buff,
-				     float4 *d_bodyAcc2,
+				     float4 *d_bodyAcc,
 				     int *ncells_return = NULL)
   {
     sourceCells = d_sourceCells;
-    bodyVel2  = (void*)d_bodyAcc2;
+    bodyVel2  = (void*)d_bodyAcc;
 
     memPool = stack_memory_pool;
 
@@ -841,37 +825,36 @@ void Treecode::buildTree(float4 * d_domain, int2 * d_levelRange, const int NLEAF
   CUDA_SAFE_CALL(cudaMemset(d_stack_memory_pool,0,stackSize*sizeof(int)));
   cudaDeviceSynchronize();
   t0 = get_time();
-  switch(NLEAF)
-    {
-    case 16:
-      treeBuild::buildOctree<16><<<1,1>>>(numBodies, d_domain, d_sourceCells, d_stack_memory_pool, d_bodyPos, d_bodyPos2, d_bodyAcc2);
-      break;
-    case 24:
-      treeBuild::buildOctree<24><<<1,1>>>(numBodies, d_domain, d_sourceCells, d_stack_memory_pool, d_bodyPos, d_bodyPos2, d_bodyAcc2);
-      break;
-    case 32:
-      treeBuild::buildOctree<32><<<1,1>>>(numBodies, d_domain, d_sourceCells, d_stack_memory_pool, d_bodyPos, d_bodyPos2, d_bodyAcc2);
-      break;
-    case 48:
-      treeBuild::buildOctree<48><<<1,1>>>(numBodies, d_domain, d_sourceCells, d_stack_memory_pool, d_bodyPos, d_bodyPos2, d_bodyAcc2);
-      break;
-    case 64:
-      treeBuild::buildOctree<64><<<1,1>>>(numBodies, d_domain, d_sourceCells, d_stack_memory_pool, d_bodyPos, d_bodyPos2, d_bodyAcc2);
-      break;
-    default:
-      assert(0);
-    }
+  switch (NLEAF) {
+  case 16:
+    treeBuild::buildOctree<16><<<1,1>>>(numBodies, d_domain, d_sourceCells, d_stack_memory_pool, d_bodyPos, d_bodyPos2, d_bodyAcc);
+    break;
+  case 24:
+    treeBuild::buildOctree<24><<<1,1>>>(numBodies, d_domain, d_sourceCells, d_stack_memory_pool, d_bodyPos, d_bodyPos2, d_bodyAcc);
+    break;
+  case 32:
+    treeBuild::buildOctree<32><<<1,1>>>(numBodies, d_domain, d_sourceCells, d_stack_memory_pool, d_bodyPos, d_bodyPos2, d_bodyAcc);
+    break;
+  case 48:
+    treeBuild::buildOctree<48><<<1,1>>>(numBodies, d_domain, d_sourceCells, d_stack_memory_pool, d_bodyPos, d_bodyPos2, d_bodyAcc);
+    break;
+  case 64:
+    treeBuild::buildOctree<64><<<1,1>>>(numBodies, d_domain, d_sourceCells, d_stack_memory_pool, d_bodyPos, d_bodyPos2, d_bodyAcc);
+    break;
+  default:
+    assert(0);
+  }
   kernelSuccess("buildOctree");
   dt = get_time() - t0;
-  CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&numLevels, treeBuild::nlevels, sizeof(int)));
-  CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&numSources,  treeBuild::ncells, sizeof(int)));
-  CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&numLeaves, treeBuild::nleaves, sizeof(int)));
+  CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&numLevels, treeBuild::nlevels,sizeof(int)));
+  CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&numSources,treeBuild::ncells, sizeof(int)));
+  CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&numLeaves, treeBuild::nleaves,sizeof(int)));
   fprintf(stdout,"Grow tree            : %.7f s\n",  dt);
 
   /* sort nodes by level */
   cudaDeviceSynchronize();
   t0 = get_time();
-  const int NBLOCK  = (numSources-1) / NTHREAD + 1;
+  const int NBLOCK = (numSources-1) / NTHREAD + 1;
   treeBuild::get_cell_levels<<<NBLOCK,NTHREAD>>>(numSources, d_sourceCells, d_sourceCells2, d_key, d_value);
   thrust::device_ptr<int> keys_beg(d_key.ptr);
   thrust::device_ptr<int> keys_end(d_key.ptr + numSources);
