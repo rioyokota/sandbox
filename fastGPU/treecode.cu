@@ -35,6 +35,10 @@ int main(int argc, char * argv[])
   tree.d_bodyPos.h2d(h_bodyPos);
   tree.d_bodyAcc.h2d(h_bodyPos);
 
+  cuda_mem<float4> d_sourceCenter;
+  cuda_mem<float4> d_Monopole;
+  cuda_mem<float4> d_Quadrupole0;
+  cuda_mem<float2> d_Quadrupole1;
   cuda_mem<float4> d_domain;
   cuda_mem<int2> d_levelRange;
   d_domain.alloc(1);
@@ -43,9 +47,13 @@ int main(int argc, char * argv[])
   fprintf(stdout,"--- FMM Profiling ----------------\n");
   double t0 = get_time();
   tree.buildTree(d_domain, d_levelRange, NLEAF); // pass NLEAF, accepted 16, 24, 32, 48, 64
-  tree.computeMultipoles();
+  d_sourceCenter.alloc(tree.numSources);
+  d_Monopole.alloc(tree.numSources);
+  d_Quadrupole0.alloc(tree.numSources);
+  d_Quadrupole1.alloc(tree.numSources);
+  tree.computeMultipoles(d_sourceCenter, d_Monopole, d_Quadrupole0, d_Quadrupole1);
   tree.groupTargets(d_domain, 5, NCRIT);
-  const float4 interactions = tree.computeForces(d_levelRange);
+  const float4 interactions = tree.computeForces(d_sourceCenter, d_Monopole, d_Quadrupole0, d_Quadrupole1, d_levelRange);
   double dt = get_time() - t0;
   float flops = (interactions.x * 20 + interactions.z * 64) * tree.getNumBody() / dt / 1e12;
   fprintf(stdout,"--- Total runtime ----------------\n");

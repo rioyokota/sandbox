@@ -486,13 +486,13 @@ namespace computeForces {
   }
 }
 
-float4 Treecode::computeForces(int2 * d_levelRange) {
-  bindTexture(computeForces::texCell,(uint4*)d_sourceCells.ptr,  numSources);
-  bindTexture(computeForces::texCellCenter,  d_sourceCenter.ptr, numSources);
-  bindTexture(computeForces::texMonopole,    d_Monopole.ptr,     numSources);
-  bindTexture(computeForces::texQuad0,       d_Quadrupole0.ptr,  numSources);
-  bindTexture(computeForces::texQuad1,       d_Quadrupole1.ptr,  numSources);
-  bindTexture(computeForces::texBody,        d_bodyPos.ptr,      numBodies);
+float4 Treecode::computeForces(float4 * d_sourceCenter, float4 * d_Monopole, float4 * d_Quadrupole0, float2 * d_Quadrupole1, int2 * d_levelRange) {
+  bindTexture(computeForces::texCell,(uint4*)d_sourceCells.ptr,numSources);
+  bindTexture(computeForces::texCellCenter,  d_sourceCenter,   numSources);
+  bindTexture(computeForces::texMonopole,    d_Monopole,       numSources);
+  bindTexture(computeForces::texQuad0,       d_Quadrupole0,    numSources);
+  bindTexture(computeForces::texQuad1,       d_Quadrupole1,    numSources);
+  bindTexture(computeForces::texBody,        d_bodyPos.ptr,    numBodies);
 
   const int NTHREAD2 = 7;
   const int NTHREAD  = 1<<NTHREAD2;

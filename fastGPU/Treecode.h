@@ -103,9 +103,6 @@ class Treecode {
   cuda_mem<CellData> d_sourceCells;
   cuda_mem<int2> d_targetCells;
   cuda_mem<int>  d_key, d_value;
-  cuda_mem<float4> d_sourceCenter, d_Monopole;
-  cuda_mem<float4> d_Quadrupole0;
-  cuda_mem<float2> d_Quadrupole1;
 
   Treecode(const float eps = 0.01, const float theta = 0.75, const int ncrit = 2*WARP_SIZE) {
     EPS2  = eps * eps;
@@ -130,8 +127,8 @@ class Treecode {
   };
 
   void buildTree(float4 * d_domain, int2 * d_levelRange, const int NLEAF = 16);
-  void computeMultipoles();
+  void computeMultipoles(float4 * d_sourceCenter, float4 * d_Monopole, float4 * d_Quadrupole0, float2 * d_Quadrupole1);
   void groupTargets(float4 * d_domain, int levelSplit = 1, const int NCRIT = 64);
-  float4 computeForces(int2 * d_levelRange);
+  float4 computeForces(float4 * d_sourceCenter, float4 * d_Monopole, float4 * d_Quadrupole0, float2 * d_Quadrupole1, int2 * d_levelRange);
   void computeDirect(const int numTarget, const int numBlock);
 };
