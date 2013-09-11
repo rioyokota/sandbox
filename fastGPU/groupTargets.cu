@@ -192,7 +192,6 @@ namespace groupTargets
 
 void Treecode::groupTargets(float4 * d_domain, int2 * d_targetCells, int levelSplit, const int NCRIT)
 {
-  this->NCRIT = NCRIT;
   const int nthread = 256;
   cuda_mem<int> d_key, d_value;
 

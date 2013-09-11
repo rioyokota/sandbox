@@ -86,7 +86,6 @@ class CellData {
 class Treecode {
  private:
   int numLeaves, numTargets;
-  int NCRIT, NLEAF;
   float EPS2;
 
  public:
@@ -101,9 +100,8 @@ class Treecode {
 
   int maxNode, stackSize;
 
-  Treecode(const float eps = 0.01, const int ncrit = 2*WARP_SIZE) {
+  Treecode(const float eps = 0.01) {
     EPS2  = eps * eps;
-    NCRIT = ncrit;
   }
 
   void alloc(const int numBodies) {
