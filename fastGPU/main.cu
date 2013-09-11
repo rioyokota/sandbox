@@ -59,8 +59,9 @@ int main(int argc, char * argv[])
   d_targetCells.alloc(numBodies);
 
   fprintf(stdout,"--- FMM Profiling ----------------\n");
+  treeBuild::buildTree tree;
   double t0 = get_time();
-  int2 numLS = treeBuild::buildTree(numBodies, d_bodyPos, d_bodyPos2, d_bodyAcc, d_domain, d_levelRange, d_sourceCells, nleaf); // pass nleaf, accepted 16, 24, 32, 48, 64
+  int2 numLS = tree.build(numBodies, d_bodyPos, d_bodyPos2, d_bodyAcc, d_domain, d_levelRange, d_sourceCells, nleaf); // pass nleaf, accepted 16, 24, 32, 48, 64
   int numLevels = numLS.x;
   int numSources = numLS.y;
   d_sourceCenter.alloc(numSources);
