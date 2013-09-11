@@ -16,5 +16,3 @@ all: $(OBJ)
 
 clean:
 	/bin/rm -rf *.o *.out
-
-$(OBJ): Treecode.h cuda_primitives.h cudamem.h plummer.h buildtree.h upwardpass.h grouptargets.h traversal.h

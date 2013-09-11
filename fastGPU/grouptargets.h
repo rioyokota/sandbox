@@ -1,8 +1,7 @@
 #pragma once
 
-#include <thrust/device_ptr.h>
-#include <thrust/sort.h>
-#include <thrust/scan.h>
+extern void sort(const int size, unsigned long long * key, int * value);
+extern void scan(const int size, unsigned long long * key, int * value);
 
 namespace groupTargets
 {
@@ -217,16 +216,8 @@ namespace groupTargets
       }
 
     /* sort particles by PH key */
-    thrust::device_ptr<unsigned long long> keys_beg(d_keys);
-    thrust::device_ptr<unsigned long long> keys_end(d_keys + numBodies);
-    thrust::device_ptr<int> vals_beg(d_value.ptr);
-#if 1
-    thrust::sort_by_key(keys_beg, keys_end, vals_beg); 
-#else
-    thrust::sort_by_key(keys_beg, keys_end, vals_beg, groupTargets::keyCompare());
-#endif
+    sort(numBodies, d_key.ptr, d_value.ptr);
 
-#if 1
     groupTargets::shuffle<float4><<<nblock,nthread>>>(numBodies, d_value, d_bodyPos, d_bodyPos2);
 
     cuda_mem<int> d_bodyBegIdx, d_bodyEndIdx;
@@ -236,16 +227,11 @@ namespace groupTargets
     d_keys_inv.alloc(numBodies);
     groupTargets::mask_keys<<<nblock,nthread,(nthread+2)*sizeof(unsigned long long)>>>(numBodies, mask, d_keys, d_keys_inv, d_bodyBegIdx, d_bodyEndIdx);
 
-    thrust::device_ptr<int> valuesBeg(d_bodyBegIdx.ptr);
-    thrust::device_ptr<int> valuesEnd(d_bodyEndIdx.ptr);
-    thrust::inclusive_scan_by_key(keys_beg,     keys_end,    valuesBeg, valuesBeg);
+    scan(numBodies, d_key.ptr, d_bodyBegIdx.ptr);    
 
-    thrust::device_ptr<unsigned long long> keys_inv_beg(d_keys_inv.ptr);
-    thrust::device_ptr<unsigned long long> keys_inv_end(d_keys_inv.ptr + numBodies);
-    thrust::inclusive_scan_by_key(keys_inv_beg, keys_inv_end, valuesEnd, valuesEnd);
+    scan(numBodies, d_keys_inv.ptr, d_bodyEndIdx.ptr);
 
     groupTargets::make_groups<<<nblock,nthread>>>(numBodies, NCRIT, d_bodyBegIdx, d_bodyEndIdx, d_targetCells);
-#endif
 
     kernelSuccess("groupTargets");
     const double dt = get_time() - t0;

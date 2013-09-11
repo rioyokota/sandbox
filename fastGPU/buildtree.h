@@ -3,8 +3,7 @@
 #define NWARPS2 3
 #define NWARPS  (1<<NWARPS2)
 
-#include <thrust/device_ptr.h>
-#include <thrust/sort.h>
+extern void sort(const int size, int * key, int * value);
 
 namespace treeBuild
 {
@@ -855,10 +854,7 @@ namespace treeBuild
       t0 = get_time();
       const int NBLOCK = (numSources-1) / NTHREAD + 1;
       get_cell_levels<<<NBLOCK,NTHREAD>>>(numSources, d_sourceCells, d_sourceCells2, d_key, d_value);
-      thrust::device_ptr<int> keys_beg(d_key.ptr);
-      thrust::device_ptr<int> keys_end(d_key.ptr + numSources);
-      thrust::device_ptr<int> vals_beg(d_value.ptr);
-      thrust::stable_sort_by_key(keys_beg, keys_end, vals_beg); 
+      sort(numSources, d_key.ptr, d_value.ptr);
 
       /* compute begining & end of each level */
       getLevelRange<<<NBLOCK,NTHREAD,(NTHREAD+2)*sizeof(int)>>>(numSources, d_key, d_levelRange);
