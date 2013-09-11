@@ -19,6 +19,13 @@ int main(int argc, char * argv[])
   fprintf(stdout,"NCRIT                : %d\n",NCRIT);
   fprintf(stdout,"NLEAF                : %d\n",NLEAF);
   const Plummer data(numBodies, seed);
+
+  host_mem<float4> h_bodyPos, h_bodyVel, h_bodyAcc, h_bodyAcc2;
+  h_bodyPos.alloc(numBodies);
+  h_bodyVel.alloc(numBodies);
+  h_bodyAcc.alloc(numBodies);
+  h_bodyAcc2.alloc(numBodies);
+
   tree.alloc(numBodies);
   for (int i = 0; i < numBodies; i++) {
     float4 bodyPos, bodyVel, bodyAcc;
@@ -37,13 +44,16 @@ int main(int argc, char * argv[])
     bodyAcc.z    = 0;
     bodyAcc.w    = 0;
 
-    tree.h_bodyPos[i] = bodyPos;
-    tree.h_bodyVel[i] = bodyVel;
-    tree.h_bodyAcc[i] = bodyAcc;
-    tree.h_bodyAcc2[i] = make_float4(0,0,0,0);
+    h_bodyPos[i] = bodyPos;
+    h_bodyVel[i] = bodyVel;
+    h_bodyAcc[i] = bodyAcc;
+    h_bodyAcc2[i] = make_float4(0,0,0,0);
   }
 
-  tree.body_h2d();
+  tree.d_bodyPos.h2d(h_bodyPos);
+  tree.d_bodyVel.h2d(h_bodyVel);
+  tree.d_bodyAcc.h2d(h_bodyAcc);
+  tree.d_bodyAcc2.h2d(h_bodyAcc2);
 
   fprintf(stdout,"--- FMM Profiling ----------------\n");
   double t0 = get_time();
@@ -62,30 +72,33 @@ int main(int argc, char * argv[])
   dt = get_time() - t0;
   flops = 20.*numTarget*numBodies/dt/1e12;
   fprintf(stdout,"Total Direct         : %.7f s (%.7f TFlops)\n",dt,flops);
-  tree.body_d2h();
+  tree.d_bodyPos2.d2h(h_bodyPos);
+  tree.d_bodyVel.d2h(h_bodyVel);
+  tree.d_bodyAcc.d2h(h_bodyAcc);
+  tree.d_bodyAcc2.d2h(h_bodyAcc2);
 
   for (int i=0; i<numTarget; i++) {
-    float4 bodyAcc = tree.h_bodyAcc2[i];
+    float4 bodyAcc = h_bodyAcc2[i];
     for (int j=1; j<numBlock; j++) {
-      bodyAcc.x += tree.h_bodyAcc2[i+numTarget*j].x;
-      bodyAcc.y += tree.h_bodyAcc2[i+numTarget*j].y;
-      bodyAcc.z += tree.h_bodyAcc2[i+numTarget*j].z;
-      bodyAcc.w += tree.h_bodyAcc2[i+numTarget*j].w;
+      bodyAcc.x += h_bodyAcc2[i+numTarget*j].x;
+      bodyAcc.y += h_bodyAcc2[i+numTarget*j].y;
+      bodyAcc.z += h_bodyAcc2[i+numTarget*j].z;
+      bodyAcc.w += h_bodyAcc2[i+numTarget*j].w;
     }
-    tree.h_bodyAcc2[i] = bodyAcc;
+    h_bodyAcc2[i] = bodyAcc;
   }
 
   double diffp = 0, diffa = 0;
   double normp = 0, norma = 0;
   for (int i=0; i<numTarget; i++) {
-    diffp += (tree.h_bodyAcc[i].w - tree.h_bodyAcc2[i].w) * (tree.h_bodyAcc[i].w - tree.h_bodyAcc2[i].w);
-    diffa += (tree.h_bodyAcc[i].x - tree.h_bodyAcc2[i].x) * (tree.h_bodyAcc[i].x - tree.h_bodyAcc2[i].x)
-      + (tree.h_bodyAcc[i].y - tree.h_bodyAcc2[i].y) * (tree.h_bodyAcc[i].y - tree.h_bodyAcc2[i].y)
-      + (tree.h_bodyAcc[i].z - tree.h_bodyAcc2[i].z) * (tree.h_bodyAcc[i].z - tree.h_bodyAcc2[i].z);
-    normp += tree.h_bodyAcc2[i].w * tree.h_bodyAcc2[i].w;
-    norma += tree.h_bodyAcc2[i].x * tree.h_bodyAcc2[i].x
-      + tree.h_bodyAcc2[i].y * tree.h_bodyAcc2[i].y
-      + tree.h_bodyAcc2[i].z * tree.h_bodyAcc2[i].z;
+    diffp += (h_bodyAcc[i].w - h_bodyAcc2[i].w) * (h_bodyAcc[i].w - h_bodyAcc2[i].w);
+    diffa += (h_bodyAcc[i].x - h_bodyAcc2[i].x) * (h_bodyAcc[i].x - h_bodyAcc2[i].x)
+      + (h_bodyAcc[i].y - h_bodyAcc2[i].y) * (h_bodyAcc[i].y - h_bodyAcc2[i].y)
+      + (h_bodyAcc[i].z - h_bodyAcc2[i].z) * (h_bodyAcc[i].z - h_bodyAcc2[i].z);
+    normp += h_bodyAcc2[i].w * h_bodyAcc2[i].w;
+    norma += h_bodyAcc2[i].x * h_bodyAcc2[i].x
+      + h_bodyAcc2[i].y * h_bodyAcc2[i].y
+      + h_bodyAcc2[i].z * h_bodyAcc2[i].z;
   }
   fprintf(stdout,"--- FMM vs. direct ---------------\n");
   fprintf(stdout,"Rel. L2 Error (pot)  : %.7e\n",sqrt(diffp/normp));

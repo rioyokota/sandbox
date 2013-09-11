@@ -97,7 +97,6 @@ class Treecode {
   int getNumSources() const { return numSources; }
   int getNumLevels() const { return numLevels; }
 
-  host_mem<float4> h_bodyPos, h_bodyVel, h_bodyAcc, h_bodyAcc2;
   cuda_mem<float4> d_bodyPos, d_bodyVel, d_bodyPos2, d_bodyAcc, d_bodyAcc2;
   cuda_mem<float4> d_domain;
   cuda_mem<float3> d_minmax;
@@ -125,11 +124,6 @@ class Treecode {
   void alloc(const int numBodies)
   {
     this->numBodies = numBodies;
-    h_bodyPos.alloc(numBodies);
-    h_bodyVel.alloc(numBodies);
-    h_bodyAcc.alloc(numBodies);
-    h_bodyAcc2.alloc(numBodies);
-
     d_bodyPos.alloc(numBodies);
     d_bodyVel.alloc(numBodies);
     d_bodyPos2.alloc(numBodies);
@@ -150,21 +144,6 @@ class Treecode {
     d_key.alloc(maxCell);
     d_value.alloc(maxCell);
   };
-
-  void body_d2h() {
-    d_bodyPos2.d2h(h_bodyPos);
-    d_bodyVel.d2h(h_bodyVel);
-    d_bodyAcc.d2h(h_bodyAcc);
-    d_bodyAcc2.d2h(h_bodyAcc2);
-  }
-
-
-  void body_h2d() {
-    d_bodyPos.h2d(h_bodyPos);
-    d_bodyVel.h2d(h_bodyVel);
-    d_bodyAcc.h2d(h_bodyAcc);
-    d_bodyAcc2.h2d(h_bodyAcc2);
-  }
 
   void buildTree(const int NLEAF = 16);
   void computeMultipoles();
