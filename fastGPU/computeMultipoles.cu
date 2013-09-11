@@ -132,7 +132,9 @@ namespace multipoles {
 
 };
 
-void Treecode::computeMultipoles(const int numBodies, const float theta, CellData * d_sourceCells, float4 * d_sourceCenter, float4 * d_Monopole, float4 * d_Quadrupole0, float2 * d_Quadrupole1) {
+void Treecode::computeMultipoles(const int numBodies, const int numSources, const float theta,
+				 CellData * d_sourceCells, float4 * d_sourceCenter,
+				 float4 * d_Monopole, float4 * d_Quadrupole0, float2 * d_Quadrupole1) {
   const int NTHREAD2 = 8;
   const int NTHREAD  = 1<< NTHREAD2;
   const int NWARP    = 1<<(NTHREAD2-WARP_SIZE2);

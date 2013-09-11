@@ -488,6 +488,7 @@ namespace computeForces {
 
 float4 Treecode::computeForces(const int numBodies,
 			       const int numTargets,
+			       const int numSources,
 			       const float eps,
 			       CellData * d_sourceCells,
 			       int2 * d_targetCells,

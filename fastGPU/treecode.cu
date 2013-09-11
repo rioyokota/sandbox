@@ -50,14 +50,14 @@ int main(int argc, char * argv[])
 
   fprintf(stdout,"--- FMM Profiling ----------------\n");
   double t0 = get_time();
-  tree.buildTree(numBodies,d_domain, d_levelRange, d_sourceCells, nleaf); // pass nleaf, accepted 16, 24, 32, 48, 64
-  d_sourceCenter.alloc(tree.numSources);
-  d_Monopole.alloc(tree.numSources);
-  d_Quadrupole0.alloc(tree.numSources);
-  d_Quadrupole1.alloc(tree.numSources);
-  tree.computeMultipoles(numBodies, theta, d_sourceCells, d_sourceCenter, d_Monopole, d_Quadrupole0, d_Quadrupole1);
+  int numSources = tree.buildTree(numBodies, d_domain, d_levelRange, d_sourceCells, nleaf); // pass nleaf, accepted 16, 24, 32, 48, 64
+  d_sourceCenter.alloc(numSources);
+  d_Monopole.alloc(numSources);
+  d_Quadrupole0.alloc(numSources);
+  d_Quadrupole1.alloc(numSources);
+  tree.computeMultipoles(numBodies, numSources, theta, d_sourceCells, d_sourceCenter, d_Monopole, d_Quadrupole0, d_Quadrupole1);
   int numTargets = tree.groupTargets(numBodies, d_domain, d_targetCells, 5, ncrit);
-  const float4 interactions = tree.computeForces(numBodies, numTargets, eps, d_sourceCells, d_targetCells, d_sourceCenter, d_Monopole, d_Quadrupole0, d_Quadrupole1, d_levelRange);
+  const float4 interactions = tree.computeForces(numBodies, numTargets, numSources, eps, d_sourceCells, d_targetCells, d_sourceCenter, d_Monopole, d_Quadrupole0, d_Quadrupole1, d_levelRange);
   double dt = get_time() - t0;
   float flops = (interactions.x * 20 + interactions.z * 64) * numBodies / dt / 1e12;
   fprintf(stdout,"--- Total runtime ----------------\n");
@@ -103,7 +103,7 @@ int main(int argc, char * argv[])
   fprintf(stdout,"Rel. L2 Error (acc)  : %.7e\n",sqrt(diffa/norma));
   fprintf(stdout,"--- Tree stats -------------------\n");
   fprintf(stdout,"Bodies               : %d\n",numBodies);
-  fprintf(stdout,"Cells                : %d\n",tree.getNumSources());
+  fprintf(stdout,"Cells                : %d\n",numSources);
   fprintf(stdout,"Tree depth           : %d\n",tree.getNumLevels());
   fprintf(stdout,"--- Traversal stats --------------\n");
   fprintf(stdout,"P2P mean list length : %g (max %g)\n", interactions.x, interactions.y);
