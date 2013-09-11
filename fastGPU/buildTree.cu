@@ -779,8 +779,8 @@ void Treecode::buildTree(float4 * d_domain, int2 * d_levelRange, CellData * d_so
   cuda_mem<int> d_key, d_value;
 
   d_minmax.alloc(2048);
-  maxNode = numBodies / 10;
-  stackSize = (8+8+8+64+8)*maxNode;
+  const int maxNode = numBodies / 10;
+  const int stackSize = (8+8+8+64+8)*maxNode;
   fprintf(stdout,"Stack size           : %g MB\n",sizeof(int)*stackSize/1024.0/1024.0);
   d_stack_memory_pool.alloc(stackSize);
   d_sourceCells2.alloc(numBodies);

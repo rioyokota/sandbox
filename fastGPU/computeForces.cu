@@ -486,7 +486,8 @@ namespace computeForces {
   }
 }
 
-float4 Treecode::computeForces(CellData * d_sourceCells,
+float4 Treecode::computeForces(const float eps,
+			       CellData * d_sourceCells,
 			       int2 * d_targetCells,
 			       float4 * d_sourceCenter,
 			       float4 * d_Monopole,
@@ -510,7 +511,7 @@ float4 Treecode::computeForces(CellData * d_sourceCells,
   cudaDeviceSynchronize();
   const double t0 = get_time();
   CUDA_SAFE_CALL(cudaFuncSetCacheConfig(&computeForces::traverse<NTHREAD2,2>, cudaFuncCachePreferL1));
-  computeForces::traverse<NTHREAD2,2><<<nblock,NTHREAD>>>(numTargets, d_targetCells, EPS2, d_levelRange,
+  computeForces::traverse<NTHREAD2,2><<<nblock,NTHREAD>>>(numTargets, d_targetCells, eps*eps, d_levelRange,
 							  d_bodyPos2, d_bodyAcc,
 							  d_gmem_pool);
   kernelSuccess("traverse");
@@ -539,10 +540,9 @@ float4 Treecode::computeForces(CellData * d_sourceCells,
   return interactions;
 }
 
-void Treecode::computeDirect(const int numTarget, const int numBlock)
-{
+void Treecode::computeDirect(const int numTarget, const int numBlock, const float eps) {
   bindTexture(computeForces::texBody,d_bodyPos2.ptr,numBodies);
-  computeForces::direct<<<numBlock,numTarget>>>(numBodies, EPS2, d_bodyAcc2);
+  computeForces::direct<<<numBlock,numTarget>>>(numBodies, eps*eps, d_bodyAcc2);
   unbindTexture(computeForces::texBody);
   cudaDeviceSynchronize();
 }

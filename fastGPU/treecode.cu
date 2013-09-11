@@ -8,16 +8,16 @@ int main(int argc, char * argv[])
   const int seed = 19810614;
   const float eps   = 0.05;
   const float theta = 0.75;
-  const int NCRIT = 64;
-  const int NLEAF = 64;
-  Tree tree(eps);
+  const int ncrit = 64;
+  const int nleaf = 64;
+  Tree tree;
 
   fprintf(stdout,"--- FMM Parameters ---------------\n");
   fprintf(stdout,"numBodies            : %d\n",numBodies);
   fprintf(stdout,"P                    : %d\n",3);
   fprintf(stdout,"theta                : %f\n",theta);
-  fprintf(stdout,"NCRIT                : %d\n",NCRIT);
-  fprintf(stdout,"NLEAF                : %d\n",NLEAF);
+  fprintf(stdout,"ncrit                : %d\n",ncrit);
+  fprintf(stdout,"nleaf                : %d\n",nleaf);
   const Plummer data(numBodies, seed);
 
   host_mem<float4> h_bodyPos;
@@ -50,14 +50,14 @@ int main(int argc, char * argv[])
 
   fprintf(stdout,"--- FMM Profiling ----------------\n");
   double t0 = get_time();
-  tree.buildTree(d_domain, d_levelRange, d_sourceCells, NLEAF); // pass NLEAF, accepted 16, 24, 32, 48, 64
+  tree.buildTree(d_domain, d_levelRange, d_sourceCells, nleaf); // pass nleaf, accepted 16, 24, 32, 48, 64
   d_sourceCenter.alloc(tree.numSources);
   d_Monopole.alloc(tree.numSources);
   d_Quadrupole0.alloc(tree.numSources);
   d_Quadrupole1.alloc(tree.numSources);
   tree.computeMultipoles(theta, d_sourceCells, d_sourceCenter, d_Monopole, d_Quadrupole0, d_Quadrupole1);
-  tree.groupTargets(d_domain, d_targetCells, 5, NCRIT);
-  const float4 interactions = tree.computeForces(d_sourceCells, d_targetCells, d_sourceCenter, d_Monopole, d_Quadrupole0, d_Quadrupole1, d_levelRange);
+  tree.groupTargets(d_domain, d_targetCells, 5, ncrit);
+  const float4 interactions = tree.computeForces(eps, d_sourceCells, d_targetCells, d_sourceCenter, d_Monopole, d_Quadrupole0, d_Quadrupole1, d_levelRange);
   double dt = get_time() - t0;
   float flops = (interactions.x * 20 + interactions.z * 64) * tree.getNumBody() / dt / 1e12;
   fprintf(stdout,"--- Total runtime ----------------\n");
@@ -65,7 +65,7 @@ int main(int argc, char * argv[])
   const int numTarget = 512; // Number of threads per block will be set to this value
   const int numBlock = 128;
   t0 = get_time();
-  tree.computeDirect(numTarget,numBlock);
+  tree.computeDirect(numTarget,numBlock,eps);
   dt = get_time() - t0;
   flops = 20.*numTarget*numBodies/dt/1e12;
   fprintf(stdout,"Total Direct         : %.7f s (%.7f TFlops)\n",dt,flops);

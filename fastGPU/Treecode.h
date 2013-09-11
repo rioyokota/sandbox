@@ -86,7 +86,6 @@ class CellData {
 class Treecode {
  private:
   int numLeaves, numTargets;
-  float EPS2;
 
  public:
   int numBodies;
@@ -97,12 +96,6 @@ class Treecode {
   int getNumLevels() const { return numLevels; }
 
   cuda_mem<float4> d_bodyPos, d_bodyPos2, d_bodyAcc, d_bodyAcc2;
-
-  int maxNode, stackSize;
-
-  Treecode(const float eps = 0.01) {
-    EPS2  = eps * eps;
-  }
 
   void alloc(const int numBodies) {
     this->numBodies = numBodies;
@@ -115,7 +108,7 @@ class Treecode {
   void buildTree(float4 * d_domain, int2 * d_levelRange, CellData * d_sourceCells, const int NLEAF = 16);
   void computeMultipoles(const float theta, CellData * d_sourceCells, float4 * d_sourceCenter, float4 * d_Monopole, float4 * d_Quadrupole0, float2 * d_Quadrupole1);
   void groupTargets(float4 * d_domain, int2 * d_targetCells, int levelSplit = 1, const int NCRIT = 64);
-  float4 computeForces(CellData * d_sourceCells, int2 * d_targetCells, float4 * d_sourceCenter, float4 * d_Monopole,
+  float4 computeForces(const float eps, CellData * d_sourceCells, int2 * d_targetCells, float4 * d_sourceCenter, float4 * d_Monopole,
 		       float4 * d_Quadrupole0, float2 * d_Quadrupole1, int2 * d_levelRange);
-  void computeDirect(const int numTarget, const int numBlock);
+  void computeDirect(const int numTarget, const int numBlock, const float eps);
 };
