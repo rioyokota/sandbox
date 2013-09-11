@@ -50,22 +50,22 @@ int main(int argc, char * argv[])
 
   fprintf(stdout,"--- FMM Profiling ----------------\n");
   double t0 = get_time();
-  tree.buildTree(d_domain, d_levelRange, d_sourceCells, nleaf); // pass nleaf, accepted 16, 24, 32, 48, 64
+  tree.buildTree(numBodies,d_domain, d_levelRange, d_sourceCells, nleaf); // pass nleaf, accepted 16, 24, 32, 48, 64
   d_sourceCenter.alloc(tree.numSources);
   d_Monopole.alloc(tree.numSources);
   d_Quadrupole0.alloc(tree.numSources);
   d_Quadrupole1.alloc(tree.numSources);
-  tree.computeMultipoles(theta, d_sourceCells, d_sourceCenter, d_Monopole, d_Quadrupole0, d_Quadrupole1);
-  int numTargets = tree.groupTargets(d_domain, d_targetCells, 5, ncrit);
-  const float4 interactions = tree.computeForces(numTargets, eps, d_sourceCells, d_targetCells, d_sourceCenter, d_Monopole, d_Quadrupole0, d_Quadrupole1, d_levelRange);
+  tree.computeMultipoles(numBodies, theta, d_sourceCells, d_sourceCenter, d_Monopole, d_Quadrupole0, d_Quadrupole1);
+  int numTargets = tree.groupTargets(numBodies, d_domain, d_targetCells, 5, ncrit);
+  const float4 interactions = tree.computeForces(numBodies, numTargets, eps, d_sourceCells, d_targetCells, d_sourceCenter, d_Monopole, d_Quadrupole0, d_Quadrupole1, d_levelRange);
   double dt = get_time() - t0;
-  float flops = (interactions.x * 20 + interactions.z * 64) * tree.getNumBody() / dt / 1e12;
+  float flops = (interactions.x * 20 + interactions.z * 64) * numBodies / dt / 1e12;
   fprintf(stdout,"--- Total runtime ----------------\n");
   fprintf(stdout,"Total FMM            : %.7f s (%.7f TFlops)\n",dt,flops);
   const int numTarget = 512; // Number of threads per block will be set to this value
   const int numBlock = 128;
   t0 = get_time();
-  tree.computeDirect(numTarget,numBlock,eps);
+  tree.computeDirect(numBodies, numTarget, numBlock, eps);
   dt = get_time() - t0;
   flops = 20.*numTarget*numBodies/dt/1e12;
   fprintf(stdout,"Total Direct         : %.7f s (%.7f TFlops)\n",dt,flops);
@@ -102,7 +102,7 @@ int main(int argc, char * argv[])
   fprintf(stdout,"Rel. L2 Error (pot)  : %.7e\n",sqrt(diffp/normp));
   fprintf(stdout,"Rel. L2 Error (acc)  : %.7e\n",sqrt(diffa/norma));
   fprintf(stdout,"--- Tree stats -------------------\n");
-  fprintf(stdout,"Bodies               : %d\n",tree.getNumBody());
+  fprintf(stdout,"Bodies               : %d\n",numBodies);
   fprintf(stdout,"Cells                : %d\n",tree.getNumSources());
   fprintf(stdout,"Tree depth           : %d\n",tree.getNumLevels());
   fprintf(stdout,"--- Traversal stats --------------\n");

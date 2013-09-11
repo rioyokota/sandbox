@@ -486,7 +486,8 @@ namespace computeForces {
   }
 }
 
-float4 Treecode::computeForces(const int numTargets,
+float4 Treecode::computeForces(const int numBodies,
+			       const int numTargets,
 			       const float eps,
 			       CellData * d_sourceCells,
 			       int2 * d_targetCells,
@@ -541,7 +542,7 @@ float4 Treecode::computeForces(const int numTargets,
   return interactions;
 }
 
-void Treecode::computeDirect(const int numTarget, const int numBlock, const float eps) {
+void Treecode::computeDirect(const int numBodies, const int numTarget, const int numBlock, const float eps) {
   bindTexture(computeForces::texBody,d_bodyPos2.ptr,numBodies);
   computeForces::direct<<<numBlock,numTarget>>>(numBodies, eps*eps, d_bodyAcc2);
   unbindTexture(computeForces::texBody);
