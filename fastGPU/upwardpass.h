@@ -1,7 +1,6 @@
 #pragma once
 
-namespace multipoles {
-
+namespace {
   static __device__ __forceinline__ void addMonopole(double4 &_M, const float4 body) {
     const float x = body.x;
     const float y = body.y;
@@ -127,10 +126,13 @@ namespace multipoles {
 	quadrupole1[cellIdx]  = (float2){Q.xz, Q.yz};
       }
   }
+}
 
-  void computeMultipoles(const int numBodies, const int numSources, const float theta,
-			 float4 * d_bodyPos, CellData * d_sourceCells, float4 * d_sourceCenter,
-			 float4 * d_Monopole, float4 * d_Quadrupole0, float2 * d_Quadrupole1) {
+class Pass {
+ public:
+  void upward(const int numBodies, const int numSources, const float theta,
+	      float4 * d_bodyPos, CellData * d_sourceCells, float4 * d_sourceCenter,
+	      float4 * d_Monopole, float4 * d_Quadrupole0, float2 * d_Quadrupole1) {
     const int NTHREAD2 = 8;
     const int NTHREAD  = 1<< NTHREAD2;
     const int NWARP    = 1<<(NTHREAD2-WARP_SIZE2);
@@ -146,4 +148,4 @@ namespace multipoles {
     const double dt = get_time() - t0;
     fprintf(stdout,"Upward pass          : %.7f s\n", dt);
   }
-}
+};

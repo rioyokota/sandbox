@@ -69,9 +69,11 @@ int main(int argc, char * argv[]) {
   d_Quadrupole1.alloc(numSources);
   Group group;
   int numTargets = group.targets(numBodies, d_bodyPos, d_bodyPos2, d_domain, d_targetCells, 5, ncrit);
-  multipoles::computeMultipoles(numBodies, numSources, theta, d_bodyPos, d_sourceCells, d_sourceCenter, d_Monopole, d_Quadrupole0, d_Quadrupole1);
-  const float4 interactions = computeForces::computeForces(numBodies, numTargets, numSources, eps, d_bodyPos, d_bodyPos2, d_bodyAcc,
-						 d_sourceCells, d_targetCells, d_sourceCenter, d_Monopole, d_Quadrupole0, d_Quadrupole1, d_levelRange);
+  Pass pass;
+  pass.upward(numBodies, numSources, theta, d_bodyPos, d_sourceCells, d_sourceCenter, d_Monopole, d_Quadrupole0, d_Quadrupole1);
+  Traversal traversal;
+  const float4 interactions = traversal.approx(numBodies, numTargets, numSources, eps, d_bodyPos, d_bodyPos2, d_bodyAcc,
+					       d_sourceCells, d_targetCells, d_sourceCenter, d_Monopole, d_Quadrupole0, d_Quadrupole1, d_levelRange);
   double dt = get_time() - t0;
   float flops = (interactions.x * 20 + interactions.z * 64) * numBodies / dt / 1e12;
   fprintf(stdout,"--- Total runtime ----------------\n");
@@ -79,7 +81,7 @@ int main(int argc, char * argv[]) {
   const int numTarget = 512; // Number of threads per block will be set to this value
   const int numBlock = 128;
   t0 = get_time();
-  computeForces::computeDirect(numBodies, numTarget, numBlock, eps, d_bodyPos2, d_bodyAcc2);
+  traversal.direct(numBodies, numTarget, numBlock, eps, d_bodyPos2, d_bodyAcc2);
   dt = get_time() - t0;
   flops = 20.*numTarget*numBodies/dt/1e12;
   fprintf(stdout,"Total Direct         : %.7f s (%.7f TFlops)\n",dt,flops);

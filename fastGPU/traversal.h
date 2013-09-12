@@ -5,7 +5,7 @@
 #define CELL_LIST_MEM_PER_WARP (4096*32)
 #define IF(x) (-(int)(x))
 
-namespace computeForces {  
+namespace {
   texture<uint4,  1, cudaReadModeElementType> texCell;
   texture<float4, 1, cudaReadModeElementType> texCellCenter;
   texture<float4, 1, cudaReadModeElementType> texMonopole;
@@ -440,9 +440,9 @@ namespace computeForces {
   }
 
   static __global__
-  void direct(const int numSource,
-              const float EPS2,
-	      float4 *acc) {
+  void directKernel(const int numSource,
+		    const float EPS2,
+		    float4 *acc) {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     int offset = blockIdx.x * numSource / gridDim.x;
     float pots, axs, ays ,azs;
@@ -483,21 +483,24 @@ namespace computeForces {
     acc[i].z = azs + azc;
     acc[i].w = pots + potc;
   }
+}
 
-  float4 computeForces(const int numBodies,
-		       const int numTargets,
-		       const int numSources,
-		       const float eps,
-		       float4 * d_bodyPos,
-		       float4 * d_bodyPos2,
-		       float4 * d_bodyAcc,
-		       CellData * d_sourceCells,
-		       int2 * d_targetCells,
-		       float4 * d_sourceCenter,
-		       float4 * d_Monopole,
-		       float4 * d_Quadrupole0,
-		       float2 * d_Quadrupole1,
-		       int2 * d_levelRange) {
+class Traversal {
+ public:
+  float4 approx(const int numBodies,
+		const int numTargets,
+		const int numSources,
+		const float eps,
+		float4 * d_bodyPos,
+		float4 * d_bodyPos2,
+		float4 * d_bodyAcc,
+		CellData * d_sourceCells,
+		int2 * d_targetCells,
+		float4 * d_sourceCenter,
+		float4 * d_Monopole,
+		float4 * d_Quadrupole0,
+		float2 * d_Quadrupole1,
+		int2 * d_levelRange) {
     bindTexture(texCell,(uint4*)d_sourceCells, numSources);
     bindTexture(texCellCenter,  d_sourceCenter,numSources);
     bindTexture(texMonopole,    d_Monopole,    numSources);
@@ -544,11 +547,11 @@ namespace computeForces {
     return interactions;
   }
 
-  void computeDirect(const int numBodies, const int numTarget, const int numBlock, const float eps,
-		     float4 * d_bodyPos2, float4 * d_bodyAcc2) {
+  void direct(const int numBodies, const int numTarget, const int numBlock, const float eps,
+	      float4 * d_bodyPos2, float4 * d_bodyAcc2) {
     bindTexture(texBody,d_bodyPos2,numBodies);
-    direct<<<numBlock,numTarget>>>(numBodies, eps*eps, d_bodyAcc2);
+    directKernel<<<numBlock,numTarget>>>(numBodies, eps*eps, d_bodyAcc2);
     unbindTexture(texBody);
     cudaDeviceSynchronize();
   }
-}
+};
