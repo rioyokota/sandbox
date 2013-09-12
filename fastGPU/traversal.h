@@ -49,7 +49,7 @@ namespace {
              const float3 pos,
 	     const float4 posj,
 	     const float EPS2) {
-    const float3 dr = make_float3(posj.x - pos.x, posj.y - pos.y, posj.z - pos.z);
+    const float3 dr    = make_float3(posj.x - pos.x, posj.y - pos.y, posj.z - pos.z);
     const float r2     = dr.x*dr.x + dr.y*dr.y + dr.z*dr.z + EPS2;
     const float rinv   = rsqrtf(r2);
     const float rinv2  = rinv*rinv;
@@ -337,15 +337,13 @@ namespace {
   template<int NTHREAD2, int NI>
   __launch_bounds__(1<<NTHREAD2, 1024/(1<<NTHREAD2))
     static __global__ 
-    void traverse(
-		  const int numTargets,
+    void traverse(const int numTargets,
 		  const int2 *targetCells,
 		  const float EPS2,
 		  const int2 *levelRange,
 		  const float4 *pos,
 		  float4 *acc,
-		  int    *gmem_pool)
-  {
+		  int    *gmem_pool) {
     const int NTHREAD = 1<<NTHREAD2;
     const int shMemSize = NTHREAD;
     __shared__ int shmem_pool[shMemSize];
