@@ -345,15 +345,12 @@ namespace {
 		  float4 *acc,
 		  int    *gmem_pool) {
     const int NTHREAD = 1<<NTHREAD2;
-    const int shMemSize = NTHREAD;
-    __shared__ int shmem_pool[shMemSize];
+    __shared__ int shmem_pool[NTHREAD];
 
     const int laneIdx = threadIdx.x & (WARP_SIZE-1);
     const int warpIdx = threadIdx.x >> WARP_SIZE2;
-
     const int NWARP2 = NTHREAD2 - WARP_SIZE2;
-    const int sh_offs = (shMemSize >> NWARP2) * warpIdx;
-    int *shmem = shmem_pool + sh_offs;
+    int *shmem = shmem_pool + WARP_SIZE * warpIdx;
     int *gmem  =  gmem_pool + CELL_LIST_MEM_PER_WARP*((blockIdx.x<<NWARP2) + warpIdx);
 
     while (1) {
@@ -437,21 +434,24 @@ namespace {
     }
   }
 
+  template<int NTHREAD2>
   static __global__
   void directKernel(const int numSource,
 		    const float EPS2,
 		    float4 *acc) {
-    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    const int laneIdx = threadIdx.x & (WARP_SIZE-1);
+    const int warpIdx = threadIdx.x >> WARP_SIZE2;
+    const int NTHREAD = 1 << NTHREAD2;
+    const int i = blockIdx.x * NTHREAD + threadIdx.x;
     int offset = blockIdx.x * numSource / gridDim.x;
     float pots, axs, ays ,azs;
     float potc, axc, ayc ,azc;
     float4 si = tex1Dfetch(texBody, threadIdx.x);
-    __shared__ float4 s[512];
-    for ( int jb=0; jb<numSource/blockDim.x/gridDim.x; jb++ ) {
-      __syncthreads();
-      s[threadIdx.x] = tex1Dfetch(texBody, offset+jb*blockDim.x+threadIdx.x);
-      __syncthreads();
-      for( int j=0; j<blockDim.x; j++ ) {
+    __shared__ float4 shared[NTHREAD];
+    float4 * s = shared + WARP_SIZE * warpIdx;
+    for ( int jb=0; jb<numSource/WARP_SIZE/gridDim.x; jb++ ) {
+      s[laneIdx] = tex1Dfetch(texBody, offset+jb*WARP_SIZE+laneIdx);
+      for( int j=0; j<WARP_SIZE; j++ ) {
 	float dx = s[j].x - si.x;
 	float dy = s[j].y - si.y;
 	float dz = s[j].z - si.z;
@@ -547,8 +547,14 @@ class Traversal {
 
   void direct(const int numBodies, const int numTarget, const int numBlock, const float eps,
 	      float4 * d_bodyPos2, float4 * d_bodyAcc2) {
+    const int NTHREAD2 = 9;
+    const int NTHREAD  = 1 << NTHREAD2;
+    const int NBLOCK2  = 7;
+    const int NBLOCK   = 1 << NBLOCK2;
+    assert(numTarget == NTHREAD);
+    assert(numBlock == NBLOCK);
     bindTexture(texBody,d_bodyPos2,numBodies);
-    directKernel<<<numBlock,numTarget>>>(numBodies, eps*eps, d_bodyAcc2);
+    directKernel<9><<<NBLOCK,NTHREAD>>>(numBodies, eps*eps, d_bodyAcc2);
     unbindTexture(texBody);
     cudaDeviceSynchronize();
   }

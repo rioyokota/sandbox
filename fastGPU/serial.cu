@@ -9,7 +9,7 @@
 int main(int argc, char * argv[]) {
   const int numBodies = 16777216;
   const int seed = 19810614;
-  const float eps   = 0.05;
+  const float eps = 0.05;
   const float theta = 0.75;
   const int ncrit = 64;
   const int nleaf = 64;
@@ -25,7 +25,7 @@ int main(int argc, char * argv[]) {
   host_mem<float4> h_bodyPos;
   h_bodyPos.alloc(numBodies);
   
-  for (int i = 0; i < numBodies; i++) {
+  for (int i=0; i<numBodies; i++) {
     float4 bodyPos;
     bodyPos.x    = data.pos[i].x;
     bodyPos.y    = data.pos[i].y;
@@ -83,7 +83,7 @@ int main(int argc, char * argv[]) {
   t0 = get_time();
   traversal.direct(numBodies, numTarget, numBlock, eps, d_bodyPos2, d_bodyAcc2);
   dt = get_time() - t0;
-  flops = 20.*numTarget*numBodies/dt/1e12;
+  flops = 35.*numTarget*numBodies/dt/1e12;
   fprintf(stdout,"Total Direct         : %.7f s (%.7f TFlops)\n",dt,flops);
   host_mem<float4> h_bodyAcc, h_bodyAcc2;
   h_bodyAcc.alloc(numBodies);
