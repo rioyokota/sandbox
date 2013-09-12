@@ -3,9 +3,7 @@
 extern void sort(const int size, unsigned long long * key, int * value);
 extern void scan(const int size, unsigned long long * key, int * value);
 
-namespace groupTargets
-{
-
+namespace {
   template<typename T>
   static __global__ void shuffle(const int n, const int *map, const T *in, T *out)
   {
@@ -186,9 +184,12 @@ namespace groupTargets
       return x < y;
     }
   };
+}
 
-  int groupTargets(const int numBodies, float4 * d_bodyPos, float4 * d_bodyPos2,
-		   float4 * d_domain, int2 * d_targetCells, int levelSplit, const int NCRIT) {
+class Group {
+ public:
+  int targets(const int numBodies, float4 * d_bodyPos, float4 * d_bodyPos2,
+	      float4 * d_domain, int2 * d_targetCells, int levelSplit, const int NCRIT) {
     const int nthread = 256;
     cuda_mem<unsigned long long> d_key;
     cuda_mem<int> d_value;
@@ -204,7 +205,7 @@ namespace groupTargets
 
     cudaDeviceSynchronize();
     const double t0 = get_time();
-    groupTargets::computeKeys<NBINS><<<nblock,nthread>>>(numBodies, d_domain, d_bodyPos, d_keys, d_values);
+    computeKeys<NBINS><<<nblock,nthread>>>(numBodies, d_domain, d_bodyPos, d_keys, d_values);
 
     levelSplit = std::max(1,levelSplit);  /* pick the coarse segment boundaries at the levelSplit */
     unsigned long long mask= 0;
@@ -218,26 +219,26 @@ namespace groupTargets
     /* sort particles by PH key */
     sort(numBodies, d_key.ptr, d_value.ptr);
 
-    groupTargets::shuffle<float4><<<nblock,nthread>>>(numBodies, d_value, d_bodyPos, d_bodyPos2);
+    shuffle<float4><<<nblock,nthread>>>(numBodies, d_value, d_bodyPos, d_bodyPos2);
 
     cuda_mem<int> d_bodyBegIdx, d_bodyEndIdx;
     cuda_mem<unsigned long long> d_keys_inv;
     d_bodyBegIdx.alloc(numBodies);
     d_bodyEndIdx.alloc(numBodies);
     d_keys_inv.alloc(numBodies);
-    groupTargets::mask_keys<<<nblock,nthread,(nthread+2)*sizeof(unsigned long long)>>>(numBodies, mask, d_keys, d_keys_inv, d_bodyBegIdx, d_bodyEndIdx);
+    mask_keys<<<nblock,nthread,(nthread+2)*sizeof(unsigned long long)>>>(numBodies, mask, d_keys, d_keys_inv, d_bodyBegIdx, d_bodyEndIdx);
 
     scan(numBodies, d_key.ptr, d_bodyBegIdx.ptr);    
 
     scan(numBodies, d_keys_inv.ptr, d_bodyEndIdx.ptr);
 
-    groupTargets::make_groups<<<nblock,nthread>>>(numBodies, NCRIT, d_bodyBegIdx, d_bodyEndIdx, d_targetCells);
+    make_groups<<<nblock,nthread>>>(numBodies, NCRIT, d_bodyBegIdx, d_bodyEndIdx, d_targetCells);
 
     kernelSuccess("groupTargets");
     const double dt = get_time() - t0;
     fprintf(stdout,"Make groups          : %.7f s\n", dt);
     int numTargets;
-    CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&numTargets, groupTargets::groupCounter, sizeof(int)));
+    CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&numTargets, groupCounter, sizeof(int)));
     return numTargets;
   }
-}
+};
