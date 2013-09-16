@@ -204,24 +204,23 @@ namespace {
       const int bodyBegin = sourceData.body();
       const int numBodies = sourceData.nbody() & IF(isDirect);
       const int numBodiesScan = inclusiveScan<WARP_SIZE2>(numBodies);
-      const int bodyLaneIdx = numBodiesScan - numBodies;
-      int nParticle  = __shfl(numBodiesScan, WARP_SIZE-1);
-      int nProcessed = 0;
+      int bodyLaneIdx = numBodiesScan - numBodies;
+      int numBodiesWarp = __shfl(numBodiesScan, WARP_SIZE-1);
       int2 scanVal   = {0,0};
 
       /* conduct segmented scan for all leaves that need to be expanded */
-      while (nParticle > 0)
+      while (numBodiesWarp > 0)
 	{
 	  tempQueue[laneIdx] = 1;
-	  if (isDirect && (bodyLaneIdx - nProcessed < WARP_SIZE))
+	  if (isDirect && (bodyLaneIdx < WARP_SIZE))
 	    {
 	      isDirect = false;
-	      tempQueue[bodyLaneIdx - nProcessed] = -1-bodyBegin;
+	      tempQueue[bodyLaneIdx] = -1-bodyBegin;
 	    }
 	  scanVal = inclusive_segscan_warp(tempQueue[laneIdx], scanVal.y);
 	  const int  bodyIdx = scanVal.x;
 
-	  if (nParticle >= WARP_SIZE)
+	  if (numBodiesWarp >= WARP_SIZE)
 	    {
 	      const float4 M0 = tex1Dfetch(texBody, bodyIdx);
 	      for (int j=0; j<WARP_SIZE; j++) {
@@ -230,8 +229,8 @@ namespace {
 		for (int k=0; k<NI; k++)
 		  acc_i[k] = P2P(acc_i[k], pos_i[k], pos_j, EPS2);
 	      }
-	      nParticle  -= WARP_SIZE;
-	      nProcessed += WARP_SIZE;
+	      numBodiesWarp -= WARP_SIZE;
+	      bodyLaneIdx -= WARP_SIZE;
 	      counters.y += WARP_SIZE;
 	    }
 	  else 
@@ -241,7 +240,7 @@ namespace {
 	      if (scatterIdx < WARP_SIZE)
 		tempQueue[scatterIdx] = bodyIdx;
 
-	      directCounter += nParticle;
+	      directCounter += numBodiesWarp;
 
 	      if (directCounter >= WARP_SIZE)
 		{
@@ -254,14 +253,14 @@ namespace {
 		      acc_i[k] = P2P(acc_i[k], pos_i[k], pos_j, EPS2);
 		  }
 		  directCounter -= WARP_SIZE;
-		  const int scatterIdx = directCounter + laneIdx - nParticle;
+		  const int scatterIdx = directCounter + laneIdx - numBodiesWarp;
 		  if (scatterIdx >= 0)
 		    tempQueue[scatterIdx] = bodyIdx;
 		  counters.y += WARP_SIZE;
 		}
 	      directBodyIdx = tempQueue[laneIdx];
 
-	      nParticle = 0;
+	      numBodiesWarp = 0;
 	    }
 	}
 
