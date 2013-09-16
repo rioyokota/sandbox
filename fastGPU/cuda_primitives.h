@@ -74,19 +74,19 @@ int lanemask_lt() {
 
 static __device__ __forceinline__
 int warpBinExclusiveScan1(const bool p) {
-  const unsigned int b = __ballot(p);
+  const uint b = __ballot(p);
   return __popc(b & lanemask_lt());
 }
 
 static __device__ __forceinline__
 int2 warpBinExclusiveScan(const bool p) {
-  const unsigned int b = __ballot(p);
+  const uint b = __ballot(p);
   return make_int2(__popc(b & lanemask_lt()), __popc(b));
 }
 
 static __device__ __forceinline__
 int warpBinReduce(const bool p) {
-  const unsigned int b = __ballot(p);
+  const uint b = __ballot(p);
   return __popc(b);
 }
 

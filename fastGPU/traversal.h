@@ -165,6 +165,7 @@ namespace {
       const bool isSource = sourceIdx < numSources;
       const bool isSplit = isNode && isClose && isSource;
 
+      // Split
       const int childBegin = sourceData.child();
       const int numChild = sourceData.nchild() & IF(isSplit);
 
@@ -172,32 +173,27 @@ namespace {
       const int childLaneIdx = numChildScan - numChild;
       const int numChildWarp = __shfl(numChildScan, WARP_SIZE-1);
 
-      /* make sure we still have available stack space */
       sourceOffset += min(WARP_SIZE, numSources - sourceOffset);
       if (numChildWarp + numSources - sourceOffset > CELL_LIST_MEM_PER_WARP)
 	return make_uint2(0xFFFFFFFF,0xFFFFFFFF);
 
-      /* if so populate next level stack in gmem */
       int childIdx = oldSources + numSources + newSources + childLaneIdx;
       for (int i=0; i<numChild; i++)
 	cellQueue[ringAddr(childIdx + i)] = childBegin + i;	
       newSources += numChildWarp;
 
-      /***********************************/
-      /******       APPROX          ******/
-      /***********************************/
+      // Approx
+      const bool isApprox = !isClose && isSource;
+      const uint approxBallot = __ballot(isApprox);
+      const int approxLaneIdx = __popc(approxBallot & lanemask_lt());
+      const int numApproxWarp = __popc(approxBallot);
 
-      /* see which thread's cell can be used for approximate force calculation */
-      const bool approxCell    = !isClose && isSource;
-      const int2 approxScatter = warpBinExclusiveScan(approxCell);
-
-      /* store index of the cell */
-      int scatterIdx = approxCounter + approxScatter.x;
+      int approxIdx = approxCounter + approxLaneIdx;
       tempQueue[laneIdx] = approxCellIdx;
-      if (approxCell && scatterIdx < WARP_SIZE)
-	tempQueue[scatterIdx] = sourceQueue;
+      if (isApprox && approxIdx < WARP_SIZE)
+	tempQueue[approxIdx] = sourceQueue;
 
-      approxCounter += approxScatter.y;
+      approxCounter += numApproxWarp;
 
       /* compute approximate forces */
       if (approxCounter >= WARP_SIZE)
@@ -206,9 +202,9 @@ namespace {
 	  approxAcc<NI,true>(acc_i, pos_i, tempQueue[laneIdx], EPS2);
 
 	  approxCounter -= WARP_SIZE;
-	  scatterIdx = approxCounter + approxScatter.x - approxScatter.y;
-	  if (approxCell && scatterIdx >= 0)
-	    tempQueue[scatterIdx] = sourceQueue;
+	  approxIdx = approxCounter + approxLaneIdx - numApproxWarp;
+	  if (isApprox && approxIdx >= 0)
+	    tempQueue[approxIdx] = sourceQueue;
 	  counters.x += WARP_SIZE;
 	}
       approxCellIdx = tempQueue[laneIdx];
