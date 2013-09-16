@@ -153,14 +153,12 @@ namespace {
     int cellQueueBlock       = 0;
     int nextLevelCellCounter = 0;
 
-    unsigned int cellQueueOffset = 0;
+    unsigned int retiredSources = 0;
 
-    /* process level with n_cells */
     while (numSources > 0) {
-      /* extract cell index from the current level cell list */
       const int cellQueueIdx = cellQueueBlock + laneIdx;
       const bool useCell    = cellQueueIdx < numSources;
-      const int cellIdx     = cellQueue[ringAddr(cellQueueOffset + cellQueueIdx)];
+      const int cellIdx     = cellQueue[ringAddr(retiredSources + cellQueueIdx)];
       cellQueueBlock += min(WARP_SIZE, numSources - cellQueueBlock);
 
       /* read from gmem cell's info */
@@ -190,7 +188,7 @@ namespace {
       /* if so populate next level stack in gmem */
       if (splitNode)
 	{
-	  const int scatterIdx = cellQueueOffset + numSources + nextLevelCellCounter + childScatter.x;
+	  const int scatterIdx = retiredSources + numSources + nextLevelCellCounter + childScatter.x;
 	  for (int i = 0; i < nChild; i++)
 	    cellQueue[ringAddr(scatterIdx + i)] = firstChild + i;
 	}
@@ -299,7 +297,7 @@ namespace {
 
       /* if the current level is processed, schedule the next level */
       if (cellQueueBlock >= numSources) {
-	cellQueueOffset += numSources;
+	retiredSources += numSources;
 	numSources = nextLevelCellCounter;
 	cellQueueBlock = nextLevelCellCounter = 0;
       }
@@ -328,7 +326,7 @@ namespace {
     return counters;
   }
 
-  __device__ unsigned int retiredTargetCount = 0;
+  __device__ unsigned int   retiredTargets = 0;
   __device__ unsigned long long sumP2PGlob = 0;
   __device__ unsigned int       maxP2PGlob = 0;
   __device__ unsigned long long sumM2PGlob = 0;
@@ -356,7 +354,7 @@ namespace {
     while (1) {
       int targetIdx = 0;
       if (laneIdx == 0)
-	targetIdx = atomicAdd(&retiredTargetCount, 1);
+        targetIdx = atomicAdd(&retiredTargets, 1);
       targetIdx = __shfl(targetIdx, 0, WARP_SIZE);
 
       if (targetIdx >= numTargets) 
