@@ -443,10 +443,7 @@ namespace {
 	const int nSubCell = laneIdx < 8 ? octCounter[8+16+warpIdx*8 + laneIdx] : 0;
 
 	/* compute offsets */
-	int cellOffset = nSubCell;
-#pragma unroll
-	for(int i = 0; i < 3; i++)  /* log2(8) steps */
-	  cellOffset = shfl_scan_add_step(cellOffset, 1 << i);
+        int cellOffset = inclusiveScan<3>(nSubCell);
 	cellOffset -= nSubCell;
 
 	/* store offset in memory */

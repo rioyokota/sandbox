@@ -151,13 +151,13 @@ namespace {
     int numSources = rootRange.y - rootRange.x;
     int newSources = 0;
     int oldSources = 0;
-    int warpOffset = 0;
+    int sourceOffset = 0;
 
     while (numSources > 0) {
-      const int sourceIdx = warpOffset + laneIdx;
-      const int queueIdx = cellQueue[ringAddr(oldSources + sourceIdx)];
-      const float4 sourceCenter = tex1Dfetch(texCellCenter, queueIdx);
-      const CellData sourceData = tex1Dfetch(texCell, queueIdx);
+      const int sourceIdx = sourceOffset + laneIdx;
+      const int sourceQueue = cellQueue[ringAddr(oldSources + sourceIdx)];
+      const float4 sourceCenter = tex1Dfetch(texCellCenter, sourceQueue);
+      const CellData sourceData = tex1Dfetch(texCell, sourceQueue);
 
       const bool isNode = sourceData.isNode();
       const bool isClose = applyMAC(sourceCenter, targetCenter, targetSize) ||
@@ -165,21 +165,23 @@ namespace {
       const bool isSource = sourceIdx < numSources;
       const bool isSplit = isNode && isClose && isSource;
 
-      const int firstChild = sourceData.child();
+      const int childBegin = sourceData.child();
       const int numChild = sourceData.nchild() & IF(isSplit);
 
-      int2 childScatter = warpIntExclusiveScan(numChild);
+      const int numChildScan = inclusiveScan<WARP_SIZE2>(numChild);
+      const int childLaneIdx = numChildScan - numChild;
+      const int numChildWarp = __shfl(numChildScan, WARP_SIZE-1);
 
       /* make sure we still have available stack space */
-      warpOffset += min(WARP_SIZE, numSources - warpOffset);
-      if (childScatter.y + numSources - warpOffset > CELL_LIST_MEM_PER_WARP)
+      sourceOffset += min(WARP_SIZE, numSources - sourceOffset);
+      if (numChildWarp + numSources - sourceOffset > CELL_LIST_MEM_PER_WARP)
 	return make_uint2(0xFFFFFFFF,0xFFFFFFFF);
 
       /* if so populate next level stack in gmem */
-      int scatterIdx = oldSources + numSources + newSources + childScatter.x;
+      int childIdx = oldSources + numSources + newSources + childLaneIdx;
       for (int i=0; i<numChild; i++)
-	cellQueue[ringAddr(scatterIdx + i)] = firstChild + i;	
-      newSources += childScatter.y;  /* increment nextLevelCounter by total # of children */
+	cellQueue[ringAddr(childIdx + i)] = childBegin + i;	
+      newSources += numChildWarp;
 
       /***********************************/
       /******       APPROX          ******/
@@ -190,10 +192,10 @@ namespace {
       const int2 approxScatter = warpBinExclusiveScan(approxCell);
 
       /* store index of the cell */
-      scatterIdx = approxCounter + approxScatter.x;
+      int scatterIdx = approxCounter + approxScatter.x;
       tempQueue[laneIdx] = approxCellIdx;
       if (approxCell && scatterIdx < WARP_SIZE)
-	tempQueue[scatterIdx] = queueIdx;
+	tempQueue[scatterIdx] = sourceQueue;
 
       approxCounter += approxScatter.y;
 
@@ -206,7 +208,7 @@ namespace {
 	  approxCounter -= WARP_SIZE;
 	  scatterIdx = approxCounter + approxScatter.x - approxScatter.y;
 	  if (approxCell && scatterIdx >= 0)
-	    tempQueue[scatterIdx] = queueIdx;
+	    tempQueue[scatterIdx] = sourceQueue;
 	  counters.x += WARP_SIZE;
 	}
       approxCellIdx = tempQueue[laneIdx];
@@ -221,7 +223,7 @@ namespace {
       const int body = sourceData.body();
       const int numBodies = sourceData.nbody();
 
-      childScatter = warpIntExclusiveScan(numBodies & (-isDirect));
+      const int2 childScatter = warpIntExclusiveScan(numBodies & (-isDirect));
       int nParticle  = childScatter.y;
       int nProcessed = 0;
       int2 scanVal   = {0,0};
@@ -283,10 +285,10 @@ namespace {
 	}
 
       /* if the current level is processed, schedule the next level */
-      if (warpOffset >= numSources) {
+      if (sourceOffset >= numSources) {
 	oldSources += numSources;
 	numSources = newSources;
-	warpOffset = newSources = 0;
+	sourceOffset = newSources = 0;
       }
 
     }  /* level completed */

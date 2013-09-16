@@ -36,7 +36,7 @@ void getMinMax(float3 &_rmin, float3 &_rmax, const float3 pos) {
 }
 
 static __device__ __forceinline__
-uint shfl_scan_add_step(uint partial, uint up_offset) {
+uint shflUpAdd(uint partial, uint up_offset) {
   uint result;
   asm("{.reg .u32 r0;"
       ".reg .pred p;"
@@ -47,18 +47,19 @@ uint shfl_scan_add_step(uint partial, uint up_offset) {
   return result;
 }
 
+template<int NLEVEL>
 static __device__ __forceinline__
-uint inclusive_scan_warp(const int sum) {
+uint inclusiveScan(const int sum) {
   uint mysum = sum;
 #pragma unroll
-  for (int i=0; i<WARP_SIZE2; ++i)
-    mysum = shfl_scan_add_step(mysum, 1 << i);
+  for (int i=0; i<NLEVEL; ++i)
+    mysum = shflUpAdd(mysum, 1 << i);
   return mysum;
 }
 
 static __device__ __forceinline__
 int2 warpIntExclusiveScan(const int value) {
-  const int sum = inclusive_scan_warp(value);
+  const int sum = inclusiveScan<WARP_SIZE2>(value);
   return make_int2(sum-value, __shfl(sum, WARP_SIZE-1, WARP_SIZE));
 }
 
