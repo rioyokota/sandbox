@@ -149,20 +149,18 @@ namespace {
 	cellQueue[ringAddr(root - rootRange.x + laneIdx)] = root + laneIdx;
 
     int numSources = rootRange.y - rootRange.x;
-
-    int cellQueueBlock       = 0;
-    int nextLevelCellCounter = 0;
-
-    unsigned int retiredSources = 0;
+    int newSources = 0;
+    int oldSources = 0;
+    int warpOffset = 0;
 
     while (numSources > 0) {
-      const int cellQueueIdx = cellQueueBlock + laneIdx;
-      const bool useCell    = cellQueueIdx < numSources;
-      const int cellIdx     = cellQueue[ringAddr(retiredSources + cellQueueIdx)];
-      cellQueueBlock += min(WARP_SIZE, numSources - cellQueueBlock);
+      const int cellQueueIdx = warpOffset + laneIdx;
+      const bool useCell = cellQueueIdx < numSources;
+      const int cellIdx = cellQueue[ringAddr(oldSources + cellQueueIdx)];
+      warpOffset += min(WARP_SIZE, numSources - warpOffset);
 
       /* read from gmem cell's info */
-      const float4   sourceCenter = tex1Dfetch(texCellCenter, cellIdx);
+      const float4 sourceCenter = tex1Dfetch(texCellCenter, cellIdx);
       const CellData cellData = tex1Dfetch(texCell, cellIdx);
 
       const bool splitCell = applyMAC(sourceCenter, targetCenter, targetSize) ||
@@ -182,17 +180,17 @@ namespace {
       int2 childScatter = warpIntExclusiveScan(nChild & (-splitNode));
 
       /* make sure we still have available stack space */
-      if (childScatter.y + numSources - cellQueueBlock > CELL_LIST_MEM_PER_WARP)
+      if (childScatter.y + numSources - warpOffset > CELL_LIST_MEM_PER_WARP)
 	return make_uint2(0xFFFFFFFF,0xFFFFFFFF);
 
       /* if so populate next level stack in gmem */
       if (splitNode)
 	{
-	  const int scatterIdx = retiredSources + numSources + nextLevelCellCounter + childScatter.x;
+	  const int scatterIdx = oldSources + numSources + newSources + childScatter.x;
 	  for (int i = 0; i < nChild; i++)
 	    cellQueue[ringAddr(scatterIdx + i)] = firstChild + i;
 	}
-      nextLevelCellCounter += childScatter.y;  /* increment nextLevelCounter by total # of children */
+      newSources += childScatter.y;  /* increment nextLevelCounter by total # of children */
 
       /***********************************/
       /******       APPROX          ******/
@@ -296,10 +294,10 @@ namespace {
 	}
 
       /* if the current level is processed, schedule the next level */
-      if (cellQueueBlock >= numSources) {
-	retiredSources += numSources;
-	numSources = nextLevelCellCounter;
-	cellQueueBlock = nextLevelCellCounter = 0;
+      if (warpOffset >= numSources) {
+	oldSources += numSources;
+	numSources = newSources;
+	warpOffset = newSources = 0;
       }
 
     }  /* level completed */
