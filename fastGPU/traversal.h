@@ -198,18 +198,14 @@ namespace {
       approxQueue = tempQueue[laneIdx];                         // Free temp queue for use in direct
       numApprox += numApproxWarp;                               // Increment approx queue offset
 
-      /***********************************/
-      /******       DIRECT          ******/
-      /***********************************/
-
+      // Direct
       const bool isLeaf = !isNode;
       bool isDirect = isClose && isLeaf && isSource;
-
-      const int body = sourceData.body();
-      const int numBodies = sourceData.nbody();
-
-      const int2 childScatter = warpIntExclusiveScan(numBodies & (-isDirect));
-      int nParticle  = childScatter.y;
+      const int bodyBegin = sourceData.body();
+      const int numBodies = sourceData.nbody() & IF(isDirect);
+      const int numBodiesScan = inclusiveScan<WARP_SIZE2>(numBodies);
+      const int bodyLaneIdx = numBodiesScan - numBodies;
+      int nParticle  = __shfl(numBodiesScan, WARP_SIZE-1);
       int nProcessed = 0;
       int2 scanVal   = {0,0};
 
@@ -217,10 +213,10 @@ namespace {
       while (nParticle > 0)
 	{
 	  tempQueue[laneIdx] = 1;
-	  if (isDirect && (childScatter.x - nProcessed < WARP_SIZE))
+	  if (isDirect && (bodyLaneIdx - nProcessed < WARP_SIZE))
 	    {
 	      isDirect = false;
-	      tempQueue[childScatter.x - nProcessed] = -1-body;
+	      tempQueue[bodyLaneIdx - nProcessed] = -1-bodyBegin;
 	    }
 	  scanVal = inclusive_segscan_warp(tempQueue[laneIdx], scanVal.y);
 	  const int  bodyIdx = scanVal.x;

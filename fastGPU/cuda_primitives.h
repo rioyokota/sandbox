@@ -36,25 +36,25 @@ void getMinMax(float3 &_rmin, float3 &_rmax, const float3 pos) {
 }
 
 static __device__ __forceinline__
-uint shflUpAdd(uint partial, uint up_offset) {
+uint shflUpAdd(uint partial, uint offset) {
   uint result;
   asm("{.reg .u32 r0;"
       ".reg .pred p;"
       "shfl.up.b32 r0|p, %1, %2, 0;"
       "@p add.u32 r0, r0, %3;"
       "mov.u32 %0, r0;}"
-      : "=r"(result) : "r"(partial), "r"(up_offset), "r"(partial));
+      : "=r"(result) : "r"(partial), "r"(offset), "r"(partial));
   return result;
 }
 
 template<int NLEVEL>
 static __device__ __forceinline__
-uint inclusiveScan(const int sum) {
-  uint mysum = sum;
+uint inclusiveScan(const int value) {
+  uint sum = value;
 #pragma unroll
   for (int i=0; i<NLEVEL; ++i)
-    mysum = shflUpAdd(mysum, 1 << i);
-  return mysum;
+    sum = shflUpAdd(sum, 1 << i);
+  return sum;
 }
 
 static __device__ __forceinline__
