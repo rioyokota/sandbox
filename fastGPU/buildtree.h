@@ -6,6 +6,17 @@
 extern void sort(const int size, int * key, int * value);
 
 namespace {
+  __constant__ int d_maxNode;
+  __device__ unsigned int retirementCount = 0;
+  __device__ unsigned int nnodes = 0;
+  __device__ unsigned int nleaves = 0;
+  __device__ unsigned int nlevels = 0;
+  __device__ unsigned int nbodies_leaf = 0;
+  __device__ unsigned int ncells = 0;
+  __device__ int *memPool;
+  __device__ CellData *sourceCells;
+  __device__ void *bodyVel2;
+
   static __device__ __forceinline__ int Octant(const float4 &lhs, const float4 &rhs) {
     return ((lhs.x <= rhs.x) << 0) + ((lhs.y <= rhs.y) << 1) + ((lhs.z <= rhs.z) << 2);
   };
@@ -25,20 +36,6 @@ namespace {
     assert(np > 0);
     grid = dim3(min(max(np/(NTHREADS*4),1), 512));
   }
-
-  __device__ unsigned int retirementCount = 0;
-
-  __constant__ int d_maxNode;
-
-  __device__ unsigned int nnodes = 0;
-  __device__ unsigned int nleaves = 0;
-  __device__ unsigned int nlevels = 0;
-  __device__ unsigned int nbodies_leaf = 0;
-  __device__ unsigned int ncells = 0;
-
-  __device__   int *memPool;
-  __device__   CellData *sourceCells;
-  __device__   void *bodyVel2;
 
   template<int NTHREAD2>
     static __device__ float2 minmax_block(float2 sum)
@@ -183,10 +180,6 @@ namespace {
 		float4 *buff,
 		const int level = 0)
   {
-    /* compute laneIdx & warpIdx for each of the threads:
-     *   the thread block contains only 8 warps
-     *   a warp is responsible for a single octant of the cell 
-     */   
     const int laneIdx = threadIdx.x & (WARP_SIZE-1);
     const int warpIdx = threadIdx.x >> WARP_SIZE2;
 
