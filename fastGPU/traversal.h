@@ -154,42 +154,31 @@ namespace {
     int warpOffset = 0;
 
     while (numSources > 0) {
-      const int cellQueueIdx = warpOffset + laneIdx;
-      const bool useCell = cellQueueIdx < numSources;
-      const int cellIdx = cellQueue[ringAddr(oldSources + cellQueueIdx)];
-      warpOffset += min(WARP_SIZE, numSources - warpOffset);
+      const int sourceIdx = warpOffset + laneIdx;
+      const int queueIdx = cellQueue[ringAddr(oldSources + sourceIdx)];
+      const float4 sourceCenter = tex1Dfetch(texCellCenter, queueIdx);
+      const CellData sourceData = tex1Dfetch(texCell, queueIdx);
 
-      /* read from gmem cell's info */
-      const float4 sourceCenter = tex1Dfetch(texCellCenter, cellIdx);
-      const CellData cellData = tex1Dfetch(texCell, cellIdx);
+      const bool isNode = sourceData.isNode();
+      const bool isClose = applyMAC(sourceCenter, targetCenter, targetSize) ||
+	(sourceData.nbody() < 3);
+      const bool isSource = sourceIdx < numSources;
+      const bool isSplit = isNode && isClose && isSource;
 
-      const bool splitCell = applyMAC(sourceCenter, targetCenter, targetSize) ||
-	(cellData.nbody() < 3); /* force to open leaves with less than 3 particles */
+      const int firstChild = sourceData.child();
+      const int numChild = sourceData.nchild() & IF(isSplit);
 
-      /**********************************************/
-      /* split cells that satisfy opening condition */
-      /**********************************************/
-
-      const bool isNode = cellData.isNode();
-
-      const int firstChild = cellData.child();
-      const int nChild= cellData.nchild();
-      bool splitNode  = isNode && splitCell && useCell;
-
-      /* use exclusive scan to compute scatter addresses for each of the child cells */
-      int2 childScatter = warpIntExclusiveScan(nChild & (-splitNode));
+      int2 childScatter = warpIntExclusiveScan(numChild);
 
       /* make sure we still have available stack space */
+      warpOffset += min(WARP_SIZE, numSources - warpOffset);
       if (childScatter.y + numSources - warpOffset > CELL_LIST_MEM_PER_WARP)
 	return make_uint2(0xFFFFFFFF,0xFFFFFFFF);
 
       /* if so populate next level stack in gmem */
-      if (splitNode)
-	{
-	  const int scatterIdx = oldSources + numSources + newSources + childScatter.x;
-	  for (int i = 0; i < nChild; i++)
-	    cellQueue[ringAddr(scatterIdx + i)] = firstChild + i;
-	}
+      int scatterIdx = oldSources + numSources + newSources + childScatter.x;
+      for (int i=0; i<numChild; i++)
+	cellQueue[ringAddr(scatterIdx + i)] = firstChild + i;	
       newSources += childScatter.y;  /* increment nextLevelCounter by total # of children */
 
       /***********************************/
@@ -197,14 +186,14 @@ namespace {
       /***********************************/
 
       /* see which thread's cell can be used for approximate force calculation */
-      const bool approxCell    = !splitCell && useCell;
+      const bool approxCell    = !isClose && isSource;
       const int2 approxScatter = warpBinExclusiveScan(approxCell);
 
       /* store index of the cell */
-      const int scatterIdx = approxCounter + approxScatter.x;
+      scatterIdx = approxCounter + approxScatter.x;
       tempQueue[laneIdx] = approxCellIdx;
       if (approxCell && scatterIdx < WARP_SIZE)
-	tempQueue[scatterIdx] = cellIdx;
+	tempQueue[scatterIdx] = queueIdx;
 
       approxCounter += approxScatter.y;
 
@@ -215,9 +204,9 @@ namespace {
 	  approxAcc<NI,true>(acc_i, pos_i, tempQueue[laneIdx], EPS2);
 
 	  approxCounter -= WARP_SIZE;
-	  const int scatterIdx = approxCounter + approxScatter.x - approxScatter.y;
+	  scatterIdx = approxCounter + approxScatter.x - approxScatter.y;
 	  if (approxCell && scatterIdx >= 0)
-	    tempQueue[scatterIdx] = cellIdx;
+	    tempQueue[scatterIdx] = queueIdx;
 	  counters.x += WARP_SIZE;
 	}
       approxCellIdx = tempQueue[laneIdx];
@@ -227,10 +216,10 @@ namespace {
       /***********************************/
 
       const bool isLeaf = !isNode;
-      bool isDirect = splitCell && isLeaf && useCell;
+      bool isDirect = isClose && isLeaf && isSource;
 
-      const int body = cellData.body();
-      const int numBodies = cellData.nbody();
+      const int body = sourceData.body();
+      const int numBodies = sourceData.nbody();
 
       childScatter = warpIntExclusiveScan(numBodies & (-isDirect));
       int nParticle  = childScatter.y;
