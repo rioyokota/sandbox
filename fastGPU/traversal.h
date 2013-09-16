@@ -32,6 +32,7 @@ namespace {
 
   static __device__ __forceinline__
   bool applyMAC(const float4 sourceCenter,
+                const CellData sourceData,
                 const float3 targetCenter,
                 const float3 targetSize) {
     float3 dr = make_float3(fabsf(targetCenter.x - sourceCenter.x) - (targetSize.x),
@@ -41,7 +42,7 @@ namespace {
     dr.y += fabsf(dr.y); dr.y *= 0.5f;
     dr.z += fabsf(dr.z); dr.z *= 0.5f;
     const float ds2 = dr.x*dr.x + dr.y*dr.y + dr.z*dr.z;
-    return ds2 < fabsf(sourceCenter.w);
+    return ds2 < fabsf(sourceCenter.w) || sourceData.nbody() < 3;
   }
 
   static __device__ __forceinline__
@@ -142,7 +143,7 @@ namespace {
     int approxCellIdx, directBodyIdx;
 
     int directCounter = 0;
-    int approxCounter = 0;
+    int numApprox = 0;
 
     for (int root=rootRange.x; root<rootRange.y; root+=WARP_SIZE)
       if (root + laneIdx < rootRange.y)
@@ -158,25 +159,20 @@ namespace {
       const int sourceQueue = cellQueue[ringAddr(oldSources + sourceIdx)];
       const float4 sourceCenter = tex1Dfetch(texCellCenter, sourceQueue);
       const CellData sourceData = tex1Dfetch(texCell, sourceQueue);
-
       const bool isNode = sourceData.isNode();
-      const bool isClose = applyMAC(sourceCenter, targetCenter, targetSize) ||
-	(sourceData.nbody() < 3);
+      const bool isClose = applyMAC(sourceCenter, sourceData, targetCenter, targetSize);
       const bool isSource = sourceIdx < numSources;
       const bool isSplit = isNode && isClose && isSource;
 
       // Split
       const int childBegin = sourceData.child();
       const int numChild = sourceData.nchild() & IF(isSplit);
-
       const int numChildScan = inclusiveScan<WARP_SIZE2>(numChild);
       const int childLaneIdx = numChildScan - numChild;
       const int numChildWarp = __shfl(numChildScan, WARP_SIZE-1);
-
       sourceOffset += min(WARP_SIZE, numSources - sourceOffset);
       if (numChildWarp + numSources - sourceOffset > CELL_LIST_MEM_PER_WARP)
 	return make_uint2(0xFFFFFFFF,0xFFFFFFFF);
-
       int childIdx = oldSources + numSources + newSources + childLaneIdx;
       for (int i=0; i<numChild; i++)
 	cellQueue[ringAddr(childIdx + i)] = childBegin + i;	
@@ -188,21 +184,21 @@ namespace {
       const int approxLaneIdx = __popc(approxBallot & lanemask_lt());
       const int numApproxWarp = __popc(approxBallot);
 
-      int approxIdx = approxCounter + approxLaneIdx;
+      int approxIdx = numApprox + approxLaneIdx;
       tempQueue[laneIdx] = approxCellIdx;
       if (isApprox && approxIdx < WARP_SIZE)
 	tempQueue[approxIdx] = sourceQueue;
 
-      approxCounter += numApproxWarp;
+      numApprox += numApproxWarp;
 
       /* compute approximate forces */
-      if (approxCounter >= WARP_SIZE)
+      if (numApprox >= WARP_SIZE)
 	{
 	  /* evalute cells stored in shmem */
 	  approxAcc<NI,true>(acc_i, pos_i, tempQueue[laneIdx], EPS2);
 
-	  approxCounter -= WARP_SIZE;
-	  approxIdx = approxCounter + approxLaneIdx - numApproxWarp;
+	  numApprox -= WARP_SIZE;
+	  approxIdx = numApprox + approxLaneIdx - numApproxWarp;
 	  if (isApprox && approxIdx >= 0)
 	    tempQueue[approxIdx] = sourceQueue;
 	  counters.x += WARP_SIZE;
@@ -289,10 +285,10 @@ namespace {
 
     }  /* level completed */
 
-    if (approxCounter > 0) {
-      approxAcc<NI,false>(acc_i, pos_i, laneIdx < approxCounter ? approxCellIdx : -1, EPS2);
-      counters.x += approxCounter;
-      approxCounter = 0;
+    if (numApprox > 0) {
+      approxAcc<NI,false>(acc_i, pos_i, laneIdx < numApprox ? approxCellIdx : -1, EPS2);
+      counters.x += numApprox;
+      numApprox = 0;
     }
 
     if (directCounter > 0) {
