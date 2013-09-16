@@ -140,7 +140,7 @@ namespace {
 
     uint2 counters = {0,0};
 
-    int approxCellIdx, directBodyIdx;
+    int approxQueue, directBodyIdx;
 
     int directCounter = 0;
     int numApprox = 0;
@@ -155,55 +155,48 @@ namespace {
     int sourceOffset = 0;
 
     while (numSources > 0) {
-      const int sourceIdx = sourceOffset + laneIdx;
-      const int sourceQueue = cellQueue[ringAddr(oldSources + sourceIdx)];
-      const float4 sourceCenter = tex1Dfetch(texCellCenter, sourceQueue);
-      const CellData sourceData = tex1Dfetch(texCell, sourceQueue);
-      const bool isNode = sourceData.isNode();
-      const bool isClose = applyMAC(sourceCenter, sourceData, targetCenter, targetSize);
-      const bool isSource = sourceIdx < numSources;
-      const bool isSplit = isNode && isClose && isSource;
+      const int sourceIdx = sourceOffset + laneIdx;             // Source cell index of current lane
+      const int sourceQueue = cellQueue[ringAddr(oldSources + sourceIdx)];// Global source cell index in queue
+      const float4 sourceCenter = tex1Dfetch(texCellCenter, sourceQueue);// Source cell center
+      const CellData sourceData = tex1Dfetch(texCell, sourceQueue);// Source cell data
+      const bool isNode = sourceData.isNode();                  // Is non-leaf cell
+      const bool isClose = applyMAC(sourceCenter, sourceData, targetCenter, targetSize);// Is too close for MAC
+      const bool isSource = sourceIdx < numSources;             // Source index is within bounds
+      const bool isSplit = isNode && isClose && isSource;       // Source cell must be split
 
       // Split
-      const int childBegin = sourceData.child();
-      const int numChild = sourceData.nchild() & IF(isSplit);
-      const int numChildScan = inclusiveScan<WARP_SIZE2>(numChild);
-      const int childLaneIdx = numChildScan - numChild;
-      const int numChildWarp = __shfl(numChildScan, WARP_SIZE-1);
-      sourceOffset += min(WARP_SIZE, numSources - sourceOffset);
-      if (numChildWarp + numSources - sourceOffset > CELL_LIST_MEM_PER_WARP)
-	return make_uint2(0xFFFFFFFF,0xFFFFFFFF);
-      int childIdx = oldSources + numSources + newSources + childLaneIdx;
-      for (int i=0; i<numChild; i++)
-	cellQueue[ringAddr(childIdx + i)] = childBegin + i;	
-      newSources += numChildWarp;
+      const int childBegin = sourceData.child();                // First child cell
+      const int numChild = sourceData.nchild() & IF(isSplit);   // Number of child cells (masked by split flag)
+      const int numChildScan = inclusiveScan<WARP_SIZE2>(numChild);// Inclusive scan of numChild
+      const int childLaneIdx = numChildScan - numChild;         // Exclusive scan of numChild
+      const int numChildWarp = __shfl(numChildScan, WARP_SIZE-1);// Total numChild of current warp
+      sourceOffset += min(WARP_SIZE, numSources - sourceOffset);// Increment source offset
+      if (numChildWarp + numSources - sourceOffset > CELL_LIST_MEM_PER_WARP)// If cell queue overflows
+	return make_uint2(0xFFFFFFFF,0xFFFFFFFF);               // Exit kernel
+      int childIdx = oldSources + numSources + newSources + childLaneIdx;// Child index of current lane
+      for (int i=0; i<numChild; i++)                            // Loop over child cells for each lane
+	cellQueue[ringAddr(childIdx + i)] = childBegin + i;	//  Queue child cells
+      newSources += numChildWarp;                               // Increment source cell count for next loop
 
       // Approx
-      const bool isApprox = !isClose && isSource;
-      const uint approxBallot = __ballot(isApprox);
-      const int approxLaneIdx = __popc(approxBallot & lanemask_lt());
-      const int numApproxWarp = __popc(approxBallot);
-
-      int approxIdx = numApprox + approxLaneIdx;
-      tempQueue[laneIdx] = approxCellIdx;
-      if (isApprox && approxIdx < WARP_SIZE)
-	tempQueue[approxIdx] = sourceQueue;
-
-      numApprox += numApproxWarp;
-
-      /* compute approximate forces */
-      if (numApprox >= WARP_SIZE)
-	{
-	  /* evalute cells stored in shmem */
-	  approxAcc<NI,true>(acc_i, pos_i, tempQueue[laneIdx], EPS2);
-
-	  numApprox -= WARP_SIZE;
-	  approxIdx = numApprox + approxLaneIdx - numApproxWarp;
-	  if (isApprox && approxIdx >= 0)
-	    tempQueue[approxIdx] = sourceQueue;
-	  counters.x += WARP_SIZE;
-	}
-      approxCellIdx = tempQueue[laneIdx];
+      const bool isApprox = !isClose && isSource;               // Source cell can be used for M2P
+      const uint approxBallot = __ballot(isApprox);             // Gather approx flags
+      const int approxLaneIdx = __popc(approxBallot & lanemask_lt());// Exclusive scan of approx flags
+      const int numApproxWarp = __popc(approxBallot);           // Total isApprox for current warp
+      int approxIdx = numApprox + approxLaneIdx;                // Approx cell index of current lane
+      tempQueue[laneIdx] = approxQueue;                         // Fill queue with remaining sources for approx
+      if (isApprox && approxIdx < WARP_SIZE)                    // If approx flag is true and index is within bounds
+	tempQueue[approxIdx] = sourceQueue;                     //  Fill approx queue with current sources
+      if (numApprox + numApproxWarp >= WARP_SIZE) {             // If approx queue is larger than the warp size
+	approxAcc<NI,true>(acc_i, pos_i, tempQueue[laneIdx], EPS2);// Call M2P kernel
+	numApprox -= WARP_SIZE;                                 //  Decrement approx queue size
+	approxIdx = numApprox + approxLaneIdx;                  //  Update approx index using new queue size
+	if (isApprox && approxIdx >= 0)                         //  If approx flag is true and index is within bounds
+	  tempQueue[approxIdx] = sourceQueue;                   //   Fill approx queue with current sources
+	counters.x += WARP_SIZE;                                //  Increment M2P counter
+      }                                                         // End if for approx queue size
+      approxQueue = tempQueue[laneIdx];                         // Free temp queue for use in direct
+      numApprox += numApproxWarp;                               // Increment approx queue offset
 
       /***********************************/
       /******       DIRECT          ******/
@@ -286,7 +279,7 @@ namespace {
     }  /* level completed */
 
     if (numApprox > 0) {
-      approxAcc<NI,false>(acc_i, pos_i, laneIdx < numApprox ? approxCellIdx : -1, EPS2);
+      approxAcc<NI,false>(acc_i, pos_i, laneIdx < numApprox ? approxQueue : -1, EPS2);
       counters.x += numApprox;
       numApprox = 0;
     }
