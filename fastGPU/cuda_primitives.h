@@ -1,8 +1,7 @@
 #pragma once
   
 template<typename Tex, typename T>
-  static void bindTexture(Tex &tex, const T *ptr, const int size)
-{
+  static void bindTexture(Tex &tex, const T *ptr, const int size) {
   tex.addressMode[0] = cudaAddressModeWrap;
   tex.addressMode[1] = cudaAddressModeWrap;
   tex.filterMode     = cudaFilterModePoint;
@@ -11,51 +10,26 @@ template<typename Tex, typename T>
 }
 
 template<typename Tex>
-static void unbindTexture(Tex &tex)
-{
+static void unbindTexture(Tex &tex) {
   CUDA_SAFE_CALL(cudaUnbindTexture(tex));
 }
 
-/*********************/
-
-static __forceinline__ __device__ double atomicAdd_double(double *address, const double val)
-{
-  unsigned long long int* address_as_ull = (unsigned long long int*)address;
-  unsigned long long int old = *address_as_ull, assumed;
-  do
-    {
-      assumed = old;
-      old = atomicCAS(address_as_ull, assumed,
-		      __double_as_longlong(val + __longlong_as_double(assumed)));
-    } while (assumed != old);
-  return __longlong_as_double(old);
-}
-
-/**************************/
-
 static __device__ __forceinline__ 
-void addBoxSize(float3 &_rmin, float3 &_rmax, const float3 pos)
-{
+void getMinMax(float3 &_rmin, float3 &_rmax, const float3 pos) {
   float3 rmin = pos;
   float3 rmax = rmin;
-
 #pragma unroll
-  for (int i = WARP_SIZE2-1; i >= 0; i--)
-    {
-      rmin.x = min(rmin.x, __shfl_xor(rmin.x, 1<<i, WARP_SIZE));
-      rmax.x = max(rmax.x, __shfl_xor(rmax.x, 1<<i, WARP_SIZE));
-
-      rmin.y = min(rmin.y, __shfl_xor(rmin.y, 1<<i, WARP_SIZE));
-      rmax.y = max(rmax.y, __shfl_xor(rmax.y, 1<<i, WARP_SIZE));
-
-      rmin.z = min(rmin.z, __shfl_xor(rmin.z, 1<<i, WARP_SIZE));
-      rmax.z = max(rmax.z, __shfl_xor(rmax.z, 1<<i, WARP_SIZE));
-    }
-
+  for (int i=0; i<WARP_SIZE2; i++) {
+    rmin.x = min(rmin.x, __shfl_xor(rmin.x, 1<<i));
+    rmin.y = min(rmin.y, __shfl_xor(rmin.y, 1<<i));
+    rmin.z = min(rmin.z, __shfl_xor(rmin.z, 1<<i));
+    rmax.x = max(rmax.x, __shfl_xor(rmax.x, 1<<i));
+    rmax.y = max(rmax.y, __shfl_xor(rmax.y, 1<<i));
+    rmax.z = max(rmax.z, __shfl_xor(rmax.z, 1<<i));
+  }
   _rmin.x = min(_rmin.x, rmin.x);
   _rmin.y = min(_rmin.y, rmin.y);
   _rmin.z = min(_rmin.z, rmin.z);
-
   _rmax.x = max(_rmax.x, rmax.x);
   _rmax.y = max(_rmax.y, rmax.y);
   _rmax.z = max(_rmax.z, rmax.z);

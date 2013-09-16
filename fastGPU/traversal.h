@@ -361,7 +361,7 @@ namespace {
       float3 rmax = rmin; 
 #pragma unroll
       for (int i = 0; i < NI; i++) 
-	addBoxSize(rmin, rmax, pos_i[i]);
+	getMinMax(rmin, rmax, pos_i[i]);
       rmin.x = __shfl(rmin.x,0);
       rmin.y = __shfl(rmin.y,0);
       rmin.z = __shfl(rmin.z,0);

@@ -88,7 +88,7 @@ namespace {
       nflop++;
       float4 body = bodyPos[min(i+laneIdx,bodyEnd-1)];
       if (i + laneIdx >= bodyEnd) body.w = 0.0f;
-      addBoxSize(rmin, rmax, make_float3(body.x,body.y,body.z));
+      getMinMax(rmin, rmax, make_float3(body.x,body.y,body.z));
       addMonopole(M, body);
       addQuadrupole(Q, body);
     }
