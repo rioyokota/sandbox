@@ -35,8 +35,10 @@ void getMinMax(float3 &_rmin, float3 &_rmax, const float3 pos) {
   _rmax.z = max(_rmax.z, rmax.z);
 }
 
+// Int scan
+
 static __device__ __forceinline__
-uint shflUpAdd(uint partial, uint offset) {
+uint shflScan(uint partial, uint offset) {
   uint result;
   asm("{.reg .u32 r0;"
       ".reg .pred p;"
@@ -47,23 +49,17 @@ uint shflUpAdd(uint partial, uint offset) {
   return result;
 }
 
-template<int NLEVEL>
+template<int SIZE2>
 static __device__ __forceinline__
 uint inclusiveScan(const int value) {
   uint sum = value;
 #pragma unroll
-  for (int i=0; i<NLEVEL; ++i)
-    sum = shflUpAdd(sum, 1 << i);
+  for (int i=0; i<SIZE2; ++i)
+    sum = shflScan(sum, 1 << i);
   return sum;
 }
 
-static __device__ __forceinline__
-int2 warpIntExclusiveScan(const int value) {
-  const int sum = inclusiveScan<WARP_SIZE2>(value);
-  return make_int2(sum-value, __shfl(sum, WARP_SIZE-1, WARP_SIZE));
-}
-
-/************** binary scan ***********/
+// Bool scan
 
 static __device__ __forceinline__
 int lanemask_lt() {
@@ -90,7 +86,7 @@ int warpBinReduce(const bool p) {
   return __popc(b);
 }
 
-/******************* segscan *******/
+// Int seg scan
 
 static __device__ __forceinline__
 int lanemask_le() {
@@ -100,35 +96,35 @@ int lanemask_le() {
 }
 
 static __device__ __forceinline__
-int ShflSegScanStepB(int partial, uint distance, uint up_offset) {
+int shflSegScan(int partial, uint offset, uint distance) {
   asm("{.reg .u32 r0;"
       ".reg .pred p;"
       "shfl.up.b32 r0, %1, %2, 0;"
       "setp.le.u32 p, %2, %3;"
       "@p add.u32 %1, r0, %1;"
       "mov.u32 %0, %1;}"
-      : "=r"(partial) : "r"(partial), "r"(up_offset), "r"(distance));
+      : "=r"(partial) : "r"(partial), "r"(offset), "r"(distance));
   return partial;
 }
 
 template<const int SIZE2>
 static __device__ __forceinline__
-int inclusive_segscan_warp_step(int value, const int distance) {
-  for (int i = 0; i < SIZE2; i++)
-    value = ShflSegScanStepB(value, distance, 1<<i);
+int inclusiveSegscan(int value, const int distance) {
+  for (int i=0; i<SIZE2; i++)
+    value = shflSegScan(value, 1<<i, distance);
   return value;
 }
 
 static __device__ __forceinline__
 int2 inclusive_segscan_warp(const int packed_value, const int carryValue) {
-  const int  flag = packed_value < 0;
-  const int  mask = -flag;
+  const int flag = packed_value < 0;
+  const int mask = -flag;
   const int value = (~mask & packed_value) + (mask & (-1-packed_value));
   const int flags = __ballot(flag);
   const int dist_block = __clz(__brev(flags));
   const int laneIdx = threadIdx.x & (WARP_SIZE - 1);
   const int distance = __clz(flags & lanemask_le()) + laneIdx - 31;
-  const int val = inclusive_segscan_warp_step<WARP_SIZE2>(value, min(distance, laneIdx)) +
+  const int val = inclusiveSegscan<WARP_SIZE2>(value, min(distance, laneIdx)) +
     (carryValue & (-(laneIdx < dist_block)));
   return make_int2(val, __shfl(val, WARP_SIZE-1, WARP_SIZE));
 }

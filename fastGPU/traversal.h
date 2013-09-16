@@ -139,20 +139,17 @@ namespace {
     const int laneIdx = threadIdx.x & (WARP_SIZE-1);
 
     uint2 counters = {0,0};
-
-    int approxQueue, directBodyIdx;
-
-    int directCounter = 0;
-    int numApprox = 0;
+    int approxQueue, directQueue;
 
     for (int root=rootRange.x; root<rootRange.y; root+=WARP_SIZE)
       if (root + laneIdx < rootRange.y)
 	cellQueue[ringAddr(root - rootRange.x + laneIdx)] = root + laneIdx;
-
     int numSources = rootRange.y - rootRange.x;
     int newSources = 0;
     int oldSources = 0;
     int sourceOffset = 0;
+    int numApprox = 0;
+    int numDirect = 0;
 
     while (numSources > 0) {
       const int sourceIdx = sourceOffset + laneIdx;             // Source cell index of current lane
@@ -206,72 +203,60 @@ namespace {
       const int numBodiesScan = inclusiveScan<WARP_SIZE2>(numBodies);
       int bodyLaneIdx = numBodiesScan - numBodies;
       int numBodiesWarp = __shfl(numBodiesScan, WARP_SIZE-1);
-      int2 scanVal   = {0,0};
+      int2 scanVal = {0,0};
 
-      /* conduct segmented scan for all leaves that need to be expanded */
-      while (numBodiesWarp > 0)
-	{
-	  tempQueue[laneIdx] = 1;
-	  if (isDirect && (bodyLaneIdx < WARP_SIZE))
-	    {
-	      isDirect = false;
-	      tempQueue[bodyLaneIdx] = -1-bodyBegin;
-	    }
-	  scanVal = inclusive_segscan_warp(tempQueue[laneIdx], scanVal.y);
-	  const int  bodyIdx = scanVal.x;
-
-	  if (numBodiesWarp >= WARP_SIZE)
-	    {
-	      const float4 M0 = tex1Dfetch(texBody, bodyIdx);
-	      for (int j=0; j<WARP_SIZE; j++) {
-		const float4 pos_j = make_float4(__shfl(M0.x, j), __shfl(M0.y, j), __shfl(M0.z, j), __shfl(M0.w,j));
-#pragma unroll
-		for (int k=0; k<NI; k++)
-		  acc_i[k] = P2P(acc_i[k], pos_i[k], pos_j, EPS2);
-	      }
-	      numBodiesWarp -= WARP_SIZE;
-	      bodyLaneIdx -= WARP_SIZE;
-	      counters.y += WARP_SIZE;
-	    }
-	  else 
-	    {
-	      const int scatterIdx = directCounter + laneIdx;
-	      tempQueue[laneIdx] = directBodyIdx;
-	      if (scatterIdx < WARP_SIZE)
-		tempQueue[scatterIdx] = bodyIdx;
-
-	      directCounter += numBodiesWarp;
-
-	      if (directCounter >= WARP_SIZE)
-		{
-		  /* evalute cells stored in shmem */
-		  const float4 M0 = tex1Dfetch(texBody, tempQueue[laneIdx]);
-		  for (int j=0; j<WARP_SIZE; j++) {
-		    const float4 pos_j = make_float4(__shfl(M0.x, j), __shfl(M0.y, j), __shfl(M0.z, j), __shfl(M0.w,j));
-#pragma unroll
-		    for (int k=0; k<NI; k++)
-		      acc_i[k] = P2P(acc_i[k], pos_i[k], pos_j, EPS2);
-		  }
-		  directCounter -= WARP_SIZE;
-		  const int scatterIdx = directCounter + laneIdx - numBodiesWarp;
-		  if (scatterIdx >= 0)
-		    tempQueue[scatterIdx] = bodyIdx;
-		  counters.y += WARP_SIZE;
-		}
-	      directBodyIdx = tempQueue[laneIdx];
-
-	      numBodiesWarp = 0;
-	    }
+      while (numBodiesWarp > 0) {
+	tempQueue[laneIdx] = 1;
+	if (isDirect && (bodyLaneIdx < WARP_SIZE)) {
+	  isDirect = false;
+	  tempQueue[bodyLaneIdx] = -1-bodyBegin;
 	}
+	scanVal = inclusive_segscan_warp(tempQueue[laneIdx], scanVal.y);
+	const int  bodyIdx = scanVal.x;
 
-      /* if the current level is processed, schedule the next level */
-      if (sourceOffset >= numSources) {
-	oldSources += numSources;
-	numSources = newSources;
-	sourceOffset = newSources = 0;
+	if (numBodiesWarp >= WARP_SIZE) {
+	  const float4 M0 = tex1Dfetch(texBody, bodyIdx);
+	  for (int j=0; j<WARP_SIZE; j++) {
+	    const float4 pos_j = make_float4(__shfl(M0.x, j), __shfl(M0.y, j), __shfl(M0.z, j), __shfl(M0.w,j));
+#pragma unroll
+	    for (int k=0; k<NI; k++)
+	      acc_i[k] = P2P(acc_i[k], pos_i[k], pos_j, EPS2);
+	    }
+	  numBodiesWarp -= WARP_SIZE;
+	  bodyLaneIdx -= WARP_SIZE;
+	  counters.y += WARP_SIZE;
+	} else {
+	  const int scatterIdx = numDirect + laneIdx;
+	  tempQueue[laneIdx] = directQueue;
+	  if (scatterIdx < WARP_SIZE)
+	    tempQueue[scatterIdx] = bodyIdx;
+
+	  numDirect += numBodiesWarp;
+
+	  if (numDirect >= WARP_SIZE) {
+	    const float4 M0 = tex1Dfetch(texBody, tempQueue[laneIdx]);
+	    for (int j=0; j<WARP_SIZE; j++) {
+	      const float4 pos_j = make_float4(__shfl(M0.x, j), __shfl(M0.y, j), __shfl(M0.z, j), __shfl(M0.w,j));
+#pragma unroll
+	      for (int k=0; k<NI; k++)
+		acc_i[k] = P2P(acc_i[k], pos_i[k], pos_j, EPS2);
+	    }
+	    numDirect -= WARP_SIZE;
+	    const int scatterIdx = numDirect + laneIdx - numBodiesWarp;
+	    if (scatterIdx >= 0)
+	      tempQueue[scatterIdx] = bodyIdx;
+	      counters.y += WARP_SIZE;
+	  }
+	  directQueue = tempQueue[laneIdx];
+	  numBodiesWarp = 0;
+	}
       }
-
-    }  /* level completed */
+      if (sourceOffset >= numSources) {                         // If the current level is done
+	oldSources += numSources;                               //  Update finished source size
+	numSources = newSources;                                //  Update current source size
+	sourceOffset = newSources = 0;                          //  Initialize next source size and offset
+      }
+    }
 
     if (numApprox > 0) {
       approxAcc<NI,false>(acc_i, pos_i, laneIdx < numApprox ? approxQueue : -1, EPS2);
@@ -279,8 +264,8 @@ namespace {
       numApprox = 0;
     }
 
-    if (directCounter > 0) {
-      const int bodyIdx = laneIdx < directCounter ? directBodyIdx : -1;
+    if (numDirect > 0) {
+      const int bodyIdx = laneIdx < numDirect ? directQueue : -1;
       const float4 M0 = bodyIdx >= 0 ? tex1Dfetch(texBody, bodyIdx) : make_float4(0.0f, 0.0f, 0.0f, 0.0f);
       for (int j=0; j<WARP_SIZE; j++) {
 	const float4 pos_j = make_float4(__shfl(M0.x, j), __shfl(M0.y, j), __shfl(M0.z, j), __shfl(M0.w,j));
@@ -288,8 +273,8 @@ namespace {
 	for (int k=0; k<NI; k++)
 	  acc_i[k] = P2P(acc_i[k], pos_i[k], pos_j, EPS2);
       }
-      counters.y += directCounter;
-      directCounter = 0;
+      counters.y += numDirect;
+      numDirect = 0;
     }
 
     return counters;
