@@ -157,7 +157,7 @@ namespace {
   void make_groups(const int n, const int NCRIT,
 		   const int *bodyBegIdx, 
 		   const int *bodyEndIdx,
-		   int2 *targetCells)
+		   int2 *targetRange)
   {
     const int gidx = blockDim.x * blockIdx.x + threadIdx.x;
     if (gidx >= n) return;
@@ -172,7 +172,7 @@ namespace {
       {
         const int groupIdx = atomicAdd(&groupCounter,1);
         const int bodyEnd = bodyEndIdx[n-1-gidx];
-        targetCells[groupIdx] = make_int2(groupBeg, min(NCRIT, bodyEnd - groupBeg));
+        targetRange[groupIdx] = make_int2(groupBeg, min(NCRIT, bodyEnd - groupBeg));
       }
   }
 
@@ -189,7 +189,7 @@ namespace {
 class Group {
  public:
   int targets(const int numBodies, float4 * d_bodyPos, float4 * d_bodyPos2,
-	      float4 * d_domain, int2 * d_targetCells, int levelSplit, const int NCRIT) {
+	      float4 * d_domain, int2 * d_targetRange, int levelSplit, const int NCRIT) {
     const int nthread = 256;
     cuda_mem<unsigned long long> d_key;
     cuda_mem<int> d_value;
@@ -232,7 +232,7 @@ class Group {
 
     scan(numBodies, d_keys_inv.ptr, d_bodyEndIdx.ptr);
 
-    make_groups<<<nblock,nthread>>>(numBodies, NCRIT, d_bodyBegIdx, d_bodyEndIdx, d_targetCells);
+    make_groups<<<nblock,nthread>>>(numBodies, NCRIT, d_bodyBegIdx, d_bodyEndIdx, d_targetRange);
 
     kernelSuccess("groupTargets");
     const double dt = get_time() - t0;

@@ -203,7 +203,7 @@ namespace {
       const int numBodiesScan = inclusiveScan<WARP_SIZE2>(numBodies);
       int bodyLaneIdx = numBodiesScan - numBodies;
       int numBodiesWarp = __shfl(numBodiesScan, WARP_SIZE-1);
-      int2 scanVal = {0,0};
+      int bodyOffset = 0;
 
       while (numBodiesWarp > 0) {
 	tempQueue[laneIdx] = 1;
@@ -211,41 +211,44 @@ namespace {
 	  isDirect = false;
 	  tempQueue[bodyLaneIdx] = -1-bodyBegin;
 	}
-	scanVal = inclusive_segscan_warp(tempQueue[laneIdx], scanVal.y);
-	const int  bodyIdx = scanVal.x;
-
+        const int bodyIdx = inclusive_segscan_warp(tempQueue[laneIdx], bodyOffset);
+        bodyOffset = __shfl(bodyIdx, WARP_SIZE-1);
 	if (numBodiesWarp >= WARP_SIZE) {
-	  const float4 M0 = tex1Dfetch(texBody, bodyIdx);
+	  const float4 pos = tex1Dfetch(texBody, bodyIdx);
 	  for (int j=0; j<WARP_SIZE; j++) {
-	    const float4 pos_j = make_float4(__shfl(M0.x, j), __shfl(M0.y, j), __shfl(M0.z, j), __shfl(M0.w,j));
+	    const float4 pos_j = make_float4(__shfl(pos.x, j),
+					     __shfl(pos.y, j),
+					     __shfl(pos.z, j),
+					     __shfl(pos.w, j));
 #pragma unroll
 	    for (int k=0; k<NI; k++)
 	      acc_i[k] = P2P(acc_i[k], pos_i[k], pos_j, EPS2);
-	    }
+	  }
 	  numBodiesWarp -= WARP_SIZE;
 	  bodyLaneIdx -= WARP_SIZE;
 	  counters.y += WARP_SIZE;
 	} else {
-	  const int scatterIdx = numDirect + laneIdx;
+	  const int directIdx = numDirect + laneIdx;
 	  tempQueue[laneIdx] = directQueue;
-	  if (scatterIdx < WARP_SIZE)
-	    tempQueue[scatterIdx] = bodyIdx;
-
+	  if (directIdx < WARP_SIZE)
+	    tempQueue[directIdx] = bodyIdx;
 	  numDirect += numBodiesWarp;
-
 	  if (numDirect >= WARP_SIZE) {
-	    const float4 M0 = tex1Dfetch(texBody, tempQueue[laneIdx]);
+	    const float4 pos = tex1Dfetch(texBody, tempQueue[laneIdx]);
 	    for (int j=0; j<WARP_SIZE; j++) {
-	      const float4 pos_j = make_float4(__shfl(M0.x, j), __shfl(M0.y, j), __shfl(M0.z, j), __shfl(M0.w,j));
+	      const float4 pos_j = make_float4(__shfl(pos.x, j),
+					       __shfl(pos.y, j),
+					       __shfl(pos.z, j),
+					       __shfl(pos.w, j));
 #pragma unroll
 	      for (int k=0; k<NI; k++)
 		acc_i[k] = P2P(acc_i[k], pos_i[k], pos_j, EPS2);
 	    }
 	    numDirect -= WARP_SIZE;
-	    const int scatterIdx = numDirect + laneIdx - numBodiesWarp;
-	    if (scatterIdx >= 0)
-	      tempQueue[scatterIdx] = bodyIdx;
-	      counters.y += WARP_SIZE;
+	    const int directIdx = numDirect + laneIdx - numBodiesWarp;
+	    if (directIdx >= 0)
+	      tempQueue[directIdx] = bodyIdx;
+	    counters.y += WARP_SIZE;
 	  }
 	  directQueue = tempQueue[laneIdx];
 	  numBodiesWarp = 0;
@@ -257,18 +260,19 @@ namespace {
 	sourceOffset = newSources = 0;                          //  Initialize next source size and offset
       }
     }
-
     if (numApprox > 0) {
       approxAcc<NI,false>(acc_i, pos_i, laneIdx < numApprox ? approxQueue : -1, EPS2);
       counters.x += numApprox;
       numApprox = 0;
     }
-
     if (numDirect > 0) {
       const int bodyIdx = laneIdx < numDirect ? directQueue : -1;
-      const float4 M0 = bodyIdx >= 0 ? tex1Dfetch(texBody, bodyIdx) : make_float4(0.0f, 0.0f, 0.0f, 0.0f);
+      const float4 pos = bodyIdx >= 0 ? tex1Dfetch(texBody, bodyIdx) : make_float4(0.0f, 0.0f, 0.0f, 0.0f);
       for (int j=0; j<WARP_SIZE; j++) {
-	const float4 pos_j = make_float4(__shfl(M0.x, j), __shfl(M0.y, j), __shfl(M0.z, j), __shfl(M0.w,j));
+	const float4 pos_j = make_float4(__shfl(pos.x, j),
+					 __shfl(pos.y, j),
+					 __shfl(pos.z, j),
+					 __shfl(pos.w, j));
 #pragma unroll
 	for (int k=0; k<NI; k++)
 	  acc_i[k] = P2P(acc_i[k], pos_i[k], pos_j, EPS2);
@@ -276,7 +280,6 @@ namespace {
       counters.y += numDirect;
       numDirect = 0;
     }
-
     return counters;
   }
 
@@ -290,20 +293,19 @@ namespace {
   __launch_bounds__(1<<NTHREAD2, 1024/(1<<NTHREAD2))
     static __global__ 
     void traverse(const int numTargets,
-		  const int2 *targetCells,
 		  const float EPS2,
 		  const int2 *levelRange,
 		  const float4 *pos,
 		  float4 *acc,
-		  int    *gmem_pool) {
-    const int NTHREAD = 1<<NTHREAD2;
-    __shared__ int shmem_pool[NTHREAD];
-
+		  const int2 *targetRange,
+		  int    *globalPool) {
     const int laneIdx = threadIdx.x & (WARP_SIZE-1);
     const int warpIdx = threadIdx.x >> WARP_SIZE2;
+    const int NTHREAD = 1<<NTHREAD2;
     const int NWARP2 = NTHREAD2 - WARP_SIZE2;
-    int *shmem = shmem_pool + WARP_SIZE * warpIdx;
-    int *gmem  =  gmem_pool + CELL_LIST_MEM_PER_WARP*((blockIdx.x<<NWARP2) + warpIdx);
+    __shared__ int sharedPool[NTHREAD];
+    int *tempQueue = sharedPool + WARP_SIZE * warpIdx;
+    int *cellQueue = globalPool + CELL_LIST_MEM_PER_WARP*((blockIdx.x<<NWARP2) + warpIdx);
 
     while (1) {
       int targetIdx = 0;
@@ -314,7 +316,7 @@ namespace {
       if (targetIdx >= numTargets) 
 	return;
 
-      const int2 target = targetCells[targetIdx];
+      const int2 target = targetRange[targetIdx];
       const int begin = target.x;
       const int end   = target.x+target.y;
 
@@ -338,12 +340,12 @@ namespace {
 
       const float half = 0.5f;
       const float3 targetCenter = {half*(rmax.x+rmin.x), half*(rmax.y+rmin.y), half*(rmax.z+rmin.z)};
-      const float3 hvec = {half*(rmax.x-rmin.x), half*(rmax.y-rmin.y), half*(rmax.z-rmin.z)};
+      const float3 targetSize = {half*(rmax.x-rmin.x), half*(rmax.y-rmin.y), half*(rmax.z-rmin.z)};
 
       float4 acc_i[NI] = {0.0f, 0.0f, 0.0f, 0.0f};
 
       uint2 counters = traverse_warp<NTHREAD2,NI>
-	(acc_i, pos_i, targetCenter, hvec, EPS2, levelRange[1], shmem, gmem);
+	(acc_i, pos_i, targetCenter, targetSize, EPS2, levelRange[1], tempQueue, cellQueue);
 
       assert(!(counters.x == 0xFFFFFFFF && counters.y == 0xFFFFFFFF));
 
@@ -356,29 +358,23 @@ namespace {
 
 #pragma unroll
       for (int i = 0; i < NI; i++)
-	if (i*WARP_SIZE + pidx < end)
-	  {
-	    sumM2P += counters.x;
-	    sumP2P += counters.y;
-	  }
-
+	if (i*WARP_SIZE + pidx < end) {
+	  sumM2P += counters.x;
+	  sumP2P += counters.y;
+	}
 #pragma unroll
-      for (int i = WARP_SIZE2-1; i >= 0; i--)
-	{
-	  maxP2P  = max(maxP2P, __shfl_xor(maxP2P, 1<<i));
-	  sumP2P += __shfl_xor(sumP2P, 1<<i);
-	  maxM2P  = max(maxM2P, __shfl_xor(maxM2P, 1<<i));
-	  sumM2P += __shfl_xor(sumM2P, 1<<i);
-	}
-
-      if (laneIdx == 0)
-	{
-	  atomicMax(&maxP2PGlob,                     maxP2P);
-	  atomicAdd(&sumP2PGlob, (unsigned long long)sumP2P);
-	  atomicMax(&maxM2PGlob,                     maxM2P);
-	  atomicAdd(&sumM2PGlob, (unsigned long long)sumM2P);
-	}
-
+      for (int i = WARP_SIZE2-1; i >= 0; i--) {
+	maxP2P  = max(maxP2P, __shfl_xor(maxP2P, 1<<i));
+	sumP2P += __shfl_xor(sumP2P, 1<<i);
+	maxM2P  = max(maxM2P, __shfl_xor(maxM2P, 1<<i));
+	sumM2P += __shfl_xor(sumM2P, 1<<i);
+      }
+      if (laneIdx == 0) {
+	atomicMax(&maxP2PGlob,                     maxP2P);
+	atomicAdd(&sumP2PGlob, (unsigned long long)sumP2P);
+	atomicMax(&maxM2PGlob,                     maxM2P);
+	atomicAdd(&sumM2PGlob, (unsigned long long)sumM2P);
+      }
 #pragma unroll
       for (int i=0; i<NI; i++)
 	if (pidx + i * WARP_SIZE < end)
@@ -444,8 +440,8 @@ class Traversal {
 		float4 * d_bodyPos,
 		float4 * d_bodyPos2,
 		float4 * d_bodyAcc,
+		int2 * d_targetRange,
 		CellData * d_sourceCells,
-		int2 * d_targetCells,
 		float4 * d_sourceCenter,
 		float4 * d_Monopole,
 		float4 * d_Quadrupole0,
@@ -460,17 +456,16 @@ class Traversal {
 
     const int NTHREAD2 = 7;
     const int NTHREAD  = 1<<NTHREAD2;
-    cuda_mem<int> d_gmem_pool;
+    cuda_mem<int> d_globalPool;
 
     const int nblock = 8*13;
-    d_gmem_pool.alloc(CELL_LIST_MEM_PER_WARP*nblock*(NTHREAD/WARP_SIZE));
+    d_globalPool.alloc(CELL_LIST_MEM_PER_WARP*nblock*(NTHREAD/WARP_SIZE));
 
     cudaDeviceSynchronize();
     const double t0 = get_time();
     CUDA_SAFE_CALL(cudaFuncSetCacheConfig(&traverse<NTHREAD2,2>, cudaFuncCachePreferL1));
-    traverse<NTHREAD2,2><<<nblock,NTHREAD>>>(numTargets, d_targetCells, eps*eps, d_levelRange,
-							    d_bodyPos2, d_bodyAcc,
-							    d_gmem_pool);
+    traverse<NTHREAD2,2><<<nblock,NTHREAD>>>(numTargets, eps*eps, d_levelRange,
+					     d_bodyPos2, d_bodyAcc, d_targetRange, d_globalPool);
     kernelSuccess("traverse");
     const double dt = get_time() - t0;
 
