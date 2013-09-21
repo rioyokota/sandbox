@@ -1,7 +1,7 @@
 #pragma once
 
 #define NWARPS2 3
-#define NWARPS  (1<<NWARPS2)
+#define NWARPS (1<<NWARPS2)
 
 extern void sort(const int size, int * key, int * value);
 
@@ -17,169 +17,151 @@ namespace {
   __device__ CellData *sourceCells;
   __device__ void *bodyVel2;
 
-  static __device__ __forceinline__ int Octant(const float4 &lhs, const float4 &rhs) {
-    return ((lhs.x <= rhs.x) << 0) + ((lhs.y <= rhs.y) << 1) + ((lhs.z <= rhs.z) << 2);
-  };
-
-  static __device__ __forceinline__ float4 ChildBox(const float4 &box, const int oct) {
-    const float s = 0.5f * box.w;
-    return make_float4(box.x + s * ((oct&1) ? 1.0f : -1.0f),
-		       box.y + s * ((oct&2) ? 1.0f : -1.0f),
-		       box.z + s * ((oct&4) ? 1.0f : -1.0f),
-		       s);
+  static __device__ __forceinline__
+  int getOctant(const float4 &box, const float4 &body) {
+    return ((box.x <= body.x) << 0) + ((box.y <= body.y) << 1) + ((box.z <= body.z) << 2);
   }
 
-  static __device__ __forceinline__ void computeGridAndBlockSize(dim3 &grid, dim3 &block, const int np)
-  {
-    const int NTHREADS = (1<<NWARPS2) * WARP_SIZE;
+  static __device__ __forceinline__
+  float4 getChild(const float4 &box, const int octant) {
+    const float R = 0.5f * box.w;
+    return make_float4(box.x + R * (octant & 1 ? 1.0f : -1.0f),
+		       box.y + R * (octant & 2 ? 1.0f : -1.0f),
+		       box.z + R * (octant & 4 ? 1.0f : -1.0f),
+		       R);
+  }
+
+  static __device__ __forceinline__
+  void getKernelSize(dim3 &grid, dim3 &block, const int N) {
+    const int NTHREADS = NWARPS * WARP_SIZE;
+    const int NGRIDS = min(max(N / NTHREADS, 1), 512);
     block = dim3(NTHREADS);
-    assert(np > 0);
-    grid = dim3(min(max(np/(NTHREADS*4),1), 512));
+    assert(N > 0);
+    grid = dim3(NGRIDS);
   }
 
   template<int NTHREAD2>
-    static __device__ float2 minmax_block(float2 sum)
-    {
-      extern __shared__ float shdata[];
-      float *shMin = shdata;
-      float *shMax = shdata + (1<<NTHREAD2);
-
-      const int tid = threadIdx.x;
-      shMin[tid] = sum.x;
-      shMax[tid] = sum.y;
-      __syncthreads();
+  static __device__
+  float2 getMinMax(float2 range) {
+    const int NTHREAD = 1 << NTHREAD2;
+    extern __shared__ float shared[];
+    float *shMin = shared;
+    float *shMax = shared + NTHREAD;
+    
+    const int tid = threadIdx.x;
+    shMin[tid] = range.x;
+    shMax[tid] = range.y;
+    __syncthreads();
 
 #pragma unroll    
-      for (int i = NTHREAD2-1; i >= 6; i--)
-	{
-	  const int offset = 1 << i;
-	  if (tid < offset)
-	    {
-	      shMin[tid] = sum.x = fminf(sum.x, shMin[tid + offset]);
-	      shMax[tid] = sum.y = fmaxf(sum.y, shMax[tid + offset]);
-	    }
-	  __syncthreads();
-	}
-
-      if (tid < 32)
-	{
-	  volatile float *vshMin = shMin;
-	  volatile float *vshMax = shMax;
-#pragma unroll
-	  for (int i = 5; i >= 0; i--)
-	    {
-	      const int offset = 1 << i;
-	      vshMin[tid] = sum.x = fminf(sum.x, vshMin[tid + offset]);
-	      vshMax[tid] = sum.y = fmaxf(sum.y, vshMax[tid + offset]);
-	    }
-	}
-
+    for (int i=NTHREAD2-1; i>=6; i--) {
+      const int offset = 1 << i;
+      if (tid < offset) {
+	shMin[tid] = range.x = fminf(range.x, shMin[tid + offset]);
+	shMax[tid] = range.y = fmaxf(range.y, shMax[tid + offset]);
+      }
       __syncthreads();
-
-      return sum;
     }
+
+    if (tid < 32) {
+      volatile float *vshMin = shMin;
+      volatile float *vshMax = shMax;
+#pragma unroll
+      for (int i=5; i>=0; i--) {
+	const int offset = 1 << i;
+	vshMin[tid] = range.x = fminf(range.x, vshMin[tid + offset]);
+	vshMax[tid] = range.y = fmaxf(range.y, vshMax[tid + offset]);
+      }
+    }
+    __syncthreads();
+    return range;
+  }
 
   template<const int NTHREAD2>
-    static __global__ void computeBoundingBox(
-					      const int n,
-					      float3 *minmax_ptr,
-					      float4 *box_ptr,
-					      const float4 *bodyPos)
-    {
-      const int NTHREAD = 1<<NTHREAD2;
-      const int NBLOCK  = NTHREAD;
+  static __global__
+  void computeBoundingBox(const int n,
+			  float3 *minmax_ptr,
+			  float4 *box_ptr,
+			  const float4 *bodyPos) {
+    const int NTHREAD = 1<<NTHREAD2;
+    const int NBLOCK  = NTHREAD;
 
-      float3 bmin = {+1e10f, +1e10f, +1e10f};
-      float3 bmax = {-1e10f, -1e10f, -1e10f};
+    float3 bmin = {+1e10f, +1e10f, +1e10f};
+    float3 bmax = {-1e10f, -1e10f, -1e10f};
 
-      const int nbeg = blockIdx.x * NTHREAD + threadIdx.x;
-      for (int i = nbeg; i < n; i += NBLOCK*NTHREAD)
-	if (i < n)
-	  {
-	    const float4 pos = bodyPos[i];
-	    bmin.x = fmin(bmin.x, pos.x);
-	    bmin.y = fmin(bmin.y, pos.y);
-	    bmin.z = fmin(bmin.z, pos.z);
-	    bmax.x = fmax(bmax.x, pos.x);
-	    bmax.y = fmax(bmax.y, pos.y);
-	    bmax.z = fmax(bmax.z, pos.z);
-	  }  
+    const int nbeg = blockIdx.x * NTHREAD + threadIdx.x;
+    for (int i=nbeg; i<n; i += NBLOCK*NTHREAD) {
+      if (i < n) {
+	const float4 pos = bodyPos[i];
+	bmin.x = fmin(bmin.x, pos.x);
+	bmin.y = fmin(bmin.y, pos.y);
+	bmin.z = fmin(bmin.z, pos.z);
+	bmax.x = fmax(bmax.x, pos.x);
+	bmax.y = fmax(bmax.y, pos.y);
+	bmax.z = fmax(bmax.z, pos.z);
+      }
+    }
  
-      float2 res;
-      res = minmax_block<NTHREAD2>(make_float2(bmin.x, bmax.x)); bmin.x = res.x; bmax.x = res.y;
-      res = minmax_block<NTHREAD2>(make_float2(bmin.y, bmax.y)); bmin.y = res.x; bmax.y = res.y;
-      res = minmax_block<NTHREAD2>(make_float2(bmin.z, bmax.z)); bmin.z = res.x; bmax.z = res.y;
+    float2 res;
+    res = getMinMax<NTHREAD2>(make_float2(bmin.x, bmax.x)); bmin.x = res.x; bmax.x = res.y;
+    res = getMinMax<NTHREAD2>(make_float2(bmin.y, bmax.y)); bmin.y = res.x; bmax.y = res.y;
+    res = getMinMax<NTHREAD2>(make_float2(bmin.z, bmax.z)); bmin.z = res.x; bmax.z = res.y;
 
-      if (threadIdx.x == 0) 
-	{
-	  minmax_ptr[blockIdx.x         ] = bmin;
-	  minmax_ptr[blockIdx.x + NBLOCK] = bmax;
-	}
-
-      __shared__ bool lastBlock;
-      __threadfence();
-      __syncthreads();
-
-      if (threadIdx.x == 0)
-	{
-	  const int ticket = atomicInc(&retirementCount, NBLOCK);
-	  lastBlock = (ticket == NBLOCK - 1);
-	}
-
-      __syncthreads();
-
-      if (lastBlock)
-	{
-
-	  bmin = minmax_ptr[threadIdx.x];
-	  bmax = minmax_ptr[threadIdx.x + NBLOCK];
-
-	  float2 res;
-	  res = minmax_block<NTHREAD2>(make_float2(bmin.x, bmax.x)); bmin.x = res.x; bmax.x = res.y;
-	  res = minmax_block<NTHREAD2>(make_float2(bmin.y, bmax.y)); bmin.y = res.x; bmax.y = res.y;
-	  res = minmax_block<NTHREAD2>(make_float2(bmin.z, bmax.z)); bmin.z = res.x; bmax.z = res.y;
-
-	  __syncthreads();
-
-	  if (threadIdx.x == 0)
-	    {
-	      const float3 cvec = {(bmax.x+bmin.x)*0.5f, (bmax.y+bmin.y)*0.5f, (bmax.z+bmin.z)*0.5f};
-	      const float3 hvec = {(bmax.x-bmin.x)*0.5f, (bmax.y-bmin.y)*0.5f, (bmax.z-bmin.z)*0.5f};
-	      const float h = fmax(hvec.z, fmax(hvec.y, hvec.x));
-	      float hsize = 1.0f;
-	      while (hsize > h) hsize *= 0.5f;
-	      while (hsize < h) hsize *= 2.0f;
-
-	      const int NMAXLEVEL = 20;
-
-	      const float hquant = hsize / float(1<<NMAXLEVEL);
-	      const long long nx = (long long)(cvec.x/hquant);
-	      const long long ny = (long long)(cvec.y/hquant);
-	      const long long nz = (long long)(cvec.z/hquant);
-
-	      const float4 box = {hquant * float(nx), hquant * float(ny), hquant * float(nz), hsize};
-
-	      *box_ptr = box;
-	      retirementCount = 0;
-	    }
-	}
+    if (threadIdx.x == 0) {
+      minmax_ptr[blockIdx.x         ] = bmin;
+      minmax_ptr[blockIdx.x + NBLOCK] = bmax;
     }
 
-  /*******************/
+    __shared__ bool lastBlock;
+    __threadfence();
+    __syncthreads();
 
+    if (threadIdx.x == 0) {
+      const int ticket = atomicInc(&retirementCount, NBLOCK);
+      lastBlock = (ticket == NBLOCK - 1);
+    }
+
+    __syncthreads();
+
+    if (lastBlock) {
+      bmin = minmax_ptr[threadIdx.x];
+      bmax = minmax_ptr[threadIdx.x + NBLOCK];
+      float2 res;
+      res = getMinMax<NTHREAD2>(make_float2(bmin.x, bmax.x)); bmin.x = res.x; bmax.x = res.y;
+      res = getMinMax<NTHREAD2>(make_float2(bmin.y, bmax.y)); bmin.y = res.x; bmax.y = res.y;
+      res = getMinMax<NTHREAD2>(make_float2(bmin.z, bmax.z)); bmin.z = res.x; bmax.z = res.y;
+
+      __syncthreads();
+
+      if (threadIdx.x == 0) {
+	const float3 cvec = {(bmax.x+bmin.x)*0.5f, (bmax.y+bmin.y)*0.5f, (bmax.z+bmin.z)*0.5f};
+	const float3 hvec = {(bmax.x-bmin.x)*0.5f, (bmax.y-bmin.y)*0.5f, (bmax.z-bmin.z)*0.5f};
+	const float h = fmax(hvec.z, fmax(hvec.y, hvec.x));
+	float hsize = 1.0f;
+	while (hsize > h) hsize *= 0.5f;
+	while (hsize < h) hsize *= 2.0f;
+	const int NMAXLEVEL = 20;
+	const float hquant = hsize / float(1<<NMAXLEVEL);
+	const long long nx = (long long)(cvec.x/hquant);
+	const long long ny = (long long)(cvec.y/hquant);
+	const long long nz = (long long)(cvec.z/hquant);
+	const float4 box = {hquant * float(nx), hquant * float(ny), hquant * float(nz), hsize};
+	*box_ptr = box;
+	retirementCount = 0;
+      }
+    }
+  }
+  
   template<int NLEAF, bool STOREIDX>
-    static __global__ void 
-    __launch_bounds__( 256, 8)
-    buildOctant(
-		float4 box,
-		const int cellParentIndex,
-		const int cellIndexBase,
-		const int octantMask,
-		int *octCounterBase,
-		float4 *body,
-		float4 *buff,
-		const int level = 0)
-  {
+  static __global__ __launch_bounds__(256, 8)
+  void buildOctant(float4 box,
+		   const int cellParentIndex,
+		   const int cellIndexBase,
+		   const int octantMask,
+		   int *octCounterBase,
+		   float4 *body,
+		   float4 *buff,
+		   const int level = 0) {
     const int laneIdx = threadIdx.x & (WARP_SIZE-1);
     const int warpIdx = threadIdx.x >> WARP_SIZE2;
 
@@ -194,12 +176,12 @@ namespace {
 
     /* read data about the current cell */
     const int data  = octCounter[laneIdx];
-    const int nBeg  = __shfl(data, 1, WARP_SIZE);
-    const int nEnd  = __shfl(data, 2, WARP_SIZE);
+    const int nBeg  = __shfl(data, 1);
+    const int nEnd  = __shfl(data, 2);
     /* if we are not at the root level, compute the geometric box
      * of the cell */
     if (!STOREIDX)
-      box = ChildBox(box, octant2process);
+      box = getChild(box, octant2process);
 
 
     /* countes number of particles in each octant of a child octant */
@@ -215,7 +197,7 @@ namespace {
 	shdata[i + threadIdx.x] = 0;
 
     if (laneIdx == 0 && warpIdx < 8)
-      shChildBox[warpIdx] = ChildBox(box, warpIdx);
+      shChildBox[warpIdx] = getChild(box, warpIdx);
 
     __syncthreads();
 
@@ -230,7 +212,7 @@ namespace {
 	  {
 	    const int oct = __float_as_int(p4.w) & 0xF;
 	    p4.w = __int_as_float(((i + threadIdx.x) << 4) | oct);
-	    p4octant = Octant(box, p4);
+	    p4octant = getOctant(box, p4);
 	  }
 
 	p4octant = i+threadIdx.x < nEnd ? p4octant : 0xF; 
@@ -238,7 +220,7 @@ namespace {
 	/* compute suboctant of the octant into which particle will fall */
 	if (p4octant < 8)
 	  {
-	    const int p4subOctant = Octant(shChildBox[p4octant], p4);
+	    const int p4subOctant = getOctant(shChildBox[p4octant], p4);
 	    const int idx = (__float_as_int(p4.w) >> 4) & 0xF0000000;
 	    p4.w = __int_as_float((idx << 4) | p4subOctant);
 	  }
@@ -478,7 +460,7 @@ namespace {
 	if (threadIdx.x == 0)
 	  {
 	    dim3 grid, block;
-	    computeGridAndBlockSize(grid, block, nCellmax);
+	    getKernelSize(grid, block, nCellmax);
 	    grid.y = nSubNodes.y;  /* each y-coordinate of the grid will be busy for each parent cell */
 	    buildOctant<NLEAF,false><<<grid,block>>>
 	      (box, cellIndexBase+blockIdx.y, cellFirstChildIndex,
@@ -542,7 +524,7 @@ namespace {
 	if (i < n)
 	  {
 	    const float4 pos = bodyPos[i];
-	    const int octant = Octant(box, pos);
+	    const int octant = getOctant(box, pos);
 	    np_octant[0] += (octant == 0);
 	    np_octant[1] += (octant == 1);
 	    np_octant[2] += (octant == 2);
@@ -616,7 +598,7 @@ namespace {
       octCounterN[2] = n;
 
       dim3 grid, block;
-      computeGridAndBlockSize(grid, block, n);
+      getKernelSize(grid, block, n);
 #if 1
       buildOctant<NLEAF,true><<<grid, block>>>
 	(*domain, 0, 0, 0, octCounterN, body, buff);

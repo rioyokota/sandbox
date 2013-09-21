@@ -312,23 +312,18 @@ namespace {
       if (laneIdx == 0)
         targetIdx = atomicAdd(&retiredTargets, 1);
       targetIdx = __shfl(targetIdx, 0, WARP_SIZE);
-
-      if (targetIdx >= numTargets) 
-	return;
+      if (targetIdx >= numTargets) return;
 
       const int2 target = targetRange[targetIdx];
-      const int begin = target.x;
-      const int end   = target.x+target.y;
-
+      const int bodyBegin = target.x;
+      const int bodyEnd   = target.x+target.y;
       float3 pos_i[NI];
-#pragma unroll
       for (int i=0; i<NI; i++) {
-	const float4 body = pos[min(begin+i*WARP_SIZE+laneIdx,end-1)];
+	const float4 body = pos[min(bodyBegin+i*WARP_SIZE+laneIdx,bodyEnd-1)];
 	pos_i[i] = make_float3(body.x, body.y, body.z);
       }
       float3 rmin = pos_i[0];
       float3 rmax = rmin; 
-#pragma unroll
       for (int i=0; i<NI; i++) 
 	getMinMax(rmin, rmax, pos_i[i]);
       rmin.x = __shfl(rmin.x,0);
@@ -337,33 +332,25 @@ namespace {
       rmax.x = __shfl(rmax.x,0);
       rmax.y = __shfl(rmax.y,0);
       rmax.z = __shfl(rmax.z,0);
-
-      const float half = 0.5f;
-      const float3 targetCenter = {half*(rmax.x+rmin.x), half*(rmax.y+rmin.y), half*(rmax.z+rmin.z)};
-      const float3 targetSize = {half*(rmax.x-rmin.x), half*(rmax.y-rmin.y), half*(rmax.z-rmin.z)};
-
+      const float3 targetCenter = {.5f*(rmax.x+rmin.x), .5f*(rmax.y+rmin.y), .5f*(rmax.z+rmin.z)};
+      const float3 targetSize = {.5f*(rmax.x-rmin.x), .5f*(rmax.y-rmin.y), .5f*(rmax.z-rmin.z)};
       float4 acc_i[NI] = {0.0f, 0.0f, 0.0f, 0.0f};
-
-      uint2 counters = traverse_warp<NTHREAD2,NI>
+      const uint2 counters = traverse_warp<NTHREAD2,NI>
 	(acc_i, pos_i, targetCenter, targetSize, EPS2, levelRange[1], tempQueue, cellQueue);
-
       assert(!(counters.x == 0xFFFFFFFF && counters.y == 0xFFFFFFFF));
-
-      const int pidx = begin + laneIdx;
 
       int maxP2P = counters.y;
       int sumP2P = 0;
       int maxM2P = counters.x;
       int sumM2P = 0;
-
-#pragma unroll
-      for (int i = 0; i < NI; i++)
-	if (i*WARP_SIZE + pidx < end) {
+      const int bodyIdx = bodyBegin + laneIdx;
+      for (int i=0; i<NI; i++)
+	if (i*WARP_SIZE + bodyIdx < bodyEnd) {
 	  sumM2P += counters.x;
 	  sumP2P += counters.y;
 	}
 #pragma unroll
-      for (int i = WARP_SIZE2-1; i >= 0; i--) {
+      for (int i=0; i<WARP_SIZE2; i++) {
 	maxP2P  = max(maxP2P, __shfl_xor(maxP2P, 1<<i));
 	sumP2P += __shfl_xor(sumP2P, 1<<i);
 	maxM2P  = max(maxM2P, __shfl_xor(maxM2P, 1<<i));
@@ -375,10 +362,9 @@ namespace {
 	atomicMax(&maxM2PGlob,                     maxM2P);
 	atomicAdd(&sumM2PGlob, (unsigned long long)sumM2P);
       }
-#pragma unroll
       for (int i=0; i<NI; i++)
-	if (pidx + i * WARP_SIZE < end)
-	  acc[i*WARP_SIZE + pidx] = acc_i[i];
+	if (bodyIdx + i * WARP_SIZE < bodyEnd)
+	  acc[i*WARP_SIZE + bodyIdx] = acc_i[i];
     }
   }
 
@@ -458,13 +444,13 @@ class Traversal {
     const int NTHREAD  = 1<<NTHREAD2;
     cuda_mem<int> d_globalPool;
 
-    const int nblock = 8*13;
-    d_globalPool.alloc(CELL_LIST_MEM_PER_WARP*nblock*(NTHREAD/WARP_SIZE));
+    const int NBLOCK = numTargets / NTHREAD;
+    d_globalPool.alloc(CELL_LIST_MEM_PER_WARP*NBLOCK*(NTHREAD/WARP_SIZE));
 
     cudaDeviceSynchronize();
     const double t0 = get_time();
     CUDA_SAFE_CALL(cudaFuncSetCacheConfig(&traverse<NTHREAD2,2>, cudaFuncCachePreferL1));
-    traverse<NTHREAD2,2><<<nblock,NTHREAD>>>(numTargets, eps*eps, d_levelRange,
+    traverse<NTHREAD2,2><<<NBLOCK,NTHREAD>>>(numTargets, eps*eps, d_levelRange,
 					     d_bodyPos2, d_bodyAcc, d_targetRange, d_globalPool);
     kernelSuccess("traverse");
     const double dt = get_time() - t0;
