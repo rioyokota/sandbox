@@ -45,32 +45,28 @@ namespace {
   float2 getMinMax(float2 range) {
     const int NTHREAD = 1 << NTHREAD2;
     extern __shared__ float shared[];
-    float *shMin = shared;
-    float *shMax = shared + NTHREAD;
-    
-    const int tid = threadIdx.x;
-    shMin[tid] = range.x;
-    shMax[tid] = range.y;
+    float *sharedMin = shared;
+    float *sharedMax = shared + NTHREAD;
+    sharedMin[threadIdx.x] = range.x;
+    sharedMax[threadIdx.x] = range.y;
     __syncthreads();
-
-#pragma unroll    
+#pragma unroll
     for (int i=NTHREAD2-1; i>=6; i--) {
       const int offset = 1 << i;
-      if (tid < offset) {
-	shMin[tid] = range.x = fminf(range.x, shMin[tid + offset]);
-	shMax[tid] = range.y = fmaxf(range.y, shMax[tid + offset]);
+      if (threadIdx.x < offset) {
+	sharedMin[threadIdx.x] = range.x = fminf(range.x, sharedMin[threadIdx.x + offset]);
+	sharedMax[threadIdx.x] = range.y = fmaxf(range.y, sharedMax[threadIdx.x + offset]);
       }
       __syncthreads();
     }
-
-    if (tid < 32) {
-      volatile float *vshMin = shMin;
-      volatile float *vshMax = shMax;
+    if (threadIdx.x < WARP_SIZE) {
+      volatile float *warpMin = sharedMin;
+      volatile float *warpMax = sharedMax;
 #pragma unroll
       for (int i=5; i>=0; i--) {
 	const int offset = 1 << i;
-	vshMin[tid] = range.x = fminf(range.x, vshMin[tid + offset]);
-	vshMax[tid] = range.y = fmaxf(range.y, vshMax[tid + offset]);
+	warpMin[threadIdx.x] = range.x = fminf(range.x, warpMin[threadIdx.x + offset]);
+	warpMax[threadIdx.x] = range.y = fmaxf(range.y, warpMax[threadIdx.x + offset]);
       }
     }
     __syncthreads();
@@ -79,37 +75,35 @@ namespace {
 
   template<const int NTHREAD2>
   static __global__
-  void computeBoundingBox(const int n,
-			  float3 *minmax_ptr,
-			  float4 *box_ptr,
-			  const float4 *bodyPos) {
-    const int NTHREAD = 1<<NTHREAD2;
-    const int NBLOCK  = NTHREAD;
-
-    float3 bmin = {+1e10f, +1e10f, +1e10f};
-    float3 bmax = {-1e10f, -1e10f, -1e10f};
-
-    const int nbeg = blockIdx.x * NTHREAD + threadIdx.x;
-    for (int i=nbeg; i<n; i += NBLOCK*NTHREAD) {
-      if (i < n) {
+  void getBounds(const int numBodies,
+		 float3 *bounds,
+		 float4 *domain,
+		 const float4 *bodyPos) {
+    const int NTHREAD = 1 << NTHREAD2;
+    const int NBLOCK = NTHREAD;
+    const int begin = blockIdx.x * NTHREAD + threadIdx.x;
+    float3 Xmin = {bodyPos[0].x, bodyPos[0].y, bodyPos[0].z};
+    float3 Xmax = Xmin;
+    for (int i=begin; i<numBodies; i+=NBLOCK*NTHREAD) {
+      if (i < numBodies) {
 	const float4 pos = bodyPos[i];
-	bmin.x = fmin(bmin.x, pos.x);
-	bmin.y = fmin(bmin.y, pos.y);
-	bmin.z = fmin(bmin.z, pos.z);
-	bmax.x = fmax(bmax.x, pos.x);
-	bmax.y = fmax(bmax.y, pos.y);
-	bmax.z = fmax(bmax.z, pos.z);
+	Xmin.x = fmin(Xmin.x, pos.x);
+	Xmin.y = fmin(Xmin.y, pos.y);
+	Xmin.z = fmin(Xmin.z, pos.z);
+	Xmax.x = fmax(Xmax.x, pos.x);
+	Xmax.y = fmax(Xmax.y, pos.y);
+	Xmax.z = fmax(Xmax.z, pos.z);
       }
     }
- 
-    float2 res;
-    res = getMinMax<NTHREAD2>(make_float2(bmin.x, bmax.x)); bmin.x = res.x; bmax.x = res.y;
-    res = getMinMax<NTHREAD2>(make_float2(bmin.y, bmax.y)); bmin.y = res.x; bmax.y = res.y;
-    res = getMinMax<NTHREAD2>(make_float2(bmin.z, bmax.z)); bmin.z = res.x; bmax.z = res.y;
+
+    float2 range;
+    range = getMinMax<NTHREAD2>(make_float2(Xmin.x, Xmax.x)); Xmin.x = range.x; Xmax.x = range.y;
+    range = getMinMax<NTHREAD2>(make_float2(Xmin.y, Xmax.y)); Xmin.y = range.x; Xmax.y = range.y;
+    range = getMinMax<NTHREAD2>(make_float2(Xmin.z, Xmax.z)); Xmin.z = range.x; Xmax.z = range.y;
 
     if (threadIdx.x == 0) {
-      minmax_ptr[blockIdx.x         ] = bmin;
-      minmax_ptr[blockIdx.x + NBLOCK] = bmax;
+      bounds[blockIdx.x         ] = Xmin;
+      bounds[blockIdx.x + NBLOCK] = Xmax;
     }
 
     __shared__ bool lastBlock;
@@ -117,25 +111,24 @@ namespace {
     __syncthreads();
 
     if (threadIdx.x == 0) {
-      const int ticket = atomicInc(&retirementCount, NBLOCK);
-      lastBlock = (ticket == NBLOCK - 1);
+      const int blockCount = atomicInc(&retirementCount, NBLOCK);
+      lastBlock = (blockCount == NBLOCK-1);
     }
 
     __syncthreads();
 
     if (lastBlock) {
-      bmin = minmax_ptr[threadIdx.x];
-      bmax = minmax_ptr[threadIdx.x + NBLOCK];
-      float2 res;
-      res = getMinMax<NTHREAD2>(make_float2(bmin.x, bmax.x)); bmin.x = res.x; bmax.x = res.y;
-      res = getMinMax<NTHREAD2>(make_float2(bmin.y, bmax.y)); bmin.y = res.x; bmax.y = res.y;
-      res = getMinMax<NTHREAD2>(make_float2(bmin.z, bmax.z)); bmin.z = res.x; bmax.z = res.y;
+      Xmin = bounds[threadIdx.x];
+      Xmax = bounds[threadIdx.x + NBLOCK];
+      range = getMinMax<NTHREAD2>(make_float2(Xmin.x, Xmax.x)); Xmin.x = range.x; Xmax.x = range.y;
+      range = getMinMax<NTHREAD2>(make_float2(Xmin.y, Xmax.y)); Xmin.y = range.x; Xmax.y = range.y;
+      range = getMinMax<NTHREAD2>(make_float2(Xmin.z, Xmax.z)); Xmin.z = range.x; Xmax.z = range.y;
 
       __syncthreads();
 
       if (threadIdx.x == 0) {
-	const float3 cvec = {(bmax.x+bmin.x)*0.5f, (bmax.y+bmin.y)*0.5f, (bmax.z+bmin.z)*0.5f};
-	const float3 hvec = {(bmax.x-bmin.x)*0.5f, (bmax.y-bmin.y)*0.5f, (bmax.z-bmin.z)*0.5f};
+	const float3 cvec = {(Xmax.x+Xmin.x)*0.5f, (Xmax.y+Xmin.y)*0.5f, (Xmax.z+Xmin.z)*0.5f};
+	const float3 hvec = {(Xmax.x-Xmin.x)*0.5f, (Xmax.y-Xmin.y)*0.5f, (Xmax.z-Xmin.z)*0.5f};
 	const float h = fmax(hvec.z, fmax(hvec.y, hvec.x));
 	float hsize = 1.0f;
 	while (hsize > h) hsize *= 0.5f;
@@ -146,12 +139,12 @@ namespace {
 	const long long ny = (long long)(cvec.y/hquant);
 	const long long nz = (long long)(cvec.z/hquant);
 	const float4 box = {hquant * float(nx), hquant * float(ny), hquant * float(nz), hsize};
-	*box_ptr = box;
+	*domain = box;
 	retirementCount = 0;
       }
     }
   }
-  
+
   template<int NLEAF, bool STOREIDX>
   static __global__ __launch_bounds__(256, 8)
   void buildOctant(float4 box,
@@ -167,7 +160,7 @@ namespace {
 
     /* We launch a 2D grid:
      *   the y-corrdinate carries info about which parent cell to process
-     *   the x-coordinate is just a standard approach for CUDA parallelism 
+     *   the x-coordinate is just a standard approach for CUDA parallelism
      */
     const int octant2process = (octantMask >> (3*blockIdx.y)) & 0x7;
 
@@ -191,7 +184,7 @@ namespace {
     float4 *shChildBox = (float4*)&nShChildren[0][0];
 
     int *shdata = (int*)&nShChildrenFine[0][0][0];
-#pragma unroll 
+#pragma unroll
     for (int i = 0; i < 8*9*NWARPS; i += NWARPS*WARP_SIZE)
       if (i + threadIdx.x < 8*9*NWARPS)
 	shdata[i + threadIdx.x] = 0;
@@ -215,7 +208,7 @@ namespace {
 	    p4octant = getOctant(box, p4);
 	  }
 
-	p4octant = i+threadIdx.x < nEnd ? p4octant : 0xF; 
+	p4octant = i+threadIdx.x < nEnd ? p4octant : 0xF;
 
 	/* compute suboctant of the octant into which particle will fall */
 	if (p4octant < 8)
@@ -259,7 +252,7 @@ namespace {
 	      }
 	  }
 
-	/* write the data in a single instruction */ 
+	/* write the data in a single instruction */
 	if (addrW >= 0)
 	  buff[addrW] = p4;
 
@@ -326,7 +319,7 @@ namespace {
 
 
     /* detect last thread block for unique y-coordinate of the grid:
-     * mind, this cannot be done on the host, because we don't detect last 
+     * mind, this cannot be done on the host, because we don't detect last
      * block on the grid, but instead the last x-block for each of the y-coordainte of the grid
      * this should increase the degree of parallelism
      */
@@ -672,7 +665,7 @@ namespace {
     if (currLevel != nextLevel || gidx == n-1)
       levelRange[currLevel].y = gidx+1;
   }
-  
+
   __device__  unsigned int leafIdx_counter = 0;
   static __global__ void
     shuffle_cells(const int n, const int value[], const int moved_to_idx[], const CellData sourceCells2[], CellData sourceCells[])
@@ -698,7 +691,7 @@ namespace {
   }
 
   template<int NTHREAD2>
-    static __global__ 
+    static __global__
     void collect_leaves(const int n, const CellData *sourceCells, int *leafCells)
     {
       const int gidx = blockDim.x*blockIdx.x + threadIdx.x;
@@ -713,7 +706,7 @@ namespace {
       for (int offset2 = 0; offset2 < NTHREAD2; offset2++)
 	{
 	  const int offset = 1 << offset2;
-	  __syncthreads(); 
+	  __syncthreads();
 	  if (threadIdx.x >= offset)
 	    value += shdata[threadIdx.x - offset];
 	  __syncthreads();
@@ -743,13 +736,13 @@ class Build {
     const int NTHREAD2 = 8;
     const int NTHREAD  = 1 << NTHREAD2;
 
-    cuda_mem<float3> d_minmax;
+    cuda_mem<float3> d_bounds;
     cuda_mem<int> d_stack_memory_pool;
     cuda_mem<CellData> d_sourceCells2;
     cuda_mem<int> d_leafCells;
     cuda_mem<int> d_key, d_value;
 
-    d_minmax.alloc(2048);
+    d_bounds.alloc(2048);
     const int maxNode = numBodies / 10;
     const int stackSize = (8+8+8+64+8)*maxNode;
     fprintf(stdout,"Stack size           : %g MB\n",sizeof(int)*stackSize/1024.0/1024.0);
@@ -762,8 +755,8 @@ class Build {
 
     cudaDeviceSynchronize();
     double t0 = get_time();
-    computeBoundingBox<NTHREAD2><<<NTHREAD,NTHREAD,NTHREAD*sizeof(float2)>>>
-      (numBodies, d_minmax, d_domain, d_bodyPos);
+    getBounds<NTHREAD2><<<NTHREAD,NTHREAD,NTHREAD*sizeof(float2)>>>
+      (numBodies, d_bounds, d_domain, d_bodyPos);
     kernelSuccess("cudaDomainSize");
     double dt = get_time() - t0;
     fprintf(stdout,"Get bounds           : %.7f s\n",  dt);
