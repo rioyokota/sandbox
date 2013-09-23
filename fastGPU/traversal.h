@@ -283,7 +283,6 @@ namespace {
     return counters;
   }
 
-  __device__ unsigned int   retiredTargets = 0;
   __device__ unsigned long long sumP2PGlob = 0;
   __device__ unsigned int       maxP2PGlob = 0;
   __device__ unsigned long long sumM2PGlob = 0;
@@ -310,7 +309,7 @@ namespace {
     while (1) {
       int targetIdx = 0;
       if (laneIdx == 0)
-        targetIdx = atomicAdd(&retiredTargets, 1);
+        targetIdx = atomicAdd(&counterGlob, 1);
       targetIdx = __shfl(targetIdx, 0, WARP_SIZE);
       if (targetIdx >= numTargets) return;
 

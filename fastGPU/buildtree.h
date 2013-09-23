@@ -6,14 +6,14 @@
 extern void sort(const int size, int * key, int * value);
 
 namespace {
-  __constant__ int d_maxNode;
-  __device__ unsigned int retirementCount = 0;
-  __device__ unsigned int nnodes = 0;
-  __device__ unsigned int nleaves = 0;
-  __device__ unsigned int nlevels = 0;
-  __device__ unsigned int nbodies_leaf = 0;
-  __device__ unsigned int ncells = 0;
-  __device__ int *memPool;
+  __constant__ int maxNodeGlob;
+  __device__ unsigned int counterGlob = 0;
+  __device__ unsigned int numNodesGlob = 0;
+  __device__ unsigned int numLeafsGlob = 0;
+  __device__ unsigned int numLevelsGlob = 0;
+  __device__ unsigned int numPerLeafGlob = 0;
+  __device__ unsigned int numCellsGlob = 0;
+  __device__ int *globalPool;
   __device__ CellData *sourceCells;
   __device__ void *bodyVel2;
 
@@ -95,37 +95,29 @@ namespace {
 	Xmax.z = fmax(Xmax.z, pos.z);
       }
     }
-
     float2 range;
     range = getMinMax<NTHREAD2>(make_float2(Xmin.x, Xmax.x)); Xmin.x = range.x; Xmax.x = range.y;
     range = getMinMax<NTHREAD2>(make_float2(Xmin.y, Xmax.y)); Xmin.y = range.x; Xmax.y = range.y;
     range = getMinMax<NTHREAD2>(make_float2(Xmin.z, Xmax.z)); Xmin.z = range.x; Xmax.z = range.y;
-
     if (threadIdx.x == 0) {
       bounds[blockIdx.x         ] = Xmin;
       bounds[blockIdx.x + NBLOCK] = Xmax;
     }
-
     __shared__ bool lastBlock;
     __threadfence();
     __syncthreads();
-
     if (threadIdx.x == 0) {
-      const int blockCount = atomicInc(&retirementCount, NBLOCK);
+      const int blockCount = atomicInc(&counterGlob, NBLOCK);
       lastBlock = (blockCount == NBLOCK-1);
     }
-
     __syncthreads();
-
     if (lastBlock) {
       Xmin = bounds[threadIdx.x];
       Xmax = bounds[threadIdx.x + NBLOCK];
       range = getMinMax<NTHREAD2>(make_float2(Xmin.x, Xmax.x)); Xmin.x = range.x; Xmax.x = range.y;
       range = getMinMax<NTHREAD2>(make_float2(Xmin.y, Xmax.y)); Xmin.y = range.x; Xmax.y = range.y;
       range = getMinMax<NTHREAD2>(make_float2(Xmin.z, Xmax.z)); Xmin.z = range.x; Xmax.z = range.y;
-
       __syncthreads();
-
       if (threadIdx.x == 0) {
 	const float3 cvec = {(Xmax.x+Xmin.x)*0.5f, (Xmax.y+Xmin.y)*0.5f, (Xmax.z+Xmin.z)*0.5f};
 	const float3 hvec = {(Xmax.x-Xmin.x)*0.5f, (Xmax.y-Xmin.y)*0.5f, (Xmax.z-Xmin.z)*0.5f};
@@ -140,7 +132,7 @@ namespace {
 	const long long nz = (long long)(cvec.z/hquant);
 	const float4 box = {hquant * float(nx), hquant * float(ny), hquant * float(nz), hsize};
 	*domain = box;
-	retirementCount = 0;
+	counterGlob = 0;
       }
     }
   }
@@ -346,7 +338,7 @@ namespace {
       shmem[laneIdx] = 0;
 
     if (threadIdx.x == 0)
-      atomicCAS(&nlevels, level, level+1);
+      atomicCAS(&numLevelsGlob, level, level+1);
 
     __syncthreads();
 
@@ -379,9 +371,9 @@ namespace {
     /* if there is at least one cell to split, increment nuumber of the nodes */
     if (threadIdx.x == 0 && nSubNodes.y > 0)
       {
-	shmem[16+8] = atomicAdd(&nnodes,nSubNodes.y);
+	shmem[16+8] = atomicAdd(&numNodesGlob,nSubNodes.y);
 #if 1   /* temp solution, a better one is to use RingBuffer */
-	assert(shmem[16+8] < d_maxNode);
+	assert(shmem[16+8] < maxNodeGlob);
 #endif
       }
 
@@ -389,12 +381,12 @@ namespace {
     const int nChildrenCell = warpBinReduce(npCell > 0);
     if (threadIdx.x == 0 && nChildrenCell > 0)
       {
-	const int cellFirstChildIndex = atomicAdd(&ncells, nChildrenCell);
+	const int cellFirstChildIndex = atomicAdd(&numCellsGlob, nChildrenCell);
 	/*** keep in mind, the 0-level will be overwritten ***/
 	assert(nChildrenCell > 0);
 	assert(nChildrenCell <= 8);
 	const CellData cellData(level,cellParentIndex, nBeg, nEnd-nBeg, cellFirstChildIndex, nChildrenCell-1);
-	assert(cellData.child() < ncells);
+	assert(cellData.child() < numCellsGlob);
 	assert(cellData.isNode());
 	sourceCells[cellIndexBase + blockIdx.y] = cellData;
 	shmem[16+9] = cellFirstChildIndex;
@@ -404,7 +396,7 @@ namespace {
     const int cellFirstChildIndex = shmem[16+9];
     /* compute atomic data offset for cell that need to be split */
     const int next_node = shmem[16+8];
-    int *octCounterNbase = &memPool[next_node*(8+8+8+64+8)];
+    int *octCounterNbase = &globalPool[next_node*(8+8+8+64+8)];
 
     const int nodeOffset = shmem[8 +warpIdx];
     const int leafOffset = shmem[16+warpIdx];
@@ -469,8 +461,8 @@ namespace {
       {
 	if (laneIdx == 0)
 	  {
-	    atomicAdd(&nleaves,1);
-	    atomicAdd(&nbodies_leaf, nEnd1-nBeg1);
+	    atomicAdd(&numLeafsGlob,1);
+	    atomicAdd(&numPerLeafGlob, nEnd1-nBeg1);
 	    const CellData leafData(level+1, cellIndexBase+blockIdx.y, nBeg1, nEnd1-nBeg1);
 	    assert(leafData.isLeaf());
 	    sourceCells[cellFirstChildIndex + nSubNodes.y + leafOffset] = leafData;
@@ -550,12 +542,12 @@ namespace {
 				       float4 *body,
 				       float4 *buff,
 				       float4 *d_bodyAcc,
-				       int *ncells_return = NULL)
+				       int *numCellsGlob_return = NULL)
     {
       sourceCells = d_sourceCells;
       bodyVel2  = (void*)d_bodyAcc;
 
-      memPool = stack_memory_pool;
+      globalPool = stack_memory_pool;
 
       int *octCounter = new int[8+8];
       for (int k = 0; k < 16; k++)
@@ -580,11 +572,11 @@ namespace {
 #ifdef IOCOUNT
       io_words = 0;
 #endif
-      nnodes = 0;
-      nleaves = 0;
-      nlevels = 0;
-      ncells  = 0;
-      nbodies_leaf = 0;
+      numNodesGlob = 0;
+      numLeafsGlob = 0;
+      numLevelsGlob = 0;
+      numCellsGlob  = 0;
+      numPerLeafGlob = 0;
 
 
       octCounterN[1] = 0;
@@ -598,8 +590,8 @@ namespace {
       assert(cudaDeviceSynchronize() == cudaSuccess);
 #endif
 
-      if (ncells_return != NULL)
-	*ncells_return = ncells;
+      if (numCellsGlob_return != NULL)
+	*numCellsGlob_return = numCellsGlob;
 
 #ifdef IOCOUNT
       printf(" io= %g MB \n" ,io_words*4.0/1024.0/1024.0);
@@ -763,7 +755,7 @@ class Build {
 
     /*** build tree ***/
 
-    CUDA_SAFE_CALL(cudaMemcpyToSymbol(d_maxNode, &maxNode, sizeof(int), 0, cudaMemcpyHostToDevice));
+    CUDA_SAFE_CALL(cudaMemcpyToSymbol(maxNodeGlob, &maxNode, sizeof(int), 0, cudaMemcpyHostToDevice));
 
     cudaDeviceSetLimit(cudaLimitDevRuntimePendingLaunchCount,16384);
 
@@ -809,9 +801,9 @@ class Build {
     kernelSuccess("buildOctree");
     dt = get_time() - t0;
     int numLevels, numSources, numLeaves;
-    CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&numLevels, nlevels,sizeof(int)));
-    CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&numSources,ncells, sizeof(int)));
-    CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&numLeaves, nleaves,sizeof(int)));
+    CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&numLevels, numLevelsGlob,sizeof(int)));
+    CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&numSources,numCellsGlob, sizeof(int)));
+    CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&numLeaves, numLeafsGlob,sizeof(int)));
     fprintf(stdout,"Grow tree            : %.7f s\n",  dt);
 
     /* sort nodes by level */
