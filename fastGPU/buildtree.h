@@ -13,9 +13,9 @@ namespace {
   __device__ unsigned int numLevelsGlob = 0;
   __device__ unsigned int numPerLeafGlob = 0;
   __device__ unsigned int numCellsGlob = 0;
-  __device__ int *globalPool;
-  __device__ CellData *sourceCells;
-  __device__ void *bodyVel2;
+  __device__ int * globalPool;
+  __device__ CellData * sourceCells;
+  __device__ float4 * bodyAcc;
 
   static __device__ __forceinline__
   int getOctant(const float4 &box, const float4 &body) {
@@ -451,10 +451,10 @@ namespace {
 		{
 		  float4 pos = buff[i];
 		  int index = (__float_as_int(pos.w) >> 4) & 0xF0000000;
-		  float4 vel = ((float4*)bodyVel2)[index];
-		  pos.w = vel.w;
+		  float4 temp = bodyAcc[index];
+		  pos.w = temp.w;
 		  body[i] = pos;
-		  buff[i] = vel;
+		  buff[i] = temp;
 		}
 	  }
 	else
@@ -464,72 +464,65 @@ namespace {
 		{
 		  float4 pos = buff[i];
 		  int index = (__float_as_int(pos.w) >> 4) & 0xF0000000;
-		  float4 vel = ((float4*)bodyVel2)[index];
-		  pos.w = vel.w;
+		  float4 temp = bodyAcc[index];
+		  pos.w = temp.w;
 		  buff[i] = pos;
-		  body[i] = vel;
+		  body[i] = temp;
 		}
 	  }
       }
   }
 
-  template<typename T>
-    static __global__ void countAtRootNode(
-					   const int n,
-					   int *octCounter,
-					   const float4 box,
-					   const float4 *bodyPos)
-    {
-      int np_octant[8] = {0};
-      const int beg = blockIdx.x * blockDim.x + threadIdx.x;
-      for (int i = beg; i < n; i += gridDim.x * blockDim.x)
-	if (i < n)
-	  {
-	    const float4 pos = bodyPos[i];
-	    const int octant = getOctant(box, pos);
-	    np_octant[0] += (octant == 0);
-	    np_octant[1] += (octant == 1);
-	    np_octant[2] += (octant == 2);
-	    np_octant[3] += (octant == 3);
-	    np_octant[4] += (octant == 4);
-	    np_octant[5] += (octant == 5);
-	    np_octant[6] += (octant == 6);
-	    np_octant[7] += (octant == 7);
-	  };
-
-      const int laneIdx = threadIdx.x & (WARP_SIZE-1);
-#pragma unroll
-      for (int k = 0; k < 8; k++)
-	{
-	  int np = np_octant[k];
-#pragma unroll
-	  for (int i = 4; i >= 0; i--)
-	    np += __shfl_xor(np, 1<<i, WARP_SIZE);
-	  if (laneIdx == 0)
-	    atomicAdd(&octCounter[8+k],np);
-	}
+  static __global__ void countAtRootNode(const int numBodies,
+					 int *octCounter,
+					 const float4 box,
+					 const float4 *bodyPos) {
+    int np_octant[8] = {0};
+    const int beg = blockIdx.x * blockDim.x + threadIdx.x;
+    for (int i = beg; i < numBodies; i += gridDim.x * blockDim.x) {
+      if (i < numBodies) {
+	const float4 pos = bodyPos[i];
+	const int octant = getOctant(box, pos);
+	np_octant[0] += (octant == 0);
+	np_octant[1] += (octant == 1);
+	np_octant[2] += (octant == 2);
+	np_octant[3] += (octant == 3);
+	np_octant[4] += (octant == 4);
+	np_octant[5] += (octant == 5);
+	np_octant[6] += (octant == 6);
+	np_octant[7] += (octant == 7);
+      }
     }
+    const int laneIdx = threadIdx.x & (WARP_SIZE-1);
+#pragma unroll
+    for (int k=0; k<8; k++) {
+      int np = np_octant[k];
+#pragma unroll
+      for (int i=4; i>=0; i--)
+	np += __shfl_xor(np, 1<<i, WARP_SIZE);
+      if (laneIdx == 0)
+	atomicAdd(&octCounter[8+k],np);
+    }
+  }
 
   template<int NLEAF>
-    static __global__ void buildOctree(
-				       const int n,
+    static __global__ void buildOctree(const int numBodies,
 				       const float4 *domain,
-				       CellData *d_sourceCells,
-				       int *stack_memory_pool,
-				       float4 *body,
-				       float4 *buff,
-				       float4 *d_bodyAcc,
-				       int *numCellsGlob_return = NULL)
+				       CellData * d_sourceCells,
+				       int * d_globalPool,
+				       float4 * body,
+				       float4 * buff,
+				       float4 * d_bodyAcc,
+				       int * numCellsGlob_return = NULL)
     {
       sourceCells = d_sourceCells;
-      bodyVel2  = (void*)d_bodyAcc;
-
-      globalPool = stack_memory_pool;
+      globalPool = d_globalPool;
+      bodyAcc = d_bodyAcc;
 
       int *octCounter = new int[8+8];
       for (int k = 0; k < 16; k++)
 	octCounter[k] = 0;
-      countAtRootNode<float><<<256, 256>>>(n, octCounter, *domain, body);
+      countAtRootNode<<<256, 256>>>(numBodies, octCounter, *domain, body);
       assert(cudaGetLastError() == cudaSuccess);
       cudaDeviceSynchronize();
 
@@ -554,10 +547,10 @@ namespace {
 
 
       octCounterN[1] = 0;
-      octCounterN[2] = n;
+      octCounterN[2] = numBodies;
 
       dim3 grid, block;
-      getKernelSize(grid, block, n);
+      getKernelSize(grid, block, numBodies);
       buildOctant<NLEAF,true><<<grid, block>>>
 	(*domain, 0, 0, 0, octCounterN, body, buff);
       assert(cudaDeviceSynchronize() == cudaSuccess);
@@ -698,7 +691,7 @@ class Build {
     const int NTHREAD  = 1 << NTHREAD2;
 
     cuda_mem<float3> d_bounds;
-    cuda_mem<int> d_stack_memory_pool;
+    cuda_mem<int> d_globalPool;
     cuda_mem<CellData> d_sourceCells2;
     cuda_mem<int> d_leafCells;
     cuda_mem<int> d_key, d_value;
@@ -707,7 +700,7 @@ class Build {
     const int maxNode = numBodies / 10;
     const int stackSize = (8+8+8+64+8)*maxNode;
     fprintf(stdout,"Stack size           : %g MB\n",sizeof(int)*stackSize/1024.0/1024.0);
-    d_stack_memory_pool.alloc(stackSize);
+    d_globalPool.alloc(stackSize);
     d_sourceCells2.alloc(numBodies);
 
     fprintf(stdout,"Cell data            : %g MB\n",numBodies*sizeof(CellData)/1024.0/1024.0);
@@ -745,24 +738,24 @@ class Build {
 
     CUDA_SAFE_CALL(cudaDeviceSetSharedMemConfig(cudaSharedMemBankSizeEightByte));
 
-    CUDA_SAFE_CALL(cudaMemset(d_stack_memory_pool,0,stackSize*sizeof(int)));
+    CUDA_SAFE_CALL(cudaMemset(d_globalPool,0,stackSize*sizeof(int)));
     cudaDeviceSynchronize();
     t0 = get_time();
     switch (NLEAF) {
     case 16:
-      buildOctree<16><<<1,1>>>(numBodies, d_domain, d_sourceCells, d_stack_memory_pool, d_bodyPos, d_bodyPos2, d_bodyAcc);
+      buildOctree<16><<<1,1>>>(numBodies, d_domain, d_sourceCells, d_globalPool, d_bodyPos, d_bodyPos2, d_bodyAcc);
       break;
     case 24:
-      buildOctree<24><<<1,1>>>(numBodies, d_domain, d_sourceCells, d_stack_memory_pool, d_bodyPos, d_bodyPos2, d_bodyAcc);
+      buildOctree<24><<<1,1>>>(numBodies, d_domain, d_sourceCells, d_globalPool, d_bodyPos, d_bodyPos2, d_bodyAcc);
       break;
     case 32:
-      buildOctree<32><<<1,1>>>(numBodies, d_domain, d_sourceCells, d_stack_memory_pool, d_bodyPos, d_bodyPos2, d_bodyAcc);
+      buildOctree<32><<<1,1>>>(numBodies, d_domain, d_sourceCells, d_globalPool, d_bodyPos, d_bodyPos2, d_bodyAcc);
       break;
     case 48:
-      buildOctree<48><<<1,1>>>(numBodies, d_domain, d_sourceCells, d_stack_memory_pool, d_bodyPos, d_bodyPos2, d_bodyAcc);
+      buildOctree<48><<<1,1>>>(numBodies, d_domain, d_sourceCells, d_globalPool, d_bodyPos, d_bodyPos2, d_bodyAcc);
       break;
     case 64:
-      buildOctree<64><<<1,1>>>(numBodies, d_domain, d_sourceCells, d_stack_memory_pool, d_bodyPos, d_bodyPos2, d_bodyAcc);
+      buildOctree<64><<<1,1>>>(numBodies, d_domain, d_sourceCells, d_globalPool, d_bodyPos, d_bodyPos2, d_bodyAcc);
       break;
     default:
       assert(0);
