@@ -116,10 +116,10 @@ int inclusiveSegscan(int value, const int distance) {
 }
 
 static __device__ __forceinline__
-int inclusive_segscan_warp(const int packed_value, const int carryValue) {
-  const int flag = packed_value < 0;
+int inclusiveSegscanWarp(const int packedValue, const int carryValue) {
+  const int flag = packedValue < 0;
   const int mask = -flag;
-  const int value = (~mask & packed_value) + (mask & (-1-packed_value));
+  const int value = (~mask & packedValue) + (mask & (-1-packedValue));
   const int flags = __ballot(flag);
   const int dist_block = __clz(__brev(flags));
   const int laneIdx = threadIdx.x & (WARP_SIZE - 1);

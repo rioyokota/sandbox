@@ -119,25 +119,17 @@ namespace {
       range = getMinMax<NTHREAD2>(make_float2(Xmin.z, Xmax.z)); Xmin.z = range.x; Xmax.z = range.y;
       __syncthreads();
       if (threadIdx.x == 0) {
-	const float3 cvec = {(Xmax.x+Xmin.x)*0.5f, (Xmax.y+Xmin.y)*0.5f, (Xmax.z+Xmin.z)*0.5f};
-	const float3 hvec = {(Xmax.x-Xmin.x)*0.5f, (Xmax.y-Xmin.y)*0.5f, (Xmax.z-Xmin.z)*0.5f};
-	const float h = fmax(hvec.z, fmax(hvec.y, hvec.x));
-	float hsize = 1.0f;
-	while (hsize > h) hsize *= 0.5f;
-	while (hsize < h) hsize *= 2.0f;
-	const int NMAXLEVEL = 20;
-	const float hquant = hsize / float(1<<NMAXLEVEL);
-	const long long nx = (long long)(cvec.x/hquant);
-	const long long ny = (long long)(cvec.y/hquant);
-	const long long nz = (long long)(cvec.z/hquant);
-	const float4 box = {hquant * float(nx), hquant * float(ny), hquant * float(nz), hsize};
+	const float3 X = {(Xmax.x+Xmin.x)*0.5f, (Xmax.y+Xmin.y)*0.5f, (Xmax.z+Xmin.z)*0.5f};
+	const float3 R = {(Xmax.x-Xmin.x)*0.5f, (Xmax.y-Xmin.y)*0.5f, (Xmax.z-Xmin.z)*0.5f};
+	const float r = fmax(R.x, fmax(R.y, R.z)) * 1.1f;
+	const float4 box = {X.x, X.y, X.z, r};
 	*domain = box;
 	counterGlob = 0;
       }
     }
   }
 
-  template<int NLEAF, bool STOREIDX>
+  template<int NLEAF, bool ISROOT>
   static __global__ __launch_bounds__(256, 8)
   void buildOctant(float4 box,
 		   const int cellParentIndex,
@@ -150,11 +142,7 @@ namespace {
     const int laneIdx = threadIdx.x & (WARP_SIZE-1);
     const int warpIdx = threadIdx.x >> WARP_SIZE2;
 
-    /* We launch a 2D grid:
-     *   the y-corrdinate carries info about which parent cell to process
-     *   the x-coordinate is just a standard approach for CUDA parallelism
-     */
-    const int octant2process = (octantMask >> (3*blockIdx.y)) & 0x7;
+    const int octant = (octantMask >> (3*blockIdx.y)) & 0x7;
 
     /* get the pointer to atomic data that for a given octant */
     int *octCounter = octCounterBase + blockIdx.y*(8+8+8+64+8);
@@ -165,20 +153,18 @@ namespace {
     const int nEnd  = __shfl(data, 2);
     /* if we are not at the root level, compute the geometric box
      * of the cell */
-    if (!STOREIDX)
-      box = getChild(box, octant2process);
-
+    if (!ISROOT) box = getChild(box, octant);
 
     /* countes number of particles in each octant of a child octant */
-    __shared__ int nShChildrenFine[NWARPS][9][8];
+    __shared__ int nShChildrenFine[NWARPS][8][8];
     __shared__ int nShChildren[8][8];
 
     float4 *shChildBox = (float4*)&nShChildren[0][0];
 
     int *shdata = (int*)&nShChildrenFine[0][0][0];
 #pragma unroll
-    for (int i = 0; i < 8*9*NWARPS; i += NWARPS*WARP_SIZE)
-      if (i + threadIdx.x < 8*9*NWARPS)
+    for (int i = 0; i < 8*8*NWARPS; i += NWARPS*WARP_SIZE)
+      if (i + threadIdx.x < 8*8*NWARPS)
 	shdata[i + threadIdx.x] = 0;
 
     if (laneIdx == 0 && warpIdx < 8)
@@ -193,12 +179,11 @@ namespace {
 	float4 p4 = body[min(i+threadIdx.x, nEnd-1)];
 
 	int p4octant = __float_as_int(p4.w) & 0xF;
-	if (STOREIDX)
-	  {
-	    const int oct = __float_as_int(p4.w) & 0xF;
-	    p4.w = __int_as_float(((i + threadIdx.x) << 4) | oct);
-	    p4octant = getOctant(box, p4);
-	  }
+	if (ISROOT) {
+	  const int oct = __float_as_int(p4.w) & 0xF;
+	  p4.w = __int_as_float(((i + threadIdx.x) << 4) | oct);
+	  p4octant = getOctant(box, p4);
+	}
 
 	p4octant = i+threadIdx.x < nEnd ? p4octant : 0xF;
 
@@ -229,21 +214,18 @@ namespace {
 	int cntr = 32;
 	int addrW = -1;
 #pragma unroll
-	for (int octant = 0; octant < 8; octant++)
-	  {
-	    const int sum = warpBinReduce(p4octant == octant);
-
-	    if (sum > 0)
-	      {
-		const int offset = warpBinExclusiveScan1(p4octant == octant);
-		const int addrB = __shfl(addrB0, octant, WARP_SIZE);
-		if (p4octant == octant)
-		  addrW = addrB + offset;
+	for (int octant = 0; octant < 8; octant++) {
+	  const int sum = warpBinReduce(p4octant == octant);
+	  if (sum > 0) {
+	    const int offset = warpBinExclusiveScan1(p4octant == octant);
+	    const int addrB = __shfl(addrB0, octant, WARP_SIZE);
+	    if (p4octant == octant)
+	      addrW = addrB + offset;
 		cntr -= sum;
 		if (cntr == 0) break;
-	      }
 	  }
-
+	}
+	
 	/* write the data in a single instruction */
 	if (addrW >= 0)
 	  buff[addrW] = p4;
@@ -251,34 +233,29 @@ namespace {
 	/* count how many particles in suboctants in each of the octants */
 	cntr = 32;
 #pragma unroll
-	for (int octant = 0; octant < 8; octant++)
-	  {
-	    if (cntr == 0) break;
-	    const int sum = warpBinReduce(p4octant == octant);
-	    if (sum > 0)
-	      {
-		const int subOctant = p4octant == octant ? (__float_as_int(p4.w) & 0xF) : -1;
+	for (int octant = 0; octant < 8; octant++) {
+	  if (cntr == 0) break;
+	  const int sum = warpBinReduce(p4octant == octant);
+	  if (sum > 0) {
+	    const int subOctant = p4octant == octant ? (__float_as_int(p4.w) & 0xF) : -1;
 #pragma unroll
-		for (int k = 0; k < 8; k += 4)
-		  {
-		    const int4 sum = make_int4(
-					       warpBinReduce(k+0 == subOctant),
-					       warpBinReduce(k+1 == subOctant),
-					       warpBinReduce(k+2 == subOctant),
-					       warpBinReduce(k+3 == subOctant));
-		    if (laneIdx == 0)
-		      {
-			int4 value = *(int4*)&nShChildrenFine[warpIdx][octant][k];
-			value.x += sum.x;
-			value.y += sum.y;
-			value.z += sum.z;
-			value.w += sum.w;
-			*(int4*)&nShChildrenFine[warpIdx][octant][k] = value;
-		      }
-		  }
-		cntr -= sum;
+	    for (int k=0; k<8; k+=4) {
+	      const int4 sum4 = make_int4(warpBinReduce(k+0 == subOctant),
+					  warpBinReduce(k+1 == subOctant),
+					  warpBinReduce(k+2 == subOctant),
+					  warpBinReduce(k+3 == subOctant));
+	      if (laneIdx == 0) {
+		int4 value = *(int4*)&nShChildrenFine[warpIdx][octant][k];
+		value.x += sum4.x;
+		value.y += sum4.y;
+		value.z += sum4.z;
+		value.w += sum4.w;
+		*(int4*)&nShChildrenFine[warpIdx][octant][k] = value;
 	      }
+	    }
+	    cntr -= sum;
 	  }
+	}
       }
     __syncthreads();
 
@@ -356,7 +333,7 @@ namespace {
 
     /* compute number of children that needs to be further split, and cmopute their offsets */
     const int2 nSubNodes = warpBinExclusiveScan(npCell > NLEAF);
-    const int2 numLeaves   = warpBinExclusiveScan(npCell > 0 && npCell <= NLEAF);
+    const int2 numLeaves = warpBinExclusiveScan(npCell > 0 && npCell <= NLEAF);
     if (warpIdx == 0 && laneIdx < 8)
       {
 	shmem[8 +laneIdx] = nSubNodes.x;
@@ -569,9 +546,6 @@ namespace {
       for (int k = 8; k < 64; k++)
 	octCounterN[8+16+k] = 0;
 
-#ifdef IOCOUNT
-      io_words = 0;
-#endif
       numNodesGlob = 0;
       numLeafsGlob = 0;
       numLevelsGlob = 0;
@@ -584,18 +558,13 @@ namespace {
 
       dim3 grid, block;
       getKernelSize(grid, block, n);
-#if 1
       buildOctant<NLEAF,true><<<grid, block>>>
 	(*domain, 0, 0, 0, octCounterN, body, buff);
       assert(cudaDeviceSynchronize() == cudaSuccess);
-#endif
 
       if (numCellsGlob_return != NULL)
 	*numCellsGlob_return = numCellsGlob;
 
-#ifdef IOCOUNT
-      printf(" io= %g MB \n" ,io_words*4.0/1024.0/1024.0);
-#endif
       delete [] octCounter;
       delete [] octCounterN;
     }
