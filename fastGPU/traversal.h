@@ -203,17 +203,17 @@ namespace {
       const int numBodiesScan = inclusiveScan<WARP_SIZE2>(numBodies);// Inclusive scan of numBodies
       int numBodiesLane = numBodiesScan - numBodies;            // Exclusive scan of numBodies
       int numBodiesWarp = __shfl(numBodiesScan, WARP_SIZE-1);   // Total numBodies of current warp
-      int bodyQueueOffset = 0;                                  // Initialize body lane offset
+      int tempOffset = 0;                                       // Initialize temp queue offset
       while (numBodiesWarp > 0) {                               // While there are bodies to process
 	tempQueue[laneIdx] = 1;                                 //  Initialize body queue
 	if (isDirect && (numBodiesLane < WARP_SIZE)) {          //  If direct flag is true and index is within bounds
 	  isDirect = false;                                     //   Set flag as processed
 	  tempQueue[numBodiesLane] = -1-bodyBegin;              //   Put body in queue
 	}                                                       //  End if for direct flag
-        const int bodyIdx = inclusiveSegscanWarp(tempQueue[laneIdx], bodyQueueOffset);// Inclusive segmented scan of body queue
-        bodyQueueOffset = __shfl(bodyIdx, WARP_SIZE-1);         //  Last lane has the body lane offset
+        const int bodyQueue = inclusiveSegscanWarp(tempQueue[laneIdx], tempOffset);// Inclusive segmented scan of temp queue
+        tempOffset = __shfl(bodyQueue, WARP_SIZE-1);            //  Last lane has the temp queue offset
 	if (numBodiesWarp >= WARP_SIZE) {                       //  If warp is full of bodies
-	  const float4 pos = tex1Dfetch(texBody, bodyIdx);      //   Load position of source bodies
+	  const float4 pos = tex1Dfetch(texBody, bodyQueue);    //   Load position of source bodies
 	  for (int j=0; j<WARP_SIZE; j++) {                     //   Loop over the warp size
 	    const float4 pos_j = make_float4(__shfl(pos.x, j),  //    Get source x value from lane j
 					     __shfl(pos.y, j),  //    Get source y value from lane j
@@ -227,12 +227,12 @@ namespace {
 	  numBodiesLane -= WARP_SIZE;                           //   Derecment lane offset of body index
 	  counters.y += WARP_SIZE;                              //   Increment P2P counter
 	} else {                                                //  If warp is not entirely full of bodies
-	  const int directIdx = bodyOffset + laneIdx;           //   Direct cell index of current lane
-	  tempQueue[laneIdx] = directQueue;                     //   Initialize body queue
-	  if (directIdx < WARP_SIZE)                            //   If direct cell index is less than the warp size
-	    tempQueue[directIdx] = bodyIdx;                     //    Push bodies into queue
-	  bodyOffset += numBodiesWarp;                          //   Increment direct queue offset
-	  if (bodyOffset >= WARP_SIZE) {                        //   If this causes the direct queue to spill
+	  int bodyIdx = bodyOffset + laneIdx;                   //   Body index of current lane
+	  tempQueue[laneIdx] = directQueue;                     //   Initialize body queue with saved values
+	  if (bodyIdx < WARP_SIZE)                              //   If body index is less than the warp size
+	    tempQueue[bodyIdx] = bodyQueue;                     //    Push bodies into queue
+	  bodyOffset += numBodiesWarp;                          //   Increment body queue offset
+	  if (bodyOffset >= WARP_SIZE) {                        //   If this causes the body queue to spill
 	    const float4 pos = tex1Dfetch(texBody, tempQueue[laneIdx]);// Load position of source bodies
 	    for (int j=0; j<WARP_SIZE; j++) {                   //    Loop over the warp size
 	      const float4 pos_j = make_float4(__shfl(pos.x, j),//     Get source x value from lane j
@@ -243,21 +243,21 @@ namespace {
 	      for (int k=0; k<NI; k++)                          //     Loop over NI targets
 		acc_i[k] = P2P(acc_i[k], pos_i[k], pos_j, EPS2);//      Call P2P kernel
 	    }                                                   //    End loop over the warp size
-	    bodyOffset -= WARP_SIZE;                            //    Decrement direct queue size
-	    const int directIdx = bodyOffset + laneIdx - numBodiesWarp;
-	    if (directIdx >= 0)
-	      tempQueue[directIdx] = bodyIdx;
-	    counters.y += WARP_SIZE;
-	  }
-	  directQueue = tempQueue[laneIdx];
-	  numBodiesWarp = 0;
-	}
-      }
+	    bodyOffset -= WARP_SIZE;                            //    Decrement body queue size
+	    bodyIdx -= WARP_SIZE;                               //    Decrement body index of current lane
+	    if (bodyIdx >= 0)                                   //    If body index is valid
+	      tempQueue[bodyIdx] = bodyQueue;                   //     Push bodies into queue
+	    counters.y += WARP_SIZE;                            //    Increment P2P counter
+	  }                                                     //   End if for body queue spill
+	  directQueue = tempQueue[laneIdx];                     //   Free temp queue for use in approx
+	  numBodiesWarp = 0;                                    //   Reset numBodies of current warp
+	}                                                       //  End if for warp full of bodies
+      }                                                         // End while loop for bodies to process
       if (sourceOffset >= numSources) {                         // If the current level is done
 	oldSources += numSources;                               //  Update finished source size
 	numSources = newSources;                                //  Update current source size
 	sourceOffset = newSources = 0;                          //  Initialize next source size and offset
-      }
+      }                                                         // End if for level finalization
     }
     if (approxOffset > 0) {
       approxAcc<NI,false>(acc_i, pos_i, laneIdx < approxOffset ? approxQueue : -1, EPS2);
@@ -265,8 +265,8 @@ namespace {
       approxOffset = 0;
     }
     if (bodyOffset > 0) {
-      const int bodyIdx = laneIdx < bodyOffset ? directQueue : -1;
-      const float4 pos = bodyIdx >= 0 ? tex1Dfetch(texBody, bodyIdx) : make_float4(0.0f, 0.0f, 0.0f, 0.0f);
+      const int bodyQueue = laneIdx < bodyOffset ? directQueue : -1;
+      const float4 pos = bodyQueue >= 0 ? tex1Dfetch(texBody, bodyQueue) : make_float4(0.0f, 0.0f, 0.0f, 0.0f);
       for (int j=0; j<WARP_SIZE; j++) {
 	const float4 pos_j = make_float4(__shfl(pos.x, j),
 					 __shfl(pos.y, j),
