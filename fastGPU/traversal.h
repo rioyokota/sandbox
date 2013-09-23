@@ -148,8 +148,8 @@ namespace {
     int newSources = 0;
     int oldSources = 0;
     int sourceOffset = 0;
-    int approxWarpOffset = 0;
-    int bodyWarpOffset = 0;
+    int approxOffset = 0;
+    int bodyOffset = 0;
 
     while (numSources > 0) {
       const int sourceIdx = sourceOffset + laneIdx;             // Source cell index of current lane
@@ -165,12 +165,12 @@ namespace {
       const int childBegin = sourceData.child();                // First child cell
       const int numChild = sourceData.nchild() & IF(isSplit);   // Number of child cells (masked by split flag)
       const int numChildScan = inclusiveScan<WARP_SIZE2>(numChild);// Inclusive scan of numChild
-      const int childLaneIdx = numChildScan - numChild;         // Exclusive scan of numChild
+      const int numChildLane = numChildScan - numChild;         // Exclusive scan of numChild
       const int numChildWarp = __shfl(numChildScan, WARP_SIZE-1);// Total numChild of current warp
       sourceOffset += min(WARP_SIZE, numSources - sourceOffset);// Increment source offset
       if (numChildWarp + numSources - sourceOffset > CELL_LIST_MEM_PER_WARP)// If cell queue overflows
 	return make_uint2(0xFFFFFFFF,0xFFFFFFFF);               // Exit kernel
-      int childIdx = oldSources + numSources + newSources + childLaneIdx;// Child index of current lane
+      int childIdx = oldSources + numSources + newSources + numChildLane;// Child index of current lane
       for (int i=0; i<numChild; i++)                            // Loop over child cells for each lane
 	cellQueue[ringAddr(childIdx + i)] = childBegin + i;	//  Queue child cells
       newSources += numChildWarp;                               // Increment source cell count for next loop
@@ -178,22 +178,22 @@ namespace {
       // Approx
       const bool isApprox = !isClose && isSource;               // Source cell can be used for M2P
       const uint approxBallot = __ballot(isApprox);             // Gather approx flags
-      const int approxLaneIdx = __popc(approxBallot & lanemask_lt());// Exclusive scan of approx flags
+      const int numApproxLane = __popc(approxBallot & lanemask_lt());// Exclusive scan of approx flags
       const int numApproxWarp = __popc(approxBallot);           // Total isApprox for current warp
-      int approxIdx = approxWarpOffset + approxLaneIdx;         // Approx cell index of current lane
+      int approxIdx = approxOffset + numApproxLane;             // Approx cell index of current lane
       tempQueue[laneIdx] = approxQueue;                         // Fill queue with remaining sources for approx
       if (isApprox && approxIdx < WARP_SIZE)                    // If approx flag is true and index is within bounds
 	tempQueue[approxIdx] = sourceQueue;                     //  Fill approx queue with current sources
-      if (approxWarpOffset + numApproxWarp >= WARP_SIZE) {      // If approx queue is larger than the warp size
+      if (approxOffset + numApproxWarp >= WARP_SIZE) {          // If approx queue is larger than the warp size
 	approxAcc<NI,true>(acc_i, pos_i, tempQueue[laneIdx], EPS2);// Call M2P kernel
-	approxWarpOffset -= WARP_SIZE;                          //  Decrement approx queue size
-	approxIdx = approxWarpOffset + approxLaneIdx;           //  Update approx index using new queue size
+	approxOffset -= WARP_SIZE;                              //  Decrement approx queue size
+	approxIdx = approxOffset + numApproxLane;               //  Update approx index using new queue size
 	if (isApprox && approxIdx >= 0)                         //  If approx flag is true and index is within bounds
 	  tempQueue[approxIdx] = sourceQueue;                   //   Fill approx queue with current sources
 	counters.x += WARP_SIZE;                                //  Increment M2P counter
       }                                                         // End if for approx queue size
       approxQueue = tempQueue[laneIdx];                         // Free temp queue for use in direct
-      approxWarpOffset += numApproxWarp;                        // Increment approx queue offset
+      approxOffset += numApproxWarp;                            // Increment approx queue offset
 
       // Direct
       const bool isLeaf = !isNode;                              // Is leaf cell
@@ -201,17 +201,17 @@ namespace {
       const int bodyBegin = sourceData.body();                  // First body in cell
       const int numBodies = sourceData.nbody() & IF(isDirect);  // Number of bodies in cell
       const int numBodiesScan = inclusiveScan<WARP_SIZE2>(numBodies);// Inclusive scan of numBodies
-      int bodyLaneIdx = numBodiesScan - numBodies;              // Exclusive scan of numBodies
+      int numBodiesLane = numBodiesScan - numBodies;            // Exclusive scan of numBodies
       int numBodiesWarp = __shfl(numBodiesScan, WARP_SIZE-1);   // Total numBodies of current warp
-      int bodyLaneOffset = 0;                                   // Initialize body lane offset
+      int bodyQueueOffset = 0;                                  // Initialize body lane offset
       while (numBodiesWarp > 0) {                               // While there are bodies to process
 	tempQueue[laneIdx] = 1;                                 //  Initialize body queue
-	if (isDirect && (bodyLaneIdx < WARP_SIZE)) {            //  If direct flag is true and index is within bounds
+	if (isDirect && (numBodiesLane < WARP_SIZE)) {          //  If direct flag is true and index is within bounds
 	  isDirect = false;                                     //   Set flag as processed
-	  tempQueue[bodyLaneIdx] = -1-bodyBegin;                //   Put body in queue
+	  tempQueue[numBodiesLane] = -1-bodyBegin;              //   Put body in queue
 	}                                                       //  End if for direct flag
-        const int bodyIdx = inclusiveSegscanWarp(tempQueue[laneIdx], bodyLaneOffset);// Inclusive segmented scan of body queue
-        bodyLaneOffset = __shfl(bodyIdx, WARP_SIZE-1);          //  Last lane has the body lane offset
+        const int bodyIdx = inclusiveSegscanWarp(tempQueue[laneIdx], bodyQueueOffset);// Inclusive segmented scan of body queue
+        bodyQueueOffset = __shfl(bodyIdx, WARP_SIZE-1);         //  Last lane has the body lane offset
 	if (numBodiesWarp >= WARP_SIZE) {                       //  If warp is full of bodies
 	  const float4 pos = tex1Dfetch(texBody, bodyIdx);      //   Load position of source bodies
 	  for (int j=0; j<WARP_SIZE; j++) {                     //   Loop over the warp size
@@ -224,15 +224,15 @@ namespace {
 	      acc_i[k] = P2P(acc_i[k], pos_i[k], pos_j, EPS2);  //     Call P2P kernel
 	  }                                                     //   End loop over the warp size
 	  numBodiesWarp -= WARP_SIZE;                           //   Decrement body queue size
-	  bodyLaneIdx -= WARP_SIZE;                             //   Derecment lane offset of body index
+	  numBodiesLane -= WARP_SIZE;                           //   Derecment lane offset of body index
 	  counters.y += WARP_SIZE;                              //   Increment P2P counter
 	} else {                                                //  If warp is not entirely full of bodies
-	  const int directIdx = bodyWarpOffset + laneIdx;       //   Direct cell index of current lane
+	  const int directIdx = bodyOffset + laneIdx;           //   Direct cell index of current lane
 	  tempQueue[laneIdx] = directQueue;                     //   Initialize body queue
 	  if (directIdx < WARP_SIZE)                            //   If direct cell index is less than the warp size
 	    tempQueue[directIdx] = bodyIdx;                     //    Push bodies into queue
-	  bodyWarpOffset += numBodiesWarp;                      //   Increment direct queue offset
-	  if (bodyWarpOffset >= WARP_SIZE) {                    //   If this causes the direct queue to spill
+	  bodyOffset += numBodiesWarp;                          //   Increment direct queue offset
+	  if (bodyOffset >= WARP_SIZE) {                        //   If this causes the direct queue to spill
 	    const float4 pos = tex1Dfetch(texBody, tempQueue[laneIdx]);// Load position of source bodies
 	    for (int j=0; j<WARP_SIZE; j++) {                   //    Loop over the warp size
 	      const float4 pos_j = make_float4(__shfl(pos.x, j),//     Get source x value from lane j
@@ -243,8 +243,8 @@ namespace {
 	      for (int k=0; k<NI; k++)                          //     Loop over NI targets
 		acc_i[k] = P2P(acc_i[k], pos_i[k], pos_j, EPS2);//      Call P2P kernel
 	    }                                                   //    End loop over the warp size
-	    bodyWarpOffset -= WARP_SIZE;                        //    Decrement direct queue size
-	    const int directIdx = bodyWarpOffset + laneIdx - numBodiesWarp;
+	    bodyOffset -= WARP_SIZE;                            //    Decrement direct queue size
+	    const int directIdx = bodyOffset + laneIdx - numBodiesWarp;
 	    if (directIdx >= 0)
 	      tempQueue[directIdx] = bodyIdx;
 	    counters.y += WARP_SIZE;
@@ -259,13 +259,13 @@ namespace {
 	sourceOffset = newSources = 0;                          //  Initialize next source size and offset
       }
     }
-    if (approxWarpOffset > 0) {
-      approxAcc<NI,false>(acc_i, pos_i, laneIdx < approxWarpOffset ? approxQueue : -1, EPS2);
-      counters.x += approxWarpOffset;
-      approxWarpOffset = 0;
+    if (approxOffset > 0) {
+      approxAcc<NI,false>(acc_i, pos_i, laneIdx < approxOffset ? approxQueue : -1, EPS2);
+      counters.x += approxOffset;
+      approxOffset = 0;
     }
-    if (bodyWarpOffset > 0) {
-      const int bodyIdx = laneIdx < bodyWarpOffset ? directQueue : -1;
+    if (bodyOffset > 0) {
+      const int bodyIdx = laneIdx < bodyOffset ? directQueue : -1;
       const float4 pos = bodyIdx >= 0 ? tex1Dfetch(texBody, bodyIdx) : make_float4(0.0f, 0.0f, 0.0f, 0.0f);
       for (int j=0; j<WARP_SIZE; j++) {
 	const float4 pos_j = make_float4(__shfl(pos.x, j),
@@ -276,8 +276,8 @@ namespace {
 	for (int k=0; k<NI; k++)
 	  acc_i[k] = P2P(acc_i[k], pos_i[k], pos_j, EPS2);
       }
-      counters.y += bodyWarpOffset;
-      bodyWarpOffset = 0;
+      counters.y += bodyOffset;
+      bodyOffset = 0;
     }
     return counters;
   }
