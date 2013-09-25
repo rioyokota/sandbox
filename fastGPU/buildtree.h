@@ -180,10 +180,10 @@ namespace {
     for (int i=bodyBeginBlock; i<bodyEnd; i+=gridDim.x*blockDim.x) {
       const int bodyIdx = min(i+threadIdx.x, bodyEnd-1);
       float4 pos = bodyPos[bodyIdx];
-      int bodyOctant = getOctant(box, pos);
-      bodyOctant = i+threadIdx.x < bodyEnd ? bodyOctant : 8;
+      int bodyOctant = 8;
+      if (i+threadIdx.x < bodyEnd)
+	bodyOctant = getOctant(box, pos);
       int childOctant = 8;
-
       if (bodyOctant < 8)
 	childOctant = getOctant(childBox[bodyOctant], pos);
 
