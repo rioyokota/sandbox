@@ -182,12 +182,10 @@ namespace {
       float4 pos = bodyPos[bodyIdx];
       int bodyOctant = getOctant(box, pos);
       bodyOctant = i+threadIdx.x < bodyEnd ? bodyOctant : 8;
+      int childOctant = 8;
 
-      /* compute suboctant of the octant into which particle will fall */
-      if (bodyOctant < 8) {
-	const int childOctant = getOctant(childBox[bodyOctant], pos);
-	pos.w = __int_as_float(childOctant);
-      }
+      if (bodyOctant < 8)
+	childOctant = getOctant(childBox[bodyOctant], pos);
 
       /* compute number of particles in each of the octants that will be processed by thead block */
       int np = 0;
@@ -221,7 +219,7 @@ namespace {
 	
       /* write the data in a single instruction */
       if (addrW >= 0)
-	bodyPos2[addrW] = pos;
+        bodyPos2[addrW] = pos;
 
       /* count how many particles in suboctants in each of the octants */
       cntr = 32;
@@ -230,7 +228,7 @@ namespace {
 	if (cntr == 0) break;
 	const int sum = warpBinReduce(bodyOctant == octant);
 	if (sum > 0) {
-	  const int subOctant = bodyOctant == octant ? __float_as_int(pos.w) : 8;
+	  const int subOctant = bodyOctant == octant ? childOctant : 8;
 #pragma unroll
 	  for (int k=0; k<8; k+=4) {
 	    const int4 sum4 = make_int4(warpBinReduce(k+0 == subOctant),
@@ -431,7 +429,7 @@ namespace {
 	    for (int i = nBeg1+laneIdx; i < nEnd1; i += WARP_SIZE)
 	      if (i < nEnd1) {
 		float4 pos = bodyPos2[i];
-		pos.w = 1;
+		pos.w = 8;
 		bodyPos[i] = pos;
 	      }
 	  }
@@ -440,7 +438,7 @@ namespace {
 	    for (int i = nBeg1+laneIdx; i < nEnd1; i += WARP_SIZE)
 	      if (i < nEnd1) {
 		float4 pos = bodyPos2[i];
-		pos.w = 1;
+		pos.w = 8;
 		bodyPos2[i] = pos;
 	      }
 	  }
