@@ -180,12 +180,11 @@ namespace {
     for (int i=bodyBeginBlock; i<bodyEnd; i+=gridDim.x*blockDim.x) {
       const int bodyIdx = min(i+threadIdx.x, bodyEnd-1);
       float4 pos = bodyPos[bodyIdx];
-      int bodyOctant = __float_as_int(pos.w) & 0xF;
+      int bodyOctant = __float_as_int(pos.w);
       if (ISROOT) {
-	pos.w = __int_as_float(((i+threadIdx.x) << 4) | bodyOctant);
 	bodyOctant = getOctant(box, pos);
       }
-      bodyOctant = i+threadIdx.x < bodyEnd ? bodyOctant : 0xF;
+      bodyOctant = i+threadIdx.x < bodyEnd ? bodyOctant : 8;
 
       /* compute suboctant of the octant into which particle will fall */
       if (bodyOctant < 8) {
