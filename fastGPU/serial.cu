@@ -27,10 +27,10 @@ int main(int argc, char * argv[]) {
   
   for (int i=0; i<numBodies; i++) {
     float4 bodyPos;
-    bodyPos.x    = data.pos[i].x;
-    bodyPos.y    = data.pos[i].y;
-    bodyPos.z    = data.pos[i].z;
-    bodyPos.w    = data.mass[i];
+    bodyPos.x = data.pos[i].x;
+    bodyPos.y = data.pos[i].y;
+    bodyPos.z = data.pos[i].z;
+    bodyPos.w = data.mass[i];
     h_bodyPos[i] = bodyPos;
   }
   cuda_mem<float4> d_bodyPos;
@@ -60,7 +60,7 @@ int main(int argc, char * argv[]) {
   fprintf(stdout,"--- FMM Profiling ----------------\n");
   double t0 = get_time();
   Build build;
-  int2 numLS = build.tree(numBodies, d_bodyPos, d_bodyPos2, d_bodyAcc, d_domain, d_levelRange, d_sourceCells, nleaf);
+  int2 numLS = build.tree(numBodies, d_bodyPos, d_bodyPos2, d_domain, d_levelRange, d_sourceCells, nleaf);
   int numLevels = numLS.x;
   int numSources = numLS.y;
   d_sourceCenter.alloc(numSources);

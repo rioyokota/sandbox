@@ -19,7 +19,6 @@ namespace {
   __device__ int * blockCounterPool;
   __device__ int2 * bodyRangePool;
   __device__ CellData * sourceCells;
-  __device__ float4 * bodyAcc;
 
   static __device__ __forceinline__
   int getOctant(const float4 &box, const float4 &body) {
@@ -434,28 +433,20 @@ namespace {
 	if (!(level&1))
 	  {
 	    for (int i = nBeg1+laneIdx; i < nEnd1; i += WARP_SIZE)
-	      if (i < nEnd1)
-		{
-		  float4 pos = bodyPos2[i];
-		  int index = 0;
-		  float4 temp = bodyAcc[index];
-		  pos.w = temp.w;
-		  bodyPos[i] = pos;
-		  //bodyPos2[i] = temp;
-		}
+	      if (i < nEnd1) {
+		float4 pos = bodyPos2[i];
+		pos.w = 1;
+		bodyPos[i] = pos;
+	      }
 	  }
 	else
 	  {
 	    for (int i = nBeg1+laneIdx; i < nEnd1; i += WARP_SIZE)
-	      if (i < nEnd1)
-		{
-		  float4 pos = bodyPos2[i];
-		  int index = 0;
-		  float4 temp = bodyAcc[index];
-		  pos.w = temp.w;
-		  bodyPos2[i] = pos;
-		  bodyPos[i] = temp;
-		}
+	      if (i < nEnd1) {
+		float4 pos = bodyPos2[i];
+		pos.w = 1;
+		bodyPos2[i] = pos;
+	      }
 	  }
       }
   }
@@ -503,7 +494,6 @@ namespace {
 				       int2 * d_bodyRangePool,
 				       float4 * d_bodyPos,
 				       float4 * d_bodyPos2,
-				       float4 * d_bodyAcc,
 				       int * numCellsGlob_return = NULL)
     {
       sourceCells = d_sourceCells;
@@ -512,7 +502,6 @@ namespace {
       childCounterPool = d_childCounterPool;
       blockCounterPool = d_blockCounterPool;
       bodyRangePool = d_bodyRangePool;
-      bodyAcc = d_bodyAcc;
 
       int *bodyCounter = new int[8];
       for (int k=0; k<8; k++)
@@ -681,8 +670,7 @@ namespace {
 
 class Build {
  public:
-  int2 tree(const int numBodies,
-	    float4 * d_bodyPos, float4 * d_bodyPos2, float4 * d_bodyAcc,
+  int2 tree(const int numBodies, float4 * d_bodyPos, float4 * d_bodyPos2,
 	    float4 * d_domain, int2 * d_levelRange, CellData * d_sourceCells, const int NLEAF) {
     const int NTHREAD2 = 8;
     const int NTHREAD  = 1 << NTHREAD2;
@@ -752,23 +740,23 @@ class Build {
     switch (NLEAF) {
     case 16:
       buildOctree<16><<<1,1>>>(numBodies, d_domain, d_sourceCells, d_bodyCounterPool, d_bodyOffsetPool, d_childCounterPool,
-			       d_blockCounterPool, d_bodyRangePool, d_bodyPos, d_bodyPos2, d_bodyAcc);
+			       d_blockCounterPool, d_bodyRangePool, d_bodyPos, d_bodyPos2);
       break;
     case 24:
       buildOctree<24><<<1,1>>>(numBodies, d_domain, d_sourceCells, d_bodyCounterPool, d_bodyOffsetPool, d_childCounterPool,
-			       d_blockCounterPool, d_bodyRangePool, d_bodyPos, d_bodyPos2, d_bodyAcc);
+			       d_blockCounterPool, d_bodyRangePool, d_bodyPos, d_bodyPos2);
       break;
     case 32:
       buildOctree<32><<<1,1>>>(numBodies, d_domain, d_sourceCells, d_bodyCounterPool, d_bodyOffsetPool, d_childCounterPool,
-			       d_blockCounterPool, d_bodyRangePool, d_bodyPos, d_bodyPos2, d_bodyAcc);
+			       d_blockCounterPool, d_bodyRangePool, d_bodyPos, d_bodyPos2);
       break;
     case 48:
       buildOctree<48><<<1,1>>>(numBodies, d_domain, d_sourceCells, d_bodyCounterPool, d_bodyOffsetPool, d_childCounterPool,
-			       d_blockCounterPool, d_bodyRangePool, d_bodyPos, d_bodyPos2, d_bodyAcc);
+			       d_blockCounterPool, d_bodyRangePool, d_bodyPos, d_bodyPos2);
       break;
     case 64:
       buildOctree<64><<<1,1>>>(numBodies, d_domain, d_sourceCells, d_bodyCounterPool, d_bodyOffsetPool, d_childCounterPool,
-			       d_blockCounterPool, d_bodyRangePool, d_bodyPos, d_bodyPos2, d_bodyAcc);
+			       d_blockCounterPool, d_bodyRangePool, d_bodyPos, d_bodyPos2);
       break;
     default:
       assert(0);
