@@ -56,8 +56,7 @@ class Plummer {
 	X *= conv; Y *= conv; Z *= conv;    
 	Vx /= sqrt(conv); Vy /= sqrt(conv); Vz /= sqrt(conv);
 
-	double M = 1.0;
-	mass[i] = M/n;
+	mass[i] = my_rand() / n;
 	pos[i].x = X;
 	pos[i].y = Y;
 	pos[i].z = Z;
