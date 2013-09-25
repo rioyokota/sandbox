@@ -180,10 +180,7 @@ namespace {
     for (int i=bodyBeginBlock; i<bodyEnd; i+=gridDim.x*blockDim.x) {
       const int bodyIdx = min(i+threadIdx.x, bodyEnd-1);
       float4 pos = bodyPos[bodyIdx];
-      int bodyOctant = __float_as_int(pos.w);
-      if (ISROOT) {
-	bodyOctant = getOctant(box, pos);
-      }
+      int bodyOctant = getOctant(box, pos);
       bodyOctant = i+threadIdx.x < bodyEnd ? bodyOctant : 8;
 
       /* compute suboctant of the octant into which particle will fall */
@@ -233,7 +230,7 @@ namespace {
 	if (cntr == 0) break;
 	const int sum = warpBinReduce(bodyOctant == octant);
 	if (sum > 0) {
-	  const int subOctant = bodyOctant == octant ? (__float_as_int(pos.w) & 0xF) : -1;
+	  const int subOctant = bodyOctant == octant ? __float_as_int(pos.w) : 8;
 #pragma unroll
 	  for (int k=0; k<8; k+=4) {
 	    const int4 sum4 = make_int4(warpBinReduce(k+0 == subOctant),
