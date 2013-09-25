@@ -176,36 +176,35 @@ namespace {
 
     __syncthreads();
 
-    const int bodyBeginBlock = bodyBegin + blockIdx.x * blockDim.x;
-    for (int i=bodyBeginBlock; i<bodyEnd; i+=gridDim.x*blockDim.x) {
-      const int bodyIdx = min(i+threadIdx.x, bodyEnd-1);
+    const int warpBegin = bodyBegin + blockIdx.x * blockDim.x + warpIdx * WARP_SIZE;
+    for (int i=warpBegin; i<bodyEnd; i+=gridDim.x*blockDim.x) {
+      const int bodyIdx = min(i+laneIdx, bodyEnd-1);
       float4 pos = bodyPos[bodyIdx];
-      int bodyOctant = 8;
-      if (i+threadIdx.x < bodyEnd)
-	bodyOctant = getOctant(box, pos);
-      int childOctant = 8;
-      if (bodyOctant < 8)
-	childOctant = getOctant(childBox[bodyOctant], pos);
+      int bodyOctant = getOctant(box, pos);
+      int childOctant = getOctant(childBox[bodyOctant], pos);
+      if (i+laneIdx > bodyIdx) {
+	bodyOctant = 8;
+        childOctant = 8;
+      }
 
-      /* compute number of particles in each of the octants that will be processed by thead block */
-      int np = 0;
+      int octantCounter = 0;
 #pragma unroll
       for (int octant=0; octant<8; octant++) {
 	const int sum = warpBinReduce(bodyOctant == octant);
 	if (octant == laneIdx)
-	  np = sum;
+	  octantCounter = sum;
       }
 
       /* increment atomic counters in a single instruction for thread-blocks to participated */
       int addrB0;
       if (laneIdx < 8)
-	addrB0 = atomicAdd(&bodyOffset[laneIdx], np);
+	addrB0 = atomicAdd(&bodyOffset[laneIdx], octantCounter);
 
       /* compute addresses where to write data */
       int cntr = 32;
       int addrW = -1;
 #pragma unroll
-      for (int octant = 0; octant < 8; octant++) {
+      for (int octant=0; octant<8; octant++) {
 	const int sum = warpBinReduce(bodyOctant == octant);
 	if (sum > 0) {
 	  const int offset = warpBinExclusiveScan1(bodyOctant == octant);
@@ -449,31 +448,29 @@ namespace {
 					 int *bodyCounter,
 					 const float4 box,
 					 const float4 *bodyPos) {
-    int np_octant[8] = {0};
-    const int beg = blockIdx.x * blockDim.x + threadIdx.x;
-    for (int i = beg; i < numBodies; i += gridDim.x * blockDim.x) {
-      if (i < numBodies) {
-	const float4 pos = bodyPos[i];
-	const int octant = getOctant(box, pos);
-	np_octant[0] += (octant == 0);
-	np_octant[1] += (octant == 1);
-	np_octant[2] += (octant == 2);
-	np_octant[3] += (octant == 3);
-	np_octant[4] += (octant == 4);
-	np_octant[5] += (octant == 5);
-	np_octant[6] += (octant == 6);
-	np_octant[7] += (octant == 7);
-      }
-    }
     const int laneIdx = threadIdx.x & (WARP_SIZE-1);
+    const int begin = blockIdx.x * blockDim.x + threadIdx.x;
+    int octantCounter[8] = {0};
+    for (int i=begin; i<numBodies; i+=gridDim.x*blockDim.x) {
+      const float4 pos = bodyPos[i];
+      const int octant = getOctant(box, pos);
+      octantCounter[0] += (octant == 0);
+      octantCounter[1] += (octant == 1);
+      octantCounter[2] += (octant == 2);
+      octantCounter[3] += (octant == 3);
+      octantCounter[4] += (octant == 4);
+      octantCounter[5] += (octant == 5);
+      octantCounter[6] += (octant == 6);
+      octantCounter[7] += (octant == 7);
+    }
 #pragma unroll
     for (int k=0; k<8; k++) {
-      int np = np_octant[k];
+      int counter = octantCounter[k];
 #pragma unroll
       for (int i=4; i>=0; i--)
-	np += __shfl_xor(np, 1<<i, WARP_SIZE);
+	counter += __shfl_xor(counter, 1<<i, WARP_SIZE);
       if (laneIdx == 0)
-	atomicAdd(&bodyCounter[k],np);
+	atomicAdd(&bodyCounter[k],counter);
     }
   }
 
