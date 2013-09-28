@@ -181,9 +181,9 @@ namespace {
       const int bodyIdx = min(i+laneIdx, bodyEnd-1);
       float4 pos = bodyPos[bodyIdx];
       int bodyOctant = getOctant(box, pos);
-      int childOctant = getOctant(childBox[bodyOctant], pos);
+      int bodySubOctant = getOctant(childBox[bodyOctant], pos);
       if (i+laneIdx > bodyIdx)
-	bodyOctant = childOctant = 8;
+	bodyOctant = bodySubOctant = 8;
 
       int octantCounter = 0;
 #pragma unroll
@@ -193,39 +193,31 @@ namespace {
 	  octantCounter = sum;
       }
 
-      /* increment atomic counters in a single instruction for thread-blocks to participated */
-      int addrB0;
+      int warpOffset;
       if (laneIdx < 8)
-	addrB0 = atomicAdd(&bodyOffset[laneIdx], octantCounter);
-
-      /* compute addresses where to write data */
-      int cntr = 32;
-      int addrW = -1;
+	warpOffset = atomicAdd(&bodyOffset[laneIdx], octantCounter);
+      int bodyIdx2 = -1;
 #pragma unroll
       for (int octant=0; octant<8; octant++) {
 	const int sum = warpBinReduce(bodyOctant == octant);
 	if (sum > 0) {
-	  const int offset = warpBinExclusiveScan1(bodyOctant == octant);
-	  const int addrB = __shfl(addrB0, octant, WARP_SIZE);
-	  if (bodyOctant == octant)
-	    addrW = addrB + offset;
-	  cntr -= sum;
-	  if (cntr == 0) break;
+	  const int index = warpBinExclusiveScan1(bodyOctant == octant);
+	  const int offset = __shfl(warpOffset, octant);
+	  if (bodyOctant == octant) {
+	    bodyIdx2 = offset + index;
+          }
 	}
       }
-	
-      /* write the data in a single instruction */
-      if (addrW >= 0)
-        bodyPos2[addrW] = pos;
+      if (bodyIdx2 >= 0)
+        bodyPos2[bodyIdx2] = pos;
 
-      /* count how many particles in suboctants in each of the octants */
-      cntr = 32;
+      int remainder = 32;
 #pragma unroll
       for (int octant = 0; octant < 8; octant++) {
-	if (cntr == 0) break;
+	if (remainder == 0) break;
 	const int sum = warpBinReduce(bodyOctant == octant);
 	if (sum > 0) {
-	  const int subOctant = bodyOctant == octant ? childOctant : 8;
+	  const int subOctant = bodyOctant == octant ? bodySubOctant : 8;
 #pragma unroll
 	  for (int k=0; k<8; k+=4) {
 	    const int4 sum4 = make_int4(warpBinReduce(k+0 == subOctant),
@@ -241,7 +233,7 @@ namespace {
 	      *(int4*)&numBodyPerOctantFine[warpIdx*64+octant*8+k] = value;
 	    }
 	  }
-	  cntr -= sum;
+	  remainder -= sum;
 	}
       }
     }
@@ -250,20 +242,18 @@ namespace {
     if (warpIdx >= 8) return;
 
 #pragma unroll
-    for (int k = 0; k < 8; k += 4)
-      {
-	int4 nSubOctant = laneIdx < NWARPS ? (*(int4*)&numBodyPerOctantFine[laneIdx*64+warpIdx*8+k]) : make_int4(0,0,0,0);
+    for (int k=0; k<8; k+=4) {
+      int4 nSubOctant = laneIdx < NWARPS ? (*(int4*)&numBodyPerOctantFine[laneIdx*64+warpIdx*8+k]) : make_int4(0,0,0,0);
 #pragma unroll
-	for (int i = NWARPS2-1; i >= 0; i--)
-	  {
-	    nSubOctant.x += __shfl_xor(nSubOctant.x, 1<<i, NWARPS);
-	    nSubOctant.y += __shfl_xor(nSubOctant.y, 1<<i, NWARPS);
-	    nSubOctant.z += __shfl_xor(nSubOctant.z, 1<<i, NWARPS);
-	    nSubOctant.w += __shfl_xor(nSubOctant.w, 1<<i, NWARPS);
-	  }
-	if (laneIdx == 0)
-	  *(int4*)&numBodyPerOctant[warpIdx*8+k] = nSubOctant;
+      for (int i=NWARPS2-1; i>=0; i--) {
+	nSubOctant.x += __shfl_xor(nSubOctant.x, 1<<i, NWARPS);
+	nSubOctant.y += __shfl_xor(nSubOctant.y, 1<<i, NWARPS);
+	nSubOctant.z += __shfl_xor(nSubOctant.z, 1<<i, NWARPS);
+	nSubOctant.w += __shfl_xor(nSubOctant.w, 1<<i, NWARPS);
       }
+      if (laneIdx == 0)
+	*(int4*)&numBodyPerOctant[warpIdx*8+k] = nSubOctant;
+    }
 
     __syncthreads();
 
