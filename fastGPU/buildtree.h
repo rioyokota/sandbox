@@ -182,10 +182,8 @@ namespace {
       float4 pos = bodyPos[bodyIdx];
       int bodyOctant = getOctant(box, pos);
       int childOctant = getOctant(childBox[bodyOctant], pos);
-      if (i+laneIdx > bodyIdx) {
-	bodyOctant = 8;
-        childOctant = 8;
-      }
+      if (i+laneIdx > bodyIdx)
+	bodyOctant = childOctant = 8;
 
       int octantCounter = 0;
 #pragma unroll
