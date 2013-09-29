@@ -187,7 +187,7 @@ namespace {
       int octantCounter = 0;                                    // Use lanes 0-7 for each octant
 #pragma unroll
       for (int octant=0; octant<8; octant++) {
-	const int sum = warpBinReduce(bodyOctant == octant);
+	const int sum = reduceBool(bodyOctant == octant);
 	if (octant == laneIdx)
 	  octantCounter = sum;
       }
@@ -198,9 +198,9 @@ namespace {
       int bodyIdx2 = -1;
 #pragma unroll
       for (int octant=0; octant<8; octant++) {
-	const int sum = warpBinReduce(bodyOctant == octant);
+	const int sum = reduceBool(bodyOctant == octant);
 	if (sum > 0) {
-	  const int index = warpBinExclusiveScan1(bodyOctant == octant);
+	  const int index = exclusiveScanBool(bodyOctant == octant);
 	  const int offset = __shfl(warpOffset, octant);
 	  if (bodyOctant == octant) {
 	    bodyIdx2 = offset + index;
@@ -214,15 +214,15 @@ namespace {
 #pragma unroll
       for (int octant = 0; octant < 8; octant++) {
 	if (remainder == 0) break;
-	const int sum = warpBinReduce(bodyOctant == octant);
+	const int sum = reduceBool(bodyOctant == octant);
 	if (sum > 0) {
 	  const int subOctant = bodyOctant == octant ? bodySubOctant : 8;
 #pragma unroll
 	  for (int k=0; k<8; k+=4) {
-	    const int4 sum4 = make_int4(warpBinReduce(k+0 == subOctant),
-					warpBinReduce(k+1 == subOctant),
-					warpBinReduce(k+2 == subOctant),
-					warpBinReduce(k+3 == subOctant));
+	    const int4 sum4 = make_int4(reduceBool(k+0 == subOctant),
+					reduceBool(k+1 == subOctant),
+					reduceBool(k+2 == subOctant),
+					reduceBool(k+3 == subOctant));
 	    if (laneIdx == 0) {
 	      int4 subOctantTemp = *(int4*)&subOctantCounter[warpIdx*64+octant*8+k];
 	      subOctantTemp.x += sum4.x;
@@ -290,30 +290,30 @@ namespace {
     const int npCell = laneIdx < 8 ? subOctantOffset[laneIdx] : 0;
 
     /* compute number of children that needs to be further split, and cmopute their offsets */
-    const int2 nSubNodes = warpBinExclusiveScan(npCell > NLEAF);
-    const int2 numLeaves = warpBinExclusiveScan(npCell > 0 && npCell <= NLEAF);
-    if (warpIdx == 0 && laneIdx < 8)
-      {
-	subOctantOffset[8 +laneIdx] = nSubNodes.x;
-	subOctantOffset[16+laneIdx] = numLeaves.x;
-      }
+    const int numSubNodes = exclusiveScanBool(npCell > NLEAF);
+    const int numLeaves = exclusiveScanBool(npCell > 0 && npCell <= NLEAF);
+    if (warpIdx == 0 && laneIdx < 8) {
+      subOctantOffset[8 +laneIdx] = numSubNodes;
+      subOctantOffset[16+laneIdx] = numLeaves;
+    }
 
     int nCellmax = npCell;
 #pragma unroll
     for (int i = 2; i >= 0; i--)
       nCellmax = max(nCellmax, __shfl_xor(nCellmax, 1<<i, WARP_SIZE));
 
+    const int sumSubNodes = reduceBool(npCell > NLEAF);
     /* if there is at least one cell to split, increment nuumber of the nodes */
-    if (threadIdx.x == 0 && nSubNodes.y > 0)
+    if (threadIdx.x == 0 && sumSubNodes > 0)
       {
-	subOctantOffset[16+8] = atomicAdd(&numNodesGlob,nSubNodes.y);
+	subOctantOffset[16+8] = atomicAdd(&numNodesGlob,sumSubNodes);
 #if 1   /* temp solution, a better one is to use RingBuffer */
 	assert(subOctantOffset[16+8] < maxNodeGlob);
 #endif
       }
 
     /* writing linking info, parent, child and particle's list */
-    const int nChildrenCell = warpBinReduce(npCell > 0);
+    const int nChildrenCell = reduceBool(npCell > 0);
     if (threadIdx.x == 0 && nChildrenCell > 0)
       {
 	const int cellFirstChildIndex = atomicAdd(&numCellsGlob, nChildrenCell);
@@ -351,7 +351,7 @@ namespace {
 	const int nSubCell = laneIdx < 8 ? childCounter[warpIdx*8 + laneIdx] : 0;
 
 	/* compute offsets */
-        int cellOffset = inclusiveScan<3>(nSubCell);
+        int cellOffset = inclusiveScanInt<3>(nSubCell);
 	cellOffset -= nSubCell;
 
 	/* store offset in memory */
@@ -375,10 +375,10 @@ namespace {
 
     /* warps coorperate so that only 1 kernel needs to be launched by a thread block
      * with larger degree of paralellism */
-    if (nSubNodes.y > 0 && warpIdx == 0)
+    if (sumSubNodes > 0 && warpIdx == 0)
       {
 	/* build octant mask */
-	int packedOctant = npCell > NLEAF ?  (laneIdx << (3*nSubNodes.x)) : 0;
+	int packedOctant = npCell > NLEAF ?  (laneIdx << (3*numSubNodes)) : 0;
 #pragma unroll
 	for (int i = 4; i >= 0; i--)
 	  packedOctant |= __shfl_xor(packedOctant, 1<<i, WARP_SIZE);
@@ -387,7 +387,7 @@ namespace {
 	  {
 	    dim3 grid, block;
 	    getKernelSize(grid, block, nCellmax);
-	    grid.y = nSubNodes.y;  /* each y-coordinate of the grid will be busy for each parent cell */
+	    grid.y = sumSubNodes;  /* each y-coordinate of the grid will be busy for each parent cell */
 	    buildOctant<NLEAF,false><<<grid,block>>>
 	      (box, cellIndexBase+blockIdx.y, cellFirstChildIndex,
 	       packedOctant, bodyCounterBase, bodyOffsetBase, childCounterBase, blockCounterBase, bodyRangeBase, bodyPos2, bodyPos, level+1);
@@ -406,7 +406,7 @@ namespace {
 	    atomicAdd(&numPerLeafGlob, nEnd1-nBeg1);
 	    const CellData leafData(level+1, cellIndexBase+blockIdx.y, nBeg1, nEnd1-nBeg1);
 	    assert(leafData.isLeaf());
-	    sourceCells[cellFirstChildIndex + nSubNodes.y + leafOffset] = leafData;
+	    sourceCells[cellFirstChildIndex + sumSubNodes + leafOffset] = leafData;
 	  }
 	if (!(level&1))
 	  {

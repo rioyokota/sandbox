@@ -164,7 +164,7 @@ namespace {
       // Split
       const int childBegin = sourceData.child();                // First child cell
       const int numChild = sourceData.nchild() & IF(isSplit);   // Number of child cells (masked by split flag)
-      const int numChildScan = inclusiveScan<WARP_SIZE2>(numChild);// Inclusive scan of numChild
+      const int numChildScan = inclusiveScanInt<WARP_SIZE2>(numChild);// Inclusive scan of numChild
       const int numChildLane = numChildScan - numChild;         // Exclusive scan of numChild
       const int numChildWarp = __shfl(numChildScan, WARP_SIZE-1);// Total numChild of current warp
       sourceOffset += min(WARP_SIZE, numSources - sourceOffset);// Increment source offset
@@ -200,7 +200,7 @@ namespace {
       bool isDirect = isClose && isLeaf && isSource;            // Source cell can be used for P2P
       const int bodyBegin = sourceData.body();                  // First body in cell
       const int numBodies = sourceData.nbody() & IF(isDirect);  // Number of bodies in cell
-      const int numBodiesScan = inclusiveScan<WARP_SIZE2>(numBodies);// Inclusive scan of numBodies
+      const int numBodiesScan = inclusiveScanInt<WARP_SIZE2>(numBodies);// Inclusive scan of numBodies
       int numBodiesLane = numBodiesScan - numBodies;            // Exclusive scan of numBodies
       int numBodiesWarp = __shfl(numBodiesScan, WARP_SIZE-1);   // Total numBodies of current warp
       int tempOffset = 0;                                       // Initialize temp queue offset
@@ -210,7 +210,7 @@ namespace {
 	  isDirect = false;                                     //   Set flag as processed
 	  tempQueue[numBodiesLane] = -1-bodyBegin;              //   Put body in queue
 	}                                                       //  End if for direct flag
-        const int bodyQueue = inclusiveSegscanWarp(tempQueue[laneIdx], tempOffset);// Inclusive segmented scan of temp queue
+        const int bodyQueue = inclusiveSegscanInt(tempQueue[laneIdx], tempOffset);// Inclusive segmented scan of temp queue
         tempOffset = __shfl(bodyQueue, WARP_SIZE-1);            //  Last lane has the temp queue offset
 	if (numBodiesWarp >= WARP_SIZE) {                       //  If warp is full of bodies
 	  const float4 pos = tex1Dfetch(texBody, bodyQueue);    //   Load position of source bodies

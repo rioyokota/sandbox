@@ -51,7 +51,7 @@ uint shflScan(uint partial, uint offset) {
 
 template<int SIZE2>
 static __device__ __forceinline__
-uint inclusiveScan(const int value) {
+uint inclusiveScanInt(const int value) {
   uint sum = value;
 #pragma unroll
   for (int i=0; i<SIZE2; ++i)
@@ -69,19 +69,13 @@ int lanemask_lt() {
 }
 
 static __device__ __forceinline__
-int warpBinExclusiveScan1(const bool p) {
+int exclusiveScanBool(const bool p) {
   const uint b = __ballot(p);
   return __popc(b & lanemask_lt());
 }
 
 static __device__ __forceinline__
-int2 warpBinExclusiveScan(const bool p) {
-  const uint b = __ballot(p);
-  return make_int2(__popc(b & lanemask_lt()), __popc(b));
-}
-
-static __device__ __forceinline__
-int warpBinReduce(const bool p) {
+int reduceBool(const bool p) {
   const uint b = __ballot(p);
   return __popc(b);
 }
@@ -116,7 +110,7 @@ int inclusiveSegscan(int value, const int distance) {
 }
 
 static __device__ __forceinline__
-int inclusiveSegscanWarp(const int packedValue, const int carryValue) {
+int inclusiveSegscanInt(const int packedValue, const int carryValue) {
   const int flag = packedValue < 0;
   const int mask = -flag;
   const int value = (~mask & packedValue) + (mask & (-1-packedValue));
