@@ -166,8 +166,7 @@ namespace {
 
     float4 *childBox = (float4*)subOctantOffset;
 
-#pragma unroll
-    for (int i=0; i<8*8*NWARPS; i+=NWARPS*WARP_SIZE)
+    for (int i=0; i<8*8*NWARPS; i+=blockDim.x)
       if (i+threadIdx.x < 8*8*NWARPS)
 	subOctantCounter[i+threadIdx.x] = 0;
 
@@ -211,7 +210,7 @@ namespace {
       if (bodyIdx2 >= 0)
         bodyPos2[bodyIdx2] = pos;
 
-      int remainder = 32;
+      int remainder = 32;                                       // all lanes participate in this one
 #pragma unroll
       for (int octant = 0; octant < 8; octant++) {
 	if (remainder == 0) break;
@@ -225,12 +224,12 @@ namespace {
 					warpBinReduce(k+2 == subOctant),
 					warpBinReduce(k+3 == subOctant));
 	    if (laneIdx == 0) {
-	      int4 value = *(int4*)&subOctantCounter[warpIdx*64+octant*8+k];
-	      value.x += sum4.x;
-	      value.y += sum4.y;
-	      value.z += sum4.z;
-	      value.w += sum4.w;
-	      *(int4*)&subOctantCounter[warpIdx*64+octant*8+k] = value;
+	      int4 subOctantTemp = *(int4*)&subOctantCounter[warpIdx*64+octant*8+k];
+	      subOctantTemp.x += sum4.x;
+	      subOctantTemp.y += sum4.y;
+	      subOctantTemp.z += sum4.z;
+	      subOctantTemp.w += sum4.w;
+	      *(int4*)&subOctantCounter[warpIdx*64+octant*8+k] = subOctantTemp;
 	    }
 	  }
 	  remainder -= sum;
@@ -239,20 +238,18 @@ namespace {
     }
     __syncthreads();
 
-    if (warpIdx >= 8) return;
-
 #pragma unroll
     for (int k=0; k<8; k+=4) {
-      int4 nSubOctant = laneIdx < NWARPS ? (*(int4*)&subOctantCounter[laneIdx*64+warpIdx*8+k]) : make_int4(0,0,0,0);
+      int4 subOctantTemp = laneIdx < NWARPS ? (*(int4*)&subOctantCounter[laneIdx*64+warpIdx*8+k]) : make_int4(0,0,0,0);
 #pragma unroll
       for (int i=NWARPS2-1; i>=0; i--) {
-	nSubOctant.x += __shfl_xor(nSubOctant.x, 1<<i, NWARPS);
-	nSubOctant.y += __shfl_xor(nSubOctant.y, 1<<i, NWARPS);
-	nSubOctant.z += __shfl_xor(nSubOctant.z, 1<<i, NWARPS);
-	nSubOctant.w += __shfl_xor(nSubOctant.w, 1<<i, NWARPS);
+	subOctantTemp.x += __shfl_xor(subOctantTemp.x, 1<<i, NWARPS);
+	subOctantTemp.y += __shfl_xor(subOctantTemp.y, 1<<i, NWARPS);
+	subOctantTemp.z += __shfl_xor(subOctantTemp.z, 1<<i, NWARPS);
+	subOctantTemp.w += __shfl_xor(subOctantTemp.w, 1<<i, NWARPS);
       }
       if (laneIdx == 0)
-	*(int4*)&subOctantOffset[warpIdx*8+k] = nSubOctant;
+	*(int4*)&subOctantOffset[warpIdx*8+k] = subOctantTemp;
     }
 
     __syncthreads();
