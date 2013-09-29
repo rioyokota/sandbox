@@ -148,7 +148,6 @@ namespace {
 		   const int level = 0) {
     const int laneIdx = threadIdx.x & (WARP_SIZE-1);
     const int warpIdx = threadIdx.x >> WARP_SIZE2;
-    const int octant = (packedOctant >> (3*blockIdx.y)) & 0x7;
 
     int * bodyCounter = bodyCounterBase + blockIdx.y * 8;
     int * bodyOffset = bodyOffsetBase + blockIdx.y * 8;
@@ -156,10 +155,12 @@ namespace {
     int * blockCounter = blockCounterBase + blockIdx.y;
     int2 * bodyRange = bodyRangeBase + blockIdx.y;
 
-    const int bodyBegin = bodyRange->x;
+    const int bodyBegin = bodyRange->x + blockIdx.x * blockDim.x + warpIdx * WARP_SIZE;
     const int bodyEnd   = bodyRange->y;
+    const int numBodies = bodyRange->y - bodyRange->x;
 
-    if (!ISROOT) box = getChild(box, octant);
+    const int childOctant = (packedOctant >> (3*blockIdx.y)) & 0x7;
+    if (!ISROOT) box = getChild(box, childOctant);
 
     __shared__ int subOctantCounter[NWARPS*8*8];
     __shared__ int subOctantOffset[8*8];
@@ -170,36 +171,35 @@ namespace {
       if (i+threadIdx.x < 8*8*NWARPS)
 	subOctantCounter[i+threadIdx.x] = 0;
 
-    if (laneIdx == 0 && warpIdx < 8)
-      childBox[warpIdx] = getChild(box, warpIdx);
+    if (laneIdx == 0)
+      childBox[warpIdx] = getChild(box, warpIdx);               // One child per warp
 
     __syncthreads();
 
-    const int warpBegin = bodyBegin + blockIdx.x * blockDim.x + warpIdx * WARP_SIZE;
-    for (int i=warpBegin; i<bodyEnd; i+=gridDim.x*blockDim.x) {
+    for (int i=bodyBegin; i<bodyEnd; i+=gridDim.x*blockDim.x) {
       const int bodyIdx = min(i+laneIdx, bodyEnd-1);
       float4 pos = bodyPos[bodyIdx];
       int bodyOctant = getOctant(box, pos);
       int bodySubOctant = getOctant(childBox[bodyOctant], pos);  
       if (i+laneIdx > bodyIdx)
-	bodyOctant = bodySubOctant = 8;
+	bodyOctant = bodySubOctant = 8;                         // Out of bounds lanes
 
-      int octantCounter = 0;                                    // Use lanes 0-7 for each octant
+      int octantCounterLane = 0;
 #pragma unroll
       for (int octant=0; octant<8; octant++) {
-	const int sum = reduceBool(bodyOctant == octant);
+	const int sumLane = reduceBool(bodyOctant == octant);   // Count current octant in warp
 	if (octant == laneIdx)
-	  octantCounter = sum;
+	  octantCounterLane = sumLane;                          // Use lanes 0-7 for each octant
       }
 
       int warpOffset;                                           // Use lanes 0-7 for each octant
       if (laneIdx < 8)
-	warpOffset = atomicAdd(&bodyOffset[laneIdx], octantCounter);
+	warpOffset = atomicAdd(&bodyOffset[laneIdx], octantCounterLane);
       int bodyIdx2 = -1;
 #pragma unroll
       for (int octant=0; octant<8; octant++) {
-	const int sum = reduceBool(bodyOctant == octant);
-	if (sum > 0) {
+	const int sumLane = reduceBool(bodyOctant == octant);
+	if (sumLane > 0) {
 	  const int index = exclusiveScanBool(bodyOctant == octant);
 	  const int offset = __shfl(warpOffset, octant);
 	  if (bodyOctant == octant) {
@@ -214,8 +214,8 @@ namespace {
 #pragma unroll
       for (int octant = 0; octant < 8; octant++) {
 	if (remainder == 0) break;
-	const int sum = reduceBool(bodyOctant == octant);
-	if (sum > 0) {
+	const int sumLane = reduceBool(bodyOctant == octant);
+	if (sumLane > 0) {
 	  const int subOctant = bodyOctant == octant ? bodySubOctant : 8;
 #pragma unroll
 	  for (int k=0; k<8; k+=4) {
@@ -232,7 +232,7 @@ namespace {
 	      *(int4*)&subOctantCounter[warpIdx*64+octant*8+k] = subOctantTemp;
 	    }
 	  }
-	  remainder -= sum;
+	  remainder -= sumLane;
 	}
       }
     }
@@ -256,9 +256,9 @@ namespace {
 
     if (laneIdx < 8)
       if (subOctantOffset[warpIdx*8+laneIdx] > 0)
-	atomicAdd(&childCounter[warpIdx*8 + laneIdx], subOctantOffset[warpIdx*8+laneIdx]);
+	atomicAdd(&childCounter[warpIdx*8+laneIdx], subOctantOffset[warpIdx*8+laneIdx]);
 
-    __syncthreads();  /* must be present, otherwise race conditions occurs between parent & children */
+    __syncthreads();
 
     if (warpIdx == 0)
       subOctantOffset[laneIdx] = 0;
@@ -320,7 +320,7 @@ namespace {
 	/*** keep in mind, the 0-level will be overwritten ***/
 	assert(nChildrenCell > 0);
 	assert(nChildrenCell <= 8);
-	const CellData cellData(level,cellParentIndex, bodyBegin, bodyEnd-bodyBegin, cellFirstChildIndex, nChildrenCell-1);
+	const CellData cellData(level,cellParentIndex, bodyRange->x, numBodies, cellFirstChildIndex, nChildrenCell-1);
 	assert(cellData.child() < numCellsGlob);
 	assert(cellData.isNode());
 	sourceCells[cellIndexBase + blockIdx.y] = cellData;
