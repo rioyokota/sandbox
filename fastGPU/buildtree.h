@@ -14,7 +14,7 @@ namespace {
   __device__ unsigned int numPerLeafGlob = 0;
   __device__ unsigned int numCellsGlob = 0;
   __device__ int * octantSizePool;
-  __device__ int * octantCounterPool;
+  __device__ int * octantSizeScanPool;
   __device__ int * childCounterPool;
   __device__ int * blockCounterPool;
   __device__ int2 * bodyRangePool;
@@ -139,7 +139,7 @@ namespace {
 		   const int cellIndexBase,
 		   const int packedOctant,
 		   int * octantSizeBase,
-		   int * octantCounterBase,
+		   int * octantSizeScanBase,
 		   int * childCounterBase,
 		   int * blockCounterBase,
 		   int2 * bodyRangeBase,
@@ -150,7 +150,7 @@ namespace {
     const int warpIdx = threadIdx.x >> WARP_SIZE2;
 
     int * octantSize = octantSizeBase + blockIdx.y * 8;
-    int * octantCounter = octantCounterBase + blockIdx.y * 8;
+    int * octantSizeScan = octantSizeScanBase + blockIdx.y * 8;
     int * childCounter = childCounterBase + blockIdx.y * 64;
     int * blockCounter = blockCounterBase + blockIdx.y;
     int2 * bodyRange = bodyRangeBase + blockIdx.y;
@@ -162,14 +162,14 @@ namespace {
     const int childOctant = (packedOctant >> (3*blockIdx.y)) & 0x7;
     if (!ISROOT) box = getChild(box, childOctant);
 
-    __shared__ int subOctantCounter[NWARPS*8*8];
+    __shared__ int subOctantSizeLane[NWARPS*8*8];
     __shared__ int subOctantOffset[8*8];
 
     float4 *childBox = (float4*)subOctantOffset;
 
     for (int i=0; i<8*8*NWARPS; i+=blockDim.x)
       if (i+threadIdx.x < 8*8*NWARPS)
-	subOctantCounter[i+threadIdx.x] = 0;
+	subOctantSizeLane[i+threadIdx.x] = 0;
 
     if (laneIdx == 0)
       childBox[warpIdx] = getChild(box, warpIdx);               // One child per warp
@@ -184,16 +184,16 @@ namespace {
       if (i+laneIdx > bodyIdx)
 	bodyOctant = bodySubOctant = 8;                         // Out of bounds lanes
 
-      int octantCounterLane = 0;
+      int octantSizeScanLane = 0;
 #pragma unroll
       for (int octant=0; octant<8; octant++) {
 	const int sumLane = reduceBool(bodyOctant == octant);   // Count current octant in warp
 	if (octant == laneIdx)
-	  octantCounterLane = sumLane;                          // Use lanes 0-7 for each octant
+	  octantSizeScanLane = sumLane;                          // Use lanes 0-7 for each octant
       }
       int octantOffset;
       if (laneIdx < 8)
-	octantOffset = atomicAdd(&octantCounter[laneIdx], octantCounterLane);// Global scan
+	octantOffset = atomicAdd(&octantSizeScan[laneIdx], octantSizeScanLane);// Global scan
 
       int bodyIdx2 = -1;
 #pragma unroll
@@ -223,12 +223,12 @@ namespace {
 					reduceBool(subOctant+2 == bodySubOctantValid),
 					reduceBool(subOctant+3 == bodySubOctantValid));
 	    if (laneIdx == 0) {
-	      int4 subOctantTemp = *(int4*)&subOctantCounter[warpIdx*64+octant*8+subOctant];
+	      int4 subOctantTemp = *(int4*)&subOctantSizeLane[warpIdx*64+octant*8+subOctant];
 	      subOctantTemp.x += sum4.x;
 	      subOctantTemp.y += sum4.y;
 	      subOctantTemp.z += sum4.z;
 	      subOctantTemp.w += sum4.w;
-	      *(int4*)&subOctantCounter[warpIdx*64+octant*8+subOctant] = subOctantTemp;
+	      *(int4*)&subOctantSizeLane[warpIdx*64+octant*8+subOctant] = subOctantTemp;
 	    }
 	  }
 	  remainder -= sumLane;
@@ -239,7 +239,7 @@ namespace {
 
 #pragma unroll
     for (int k=0; k<8; k+=4) {
-      int4 subOctantTemp = laneIdx < NWARPS ? (*(int4*)&subOctantCounter[laneIdx*64+warpIdx*8+k]) : make_int4(0,0,0,0);
+      int4 subOctantTemp = laneIdx < NWARPS ? (*(int4*)&subOctantSizeLane[laneIdx*64+warpIdx*8+k]) : make_int4(0,0,0,0);
 #pragma unroll
       for (int i=NWARPS2-1; i>=0; i--) {
 	subOctantTemp.x += __shfl_xor(subOctantTemp.x, 1<<i, NWARPS);
@@ -276,7 +276,7 @@ namespace {
     /* compute beginning and then end addresses of the sorted particles  in the child cell */
 
     const int nCell = octantSize[warpIdx];
-    const int nEnd1 = octantCounter[warpIdx];
+    const int nEnd1 = octantSizeScan[warpIdx];
     const int nBeg1 = nEnd1 - nCell;
 
     if (laneIdx == 0)
@@ -328,7 +328,7 @@ namespace {
     /* compute atomic data offset for cell that need to be split */
     const int next_node = subOctantOffset[16+8];
     octantSizeBase = octantSizePool + next_node * 8;
-    octantCounterBase = octantCounterPool + next_node * 8;
+    octantSizeScanBase = octantSizeScanPool + next_node * 8;
     childCounterBase = childCounterPool + next_node * 64;
     blockCounterBase = blockCounterPool + next_node;
     bodyRangeBase = bodyRangePool + next_node;
@@ -340,7 +340,7 @@ namespace {
     if (nCell > NLEAF)
       {
 	octantSize = octantSizeBase + nodeOffset * 8;
-	octantCounter = octantCounterBase + nodeOffset * 8;
+	octantSizeScan = octantSizeScanBase + nodeOffset * 8;
 	blockCounter = blockCounterBase + nodeOffset;
 
 	/* number of particles in each cell's subcells */
@@ -358,7 +358,7 @@ namespace {
 	if (laneIdx < 8)
 	  octantSize[laneIdx] = nSubCell;
         else if (laneIdx < 16)
-	  octantCounter[laneIdx-8] = cellOffset;
+	  octantSizeScan[laneIdx-8] = cellOffset;
         if (laneIdx == 0) *blockCounter = 0;
 	bodyRange = bodyRangeBase + nodeOffset;
         if (laneIdx == 1) bodyRange->x = nBeg1;
@@ -386,7 +386,7 @@ namespace {
 	    grid.y = sumSubNodes;  /* each y-coordinate of the grid will be busy for each parent cell */
 	    buildOctant<NLEAF,false><<<grid,block>>>
 	      (box, cellIndexBase+blockIdx.y, cellFirstChildIndex,
-	       packedOctant, octantSizeBase, octantCounterBase, childCounterBase, blockCounterBase, bodyRangeBase, bodyPos2, bodyPos, level+1);
+	       packedOctant, octantSizeBase, octantSizeScanBase, childCounterBase, blockCounterBase, bodyRangeBase, bodyPos2, bodyPos, level+1);
 	  }
       }
 
@@ -460,7 +460,7 @@ namespace {
 				       const float4 *domain,
 				       CellData * d_sourceCells,
 				       int * d_octantSizePool,
-				       int * d_octantCounterPool,
+				       int * d_octantSizeScanPool,
 				       int * d_childCounterPool,
 				       int * d_blockCounterPool,
 				       int2 * d_bodyRangePool,
@@ -470,7 +470,7 @@ namespace {
     {
       sourceCells = d_sourceCells;
       octantSizePool = d_octantSizePool;
-      octantCounterPool = d_octantCounterPool;
+      octantSizeScanPool = d_octantSizeScanPool;
       childCounterPool = d_childCounterPool;
       blockCounterPool = d_blockCounterPool;
       bodyRangePool = d_bodyRangePool;
@@ -482,13 +482,13 @@ namespace {
       assert(cudaGetLastError() == cudaSuccess);
       cudaDeviceSynchronize();
 
-      int * octantCounter = new int[8];
+      int * octantSizeScan = new int[8];
       int * childCounter = new int[64];
       int * blockCounter = new int;
       int2 * bodyRange = new int2;
 #pragma unroll
       for (int k=0; k<8; k++) {
-	octantCounter[k] = k == 0 ? 0 : octantCounter[k-1] + octantSize[k-1];
+	octantSizeScan[k] = k == 0 ? 0 : octantSizeScan[k-1] + octantSize[k-1];
       }
 #pragma unroll
       for (int k=0; k<64; k++)
@@ -507,14 +507,14 @@ namespace {
       dim3 grid, block;
       getKernelSize(grid, block, numBodies);
       buildOctant<NLEAF,true><<<grid, block>>>
-	(*domain, 0, 0, 0, octantSize, octantCounter, childCounter, blockCounter, bodyRange, d_bodyPos, d_bodyPos2);
+	(*domain, 0, 0, 0, octantSize, octantSizeScan, childCounter, blockCounter, bodyRange, d_bodyPos, d_bodyPos2);
       assert(cudaDeviceSynchronize() == cudaSuccess);
 
       if (numCellsGlob_return != NULL)
 	*numCellsGlob_return = numCellsGlob;
 
       delete [] octantSize;
-      delete [] octantCounter;
+      delete [] octantSizeScan;
       delete [] childCounter;
       delete [] blockCounter;
       delete [] bodyRange;
@@ -649,7 +649,7 @@ class Build {
 
     cuda_mem<float3> d_bounds;
     cuda_mem<int> d_octantSizePool;
-    cuda_mem<int> d_octantCounterPool;
+    cuda_mem<int> d_octantSizeScanPool;
     cuda_mem<int> d_childCounterPool;
     cuda_mem<int> d_blockCounterPool;
     cuda_mem<int2> d_bodyRangePool;
@@ -661,7 +661,7 @@ class Build {
     const int maxNode = numBodies / 10;
     fprintf(stdout,"Stack size           : %g MB\n",sizeof(int)*83*maxNode/1024.0/1024.0);
     d_octantSizePool.alloc(8*maxNode);
-    d_octantCounterPool.alloc(8*maxNode);
+    d_octantSizeScanPool.alloc(8*maxNode);
     d_childCounterPool.alloc(64*maxNode);
     d_blockCounterPool.alloc(maxNode);
     d_bodyRangePool.alloc(maxNode);
@@ -703,7 +703,7 @@ class Build {
     CUDA_SAFE_CALL(cudaDeviceSetSharedMemConfig(cudaSharedMemBankSizeEightByte));
 
     CUDA_SAFE_CALL(cudaMemset(d_octantSizePool,0,8*maxNode*sizeof(int)));
-    CUDA_SAFE_CALL(cudaMemset(d_octantCounterPool,0,8*maxNode*sizeof(int)));
+    CUDA_SAFE_CALL(cudaMemset(d_octantSizeScanPool,0,8*maxNode*sizeof(int)));
     CUDA_SAFE_CALL(cudaMemset(d_childCounterPool,0,64*maxNode*sizeof(int)));
     CUDA_SAFE_CALL(cudaMemset(d_blockCounterPool,0,maxNode*sizeof(int)));
     CUDA_SAFE_CALL(cudaMemset(d_bodyRangePool,0,maxNode*sizeof(int2)));
@@ -711,23 +711,23 @@ class Build {
     t0 = get_time();
     switch (NLEAF) {
     case 16:
-      buildOctree<16><<<1,1>>>(numBodies, d_domain, d_sourceCells, d_octantSizePool, d_octantCounterPool, d_childCounterPool,
+      buildOctree<16><<<1,1>>>(numBodies, d_domain, d_sourceCells, d_octantSizePool, d_octantSizeScanPool, d_childCounterPool,
 			       d_blockCounterPool, d_bodyRangePool, d_bodyPos, d_bodyPos2);
       break;
     case 24:
-      buildOctree<24><<<1,1>>>(numBodies, d_domain, d_sourceCells, d_octantSizePool, d_octantCounterPool, d_childCounterPool,
+      buildOctree<24><<<1,1>>>(numBodies, d_domain, d_sourceCells, d_octantSizePool, d_octantSizeScanPool, d_childCounterPool,
 			       d_blockCounterPool, d_bodyRangePool, d_bodyPos, d_bodyPos2);
       break;
     case 32:
-      buildOctree<32><<<1,1>>>(numBodies, d_domain, d_sourceCells, d_octantSizePool, d_octantCounterPool, d_childCounterPool,
+      buildOctree<32><<<1,1>>>(numBodies, d_domain, d_sourceCells, d_octantSizePool, d_octantSizeScanPool, d_childCounterPool,
 			       d_blockCounterPool, d_bodyRangePool, d_bodyPos, d_bodyPos2);
       break;
     case 48:
-      buildOctree<48><<<1,1>>>(numBodies, d_domain, d_sourceCells, d_octantSizePool, d_octantCounterPool, d_childCounterPool,
+      buildOctree<48><<<1,1>>>(numBodies, d_domain, d_sourceCells, d_octantSizePool, d_octantSizeScanPool, d_childCounterPool,
 			       d_blockCounterPool, d_bodyRangePool, d_bodyPos, d_bodyPos2);
       break;
     case 64:
-      buildOctree<64><<<1,1>>>(numBodies, d_domain, d_sourceCells, d_octantSizePool, d_octantCounterPool, d_childCounterPool,
+      buildOctree<64><<<1,1>>>(numBodies, d_domain, d_sourceCells, d_octantSizePool, d_octantSizeScanPool, d_childCounterPool,
 			       d_blockCounterPool, d_bodyRangePool, d_bodyPos, d_bodyPos2);
       break;
     default:
