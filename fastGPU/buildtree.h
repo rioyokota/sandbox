@@ -255,8 +255,6 @@ namespace {
 	atomicAdd(&subOctantSizeScan[warpIdx*8+laneIdx], subOctantSize[warpIdx*8+laneIdx]);
     __syncthreads();                                            // Sync subOctantSizeScan, subOctantSize
 
-    if (warpIdx == 0)
-      subOctantSize[laneIdx] = 0;
     __shared__ bool lastBlock;
     if (threadIdx.x == 0) {
       const int blockCount = atomicAdd(blockCounter, 1);
@@ -275,11 +273,13 @@ namespace {
     const int bodyEndOctant = octantSizeScan[warpIdx];
     const int bodyBeginOctant = bodyEndOctant - numBodiesOctant;
     const int numBodiesOctantLane = laneIdx < 8 ? octantSize[laneIdx] : 0;
-    const int numChild = exclusiveScanBool(numBodiesOctantLane > NLEAF);
-    const int numLeafs = exclusiveScanBool(0 < numBodiesOctantLane && numBodiesOctantLane <= NLEAF);
+    const int numChildLane = exclusiveScanBool(numBodiesOctantLane > NLEAF);
+    const int numLeafsLane = exclusiveScanBool(0 < numBodiesOctantLane && numBodiesOctantLane <= NLEAF);
+    int * numChild = subOctantSize;
+    int * numLeafs = subOctantSize + 8;
     if (warpIdx == 0 && laneIdx < 8) {
-      subOctantSize[8 +laneIdx] = numChild;
-      subOctantSize[16+laneIdx] = numLeafs;
+      numChild[laneIdx] = numChildLane;
+      numLeafs[laneIdx] = numLeafsLane;
     }
 
     int nCellmax = numBodiesOctantLane;
@@ -291,9 +291,9 @@ namespace {
     /* if there is at least one cell to split, increment nuumber of the nodes */
     if (threadIdx.x == 0 && sumSubNodes > 0)
       {
-	subOctantSize[16+8] = atomicAdd(&numNodesGlob,sumSubNodes);
+	subOctantSize[16] = atomicAdd(&numNodesGlob,sumSubNodes);
 #if 1   /* temp solution, a better one is to use RingBuffer */
-	assert(subOctantSize[16+8] < maxNodeGlob);
+	assert(subOctantSize[16] < maxNodeGlob);
 #endif
       }
 
@@ -309,21 +309,21 @@ namespace {
 	assert(cellData.child() < numCellsGlob);
 	assert(cellData.isNode());
 	sourceCells[cellIndexBase + blockIdx.y] = cellData;
-	subOctantSize[16+9] = cellFirstChildIndex;
+	subOctantSize[17] = cellFirstChildIndex;
       }
 
     __syncthreads();
-    const int cellFirstChildIndex = subOctantSize[16+9];
+    const int cellFirstChildIndex = subOctantSize[17];
     /* compute atomic data offset for cell that need to be split */
-    const int next_node = subOctantSize[16+8];
+    const int next_node = subOctantSize[16];
     octantSizeBase = octantSizePool + next_node * 8;
     octantSizeScanBase = octantSizeScanPool + next_node * 8;
     subOctantSizeScanBase = subOctantSizeScanPool + next_node * 64;
     blockCounterBase = blockCounterPool + next_node;
     bodyRangeBase = bodyRangePool + next_node;
 
-    const int nodeOffset = subOctantSize[8 +warpIdx];
-    const int leafOffset = subOctantSize[16+warpIdx];
+    const int nodeOffset = subOctantSize[warpIdx];
+    const int leafOffset = subOctantSize[8+warpIdx];
 
     /* if cell needs to be split, populate it shared atomic data */
     if (numBodiesOctant > NLEAF)
@@ -363,7 +363,7 @@ namespace {
     if (sumSubNodes > 0 && warpIdx == 0)
       {
 	/* build octant mask */
-	int packedOctant = numBodiesOctantLane > NLEAF ?  (laneIdx << (3*numChild)) : 0;
+	int packedOctant = numBodiesOctantLane > NLEAF ?  (laneIdx << (3*numChildLane)) : 0;
 #pragma unroll
 	for (int i = 4; i >= 0; i--)
 	  packedOctant |= __shfl_xor(packedOctant, 1<<i, WARP_SIZE);
