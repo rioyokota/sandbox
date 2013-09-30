@@ -8,7 +8,7 @@ extern void sort(const int size, int * key, int * value);
 namespace {
   __constant__ int maxNodeGlob;
   __device__ unsigned int counterGlob = 0;
-  __device__ unsigned int numNodesGlob = 0;
+  __device__ unsigned int numChildGlob = 0;
   __device__ unsigned int numLeafsGlob = 0;
   __device__ unsigned int numLevelsGlob = 0;
   __device__ unsigned int numPerLeafGlob = 0;
@@ -288,13 +288,12 @@ namespace {
       maxBodiesOctant = max(maxBodiesOctant, __shfl_xor(maxBodiesOctant, 1<<i));
     const int numChildWarp = reduceBool(numBodiesOctantLane > NLEAF);
     /* if there is at least one cell to split, increment nuumber of the nodes */
-    if (threadIdx.x == 0 && numChildWarp > 0)
-      {
-	subOctantSize[16] = atomicAdd(&numNodesGlob,numChildWarp);
+    if (threadIdx.x == 0 && numChildWarp > 0) {
+      subOctantSize[16] = atomicAdd(&numChildGlob,numChildWarp);
 #if 1   /* temp solution, a better one is to use RingBuffer */
-	assert(subOctantSize[16] < maxNodeGlob);
+      assert(subOctantSize[16] < maxNodeGlob);
 #endif
-      }
+    }
 
     /* writing linking info, parent, child and particle's list */
     const int nChildrenCell = reduceBool(numBodiesOctantLane > 0);
@@ -482,7 +481,7 @@ namespace {
       for (int k=0; k<64; k++)
 	subOctantSizeScan[k] = 0;
 
-      numNodesGlob = 0;
+      numChildGlob = 0;
       numLeafsGlob = 0;
       numLevelsGlob = 0;
       numCellsGlob  = 0;
