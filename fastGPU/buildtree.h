@@ -79,9 +79,9 @@ namespace {
   template<const int NTHREAD2>
   static __global__
   void getBounds(const int numBodies,
-		 float3 *bounds,
-		 float4 *domain,
-		 const float4 *bodyPos) {
+		 float3 * bounds,
+		 float4 * domain,
+		 const float4 * bodyPos) {
     const int NTHREAD = 1 << NTHREAD2;
     const int NBLOCK = NTHREAD;
     const int begin = blockIdx.x * NTHREAD + threadIdx.x;
@@ -275,12 +275,12 @@ namespace {
 
     /* compute beginning and then end addresses of the sorted particles  in the child cell */
 
-    const int nCell = octantSize[warpIdx];
-    const int nEnd1 = octantSizeScan[warpIdx];
-    const int nBeg1 = nEnd1 - nCell;
+    const int numBodiesOctant = octantSize[warpIdx];
+    const int bodyEndOctant = octantSizeScan[warpIdx];
+    const int nBeg1 = bodyEndOctant - numBodiesOctant;
 
     if (laneIdx == 0)
-      subOctantSize[warpIdx] = nCell;
+      subOctantSize[warpIdx] = numBodiesOctant;
     __syncthreads();
 
     const int npCell = laneIdx < 8 ? subOctantSize[laneIdx] : 0;
@@ -337,7 +337,7 @@ namespace {
     const int leafOffset = subOctantSize[16+warpIdx];
 
     /* if cell needs to be split, populate it shared atomic data */
-    if (nCell > NLEAF)
+    if (numBodiesOctant > NLEAF)
       {
 	octantSize = octantSizeBase + nodeOffset * 8;
 	octantSizeScan = octantSizeScanBase + nodeOffset * 8;
@@ -362,7 +362,7 @@ namespace {
         if (laneIdx == 0) *blockCounter = 0;
 	bodyRange = bodyRangeBase + nodeOffset;
         if (laneIdx == 1) bodyRange->x = nBeg1;
-        if (laneIdx == 2) bodyRange->y = nEnd1;
+        if (laneIdx == 2) bodyRange->y = bodyEndOctant;
       }
 
     /***************************/
@@ -394,20 +394,20 @@ namespace {
     /* process leaves */
     /******************/
 
-    if (nCell <= NLEAF && nCell > 0)
+    if (numBodiesOctant <= NLEAF && numBodiesOctant > 0)
       {
 	if (laneIdx == 0)
 	  {
 	    atomicAdd(&numLeafsGlob,1);
-	    atomicAdd(&numPerLeafGlob, nEnd1-nBeg1);
-	    const CellData leafData(level+1, cellIndexBase+blockIdx.y, nBeg1, nEnd1-nBeg1);
+	    atomicAdd(&numPerLeafGlob, bodyEndOctant-nBeg1);
+	    const CellData leafData(level+1, cellIndexBase+blockIdx.y, nBeg1, bodyEndOctant-nBeg1);
 	    assert(leafData.isLeaf());
 	    sourceCells[cellFirstChildIndex + sumSubNodes + leafOffset] = leafData;
 	  }
 	if (!(level&1))
 	  {
-	    for (int i = nBeg1+laneIdx; i < nEnd1; i += WARP_SIZE)
-	      if (i < nEnd1) {
+	    for (int i = nBeg1+laneIdx; i < bodyEndOctant; i += WARP_SIZE)
+	      if (i < bodyEndOctant) {
 		float4 pos = bodyPos2[i];
 		pos.w = 8;
 		bodyPos[i] = pos;
@@ -415,8 +415,8 @@ namespace {
 	  }
 	else
 	  {
-	    for (int i = nBeg1+laneIdx; i < nEnd1; i += WARP_SIZE)
-	      if (i < nEnd1) {
+	    for (int i = nBeg1+laneIdx; i < bodyEndOctant; i += WARP_SIZE)
+	      if (i < bodyEndOctant) {
 		float4 pos = bodyPos2[i];
 		pos.w = 8;
 		bodyPos2[i] = pos;
