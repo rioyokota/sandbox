@@ -163,9 +163,9 @@ namespace {
     if (!ISROOT) box = getChild(box, childOctant);
 
     __shared__ int subOctantSizeLane[NWARPS*8*8];
-    __shared__ int subOctantOffset[8*8];
+    __shared__ int subOctantSize[8*8];
 
-    float4 *childBox = (float4*)subOctantOffset;
+    float4 *childBox = (float4*)subOctantSize;
 
     for (int i=0; i<8*8*NWARPS; i+=blockDim.x)
       if (i+threadIdx.x < 8*8*NWARPS)
@@ -248,16 +248,16 @@ namespace {
 	subOctantTemp.w += __shfl_xor(subOctantTemp.w, 1<<i, NWARPS);
       }
       if (laneIdx == 0)
-	*(int4*)&subOctantOffset[warpIdx*8+k] = subOctantTemp;
+	*(int4*)&subOctantSize[warpIdx*8+k] = subOctantTemp;
     }
     __syncthreads();
 
     if (laneIdx < 8)
-      if (subOctantOffset[warpIdx*8+laneIdx] > 0)
-	atomicAdd(&childCounter[warpIdx*8+laneIdx], subOctantOffset[warpIdx*8+laneIdx]);
+      if (subOctantSize[warpIdx*8+laneIdx] > 0)
+	atomicAdd(&childCounter[warpIdx*8+laneIdx], subOctantSize[warpIdx*8+laneIdx]);
     __syncthreads();
     if (warpIdx == 0)
-      subOctantOffset[laneIdx] = 0;
+      subOctantSize[laneIdx] = 0;
 
     __shared__ bool lastBlock;
     if (threadIdx.x == 0) {
@@ -280,17 +280,17 @@ namespace {
     const int nBeg1 = nEnd1 - nCell;
 
     if (laneIdx == 0)
-      subOctantOffset[warpIdx] = nCell;
+      subOctantSize[warpIdx] = nCell;
     __syncthreads();
 
-    const int npCell = laneIdx < 8 ? subOctantOffset[laneIdx] : 0;
+    const int npCell = laneIdx < 8 ? subOctantSize[laneIdx] : 0;
 
     /* compute number of children that needs to be further split, and cmopute their offsets */
     const int numSubNodes = exclusiveScanBool(npCell > NLEAF);
     const int numLeaves = exclusiveScanBool(npCell > 0 && npCell <= NLEAF);
     if (warpIdx == 0 && laneIdx < 8) {
-      subOctantOffset[8 +laneIdx] = numSubNodes;
-      subOctantOffset[16+laneIdx] = numLeaves;
+      subOctantSize[8 +laneIdx] = numSubNodes;
+      subOctantSize[16+laneIdx] = numLeaves;
     }
 
     int nCellmax = npCell;
@@ -302,9 +302,9 @@ namespace {
     /* if there is at least one cell to split, increment nuumber of the nodes */
     if (threadIdx.x == 0 && sumSubNodes > 0)
       {
-	subOctantOffset[16+8] = atomicAdd(&numNodesGlob,sumSubNodes);
+	subOctantSize[16+8] = atomicAdd(&numNodesGlob,sumSubNodes);
 #if 1   /* temp solution, a better one is to use RingBuffer */
-	assert(subOctantOffset[16+8] < maxNodeGlob);
+	assert(subOctantSize[16+8] < maxNodeGlob);
 #endif
       }
 
@@ -320,21 +320,21 @@ namespace {
 	assert(cellData.child() < numCellsGlob);
 	assert(cellData.isNode());
 	sourceCells[cellIndexBase + blockIdx.y] = cellData;
-	subOctantOffset[16+9] = cellFirstChildIndex;
+	subOctantSize[16+9] = cellFirstChildIndex;
       }
 
     __syncthreads();
-    const int cellFirstChildIndex = subOctantOffset[16+9];
+    const int cellFirstChildIndex = subOctantSize[16+9];
     /* compute atomic data offset for cell that need to be split */
-    const int next_node = subOctantOffset[16+8];
+    const int next_node = subOctantSize[16+8];
     octantSizeBase = octantSizePool + next_node * 8;
     octantSizeScanBase = octantSizeScanPool + next_node * 8;
     childCounterBase = childCounterPool + next_node * 64;
     blockCounterBase = blockCounterPool + next_node;
     bodyRangeBase = bodyRangePool + next_node;
 
-    const int nodeOffset = subOctantOffset[8 +warpIdx];
-    const int leafOffset = subOctantOffset[16+warpIdx];
+    const int nodeOffset = subOctantSize[8 +warpIdx];
+    const int leafOffset = subOctantSize[16+warpIdx];
 
     /* if cell needs to be split, populate it shared atomic data */
     if (nCell > NLEAF)
