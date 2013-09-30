@@ -317,6 +317,7 @@ namespace {
 	octantSize = octantSizeBase + nodeOffset * 8;
 	octantSizeScan = octantSizeScanBase + nodeOffset * 8;
 	blockCounter = blockCounterBase + nodeOffset;
+	bodyRange = bodyRangeBase + nodeOffset;
 
 	/* number of particles in each cell's subcells */
 	const int nSubCell = laneIdx < 8 ? subOctantSizeScan[warpIdx*8 + laneIdx] : 0;
@@ -335,7 +336,6 @@ namespace {
         else if (laneIdx < 16)
 	  octantSizeScan[laneIdx-8] = cellOffset;
         if (laneIdx == 0) *blockCounter = 0;
-	bodyRange = bodyRangeBase + nodeOffset;
         if (laneIdx == 1) bodyRange->x = bodyBeginOctant;
         if (laneIdx == 2) bodyRange->y = bodyEndOctant;
       }
