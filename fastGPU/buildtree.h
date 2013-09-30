@@ -277,6 +277,7 @@ namespace {
     const int numLeafsLane = exclusiveScanBool(0 < numBodiesOctantLane && numBodiesOctantLane <= NLEAF);
     int * numChild = subOctantSize;
     int * numLeafs = subOctantSize + 8;
+    int * numChildScan = subOctantSize + 16;
     if (warpIdx == 0 && laneIdx < 8) {
       numChild[laneIdx] = numChildLane;
       numLeafs[laneIdx] = numLeafsLane;
@@ -287,33 +288,26 @@ namespace {
     for (int i=2; i>=0; i--)
       maxBodiesOctant = max(maxBodiesOctant, __shfl_xor(maxBodiesOctant, 1<<i));
     const int numChildWarp = reduceBool(numBodiesOctantLane > NLEAF);
-    /* if there is at least one cell to split, increment nuumber of the nodes */
     if (threadIdx.x == 0 && numChildWarp > 0) {
-      subOctantSize[16] = atomicAdd(&numChildGlob,numChildWarp);
-#if 1   /* temp solution, a better one is to use RingBuffer */
-      assert(subOctantSize[16] < maxCellsGlob);
-#endif
+      numChildScan[0] = atomicAdd(&numChildGlob, numChildWarp);
+      assert(numChildScan[0] < maxCellsGlob);
     }
 
-    /* writing linking info, parent, child and particle's list */
     const int nChildrenCell = reduceBool(numBodiesOctantLane > 0);
-    if (threadIdx.x == 0 && nChildrenCell > 0)
-      {
-	const int cellFirstChildIndex = atomicAdd(&numCellsGlob, nChildrenCell);
-	/*** keep in mind, the 0-level will be overwritten ***/
-	assert(nChildrenCell > 0);
-	assert(nChildrenCell <= 8);
-	const CellData cellData(level,cellParentIndex, bodyRange->x, numBodies, cellFirstChildIndex, nChildrenCell-1);
-	assert(cellData.child() < numCellsGlob);
-	assert(cellData.isNode());
-	sourceCells[cellIndexBase + blockIdx.y] = cellData;
-	subOctantSize[17] = cellFirstChildIndex;
-      }
-
+    if (threadIdx.x == 0 && nChildrenCell > 0) {
+      const int cellFirstChildIndex = atomicAdd(&numCellsGlob, nChildrenCell);
+      assert(nChildrenCell <= 8);
+      const CellData cellData(level,cellParentIndex, bodyRange->x, numBodies, cellFirstChildIndex, nChildrenCell-1);
+      assert(cellData.child() < numCellsGlob);
+      assert(cellData.isNode());
+      sourceCells[cellIndexBase + blockIdx.y] = cellData;
+      subOctantSize[17] = cellFirstChildIndex;
+    }
     __syncthreads();
+
     const int cellFirstChildIndex = subOctantSize[17];
     /* compute atomic data offset for cell that need to be split */
-    const int next_node = subOctantSize[16];
+    const int next_node = numChildScan[0];
     octantSizeBase = octantSizePool + next_node * 8;
     octantSizeScanBase = octantSizeScanPool + next_node * 8;
     subOctantSizeScanBase = subOctantSizeScanPool + next_node * 64;
