@@ -1,6 +1,5 @@
-#include "Treecode.h"
+#include "types.h"
 #include "cuda_primitives.h"
-
 #include "buildtree.h"
 #include "upwardpass.h"
 #include "grouptargets.h"
