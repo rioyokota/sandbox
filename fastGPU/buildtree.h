@@ -148,29 +148,23 @@ namespace {
 		   const int level = 0) {
     const int laneIdx = threadIdx.x & (WARP_SIZE-1);
     const int warpIdx = threadIdx.x >> WARP_SIZE2;
-
     int * octantSize = octantSizeBase + blockIdx.y * 8;
     int * octantSizeScan = octantSizeScanBase + blockIdx.y * 8;
     int * subOctantSizeScan = subOctantSizeScanBase + blockIdx.y * 64;
     int * blockCounter = blockCounterBase + blockIdx.y;
     int2 * bodyRange = bodyRangeBase + blockIdx.y;
-
     const int bodyBegin = bodyRange->x + blockIdx.x * blockDim.x + warpIdx * WARP_SIZE;
     const int bodyEnd   = bodyRange->y;
     const int numBodies = bodyRange->y - bodyRange->x;
-
     const int childOctant = (packedOctant >> (3*blockIdx.y)) & 0x7;
-    if (!ISROOT) box = getChild(box, childOctant);
-
     __shared__ int subOctantSizeLane[NWARPS*8*8];
     __shared__ int subOctantSize[8*8];
-
     float4 *childBox = (float4*)subOctantSize;
 
     for (int i=0; i<8*8*NWARPS; i+=blockDim.x)
       if (i+threadIdx.x < 8*8*NWARPS)
 	subOctantSizeLane[i+threadIdx.x] = 0;
-
+    if (!ISROOT) box = getChild(box, childOctant);
     if (laneIdx == 0)
       childBox[warpIdx] = getChild(box, warpIdx);               // One child per warp
 
@@ -302,7 +296,7 @@ namespace {
     }
     __syncthreads();                                            // Sync numCellsScan, sourceCells
 
-    octantSizeBase = octantSizePool + numNodesScan * 8;
+    octantSizeBase = octantSizePool + numNodesScan * 8;         // Global offset
     octantSizeScanBase = octantSizeScanPool + numNodesScan * 8;
     subOctantSizeScanBase = subOctantSizeScanPool + numNodesScan * 64;
     blockCounterBase = blockCounterPool + numNodesScan;
@@ -311,34 +305,28 @@ namespace {
     const int nodeOffset = numNodes[warpIdx];
     const int leafOffset = numLeafs[warpIdx];
 
-    /* if cell needs to be split, populate it shared atomic data */
-    if (numBodiesOctant > NLEAF)
-      {
-	octantSize = octantSizeBase + nodeOffset * 8;
-	octantSizeScan = octantSizeScanBase + nodeOffset * 8;
-	blockCounter = blockCounterBase + nodeOffset;
-	bodyRange = bodyRangeBase + nodeOffset;
+    if (numBodiesOctant > NLEAF) {
+      octantSize = octantSizeBase + nodeOffset * 8;             // Warp offset
+      octantSizeScan = octantSizeScanBase + nodeOffset * 8;
+      blockCounter = blockCounterBase + nodeOffset;
+      bodyRange = bodyRangeBase + nodeOffset;
 
-	/* number of particles in each cell's subcells */
-	const int nSubCell = laneIdx < 8 ? subOctantSizeScan[warpIdx*8 + laneIdx] : 0;
-
-	/* compute offsets */
-        int cellOffset = inclusiveScanInt<3>(nSubCell);
-	cellOffset -= nSubCell;
-
-	/* store offset in memory */
-
-	cellOffset = __shfl_up(cellOffset, 8, WARP_SIZE);
-	if (laneIdx < 8) cellOffset = nSubCell;
-	else             cellOffset += bodyBeginOctant;
-	if (laneIdx < 8)
-	  octantSize[laneIdx] = nSubCell;
-        else if (laneIdx < 16)
-	  octantSizeScan[laneIdx-8] = cellOffset;
-        if (laneIdx == 0) *blockCounter = 0;
-        if (laneIdx == 1) bodyRange->x = bodyBeginOctant;
-        if (laneIdx == 2) bodyRange->y = bodyEndOctant;
-      }
+      const int subOctantOffset = laneIdx < 8 ? subOctantSizeScan[warpIdx*8+laneIdx] : 0;
+      int cellOffset = inclusiveScanInt(subOctantOffset);
+      cellOffset -= subOctantOffset;
+      cellOffset = __shfl_up(cellOffset, 8);
+      if (laneIdx < 8)
+	cellOffset = subOctantOffset;
+      else if (laneIdx < 16)
+	cellOffset += bodyBeginOctant;
+      if (laneIdx < 8)
+	octantSize[laneIdx] = subOctantOffset;
+      else if (laneIdx < 16)
+	octantSizeScan[laneIdx-8] = cellOffset;
+      if (laneIdx == 0) *blockCounter = 0;
+      if (laneIdx == 1) bodyRange->x = bodyBeginOctant;
+      if (laneIdx == 2) bodyRange->y = bodyEndOctant;
+    }
 
     /***************************/
     /*  launch  child  kernel  */

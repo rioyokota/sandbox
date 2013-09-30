@@ -49,12 +49,11 @@ uint shflScan(uint partial, uint offset) {
   return result;
 }
 
-template<int SIZE2>
 static __device__ __forceinline__
 uint inclusiveScanInt(const int value) {
   uint sum = value;
 #pragma unroll
-  for (int i=0; i<SIZE2; ++i)
+  for (int i=0; i<WARP_SIZE2; ++i)
     sum = shflScan(sum, 1 << i);
   return sum;
 }
