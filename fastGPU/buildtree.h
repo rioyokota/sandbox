@@ -282,10 +282,10 @@ namespace {
     const int numBodiesOctantLane = laneIdx < 8 ? subOctantSize[laneIdx] : 0;
 
     /* compute number of children that needs to be further split, and cmopute their offsets */
-    const int numSubNodes = exclusiveScanBool(numBodiesOctantLane > NLEAF);
+    const int numChild = exclusiveScanBool(numBodiesOctantLane > NLEAF);
     const int numLeaves = exclusiveScanBool(numBodiesOctantLane > 0 && numBodiesOctantLane <= NLEAF);
     if (warpIdx == 0 && laneIdx < 8) {
-      subOctantSize[8 +laneIdx] = numSubNodes;
+      subOctantSize[8 +laneIdx] = numChild;
       subOctantSize[16+laneIdx] = numLeaves;
     }
 
@@ -370,7 +370,7 @@ namespace {
     if (sumSubNodes > 0 && warpIdx == 0)
       {
 	/* build octant mask */
-	int packedOctant = numBodiesOctantLane > NLEAF ?  (laneIdx << (3*numSubNodes)) : 0;
+	int packedOctant = numBodiesOctantLane > NLEAF ?  (laneIdx << (3*numChild)) : 0;
 #pragma unroll
 	for (int i = 4; i >= 0; i--)
 	  packedOctant |= __shfl_xor(packedOctant, 1<<i, WARP_SIZE);
