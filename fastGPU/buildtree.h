@@ -274,19 +274,12 @@ namespace {
     const int numBodiesOctant = octantSize[warpIdx];
     const int bodyEndOctant = octantSizeScan[warpIdx];
     const int bodyBeginOctant = bodyEndOctant - numBodiesOctant;
-
-    if (laneIdx == 0)
-      subOctantSize[warpIdx] = numBodiesOctant;                 // Use as temporary buffer
-    __syncthreads();                                            // Sync subOctantSize
-
-    const int numBodiesOctantLane = laneIdx < 8 ? subOctantSize[laneIdx] : 0;
-
-    /* compute number of children that needs to be further split, and cmopute their offsets */
+    const int numBodiesOctantLane = laneIdx < 8 ? octantSize[laneIdx] : 0;
     const int numChild = exclusiveScanBool(numBodiesOctantLane > NLEAF);
-    const int numLeaves = exclusiveScanBool(numBodiesOctantLane > 0 && numBodiesOctantLane <= NLEAF);
+    const int numLeafs = exclusiveScanBool(0 < numBodiesOctantLane && numBodiesOctantLane <= NLEAF);
     if (warpIdx == 0 && laneIdx < 8) {
       subOctantSize[8 +laneIdx] = numChild;
-      subOctantSize[16+laneIdx] = numLeaves;
+      subOctantSize[16+laneIdx] = numLeafs;
     }
 
     int nCellmax = numBodiesOctantLane;
@@ -731,10 +724,10 @@ class Build {
     }
     kernelSuccess("buildOctree");
     dt = get_time() - t0;
-    int numLevels, numSources, numLeaves;
+    int numLevels, numSources, numLeafs;
     CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&numLevels, numLevelsGlob,sizeof(int)));
     CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&numSources,numCellsGlob, sizeof(int)));
-    CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&numLeaves, numLeafsGlob,sizeof(int)));
+    CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&numLeafs, numLeafsGlob,sizeof(int)));
     fprintf(stdout,"Grow tree            : %.7f s\n",  dt);
 
     /* sort nodes by level */
@@ -750,7 +743,7 @@ class Build {
     shuffle_cells<<<NBLOCK,NTHREAD>>>(numSources, d_value, d_key, d_sourceCells2, d_sourceCells);
 
     /* group leaves */
-    d_leafCells.alloc(numLeaves);
+    d_leafCells.alloc(numLeafs);
     collect_leaves<NTHREAD2><<<NBLOCK,NTHREAD>>>(numSources, d_sourceCells, d_leafCells);
     kernelSuccess("shuffle");
     dt = get_time() - t0;
