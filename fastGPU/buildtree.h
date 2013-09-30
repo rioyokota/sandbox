@@ -8,7 +8,7 @@ extern void sort(const int size, int * key, int * value);
 namespace {
   __constant__ int maxCellsGlob;
   __device__ unsigned int counterGlob = 0;
-  __device__ unsigned int numChildGlob = 0;
+  __device__ unsigned int numNodesGlob = 0;
   __device__ unsigned int numLeafsGlob = 0;
   __device__ unsigned int numLevelsGlob = 0;
   __device__ unsigned int numPerLeafGlob = 0;
@@ -273,13 +273,13 @@ namespace {
     const int bodyEndOctant = octantSizeScan[warpIdx];
     const int bodyBeginOctant = bodyEndOctant - numBodiesOctant;
     const int numBodiesOctantLane = laneIdx < 8 ? octantSize[laneIdx] : 0;
-    const int numChildLane = exclusiveScanBool(numBodiesOctantLane > NLEAF);
+    const int numNodesLane = exclusiveScanBool(numBodiesOctantLane > NLEAF);
     const int numLeafsLane = exclusiveScanBool(0 < numBodiesOctantLane && numBodiesOctantLane <= NLEAF);
-    int * numChild = subOctantSize;
+    int * numNodes = subOctantSize;
     int * numLeafs = subOctantSize + 8;
-    int * numChildScan = subOctantSize + 16;
+    int * numNodesScan = subOctantSize + 16;
     if (warpIdx == 0 && laneIdx < 8) {
-      numChild[laneIdx] = numChildLane;
+      numNodes[laneIdx] = numNodesLane;
       numLeafs[laneIdx] = numLeafsLane;
     }
 
@@ -287,10 +287,10 @@ namespace {
 #pragma unroll
     for (int i=2; i>=0; i--)
       maxBodiesOctant = max(maxBodiesOctant, __shfl_xor(maxBodiesOctant, 1<<i));
-    const int numChildWarp = reduceBool(numBodiesOctantLane > NLEAF);
-    if (threadIdx.x == 0 && numChildWarp > 0) {
-      numChildScan[0] = atomicAdd(&numChildGlob, numChildWarp);
-      assert(numChildScan[0] < maxCellsGlob);
+    const int numNodesWarp = reduceBool(numBodiesOctantLane > NLEAF);
+    if (threadIdx.x == 0 && numNodesWarp > 0) {
+      numNodesScan[0] = atomicAdd(&numNodesGlob, numNodesWarp);
+      assert(numNodesScan[0] < maxCellsGlob);
     }
 
     const int nChildrenCell = reduceBool(numBodiesOctantLane > 0);
@@ -307,14 +307,14 @@ namespace {
 
     const int cellFirstChildIndex = subOctantSize[17];
     /* compute atomic data offset for cell that need to be split */
-    const int next_node = numChildScan[0];
+    const int next_node = numNodesScan[0];
     octantSizeBase = octantSizePool + next_node * 8;
     octantSizeScanBase = octantSizeScanPool + next_node * 8;
     subOctantSizeScanBase = subOctantSizeScanPool + next_node * 64;
     blockCounterBase = blockCounterPool + next_node;
     bodyRangeBase = bodyRangePool + next_node;
 
-    const int nodeOffset = numChild[warpIdx];
+    const int nodeOffset = numNodes[warpIdx];
     const int leafOffset = numLeafs[warpIdx];
 
     /* if cell needs to be split, populate it shared atomic data */
@@ -352,10 +352,10 @@ namespace {
 
     /* warps coorperate so that only 1 kernel needs to be launched by a thread block
      * with larger degree of paralellism */
-    if (numChildWarp > 0 && warpIdx == 0)
+    if (numNodesWarp > 0 && warpIdx == 0)
       {
 	/* build octant mask */
-	int packedOctant = numBodiesOctantLane > NLEAF ?  (laneIdx << (3*numChildLane)) : 0;
+	int packedOctant = numBodiesOctantLane > NLEAF ?  (laneIdx << (3*numNodesLane)) : 0;
 #pragma unroll
 	for (int i = 4; i >= 0; i--)
 	  packedOctant |= __shfl_xor(packedOctant, 1<<i, WARP_SIZE);
@@ -364,7 +364,7 @@ namespace {
 	  {
 	    dim3 grid, block;
 	    getKernelSize(grid, block, maxBodiesOctant);
-	    grid.y = numChildWarp;  /* each y-coordinate of the grid will be busy for each parent cell */
+	    grid.y = numNodesWarp;  /* each y-coordinate of the grid will be busy for each parent cell */
 	    buildOctant<NLEAF,false><<<grid,block>>>
 	      (box, cellIndexBase+blockIdx.y, cellFirstChildIndex,
 	       packedOctant, octantSizeBase, octantSizeScanBase, subOctantSizeScanBase, blockCounterBase, bodyRangeBase, bodyPos2, bodyPos, level+1);
@@ -383,7 +383,7 @@ namespace {
 	    atomicAdd(&numPerLeafGlob, bodyEndOctant-bodyBeginOctant);
 	    const CellData leafData(level+1, cellIndexBase+blockIdx.y, bodyBeginOctant, bodyEndOctant-bodyBeginOctant);
 	    assert(leafData.isLeaf());
-	    sourceCells[cellFirstChildIndex + numChildWarp + leafOffset] = leafData;
+	    sourceCells[cellFirstChildIndex + numNodesWarp + leafOffset] = leafData;
 	  }
 	if (!(level&1))
 	  {
@@ -475,7 +475,7 @@ namespace {
       for (int k=0; k<64; k++)
 	subOctantSizeScan[k] = 0;
 
-      numChildGlob = 0;
+      numNodesGlob = 0;
       numLeafsGlob = 0;
       numLevelsGlob = 0;
       numCellsGlob  = 0;
