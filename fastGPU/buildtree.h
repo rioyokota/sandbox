@@ -311,81 +311,61 @@ namespace {
       blockCounter = blockCounterBase + nodeOffset;
       bodyRange = bodyRangeBase + nodeOffset;
 
-      const int subOctantOffset = laneIdx < 8 ? subOctantSizeScan[warpIdx*8+laneIdx] : 0;
-      int cellOffset = inclusiveScanInt(subOctantOffset);
-      cellOffset -= subOctantOffset;
-      cellOffset = __shfl_up(cellOffset, 8);
-      if (laneIdx < 8)
-	cellOffset = subOctantOffset;
-      else if (laneIdx < 16)
-	cellOffset += bodyBeginOctant;
-      if (laneIdx < 8)
-	octantSize[laneIdx] = subOctantOffset;
-      else if (laneIdx < 16)
-	octantSizeScan[laneIdx-8] = cellOffset;
-      if (laneIdx == 0) *blockCounter = 0;
-      if (laneIdx == 1) bodyRange->x = bodyBeginOctant;
-      if (laneIdx == 2) bodyRange->y = bodyEndOctant;
+      const int subOctantSizeScanLane = laneIdx < 8 ? subOctantSizeScan[warpIdx*8+laneIdx] : 0;
+      int subOctantSizeScanWarp = inclusiveScanInt(subOctantSizeScanLane);
+      subOctantSizeScanWarp -= subOctantSizeScanLane;
+      if (laneIdx < 8) {
+        octantSizeScan[laneIdx] = bodyBeginOctant + subOctantSizeScanWarp;
+  	octantSize[laneIdx] = subOctantSizeScanLane;
+      }
+      if (laneIdx == 0) {
+        *blockCounter = 0;
+        bodyRange->x = bodyBeginOctant;
+        bodyRange->y = bodyEndOctant;
+      }
     }
 
-    /***************************/
-    /*  launch  child  kernel  */
-    /***************************/
-
-    /* warps coorperate so that only 1 kernel needs to be launched by a thread block
-     * with larger degree of paralellism */
-    if (numNodesWarp > 0 && warpIdx == 0)
-      {
-	/* build octant mask */
-	int packedOctant = numBodiesOctantLane > NLEAF ?  (laneIdx << (3*numNodesLane)) : 0;
+    if (numNodesWarp > 0 && warpIdx == 0) {
+      int packedOctant = numBodiesOctantLane > NLEAF ? laneIdx << (3*numNodesLane) : 0;
 #pragma unroll
-	for (int i = 4; i >= 0; i--)
-	  packedOctant |= __shfl_xor(packedOctant, 1<<i, WARP_SIZE);
+      for (int i=4; i>=0; i--)
+	packedOctant |= __shfl_xor(packedOctant, 1<<i, WARP_SIZE);
 
-	if (threadIdx.x == 0)
-	  {
-	    dim3 grid, block;
-	    getKernelSize(grid, block, maxBodiesOctant);
-	    grid.y = numNodesWarp;  /* each y-coordinate of the grid will be busy for each parent cell */
-	    buildOctant<NLEAF,false><<<grid,block>>>
-	      (box, cellIndexBase+blockIdx.y, numCellsScan,
-	       packedOctant, octantSizeBase, octantSizeScanBase, subOctantSizeScanBase, blockCounterBase, bodyRangeBase, bodyPos2, bodyPos, level+1);
-	  }
+      if (threadIdx.x == 0) {
+	dim3 grid, block;
+	getKernelSize(grid, block, maxBodiesOctant);
+	grid.y = numNodesWarp;
+	buildOctant<NLEAF,false><<<grid,block>>>
+	  (box, cellIndexBase+blockIdx.y, numCellsScan, packedOctant, octantSizeBase, octantSizeScanBase,
+	   subOctantSizeScanBase, blockCounterBase, bodyRangeBase, bodyPos2, bodyPos, level+1);
       }
+    }
 
-    /******************/
-    /* process leaves */
-    /******************/
-
-    if (numBodiesOctant <= NLEAF && numBodiesOctant > 0)
-      {
-	if (laneIdx == 0)
-	  {
-	    atomicAdd(&numLeafsGlob,1);
-	    atomicAdd(&numPerLeafGlob, bodyEndOctant-bodyBeginOctant);
-	    const CellData leafData(level+1, cellIndexBase+blockIdx.y, bodyBeginOctant, bodyEndOctant-bodyBeginOctant);
-	    assert(leafData.isLeaf());
-	    sourceCells[numCellsScan + numNodesWarp + leafOffset] = leafData;
-	  }
-	if (!(level&1))
-	  {
-	    for (int i = bodyBeginOctant+laneIdx; i < bodyEndOctant; i += WARP_SIZE)
-	      if (i < bodyEndOctant) {
-		float4 pos = bodyPos2[i];
-		pos.w = 8;
-		bodyPos[i] = pos;
-	      }
-	  }
-	else
-	  {
-	    for (int i = bodyBeginOctant+laneIdx; i < bodyEndOctant; i += WARP_SIZE)
-	      if (i < bodyEndOctant) {
-		float4 pos = bodyPos2[i];
-		pos.w = 8;
-		bodyPos2[i] = pos;
-	      }
-	  }
+    if (numBodiesOctant <= NLEAF && numBodiesOctant > 0) {
+      if (laneIdx == 0) {
+	atomicAdd(&numLeafsGlob,1);
+	atomicAdd(&numPerLeafGlob, bodyEndOctant-bodyBeginOctant);
+	const CellData leafData(level+1, cellIndexBase+blockIdx.y, bodyBeginOctant, bodyEndOctant-bodyBeginOctant);
+	sourceCells[numCellsScan + numNodesWarp + leafOffset] = leafData;
       }
+      if (level & 1) {
+	for (int i=bodyBeginOctant+laneIdx; i<bodyEndOctant; i+=WARP_SIZE) {
+	  if (i < bodyEndOctant) {
+	    float4 pos = bodyPos2[i];
+	    pos.w = 8;
+	    bodyPos2[i] = pos;
+	  }
+        }
+      } else {
+	for (int i=bodyBeginOctant+laneIdx; i<bodyEndOctant; i+=WARP_SIZE) {
+	  if (i < bodyEndOctant) {
+	    float4 pos = bodyPos2[i];
+	    pos.w = 8;
+	    bodyPos[i] = pos;
+	  }
+        }
+      }
+    }
   }
 
   static __global__ void getRootOctantSize(const int numBodies,
