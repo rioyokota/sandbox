@@ -11,7 +11,6 @@ namespace {
   __device__ unsigned int numNodesGlob = 0;
   __device__ unsigned int numLeafsGlob = 0;
   __device__ unsigned int numLevelsGlob = 0;
-  __device__ unsigned int numPerLeafGlob = 0;
   __device__ unsigned int numCellsGlob = 0;
   __device__ int * octantSizePool;
   __device__ int * octantSizeScanPool;
@@ -39,7 +38,6 @@ namespace {
     const int NTHREADS = NWARPS * WARP_SIZE;
     const int NGRIDS = min(max(N / NTHREADS, 1), 512);
     block = dim3(NTHREADS);
-    assert(N > 0);
     grid = dim3(NGRIDS);
   }
 
@@ -343,25 +341,21 @@ namespace {
 
     if (numBodiesOctant <= NLEAF && numBodiesOctant > 0) {
       if (laneIdx == 0) {
-	atomicAdd(&numLeafsGlob,1);
-	atomicAdd(&numPerLeafGlob, bodyEndOctant-bodyBeginOctant);
+	atomicAdd(&numLeafsGlob, 1);
 	const CellData leafData(level+1, cellIndexBase+blockIdx.y, bodyBeginOctant, bodyEndOctant-bodyBeginOctant);
 	sourceCells[numCellsScan + numNodesWarp + leafOffset] = leafData;
       }
       if (level & 1) {
-	for (int i=bodyBeginOctant+laneIdx; i<bodyEndOctant; i+=WARP_SIZE) {
-	  if (i < bodyEndOctant) {
-	    float4 pos = bodyPos2[i];
-	    pos.w = 8;
-	    bodyPos2[i] = pos;
+	for (int bodyIdx=bodyBeginOctant+laneIdx; bodyIdx<bodyEndOctant; bodyIdx+=WARP_SIZE) {
+	  if (bodyIdx < bodyEndOctant) {
+	    bodyPos2[bodyIdx].w = 8;
 	  }
         }
       } else {
-	for (int i=bodyBeginOctant+laneIdx; i<bodyEndOctant; i+=WARP_SIZE) {
-	  if (i < bodyEndOctant) {
-	    float4 pos = bodyPos2[i];
-	    pos.w = 8;
-	    bodyPos[i] = pos;
+	for (int bodyIdx=bodyBeginOctant+laneIdx; bodyIdx<bodyEndOctant; bodyIdx+=WARP_SIZE) {
+	  if (bodyIdx < bodyEndOctant) {
+	    bodyPos[bodyIdx] = bodyPos2[bodyIdx];
+	    bodyPos[bodyIdx].w = 8;
 	  }
         }
       }
@@ -441,7 +435,6 @@ namespace {
       numLeafsGlob = 0;
       numLevelsGlob = 0;
       numCellsGlob  = 0;
-      numPerLeafGlob = 0;
 
       *blockCounter = 0;
       bodyRange->x = 0;
