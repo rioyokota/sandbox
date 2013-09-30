@@ -275,10 +275,10 @@ namespace {
     const int numBodiesOctantLane = laneIdx < 8 ? octantSize[laneIdx] : 0;
     const int numNodesLane = exclusiveScanBool(numBodiesOctantLane > NLEAF);
     const int numLeafsLane = exclusiveScanBool(0 < numBodiesOctantLane && numBodiesOctantLane <= NLEAF);
-    int * numNodes = subOctantSize;
+    int * numNodes = subOctantSize;                             // Reuse shared memory
     int * numLeafs = subOctantSize + 8;
     int & numNodesScan = subOctantSize[16];
-    int * numCellsScan = subOctantSize + 17;
+    int & numCellsScan = subOctantSize[17];
     if (warpIdx == 0 && laneIdx < 8) {
       numNodes[laneIdx] = numNodesLane;
       numLeafs[laneIdx] = numLeafsLane;
@@ -296,21 +296,17 @@ namespace {
 
     const int numChildWarp = reduceBool(numBodiesOctantLane > 0);
     if (threadIdx.x == 0 && numChildWarp > 0) {
-      numCellsScan[0] = atomicAdd(&numCellsGlob, numChildWarp);
-      const CellData cellData(level, cellParentIndex, bodyRange->x, numBodies, numCellsScan[0], numChildWarp-1);
-      assert(cellData.child() < numCellsGlob);
-      assert(cellData.isNode());
+      numCellsScan = atomicAdd(&numCellsGlob, numChildWarp);
+      const CellData cellData(level, cellParentIndex, bodyRange->x, numBodies, numCellsScan, numChildWarp-1);
       sourceCells[cellIndexBase + blockIdx.y] = cellData;
     }
-    __syncthreads();
+    __syncthreads();                                            // Sync numCellsScan, sourceCells
 
-    /* compute atomic data offset for cell that need to be split */
-    const int next_node = numNodesScan;
-    octantSizeBase = octantSizePool + next_node * 8;
-    octantSizeScanBase = octantSizeScanPool + next_node * 8;
-    subOctantSizeScanBase = subOctantSizeScanPool + next_node * 64;
-    blockCounterBase = blockCounterPool + next_node;
-    bodyRangeBase = bodyRangePool + next_node;
+    octantSizeBase = octantSizePool + numNodesScan * 8;
+    octantSizeScanBase = octantSizeScanPool + numNodesScan * 8;
+    subOctantSizeScanBase = subOctantSizeScanPool + numNodesScan * 64;
+    blockCounterBase = blockCounterPool + numNodesScan;
+    bodyRangeBase = bodyRangePool + numNodesScan;
 
     const int nodeOffset = numNodes[warpIdx];
     const int leafOffset = numLeafs[warpIdx];
@@ -364,7 +360,7 @@ namespace {
 	    getKernelSize(grid, block, maxBodiesOctant);
 	    grid.y = numNodesWarp;  /* each y-coordinate of the grid will be busy for each parent cell */
 	    buildOctant<NLEAF,false><<<grid,block>>>
-	      (box, cellIndexBase+blockIdx.y, numCellsScan[0],
+	      (box, cellIndexBase+blockIdx.y, numCellsScan,
 	       packedOctant, octantSizeBase, octantSizeScanBase, subOctantSizeScanBase, blockCounterBase, bodyRangeBase, bodyPos2, bodyPos, level+1);
 	  }
       }
@@ -381,7 +377,7 @@ namespace {
 	    atomicAdd(&numPerLeafGlob, bodyEndOctant-bodyBeginOctant);
 	    const CellData leafData(level+1, cellIndexBase+blockIdx.y, bodyBeginOctant, bodyEndOctant-bodyBeginOctant);
 	    assert(leafData.isLeaf());
-	    sourceCells[numCellsScan[0] + numNodesWarp + leafOffset] = leafData;
+	    sourceCells[numCellsScan + numNodesWarp + leafOffset] = leafData;
 	  }
 	if (!(level&1))
 	  {
