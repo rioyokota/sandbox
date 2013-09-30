@@ -425,28 +425,28 @@ namespace {
       }
   }
 
-  static __global__ void countAtRootNode(const int numBodies,
-					 int *bodyCounter,
-					 const float4 box,
-					 const float4 *bodyPos) {
+  static __global__ void getRootOctantSize(const int numBodies,
+				           int *bodyCounter,
+				           const float4 box,
+				           const float4 *bodyPos) {
     const int laneIdx = threadIdx.x & (WARP_SIZE-1);
     const int begin = blockIdx.x * blockDim.x + threadIdx.x;
-    int octantCounter[8] = {0};
+    int octantSize[8] = {0};
     for (int i=begin; i<numBodies; i+=gridDim.x*blockDim.x) {
       const float4 pos = bodyPos[i];
       const int octant = getOctant(box, pos);
-      octantCounter[0] += (octant == 0);
-      octantCounter[1] += (octant == 1);
-      octantCounter[2] += (octant == 2);
-      octantCounter[3] += (octant == 3);
-      octantCounter[4] += (octant == 4);
-      octantCounter[5] += (octant == 5);
-      octantCounter[6] += (octant == 6);
-      octantCounter[7] += (octant == 7);
+      octantSize[0] += (octant == 0);
+      octantSize[1] += (octant == 1);
+      octantSize[2] += (octant == 2);
+      octantSize[3] += (octant == 3);
+      octantSize[4] += (octant == 4);
+      octantSize[5] += (octant == 5);
+      octantSize[6] += (octant == 6);
+      octantSize[7] += (octant == 7);
     }
 #pragma unroll
     for (int k=0; k<8; k++) {
-      int counter = octantCounter[k];
+      int counter = octantSize[k];
 #pragma unroll
       for (int i=4; i>=0; i--)
 	counter += __shfl_xor(counter, 1<<i, WARP_SIZE);
@@ -478,7 +478,7 @@ namespace {
       int *octantSize = new int[8];
       for (int k=0; k<8; k++)
 	octantSize[k] = 0;
-      countAtRootNode<<<256, 256>>>(numBodies, octantSize, *domain, d_bodyPos);
+      getRootOctantSize<<<256, 256>>>(numBodies, octantSize, *domain, d_bodyPos);
       assert(cudaGetLastError() == cudaSuccess);
       cudaDeviceSynchronize();
 
