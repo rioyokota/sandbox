@@ -6,7 +6,7 @@
 extern void sort(const int size, int * key, int * value);
 
 namespace {
-  __constant__ int maxNodeGlob;
+  __constant__ int maxCellsGlob;
   __device__ unsigned int counterGlob = 0;
   __device__ unsigned int numChildGlob = 0;
   __device__ unsigned int numLeafsGlob = 0;
@@ -291,7 +291,7 @@ namespace {
     if (threadIdx.x == 0 && numChildWarp > 0) {
       subOctantSize[16] = atomicAdd(&numChildGlob,numChildWarp);
 #if 1   /* temp solution, a better one is to use RingBuffer */
-      assert(subOctantSize[16] < maxNodeGlob);
+      assert(subOctantSize[16] < maxCellsGlob);
 #endif
     }
 
@@ -668,7 +668,7 @@ class Build {
 
     /*** build tree ***/
 
-    CUDA_SAFE_CALL(cudaMemcpyToSymbol(maxNodeGlob, &maxNode, sizeof(int), 0, cudaMemcpyHostToDevice));
+    CUDA_SAFE_CALL(cudaMemcpyToSymbol(maxCellsGlob, &maxNode, sizeof(int), 0, cudaMemcpyHostToDevice));
 
     cudaDeviceSetLimit(cudaLimitDevRuntimePendingLaunchCount,16384);
 
