@@ -309,12 +309,12 @@ namespace {
       blockCounter = blockCounterBase + nodeOffset;
       bodyRange = bodyRangeBase + nodeOffset;
 
-      const int subOctantSizeScanLane = laneIdx < 8 ? subOctantSizeScan[warpIdx*8+laneIdx] : 0;
-      int subOctantSizeScanWarp = inclusiveScanInt(subOctantSizeScanLane);
-      subOctantSizeScanWarp -= subOctantSizeScanLane;
+      const int newOctantSize = laneIdx < 8 ? subOctantSizeScan[warpIdx*8+laneIdx] : 0;
+      int newOctantSizeScan = inclusiveScanInt(newOctantSize);
+      newOctantSizeScan -= newOctantSize;
       if (laneIdx < 8) {
-        octantSizeScan[laneIdx] = bodyBeginOctant + subOctantSizeScanWarp;
-  	octantSize[laneIdx] = subOctantSizeScanLane;
+        octantSizeScan[laneIdx] = bodyBeginOctant + newOctantSizeScan;
+  	octantSize[laneIdx] = newOctantSize;
       }
       if (laneIdx == 0) {
         *blockCounter = 0;
