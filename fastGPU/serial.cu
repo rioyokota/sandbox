@@ -20,18 +20,16 @@ int main(int argc, char * argv[]) {
 
   cudaVec<float4> bodyPos(numBodies);
   cudaVec<float4> bodyPos2(numBodies);
+  cudaVec<float4> bodyAcc(numBodies);
+  cudaVec<float4> bodyAcc2(numBodies);
   for (int i=0; i<numBodies; i++) {
     bodyPos[i].x = data.pos[i].x;
     bodyPos[i].y = data.pos[i].y;
     bodyPos[i].z = data.pos[i].z;
     bodyPos[i].w = data.pos[i].w;
   }
-  cuda_mem<float4> d_bodyAcc;
-  cuda_mem<float4> d_bodyAcc2;
-  d_bodyAcc.alloc(numBodies);
-  d_bodyAcc2.alloc(numBodies);
   bodyPos.h2d();
-  d_bodyAcc.h2d(bodyPos.host());
+  bodyAcc.h2d();
 
   cuda_mem<int2> d_targetRange;
   cuda_mem<CellData> d_sourceCells;
@@ -62,7 +60,7 @@ int main(int argc, char * argv[]) {
   pass.upward(numBodies, numSources, theta, bodyPos.devc(), d_sourceCells, d_sourceCenter, d_Monopole, d_Quadrupole0, d_Quadrupole1);
   Traversal traversal;
   const float4 interactions = traversal.approx(numBodies, numTargets, numSources, eps,
-					       bodyPos.devc(), bodyPos2.devc(), d_bodyAcc,
+					       bodyPos.devc(), bodyPos2.devc(), bodyAcc.devc(),
 					       d_targetRange, d_sourceCells, d_sourceCenter,
 					       d_Monopole, d_Quadrupole0, d_Quadrupole1, d_levelRange);
   double dt = get_time() - t0;
@@ -72,38 +70,35 @@ int main(int argc, char * argv[]) {
   const int numTarget = 512; // Number of threads per block will be set to this value
   const int numBlock = 128;
   t0 = get_time();
-  traversal.direct(numBodies, numTarget, numBlock, eps, bodyPos2.devc(), d_bodyAcc2);
+  traversal.direct(numBodies, numTarget, numBlock, eps, bodyPos2.devc(), bodyAcc2.devc());
   dt = get_time() - t0;
   flops = 35.*numTarget*numBodies/dt/1e12;
   fprintf(stdout,"Total Direct         : %.7f s (%.7f TFlops)\n",dt,flops);
-  host_mem<float4> h_bodyAcc, h_bodyAcc2;
-  h_bodyAcc.alloc(numBodies);
-  h_bodyAcc2.alloc(numBodies);
-  d_bodyAcc.d2h(h_bodyAcc);
-  d_bodyAcc2.d2h(h_bodyAcc2);
+  bodyAcc.d2h();
+  bodyAcc2.d2h();
 
   for (int i=0; i<numTarget; i++) {
-    float4 bodyAcc = h_bodyAcc2[i];
+    float4 bodyAcc = bodyAcc2[i];
     for (int j=1; j<numBlock; j++) {
-      bodyAcc.x += h_bodyAcc2[i+numTarget*j].x;
-      bodyAcc.y += h_bodyAcc2[i+numTarget*j].y;
-      bodyAcc.z += h_bodyAcc2[i+numTarget*j].z;
-      bodyAcc.w += h_bodyAcc2[i+numTarget*j].w;
+      bodyAcc.x += bodyAcc2[i+numTarget*j].x;
+      bodyAcc.y += bodyAcc2[i+numTarget*j].y;
+      bodyAcc.z += bodyAcc2[i+numTarget*j].z;
+      bodyAcc.w += bodyAcc2[i+numTarget*j].w;
     }
-    h_bodyAcc2[i] = bodyAcc;
+    bodyAcc2[i] = bodyAcc;
   }
 
   double diffp = 0, diffa = 0;
   double normp = 0, norma = 0;
   for (int i=0; i<numTarget; i++) {
-    diffp += (h_bodyAcc[i].w - h_bodyAcc2[i].w) * (h_bodyAcc[i].w - h_bodyAcc2[i].w);
-    diffa += (h_bodyAcc[i].x - h_bodyAcc2[i].x) * (h_bodyAcc[i].x - h_bodyAcc2[i].x)
-      + (h_bodyAcc[i].y - h_bodyAcc2[i].y) * (h_bodyAcc[i].y - h_bodyAcc2[i].y)
-      + (h_bodyAcc[i].z - h_bodyAcc2[i].z) * (h_bodyAcc[i].z - h_bodyAcc2[i].z);
-    normp += h_bodyAcc2[i].w * h_bodyAcc2[i].w;
-    norma += h_bodyAcc2[i].x * h_bodyAcc2[i].x
-      + h_bodyAcc2[i].y * h_bodyAcc2[i].y
-      + h_bodyAcc2[i].z * h_bodyAcc2[i].z;
+    diffp += (bodyAcc[i].w - bodyAcc2[i].w) * (bodyAcc[i].w - bodyAcc2[i].w);
+    diffa += (bodyAcc[i].x - bodyAcc2[i].x) * (bodyAcc[i].x - bodyAcc2[i].x)
+      + (bodyAcc[i].y - bodyAcc2[i].y) * (bodyAcc[i].y - bodyAcc2[i].y)
+      + (bodyAcc[i].z - bodyAcc2[i].z) * (bodyAcc[i].z - bodyAcc2[i].z);
+    normp += bodyAcc2[i].w * bodyAcc2[i].w;
+    norma += bodyAcc2[i].x * bodyAcc2[i].x
+      + bodyAcc2[i].y * bodyAcc2[i].y
+      + bodyAcc2[i].z * bodyAcc2[i].z;
   }
   fprintf(stdout,"--- FMM vs. direct ---------------\n");
   fprintf(stdout,"Rel. L2 Error (pot)  : %.7e\n",sqrt(diffp/normp));
