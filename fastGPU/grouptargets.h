@@ -52,15 +52,15 @@ namespace {
   {
     const int bodyIdx = blockIdx.x * blockDim.x + threadIdx.x;
     if (bodyIdx >= numBodies) return;
-    const float4 body = bodyPos[bodyIdx];
+    const float4 pos = bodyPos[bodyIdx];
     const float4 domain = d_domain[0];
     const float diameter = 2 * domain.w / (1<<NBITS);
-    const float3 bmin = {domain.x - domain.w,
+    const float3 Xmin = {domain.x - domain.w,
 			 domain.y - domain.w,
 			 domain.z - domain.w};
-    const int ix = static_cast<int>((body.x - bmin.x) / diameter);
-    const int iy = static_cast<int>((body.y - bmin.y) / diameter);
-    const int iz = static_cast<int>((body.z - bmin.z) / diameter);
+    const int ix = int((pos.x - Xmin.x) / diameter);
+    const int iy = int((pos.y - Xmin.y) / diameter);
+    const int iz = int((pos.z - Xmin.z) / diameter);
     keys[bodyIdx] = getHilbert(make_int3(ix, iy, iz));
     values[bodyIdx] = bodyIdx;
   }
