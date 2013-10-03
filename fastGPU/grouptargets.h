@@ -87,11 +87,11 @@ namespace {
     const unsigned long long currKey = keys[bodyIdx] & mask;
     const unsigned long long nextKey = keys[nextBodyIdx] & mask;
     const unsigned long long prevKey = keys[prevBodyIdx] & mask;
-    if (currKey != prevKey || bodyIdx == 0)
+    if (prevKey < currKey || bodyIdx == 0)
       bodyBegIdx[bodyIdx] = bodyIdx;
     else
       bodyBegIdx[bodyIdx] = 0;
-    if (currKey != nextKey || bodyIdx == numBodies-1)
+    if (currKey < nextKey || bodyIdx == numBodies-1)
       bodyEndIdx[numBodies-1-bodyIdx] = bodyIdx+1;
     else
       bodyEndIdx[numBodies-1-bodyIdx] = 0;
