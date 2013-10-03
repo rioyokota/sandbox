@@ -393,18 +393,18 @@ namespace {
   }
 
   template<int NLEAF>
-    static __global__ void buildOctree(const int numBodies,
-				       const float4 *domain,
-				       CellData * d_sourceCells,
-				       int * d_octantSizePool,
-				       int * d_octantSizeScanPool,
-				       int * d_subOctantSizeScanPool,
-				       int * d_blockCounterPool,
-				       int2 * d_bodyRangePool,
-				       float4 * d_bodyPos,
-				       float4 * d_bodyPos2,
-				       int * numCellsGlob_return = NULL)
-    {
+  static __global__
+  void buildOctree(const int numBodies,
+		   const float4 *domain,
+		   CellData * d_sourceCells,
+		   int * d_octantSizePool,
+		   int * d_octantSizeScanPool,
+		   int * d_subOctantSizeScanPool,
+		   int * d_blockCounterPool,
+		   int2 * d_bodyRangePool,
+		   float4 * d_bodyPos,
+		   float4 * d_bodyPos2,
+		   int * numCellsGlob_return = NULL) {
       sourceCells = d_sourceCells;
       octantSizePool = d_octantSizePool;
       octantSizeScanPool = d_octantSizeScanPool;
@@ -424,9 +424,8 @@ namespace {
       int * blockCounter = new int;
       int2 * bodyRange = new int2;
 #pragma unroll
-      for (int k=0; k<8; k++) {
+      for (int k=0; k<8; k++)
 	octantSizeScan[k] = k == 0 ? 0 : octantSizeScan[k-1] + octantSize[k-1];
-      }
 #pragma unroll
       for (int k=0; k<64; k++)
 	subOctantSizeScan[k] = 0;
@@ -435,20 +434,16 @@ namespace {
       numLeafsGlob = 0;
       numLevelsGlob = 0;
       numCellsGlob  = 0;
-
       *blockCounter = 0;
       bodyRange->x = 0;
       bodyRange->y = numBodies;
-
       dim3 grid, block;
       getKernelSize(grid, block, numBodies);
       buildOctant<NLEAF,true><<<grid, block>>>
 	(*domain, 0, 0, 0, octantSize, octantSizeScan, subOctantSizeScan, blockCounter, bodyRange, d_bodyPos, d_bodyPos2);
       assert(cudaDeviceSynchronize() == cudaSuccess);
-
       if (numCellsGlob_return != NULL)
 	*numCellsGlob_return = numCellsGlob;
-
       delete [] octantSize;
       delete [] octantSizeScan;
       delete [] subOctantSizeScan;
@@ -457,9 +452,9 @@ namespace {
     }
 
 
-  static __global__ void
-    getCellLevels(const int numCells, const CellData * sourceCells, CellData * sourceCells2, int * key, int * value) {
-    const int cellIdx = blockIdx.x*blockDim.x + threadIdx.x;
+  static __global__
+  void getCellLevels(const int numCells, const CellData * sourceCells, CellData * sourceCells2, int * key, int * value) {
+    const int cellIdx = blockIdx.x * blockDim.x + threadIdx.x;
     if (cellIdx >= numCells) return;
     const CellData cell = sourceCells[cellIdx];
     key  [cellIdx] = cell.level();
@@ -467,55 +462,30 @@ namespace {
     sourceCells2[cellIdx] = cell;
   }
 
-  static __global__ void
-    write_newIdx(const int n, const int value[], int moved_to_idx[])
-  {
-    const int newIdx = blockIdx.x*blockDim.x + threadIdx.x;
-    if (newIdx >= n) return;
-
-    const int oldIdx = value[newIdx];
-    moved_to_idx[oldIdx] = newIdx;
+  static __global__
+  void getLevelRange(const int numCells, const int * levels, int2 * levelRange) {
+    const int cellIdx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (cellIdx >= numCells) return;
+    const int nextCellIdx = min(cellIdx+1, numCells-1);
+    const int prevCellIdx = max(cellIdx-1, 0);
+    const int level = levels[cellIdx];
+    if (levels[prevCellIdx] < level || cellIdx == 0)
+      levelRange[level].x = cellIdx;
+    if (level < levels[nextCellIdx] || cellIdx == numCells-1)
+      levelRange[level].y = cellIdx+1;
   }
 
-
-  static __global__ void
-    getLevelRange(const int n, const int levels[], int2 levelRange[])
-  {
-    const int gidx = blockIdx.x*blockDim.x + threadIdx.x;
-    if (gidx >= n) return;
-
-    extern __shared__ int shLevels[];
-
-    const int tid = threadIdx.x;
-    shLevels[tid+1] = levels[gidx];
-
-    int shIdx = 0;
-    int gmIdx = max(blockIdx.x*blockDim.x-1,0);
-    if (tid == 1)
-      {
-	shIdx = blockDim.x+1;
-	gmIdx = min(blockIdx.x*blockDim.x + blockDim.x,n-1);
-      }
-    if (tid < 2)
-      shLevels[shIdx] = levels[gmIdx];
-
-    __syncthreads();
-
-    const int idx = tid+1;
-    const int currLevel = shLevels[idx];
-    const int prevLevel = shLevels[idx-1];
-    if (currLevel != prevLevel || gidx == 0)
-      levelRange[currLevel].x = gidx;
-
-    const int nextLevel = shLevels[idx+1];
-    if (currLevel != nextLevel || gidx == n-1)
-      levelRange[currLevel].y = gidx+1;
+  static __global__
+  void getPermutation(const int numCells, const int * value, int * key) {
+    const int newIdx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (newIdx >= numCells) return;
+    const int oldIdx = value[newIdx];
+    key[oldIdx] = newIdx;
   }
 
   __device__  unsigned int leafIdx_counter = 0;
-  static __global__ void
-    shuffle_cells(const int n, const int value[], const int moved_to_idx[], const CellData sourceCells2[], CellData sourceCells[])
-  {
+  static __global__
+  void permuteCells(const int n, const int value[], const int moved_to_idx[], const CellData sourceCells2[], CellData sourceCells[]) {
     const int idx = blockIdx.x*blockDim.x + threadIdx.x;
     if (idx >= n) return;
 
@@ -674,20 +644,16 @@ class Build {
     CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&numSources,numCellsGlob, sizeof(int)));
     CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&numLeafs, numLeafsGlob,sizeof(int)));
     fprintf(stdout,"Grow tree            : %.7f s\n",  dt);
-
-    /* sort nodes by level */
     cudaDeviceSynchronize();
+
     t0 = get_time();
     const int NBLOCK = (numSources-1) / NTHREAD + 1;
     getCellLevels<<<NBLOCK,NTHREAD>>>(numSources, d_sourceCells, d_sourceCells2, d_key, d_value);
     sort(numSources, d_key.ptr, d_value.ptr);
+    getLevelRange<<<NBLOCK,NTHREAD>>>(numSources, d_key, d_levelRange);
+    getPermutation<<<NBLOCK,NTHREAD>>>(numSources, d_value, d_key);
+    permuteCells<<<NBLOCK,NTHREAD>>>(numSources, d_value, d_key, d_sourceCells2, d_sourceCells);
 
-    /* compute begining & end of each level */
-    getLevelRange<<<NBLOCK,NTHREAD,(NTHREAD+2)*sizeof(int)>>>(numSources, d_key, d_levelRange);
-    write_newIdx <<<NBLOCK,NTHREAD>>>(numSources, d_value, d_key);
-    shuffle_cells<<<NBLOCK,NTHREAD>>>(numSources, d_value, d_key, d_sourceCells2, d_sourceCells);
-
-    /* group leaves */
     d_leafCells.alloc(numLeafs);
     collect_leaves<NTHREAD2><<<NBLOCK,NTHREAD>>>(numSources, d_sourceCells, d_leafCells);
     kernelSuccess("shuffle");
