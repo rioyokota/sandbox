@@ -327,7 +327,7 @@ namespace {
       int packedOctant = numBodiesOctantLane > NLEAF ? laneIdx << (3*numNodesLane) : 0;
 #pragma unroll
       for (int i=4; i>=0; i--)
-	packedOctant |= __shfl_xor(packedOctant, 1<<i, WARP_SIZE);
+	packedOctant |= __shfl_xor(packedOctant, 1<<i);
 
       if (threadIdx.x == 0) {
 	dim3 grid, block;
