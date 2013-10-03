@@ -458,15 +458,13 @@ namespace {
 
 
   static __global__ void
-    get_cell_levels(const int n, const CellData sourceCells[], CellData sourceCells2[], int key[], int value[])
-  {
-    const int idx = blockIdx.x*blockDim.x + threadIdx.x;
-    if (idx >= n) return;
-
-    const CellData cell = sourceCells[idx];
-    key  [idx] = cell.level();
-    value[idx] = idx;
-    sourceCells2[idx] = cell;
+    getCellLevels(const int numCells, const CellData * sourceCells, CellData * sourceCells2, int * key, int * value) {
+    const int cellIdx = blockIdx.x*blockDim.x + threadIdx.x;
+    if (cellIdx >= numCells) return;
+    const CellData cell = sourceCells[cellIdx];
+    key  [cellIdx] = cell.level();
+    value[cellIdx] = cellIdx;
+    sourceCells2[cellIdx] = cell;
   }
 
   static __global__ void
@@ -681,7 +679,7 @@ class Build {
     cudaDeviceSynchronize();
     t0 = get_time();
     const int NBLOCK = (numSources-1) / NTHREAD + 1;
-    get_cell_levels<<<NBLOCK,NTHREAD>>>(numSources, d_sourceCells, d_sourceCells2, d_key, d_value);
+    getCellLevels<<<NBLOCK,NTHREAD>>>(numSources, d_sourceCells, d_sourceCells2, d_key, d_value);
     sort(numSources, d_key.ptr, d_value.ptr);
 
     /* compute begining & end of each level */
