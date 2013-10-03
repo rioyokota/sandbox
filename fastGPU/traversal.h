@@ -288,8 +288,7 @@ namespace {
   __device__ unsigned int       maxM2PGlob = 0;
 
   template<int NI>
-    __launch_bounds__(NTHREAD, 1024/NTHREAD)
-    static __global__ 
+    static __global__ __launch_bounds__(NTHREAD, 4) 
     void traverse(const int numTargets,
 		  const float EPS2,
 		  const int2 *levelRange,

@@ -51,7 +51,7 @@ namespace {
 
   __device__ unsigned int nflops = 0;
 
-  static __global__ __launch_bounds__(1<<NTHREAD2, 1024/(1<<NTHREAD2))
+  static __global__ __launch_bounds__(NTHREAD)
   void computeCellMultipoles(const int numBodies,
 			     const int numSources,
 			     const CellData *cells,

@@ -122,7 +122,7 @@ namespace {
   }
 
   template<int NLEAF, bool ISROOT>
-    static __global__ __launch_bounds__(256, 8)
+    static __global__ __launch_bounds__(NTHREAD, 8)
     void buildOctant(float4 box,
 		     const int cellParentIndex,
 		     const int cellIndexBase,
