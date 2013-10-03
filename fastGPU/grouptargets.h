@@ -44,29 +44,25 @@ namespace {
   }
 
   static __global__
-    void getKeys(const int n,
-		 const float4 *d_domain,
-		 const float4 *bodyPos,
-		 unsigned long long *keys,
-		 int *values)
+    void getKeys(const int numBodies,
+		 const float4 * d_domain,
+		 const float4 * bodyPos,
+		 unsigned long long * keys,
+		 int * values)
   {
-    const int idx = blockIdx.x*blockDim.x + threadIdx.x;
-    if (idx >= n) return;
-
-    const float4 body = bodyPos[idx];
-
+    const int bodyIdx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (bodyIdx >= numBodies) return;
+    const float4 body = bodyPos[bodyIdx];
     const float4 domain = d_domain[0];
-    const float inv_domain_size = 0.5f / domain.w;
+    const float diameter = 2 * domain.w / (1<<NBITS);
     const float3 bmin = {domain.x - domain.w,
 			 domain.y - domain.w,
 			 domain.z - domain.w};
-
-    const int xc = static_cast<int>((body.x - bmin.x) * inv_domain_size * (1<<NBITS));
-    const int yc = static_cast<int>((body.y - bmin.y) * inv_domain_size * (1<<NBITS));
-    const int zc = static_cast<int>((body.z - bmin.z) * inv_domain_size * (1<<NBITS));
-
-    keys  [idx] = getHilbert(make_int3(xc,yc,zc));
-    values[idx] = idx;
+    const int ix = static_cast<int>((body.x - bmin.x) / diameter);
+    const int iy = static_cast<int>((body.y - bmin.y) / diameter);
+    const int iz = static_cast<int>((body.z - bmin.z) / diameter);
+    keys[bodyIdx] = getHilbert(make_int3(ix, iy, iz));
+    values[bodyIdx] = bodyIdx;
   }
 
   static __global__
