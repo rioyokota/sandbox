@@ -66,7 +66,7 @@ namespace {
 		   float4 * domain,
 		   const float4 * bodyPos) {
     const int NBLOCK = NTHREAD;
-    const int begin = blockIdx.x * NTHREAD + threadIdx.x;
+    const int begin = blockIdx.x * blockDim.x + threadIdx.x;
     float3 Xmin = {bodyPos[0].x, bodyPos[0].y, bodyPos[0].z};
     float3 Xmax = Xmin;
     for (int i=begin; i<numBodies; i+=NBLOCK*NTHREAD) {
@@ -506,20 +506,20 @@ namespace {
     int & numLeafsScan = numLeafsBase[warpIdx];
     if (laneIdx == 0 && numLeafsWarp > 0)
       numLeafsScan = atomicAdd(&numLeafsGlob, numLeafsWarp);
-    if (cell.isLeaf())
+    if (isLeaf)
       leafCells[numLeafsScan+numLeafsLane] = cellIdx;
   }
 }
 
 class Build {
  public:
+  template<int NCRIT>
   int2 tree(const int numBodies,
 	    float4 * d_bodyPos,
 	    float4 * d_bodyPos2,
 	    float4 * d_domain,
 	    int2 * d_levelRange,
-	    CellData * d_sourceCells,
-	    const int NCRIT) {
+	    CellData * d_sourceCells) {
     cuda_mem<float3> d_bounds;
     cuda_mem<int> d_octantSizePool;
     cuda_mem<int> d_octantSizeScanPool;
@@ -542,77 +542,53 @@ class Build {
     fprintf(stdout,"Cell data            : %g MB\n",numBodies*sizeof(CellData)/1024.0/1024.0);
     d_key.alloc(numBodies);
     d_value.alloc(numBodies);
-
     cudaDeviceSynchronize();
+
     double t0 = get_time();
     getBounds<<<NTHREAD,NTHREAD>>>(numBodies, d_bounds, d_domain, d_bodyPos);
-    kernelSuccess("cudaDomainSize");
+    kernelSuccess("getBounds");
     double dt = get_time() - t0;
     fprintf(stdout,"Get bounds           : %.7f s\n",  dt);
 
     CUDA_SAFE_CALL(cudaMemcpyToSymbol(maxCellsGlob, &maxNode, sizeof(int), 0, cudaMemcpyHostToDevice));
-    cudaDeviceSetLimit(cudaLimitDevRuntimePendingLaunchCount,16384);
-    CUDA_SAFE_CALL(cudaFuncSetCacheConfig(&buildOctant<16,true>,  cudaFuncCachePreferShared));
-    CUDA_SAFE_CALL(cudaFuncSetCacheConfig(&buildOctant<16,false>, cudaFuncCachePreferShared));
-    CUDA_SAFE_CALL(cudaFuncSetCacheConfig(&buildOctant<24,true>,  cudaFuncCachePreferShared));
-    CUDA_SAFE_CALL(cudaFuncSetCacheConfig(&buildOctant<24,false>, cudaFuncCachePreferShared));
-    CUDA_SAFE_CALL(cudaFuncSetCacheConfig(&buildOctant<32,true>,  cudaFuncCachePreferShared));
-    CUDA_SAFE_CALL(cudaFuncSetCacheConfig(&buildOctant<32,false>, cudaFuncCachePreferShared));
-    CUDA_SAFE_CALL(cudaFuncSetCacheConfig(&buildOctant<48,true>,  cudaFuncCachePreferShared));
-    CUDA_SAFE_CALL(cudaFuncSetCacheConfig(&buildOctant<48,false>, cudaFuncCachePreferShared));
-    CUDA_SAFE_CALL(cudaFuncSetCacheConfig(&buildOctant<64,true>,  cudaFuncCachePreferShared));
-    CUDA_SAFE_CALL(cudaFuncSetCacheConfig(&buildOctant<64,false>, cudaFuncCachePreferShared));
-    CUDA_SAFE_CALL(cudaDeviceSetSharedMemConfig(cudaSharedMemBankSizeEightByte));
     CUDA_SAFE_CALL(cudaMemset(d_octantSizePool, 0, 8*maxNode*sizeof(int)));
     CUDA_SAFE_CALL(cudaMemset(d_octantSizeScanPool, 0, 8*maxNode*sizeof(int)));
     CUDA_SAFE_CALL(cudaMemset(d_subOctantSizeScanPool, 0, 64*maxNode*sizeof(int)));
     CUDA_SAFE_CALL(cudaMemset(d_blockCounterPool, 0, maxNode*sizeof(int)));
     CUDA_SAFE_CALL(cudaMemset(d_bodyRangePool, 0, maxNode*sizeof(int2)));
     cudaDeviceSynchronize();
+
     t0 = get_time();
-    switch (NCRIT) {
-    case 16:
-      buildOctree<16><<<1,1>>>(numBodies, d_domain, d_sourceCells, d_octantSizePool, d_octantSizeScanPool, d_subOctantSizeScanPool,
-			       d_blockCounterPool, d_bodyRangePool, d_bodyPos, d_bodyPos2);
-      break;
-    case 24:
-      buildOctree<24><<<1,1>>>(numBodies, d_domain, d_sourceCells, d_octantSizePool, d_octantSizeScanPool, d_subOctantSizeScanPool,
-			       d_blockCounterPool, d_bodyRangePool, d_bodyPos, d_bodyPos2);
-      break;
-    case 32:
-      buildOctree<32><<<1,1>>>(numBodies, d_domain, d_sourceCells, d_octantSizePool, d_octantSizeScanPool, d_subOctantSizeScanPool,
-			       d_blockCounterPool, d_bodyRangePool, d_bodyPos, d_bodyPos2);
-      break;
-    case 48:
-      buildOctree<48><<<1,1>>>(numBodies, d_domain, d_sourceCells, d_octantSizePool, d_octantSizeScanPool, d_subOctantSizeScanPool,
-			       d_blockCounterPool, d_bodyRangePool, d_bodyPos, d_bodyPos2);
-      break;
-    case 64:
-      buildOctree<64><<<1,1>>>(numBodies, d_domain, d_sourceCells, d_octantSizePool, d_octantSizeScanPool, d_subOctantSizeScanPool,
-			       d_blockCounterPool, d_bodyRangePool, d_bodyPos, d_bodyPos2);
-      break;
-    default:
-      assert(0);
-    }
+    CUDA_SAFE_CALL(cudaDeviceSetLimit(cudaLimitDevRuntimePendingLaunchCount, 16384));
+    CUDA_SAFE_CALL(cudaDeviceSetSharedMemConfig(cudaSharedMemBankSizeEightByte));
+    CUDA_SAFE_CALL(cudaFuncSetCacheConfig(&buildOctant<NCRIT,true>,  cudaFuncCachePreferShared));
+    CUDA_SAFE_CALL(cudaFuncSetCacheConfig(&buildOctant<NCRIT,false>, cudaFuncCachePreferShared));
+    buildOctree<NCRIT><<<1,1>>>(numBodies, d_domain, d_sourceCells, d_octantSizePool,
+				d_octantSizeScanPool, d_subOctantSizeScanPool,
+				d_blockCounterPool, d_bodyRangePool, d_bodyPos, d_bodyPos2);
     kernelSuccess("buildOctree");
     dt = get_time() - t0;
+    fprintf(stdout,"Grow tree            : %.7f s\n",  dt);
     int numLevels, numSources, numLeafs;
     CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&numLevels, numLevelsGlob, sizeof(int)));
     CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&numSources, numCellsGlob, sizeof(int)));
     CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&numLeafs, numLeafsGlob, sizeof(int)));
     d_leafCells.alloc(numLeafs);
-    fprintf(stdout,"Grow tree            : %.7f s\n",  dt);
     cudaDeviceSynchronize();
 
     t0 = get_time();
     const int NBLOCK = (numSources-1) / NTHREAD + 1;
     getKeys<<<NBLOCK,NTHREAD>>>(numSources, d_sourceCells, d_sourceCells2, d_key, d_value);
+    kernelSuccess("getKeys");
     sort(numSources, d_key.ptr, d_value.ptr);
     getLevelRange<<<NBLOCK,NTHREAD>>>(numSources, d_key, d_levelRange);
+    kernelSuccess("getLevelRange");
     getPermutation<<<NBLOCK,NTHREAD>>>(numSources, d_value, d_key);
+    kernelSuccess("getPermutation");
     permuteCells<<<NBLOCK,NTHREAD>>>(numSources, d_value, d_key, d_sourceCells2, d_sourceCells);
+    kernelSuccess("permuteCells");
     collectLeafs<<<NBLOCK,NTHREAD>>>(numSources, d_sourceCells, d_leafCells);
-    kernelSuccess("shuffle");
+    kernelSuccess("collectLeafs");
     dt = get_time() - t0;
     fprintf(stdout,"Link tree            : %.7f s\n", dt);
     int2 numLS = {numLevels, numSources};

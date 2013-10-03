@@ -1,15 +1,5 @@
 #pragma once
 
-#include <cstdio>
-
-inline void CUDA_SAFE_CALL(cudaError err) {
-  if (cudaSuccess != err) {
-    fprintf(stderr, "Cuda error in file '%s' in line %i : %s.\n",
-	    __FILE__, __LINE__, cudaGetErrorString(err) );
-    exit(EXIT_FAILURE);
-  }
-}
-
 template<typename T>
 struct cuda_mem
 {
@@ -66,7 +56,6 @@ struct cuda_mem
   }
 };
 
-/* simple PINNED host memory management */
 template<typename T>
 struct host_mem
 {

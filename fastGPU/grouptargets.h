@@ -67,8 +67,10 @@ namespace {
   }
 
   static __global__
-    void permuteBodies(const int numBodies, const int * value,
-		       const float4 * bodyPos, float4 * bodyPos2) {
+    void permuteBodies(const int numBodies,
+		       const int * value,
+		       const float4 * bodyPos,
+		       float4 * bodyPos2) {
     const int bodyIdx = blockDim.x * blockIdx.x + threadIdx.x;
     if (bodyIdx >= numBodies) return;
     bodyPos2[bodyIdx] = bodyPos[value[bodyIdx]];
@@ -101,9 +103,9 @@ namespace {
 
   static __global__
     void getTargetRange(const int numBodies,
-		      const int * bodyBeginIdx,
-		      const int * bodyEndIdx,
-		      int2 * targetRange) {
+			const int * bodyBeginIdx,
+			const int * bodyEndIdx,
+			int2 * targetRange) {
     const int groupSize = WARP_SIZE * 2;
     const int bodyIdx = blockDim.x * blockIdx.x + threadIdx.x;
     if (bodyIdx >= numBodies) return;
@@ -121,8 +123,12 @@ namespace {
 
 class Group {
  public:
-  int targets(const int numBodies, float4 * d_bodyPos, float4 * d_bodyPos2,
-	      float4 * d_domain, int2 * d_targetRange, int levelSplit) {
+  int targets(const int numBodies,
+	      float4 * d_bodyPos,
+	      float4 * d_bodyPos2,
+	      float4 * d_domain,
+	      int2 * d_targetRange,
+	      int levelSplit) {
     const int NBLOCK = (numBodies-1) / NTHREAD + 1;
     cuda_mem<unsigned long long> d_key;
     cuda_mem<int> d_value;

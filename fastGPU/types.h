@@ -2,6 +2,7 @@
 
 #include <assert.h>
 #include "cudamem.h"
+#include "cudavec.h"
 #include "plummer.h"
 #include <string>
 #include <sstream>
@@ -41,7 +42,15 @@ static void kernelSuccess(const char kernel[] = "kernel") {
   const cudaError_t err = cudaGetLastError();
   if (err != cudaSuccess) {
     fprintf(stderr,"%s launch failed: %s\n", kernel, cudaGetErrorString(err));
-    assert(0);
+    exit(EXIT_FAILURE);
+  }
+}
+
+inline void CUDA_SAFE_CALL(cudaError err) {
+  if (err != cudaSuccess) {
+    fprintf(stderr, "Cuda error in file '%s' in line %i : %s.\n",
+            __FILE__, __LINE__, cudaGetErrorString(err) );
+    exit(EXIT_FAILURE);
   }
 }
 

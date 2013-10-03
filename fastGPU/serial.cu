@@ -7,7 +7,6 @@
 
 int main(int argc, char * argv[]) {
   const int numBodies = (1 << 24) - 1;
-  const int seed = 19810614;
   const float eps = 0.05;
   const float theta = 0.75;
   const int ncrit = 64;
@@ -17,7 +16,7 @@ int main(int argc, char * argv[]) {
   fprintf(stdout,"P                    : %d\n",3);
   fprintf(stdout,"theta                : %f\n",theta);
   fprintf(stdout,"ncrit                : %d\n",ncrit);
-  const Plummer data(numBodies, seed);
+  const Plummer data(numBodies);
 
   host_mem<float4> h_bodyPos;
   h_bodyPos.alloc(numBodies);
@@ -57,7 +56,7 @@ int main(int argc, char * argv[]) {
   fprintf(stdout,"--- FMM Profiling ----------------\n");
   double t0 = get_time();
   Build build;
-  int2 numLS = build.tree(numBodies, d_bodyPos, d_bodyPos2, d_domain, d_levelRange, d_sourceCells, ncrit);
+  int2 numLS = build.tree<ncrit>(numBodies, d_bodyPos, d_bodyPos2, d_domain, d_levelRange, d_sourceCells);
   int numLevels = numLS.x;
   int numSources = numLS.y;
   d_sourceCenter.alloc(numSources);
