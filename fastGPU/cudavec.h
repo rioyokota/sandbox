@@ -17,6 +17,11 @@ private:
 
 public:
   cudaVec() : SIZE(0), HOST(NULL), DEVC(NULL) {}
+  cudaVec(int size) {
+    SIZE = size;
+    HOST = (T*)malloc(SIZE*sizeof(T));
+    CUDA_SAFE_CALL(cudaMalloc((T**)&DEVC, SIZE*sizeof(T)));
+  }
   ~cudaVec() {
     dealloc();
   }

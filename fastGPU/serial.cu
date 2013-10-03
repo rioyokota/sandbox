@@ -18,18 +18,16 @@ int main(int argc, char * argv[]) {
   fprintf(stdout,"ncrit                : %d\n",ncrit);
   const Plummer data(numBodies);
 
-  cudaVec<float4> bodyPos;
-  bodyPos.alloc(numBodies);
+  cudaVec<float4> bodyPos(numBodies);
+  cudaVec<float4> bodyPos2(numBodies);
   for (int i=0; i<numBodies; i++) {
     bodyPos[i].x = data.pos[i].x;
     bodyPos[i].y = data.pos[i].y;
     bodyPos[i].z = data.pos[i].z;
     bodyPos[i].w = data.pos[i].w;
   }
-  cuda_mem<float4> d_bodyPos2;
   cuda_mem<float4> d_bodyAcc;
   cuda_mem<float4> d_bodyAcc2;
-  d_bodyPos2.alloc(numBodies);
   d_bodyAcc.alloc(numBodies);
   d_bodyAcc2.alloc(numBodies);
   bodyPos.h2d();
@@ -51,7 +49,7 @@ int main(int argc, char * argv[]) {
   fprintf(stdout,"--- FMM Profiling ----------------\n");
   double t0 = get_time();
   Build build;
-  int2 numLS = build.tree<ncrit>(numBodies, bodyPos.devc(), d_bodyPos2, d_domain, d_levelRange, d_sourceCells);
+  int2 numLS = build.tree<ncrit>(numBodies, bodyPos.devc(), bodyPos2.devc(), d_domain, d_levelRange, d_sourceCells);
   int numLevels = numLS.x;
   int numSources = numLS.y;
   d_sourceCenter.alloc(numSources);
@@ -59,12 +57,12 @@ int main(int argc, char * argv[]) {
   d_Quadrupole0.alloc(numSources);
   d_Quadrupole1.alloc(numSources);
   Group group;
-  int numTargets = group.targets(numBodies, bodyPos.devc(), d_bodyPos2, d_domain, d_targetRange, 5);
+  int numTargets = group.targets(numBodies, bodyPos.devc(), bodyPos2.devc(), d_domain, d_targetRange, 5);
   Pass pass;
   pass.upward(numBodies, numSources, theta, bodyPos.devc(), d_sourceCells, d_sourceCenter, d_Monopole, d_Quadrupole0, d_Quadrupole1);
   Traversal traversal;
   const float4 interactions = traversal.approx(numBodies, numTargets, numSources, eps,
-					       bodyPos.devc(), d_bodyPos2, d_bodyAcc,
+					       bodyPos.devc(), bodyPos2.devc(), d_bodyAcc,
 					       d_targetRange, d_sourceCells, d_sourceCenter,
 					       d_Monopole, d_Quadrupole0, d_Quadrupole1, d_levelRange);
   double dt = get_time() - t0;
@@ -74,7 +72,7 @@ int main(int argc, char * argv[]) {
   const int numTarget = 512; // Number of threads per block will be set to this value
   const int numBlock = 128;
   t0 = get_time();
-  traversal.direct(numBodies, numTarget, numBlock, eps, d_bodyPos2, d_bodyAcc2);
+  traversal.direct(numBodies, numTarget, numBlock, eps, bodyPos2.devc(), d_bodyAcc2);
   dt = get_time() - t0;
   flops = 35.*numTarget*numBodies/dt/1e12;
   fprintf(stdout,"Total Direct         : %.7f s (%.7f TFlops)\n",dt,flops);
