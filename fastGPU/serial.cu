@@ -10,14 +10,12 @@ int main(int argc, char * argv[]) {
   const int seed = 19810614;
   const float eps = 0.05;
   const float theta = 0.75;
-  const int ncrit = 64;
   const int nleaf = 64;
 
   fprintf(stdout,"--- FMM Parameters ---------------\n");
   fprintf(stdout,"numBodies            : %d\n",numBodies);
   fprintf(stdout,"P                    : %d\n",3);
   fprintf(stdout,"theta                : %f\n",theta);
-  fprintf(stdout,"ncrit                : %d\n",ncrit);
   fprintf(stdout,"nleaf                : %d\n",nleaf);
   const Plummer data(numBodies, seed);
 
@@ -67,7 +65,7 @@ int main(int argc, char * argv[]) {
   d_Quadrupole0.alloc(numSources);
   d_Quadrupole1.alloc(numSources);
   Group group;
-  int numTargets = group.targets(numBodies, d_bodyPos, d_bodyPos2, d_domain, d_targetRange, 5, ncrit);
+  int numTargets = group.targets(numBodies, d_bodyPos, d_bodyPos2, d_domain, d_targetRange, 5);
   Pass pass;
   pass.upward(numBodies, numSources, theta, d_bodyPos, d_sourceCells, d_sourceCenter, d_Monopole, d_Quadrupole0, d_Quadrupole1);
   Traversal traversal;

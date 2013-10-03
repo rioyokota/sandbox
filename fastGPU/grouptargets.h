@@ -100,20 +100,21 @@ namespace {
   }
 
   static __global__
-    void getTargetRange(const int numBodies, const int NCRIT,
+    void getTargetRange(const int numBodies,
 		      const int * bodyBeginIdx,
 		      const int * bodyEndIdx,
 		      int2 * targetRange) {
+    const int groupSize = WARP_SIZE * 2;
     const int bodyIdx = blockDim.x * blockIdx.x + threadIdx.x;
     if (bodyIdx >= numBodies) return;
     const int bodyBegin = bodyBeginIdx[bodyIdx];
     assert(bodyIdx >= bodyBegin);
-    const int groupIdx = (bodyIdx - bodyBegin) / NCRIT;
-    const int groupBegin = bodyBegin + groupIdx * NCRIT;
+    const int groupIdx = (bodyIdx - bodyBegin) / groupSize;
+    const int groupBegin = bodyBegin + groupIdx * groupSize;
     if (bodyIdx == groupBegin) {
       const int targetIdx = atomicAdd(&numTargetGlob, 1);
       const int bodyEnd = bodyEndIdx[numBodies-1-bodyIdx];
-      targetRange[targetIdx] = make_int2(groupBegin, min(NCRIT, bodyEnd - groupBegin));
+      targetRange[targetIdx] = make_int2(groupBegin, min(groupSize, bodyEnd - groupBegin));
     }
   }
 }
@@ -121,7 +122,7 @@ namespace {
 class Group {
  public:
   int targets(const int numBodies, float4 * d_bodyPos, float4 * d_bodyPos2,
-	      float4 * d_domain, int2 * d_targetRange, int levelSplit, const int NCRIT) {
+	      float4 * d_domain, int2 * d_targetRange, int levelSplit) {
     const int NBLOCK = (numBodies-1) / NTHREAD + 1;
     cuda_mem<unsigned long long> d_key;
     cuda_mem<int> d_value;
@@ -149,7 +150,7 @@ class Group {
     maskKeys<<<NBLOCK,NTHREAD>>>(numBodies, mask, d_key.ptr, d_key2.ptr, d_bodyBeginIdx, d_bodyEndIdx);
     scan(numBodies, d_key.ptr, d_bodyBeginIdx.ptr);
     scan(numBodies, d_key2.ptr, d_bodyEndIdx.ptr);
-    getTargetRange<<<NBLOCK,NTHREAD>>>(numBodies, NCRIT, d_bodyBeginIdx, d_bodyEndIdx, d_targetRange);
+    getTargetRange<<<NBLOCK,NTHREAD>>>(numBodies, d_bodyBeginIdx, d_bodyEndIdx, d_targetRange);
     kernelSuccess("groupTargets");
     const double dt = get_time() - t0;
     fprintf(stdout,"Make groups          : %.7f s\n", dt);
