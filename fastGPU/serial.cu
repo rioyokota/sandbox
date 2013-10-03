@@ -18,10 +18,10 @@ int main(int argc, char * argv[]) {
   fprintf(stdout,"ncrit                : %d\n",ncrit);
   const Plummer data(numBodies);
 
-  cudaVec<float4> bodyPos(numBodies);
+  cudaVec<float4> bodyPos(numBodies,true);
   cudaVec<float4> bodyPos2(numBodies);
-  cudaVec<float4> bodyAcc(numBodies);
-  cudaVec<float4> bodyAcc2(numBodies);
+  cudaVec<float4> bodyAcc(numBodies,true);
+  cudaVec<float4> bodyAcc2(numBodies,true);
   for (int i=0; i<numBodies; i++) {
     bodyPos[i].x = data.pos[i].x;
     bodyPos[i].y = data.pos[i].y;
@@ -31,15 +31,13 @@ int main(int argc, char * argv[]) {
   bodyPos.h2d();
   bodyAcc.h2d();
 
-  cudaVec<int2> levelRange(32);
-  cuda_mem<CellData> d_sourceCells;
-  d_sourceCells.alloc(numBodies);
-
   fprintf(stdout,"--- FMM Profiling ----------------\n");
   double t0 = get_time();
   Build build;
   float4 domain;
-  int2 numLS = build.tree<ncrit>(numBodies, bodyPos.devc(), bodyPos2.devc(), domain, levelRange.devc(), d_sourceCells);
+  cudaVec<int2> levelRange(32);
+  cudaVec<CellData> sourceCells(numBodies);
+  int2 numLS = build.tree<ncrit>(numBodies, bodyPos.devc(), bodyPos2.devc(), domain, levelRange.devc(), sourceCells.devc());
   int numLevels = numLS.x;
   int numSources = numLS.y;
   cuda_mem<int2> d_targetRange;
@@ -55,11 +53,11 @@ int main(int argc, char * argv[]) {
   Group group;
   int numTargets = group.targets(numBodies, bodyPos.devc(), bodyPos2.devc(), domain, d_targetRange, 5);
   Pass pass;
-  pass.upward(numBodies, numSources, theta, bodyPos.devc(), d_sourceCells, d_sourceCenter, d_Monopole, d_Quadrupole0, d_Quadrupole1);
+  pass.upward(numBodies, numSources, theta, bodyPos.devc(), sourceCells.devc(), d_sourceCenter, d_Monopole, d_Quadrupole0, d_Quadrupole1);
   Traversal traversal;
   const float4 interactions = traversal.approx(numBodies, numTargets, numSources, eps,
 					       bodyPos.devc(), bodyPos2.devc(), bodyAcc.devc(),
-					       d_targetRange, d_sourceCells, d_sourceCenter,
+					       d_targetRange, sourceCells.devc(), d_sourceCenter,
 					       d_Monopole, d_Quadrupole0, d_Quadrupole1, levelRange.devc());
   double dt = get_time() - t0;
   float flops = (interactions.x * 20 + interactions.z * 64) * numBodies / dt / 1e12;

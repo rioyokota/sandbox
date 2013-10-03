@@ -1,5 +1,6 @@
 #pragma once
 
+#define CUDA_SAFE_CALL(err) cudaSafeCall(err, __FILE__, __LINE__)
 #include <assert.h>
 #include "cudamem.h"
 #include "cudavec.h"
@@ -46,10 +47,10 @@ static void kernelSuccess(const char kernel[] = "kernel") {
   }
 }
 
-inline void CUDA_SAFE_CALL(cudaError err) {
+inline void cudaSafeCall(cudaError err, const char *file, const int line) {
   if (err != cudaSuccess) {
     fprintf(stderr, "Cuda error in file '%s' in line %i : %s.\n",
-            __FILE__, __LINE__, cudaGetErrorString(err) );
+            file, line, cudaGetErrorString(err) );
     exit(EXIT_FAILURE);
   }
 }

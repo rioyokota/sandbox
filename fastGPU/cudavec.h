@@ -3,6 +3,7 @@
 template<typename T>
 class cudaVec {
 private:
+  bool PIN;
   int SIZE;
   T * HOST;
   T * DEVC;
@@ -10,26 +11,26 @@ private:
   void dealloc() {
     if( SIZE != 0 ) {
       SIZE = 0;
-      CUDA_SAFE_CALL(cudaFreeHost(HOST));
+      if (PIN) CUDA_SAFE_CALL(cudaFreeHost(HOST));
       CUDA_SAFE_CALL(cudaFree(DEVC));
     }
   }
 
 public:
-  cudaVec() : SIZE(0), HOST(NULL), DEVC(NULL) {}
-  cudaVec(int size) {
-    SIZE = size;
-    CUDA_SAFE_CALL(cudaMallocHost(&HOST, SIZE*sizeof(T), cudaHostAllocMapped || cudaHostAllocWriteCombined));
+  cudaVec() : PIN(false), SIZE(0), HOST(NULL), DEVC(NULL) {}
+  cudaVec(int size, bool pin=false) : PIN(pin), SIZE(size) {
+    if (PIN) CUDA_SAFE_CALL(cudaMallocHost(&HOST, SIZE*sizeof(T), cudaHostAllocMapped || cudaHostAllocWriteCombined));
     CUDA_SAFE_CALL(cudaMalloc(&DEVC, SIZE*sizeof(T)));
   }
   ~cudaVec() {
     dealloc();
   }
 
-  void alloc(int size) {
+  void alloc(int size, bool pin=false) {
     dealloc();
+    PIN = pin;
     SIZE = size;
-    CUDA_SAFE_CALL(cudaMallocHost(&HOST, SIZE*sizeof(T), cudaHostAllocMapped || cudaHostAllocWriteCombined));
+    if (PIN) CUDA_SAFE_CALL(cudaMallocHost(&HOST, SIZE*sizeof(T), cudaHostAllocMapped || cudaHostAllocWriteCombined));
     CUDA_SAFE_CALL(cudaMalloc(&DEVC, SIZE*sizeof(T)));
   }
 
@@ -42,18 +43,22 @@ public:
   }
 
   void d2h() {
+    assert(PIN);
     CUDA_SAFE_CALL(cudaMemcpy(HOST, DEVC, SIZE*sizeof(T), cudaMemcpyDeviceToHost));
   }
 
   void d2h(int size) {
+    assert(PIN);
     CUDA_SAFE_CALL(cudaMemcpy(HOST, DEVC, size*sizeof(T), cudaMemcpyDeviceToHost));
   }
 
   void h2d() {
+    assert(PIN);
     CUDA_SAFE_CALL(cudaMemcpy(DEVC, HOST, SIZE*sizeof(T), cudaMemcpyHostToDevice ));
   }
 
   void h2d(int size) {
+    assert(PIN);
     CUDA_SAFE_CALL(cudaMemcpy(DEVC, HOST, size*sizeof(T), cudaMemcpyHostToDevice));
   }
 
