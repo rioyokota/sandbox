@@ -501,39 +501,39 @@ namespace {
 
   template<int NTHREAD2>
   static __global__
-  void collect_leaves(const int n, const CellData *sourceCells, int *leafCells) {
-      const int gidx = blockDim.x*blockIdx.x + threadIdx.x;
+  void collectLeafs(const int numCells, const CellData * sourceCells, int * leafCells) {
+    const int cellIdx = blockDim.x * blockIdx.x + threadIdx.x;
 
-      const CellData cell = sourceCells[min(gidx,n-1)];
+    const CellData cell = sourceCells[min(cellIdx, numCells-1)];
 
-      __shared__ int shdata[1<<NTHREAD2];
+    __shared__ int shdata[1<<NTHREAD2];
 
-      int value = gidx < n && cell.isLeaf();
-      shdata[threadIdx.x] = value;
+    int value = cellIdx < numCells && cell.isLeaf();
+    shdata[threadIdx.x] = value;
 #pragma unroll
-      for (int offset2 = 0; offset2 < NTHREAD2; offset2++)
-	{
-	  const int offset = 1 << offset2;
-	  __syncthreads();
-	  if (threadIdx.x >= offset)
-	    value += shdata[threadIdx.x - offset];
-	  __syncthreads();
-	  shdata[threadIdx.x] = value;
-	}
+    for (int offset2 = 0; offset2 < NTHREAD2; offset2++)
+      {
+	const int offset = 1 << offset2;
+	__syncthreads();
+	if (threadIdx.x >= offset)
+	  value += shdata[threadIdx.x - offset];
+	__syncthreads();
+	shdata[threadIdx.x] = value;
+      }
 
-      const int nwrite  = shdata[threadIdx.x];
-      const int scatter = nwrite - (gidx < n && cell.isLeaf());
+    const int nwrite  = shdata[threadIdx.x];
+    const int scatter = nwrite - (cellIdx < numCells && cell.isLeaf());
 
-      __syncthreads();
+    __syncthreads();
 
-      if (threadIdx.x == blockDim.x-1 && nwrite > 0)
-	shdata[0] = atomicAdd(&leafIdx_counter, nwrite);
+    if (threadIdx.x == blockDim.x-1 && nwrite > 0)
+      shdata[0] = atomicAdd(&leafIdx_counter, nwrite);
 
-      __syncthreads();
+    __syncthreads();
 
-      if (cell.isLeaf())
-	leafCells[shdata[0] + scatter] = gidx;
-    }
+    if (cell.isLeaf())
+      leafCells[shdata[0] + scatter] = cellIdx;
+  }
 }
 
 class Build {
@@ -647,7 +647,7 @@ class Build {
     permuteCells<<<NBLOCK,NTHREAD>>>(numSources, d_value, d_key, d_sourceCells2, d_sourceCells);
 
     d_leafCells.alloc(numLeafs);
-    collect_leaves<NTHREAD2><<<NBLOCK,NTHREAD>>>(numSources, d_sourceCells, d_leafCells);
+    collectLeafs<NTHREAD2><<<NBLOCK,NTHREAD>>>(numSources, d_sourceCells, d_leafCells);
     kernelSuccess("shuffle");
     dt = get_time() - t0;
     fprintf(stdout,"Link tree            : %.7f s\n", dt);
