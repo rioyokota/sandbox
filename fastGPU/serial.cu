@@ -6,7 +6,7 @@
 #include "traversal.h"
 
 int main(int argc, char * argv[]) {
-  const int numBodies = 1 << 24;
+  const int numBodies = (1 << 24) - 1;
   const int seed = 19810614;
   const float eps = 0.05;
   const float theta = 0.75;

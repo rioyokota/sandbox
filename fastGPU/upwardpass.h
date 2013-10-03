@@ -122,13 +122,13 @@ class Pass {
 	      float4 * d_bodyPos, CellData * d_sourceCells, float4 * d_sourceCenter,
 	      float4 * d_Monopole, float4 * d_Quadrupole0, float2 * d_Quadrupole1) {
     const int NTHREAD2 = 8;
-    const int NTHREAD  = 1<< NTHREAD2;
-    const int NWARP    = 1<<(NTHREAD2-WARP_SIZE2);
-    const int nblock   = (numSources-1)/NWARP + 1;
+    const int NTHREAD = 1 << NTHREAD2;
+    const int NWARP = 1 << (NTHREAD2 - WARP_SIZE2);
+    const int NBLOCK = (numSources-1) /NWARP + 1;
     CUDA_SAFE_CALL(cudaFuncSetCacheConfig(&computeCellMultipoles<NTHREAD2>,cudaFuncCachePreferL1));
     cudaDeviceSynchronize();
     const double t0 = get_time();
-    computeCellMultipoles<NTHREAD2><<<nblock,NTHREAD>>>(numBodies, numSources, d_sourceCells, d_bodyPos,
+    computeCellMultipoles<NTHREAD2><<<NBLOCK,NTHREAD>>>(numBodies, numSources, d_sourceCells, d_bodyPos,
 							1.0 / theta,
 							d_sourceCenter, d_Monopole, d_Quadrupole0, d_Quadrupole1);
     kernelSuccess("computeCellMultipoles");

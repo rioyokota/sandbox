@@ -1,5 +1,4 @@
 #pragma once
-
 #include <vector>
 #include <cmath>
 #include <cstdlib>
@@ -15,8 +14,7 @@ class Plummer {
   std::vector<double3> pos, vel;
   Plummer(unsigned long n, 
 	  unsigned int seed = 19810614, 
-	  const char *filename = "plummer.dat") : mass(n), pos(n), vel(n)
-  {
+	  const char *filename = "plummer.dat") : mass(n), pos(n), vel(n) {
     std::ifstream file(filename);
     if (!file.fail()) {
       unsigned long ntmp, stmp;

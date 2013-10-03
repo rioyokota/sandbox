@@ -374,26 +374,29 @@ namespace {
     const int laneIdx = threadIdx.x & (WARP_SIZE-1);
     const int warpIdx = threadIdx.x >> WARP_SIZE2;
     const int NTHREAD = 1 << NTHREAD2;
-    const int i = blockIdx.x * NTHREAD + threadIdx.x;
-    int offset = blockIdx.x * numSource / gridDim.x;
+    const int numChunk = (numSource - 1) / gridDim.x + 1;
+    const int numWarpChunk = (numChunk - 1) / WARP_SIZE + 1;
+    const int blockOffset = blockIdx.x * numChunk;
     float pots, axs, ays ,azs;
     float potc, axc, ayc ,azc;
-    float4 si = tex1Dfetch(texBody, threadIdx.x);
-    __shared__ float4 shared[NTHREAD];
-    float4 * s = shared + WARP_SIZE * warpIdx;
-    for ( int jb=0; jb<numSource/WARP_SIZE/gridDim.x; jb++ ) {
-      s[laneIdx] = tex1Dfetch(texBody, offset+jb*WARP_SIZE+laneIdx);
+    float4 posi = tex1Dfetch(texBody, threadIdx.x);
+    __shared__ float4 source[NTHREAD];
+    float4 * posj = source + WARP_SIZE * warpIdx;
+    for ( int jb=0; jb<numWarpChunk; jb++ ) {
+      const int sourceIdx = min(blockOffset+jb*WARP_SIZE+laneIdx, numSource-1);
+      posj[laneIdx] = tex1Dfetch(texBody, sourceIdx);
+      if (sourceIdx >= numSource) posj[laneIdx].w = 0;
       for( int j=0; j<WARP_SIZE; j++ ) {
-	float dx = s[j].x - si.x;
-	float dy = s[j].y - si.y;
-	float dz = s[j].z - si.z;
+	float dx = posj[j].x - posi.x;
+	float dy = posj[j].y - posi.y;
+	float dz = posj[j].z - posi.z;
 	float R2 = dx * dx + dy * dy + dz * dz + EPS2;
 	float invR = rsqrtf(R2);
-        float y = - s[j].w * invR - potc;
+        float y = - posj[j].w * invR - potc;
         float t = pots + y;
         potc = (t - pots) - y;
         pots = t;
-	float invR3 = invR * invR * invR * s[j].w;
+	float invR3 = invR * invR * invR * posj[j].w;
         y = dx * invR3 - axc;
         t = axs + y;
         axc = (t - axs) - y;
@@ -408,10 +411,11 @@ namespace {
         azs = t;
       }
     }
-    acc[i].x = axs + axc;
-    acc[i].y = ays + ayc;
-    acc[i].z = azs + azc;
-    acc[i].w = pots + potc;
+    const int targetIdx = blockIdx.x * blockDim.x + threadIdx.x;
+    acc[targetIdx].x = axs + axc;
+    acc[targetIdx].y = ays + ayc;
+    acc[targetIdx].z = azs + azc;
+    acc[targetIdx].w = pots + potc;
   }
 }
 
@@ -476,8 +480,12 @@ class Traversal {
     return interactions;
   }
 
-  void direct(const int numBodies, const int numTarget, const int numBlock, const float eps,
-	      float4 * d_bodyPos2, float4 * d_bodyAcc2) {
+  void direct(const int numBodies,
+	      const int numTarget,
+	      const int numBlock,
+	      const float eps,
+	      float4 * d_bodyPos2,
+	      float4 * d_bodyAcc2) {
     const int NTHREAD2 = 9;
     const int NTHREAD  = 1 << NTHREAD2;
     const int NBLOCK2  = 7;

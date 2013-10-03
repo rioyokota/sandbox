@@ -45,9 +45,8 @@ namespace {
     static __device__
     float2 getMinMax(float2 range) {
     const int NTHREAD = 1 << NTHREAD2;
-    extern __shared__ float shared[];
-    float *sharedMin = shared;
-    float *sharedMax = shared + NTHREAD;
+    __shared__ float sharedMin[NTHREAD];
+    __shared__ float sharedMax[NTHREAD];
     sharedMin[threadIdx.x] = range.x;
     sharedMax[threadIdx.x] = range.y;
     __syncthreads();
@@ -453,7 +452,11 @@ namespace {
 
 
   static __global__
-    void getKeys(const int numCells, const CellData * sourceCells, CellData * sourceCells2, int * key, int * value) {
+    void getKeys(const int numCells,
+		 const CellData * sourceCells,
+		 CellData * sourceCells2,
+		 int * key,
+		 int * value) {
     const int cellIdx = blockIdx.x * blockDim.x + threadIdx.x;
     if (cellIdx >= numCells) return;
     const CellData cell = sourceCells[cellIdx];
@@ -463,7 +466,9 @@ namespace {
   }
 
   static __global__
-    void getLevelRange(const int numCells, const int * levels, int2 * levelRange) {
+    void getLevelRange(const int numCells,
+		       const int * levels,
+		       int2 * levelRange) {
     const int cellIdx = blockIdx.x * blockDim.x + threadIdx.x;
     if (cellIdx >= numCells) return;
     const int nextCellIdx = min(cellIdx+1, numCells-1);
@@ -476,7 +481,9 @@ namespace {
   }
 
   static __global__
-    void getPermutation(const int numCells, const int * value, int * key) {
+    void getPermutation(const int numCells,
+			const int * value,
+			int * key) {
     const int newIdx = blockIdx.x * blockDim.x + threadIdx.x;
     if (newIdx >= numCells) return;
     const int oldIdx = value[newIdx];
@@ -484,8 +491,11 @@ namespace {
   }
 
   static __global__
-    void permuteCells(const int numCells, const int * value, const int * key,
-		      const CellData * sourceCells2, CellData * sourceCells) {
+    void permuteCells(const int numCells,
+		      const int * value,
+		      const int * key,
+		      const CellData * sourceCells2,
+		      CellData * sourceCells) {
     const int cellIdx = blockIdx.x * blockDim.x + threadIdx.x;
     if (cellIdx >= numCells) return;
     const int mapIdx = value[cellIdx];
@@ -498,9 +508,10 @@ namespace {
     if (cellIdx == 0) numLeafsGlob = 0;
   }
 
-  template<int NTHREAD2>
-    static __global__
-    void collectLeafs(const int numCells, const CellData * sourceCells, int * leafCells) {
+  static __global__
+    void collectLeafs(const int numCells,
+		      const CellData * sourceCells,
+		      int * leafCells) {
     const int laneIdx = threadIdx.x & (WARP_SIZE-1);
     const int warpIdx = threadIdx.x >> WARP_SIZE2;
     const int cellIdx = blockDim.x * blockIdx.x + threadIdx.x;
@@ -519,8 +530,13 @@ namespace {
 
 class Build {
  public:
-  int2 tree(const int numBodies, float4 * d_bodyPos, float4 * d_bodyPos2,
-	    float4 * d_domain, int2 * d_levelRange, CellData * d_sourceCells, const int NLEAF) {
+  int2 tree(const int numBodies,
+	    float4 * d_bodyPos,
+	    float4 * d_bodyPos2,
+	    float4 * d_domain,
+	    int2 * d_levelRange,
+	    CellData * d_sourceCells,
+	    const int NLEAF) {
     const int NTHREAD2 = 8;
     const int NTHREAD  = 1 << NTHREAD2;
 
@@ -549,8 +565,7 @@ class Build {
 
     cudaDeviceSynchronize();
     double t0 = get_time();
-    getBounds<NTHREAD2><<<NTHREAD,NTHREAD,NTHREAD*sizeof(float2)>>>
-      (numBodies, d_bounds, d_domain, d_bodyPos);
+    getBounds<NTHREAD2><<<NTHREAD,NTHREAD>>>(numBodies, d_bounds, d_domain, d_bodyPos);
     kernelSuccess("cudaDomainSize");
     double dt = get_time() - t0;
     fprintf(stdout,"Get bounds           : %.7f s\n",  dt);
@@ -568,11 +583,11 @@ class Build {
     CUDA_SAFE_CALL(cudaFuncSetCacheConfig(&buildOctant<64,true>,  cudaFuncCachePreferShared));
     CUDA_SAFE_CALL(cudaFuncSetCacheConfig(&buildOctant<64,false>, cudaFuncCachePreferShared));
     CUDA_SAFE_CALL(cudaDeviceSetSharedMemConfig(cudaSharedMemBankSizeEightByte));
-    CUDA_SAFE_CALL(cudaMemset(d_octantSizePool,0,8*maxNode*sizeof(int)));
-    CUDA_SAFE_CALL(cudaMemset(d_octantSizeScanPool,0,8*maxNode*sizeof(int)));
-    CUDA_SAFE_CALL(cudaMemset(d_subOctantSizeScanPool,0,64*maxNode*sizeof(int)));
-    CUDA_SAFE_CALL(cudaMemset(d_blockCounterPool,0,maxNode*sizeof(int)));
-    CUDA_SAFE_CALL(cudaMemset(d_bodyRangePool,0,maxNode*sizeof(int2)));
+    CUDA_SAFE_CALL(cudaMemset(d_octantSizePool, 0, 8*maxNode*sizeof(int)));
+    CUDA_SAFE_CALL(cudaMemset(d_octantSizeScanPool, 0, 8*maxNode*sizeof(int)));
+    CUDA_SAFE_CALL(cudaMemset(d_subOctantSizeScanPool, 0, 64*maxNode*sizeof(int)));
+    CUDA_SAFE_CALL(cudaMemset(d_blockCounterPool, 0, maxNode*sizeof(int)));
+    CUDA_SAFE_CALL(cudaMemset(d_bodyRangePool, 0, maxNode*sizeof(int2)));
     cudaDeviceSynchronize();
     t0 = get_time();
     switch (NLEAF) {
@@ -602,9 +617,9 @@ class Build {
     kernelSuccess("buildOctree");
     dt = get_time() - t0;
     int numLevels, numSources, numLeafs;
-    CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&numLevels, numLevelsGlob,sizeof(int)));
-    CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&numSources,numCellsGlob, sizeof(int)));
-    CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&numLeafs, numLeafsGlob,sizeof(int)));
+    CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&numLevels, numLevelsGlob, sizeof(int)));
+    CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&numSources, numCellsGlob, sizeof(int)));
+    CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&numLeafs, numLeafsGlob, sizeof(int)));
     d_leafCells.alloc(numLeafs);
     fprintf(stdout,"Grow tree            : %.7f s\n",  dt);
     cudaDeviceSynchronize();
@@ -616,7 +631,7 @@ class Build {
     getLevelRange<<<NBLOCK,NTHREAD>>>(numSources, d_key, d_levelRange);
     getPermutation<<<NBLOCK,NTHREAD>>>(numSources, d_value, d_key);
     permuteCells<<<NBLOCK,NTHREAD>>>(numSources, d_value, d_key, d_sourceCells2, d_sourceCells);
-    collectLeafs<NTHREAD2><<<NBLOCK,NTHREAD>>>(numSources, d_sourceCells, d_leafCells);
+    collectLeafs<<<NBLOCK,NTHREAD>>>(numSources, d_sourceCells, d_leafCells);
     kernelSuccess("shuffle");
     dt = get_time() - t0;
     fprintf(stdout,"Link tree            : %.7f s\n", dt);
