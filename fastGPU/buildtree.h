@@ -485,20 +485,16 @@ namespace {
 
   __device__  unsigned int leafIdx_counter = 0;
   static __global__
-  void permuteCells(const int n, const int value[], const int moved_to_idx[], const CellData sourceCells2[], CellData sourceCells[]) {
-    const int idx = blockIdx.x*blockDim.x + threadIdx.x;
-    if (idx >= n) return;
-
-    const int mapIdx = value[idx];
+  void permuteCells(const int numCells, const int * value, const int * key,
+		    const CellData * sourceCells2, CellData * sourceCells) {
+    const int cellIdx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (cellIdx >= numCells) return;
+    const int mapIdx = value[cellIdx];
     CellData cell = sourceCells2[mapIdx];
     if (cell.isNode())
-      {
-	const int firstOld = cell.child();
-	const int firstNew = moved_to_idx[firstOld];
-	cell.setChild(firstNew);
-      }
+      cell.setChild(key[cell.child()]);
     if (cell.parent() > 0)
-      cell.setParent(moved_to_idx[cell.parent()]);
+      cell.setParent(key[cell.parent()]);
 
     sourceCells[idx] = cell;
 
