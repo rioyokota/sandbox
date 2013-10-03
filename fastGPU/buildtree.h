@@ -543,7 +543,6 @@ class Build {
     d_blockCounterPool.alloc(maxNode);
     d_bodyRangePool.alloc(maxNode);
     d_sourceCells2.alloc(numBodies);
-
     fprintf(stdout,"Cell data            : %g MB\n",numBodies*sizeof(CellData)/1024.0/1024.0);
     d_key.alloc(numBodies);
     d_value.alloc(numBodies);
@@ -556,29 +555,19 @@ class Build {
     double dt = get_time() - t0;
     fprintf(stdout,"Get bounds           : %.7f s\n",  dt);
 
-    /*** build tree ***/
-
     CUDA_SAFE_CALL(cudaMemcpyToSymbol(maxCellsGlob, &maxNode, sizeof(int), 0, cudaMemcpyHostToDevice));
-
     cudaDeviceSetLimit(cudaLimitDevRuntimePendingLaunchCount,16384);
-
     CUDA_SAFE_CALL(cudaFuncSetCacheConfig(&buildOctant<16,true>,  cudaFuncCachePreferShared));
     CUDA_SAFE_CALL(cudaFuncSetCacheConfig(&buildOctant<16,false>, cudaFuncCachePreferShared));
-
     CUDA_SAFE_CALL(cudaFuncSetCacheConfig(&buildOctant<24,true>,  cudaFuncCachePreferShared));
     CUDA_SAFE_CALL(cudaFuncSetCacheConfig(&buildOctant<24,false>, cudaFuncCachePreferShared));
-
     CUDA_SAFE_CALL(cudaFuncSetCacheConfig(&buildOctant<32,true>,  cudaFuncCachePreferShared));
     CUDA_SAFE_CALL(cudaFuncSetCacheConfig(&buildOctant<32,false>, cudaFuncCachePreferShared));
-
     CUDA_SAFE_CALL(cudaFuncSetCacheConfig(&buildOctant<48,true>,  cudaFuncCachePreferShared));
     CUDA_SAFE_CALL(cudaFuncSetCacheConfig(&buildOctant<48,false>, cudaFuncCachePreferShared));
-
     CUDA_SAFE_CALL(cudaFuncSetCacheConfig(&buildOctant<64,true>,  cudaFuncCachePreferShared));
     CUDA_SAFE_CALL(cudaFuncSetCacheConfig(&buildOctant<64,false>, cudaFuncCachePreferShared));
-
     CUDA_SAFE_CALL(cudaDeviceSetSharedMemConfig(cudaSharedMemBankSizeEightByte));
-
     CUDA_SAFE_CALL(cudaMemset(d_octantSizePool,0,8*maxNode*sizeof(int)));
     CUDA_SAFE_CALL(cudaMemset(d_octantSizeScanPool,0,8*maxNode*sizeof(int)));
     CUDA_SAFE_CALL(cudaMemset(d_subOctantSizeScanPool,0,64*maxNode*sizeof(int)));
@@ -616,6 +605,7 @@ class Build {
     CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&numLevels, numLevelsGlob,sizeof(int)));
     CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&numSources,numCellsGlob, sizeof(int)));
     CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&numLeafs, numLeafsGlob,sizeof(int)));
+    d_leafCells.alloc(numLeafs);
     fprintf(stdout,"Grow tree            : %.7f s\n",  dt);
     cudaDeviceSynchronize();
 
@@ -626,8 +616,6 @@ class Build {
     getLevelRange<<<NBLOCK,NTHREAD>>>(numSources, d_key, d_levelRange);
     getPermutation<<<NBLOCK,NTHREAD>>>(numSources, d_value, d_key);
     permuteCells<<<NBLOCK,NTHREAD>>>(numSources, d_value, d_key, d_sourceCells2, d_sourceCells);
-
-    d_leafCells.alloc(numLeafs);
     collectLeafs<NTHREAD2><<<NBLOCK,NTHREAD>>>(numSources, d_sourceCells, d_leafCells);
     kernelSuccess("shuffle");
     dt = get_time() - t0;
