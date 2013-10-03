@@ -4,6 +4,7 @@ extern void sort(const int size, int * key, int * value);
 
 namespace {
   __constant__ int maxCellsGlob;
+  __device__ float4 domainGlob;
   __device__ unsigned int counterGlob = 0;
   __device__ unsigned int numNodesGlob = 0;
   __device__ unsigned int numLeafsGlob = 0;
@@ -63,7 +64,6 @@ namespace {
   static __global__
     void getBounds(const int numBodies,
 		   float3 * bounds,
-		   float4 * domain,
 		   const float4 * bodyPos) {
     const int NBLOCK = NTHREAD;
     const int begin = blockIdx.x * blockDim.x + threadIdx.x;
@@ -108,7 +108,7 @@ namespace {
 	const float3 R = {(Xmax.x-Xmin.x)*0.5f, (Xmax.y-Xmin.y)*0.5f, (Xmax.z-Xmin.z)*0.5f};
 	const float r = fmax(R.x, fmax(R.y, R.z)) * 1.1f;
 	const float4 box = {X.x, X.y, X.z, r};
-	*domain = box;
+	domainGlob = box;
 	counterGlob = 0;
       }
     }
@@ -380,7 +380,6 @@ namespace {
   template<int NCRIT>
     static __global__
     void buildOctree(const int numBodies,
-		     const float4 *domain,
 		     CellData * d_sourceCells,
 		     int * d_octantSizePool,
 		     int * d_octantSizeScanPool,
@@ -399,7 +398,7 @@ namespace {
     int *octantSize = new int[8];
     for (int k=0; k<8; k++)
       octantSize[k] = 0;
-    getRootOctantSize<<<NTHREAD, NTHREAD>>>(numBodies, octantSize, *domain, d_bodyPos);
+    getRootOctantSize<<<NTHREAD, NTHREAD>>>(numBodies, octantSize, domainGlob, d_bodyPos);
     assert(cudaGetLastError() == cudaSuccess);
     cudaDeviceSynchronize();
 
@@ -423,7 +422,7 @@ namespace {
     bodyRange->y = numBodies;
     const int NBLOCK = min(max(numBodies / NTHREAD, 1), 512);
     buildOctant<NCRIT,true><<<NBLOCK, NTHREAD>>>
-      (*domain, 0, 0, 0, octantSize, octantSizeScan, subOctantSizeScan, blockCounter, bodyRange, d_bodyPos, d_bodyPos2);
+      (domainGlob, 0, 0, 0, octantSize, octantSizeScan, subOctantSizeScan, blockCounter, bodyRange, d_bodyPos, d_bodyPos2);
     assert(cudaDeviceSynchronize() == cudaSuccess);
     delete [] octantSize;
     delete [] octantSizeScan;
@@ -517,7 +516,7 @@ class Build {
   int2 tree(const int numBodies,
 	    float4 * d_bodyPos,
 	    float4 * d_bodyPos2,
-	    float4 * d_domain,
+	    float4 & domain,
 	    int2 * d_levelRange,
 	    CellData * d_sourceCells) {
     cuda_mem<float3> d_bounds;
@@ -545,7 +544,7 @@ class Build {
     cudaDeviceSynchronize();
 
     double t0 = get_time();
-    getBounds<<<NTHREAD,NTHREAD>>>(numBodies, d_bounds, d_domain, d_bodyPos);
+    getBounds<<<NTHREAD,NTHREAD>>>(numBodies, d_bounds, d_bodyPos);
     kernelSuccess("getBounds");
     double dt = get_time() - t0;
     fprintf(stdout,"Get bounds           : %.7f s\n",  dt);
@@ -563,13 +562,14 @@ class Build {
     CUDA_SAFE_CALL(cudaDeviceSetSharedMemConfig(cudaSharedMemBankSizeEightByte));
     CUDA_SAFE_CALL(cudaFuncSetCacheConfig(&buildOctant<NCRIT,true>,  cudaFuncCachePreferShared));
     CUDA_SAFE_CALL(cudaFuncSetCacheConfig(&buildOctant<NCRIT,false>, cudaFuncCachePreferShared));
-    buildOctree<NCRIT><<<1,1>>>(numBodies, d_domain, d_sourceCells, d_octantSizePool,
+    buildOctree<NCRIT><<<1,1>>>(numBodies, d_sourceCells, d_octantSizePool,
 				d_octantSizeScanPool, d_subOctantSizeScanPool,
 				d_blockCounterPool, d_bodyRangePool, d_bodyPos, d_bodyPos2);
     kernelSuccess("buildOctree");
     dt = get_time() - t0;
     fprintf(stdout,"Grow tree            : %.7f s\n",  dt);
     int numLevels, numSources, numLeafs;
+    CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&domain, domainGlob, sizeof(float4)));
     CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&numLevels, numLevelsGlob, sizeof(int)));
     CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&numSources, numCellsGlob, sizeof(int)));
     CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&numLeafs, numLeafsGlob, sizeof(int)));

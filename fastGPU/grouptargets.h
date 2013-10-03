@@ -47,14 +47,13 @@ namespace {
 
   static __global__
     void getKeys(const int numBodies,
-		 const float4 * d_domain,
+		 const float4 domain,
 		 const float4 * bodyPos,
 		 unsigned long long * keys,
 		 int * values) {
     const int bodyIdx = blockIdx.x * blockDim.x + threadIdx.x;
     if (bodyIdx >= numBodies) return;
     const float4 pos = bodyPos[bodyIdx];
-    const float4 domain = d_domain[0];
     const float diameter = 2 * domain.w / (1<<NBITS);
     const float3 Xmin = {domain.x - domain.w,
 			 domain.y - domain.w,
@@ -126,7 +125,7 @@ class Group {
   int targets(const int numBodies,
 	      float4 * d_bodyPos,
 	      float4 * d_bodyPos2,
-	      float4 * d_domain,
+	      float4 domain,
 	      int2 * d_targetRange,
 	      int levelSplit) {
     const int NBLOCK = (numBodies-1) / NTHREAD + 1;
@@ -137,7 +136,7 @@ class Group {
     cudaDeviceSynchronize();
 
     const double t0 = get_time();
-    getKeys<<<NBLOCK,NTHREAD>>>(numBodies, d_domain, d_bodyPos, d_key.ptr, d_value.ptr);
+    getKeys<<<NBLOCK,NTHREAD>>>(numBodies, domain, d_bodyPos, d_key.ptr, d_value.ptr);
     sort(numBodies, d_key.ptr, d_value.ptr);
     permuteBodies<<<NBLOCK,NTHREAD>>>(numBodies, d_value, d_bodyPos, d_bodyPos2);
 

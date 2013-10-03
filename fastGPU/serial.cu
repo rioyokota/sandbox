@@ -37,9 +37,7 @@ int main(int argc, char * argv[]) {
   cuda_mem<float4> d_Monopole;
   cuda_mem<float4> d_Quadrupole0;
   cuda_mem<float2> d_Quadrupole1;
-  cuda_mem<float4> d_domain;
   cuda_mem<int2> d_levelRange;
-  d_domain.alloc(1);
   d_levelRange.alloc(32);
   d_targetRange.alloc(numBodies);
   d_sourceCells.alloc(numBodies);
@@ -47,7 +45,8 @@ int main(int argc, char * argv[]) {
   fprintf(stdout,"--- FMM Profiling ----------------\n");
   double t0 = get_time();
   Build build;
-  int2 numLS = build.tree<ncrit>(numBodies, bodyPos.devc(), bodyPos2.devc(), d_domain, d_levelRange, d_sourceCells);
+  float4 domain;
+  int2 numLS = build.tree<ncrit>(numBodies, bodyPos.devc(), bodyPos2.devc(), domain, d_levelRange, d_sourceCells);
   int numLevels = numLS.x;
   int numSources = numLS.y;
   d_sourceCenter.alloc(numSources);
@@ -55,7 +54,7 @@ int main(int argc, char * argv[]) {
   d_Quadrupole0.alloc(numSources);
   d_Quadrupole1.alloc(numSources);
   Group group;
-  int numTargets = group.targets(numBodies, bodyPos.devc(), bodyPos2.devc(), d_domain, d_targetRange, 5);
+  int numTargets = group.targets(numBodies, bodyPos.devc(), bodyPos2.devc(), domain, d_targetRange, 5);
   Pass pass;
   pass.upward(numBodies, numSources, theta, bodyPos.devc(), d_sourceCells, d_sourceCenter, d_Monopole, d_Quadrupole0, d_Quadrupole1);
   Traversal traversal;
