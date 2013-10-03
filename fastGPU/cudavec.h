@@ -10,8 +10,8 @@ private:
   void dealloc() {
     if( SIZE != 0 ) {
       SIZE = 0;
-      free(HOST);
-      cudaFree(DEVC);
+      CUDA_SAFE_CALL(cudaFreeHost(HOST));
+      CUDA_SAFE_CALL(cudaFree(DEVC));
     }
   }
 
@@ -19,8 +19,8 @@ public:
   cudaVec() : SIZE(0), HOST(NULL), DEVC(NULL) {}
   cudaVec(int size) {
     SIZE = size;
-    HOST = (T*)malloc(SIZE*sizeof(T));
-    CUDA_SAFE_CALL(cudaMalloc((T**)&DEVC, SIZE*sizeof(T)));
+    CUDA_SAFE_CALL(cudaMallocHost(&HOST, SIZE*sizeof(T), cudaHostAllocMapped || cudaHostAllocWriteCombined));
+    CUDA_SAFE_CALL(cudaMalloc(&DEVC, SIZE*sizeof(T)));
   }
   ~cudaVec() {
     dealloc();
@@ -29,8 +29,8 @@ public:
   void alloc(int size) {
     dealloc();
     SIZE = size;
-    HOST = (T*)malloc(SIZE*sizeof(T));
-    CUDA_SAFE_CALL(cudaMalloc((T**)&DEVC, SIZE*sizeof(T)));
+    CUDA_SAFE_CALL(cudaMallocHost(&HOST, SIZE*sizeof(T), cudaHostAllocMapped || cudaHostAllocWriteCombined));
+    CUDA_SAFE_CALL(cudaMalloc(&DEVC, SIZE*sizeof(T)));
   }
 
   void zeros() {

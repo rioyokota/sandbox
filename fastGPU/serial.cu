@@ -31,25 +31,24 @@ int main(int argc, char * argv[]) {
   bodyPos.h2d();
   bodyAcc.h2d();
 
-  cuda_mem<int2> d_targetRange;
+  cudaVec<int2> levelRange(32);
   cuda_mem<CellData> d_sourceCells;
-  cuda_mem<float4> d_sourceCenter;
-  cuda_mem<float4> d_Monopole;
-  cuda_mem<float4> d_Quadrupole0;
-  cuda_mem<float2> d_Quadrupole1;
-  cuda_mem<int2> d_levelRange;
-  d_levelRange.alloc(32);
-  d_targetRange.alloc(numBodies);
   d_sourceCells.alloc(numBodies);
 
   fprintf(stdout,"--- FMM Profiling ----------------\n");
   double t0 = get_time();
   Build build;
   float4 domain;
-  int2 numLS = build.tree<ncrit>(numBodies, bodyPos.devc(), bodyPos2.devc(), domain, d_levelRange, d_sourceCells);
+  int2 numLS = build.tree<ncrit>(numBodies, bodyPos.devc(), bodyPos2.devc(), domain, levelRange.devc(), d_sourceCells);
   int numLevels = numLS.x;
   int numSources = numLS.y;
+  cuda_mem<int2> d_targetRange;
+  d_targetRange.alloc(numBodies);
+  cuda_mem<float4> d_sourceCenter;
   d_sourceCenter.alloc(numSources);
+  cuda_mem<float4> d_Monopole;
+  cuda_mem<float4> d_Quadrupole0;
+  cuda_mem<float2> d_Quadrupole1;
   d_Monopole.alloc(numSources);
   d_Quadrupole0.alloc(numSources);
   d_Quadrupole1.alloc(numSources);
@@ -61,7 +60,7 @@ int main(int argc, char * argv[]) {
   const float4 interactions = traversal.approx(numBodies, numTargets, numSources, eps,
 					       bodyPos.devc(), bodyPos2.devc(), bodyAcc.devc(),
 					       d_targetRange, d_sourceCells, d_sourceCenter,
-					       d_Monopole, d_Quadrupole0, d_Quadrupole1, d_levelRange);
+					       d_Monopole, d_Quadrupole0, d_Quadrupole1, levelRange.devc());
   double dt = get_time() - t0;
   float flops = (interactions.x * 20 + interactions.z * 64) * numBodies / dt / 1e12;
   fprintf(stdout,"--- Total runtime ----------------\n");
