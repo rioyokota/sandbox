@@ -483,7 +483,6 @@ namespace {
     key[oldIdx] = newIdx;
   }
 
-  __device__  unsigned int leafIdx_counter = 0;
   static __global__
   void permuteCells(const int numCells, const int * value, const int * key,
 		    const CellData * sourceCells2, CellData * sourceCells) {
@@ -495,17 +494,14 @@ namespace {
       cell.setChild(key[cell.child()]);
     if (cell.parent() > 0)
       cell.setParent(key[cell.parent()]);
-
-    sourceCells[idx] = cell;
-
-    if (threadIdx.x == 0 && blockIdx.x == 0)
-      leafIdx_counter = 0;
+    sourceCells[cellIdx] = cell;
   }
 
+  __device__  unsigned int leafIdx_counter = 0;
+
   template<int NTHREAD2>
-    static __global__
-    void collect_leaves(const int n, const CellData *sourceCells, int *leafCells)
-    {
+  static __global__
+  void collect_leaves(const int n, const CellData *sourceCells, int *leafCells) {
       const int gidx = blockDim.x*blockIdx.x + threadIdx.x;
 
       const CellData cell = sourceCells[min(gidx,n-1)];
