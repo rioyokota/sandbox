@@ -10,20 +10,17 @@ class Plummer {
     return rand() / (1. + RAND_MAX);
   }
  public:
-  std::vector<double> mass;
-  std::vector<double3> pos, vel;
+  std::vector<double4> pos;
   Plummer(unsigned long n, 
 	  unsigned int seed = 19810614, 
-	  const char *filename = "plummer.dat") : mass(n), pos(n), vel(n) {
+	  const char *filename = "plummer.dat") : pos(n) {
     std::ifstream file(filename);
     if (!file.fail()) {
       unsigned long ntmp, stmp;
       file.read((char *)&ntmp, sizeof(unsigned long));
       file.read((char *)&stmp, sizeof(unsigned long));
       if (n == ntmp && seed == stmp) {
-	file.read((char *)&mass[0], n*sizeof(double));
-	file.read((char *)& pos[0], n*sizeof(double3));
-	file.read((char *)& vel[0], n*sizeof(double3));
+	file.read((char *)&pos[0], n*sizeof(double4));
 	return;
       }
     }
@@ -33,34 +30,17 @@ class Plummer {
       double X1 = my_rand();
       double X2 = my_rand();
       double X3 = my_rand();
-      double R = 1.0/sqrt( (pow(X1,-2.0/3.0) - 1.0) );
+      double R = 1.0 / sqrt( (pow(X1, -2.0 / 3.0) - 1.0) );
       if (R < 100.0) {
-	double Z = (1.0 - 2.0*X2)*R;
-	double X = sqrt(R*R - Z*Z) * cos(2.0*M_PI*X3);
-	double Y = sqrt(R*R - Z*Z) * sin(2.0*M_PI*X3);
-	double Ve = sqrt(2.0)*pow( (1.0 + R*R), -0.25 );
-	double X4 = 0.0; 
-	double X5 = 0.0;
-	while (0.1*X5 >= X4*X4*pow( (1.0-X4*X4), 3.5)) {
-	  X4 = my_rand(); X5 = my_rand(); 
-	} 
-	double V = Ve*X4;
-	double X6 = my_rand();
-	double X7 = my_rand();
-	double Vz = (1.0 - 2.0*X6)*V;
-	double Vx = sqrt(V*V - Vz*Vz) * cos(2.0*M_PI*X7);
-	double Vy = sqrt(V*V - Vz*Vz) * sin(2.0*M_PI*X7);
-	double conv = 3.0*M_PI/16.0;
-	X *= conv; Y *= conv; Z *= conv;    
-	Vx /= sqrt(conv); Vy /= sqrt(conv); Vz /= sqrt(conv);
-
-	mass[i] = my_rand() / n;
+	double Z = (1.0 - 2.0 * X2) * R;
+	double X = sqrt(R * R - Z * Z) * cos(2.0 * M_PI * X3);
+	double Y = sqrt(R * R - Z * Z) * sin(2.0 * M_PI * X3);
+	double conv = 3.0 * M_PI / 16.0;
+	X *= conv; Y *= conv; Z *= conv;
 	pos[i].x = X;
 	pos[i].y = Y;
 	pos[i].z = Z;
-	vel[i].x = Vx;
-	vel[i].y = Vy;
-	vel[i].z = Vz;
+	pos[i].w = my_rand() / n;
 	ldiv_t tmp_i = ldiv(i, n/64);
 	if(tmp_i.rem == 0) {
 	  printf(".");
@@ -69,33 +49,21 @@ class Plummer {
 	i++; 
       }		
     }
-    double mcm = 0.0;
-
-    double xcm[3], vcm[3];
-    for (int k=0; k<3; k++) {
-      xcm[k] = 0.0; vcm[k] = 0.0;
-    }
-
+    double4 com = {0.0};
     for (i=0; i<n; i++) {
-      mcm += mass[i];
-      xcm[0] += mass[i] * pos[i].x; 
-      xcm[1] += mass[i] * pos[i].y; 
-      xcm[2] += mass[i] * pos[i].z; 
-      vcm[0] += mass[i] * vel[i].x; 
-      vcm[1] += mass[i] * vel[i].y; 
-      vcm[2] += mass[i] * vel[i].z; 
+      com.x += pos[i].w * pos[i].x; 
+      com.y += pos[i].w * pos[i].y; 
+      com.z += pos[i].w * pos[i].z; 
+      com.w += pos[i].w;
     }
-    for (int k=0; k<3; k++) {
-      xcm[k] /= mcm; vcm[k] /= mcm;
-    }
+    com.x /= com.w;
+    com.y /= com.w;
+    com.z /= com.w;
 
     for(i=0; i<n; i++) {
-      pos[i].x -= xcm[0]; 
-      pos[i].y -= xcm[1]; 
-      pos[i].z -= xcm[2]; 
-      vel[i].x -= vcm[0]; 
-      vel[i].y -= vcm[1]; 
-      vel[i].z -= vcm[2]; 
+      pos[i].x -= com.x; 
+      pos[i].y -= com.y; 
+      pos[i].z -= com.z; 
     }
     printf("\n");
     std::ofstream ofs(filename);
@@ -104,9 +72,7 @@ class Plummer {
       unsigned long stmp = seed;
       ofs.write((char *)&ntmp, sizeof(unsigned long));
       ofs.write((char *)&stmp, sizeof(unsigned long));
-      ofs.write((char *)&mass[0], n*sizeof(double));
-      ofs.write((char *)& pos[0], n*sizeof(double3));
-      ofs.write((char *)& vel[0], n*sizeof(double3));
+      ofs.write((char *)&pos[0], n*sizeof(double4));
     }
   }
 };

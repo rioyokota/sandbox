@@ -26,7 +26,7 @@ int main(int argc, char * argv[]) {
     bodyPos.x = data.pos[i].x;
     bodyPos.y = data.pos[i].y;
     bodyPos.z = data.pos[i].z;
-    bodyPos.w = data.mass[i];
+    bodyPos.w = data.pos[i].w;
     h_bodyPos[i] = bodyPos;
   }
   cuda_mem<float4> d_bodyPos;
