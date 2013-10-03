@@ -495,44 +495,25 @@ namespace {
     if (cell.parent() > 0)
       cell.setParent(key[cell.parent()]);
     sourceCells[cellIdx] = cell;
+    if (cellIdx == 0) numLeafsGlob = 0;
   }
-
-  __device__  unsigned int leafIdx_counter = 0;
 
   template<int NTHREAD2>
   static __global__
   void collectLeafs(const int numCells, const CellData * sourceCells, int * leafCells) {
+    const int laneIdx = threadIdx.x & (WARP_SIZE-1);
+    const int warpIdx = threadIdx.x >> WARP_SIZE2;
     const int cellIdx = blockDim.x * blockIdx.x + threadIdx.x;
-
     const CellData cell = sourceCells[min(cellIdx, numCells-1)];
-
-    __shared__ int shdata[1<<NTHREAD2];
-
-    int value = cellIdx < numCells && cell.isLeaf();
-    shdata[threadIdx.x] = value;
-#pragma unroll
-    for (int offset2 = 0; offset2 < NTHREAD2; offset2++)
-      {
-	const int offset = 1 << offset2;
-	__syncthreads();
-	if (threadIdx.x >= offset)
-	  value += shdata[threadIdx.x - offset];
-	__syncthreads();
-	shdata[threadIdx.x] = value;
-      }
-
-    const int nwrite  = shdata[threadIdx.x];
-    const int scatter = nwrite - (cellIdx < numCells && cell.isLeaf());
-
-    __syncthreads();
-
-    if (threadIdx.x == blockDim.x-1 && nwrite > 0)
-      shdata[0] = atomicAdd(&leafIdx_counter, nwrite);
-
-    __syncthreads();
-
+    const bool isLeaf = cellIdx < numCells & cell.isLeaf();
+    const int numLeafsLane = exclusiveScanBool(isLeaf);
+    const int numLeafsWarp = reduceBool(isLeaf);
+    __shared__ int numLeafsBase[NWARPS];
+    int & numLeafsScan = numLeafsBase[warpIdx];
+    if (laneIdx == 0 && numLeafsWarp > 0)
+      numLeafsScan = atomicAdd(&numLeafsGlob, numLeafsWarp);
     if (cell.isLeaf())
-      leafCells[shdata[0] + scatter] = cellIdx;
+      leafCells[numLeafsScan+numLeafsLane] = cellIdx;
   }
 }
 
