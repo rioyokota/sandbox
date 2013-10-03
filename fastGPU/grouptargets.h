@@ -6,6 +6,8 @@ extern void sort(const int size, unsigned long long * key, int * value);
 extern void scan(const int size, unsigned long long * key, int * value);
 
 namespace {
+  __device__ unsigned int numTargetGlob= 0;
+
   static __device__
     unsigned long long getHilbert(int3 iX) {
     const int octantMap[8] = {0, 1, 7, 6, 3, 2, 4, 5};
@@ -77,7 +79,7 @@ namespace {
 		  const unsigned long long mask,
 		  unsigned long long * keys,
 		  unsigned long long * keys2,
-		  int * bodyBegIdx,
+		  int * bodyBeginIdx,
 		  int * bodyEndIdx) {
     const int bodyIdx = blockIdx.x * blockDim.x + threadIdx.x;
     if (bodyIdx >= numBodies) return;
@@ -88,48 +90,32 @@ namespace {
     const unsigned long long nextKey = keys[nextBodyIdx] & mask;
     const unsigned long long prevKey = keys[prevBodyIdx] & mask;
     if (prevKey < currKey || bodyIdx == 0)
-      bodyBegIdx[bodyIdx] = bodyIdx;
+      bodyBeginIdx[bodyIdx] = bodyIdx;
     else
-      bodyBegIdx[bodyIdx] = 0;
+      bodyBeginIdx[bodyIdx] = 0;
     if (currKey < nextKey || bodyIdx == numBodies-1)
       bodyEndIdx[numBodies-1-bodyIdx] = bodyIdx+1;
     else
       bodyEndIdx[numBodies-1-bodyIdx] = 0;
   }
 
-  __device__ unsigned int groupCounter= 0;
-
   static __global__
-    void make_groups(const int n, const int NCRIT,
-		     const int *bodyBegIdx,
-		     const int *bodyEndIdx,
-		     int2 *targetRange)
-  {
+    void getTargetRange(const int numBodies, const int NCRIT,
+		      const int * bodyBeginIdx,
+		      const int * bodyEndIdx,
+		      int2 * targetRange) {
     const int bodyIdx = blockDim.x * blockIdx.x + threadIdx.x;
-    if (bodyIdx >= n) return;
-
-    const int bodyBeg = bodyBegIdx[bodyIdx];
-    assert(bodyIdx >= bodyBeg);
-
-    const int igroup   = (bodyIdx - bodyBeg)/NCRIT;
-    const int groupBeg = bodyBeg + igroup * NCRIT;
-
-    if (bodyIdx == groupBeg)
-      {
-        const int groupIdx = atomicAdd(&groupCounter,1);
-        const int bodyEnd = bodyEndIdx[n-1-bodyIdx];
-        targetRange[groupIdx] = make_int2(groupBeg, min(NCRIT, bodyEnd - groupBeg));
-      }
-  }
-
-  struct keyCompare
-  {
-    __host__ __device__
-    bool operator()(const unsigned long long x, const unsigned long long y)
-    {
-      return x < y;
+    if (bodyIdx >= numBodies) return;
+    const int bodyBegin = bodyBeginIdx[bodyIdx];
+    assert(bodyIdx >= bodyBegin);
+    const int groupIdx = (bodyIdx - bodyBegin) / NCRIT;
+    const int groupBegin = bodyBegin + groupIdx * NCRIT;
+    if (bodyIdx == groupBegin) {
+      const int targetIdx = atomicAdd(&numTargetGlob, 1);
+      const int bodyEnd = bodyEndIdx[numBodies-1-bodyIdx];
+      targetRange[targetIdx] = make_int2(groupBegin, min(NCRIT, bodyEnd - groupBegin));
     }
-  };
+  }
 }
 
 class Group {
@@ -149,9 +135,9 @@ class Group {
     sort(numBodies, d_key.ptr, d_value.ptr);
     permuteBodies<<<NBLOCK,NTHREAD>>>(numBodies, d_value, d_bodyPos, d_bodyPos2);
 
-    cuda_mem<int> d_bodyBegIdx, d_bodyEndIdx;
+    cuda_mem<int> d_bodyBeginIdx, d_bodyEndIdx;
     cuda_mem<unsigned long long> d_key2;
-    d_bodyBegIdx.alloc(numBodies);
+    d_bodyBeginIdx.alloc(numBodies);
     d_bodyEndIdx.alloc(numBodies);
     d_key2.alloc(numBodies);
 
@@ -161,15 +147,15 @@ class Group {
       if (i < levelSplit)
 	mask |= 0x7;
     }
-    maskKeys<<<NBLOCK,NTHREAD,(NTHREAD+2)*sizeof(unsigned long long)>>>(numBodies, mask, d_key.ptr, d_key2.ptr, d_bodyBegIdx, d_bodyEndIdx);
-    scan(numBodies, d_key.ptr, d_bodyBegIdx.ptr);
+    maskKeys<<<NBLOCK,NTHREAD>>>(numBodies, mask, d_key.ptr, d_key2.ptr, d_bodyBeginIdx, d_bodyEndIdx);
+    scan(numBodies, d_key.ptr, d_bodyBeginIdx.ptr);
     scan(numBodies, d_key2.ptr, d_bodyEndIdx.ptr);
-    make_groups<<<NBLOCK,NTHREAD>>>(numBodies, NCRIT, d_bodyBegIdx, d_bodyEndIdx, d_targetRange);
+    getTargetRange<<<NBLOCK,NTHREAD>>>(numBodies, NCRIT, d_bodyBeginIdx, d_bodyEndIdx, d_targetRange);
     kernelSuccess("groupTargets");
     const double dt = get_time() - t0;
     fprintf(stdout,"Make groups          : %.7f s\n", dt);
     int numTargets;
-    CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&numTargets, groupCounter, sizeof(int)));
+    CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&numTargets, numTargetGlob, sizeof(int)));
     return numTargets;
   }
 };
