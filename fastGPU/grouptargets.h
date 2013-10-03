@@ -207,25 +207,20 @@ class Group {
     const double t0 = get_time();
     computeKeys<NBINS><<<nblock,nthread>>>(numBodies, d_domain, d_bodyPos, d_keys, d_values);
 
-    levelSplit = std::max(1,levelSplit);  /* pick the coarse segment boundaries at the levelSplit */
-    unsigned long long mask= 0;
-    for (int i = 0; i < NBINS; i++)
-      {
-	mask <<= 3;
-	if (i < levelSplit)
-	  mask |= 0x7;
-      }
-
-    /* sort particles by PH key */
     sort(numBodies, d_key.ptr, d_value.ptr);
-
     shuffle<float4><<<nblock,nthread>>>(numBodies, d_value, d_bodyPos, d_bodyPos2);
-
     cuda_mem<int> d_bodyBegIdx, d_bodyEndIdx;
     cuda_mem<unsigned long long> d_keys_inv;
     d_bodyBegIdx.alloc(numBodies);
     d_bodyEndIdx.alloc(numBodies);
     d_keys_inv.alloc(numBodies);
+
+    unsigned long long mask = 0;
+    for (int i=0; i<NBINS; i++) {
+      mask <<= 3;
+      if (i < levelSplit)
+	mask |= 0x7;
+    }
     mask_keys<<<nblock,nthread,(nthread+2)*sizeof(unsigned long long)>>>(numBodies, mask, d_keys, d_keys_inv, d_bodyBegIdx, d_bodyEndIdx);
 
     scan(numBodies, d_key.ptr, d_bodyBegIdx.ptr);    

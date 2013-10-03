@@ -453,7 +453,7 @@ namespace {
 
 
   static __global__
-  void getCellLevels(const int numCells, const CellData * sourceCells, CellData * sourceCells2, int * key, int * value) {
+  void getKeys(const int numCells, const CellData * sourceCells, CellData * sourceCells2, int * key, int * value) {
     const int cellIdx = blockIdx.x * blockDim.x + threadIdx.x;
     if (cellIdx >= numCells) return;
     const CellData cell = sourceCells[cellIdx];
@@ -611,7 +611,7 @@ class Build {
 
     t0 = get_time();
     const int NBLOCK = (numSources-1) / NTHREAD + 1;
-    getCellLevels<<<NBLOCK,NTHREAD>>>(numSources, d_sourceCells, d_sourceCells2, d_key, d_value);
+    getKeys<<<NBLOCK,NTHREAD>>>(numSources, d_sourceCells, d_sourceCells2, d_key, d_value);
     sort(numSources, d_key.ptr, d_value.ptr);
     getLevelRange<<<NBLOCK,NTHREAD>>>(numSources, d_key, d_levelRange);
     getPermutation<<<NBLOCK,NTHREAD>>>(numSources, d_value, d_key);

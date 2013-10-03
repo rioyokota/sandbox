@@ -53,37 +53,30 @@ namespace {
 
   template<int NTHREAD2>
   static __global__ __launch_bounds__(1<<NTHREAD2, 1024/(1<<NTHREAD2))
-    void computeCellMultipoles(const int numBodies,
-			       const int numSources,
-			       const CellData *cells,
-			       const float4* __restrict__ bodyPos,
-			       const float invTheta,
-			       float4 *sourceCenter,
-			       float4 *monopole,
-			       float4 *quadrupole0,
-			       float2 *quadrupole1)
-  {
+  void computeCellMultipoles(const int numBodies,
+			     const int numSources,
+			     const CellData *cells,
+			     const float4* __restrict__ bodyPos,
+			     const float invTheta,
+			     float4 *sourceCenter,
+			     float4 *monopole,
+			     float4 *quadrupole0,
+			     float2 *quadrupole1) {
     const int warpIdx = threadIdx.x >> WARP_SIZE2;
     const int laneIdx = threadIdx.x & (WARP_SIZE-1);
-
     const int NWARP2  = NTHREAD2 - WARP_SIZE2;
     const int cellIdx = (blockIdx.x<<NWARP2) + warpIdx;
     if (cellIdx >= numSources) return;
 
-    /* a warp compute properties of each cell */
-
     const CellData cell = cells[cellIdx];
-
     const float huge = 1e10f;
     float3 rmin = {+huge,+huge,+huge};
     float3 rmax = {-huge,-huge,-huge};
     double4 M;
     double6 Q;
-
     unsigned int nflop = 0;
     const int bodyBegin = cell.body();
     const int bodyEnd = cell.body() + cell.nbody();
-
     for (int i=bodyBegin; i<bodyEnd; i+=WARP_SIZE) {
       nflop++;
       float4 body = bodyPos[min(i+laneIdx,bodyEnd-1)];
@@ -93,38 +86,33 @@ namespace {
       addQuadrupole(Q, body);
     }
 
-
-    if (laneIdx == 0)
-      {
-	const double inv_mass = 1.0/M.w;
-	M.x *= inv_mass;
-	M.y *= inv_mass;
-	M.z *= inv_mass;
-	Q.xx = Q.xx*inv_mass - M.x*M.x;
-	Q.yy = Q.yy*inv_mass - M.y*M.y;
-	Q.zz = Q.zz*inv_mass - M.z*M.z;
-	Q.xy = Q.xy*inv_mass - M.x*M.y;
-	Q.xz = Q.xz*inv_mass - M.x*M.z;
-	Q.yz = Q.yz*inv_mass - M.y*M.z;
-
-	const float3 cvec = {(rmax.x+rmin.x)*0.5f, (rmax.y+rmin.y)*0.5f, (rmax.z+rmin.z)*0.5f};
-	const float3 hvec = {(rmax.x-rmin.x)*0.5f, (rmax.y-rmin.y)*0.5f, (rmax.z-rmin.z)*0.5f};
-	const float3 com = {M.x, M.y, M.z};
-	const float dx = cvec.x - com.x;
-	const float dy = cvec.y - com.y;
-	const float dz = cvec.z - com.z;
-	const float  s = sqrt(dx*dx + dy*dy + dz*dz);
-	const float  l = max(2.0f*max(hvec.x, max(hvec.y, hvec.z)), 1.0e-6f);
-	const float cellOp = l*invTheta + s;
-	const float cellOp2 = cellOp*cellOp;
-
-	atomicAdd(&nflops, nflop);
-
-	sourceCenter[cellIdx] = (float4){com.x, com.y, com.z, cellOp2};
-	monopole[cellIdx]     = (float4){M.x, M.y, M.z, M.w};  
-	quadrupole0[cellIdx]  = (float4){Q.xx, Q.yy, Q.zz, Q.xy};
-	quadrupole1[cellIdx]  = (float2){Q.xz, Q.yz};
-      }
+    if (laneIdx == 0) {
+      const double inv_mass = 1.0/M.w;
+      M.x *= inv_mass;
+      M.y *= inv_mass;
+      M.z *= inv_mass;
+      Q.xx = Q.xx*inv_mass - M.x*M.x;
+      Q.yy = Q.yy*inv_mass - M.y*M.y;
+      Q.zz = Q.zz*inv_mass - M.z*M.z;
+      Q.xy = Q.xy*inv_mass - M.x*M.y;
+      Q.xz = Q.xz*inv_mass - M.x*M.z;
+      Q.yz = Q.yz*inv_mass - M.y*M.z;
+      const float3 cvec = {(rmax.x+rmin.x)*0.5f, (rmax.y+rmin.y)*0.5f, (rmax.z+rmin.z)*0.5f};
+      const float3 hvec = {(rmax.x-rmin.x)*0.5f, (rmax.y-rmin.y)*0.5f, (rmax.z-rmin.z)*0.5f};
+      const float3 com = {M.x, M.y, M.z};
+      const float dx = cvec.x - com.x;
+      const float dy = cvec.y - com.y;
+      const float dz = cvec.z - com.z;
+      const float  s = sqrt(dx*dx + dy*dy + dz*dz);
+      const float  l = max(2.0f*max(hvec.x, max(hvec.y, hvec.z)), 1.0e-6f);
+      const float cellOp = l*invTheta + s;
+      const float cellOp2 = cellOp*cellOp;
+      atomicAdd(&nflops, nflop);
+      sourceCenter[cellIdx] = (float4){com.x, com.y, com.z, cellOp2};
+      monopole[cellIdx]     = (float4){M.x, M.y, M.z, M.w};  
+      quadrupole0[cellIdx]  = (float4){Q.xx, Q.yy, Q.zz, Q.xy};
+      quadrupole1[cellIdx]  = (float2){Q.xz, Q.yz};
+    }
   }
 }
 
@@ -137,7 +125,6 @@ class Pass {
     const int NTHREAD  = 1<< NTHREAD2;
     const int NWARP    = 1<<(NTHREAD2-WARP_SIZE2);
     const int nblock   = (numSources-1)/NWARP + 1;
-
     CUDA_SAFE_CALL(cudaFuncSetCacheConfig(&computeCellMultipoles<NTHREAD2>,cudaFuncCachePreferL1));
     cudaDeviceSynchronize();
     const double t0 = get_time();
