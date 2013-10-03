@@ -1,7 +1,8 @@
 #pragma once
 
 namespace {
-  static __device__ __forceinline__ void addMonopole(double4 &_M, const float4 body) {
+  static __device__ __forceinline__
+    void addMonopole(double4 &_M, const float4 body) {
     const float x = body.x;
     const float y = body.y;
     const float z = body.z;
@@ -20,7 +21,8 @@ namespace {
     _M.w += M.w;
   }
 
-  static __device__ __forceinline__ void addQuadrupole(double6 &_Q, const float4 body) {
+  static __device__ __forceinline__
+    void addQuadrupole(double6 &_Q, const float4 body) {
     const float x = body.x;
     const float y = body.y;
     const float z = body.z;
@@ -52,15 +54,15 @@ namespace {
   __device__ unsigned int nflops = 0;
 
   static __global__ __launch_bounds__(NTHREAD)
-  void computeCellMultipoles(const int numBodies,
-			     const int numSources,
-			     const CellData *cells,
-			     const float4* __restrict__ bodyPos,
-			     const float invTheta,
-			     float4 *sourceCenter,
-			     float4 *monopole,
-			     float4 *quadrupole0,
-			     float2 *quadrupole1) {
+    void computeCellMultipoles(const int numBodies,
+			       const int numSources,
+			       const CellData *cells,
+			       const float4* __restrict__ bodyPos,
+			       const float invTheta,
+			       float4 *sourceCenter,
+			       float4 *monopole,
+			       float4 *quadrupole0,
+			       float2 *quadrupole1) {
     const int warpIdx = threadIdx.x >> WARP_SIZE2;
     const int laneIdx = threadIdx.x & (WARP_SIZE-1);
     const int NWARP2  = NTHREAD2 - WARP_SIZE2;

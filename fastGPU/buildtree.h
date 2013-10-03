@@ -30,13 +30,6 @@ namespace {
 		       R);
   }
 
-  static __device__ __forceinline__
-    void getKernelSize(dim3 &grid, dim3 &block, const int N) {
-    const int NBLOCK = min(max(N / NTHREAD, 1), 512);
-    block = dim3(NTHREAD);
-    grid = dim3(NBLOCK);
-  }
-
   static __device__
     float2 getMinMax(float2 range) {
     __shared__ float sharedMin[NTHREAD];
@@ -121,7 +114,7 @@ namespace {
     }
   }
 
-  template<int NLEAF, bool ISROOT>
+  template<int NCRIT, bool ISROOT>
     static __global__ __launch_bounds__(NTHREAD, 8)
     void buildOctant(float4 box,
 		     const int cellParentIndex,
@@ -258,8 +251,8 @@ namespace {
     const int bodyEndOctant = octantSizeScan[warpIdx];
     const int bodyBeginOctant = bodyEndOctant - numBodiesOctant;
     const int numBodiesOctantLane = laneIdx < 8 ? octantSize[laneIdx] : 0;
-    const int numNodesLane = exclusiveScanBool(numBodiesOctantLane > NLEAF);
-    const int numLeafsLane = exclusiveScanBool(0 < numBodiesOctantLane && numBodiesOctantLane <= NLEAF);
+    const int numNodesLane = exclusiveScanBool(numBodiesOctantLane > NCRIT);
+    const int numLeafsLane = exclusiveScanBool(0 < numBodiesOctantLane && numBodiesOctantLane <= NCRIT);
     int * numNodes = subOctantSize;                             // Reuse shared memory
     int * numLeafs = subOctantSize + 8;
     int & numNodesScan = subOctantSize[16];
@@ -273,7 +266,7 @@ namespace {
 #pragma unroll
     for (int i=2; i>=0; i--)
       maxBodiesOctant = max(maxBodiesOctant, __shfl_xor(maxBodiesOctant, 1<<i));
-    const int numNodesWarp = reduceBool(numBodiesOctantLane > NLEAF);
+    const int numNodesWarp = reduceBool(numBodiesOctantLane > NCRIT);
     if (threadIdx.x == 0 && numNodesWarp > 0) {
       numNodesScan = atomicAdd(&numNodesGlob, numNodesWarp);
       assert(numNodesScan < maxCellsGlob);
@@ -296,7 +289,7 @@ namespace {
     const int nodeOffset = numNodes[warpIdx];
     const int leafOffset = numLeafs[warpIdx];
 
-    if (numBodiesOctant > NLEAF) {
+    if (numBodiesOctant > NCRIT) {
       octantSize = octantSizeBase + nodeOffset * 8;             // Warp offset
       octantSizeScan = octantSizeScanBase + nodeOffset * 8;
       blockCounter = blockCounterBase + nodeOffset;
@@ -317,22 +310,21 @@ namespace {
     }
 
     if (numNodesWarp > 0 && warpIdx == 0) {
-      int packedOctant = numBodiesOctantLane > NLEAF ? laneIdx << (3*numNodesLane) : 0;
+      int packedOctant = numBodiesOctantLane > NCRIT ? laneIdx << (3*numNodesLane) : 0;
 #pragma unroll
       for (int i=4; i>=0; i--)
 	packedOctant |= __shfl_xor(packedOctant, 1<<i);
 
       if (threadIdx.x == 0) {
-	dim3 grid, block;
-	getKernelSize(grid, block, maxBodiesOctant);
-	grid.y = numNodesWarp;
-	buildOctant<NLEAF,false><<<grid,block>>>
+	dim3 NBLOCK = min(max(maxBodiesOctant / NTHREAD, 1), 512);
+        NBLOCK.y = numNodesWarp;
+	buildOctant<NCRIT,false><<<NBLOCK,NTHREAD>>>
 	  (box, cellIndexBase+blockIdx.y, numCellsScan, packedOctant, octantSizeBase, octantSizeScanBase,
 	   subOctantSizeScanBase, blockCounterBase, bodyRangeBase, bodyPos2, bodyPos, level+1);
       }
     }
 
-    if (numBodiesOctant <= NLEAF && numBodiesOctant > 0) {
+    if (numBodiesOctant <= NCRIT && numBodiesOctant > 0) {
       if (laneIdx == 0) {
 	atomicAdd(&numLeafsGlob, 1);
 	const CellData leafData(level+1, cellIndexBase+blockIdx.y, bodyBeginOctant, bodyEndOctant-bodyBeginOctant);
@@ -385,7 +377,7 @@ namespace {
     }
   }
 
-  template<int NLEAF>
+  template<int NCRIT>
     static __global__
     void buildOctree(const int numBodies,
 		     const float4 *domain,
@@ -396,8 +388,7 @@ namespace {
 		     int * d_blockCounterPool,
 		     int2 * d_bodyRangePool,
 		     float4 * d_bodyPos,
-		     float4 * d_bodyPos2,
-		     int * numCellsGlob_return = NULL) {
+		     float4 * d_bodyPos2) {
     sourceCells = d_sourceCells;
     octantSizePool = d_octantSizePool;
     octantSizeScanPool = d_octantSizeScanPool;
@@ -408,7 +399,7 @@ namespace {
     int *octantSize = new int[8];
     for (int k=0; k<8; k++)
       octantSize[k] = 0;
-    getRootOctantSize<<<256, 256>>>(numBodies, octantSize, *domain, d_bodyPos);
+    getRootOctantSize<<<NTHREAD, NTHREAD>>>(numBodies, octantSize, *domain, d_bodyPos);
     assert(cudaGetLastError() == cudaSuccess);
     cudaDeviceSynchronize();
 
@@ -430,13 +421,10 @@ namespace {
     *blockCounter = 0;
     bodyRange->x = 0;
     bodyRange->y = numBodies;
-    dim3 grid, block;
-    getKernelSize(grid, block, numBodies);
-    buildOctant<NLEAF,true><<<grid, block>>>
+    const int NBLOCK = min(max(numBodies / NTHREAD, 1), 512);
+    buildOctant<NCRIT,true><<<NBLOCK, NTHREAD>>>
       (*domain, 0, 0, 0, octantSize, octantSizeScan, subOctantSizeScan, blockCounter, bodyRange, d_bodyPos, d_bodyPos2);
     assert(cudaDeviceSynchronize() == cudaSuccess);
-    if (numCellsGlob_return != NULL)
-      *numCellsGlob_return = numCellsGlob;
     delete [] octantSize;
     delete [] octantSizeScan;
     delete [] subOctantSizeScan;
@@ -531,7 +519,7 @@ class Build {
 	    float4 * d_domain,
 	    int2 * d_levelRange,
 	    CellData * d_sourceCells,
-	    const int NLEAF) {
+	    const int NCRIT) {
     cuda_mem<float3> d_bounds;
     cuda_mem<int> d_octantSizePool;
     cuda_mem<int> d_octantSizeScanPool;
@@ -582,7 +570,7 @@ class Build {
     CUDA_SAFE_CALL(cudaMemset(d_bodyRangePool, 0, maxNode*sizeof(int2)));
     cudaDeviceSynchronize();
     t0 = get_time();
-    switch (NLEAF) {
+    switch (NCRIT) {
     case 16:
       buildOctree<16><<<1,1>>>(numBodies, d_domain, d_sourceCells, d_octantSizePool, d_octantSizeScanPool, d_subOctantSizeScanPool,
 			       d_blockCounterPool, d_bodyRangePool, d_bodyPos, d_bodyPos2);

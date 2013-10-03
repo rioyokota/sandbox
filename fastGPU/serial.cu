@@ -10,13 +10,13 @@ int main(int argc, char * argv[]) {
   const int seed = 19810614;
   const float eps = 0.05;
   const float theta = 0.75;
-  const int nleaf = 64;
+  const int ncrit = 64;
 
   fprintf(stdout,"--- FMM Parameters ---------------\n");
   fprintf(stdout,"numBodies            : %d\n",numBodies);
   fprintf(stdout,"P                    : %d\n",3);
   fprintf(stdout,"theta                : %f\n",theta);
-  fprintf(stdout,"nleaf                : %d\n",nleaf);
+  fprintf(stdout,"ncrit                : %d\n",ncrit);
   const Plummer data(numBodies, seed);
 
   host_mem<float4> h_bodyPos;
@@ -57,7 +57,7 @@ int main(int argc, char * argv[]) {
   fprintf(stdout,"--- FMM Profiling ----------------\n");
   double t0 = get_time();
   Build build;
-  int2 numLS = build.tree(numBodies, d_bodyPos, d_bodyPos2, d_domain, d_levelRange, d_sourceCells, nleaf);
+  int2 numLS = build.tree(numBodies, d_bodyPos, d_bodyPos2, d_domain, d_levelRange, d_sourceCells, ncrit);
   int numLevels = numLS.x;
   int numSources = numLS.y;
   d_sourceCenter.alloc(numSources);
