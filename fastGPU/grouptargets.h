@@ -1,89 +1,73 @@
 #pragma once
 
+#define NBITS 21
+
 extern void sort(const int size, unsigned long long * key, int * value);
 extern void scan(const int size, unsigned long long * key, int * value);
 
 namespace {
-  template<int NBITS>
-    static __device__
-    unsigned long long getHilbert(int3 pos) {
-    const int C[8] = {0, 1, 7, 6, 3, 2, 4, 5};
-    int temp;
+  static __device__
+    unsigned long long getHilbert(int3 iX) {
+    const int octantMap[8] = {0, 1, 7, 6, 3, 2, 4, 5};
     int mask = 1 << (NBITS - 1);
     unsigned long long key = 0;
 #pragma unroll
-    for (int i=0; i<NBITS; i++, mask >>= 1) {
-      int ix = (pos.x & mask) ? 1 : 0;
-      int iy = (pos.y & mask) ? 1 : 0;
-      int iz = (pos.z & mask) ? 1 : 0;
-      const int index = (ix << 2) + (iy << 1) + iz;
-
-      int Cvalue;
-      if(index == 0)
-	{
-	  temp = pos.z; pos.z = pos.y; pos.y = temp;
-	  Cvalue = C[0];
-	}
-      else  if(index == 1 || index == 5)
-	{
-	  temp = pos.x; pos.x = pos.y; pos.y = temp;
-	  if (index == 1) Cvalue = C[1];
-	  else            Cvalue = C[5];
-	}
-      else  if(index == 4 || index == 6)
-	{
-	  pos.x = (pos.x) ^ (-1);
-	  pos.z = (pos.z) ^ (-1);
-	  if (index == 4) Cvalue = C[4];
-	  else            Cvalue = C[6];
-	}
-      else  if(index == 7 || index == 3)
-	{
-	  temp  = (pos.x) ^ (-1);
-	  pos.x = (pos.y) ^ (-1);
-	  pos.y = temp;
-	  if (index == 3) Cvalue = C[3];
-	  else            Cvalue = C[7];
-	}
-      else
-	{
-	  temp = (pos.z) ^ (-1);
-	  pos.z = (pos.y) ^ (-1);
-	  pos.y = temp;
-	  Cvalue = C[2];
-	}
-
-      key = (key<<3) + Cvalue;
+    for (int i=0; i<NBITS; i++) {
+      const int ix = (iX.x & mask) ? 1 : 0;
+      const int iy = (iX.y & mask) ? 1 : 0;
+      const int iz = (iX.z & mask) ? 1 : 0;
+      const int octant = (ix << 2) + (iy << 1) + iz;
+      if(octant == 0) {
+	const int temp = iX.z;
+	iX.z = iX.y;
+	iX.y = temp;
+      } else if(octant == 1 || octant == 5) {
+	const int temp = iX.x;
+	iX.x = iX.y;
+	iX.y = temp;
+      } else if(octant == 4 || octant == 6){
+	iX.x = (iX.x) ^ (-1);
+	iX.z = (iX.z) ^ (-1);
+      } else if(octant == 3 || octant == 7) {
+	const int temp = (iX.x) ^ (-1);
+	iX.x = (iX.y) ^ (-1);
+	iX.y = temp;
+      } else {
+	const int temp = (iX.z) ^ (-1);
+	iX.z = (iX.y) ^ (-1);
+	iX.y = temp;
+      }
+      key = (key<<3) + octantMap[octant];
+      mask >>= 1;
     }
     return key;
   }
 
-  template<int NBINS>
-    static __global__
+  static __global__
     void getKeys(const int n,
 		 const float4 *d_domain,
 		 const float4 *bodyPos,
 		 unsigned long long *keys,
 		 int *values)
-    {
-      const int idx = blockIdx.x*blockDim.x + threadIdx.x;
-      if (idx >= n) return;
+  {
+    const int idx = blockIdx.x*blockDim.x + threadIdx.x;
+    if (idx >= n) return;
 
-      const float4 body = bodyPos[idx];
+    const float4 body = bodyPos[idx];
 
-      const float4 domain = d_domain[0];
-      const float inv_domain_size = 0.5f / domain.w;
-      const float3 bmin = {domain.x - domain.w,
-			   domain.y - domain.w,
-			   domain.z - domain.w};
+    const float4 domain = d_domain[0];
+    const float inv_domain_size = 0.5f / domain.w;
+    const float3 bmin = {domain.x - domain.w,
+			 domain.y - domain.w,
+			 domain.z - domain.w};
 
-      const int xc = static_cast<int>((body.x - bmin.x) * inv_domain_size * (1<<NBINS));
-      const int yc = static_cast<int>((body.y - bmin.y) * inv_domain_size * (1<<NBINS));
-      const int zc = static_cast<int>((body.z - bmin.z) * inv_domain_size * (1<<NBINS));
+    const int xc = static_cast<int>((body.x - bmin.x) * inv_domain_size * (1<<NBITS));
+    const int yc = static_cast<int>((body.y - bmin.y) * inv_domain_size * (1<<NBITS));
+    const int zc = static_cast<int>((body.z - bmin.z) * inv_domain_size * (1<<NBITS));
 
-      keys  [idx] = getHilbert<NBINS>(make_int3(xc,yc,zc));
-      values[idx] = idx;
-    }
+    keys  [idx] = getHilbert(make_int3(xc,yc,zc));
+    values[idx] = idx;
+  }
 
   static __global__
     void permuteBodies(const int n, const int *map, const float4 *in, float4 *out) {
@@ -191,7 +175,7 @@ class Group {
     cudaDeviceSynchronize();
 
     const double t0 = get_time();
-    getKeys<NBINS><<<NBLOCK,NTHREAD>>>(numBodies, d_domain, d_bodyPos, d_key.ptr, d_value.ptr);
+    getKeys<<<NBLOCK,NTHREAD>>>(numBodies, d_domain, d_bodyPos, d_key.ptr, d_value.ptr);
     sort(numBodies, d_key.ptr, d_value.ptr);
     permuteBodies<<<NBLOCK,NTHREAD>>>(numBodies, d_value, d_bodyPos, d_bodyPos2);
 
