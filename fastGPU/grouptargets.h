@@ -48,8 +48,7 @@ namespace {
 		 const float4 * d_domain,
 		 const float4 * bodyPos,
 		 unsigned long long * keys,
-		 int * values)
-  {
+		 int * values) {
     const int bodyIdx = blockIdx.x * blockDim.x + threadIdx.x;
     if (bodyIdx >= numBodies) return;
     const float4 pos = bodyPos[bodyIdx];
@@ -66,60 +65,36 @@ namespace {
   }
 
   static __global__
-    void permuteBodies(const int n, const int *map, const float4 *in, float4 *out) {
-    const int gidx = blockDim.x * blockIdx.x + threadIdx.x;
-    if (gidx >= n) return;
-    out[gidx] = in[map[gidx]];
+    void permuteBodies(const int numBodies, const int * value,
+		       const float4 * bodyPos, float4 * bodyPos2) {
+    const int bodyIdx = blockDim.x * blockIdx.x + threadIdx.x;
+    if (bodyIdx >= numBodies) return;
+    bodyPos2[bodyIdx] = bodyPos[value[bodyIdx]];
   }
 
-
   static __global__
-    void mask_keys(
-		   const int n,
-		   const unsigned long long mask,
-		   unsigned long long *keys,
-		   unsigned long long *keys_inv,
-		   int *bodyBegIdx,
-		   int *bodyEndIdx)
-  {
-    const int gidx = blockIdx.x*blockDim.x + threadIdx.x;
-    if (gidx >= n) return;
-
-    keys[gidx] &= mask;
-    keys_inv[n-gidx-1] = keys[gidx];
-
-    extern __shared__ unsigned long long shKeys[];
-
-    const int tid = threadIdx.x;
-    shKeys[tid+1] = keys[gidx] & mask;
-
-    int shIdx = 0;
-    int gmIdx = max(blockIdx.x*blockDim.x-1,0);
-    if (tid == 1)
-      {
-        shIdx = blockDim.x+1;
-        gmIdx = min(blockIdx.x*blockDim.x + blockDim.x,n-1);
-      }
-    if (tid < 2)
-      shKeys[shIdx] = keys[gmIdx] & mask;
-
-    __syncthreads();
-
-    const int idx = tid+1;
-    const unsigned long long currKey = shKeys[idx  ];
-    const unsigned long long prevKey = shKeys[idx-1];
-    const unsigned long long nextKey = shKeys[idx+1];
-
-    if (currKey != prevKey || gidx == 0)
-      bodyBegIdx[gidx] = gidx;
+    void maskKeys(const int numBodies,
+		  const unsigned long long mask,
+		  unsigned long long * keys,
+		  unsigned long long * keys2,
+		  int * bodyBegIdx,
+		  int * bodyEndIdx) {
+    const int bodyIdx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (bodyIdx >= numBodies) return;
+    keys2[numBodies-bodyIdx-1] = keys[bodyIdx] & mask;
+    const int nextBodyIdx = min(bodyIdx+1, numBodies-1);
+    const int prevBodyIdx = max(bodyIdx-1, 0);
+    const unsigned long long currKey = keys[bodyIdx] & mask;
+    const unsigned long long nextKey = keys[nextBodyIdx] & mask;
+    const unsigned long long prevKey = keys[prevBodyIdx] & mask;
+    if (currKey != prevKey || bodyIdx == 0)
+      bodyBegIdx[bodyIdx] = bodyIdx;
     else
-      bodyBegIdx[gidx] = 0;
-
-    if (currKey != nextKey || gidx == n-1)
-      bodyEndIdx[n-1-gidx] = gidx+1;
+      bodyBegIdx[bodyIdx] = 0;
+    if (currKey != nextKey || bodyIdx == numBodies-1)
+      bodyEndIdx[numBodies-1-bodyIdx] = bodyIdx+1;
     else
-      bodyEndIdx[n-1-gidx] = 0;
-
+      bodyEndIdx[numBodies-1-bodyIdx] = 0;
   }
 
   __device__ unsigned int groupCounter= 0;
@@ -130,19 +105,19 @@ namespace {
 		     const int *bodyEndIdx,
 		     int2 *targetRange)
   {
-    const int gidx = blockDim.x * blockIdx.x + threadIdx.x;
-    if (gidx >= n) return;
+    const int bodyIdx = blockDim.x * blockIdx.x + threadIdx.x;
+    if (bodyIdx >= n) return;
 
-    const int bodyBeg = bodyBegIdx[gidx];
-    assert(gidx >= bodyBeg);
+    const int bodyBeg = bodyBegIdx[bodyIdx];
+    assert(bodyIdx >= bodyBeg);
 
-    const int igroup   = (gidx - bodyBeg)/NCRIT;
+    const int igroup   = (bodyIdx - bodyBeg)/NCRIT;
     const int groupBeg = bodyBeg + igroup * NCRIT;
 
-    if (gidx == groupBeg)
+    if (bodyIdx == groupBeg)
       {
         const int groupIdx = atomicAdd(&groupCounter,1);
-        const int bodyEnd = bodyEndIdx[n-1-gidx];
+        const int bodyEnd = bodyEndIdx[n-1-bodyIdx];
         targetRange[groupIdx] = make_int2(groupBeg, min(NCRIT, bodyEnd - groupBeg));
       }
   }
@@ -163,7 +138,6 @@ class Group {
 	      float4 * d_domain, int2 * d_targetRange, int levelSplit, const int NCRIT) {
     const int NTHREAD = 256;
     const int NBLOCK = (numBodies-1) / NTHREAD + 1;
-    const int NBINS = 21;
     cuda_mem<unsigned long long> d_key;
     cuda_mem<int> d_value;
     d_key.alloc(numBodies);
@@ -180,13 +154,14 @@ class Group {
     d_bodyBegIdx.alloc(numBodies);
     d_bodyEndIdx.alloc(numBodies);
     d_key2.alloc(numBodies);
+
     unsigned long long mask = 0;
-    for (int i=0; i<NBINS; i++) {
+    for (int i=0; i<NBITS; i++) {
       mask <<= 3;
       if (i < levelSplit)
 	mask |= 0x7;
     }
-    mask_keys<<<NBLOCK,NTHREAD,(NTHREAD+2)*sizeof(unsigned long long)>>>(numBodies, mask, d_key.ptr, d_key2.ptr, d_bodyBegIdx, d_bodyEndIdx);
+    maskKeys<<<NBLOCK,NTHREAD,(NTHREAD+2)*sizeof(unsigned long long)>>>(numBodies, mask, d_key.ptr, d_key2.ptr, d_bodyBegIdx, d_bodyEndIdx);
     scan(numBodies, d_key.ptr, d_bodyBegIdx.ptr);
     scan(numBodies, d_key2.ptr, d_bodyEndIdx.ptr);
     make_groups<<<NBLOCK,NTHREAD>>>(numBodies, NCRIT, d_bodyBegIdx, d_bodyEndIdx, d_targetRange);
