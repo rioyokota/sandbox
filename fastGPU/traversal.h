@@ -14,7 +14,7 @@ namespace {
   texture<float4, 1, cudaReadModeElementType> texBody;
 
   static __device__ __forceinline__
-  float6 make_float6(float xx, float yy, float zz, float xy, float xz, float yz) {
+    float6 make_float6(float xx, float yy, float zz, float xy, float xz, float yz) {
     float6 v;
     v.xx = xx;
     v.yy = yy;
@@ -26,15 +26,15 @@ namespace {
   }
 
   static __device__ __forceinline__
-  int ringAddr(const int i) {
+    int ringAddr(const int i) {
     return i & (CELL_LIST_MEM_PER_WARP - 1);
   }
 
   static __device__ __forceinline__
-  bool applyMAC(const float4 sourceCenter,
-                const CellData sourceData,
-                const float3 targetCenter,
-                const float3 targetSize) {
+    bool applyMAC(const float4 sourceCenter,
+		  const CellData sourceData,
+		  const float3 targetCenter,
+		  const float3 targetSize) {
     float3 dr = make_float3(fabsf(targetCenter.x - sourceCenter.x) - (targetSize.x),
                             fabsf(targetCenter.y - sourceCenter.y) - (targetSize.y),
                             fabsf(targetCenter.z - sourceCenter.z) - (targetSize.z));
@@ -46,10 +46,10 @@ namespace {
   }
 
   static __device__ __forceinline__
-  float4 P2P(float4 acc,
-             const float3 pos,
-	     const float4 posj,
-	     const float EPS2) {
+    float4 P2P(float4 acc,
+	       const float3 pos,
+	       const float4 posj,
+	       const float EPS2) {
     const float3 dr    = make_float3(posj.x - pos.x, posj.y - pos.y, posj.z - pos.z);
     const float r2     = dr.x*dr.x + dr.y*dr.y + dr.z*dr.z + EPS2;
     const float rinv   = rsqrtf(r2);
@@ -64,11 +64,11 @@ namespace {
   }
 
   static __device__
-  float4 M2P(float4 acc,
-	     const float3 pos,
-	     const float4 M0,
-	     const float6 Q0,
-	     float EPS2) {
+    float4 M2P(float4 acc,
+	       const float3 pos,
+	       const float4 M0,
+	       const float6 Q0,
+	       float EPS2) {
     const float3 dr = make_float3(pos.x - M0.x, pos.y - M0.y, pos.z - M0.z);
     const float  r2 = dr.x * dr.x + dr.y * dr.y + dr.z * dr.z + EPS2;
     const float rinv  = rsqrtf(r2);
@@ -101,11 +101,11 @@ namespace {
   }
 
   template<int NI, bool FULL>
-  static __device__
-  void approxAcc(float4 acc_i[NI],
-		 const float3 pos_i[NI],
-		 const int cellIdx,
-		 const float EPS2) {
+    static __device__
+    void approxAcc(float4 acc_i[NI],
+		   const float3 pos_i[NI],
+		   const int cellIdx,
+		   const float EPS2) {
     float4 M0, Q0;
     float2 Q1;
     if (FULL || cellIdx >= 0) {
@@ -127,15 +127,15 @@ namespace {
   }
 
   template<int BLOCKDIM2, int NI>
-  static __device__
-  uint2 traverse_warp(float4 acc_i[NI],
-		      const float3 pos_i[NI],
-		      const float3 targetCenter,
-		      const float3 targetSize,
-		      const float EPS2,
-		      const int2 rootRange,
-		      volatile int *tempQueue,
-		      int *cellQueue) {
+    static __device__
+    uint2 traverse_warp(float4 acc_i[NI],
+			const float3 pos_i[NI],
+			const float3 targetCenter,
+			const float3 targetSize,
+			const float EPS2,
+			const int2 rootRange,
+			volatile int *tempQueue,
+			int *cellQueue) {
     const int laneIdx = threadIdx.x & (WARP_SIZE-1);
 
     uint2 counters = {0,0};
@@ -288,7 +288,7 @@ namespace {
   __device__ unsigned int       maxM2PGlob = 0;
 
   template<int NTHREAD2, int NI>
-  __launch_bounds__(1<<NTHREAD2, 1024/(1<<NTHREAD2))
+    __launch_bounds__(1<<NTHREAD2, 1024/(1<<NTHREAD2))
     static __global__ 
     void traverse(const int numTargets,
 		  const float EPS2,
@@ -367,10 +367,10 @@ namespace {
   }
 
   template<int NTHREAD2>
-  static __global__
-  void directKernel(const int numSource,
-		    const float EPS2,
-		    float4 *acc) {
+    static __global__
+    void directKernel(const int numSource,
+		      const float EPS2,
+		      float4 *acc) {
     const int laneIdx = threadIdx.x & (WARP_SIZE-1);
     const int warpIdx = threadIdx.x >> WARP_SIZE2;
     const int NTHREAD = 1 << NTHREAD2;

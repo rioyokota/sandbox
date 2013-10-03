@@ -20,12 +20,12 @@ namespace {
   __device__ CellData * sourceCells;
 
   static __device__ __forceinline__
-  int getOctant(const float4 &box, const float4 &body) {
+    int getOctant(const float4 &box, const float4 &body) {
     return ((box.x <= body.x) << 0) + ((box.y <= body.y) << 1) + ((box.z <= body.z) << 2);
   }
 
   static __device__ __forceinline__
-  float4 getChild(const float4 &box, const int octant) {
+    float4 getChild(const float4 &box, const int octant) {
     const float R = 0.5f * box.w;
     return make_float4(box.x + R * (octant & 1 ? 1.0f : -1.0f),
 		       box.y + R * (octant & 2 ? 1.0f : -1.0f),
@@ -34,7 +34,7 @@ namespace {
   }
 
   static __device__ __forceinline__
-  void getKernelSize(dim3 &grid, dim3 &block, const int N) {
+    void getKernelSize(dim3 &grid, dim3 &block, const int N) {
     const int NTHREADS = NWARPS * WARP_SIZE;
     const int NGRIDS = min(max(N / NTHREADS, 1), 512);
     block = dim3(NTHREADS);
@@ -42,8 +42,8 @@ namespace {
   }
 
   template<int NTHREAD2>
-  static __device__
-  float2 getMinMax(float2 range) {
+    static __device__
+    float2 getMinMax(float2 range) {
     const int NTHREAD = 1 << NTHREAD2;
     extern __shared__ float shared[];
     float *sharedMin = shared;
@@ -75,11 +75,11 @@ namespace {
   }
 
   template<const int NTHREAD2>
-  static __global__
-  void getBounds(const int numBodies,
-		 float3 * bounds,
-		 float4 * domain,
-		 const float4 * bodyPos) {
+    static __global__
+    void getBounds(const int numBodies,
+		   float3 * bounds,
+		   float4 * domain,
+		   const float4 * bodyPos) {
     const int NTHREAD = 1 << NTHREAD2;
     const int NBLOCK = NTHREAD;
     const int begin = blockIdx.x * NTHREAD + threadIdx.x;
@@ -131,19 +131,19 @@ namespace {
   }
 
   template<int NLEAF, bool ISROOT>
-  static __global__ __launch_bounds__(256, 8)
-  void buildOctant(float4 box,
-		   const int cellParentIndex,
-		   const int cellIndexBase,
-		   const int packedOctant,
-		   int * octantSizeBase,
-		   int * octantSizeScanBase,
-		   int * subOctantSizeScanBase,
-		   int * blockCounterBase,
-		   int2 * bodyRangeBase,
-		   float4 * bodyPos,
-		   float4 * bodyPos2,
-		   const int level = 0) {
+    static __global__ __launch_bounds__(256, 8)
+    void buildOctant(float4 box,
+		     const int cellParentIndex,
+		     const int cellIndexBase,
+		     const int packedOctant,
+		     int * octantSizeBase,
+		     int * octantSizeScanBase,
+		     int * subOctantSizeScanBase,
+		     int * blockCounterBase,
+		     int2 * bodyRangeBase,
+		     float4 * bodyPos,
+		     float4 * bodyPos2,
+		     const int level = 0) {
     const int laneIdx = threadIdx.x & (WARP_SIZE-1);
     const int warpIdx = threadIdx.x >> WARP_SIZE2;
     int * octantSize = octantSizeBase + blockIdx.y * 8;
@@ -393,67 +393,67 @@ namespace {
   }
 
   template<int NLEAF>
-  static __global__
-  void buildOctree(const int numBodies,
-		   const float4 *domain,
-		   CellData * d_sourceCells,
-		   int * d_octantSizePool,
-		   int * d_octantSizeScanPool,
-		   int * d_subOctantSizeScanPool,
-		   int * d_blockCounterPool,
-		   int2 * d_bodyRangePool,
-		   float4 * d_bodyPos,
-		   float4 * d_bodyPos2,
-		   int * numCellsGlob_return = NULL) {
-      sourceCells = d_sourceCells;
-      octantSizePool = d_octantSizePool;
-      octantSizeScanPool = d_octantSizeScanPool;
-      subOctantSizeScanPool = d_subOctantSizeScanPool;
-      blockCounterPool = d_blockCounterPool;
-      bodyRangePool = d_bodyRangePool;
+    static __global__
+    void buildOctree(const int numBodies,
+		     const float4 *domain,
+		     CellData * d_sourceCells,
+		     int * d_octantSizePool,
+		     int * d_octantSizeScanPool,
+		     int * d_subOctantSizeScanPool,
+		     int * d_blockCounterPool,
+		     int2 * d_bodyRangePool,
+		     float4 * d_bodyPos,
+		     float4 * d_bodyPos2,
+		     int * numCellsGlob_return = NULL) {
+    sourceCells = d_sourceCells;
+    octantSizePool = d_octantSizePool;
+    octantSizeScanPool = d_octantSizeScanPool;
+    subOctantSizeScanPool = d_subOctantSizeScanPool;
+    blockCounterPool = d_blockCounterPool;
+    bodyRangePool = d_bodyRangePool;
 
-      int *octantSize = new int[8];
-      for (int k=0; k<8; k++)
-	octantSize[k] = 0;
-      getRootOctantSize<<<256, 256>>>(numBodies, octantSize, *domain, d_bodyPos);
-      assert(cudaGetLastError() == cudaSuccess);
-      cudaDeviceSynchronize();
+    int *octantSize = new int[8];
+    for (int k=0; k<8; k++)
+      octantSize[k] = 0;
+    getRootOctantSize<<<256, 256>>>(numBodies, octantSize, *domain, d_bodyPos);
+    assert(cudaGetLastError() == cudaSuccess);
+    cudaDeviceSynchronize();
 
-      int * octantSizeScan = new int[8];
-      int * subOctantSizeScan = new int[64];
-      int * blockCounter = new int;
-      int2 * bodyRange = new int2;
+    int * octantSizeScan = new int[8];
+    int * subOctantSizeScan = new int[64];
+    int * blockCounter = new int;
+    int2 * bodyRange = new int2;
 #pragma unroll
-      for (int k=0; k<8; k++)
-	octantSizeScan[k] = k == 0 ? 0 : octantSizeScan[k-1] + octantSize[k-1];
+    for (int k=0; k<8; k++)
+      octantSizeScan[k] = k == 0 ? 0 : octantSizeScan[k-1] + octantSize[k-1];
 #pragma unroll
-      for (int k=0; k<64; k++)
-	subOctantSizeScan[k] = 0;
+    for (int k=0; k<64; k++)
+      subOctantSizeScan[k] = 0;
 
-      numNodesGlob = 0;
-      numLeafsGlob = 0;
-      numLevelsGlob = 0;
-      numCellsGlob  = 0;
-      *blockCounter = 0;
-      bodyRange->x = 0;
-      bodyRange->y = numBodies;
-      dim3 grid, block;
-      getKernelSize(grid, block, numBodies);
-      buildOctant<NLEAF,true><<<grid, block>>>
-	(*domain, 0, 0, 0, octantSize, octantSizeScan, subOctantSizeScan, blockCounter, bodyRange, d_bodyPos, d_bodyPos2);
-      assert(cudaDeviceSynchronize() == cudaSuccess);
-      if (numCellsGlob_return != NULL)
-	*numCellsGlob_return = numCellsGlob;
-      delete [] octantSize;
-      delete [] octantSizeScan;
-      delete [] subOctantSizeScan;
-      delete [] blockCounter;
-      delete [] bodyRange;
-    }
+    numNodesGlob = 0;
+    numLeafsGlob = 0;
+    numLevelsGlob = 0;
+    numCellsGlob  = 0;
+    *blockCounter = 0;
+    bodyRange->x = 0;
+    bodyRange->y = numBodies;
+    dim3 grid, block;
+    getKernelSize(grid, block, numBodies);
+    buildOctant<NLEAF,true><<<grid, block>>>
+      (*domain, 0, 0, 0, octantSize, octantSizeScan, subOctantSizeScan, blockCounter, bodyRange, d_bodyPos, d_bodyPos2);
+    assert(cudaDeviceSynchronize() == cudaSuccess);
+    if (numCellsGlob_return != NULL)
+      *numCellsGlob_return = numCellsGlob;
+    delete [] octantSize;
+    delete [] octantSizeScan;
+    delete [] subOctantSizeScan;
+    delete [] blockCounter;
+    delete [] bodyRange;
+  }
 
 
   static __global__
-  void getKeys(const int numCells, const CellData * sourceCells, CellData * sourceCells2, int * key, int * value) {
+    void getKeys(const int numCells, const CellData * sourceCells, CellData * sourceCells2, int * key, int * value) {
     const int cellIdx = blockIdx.x * blockDim.x + threadIdx.x;
     if (cellIdx >= numCells) return;
     const CellData cell = sourceCells[cellIdx];
@@ -463,7 +463,7 @@ namespace {
   }
 
   static __global__
-  void getLevelRange(const int numCells, const int * levels, int2 * levelRange) {
+    void getLevelRange(const int numCells, const int * levels, int2 * levelRange) {
     const int cellIdx = blockIdx.x * blockDim.x + threadIdx.x;
     if (cellIdx >= numCells) return;
     const int nextCellIdx = min(cellIdx+1, numCells-1);
@@ -476,7 +476,7 @@ namespace {
   }
 
   static __global__
-  void getPermutation(const int numCells, const int * value, int * key) {
+    void getPermutation(const int numCells, const int * value, int * key) {
     const int newIdx = blockIdx.x * blockDim.x + threadIdx.x;
     if (newIdx >= numCells) return;
     const int oldIdx = value[newIdx];
@@ -484,8 +484,8 @@ namespace {
   }
 
   static __global__
-  void permuteCells(const int numCells, const int * value, const int * key,
-		    const CellData * sourceCells2, CellData * sourceCells) {
+    void permuteCells(const int numCells, const int * value, const int * key,
+		      const CellData * sourceCells2, CellData * sourceCells) {
     const int cellIdx = blockIdx.x * blockDim.x + threadIdx.x;
     if (cellIdx >= numCells) return;
     const int mapIdx = value[cellIdx];
@@ -499,8 +499,8 @@ namespace {
   }
 
   template<int NTHREAD2>
-  static __global__
-  void collectLeafs(const int numCells, const CellData * sourceCells, int * leafCells) {
+    static __global__
+    void collectLeafs(const int numCells, const CellData * sourceCells, int * leafCells) {
     const int laneIdx = threadIdx.x & (WARP_SIZE-1);
     const int warpIdx = threadIdx.x >> WARP_SIZE2;
     const int cellIdx = blockDim.x * blockIdx.x + threadIdx.x;
