@@ -366,56 +366,49 @@ namespace {
     }
   }
 
-  template<int NTHREAD2>
-    static __global__
+  static __global__
     void directKernel(const int numSource,
 		      const float EPS2,
-		      float4 *acc) {
+		      float4 * bodyAcc) {
     const int laneIdx = threadIdx.x & (WARP_SIZE-1);
-    const int warpIdx = threadIdx.x >> WARP_SIZE2;
-    const int NTHREAD = 1 << NTHREAD2;
     const int numChunk = (numSource - 1) / gridDim.x + 1;
     const int numWarpChunk = (numChunk - 1) / WARP_SIZE + 1;
     const int blockOffset = blockIdx.x * numChunk;
-    float pots, axs, ays ,azs;
-    float potc, axc, ayc ,azc;
-    float4 posi = tex1Dfetch(texBody, threadIdx.x);
-    __shared__ float4 source[NTHREAD];
-    float4 * posj = source + WARP_SIZE * warpIdx;
-    for ( int jb=0; jb<numWarpChunk; jb++ ) {
+    float4 accs, accc, posi = tex1Dfetch(texBody, threadIdx.x);
+    for (int jb=0; jb<numWarpChunk; jb++) {
       const int sourceIdx = min(blockOffset+jb*WARP_SIZE+laneIdx, numSource-1);
-      posj[laneIdx] = tex1Dfetch(texBody, sourceIdx);
-      if (sourceIdx >= numSource) posj[laneIdx].w = 0;
-      for( int j=0; j<WARP_SIZE; j++ ) {
-	float dx = posj[j].x - posi.x;
-	float dy = posj[j].y - posi.y;
-	float dz = posj[j].z - posi.z;
+      float4 posj = tex1Dfetch(texBody, sourceIdx);
+      if (sourceIdx >= numSource) posj.w = 0;
+      for (int j=0; j<WARP_SIZE; j++) {
+	float dx = __shfl(posj.x,j) - posi.x;
+	float dy = __shfl(posj.y,j) - posi.y;
+	float dz = __shfl(posj.z,j) - posi.z;
 	float R2 = dx * dx + dy * dy + dz * dz + EPS2;
 	float invR = rsqrtf(R2);
-        float y = - posj[j].w * invR - potc;
-        float t = pots + y;
-        potc = (t - pots) - y;
-        pots = t;
-	float invR3 = invR * invR * invR * posj[j].w;
-        y = dx * invR3 - axc;
-        t = axs + y;
-        axc = (t - axs) - y;
-        axs = t;
-        y = dy * invR3 - ayc;
-        t = ays + y;
-        ayc = (t - ays) - y;
-        ays = t;
-        y = dz * invR3 - azc;
-        t = azs + y;
-        azc = (t - azs) - y;
-        azs = t;
+        float y = - __shfl(posj.w,j) * invR - accc.w;
+        float t = accs.w + y;
+        accc.w = (t - accs.w) - y;
+        accs.w = t;
+	float invR3 = invR * invR * invR * __shfl(posj.w,j);
+        y = dx * invR3 - accc.x;
+        t = accs.x + y;
+        accc.x = (t - accs.x) - y;
+        accs.x = t;
+        y = dy * invR3 - accc.y;
+        t = accs.y + y;
+        accc.y = (t - accs.y) - y;
+        accs.y = t;
+        y = dz * invR3 - accc.z;
+        t = accs.z + y;
+        accc.z = (t - accs.z) - y;
+        accs.z = t;
       }
     }
     const int targetIdx = blockIdx.x * blockDim.x + threadIdx.x;
-    acc[targetIdx].x = axs + axc;
-    acc[targetIdx].y = ays + ayc;
-    acc[targetIdx].z = azs + azc;
-    acc[targetIdx].w = pots + potc;
+    bodyAcc[targetIdx].x = accs.x + accc.x;
+    bodyAcc[targetIdx].y = accs.y + accc.y;
+    bodyAcc[targetIdx].z = accs.z + accc.z;
+    bodyAcc[targetIdx].w = accs.w + accc.w;
   }
 }
 
@@ -493,7 +486,7 @@ class Traversal {
     assert(numTarget == NTHREAD);
     assert(numBlock == NBLOCK);
     bindTexture(texBody,d_bodyPos2,numBodies);
-    directKernel<9><<<NBLOCK,NTHREAD>>>(numBodies, eps*eps, d_bodyAcc2);
+    directKernel<<<NBLOCK,NTHREAD>>>(numBodies, eps*eps, d_bodyAcc2);
     unbindTexture(texBody);
     cudaDeviceSynchronize();
   }
