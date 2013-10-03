@@ -67,7 +67,7 @@ namespace {
 
   static __global__
     void permuteBodies(const int n, const int *map, const float4 *in, float4 *out) {
-    const int gidx = blockDim.x*blockIdx.x + threadIdx.x;
+    const int gidx = blockDim.x * blockIdx.x + threadIdx.x;
     if (gidx >= n) return;
     out[gidx] = in[map[gidx]];
   }
