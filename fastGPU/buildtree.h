@@ -1,8 +1,5 @@
 #pragma once
 
-#define NWARPS2 3
-#define NWARPS (1<<NWARPS2)
-
 extern void sort(const int size, int * key, int * value);
 
 namespace {
@@ -35,16 +32,13 @@ namespace {
 
   static __device__ __forceinline__
     void getKernelSize(dim3 &grid, dim3 &block, const int N) {
-    const int NTHREADS = NWARPS * WARP_SIZE;
-    const int NGRIDS = min(max(N / NTHREADS, 1), 512);
-    block = dim3(NTHREADS);
-    grid = dim3(NGRIDS);
+    const int NBLOCK = min(max(N / NTHREAD, 1), 512);
+    block = dim3(NTHREAD);
+    grid = dim3(NBLOCK);
   }
 
-  template<int NTHREAD2>
-    static __device__
+  static __device__
     float2 getMinMax(float2 range) {
-    const int NTHREAD = 1 << NTHREAD2;
     __shared__ float sharedMin[NTHREAD];
     __shared__ float sharedMax[NTHREAD];
     sharedMin[threadIdx.x] = range.x;
@@ -73,13 +67,11 @@ namespace {
     return range;
   }
 
-  template<const int NTHREAD2>
-    static __global__
+  static __global__
     void getBounds(const int numBodies,
 		   float3 * bounds,
 		   float4 * domain,
 		   const float4 * bodyPos) {
-    const int NTHREAD = 1 << NTHREAD2;
     const int NBLOCK = NTHREAD;
     const int begin = blockIdx.x * NTHREAD + threadIdx.x;
     float3 Xmin = {bodyPos[0].x, bodyPos[0].y, bodyPos[0].z};
@@ -96,9 +88,9 @@ namespace {
       }
     }
     float2 range;
-    range = getMinMax<NTHREAD2>(make_float2(Xmin.x, Xmax.x)); Xmin.x = range.x; Xmax.x = range.y;
-    range = getMinMax<NTHREAD2>(make_float2(Xmin.y, Xmax.y)); Xmin.y = range.x; Xmax.y = range.y;
-    range = getMinMax<NTHREAD2>(make_float2(Xmin.z, Xmax.z)); Xmin.z = range.x; Xmax.z = range.y;
+    range = getMinMax(make_float2(Xmin.x, Xmax.x)); Xmin.x = range.x; Xmax.x = range.y;
+    range = getMinMax(make_float2(Xmin.y, Xmax.y)); Xmin.y = range.x; Xmax.y = range.y;
+    range = getMinMax(make_float2(Xmin.z, Xmax.z)); Xmin.z = range.x; Xmax.z = range.y;
     if (threadIdx.x == 0) {
       bounds[blockIdx.x         ] = Xmin;
       bounds[blockIdx.x + NBLOCK] = Xmax;
@@ -114,9 +106,9 @@ namespace {
     if (lastBlock) {
       Xmin = bounds[threadIdx.x];
       Xmax = bounds[threadIdx.x + NBLOCK];
-      range = getMinMax<NTHREAD2>(make_float2(Xmin.x, Xmax.x)); Xmin.x = range.x; Xmax.x = range.y;
-      range = getMinMax<NTHREAD2>(make_float2(Xmin.y, Xmax.y)); Xmin.y = range.x; Xmax.y = range.y;
-      range = getMinMax<NTHREAD2>(make_float2(Xmin.z, Xmax.z)); Xmin.z = range.x; Xmax.z = range.y;
+      range = getMinMax(make_float2(Xmin.x, Xmax.x)); Xmin.x = range.x; Xmax.x = range.y;
+      range = getMinMax(make_float2(Xmin.y, Xmax.y)); Xmin.y = range.x; Xmax.y = range.y;
+      range = getMinMax(make_float2(Xmin.z, Xmax.z)); Xmin.z = range.x; Xmax.z = range.y;
       __syncthreads();
       if (threadIdx.x == 0) {
 	const float3 X = {(Xmax.x+Xmin.x)*0.5f, (Xmax.y+Xmin.y)*0.5f, (Xmax.z+Xmin.z)*0.5f};
@@ -143,6 +135,8 @@ namespace {
 		     float4 * bodyPos,
 		     float4 * bodyPos2,
 		     const int level = 0) {
+    const int NWARP2 = NTHREAD2 - WARP_SIZE2;
+    const int NWARP = 1 << NWARP2;
     const int laneIdx = threadIdx.x & (WARP_SIZE-1);
     const int warpIdx = threadIdx.x >> WARP_SIZE2;
     int * octantSize = octantSizeBase + blockIdx.y * 8;
@@ -154,12 +148,12 @@ namespace {
     const int bodyEnd   = bodyRange->y;
     const int numBodies = bodyRange->y - bodyRange->x;
     const int childOctant = (packedOctant >> (3*blockIdx.y)) & 0x7;
-    __shared__ int subOctantSizeLane[NWARPS*8*8];
+    __shared__ int subOctantSizeLane[NWARP*8*8];
     __shared__ int subOctantSize[8*8];
     float4 *childBox = (float4*)subOctantSize;
 
-    for (int i=0; i<8*8*NWARPS; i+=blockDim.x)
-      if (i+threadIdx.x < 8*8*NWARPS)
+    for (int i=0; i<8*8*NWARP; i+=blockDim.x)
+      if (i+threadIdx.x < 8*8*NWARP)
 	subOctantSizeLane[i+threadIdx.x] = 0;
     if (!ISROOT) box = getChild(box, childOctant);
     if (laneIdx == 0)
@@ -230,13 +224,13 @@ namespace {
 
 #pragma unroll
     for (int k=0; k<8; k+=4) {
-      int4 subOctantTemp = laneIdx < NWARPS ? (*(int4*)&subOctantSizeLane[laneIdx*64+warpIdx*8+k]) : make_int4(0,0,0,0);
+      int4 subOctantTemp = laneIdx < NWARP ? (*(int4*)&subOctantSizeLane[laneIdx*64+warpIdx*8+k]) : make_int4(0,0,0,0);
 #pragma unroll
-      for (int i=NWARPS2-1; i>=0; i--) {
-	subOctantTemp.x += __shfl_xor(subOctantTemp.x, 1<<i, NWARPS);
-	subOctantTemp.y += __shfl_xor(subOctantTemp.y, 1<<i, NWARPS);
-	subOctantTemp.z += __shfl_xor(subOctantTemp.z, 1<<i, NWARPS);
-	subOctantTemp.w += __shfl_xor(subOctantTemp.w, 1<<i, NWARPS);
+      for (int i=NWARP2-1; i>=0; i--) {
+	subOctantTemp.x += __shfl_xor(subOctantTemp.x, 1<<i, NWARP);
+	subOctantTemp.y += __shfl_xor(subOctantTemp.y, 1<<i, NWARP);
+	subOctantTemp.z += __shfl_xor(subOctantTemp.z, 1<<i, NWARP);
+	subOctantTemp.w += __shfl_xor(subOctantTemp.w, 1<<i, NWARP);
       }
       if (laneIdx == 0)
 	*(int4*)&subOctantSize[warpIdx*8+k] = subOctantTemp;
@@ -512,6 +506,7 @@ namespace {
     void collectLeafs(const int numCells,
 		      const CellData * sourceCells,
 		      int * leafCells) {
+    const int NWARP = 1 << (NTHREAD2 - WARP_SIZE2);
     const int laneIdx = threadIdx.x & (WARP_SIZE-1);
     const int warpIdx = threadIdx.x >> WARP_SIZE2;
     const int cellIdx = blockDim.x * blockIdx.x + threadIdx.x;
@@ -519,7 +514,7 @@ namespace {
     const bool isLeaf = cellIdx < numCells & cell.isLeaf();
     const int numLeafsLane = exclusiveScanBool(isLeaf);
     const int numLeafsWarp = reduceBool(isLeaf);
-    __shared__ int numLeafsBase[NWARPS];
+    __shared__ int numLeafsBase[NWARP];
     int & numLeafsScan = numLeafsBase[warpIdx];
     if (laneIdx == 0 && numLeafsWarp > 0)
       numLeafsScan = atomicAdd(&numLeafsGlob, numLeafsWarp);
@@ -537,9 +532,6 @@ class Build {
 	    int2 * d_levelRange,
 	    CellData * d_sourceCells,
 	    const int NLEAF) {
-    const int NTHREAD2 = 8;
-    const int NTHREAD  = 1 << NTHREAD2;
-
     cuda_mem<float3> d_bounds;
     cuda_mem<int> d_octantSizePool;
     cuda_mem<int> d_octantSizeScanPool;
@@ -565,7 +557,7 @@ class Build {
 
     cudaDeviceSynchronize();
     double t0 = get_time();
-    getBounds<NTHREAD2><<<NTHREAD,NTHREAD>>>(numBodies, d_bounds, d_domain, d_bodyPos);
+    getBounds<<<NTHREAD,NTHREAD>>>(numBodies, d_bounds, d_domain, d_bodyPos);
     kernelSuccess("cudaDomainSize");
     double dt = get_time() - t0;
     fprintf(stdout,"Get bounds           : %.7f s\n",  dt);

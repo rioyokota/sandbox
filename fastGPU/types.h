@@ -9,6 +9,8 @@
 
 #define WARP_SIZE2 5
 #define WARP_SIZE 32
+#define NTHREAD2 8
+#define NTHREAD 256
 
 struct float6 {
   float xx;

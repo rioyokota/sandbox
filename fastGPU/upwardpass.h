@@ -51,7 +51,6 @@ namespace {
 
   __device__ unsigned int nflops = 0;
 
-  template<int NTHREAD2>
   static __global__ __launch_bounds__(1<<NTHREAD2, 1024/(1<<NTHREAD2))
   void computeCellMultipoles(const int numBodies,
 			     const int numSources,
@@ -121,16 +120,14 @@ class Pass {
   void upward(const int numBodies, const int numSources, const float theta,
 	      float4 * d_bodyPos, CellData * d_sourceCells, float4 * d_sourceCenter,
 	      float4 * d_Monopole, float4 * d_Quadrupole0, float2 * d_Quadrupole1) {
-    const int NTHREAD2 = 8;
-    const int NTHREAD = 1 << NTHREAD2;
     const int NWARP = 1 << (NTHREAD2 - WARP_SIZE2);
-    const int NBLOCK = (numSources-1) /NWARP + 1;
-    CUDA_SAFE_CALL(cudaFuncSetCacheConfig(&computeCellMultipoles<NTHREAD2>,cudaFuncCachePreferL1));
+    const int NBLOCK = (numSources-1) / NWARP + 1;
+    CUDA_SAFE_CALL(cudaFuncSetCacheConfig(&computeCellMultipoles,cudaFuncCachePreferL1));
     cudaDeviceSynchronize();
     const double t0 = get_time();
-    computeCellMultipoles<NTHREAD2><<<NBLOCK,NTHREAD>>>(numBodies, numSources, d_sourceCells, d_bodyPos,
-							1.0 / theta,
-							d_sourceCenter, d_Monopole, d_Quadrupole0, d_Quadrupole1);
+    computeCellMultipoles<<<NBLOCK,NTHREAD>>>(numBodies, numSources, d_sourceCells, d_bodyPos,
+					      1.0 / theta,
+					      d_sourceCenter, d_Monopole, d_Quadrupole0, d_Quadrupole1);
     kernelSuccess("computeCellMultipoles");
     const double dt = get_time() - t0;
     fprintf(stdout,"Upward pass          : %.7f s\n", dt);

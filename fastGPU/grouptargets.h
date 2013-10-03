@@ -122,7 +122,6 @@ class Group {
  public:
   int targets(const int numBodies, float4 * d_bodyPos, float4 * d_bodyPos2,
 	      float4 * d_domain, int2 * d_targetRange, int levelSplit, const int NCRIT) {
-    const int NTHREAD = 256;
     const int NBLOCK = (numBodies-1) / NTHREAD + 1;
     cuda_mem<unsigned long long> d_key;
     cuda_mem<int> d_value;

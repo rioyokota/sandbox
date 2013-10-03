@@ -126,7 +126,7 @@ namespace {
     }
   }
 
-  template<int BLOCKDIM2, int NI>
+  template<int NI>
     static __device__
     uint2 traverse_warp(float4 acc_i[NI],
 			const float3 pos_i[NI],
@@ -287,7 +287,7 @@ namespace {
   __device__ unsigned long long sumM2PGlob = 0;
   __device__ unsigned int       maxM2PGlob = 0;
 
-  template<int NTHREAD2, int NI>
+  template<int NI>
     __launch_bounds__(1<<NTHREAD2, 1024/(1<<NTHREAD2))
     static __global__ 
     void traverse(const int numTargets,
@@ -299,7 +299,6 @@ namespace {
 		  int    *globalPool) {
     const int laneIdx = threadIdx.x & (WARP_SIZE-1);
     const int warpIdx = threadIdx.x >> WARP_SIZE2;
-    const int NTHREAD = 1<<NTHREAD2;
     const int NWARP2 = NTHREAD2 - WARP_SIZE2;
     __shared__ int sharedPool[NTHREAD];
     int *tempQueue = sharedPool + WARP_SIZE * warpIdx;
@@ -333,7 +332,7 @@ namespace {
       const float3 targetCenter = {.5f*(rmax.x+rmin.x), .5f*(rmax.y+rmin.y), .5f*(rmax.z+rmin.z)};
       const float3 targetSize = {.5f*(rmax.x-rmin.x), .5f*(rmax.y-rmin.y), .5f*(rmax.z-rmin.z)};
       float4 acc_i[NI] = {0.0f, 0.0f, 0.0f, 0.0f};
-      const uint2 counters = traverse_warp<NTHREAD2,NI>
+      const uint2 counters = traverse_warp<NI>
 	(acc_i, pos_i, targetCenter, targetSize, EPS2, levelRange[1], tempQueue, cellQueue);
       assert(!(counters.x == 0xFFFFFFFF && counters.y == 0xFFFFFFFF));
 
@@ -435,8 +434,6 @@ class Traversal {
     bindTexture(texQuad1,       d_Quadrupole1, numSources);
     bindTexture(texBody,        d_bodyPos,     numBodies);
 
-    const int NTHREAD2 = 7;
-    const int NTHREAD  = 1<<NTHREAD2;
     cuda_mem<int> d_globalPool;
 
     const int NBLOCK = numTargets / NTHREAD;
@@ -444,8 +441,8 @@ class Traversal {
 
     cudaDeviceSynchronize();
     const double t0 = get_time();
-    CUDA_SAFE_CALL(cudaFuncSetCacheConfig(&traverse<NTHREAD2,2>, cudaFuncCachePreferL1));
-    traverse<NTHREAD2,2><<<NBLOCK,NTHREAD>>>(numTargets, eps*eps, d_levelRange,
+    CUDA_SAFE_CALL(cudaFuncSetCacheConfig(&traverse<2>, cudaFuncCachePreferL1));
+    traverse<2><<<NBLOCK,NTHREAD>>>(numTargets, eps*eps, d_levelRange,
 					     d_bodyPos2, d_bodyAcc, d_targetRange, d_globalPool);
     kernelSuccess("traverse");
     const double dt = get_time() - t0;
@@ -479,14 +476,8 @@ class Traversal {
 	      const float eps,
 	      float4 * d_bodyPos2,
 	      float4 * d_bodyAcc2) {
-    const int NTHREAD2 = 9;
-    const int NTHREAD  = 1 << NTHREAD2;
-    const int NBLOCK2  = 7;
-    const int NBLOCK   = 1 << NBLOCK2;
-    assert(numTarget == NTHREAD);
-    assert(numBlock == NBLOCK);
     bindTexture(texBody,d_bodyPos2,numBodies);
-    directKernel<<<NBLOCK,NTHREAD>>>(numBodies, eps*eps, d_bodyAcc2);
+    directKernel<<<numBlock,numTarget>>>(numBodies, eps*eps, d_bodyAcc2);
     unbindTexture(texBody);
     cudaDeviceSynchronize();
   }
