@@ -513,12 +513,12 @@ namespace {
 class Build {
  public:
   template<int NCRIT>
-  int2 tree(const int numBodies,
-	    cudaVec<float4> & bodyPos,
+  int2 tree(cudaVec<float4> & bodyPos,
 	    cudaVec<float4> & bodyPos2,
 	    float4 & domain,
 	    cudaVec<int2> & levelRange,
 	    cudaVec<CellData> & sourceCells) {
+    const int numBodies = bodyPos.size();
     const int maxNode = numBodies / 10;
     cudaVec<float3> bounds(2048);
     cudaVec<int> octantSizePool(8*maxNode);
@@ -526,7 +526,6 @@ class Build {
     cudaVec<int> subOctantSizeScanPool(64*maxNode);
     cudaVec<int> blockCounterPool(maxNode);
     cudaVec<int2> bodyRangePool(maxNode);
-    cudaVec<CellData> sourceCells2(numBodies);
     cudaVec<int> key(numBodies);
     cudaVec<int> value(numBodies);
     fprintf(stdout,"Stack size           : %g MB\n",83*maxNode*sizeof(int)/1024.0/1024.0);
@@ -569,6 +568,7 @@ class Build {
 
     t0 = get_time();
     const int NBLOCK = (numSources-1) / NTHREAD + 1;
+    cudaVec<CellData> sourceCells2(numSources);
     getKeys<<<NBLOCK,NTHREAD>>>(numSources, sourceCells.d(), sourceCells2.d(), key.d(), value.d());
     kernelSuccess("getKeys");
     sort(numSources, key.d(), value.d());
@@ -576,6 +576,7 @@ class Build {
     kernelSuccess("getLevelRange");
     getPermutation<<<NBLOCK,NTHREAD>>>(numSources, value.d(), key.d());
     kernelSuccess("getPermutation");
+    sourceCells.alloc(numSources);
     permuteCells<<<NBLOCK,NTHREAD>>>(numSources, value.d(), key.d(), sourceCells2.d(), sourceCells.d());
     kernelSuccess("permuteCells");
     collectLeafs<<<NBLOCK,NTHREAD>>>(numSources, sourceCells.d(), leafCells.d());

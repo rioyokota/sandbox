@@ -118,15 +118,15 @@ namespace {
 
 class Pass {
  public:
-  void upward(const int numBodies,
-	      const int numSources,
-	      const float theta,
+  void upward(const float theta,
 	      cudaVec<float4> & bodyPos,
 	      cudaVec<CellData> & sourceCells,
 	      cudaVec<float4> & sourceCenter,
 	      cudaVec<float4> & Monopole,
 	      cudaVec<float4> & Quadrupole0,
               cudaVec<float2> & Quadrupole1) {
+    const int numBodies = bodyPos.size();
+    const int numSources = sourceCells.size();
     const int NWARP = 1 << (NTHREAD2 - WARP_SIZE2);
     const int NBLOCK = (numSources-1) / NWARP + 1;
     CUDA_SAFE_CALL(cudaFuncSetCacheConfig(&getMultipoles,cudaFuncCachePreferL1));

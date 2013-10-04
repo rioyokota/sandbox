@@ -37,7 +37,7 @@ int main(int argc, char * argv[]) {
   float4 domain;
   cudaVec<int2> levelRange(32);
   cudaVec<CellData> sourceCells(numBodies);
-  int2 numLS = build.tree<ncrit>(numBodies, bodyPos, bodyPos2, domain, levelRange, sourceCells);
+  int2 numLS = build.tree<ncrit>(bodyPos, bodyPos2, domain, levelRange, sourceCells);
   int numLevels = numLS.x;
   int numSources = numLS.y;
   cudaVec<int2> targetRange(numBodies);
@@ -46,12 +46,12 @@ int main(int argc, char * argv[]) {
   cudaVec<float4> Quadrupole0(numSources);
   cudaVec<float2> Quadrupole1(numSources);
   Group group;
-  int numTargets = group.targets(numBodies, bodyPos, bodyPos2, domain, targetRange, 5);
+  int numTargets = group.targets(bodyPos, bodyPos2, domain, targetRange, 5);
   Pass pass;
-  pass.upward(numBodies, numSources, theta, bodyPos, sourceCells, sourceCenter,
+  pass.upward(theta, bodyPos, sourceCells, sourceCenter,
 	      Monopole, Quadrupole0, Quadrupole1);
   Traversal traversal;
-  const float4 interactions = traversal.approx(numBodies, numTargets, numSources, eps,
+  const float4 interactions = traversal.approx(numTargets, eps,
 					       bodyPos, bodyPos2, bodyAcc,
 					       targetRange, sourceCells, sourceCenter,
 					       Monopole, Quadrupole0, Quadrupole1, levelRange);
@@ -62,7 +62,7 @@ int main(int argc, char * argv[]) {
   const int numTarget = 512; // Number of threads per block will be set to this value
   const int numBlock = 128;
   t0 = get_time();
-  traversal.direct(numBodies, numTarget, numBlock, eps, bodyPos2, bodyAcc2);
+  traversal.direct(numTarget, numBlock, eps, bodyPos2, bodyAcc2);
   dt = get_time() - t0;
   flops = 35.*numTarget*numBodies/dt/1e12;
   fprintf(stdout,"Total Direct         : %.7f s (%.7f TFlops)\n",dt,flops);

@@ -411,9 +411,7 @@ namespace {
 
 class Traversal {
  public:
-  float4 approx(const int numBodies,
-		const int numTargets,
-		const int numSources,
+  float4 approx(const int numTargets,
 		const float eps,
 		cudaVec<float4> & bodyPos,
 		cudaVec<float4> & bodyPos2,
@@ -428,6 +426,8 @@ class Traversal {
     const int NWARP = 1 << (NTHREAD2 - WARP_SIZE2);
     const int NBLOCK = numTargets / NTHREAD;
     const int poolSize = MEM_PER_WARP * NWARP * NBLOCK;
+    const int numBodies = bodyPos.size();
+    const int numSources = sourceCells.size();
     sourceCells.bind(texCell);
     sourceCenter.bind(texCellCenter);
     Monopole.bind(texMonopole);
@@ -467,12 +467,12 @@ class Traversal {
     return interactions;
   }
 
-  void direct(const int numBodies,
-	      const int numTarget,
+  void direct(const int numTarget,
 	      const int numBlock,
 	      const float eps,
 	      cudaVec<float4> & bodyPos2,
 	      cudaVec<float4> & bodyAcc2) {
+    const int numBodies = bodyPos2.size();
     bodyPos2.bind(texBody);
     directKernel<<<numBlock,numTarget>>>(numBodies, eps*eps, bodyAcc2.d());
     bodyPos2.unbind(texBody);

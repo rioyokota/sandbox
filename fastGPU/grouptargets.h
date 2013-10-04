@@ -122,12 +122,12 @@ namespace {
 
 class Group {
  public:
-  int targets(const int numBodies,
-	      cudaVec<float4> & bodyPos,
+  int targets(cudaVec<float4> & bodyPos,
 	      cudaVec<float4> & bodyPos2,
 	      float4 domain,
 	      cudaVec<int2> & targetRange,
 	      int levelSplit) {
+    const int numBodies = bodyPos.size();
     const int NBLOCK = (numBodies-1) / NTHREAD + 1;
     cudaVec<unsigned long long> key(numBodies);
     cudaVec<int> value(numBodies);
