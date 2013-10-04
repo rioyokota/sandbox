@@ -428,12 +428,12 @@ class Traversal {
 		cudaVec<int2> & levelRange) {
     const int NBLOCK = numTargets / NTHREAD;
     const int poolSize = CELL_LIST_MEM_PER_WARP*NBLOCK*(NTHREAD/WARP_SIZE);
+    sourceCells.bind(texCell);
     sourceCenter.bind(texCellCenter);
     Monopole.bind(texMonopole);
     Quadrupole0.bind(texQuad0);
     Quadrupole1.bind(texQuad1);
     bodyPos.bind(texBody);
-    bindTexture(texCell,(uint4*)sourceCells.devc(), numSources);
     cudaVec<int> globalPool(poolSize);
     cudaDeviceSynchronize();
     const double t0 = get_time();
@@ -458,12 +458,12 @@ class Traversal {
     float flops = (interactions.x * 20 + interactions.z * 64) * numBodies / dt / 1e12;
     fprintf(stdout,"Traverse             : %.7f s (%.7f TFlops)\n",dt,flops);
 
+    sourceCells.unbind(texCell);
     sourceCenter.unbind(texCellCenter);
     Monopole.unbind(texMonopole);
     Quadrupole0.unbind(texQuad0);
     Quadrupole1.unbind(texQuad1);
     bodyPos.unbind(texBody);
-    unbindTexture(texCell);
     return interactions;
   }
 
