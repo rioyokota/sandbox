@@ -2,7 +2,6 @@
 
 #define CUDA_SAFE_CALL(err) cudaSafeCall(err, __FILE__, __LINE__)
 #include <assert.h>
-#include "cudamem.h"
 #include "cudavec.h"
 #include "plummer.h"
 #include <string>
