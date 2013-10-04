@@ -1,17 +1,18 @@
 #pragma once
 
-#define CUDA_SAFE_CALL(err) cudaSafeCall(err, __FILE__, __LINE__)
-#include <assert.h>
-#include "cudavec.h"
-#include "plummer.h"
-#include <string>
-#include <sstream>
-#include <sys/time.h>
-
 #define WARP_SIZE2 5
 #define WARP_SIZE 32
 #define NTHREAD2 8
 #define NTHREAD 256
+#define CUDA_SAFE_CALL(err) cudaSafeCall(err, __FILE__, __LINE__)
+
+#include <assert.h>
+#include <cstdio>
+#include "cudavec.h"
+#include <string>
+#include <sstream>
+#include <sys/time.h>
+#include "warpscan.h"
 
 struct float6 {
   float xx;

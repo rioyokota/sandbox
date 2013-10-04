@@ -1,9 +1,9 @@
 #include "types.h"
-#include "cuda_primitives.h"
 #include "buildtree.h"
-#include "upwardpass.h"
+#include "dataset.h"
 #include "grouptargets.h"
 #include "traversal.h"
+#include "upwardpass.h"
 
 int main(int argc, char * argv[]) {
   const int numBodies = (1 << 24) - 1;
@@ -16,7 +16,7 @@ int main(int argc, char * argv[]) {
   fprintf(stdout,"P                    : %d\n",3);
   fprintf(stdout,"theta                : %f\n",theta);
   fprintf(stdout,"ncrit                : %d\n",ncrit);
-  const Plummer data(numBodies);
+  const Dataset data(numBodies);
 
   cudaVec<float4> bodyPos(numBodies,true);
   cudaVec<float4> bodyPos2(numBodies);

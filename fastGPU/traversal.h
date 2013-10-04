@@ -12,48 +12,6 @@ namespace {
   texture<float2, 1, cudaReadModeElementType> texQuad1;
   texture<float4, 1, cudaReadModeElementType> texBody;
 
-
-  static __device__ __forceinline__
-    int lanemask_le() {
-    int mask;
-    asm("mov.u32 %0, %lanemask_le;" : "=r" (mask));
-    return mask;
-  }
-
-  static __device__ __forceinline__
-    int shflSegScan(int partial, uint offset, uint distance) {
-    asm("{.reg .u32 r0;"
-	".reg .pred p;"
-	"shfl.up.b32 r0, %1, %2, 0;"
-	"setp.le.u32 p, %2, %3;"
-	"@p add.u32 %1, r0, %1;"
-	"mov.u32 %0, %1;}"
-	: "=r"(partial) : "r"(partial), "r"(offset), "r"(distance));
-    return partial;
-  }
-
-  template<const int SIZE2>
-    static __device__ __forceinline__
-    int inclusiveSegscan(int value, const int distance) {
-    for (int i=0; i<SIZE2; i++)
-      value = shflSegScan(value, 1<<i, distance);
-    return value;
-  }
-
-  static __device__ __forceinline__
-    int inclusiveSegscanInt(const int packedValue, const int carryValue) {
-    const int flag = packedValue < 0;
-    const int mask = -flag;
-    const int value = (~mask & packedValue) + (mask & (-1-packedValue));
-    const int flags = __ballot(flag);
-    const int dist_block = __clz(__brev(flags));
-    const int laneIdx = threadIdx.x & (WARP_SIZE - 1);
-    const int distance = __clz(flags & lanemask_le()) + laneIdx - 31;
-    const int val = inclusiveSegscan<WARP_SIZE2>(value, min(distance, laneIdx)) +
-      (carryValue & (-(laneIdx < dist_block)));
-    return val;
-  }
-
   static __device__ __forceinline__
     float6 make_float6(float xx, float yy, float zz, float xy, float xz, float yz) {
     float6 v;
