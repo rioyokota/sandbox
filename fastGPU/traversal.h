@@ -416,33 +416,31 @@ class Traversal {
 		const int numTargets,
 		const int numSources,
 		const float eps,
-		float4 * d_bodyPos,
-		float4 * d_bodyPos2,
-		float4 * d_bodyAcc,
-		int2 * d_targetRange,
-		CellData * d_sourceCells,
-		float4 * d_sourceCenter,
-		float4 * d_Monopole,
-		float4 * d_Quadrupole0,
-		float2 * d_Quadrupole1,
-		int2 * d_levelRange) {
-    bindTexture(texCell,(uint4*)d_sourceCells, numSources);
-    bindTexture(texCellCenter,  d_sourceCenter,numSources);
-    bindTexture(texMonopole,    d_Monopole,    numSources);
-    bindTexture(texQuad0,       d_Quadrupole0, numSources);
-    bindTexture(texQuad1,       d_Quadrupole1, numSources);
-    bindTexture(texBody,        d_bodyPos,     numBodies);
-
-    cuda_mem<int> d_globalPool;
-
+		cudaVec<float4> & bodyPos,
+		cudaVec<float4> & bodyPos2,
+		cudaVec<float4> & bodyAcc,
+		cudaVec<int2> & targetRange,
+		cudaVec<CellData> & sourceCells,
+		cudaVec<float4> & sourceCenter,
+		cudaVec<float4> & Monopole,
+		cudaVec<float4> & Quadrupole0,
+		cudaVec<float2> & Quadrupole1,
+		cudaVec<int2> & levelRange) {
     const int NBLOCK = numTargets / NTHREAD;
-    d_globalPool.alloc(CELL_LIST_MEM_PER_WARP*NBLOCK*(NTHREAD/WARP_SIZE));
-
+    const int poolSize = CELL_LIST_MEM_PER_WARP*NBLOCK*(NTHREAD/WARP_SIZE);
+    sourceCenter.bind(texCellCenter);
+    Monopole.bind(texMonopole);
+    Quadrupole0.bind(texQuad0);
+    Quadrupole1.bind(texQuad1);
+    bodyPos.bind(texBody);
+    bindTexture(texCell,(uint4*)sourceCells.devc(), numSources);
+    cudaVec<int> globalPool(poolSize);
     cudaDeviceSynchronize();
     const double t0 = get_time();
     CUDA_SAFE_CALL(cudaFuncSetCacheConfig(&traverse<2>, cudaFuncCachePreferL1));
-    traverse<2><<<NBLOCK,NTHREAD>>>(numTargets, eps*eps, d_levelRange,
-					     d_bodyPos2, d_bodyAcc, d_targetRange, d_globalPool);
+    traverse<2><<<NBLOCK,NTHREAD>>>(numTargets, eps*eps, levelRange.devc(),
+				    bodyPos2.devc(), bodyAcc.devc(),
+				    targetRange.devc(), globalPool.devc());
     kernelSuccess("traverse");
     const double dt = get_time() - t0;
 
@@ -460,11 +458,11 @@ class Traversal {
     float flops = (interactions.x * 20 + interactions.z * 64) * numBodies / dt / 1e12;
     fprintf(stdout,"Traverse             : %.7f s (%.7f TFlops)\n",dt,flops);
 
-    unbindTexture(texBody);
-    unbindTexture(texQuad1);
-    unbindTexture(texQuad0);
-    unbindTexture(texMonopole);
-    unbindTexture(texCellCenter);
+    sourceCenter.unbind(texCellCenter);
+    Monopole.unbind(texMonopole);
+    Quadrupole0.unbind(texQuad0);
+    Quadrupole1.unbind(texQuad1);
+    bodyPos.unbind(texBody);
     unbindTexture(texCell);
     return interactions;
   }
@@ -473,11 +471,11 @@ class Traversal {
 	      const int numTarget,
 	      const int numBlock,
 	      const float eps,
-	      float4 * d_bodyPos2,
-	      float4 * d_bodyAcc2) {
-    bindTexture(texBody,d_bodyPos2,numBodies);
-    directKernel<<<numBlock,numTarget>>>(numBodies, eps*eps, d_bodyAcc2);
-    unbindTexture(texBody);
+	      cudaVec<float4> & bodyPos2,
+	      cudaVec<float4> & bodyAcc2) {
+    bodyPos2.bind(texBody);
+    directKernel<<<numBlock,numTarget>>>(numBodies, eps*eps, bodyAcc2.devc());
+    bodyPos2.unbind(texBody);
     cudaDeviceSynchronize();
   }
 };

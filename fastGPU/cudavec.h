@@ -62,7 +62,7 @@ public:
     CUDA_SAFE_CALL(cudaMemcpy(DEVC, HOST, size*sizeof(T), cudaMemcpyHostToDevice));
   }
 
-  void bindTexture(texture<T,1,cudaReadModeElementType> &tex) {
+  void bind(texture<T,1,cudaReadModeElementType> &tex) {
     tex.addressMode[0] = cudaAddressModeWrap;
     tex.addressMode[1] = cudaAddressModeWrap;
     tex.filterMode     = cudaFilterModePoint;
@@ -70,7 +70,7 @@ public:
     CUDA_SAFE_CALL(cudaBindTexture(0, tex, DEVC, SIZE*sizeof(T)));
   }
 
-  void unbindTexture(texture<T,1,cudaReadModeElementType> &tex) {
+  void unbind(texture<T,1,cudaReadModeElementType> &tex) {
     CUDA_SAFE_CALL(cudaUnbindTexture(tex));
   }
 
