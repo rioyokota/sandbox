@@ -9,9 +9,7 @@
 #include <assert.h>
 #include <cstdio>
 #include "cudavec.h"
-#include <string>
-#include <sstream>
-#include <sys/time.h>
+#include "logger.h"
 #include "warpscan.h"
 
 struct float6 {
@@ -31,12 +29,6 @@ struct double6 {
   double xz;
   double yz;
 };
-
-static inline double get_time() {
-  struct timeval tv;
-  gettimeofday(&tv, NULL);
-  return double(tv.tv_sec + tv.tv_usec * 1e-6);
-}
 
 static void kernelSuccess(const char kernel[] = "kernel") {
   cudaDeviceSynchronize();
