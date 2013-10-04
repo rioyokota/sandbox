@@ -438,9 +438,9 @@ class Traversal {
     cudaDeviceSynchronize();
     const double t0 = get_time();
     CUDA_SAFE_CALL(cudaFuncSetCacheConfig(&traverse<2>, cudaFuncCachePreferL1));
-    traverse<2><<<NBLOCK,NTHREAD>>>(numTargets, eps*eps, levelRange.devc(),
-				    bodyPos2.devc(), bodyAcc.devc(),
-				    targetRange.devc(), globalPool.devc());
+    traverse<2><<<NBLOCK,NTHREAD>>>(numTargets, eps*eps, levelRange.d(),
+				    bodyPos2.d(), bodyAcc.d(),
+				    targetRange.d(), globalPool.d());
     kernelSuccess("traverse");
     const double dt = get_time() - t0;
 
@@ -474,7 +474,7 @@ class Traversal {
 	      cudaVec<float4> & bodyPos2,
 	      cudaVec<float4> & bodyAcc2) {
     bodyPos2.bind(texBody);
-    directKernel<<<numBlock,numTarget>>>(numBodies, eps*eps, bodyAcc2.devc());
+    directKernel<<<numBlock,numTarget>>>(numBodies, eps*eps, bodyAcc2.d());
     bodyPos2.unbind(texBody);
     cudaDeviceSynchronize();
   }

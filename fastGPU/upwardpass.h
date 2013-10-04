@@ -132,10 +132,10 @@ class Pass {
     CUDA_SAFE_CALL(cudaFuncSetCacheConfig(&getMultipoles,cudaFuncCachePreferL1));
     cudaDeviceSynchronize();
     const double t0 = get_time();
-    getMultipoles<<<NBLOCK,NTHREAD>>>(numBodies, numSources, sourceCells.devc(),
-				      bodyPos.devc(), 1.0 / theta,
-				      sourceCenter.devc(), Monopole.devc(),
-				      Quadrupole0.devc(), Quadrupole1.devc());
+    getMultipoles<<<NBLOCK,NTHREAD>>>(numBodies, numSources, sourceCells.d(),
+				      bodyPos.d(), 1.0 / theta,
+				      sourceCenter.d(), Monopole.d(),
+				      Quadrupole0.d(), Quadrupole1.d());
     kernelSuccess("getMultipoles");
     const double dt = get_time() - t0;
     fprintf(stdout,"Upward pass          : %.7f s\n", dt);

@@ -534,7 +534,7 @@ class Build {
     cudaDeviceSynchronize();
 
     double t0 = get_time();
-    getBounds<<<NTHREAD,NTHREAD>>>(numBodies, bounds.devc(), bodyPos.devc());
+    getBounds<<<NTHREAD,NTHREAD>>>(numBodies, bounds.d(), bodyPos.d());
     kernelSuccess("getBounds");
     double dt = get_time() - t0;
     fprintf(stdout,"Get bounds           : %.7f s\n",  dt);
@@ -552,10 +552,10 @@ class Build {
     CUDA_SAFE_CALL(cudaDeviceSetSharedMemConfig(cudaSharedMemBankSizeEightByte));
     CUDA_SAFE_CALL(cudaFuncSetCacheConfig(&buildOctant<NCRIT,true>,  cudaFuncCachePreferShared));
     CUDA_SAFE_CALL(cudaFuncSetCacheConfig(&buildOctant<NCRIT,false>, cudaFuncCachePreferShared));
-    buildOctree<NCRIT><<<1,1>>>(numBodies, sourceCells.devc(), octantSizePool.devc(),
-				octantSizeScanPool.devc(), subOctantSizeScanPool.devc(),
-				blockCounterPool.devc(), bodyRangePool.devc(),
-				bodyPos.devc(), bodyPos2.devc());
+    buildOctree<NCRIT><<<1,1>>>(numBodies, sourceCells.d(), octantSizePool.d(),
+				octantSizeScanPool.d(), subOctantSizeScanPool.d(),
+				blockCounterPool.d(), bodyRangePool.d(),
+				bodyPos.d(), bodyPos2.d());
     kernelSuccess("buildOctree");
     dt = get_time() - t0;
     fprintf(stdout,"Grow tree            : %.7f s\n",  dt);
@@ -569,16 +569,16 @@ class Build {
 
     t0 = get_time();
     const int NBLOCK = (numSources-1) / NTHREAD + 1;
-    getKeys<<<NBLOCK,NTHREAD>>>(numSources, sourceCells.devc(), sourceCells2.devc(), key.devc(), value.devc());
+    getKeys<<<NBLOCK,NTHREAD>>>(numSources, sourceCells.d(), sourceCells2.d(), key.d(), value.d());
     kernelSuccess("getKeys");
-    sort(numSources, key.devc(), value.devc());
-    getLevelRange<<<NBLOCK,NTHREAD>>>(numSources, key.devc(), levelRange.devc());
+    sort(numSources, key.d(), value.d());
+    getLevelRange<<<NBLOCK,NTHREAD>>>(numSources, key.d(), levelRange.d());
     kernelSuccess("getLevelRange");
-    getPermutation<<<NBLOCK,NTHREAD>>>(numSources, value.devc(), key.devc());
+    getPermutation<<<NBLOCK,NTHREAD>>>(numSources, value.d(), key.d());
     kernelSuccess("getPermutation");
-    permuteCells<<<NBLOCK,NTHREAD>>>(numSources, value.devc(), key.devc(), sourceCells2.devc(), sourceCells.devc());
+    permuteCells<<<NBLOCK,NTHREAD>>>(numSources, value.d(), key.d(), sourceCells2.d(), sourceCells.d());
     kernelSuccess("permuteCells");
-    collectLeafs<<<NBLOCK,NTHREAD>>>(numSources, sourceCells.devc(), leafCells.devc());
+    collectLeafs<<<NBLOCK,NTHREAD>>>(numSources, sourceCells.d(), leafCells.d());
     kernelSuccess("collectLeafs");
     dt = get_time() - t0;
     fprintf(stdout,"Link tree            : %.7f s\n", dt);

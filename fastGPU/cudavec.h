@@ -77,7 +77,7 @@ public:
   }
 
   T& operator[] (int i) const { return HOST[i]; }
-  T* host() const { return HOST; }
-  T* devc() const { return DEVC; }
+  T* h() const { return HOST; }
+  T* d() const { return DEVC; }
   int size() const { return SIZE; }
 };

@@ -134,9 +134,9 @@ class Group {
     cudaDeviceSynchronize();
 
     const double t0 = get_time();
-    getKeys<<<NBLOCK,NTHREAD>>>(numBodies, domain, bodyPos.devc(), key.devc(), value.devc());
-    sort(numBodies, key.devc(), value.devc());
-    permuteBodies<<<NBLOCK,NTHREAD>>>(numBodies, value.devc(), bodyPos.devc(), bodyPos2.devc());
+    getKeys<<<NBLOCK,NTHREAD>>>(numBodies, domain, bodyPos.d(), key.d(), value.d());
+    sort(numBodies, key.d(), value.d());
+    permuteBodies<<<NBLOCK,NTHREAD>>>(numBodies, value.d(), bodyPos.d(), bodyPos2.d());
 
     cudaVec<int> bodyBegin(numBodies);
     cudaVec<int> bodyEnd(numBodies);
@@ -147,10 +147,10 @@ class Group {
       if (i < levelSplit)
 	mask |= 0x7;
     }
-    maskKeys<<<NBLOCK,NTHREAD>>>(numBodies, mask, key.devc(), key2.devc(), bodyBegin.devc(), bodyEnd.devc());
-    scan(numBodies, key.devc(), bodyBegin.devc());
-    scan(numBodies, key2.devc(), bodyEnd.devc());
-    getTargetRange<<<NBLOCK,NTHREAD>>>(numBodies, bodyBegin.devc(), bodyEnd.devc(), targetRange.devc());
+    maskKeys<<<NBLOCK,NTHREAD>>>(numBodies, mask, key.d(), key2.d(), bodyBegin.d(), bodyEnd.d());
+    scan(numBodies, key.d(), bodyBegin.d());
+    scan(numBodies, key2.d(), bodyEnd.d());
+    getTargetRange<<<NBLOCK,NTHREAD>>>(numBodies, bodyBegin.d(), bodyEnd.d(), targetRange.d());
     kernelSuccess("groupTargets");
     const double dt = get_time() - t0;
     fprintf(stdout,"Make groups          : %.7f s\n", dt);
