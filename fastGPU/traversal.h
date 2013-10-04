@@ -1,8 +1,7 @@
 #pragma once
-
 #include <algorithm>
 
-#define CELL_LIST_MEM_PER_WARP (4096*32)
+#define MEM_PER_WARP (4096*32)
 #define IF(x) (-(int)(x))
 
 namespace {
@@ -27,7 +26,7 @@ namespace {
 
   static __device__ __forceinline__
     int ringAddr(const int i) {
-    return i & (CELL_LIST_MEM_PER_WARP - 1);
+    return i & (MEM_PER_WARP - 1);
   }
 
   static __device__ __forceinline__
@@ -75,7 +74,7 @@ namespace {
     const float rinv2 = rinv * rinv;
     const float mrinv  = M0.w * rinv;
     const float mrinv3 = rinv2 * mrinv;
-    const float mrinv5 = rinv2 * mrinv3; 
+    const float mrinv5 = rinv2 * mrinv3;
     const float mrinv7 = rinv2 * mrinv5;
     const float  D0 =  mrinv;
     const float  D1 = -mrinv3;
@@ -128,14 +127,14 @@ namespace {
 
   template<int NI>
     static __device__
-    uint2 traverse_warp(float4 acc_i[NI],
-			const float3 pos_i[NI],
+    uint2 traverseWarp(float4 * acc_i,
+			const float3 * pos_i,
 			const float3 targetCenter,
 			const float3 targetSize,
 			const float EPS2,
 			const int2 rootRange,
-			volatile int *tempQueue,
-			int *cellQueue) {
+			volatile int * tempQueue,
+			int * cellQueue) {
     const int laneIdx = threadIdx.x & (WARP_SIZE-1);
 
     uint2 counters = {0,0};
@@ -168,7 +167,7 @@ namespace {
       const int numChildLane = numChildScan - numChild;         // Exclusive scan of numChild
       const int numChildWarp = __shfl(numChildScan, WARP_SIZE-1);// Total numChild of current warp
       sourceOffset += min(WARP_SIZE, numSources - sourceOffset);// Increment source offset
-      if (numChildWarp + numSources - sourceOffset > CELL_LIST_MEM_PER_WARP)// If cell queue overflows
+      if (numChildWarp + numSources - sourceOffset > MEM_PER_WARP)// If cell queue overflows
 	return make_uint2(0xFFFFFFFF,0xFFFFFFFF);               // Exit kernel
       int childIdx = oldSources + numSources + newSources + numChildLane;// Child index of current lane
       for (int i=0; i<numChild; i++)                            // Loop over child cells for each lane
@@ -288,21 +287,20 @@ namespace {
   __device__ unsigned int       maxM2PGlob = 0;
 
   template<int NI>
-    static __global__ __launch_bounds__(NTHREAD, 4) 
+    static __global__ __launch_bounds__(NTHREAD, 4)
     void traverse(const int numTargets,
 		  const float EPS2,
-		  const int2 *levelRange,
-		  const float4 *pos,
-		  float4 *acc,
-		  const int2 *targetRange,
-		  int    *globalPool) {
+		  const int2 * levelRange,
+		  const float4 * bodyPos,
+		  float4 * bodyAcc,
+		  const int2 * targetRange,
+		  int * globalPool) {
     const int laneIdx = threadIdx.x & (WARP_SIZE-1);
     const int warpIdx = threadIdx.x >> WARP_SIZE2;
     const int NWARP2 = NTHREAD2 - WARP_SIZE2;
     __shared__ int sharedPool[NTHREAD];
-    int *tempQueue = sharedPool + WARP_SIZE * warpIdx;
-    int *cellQueue = globalPool + CELL_LIST_MEM_PER_WARP*((blockIdx.x<<NWARP2) + warpIdx);
-
+    int * tempQueue = sharedPool + WARP_SIZE * warpIdx;
+    int * cellQueue = globalPool + MEM_PER_WARP * ((blockIdx.x<<NWARP2) + warpIdx);
     while (1) {
       int targetIdx = 0;
       if (laneIdx == 0)
@@ -315,12 +313,13 @@ namespace {
       const int bodyEnd   = target.x+target.y;
       float3 pos_i[NI];
       for (int i=0; i<NI; i++) {
-	const float4 body = pos[min(bodyBegin+i*WARP_SIZE+laneIdx,bodyEnd-1)];
-	pos_i[i] = make_float3(body.x, body.y, body.z);
+        const int bodyIdx = min(bodyBegin+i*WARP_SIZE+laneIdx, bodyEnd-1);
+	const float4 pos = bodyPos[bodyIdx];
+	pos_i[i] = make_float3(pos.x, pos.y, pos.z);
       }
       float3 rmin = pos_i[0];
-      float3 rmax = rmin; 
-      for (int i=0; i<NI; i++) 
+      float3 rmax = rmin;
+      for (int i=0; i<NI; i++)
 	getMinMax(rmin, rmax, pos_i[i]);
       rmin.x = __shfl(rmin.x,0);
       rmin.y = __shfl(rmin.y,0);
@@ -331,7 +330,7 @@ namespace {
       const float3 targetCenter = {.5f*(rmax.x+rmin.x), .5f*(rmax.y+rmin.y), .5f*(rmax.z+rmin.z)};
       const float3 targetSize = {.5f*(rmax.x-rmin.x), .5f*(rmax.y-rmin.y), .5f*(rmax.z-rmin.z)};
       float4 acc_i[NI] = {0.0f, 0.0f, 0.0f, 0.0f};
-      const uint2 counters = traverse_warp<NI>
+      const uint2 counters = traverseWarp<NI>
 	(acc_i, pos_i, targetCenter, targetSize, EPS2, levelRange[1], tempQueue, cellQueue);
       assert(!(counters.x == 0xFFFFFFFF && counters.y == 0xFFFFFFFF));
 
@@ -360,7 +359,7 @@ namespace {
       }
       for (int i=0; i<NI; i++)
 	if (bodyIdx + i * WARP_SIZE < bodyEnd)
-	  acc[i*WARP_SIZE + bodyIdx] = acc_i[i];
+	  bodyAcc[i*WARP_SIZE + bodyIdx] = acc_i[i];
     }
   }
 
@@ -426,8 +425,9 @@ class Traversal {
 		cudaVec<float4> & Quadrupole0,
 		cudaVec<float2> & Quadrupole1,
 		cudaVec<int2> & levelRange) {
+    const int NWARP = 1 << (NTHREAD2 - WARP_SIZE2);
     const int NBLOCK = numTargets / NTHREAD;
-    const int poolSize = CELL_LIST_MEM_PER_WARP*NBLOCK*(NTHREAD/WARP_SIZE);
+    const int poolSize = MEM_PER_WARP * NWARP * NBLOCK;
     sourceCells.bind(texCell);
     sourceCenter.bind(texCellCenter);
     Monopole.bind(texMonopole);
