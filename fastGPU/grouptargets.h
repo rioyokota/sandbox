@@ -80,41 +80,41 @@ namespace {
 		  const unsigned long long mask,
 		  unsigned long long * keys,
 		  unsigned long long * keys2,
-		  int * bodyBeginIdx,
-		  int * bodyEndIdx) {
+		  int * bodyBegin,
+		  int * bodyEnd) {
     const int bodyIdx = blockIdx.x * blockDim.x + threadIdx.x;
     if (bodyIdx >= numBodies) return;
     keys2[numBodies-bodyIdx-1] = keys[bodyIdx] & mask;
-    const int nextBodyIdx = min(bodyIdx+1, numBodies-1);
-    const int prevBodyIdx = max(bodyIdx-1, 0);
+    const int nextIdx = min(bodyIdx+1, numBodies-1);
+    const int prevIdx = max(bodyIdx-1, 0);
     const unsigned long long currKey = keys[bodyIdx] & mask;
-    const unsigned long long nextKey = keys[nextBodyIdx] & mask;
-    const unsigned long long prevKey = keys[prevBodyIdx] & mask;
+    const unsigned long long nextKey = keys[nextIdx] & mask;
+    const unsigned long long prevKey = keys[prevIdx] & mask;
     if (prevKey < currKey || bodyIdx == 0)
-      bodyBeginIdx[bodyIdx] = bodyIdx;
+      bodyBegin[bodyIdx] = bodyIdx;
     else
-      bodyBeginIdx[bodyIdx] = 0;
+      bodyBegin[bodyIdx] = 0;
     if (currKey < nextKey || bodyIdx == numBodies-1)
-      bodyEndIdx[numBodies-1-bodyIdx] = bodyIdx+1;
+      bodyEnd[numBodies-1-bodyIdx] = bodyIdx+1;
     else
-      bodyEndIdx[numBodies-1-bodyIdx] = 0;
+      bodyEnd[numBodies-1-bodyIdx] = 0;
   }
 
   static __global__
     void getTargetRange(const int numBodies,
-			const int * bodyBeginIdx,
-			const int * bodyEndIdx,
+			const int * bodyBeginGlob,
+			const int * bodyEndGlob,
 			int2 * targetRange) {
     const int groupSize = WARP_SIZE * 2;
     const int bodyIdx = blockDim.x * blockIdx.x + threadIdx.x;
     if (bodyIdx >= numBodies) return;
-    const int bodyBegin = bodyBeginIdx[bodyIdx];
+    const int bodyBegin = bodyBeginGlob[bodyIdx];
     assert(bodyIdx >= bodyBegin);
     const int groupIdx = (bodyIdx - bodyBegin) / groupSize;
     const int groupBegin = bodyBegin + groupIdx * groupSize;
     if (bodyIdx == groupBegin) {
       const int targetIdx = atomicAdd(&numTargetGlob, 1);
-      const int bodyEnd = bodyEndIdx[numBodies-1-bodyIdx];
+      const int bodyEnd = bodyEndGlob[numBodies-1-bodyIdx];
       targetRange[targetIdx] = make_int2(groupBegin, min(groupSize, bodyEnd - groupBegin));
     }
   }
@@ -123,39 +123,34 @@ namespace {
 class Group {
  public:
   int targets(const int numBodies,
-	      float4 * d_bodyPos,
-	      float4 * d_bodyPos2,
+	      cudaVec<float4> & bodyPos,
+	      cudaVec<float4> & bodyPos2,
 	      float4 domain,
-	      int2 * d_targetRange,
+	      cudaVec<int2> & targetRange,
 	      int levelSplit) {
     const int NBLOCK = (numBodies-1) / NTHREAD + 1;
-    cuda_mem<unsigned long long> d_key;
-    cuda_mem<int> d_value;
-    d_key.alloc(numBodies);
-    d_value.alloc(numBodies);
+    cudaVec<unsigned long long> key(numBodies);
+    cudaVec<int> value(numBodies);
     cudaDeviceSynchronize();
 
     const double t0 = get_time();
-    getKeys<<<NBLOCK,NTHREAD>>>(numBodies, domain, d_bodyPos, d_key.ptr, d_value.ptr);
-    sort(numBodies, d_key.ptr, d_value.ptr);
-    permuteBodies<<<NBLOCK,NTHREAD>>>(numBodies, d_value, d_bodyPos, d_bodyPos2);
+    getKeys<<<NBLOCK,NTHREAD>>>(numBodies, domain, bodyPos.devc(), key.devc(), value.devc());
+    sort(numBodies, key.devc(), value.devc());
+    permuteBodies<<<NBLOCK,NTHREAD>>>(numBodies, value.devc(), bodyPos.devc(), bodyPos2.devc());
 
-    cuda_mem<int> d_bodyBeginIdx, d_bodyEndIdx;
-    cuda_mem<unsigned long long> d_key2;
-    d_bodyBeginIdx.alloc(numBodies);
-    d_bodyEndIdx.alloc(numBodies);
-    d_key2.alloc(numBodies);
-
+    cudaVec<int> bodyBegin(numBodies);
+    cudaVec<int> bodyEnd(numBodies);
+    cudaVec<unsigned long long> key2(numBodies);
     unsigned long long mask = 0;
     for (int i=0; i<NBITS; i++) {
       mask <<= 3;
       if (i < levelSplit)
 	mask |= 0x7;
     }
-    maskKeys<<<NBLOCK,NTHREAD>>>(numBodies, mask, d_key.ptr, d_key2.ptr, d_bodyBeginIdx, d_bodyEndIdx);
-    scan(numBodies, d_key.ptr, d_bodyBeginIdx.ptr);
-    scan(numBodies, d_key2.ptr, d_bodyEndIdx.ptr);
-    getTargetRange<<<NBLOCK,NTHREAD>>>(numBodies, d_bodyBeginIdx, d_bodyEndIdx, d_targetRange);
+    maskKeys<<<NBLOCK,NTHREAD>>>(numBodies, mask, key.devc(), key2.devc(), bodyBegin.devc(), bodyEnd.devc());
+    scan(numBodies, key.devc(), bodyBegin.devc());
+    scan(numBodies, key2.devc(), bodyEnd.devc());
+    getTargetRange<<<NBLOCK,NTHREAD>>>(numBodies, bodyBegin.devc(), bodyEnd.devc(), targetRange.devc());
     kernelSuccess("groupTargets");
     const double dt = get_time() - t0;
     fprintf(stdout,"Make groups          : %.7f s\n", dt);

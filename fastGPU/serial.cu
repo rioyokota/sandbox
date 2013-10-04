@@ -46,7 +46,7 @@ int main(int argc, char * argv[]) {
   cudaVec<float4> d_Quadrupole0(numSources);
   cudaVec<float2> d_Quadrupole1(numSources);
   Group group;
-  int numTargets = group.targets(numBodies, bodyPos.devc(), bodyPos2.devc(), domain, targetRange.devc(), 5);
+  int numTargets = group.targets(numBodies, bodyPos, bodyPos2, domain, targetRange, 5);
   Pass pass;
   pass.upward(numBodies, numSources, theta, bodyPos.devc(), sourceCells.devc(), sourceCenter.devc(),
 	      d_Monopole.devc(), d_Quadrupole0.devc(), d_Quadrupole1.devc());
