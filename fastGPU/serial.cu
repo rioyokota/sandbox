@@ -37,24 +37,24 @@ int main(int argc, char * argv[]) {
   float4 domain;
   cudaVec<int2> levelRange(32);
   cudaVec<CellData> sourceCells(numBodies);
-  int2 numLS = build.tree<ncrit>(numBodies, bodyPos.devc(), bodyPos2.devc(), domain, levelRange.devc(), sourceCells.devc());
+  int2 numLS = build.tree<ncrit>(numBodies, bodyPos, bodyPos2, domain, levelRange, sourceCells);
   int numLevels = numLS.x;
   int numSources = numLS.y;
   cudaVec<int2> targetRange(numBodies);
   cudaVec<float4> sourceCenter(numSources);
-  cudaVec<float4> d_Monopole(numSources);
-  cudaVec<float4> d_Quadrupole0(numSources);
-  cudaVec<float2> d_Quadrupole1(numSources);
+  cudaVec<float4> Monopole(numSources);
+  cudaVec<float4> Quadrupole0(numSources);
+  cudaVec<float2> Quadrupole1(numSources);
   Group group;
   int numTargets = group.targets(numBodies, bodyPos, bodyPos2, domain, targetRange, 5);
   Pass pass;
-  pass.upward(numBodies, numSources, theta, bodyPos.devc(), sourceCells.devc(), sourceCenter.devc(),
-	      d_Monopole.devc(), d_Quadrupole0.devc(), d_Quadrupole1.devc());
+  pass.upward(numBodies, numSources, theta, bodyPos, sourceCells, sourceCenter,
+	      Monopole, Quadrupole0, Quadrupole1);
   Traversal traversal;
   const float4 interactions = traversal.approx(numBodies, numTargets, numSources, eps,
 					       bodyPos, bodyPos2, bodyAcc,
 					       targetRange, sourceCells, sourceCenter,
-					       d_Monopole, d_Quadrupole0, d_Quadrupole1, levelRange);
+					       Monopole, Quadrupole0, Quadrupole1, levelRange);
   double dt = get_time() - t0;
   float flops = (interactions.x * 20 + interactions.z * 64) * numBodies / dt / 1e12;
   fprintf(stdout,"--- Total runtime ----------------\n");

@@ -514,47 +514,37 @@ class Build {
  public:
   template<int NCRIT>
   int2 tree(const int numBodies,
-	    float4 * d_bodyPos,
-	    float4 * d_bodyPos2,
+	    cudaVec<float4> & bodyPos,
+	    cudaVec<float4> & bodyPos2,
 	    float4 & domain,
-	    int2 * d_levelRange,
-	    CellData * d_sourceCells) {
-    cuda_mem<float3> d_bounds;
-    cuda_mem<int> d_octantSizePool;
-    cuda_mem<int> d_octantSizeScanPool;
-    cuda_mem<int> d_subOctantSizeScanPool;
-    cuda_mem<int> d_blockCounterPool;
-    cuda_mem<int2> d_bodyRangePool;
-    cuda_mem<CellData> d_sourceCells2;
-    cuda_mem<int> d_leafCells;
-    cuda_mem<int> d_key, d_value;
-
-    d_bounds.alloc(2048);
+	    cudaVec<int2> & levelRange,
+	    cudaVec<CellData> & sourceCells) {
     const int maxNode = numBodies / 10;
-    fprintf(stdout,"Stack size           : %g MB\n",sizeof(int)*83*maxNode/1024.0/1024.0);
-    d_octantSizePool.alloc(8*maxNode);
-    d_octantSizeScanPool.alloc(8*maxNode);
-    d_subOctantSizeScanPool.alloc(64*maxNode);
-    d_blockCounterPool.alloc(maxNode);
-    d_bodyRangePool.alloc(maxNode);
-    d_sourceCells2.alloc(numBodies);
+    cudaVec<float3> bounds(2048);
+    cudaVec<int> octantSizePool(8*maxNode);
+    cudaVec<int> octantSizeScanPool(8*maxNode);
+    cudaVec<int> subOctantSizeScanPool(64*maxNode);
+    cudaVec<int> blockCounterPool(maxNode);
+    cudaVec<int2> bodyRangePool(maxNode);
+    cudaVec<CellData> sourceCells2(numBodies);
+    cudaVec<int> key(numBodies);
+    cudaVec<int> value(numBodies);
+    fprintf(stdout,"Stack size           : %g MB\n",83*maxNode*sizeof(int)/1024.0/1024.0);
     fprintf(stdout,"Cell data            : %g MB\n",numBodies*sizeof(CellData)/1024.0/1024.0);
-    d_key.alloc(numBodies);
-    d_value.alloc(numBodies);
     cudaDeviceSynchronize();
 
     double t0 = get_time();
-    getBounds<<<NTHREAD,NTHREAD>>>(numBodies, d_bounds, d_bodyPos);
+    getBounds<<<NTHREAD,NTHREAD>>>(numBodies, bounds.devc(), bodyPos.devc());
     kernelSuccess("getBounds");
     double dt = get_time() - t0;
     fprintf(stdout,"Get bounds           : %.7f s\n",  dt);
 
     CUDA_SAFE_CALL(cudaMemcpyToSymbol(maxCellsGlob, &maxNode, sizeof(int), 0, cudaMemcpyHostToDevice));
-    CUDA_SAFE_CALL(cudaMemset(d_octantSizePool, 0, 8*maxNode*sizeof(int)));
-    CUDA_SAFE_CALL(cudaMemset(d_octantSizeScanPool, 0, 8*maxNode*sizeof(int)));
-    CUDA_SAFE_CALL(cudaMemset(d_subOctantSizeScanPool, 0, 64*maxNode*sizeof(int)));
-    CUDA_SAFE_CALL(cudaMemset(d_blockCounterPool, 0, maxNode*sizeof(int)));
-    CUDA_SAFE_CALL(cudaMemset(d_bodyRangePool, 0, maxNode*sizeof(int2)));
+    octantSizePool.zeros();
+    octantSizeScanPool.zeros();
+    subOctantSizeScanPool.zeros();
+    blockCounterPool.zeros();
+    bodyRangePool.zeros();
     cudaDeviceSynchronize();
 
     t0 = get_time();
@@ -562,9 +552,10 @@ class Build {
     CUDA_SAFE_CALL(cudaDeviceSetSharedMemConfig(cudaSharedMemBankSizeEightByte));
     CUDA_SAFE_CALL(cudaFuncSetCacheConfig(&buildOctant<NCRIT,true>,  cudaFuncCachePreferShared));
     CUDA_SAFE_CALL(cudaFuncSetCacheConfig(&buildOctant<NCRIT,false>, cudaFuncCachePreferShared));
-    buildOctree<NCRIT><<<1,1>>>(numBodies, d_sourceCells, d_octantSizePool,
-				d_octantSizeScanPool, d_subOctantSizeScanPool,
-				d_blockCounterPool, d_bodyRangePool, d_bodyPos, d_bodyPos2);
+    buildOctree<NCRIT><<<1,1>>>(numBodies, sourceCells.devc(), octantSizePool.devc(),
+				octantSizeScanPool.devc(), subOctantSizeScanPool.devc(),
+				blockCounterPool.devc(), bodyRangePool.devc(),
+				bodyPos.devc(), bodyPos2.devc());
     kernelSuccess("buildOctree");
     dt = get_time() - t0;
     fprintf(stdout,"Grow tree            : %.7f s\n",  dt);
@@ -573,21 +564,21 @@ class Build {
     CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&numLevels, numLevelsGlob, sizeof(int)));
     CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&numSources, numCellsGlob, sizeof(int)));
     CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&numLeafs, numLeafsGlob, sizeof(int)));
-    d_leafCells.alloc(numLeafs);
+    cudaVec<int> leafCells(numLeafs);
     cudaDeviceSynchronize();
 
     t0 = get_time();
     const int NBLOCK = (numSources-1) / NTHREAD + 1;
-    getKeys<<<NBLOCK,NTHREAD>>>(numSources, d_sourceCells, d_sourceCells2, d_key, d_value);
+    getKeys<<<NBLOCK,NTHREAD>>>(numSources, sourceCells.devc(), sourceCells2.devc(), key.devc(), value.devc());
     kernelSuccess("getKeys");
-    sort(numSources, d_key.ptr, d_value.ptr);
-    getLevelRange<<<NBLOCK,NTHREAD>>>(numSources, d_key, d_levelRange);
+    sort(numSources, key.devc(), value.devc());
+    getLevelRange<<<NBLOCK,NTHREAD>>>(numSources, key.devc(), levelRange.devc());
     kernelSuccess("getLevelRange");
-    getPermutation<<<NBLOCK,NTHREAD>>>(numSources, d_value, d_key);
+    getPermutation<<<NBLOCK,NTHREAD>>>(numSources, value.devc(), key.devc());
     kernelSuccess("getPermutation");
-    permuteCells<<<NBLOCK,NTHREAD>>>(numSources, d_value, d_key, d_sourceCells2, d_sourceCells);
+    permuteCells<<<NBLOCK,NTHREAD>>>(numSources, value.devc(), key.devc(), sourceCells2.devc(), sourceCells.devc());
     kernelSuccess("permuteCells");
-    collectLeafs<<<NBLOCK,NTHREAD>>>(numSources, d_sourceCells, d_leafCells);
+    collectLeafs<<<NBLOCK,NTHREAD>>>(numSources, sourceCells.devc(), leafCells.devc());
     kernelSuccess("collectLeafs");
     dt = get_time() - t0;
     fprintf(stdout,"Link tree            : %.7f s\n", dt);

@@ -54,15 +54,15 @@ namespace {
   __device__ unsigned int nflops = 0;
 
   static __global__ __launch_bounds__(NTHREAD)
-    void computeCellMultipoles(const int numBodies,
-			       const int numSources,
-			       const CellData *cells,
-			       const float4* __restrict__ bodyPos,
-			       const float invTheta,
-			       float4 *sourceCenter,
-			       float4 *monopole,
-			       float4 *quadrupole0,
-			       float2 *quadrupole1) {
+    void getMultipoles(const int numBodies,
+		       const int numSources,
+		       const CellData * cells,
+		       const float4 * __restrict__ bodyPos,
+		       const float invTheta,
+		       float4 *sourceCenter,
+		       float4 *monopole,
+		       float4 *quadrupole0,
+		       float2 *quadrupole1) {
     const int warpIdx = threadIdx.x >> WARP_SIZE2;
     const int laneIdx = threadIdx.x & (WARP_SIZE-1);
     const int NWARP2  = NTHREAD2 - WARP_SIZE2;
@@ -86,7 +86,6 @@ namespace {
       addMonopole(M, body);
       addQuadrupole(Q, body);
     }
-
     if (laneIdx == 0) {
       const double inv_mass = 1.0/M.w;
       M.x *= inv_mass;
@@ -119,18 +118,25 @@ namespace {
 
 class Pass {
  public:
-  void upward(const int numBodies, const int numSources, const float theta,
-	      float4 * d_bodyPos, CellData * d_sourceCells, float4 * d_sourceCenter,
-	      float4 * d_Monopole, float4 * d_Quadrupole0, float2 * d_Quadrupole1) {
+  void upward(const int numBodies,
+	      const int numSources,
+	      const float theta,
+	      cudaVec<float4> & bodyPos,
+	      cudaVec<CellData> & sourceCells,
+	      cudaVec<float4> & sourceCenter,
+	      cudaVec<float4> & Monopole,
+	      cudaVec<float4> & Quadrupole0,
+              cudaVec<float2> & Quadrupole1) {
     const int NWARP = 1 << (NTHREAD2 - WARP_SIZE2);
     const int NBLOCK = (numSources-1) / NWARP + 1;
-    CUDA_SAFE_CALL(cudaFuncSetCacheConfig(&computeCellMultipoles,cudaFuncCachePreferL1));
+    CUDA_SAFE_CALL(cudaFuncSetCacheConfig(&getMultipoles,cudaFuncCachePreferL1));
     cudaDeviceSynchronize();
     const double t0 = get_time();
-    computeCellMultipoles<<<NBLOCK,NTHREAD>>>(numBodies, numSources, d_sourceCells, d_bodyPos,
-					      1.0 / theta,
-					      d_sourceCenter, d_Monopole, d_Quadrupole0, d_Quadrupole1);
-    kernelSuccess("computeCellMultipoles");
+    getMultipoles<<<NBLOCK,NTHREAD>>>(numBodies, numSources, sourceCells.devc(),
+				      bodyPos.devc(), 1.0 / theta,
+				      sourceCenter.devc(), Monopole.devc(),
+				      Quadrupole0.devc(), Quadrupole1.devc());
+    kernelSuccess("getMultipoles");
     const double dt = get_time() - t0;
     fprintf(stdout,"Upward pass          : %.7f s\n", dt);
   }
