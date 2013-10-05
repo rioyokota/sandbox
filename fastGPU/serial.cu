@@ -42,19 +42,16 @@ int main(int argc, char * argv[]) {
   int numSources = numLS.y;
   cudaVec<int2> targetRange(numBodies);
   cudaVec<float4> sourceCenter(numSources);
-  cudaVec<float4> Monopole(numSources);
-  cudaVec<float4> Quadrupole0(numSources);
-  cudaVec<float4> Quadrupole1(numSources);
+  cudaVec<float4> Multipole(3*numSources);
   Group group;
   int numTargets = group.targets(bodyPos, bodyPos2, domain, targetRange, 5);
   Pass pass;
-  pass.upward(theta, bodyPos, sourceCells, sourceCenter,
-	      Monopole, Quadrupole0, Quadrupole1);
+  pass.upward(theta, bodyPos, sourceCells, sourceCenter, Multipole);
   Traversal traversal;
   const float4 interactions = traversal.approx(numTargets, eps,
 					       bodyPos, bodyPos2, bodyAcc,
 					       targetRange, sourceCells, sourceCenter,
-					       Monopole, Quadrupole0, Quadrupole1, levelRange);
+					       Multipole, levelRange);
   double dt = get_time() - t0;
   float flops = (interactions.x * 20 + interactions.z * 64) * numBodies / dt / 1e12;
   fprintf(stdout,"--- Total runtime ----------------\n");

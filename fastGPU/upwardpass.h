@@ -51,8 +51,6 @@ namespace {
     _Q.yz += Q.yz;
   }
 
-  __device__ unsigned int nflops = 0;
-
   static __global__ __launch_bounds__(NTHREAD)
     void getMultipoles(const int numBodies,
 		       const int numSources,
@@ -60,11 +58,9 @@ namespace {
 		       const float4 * __restrict__ bodyPos,
 		       const float invTheta,
 		       float4 *sourceCenter,
-		       float4 *monopole,
-		       float4 *quadrupole0,
-		       float4 *quadrupole1) {
-    const int warpIdx = threadIdx.x >> WARP_SIZE2;
+		       float4 *Multipole) {
     const int laneIdx = threadIdx.x & (WARP_SIZE-1);
+    const int warpIdx = threadIdx.x >> WARP_SIZE2;
     const int NWARP2  = NTHREAD2 - WARP_SIZE2;
     const int cellIdx = (blockIdx.x<<NWARP2) + warpIdx;
     if (cellIdx >= numSources) return;
@@ -75,11 +71,9 @@ namespace {
     float3 rmax = {-huge,-huge,-huge};
     double4 M;
     double6 Q;
-    unsigned int nflop = 0;
     const int bodyBegin = cell.body();
     const int bodyEnd = cell.body() + cell.nbody();
     for (int i=bodyBegin; i<bodyEnd; i+=WARP_SIZE) {
-      nflop++;
       float4 body = bodyPos[min(i+laneIdx,bodyEnd-1)];
       if (i + laneIdx >= bodyEnd) body.w = 0.0f;
       getMinMax(rmin, rmax, make_float3(body.x,body.y,body.z));
@@ -97,21 +91,20 @@ namespace {
       Q.xy = Q.xy*inv_mass - M.x*M.y;
       Q.xz = Q.xz*inv_mass - M.x*M.z;
       Q.yz = Q.yz*inv_mass - M.y*M.z;
-      const float3 cvec = {(rmax.x+rmin.x)*0.5f, (rmax.y+rmin.y)*0.5f, (rmax.z+rmin.z)*0.5f};
-      const float3 hvec = {(rmax.x-rmin.x)*0.5f, (rmax.y-rmin.y)*0.5f, (rmax.z-rmin.z)*0.5f};
+      const float3 X = {(rmax.x+rmin.x)*0.5f, (rmax.y+rmin.y)*0.5f, (rmax.z+rmin.z)*0.5f};
+      const float3 R = {(rmax.x-rmin.x)*0.5f, (rmax.y-rmin.y)*0.5f, (rmax.z-rmin.z)*0.5f};
       const float3 com = {M.x, M.y, M.z};
-      const float dx = cvec.x - com.x;
-      const float dy = cvec.y - com.y;
-      const float dz = cvec.z - com.z;
+      const float dx = X.x - com.x;
+      const float dy = X.y - com.y;
+      const float dz = X.z - com.z;
       const float  s = sqrt(dx*dx + dy*dy + dz*dz);
-      const float  l = max(2.0f*max(hvec.x, max(hvec.y, hvec.z)), 1.0e-6f);
+      const float  l = max(2.0f*max(R.x, max(R.y, R.z)), 1.0e-6f);
       const float cellOp = l*invTheta + s;
       const float cellOp2 = cellOp*cellOp;
-      atomicAdd(&nflops, nflop);
       sourceCenter[cellIdx] = (float4){com.x, com.y, com.z, cellOp2};
-      monopole[cellIdx]     = (float4){M.x, M.y, M.z, M.w};
-      quadrupole0[cellIdx]  = (float4){Q.xx, Q.yy, Q.zz, Q.xy};
-      quadrupole1[cellIdx]  = (float4){Q.xz, Q.yz, 0.0f, 0.0f};
+      Multipole[3*cellIdx+0] = (float4){M.x, M.y, M.z, M.w};
+      Multipole[3*cellIdx+1] = (float4){Q.xx, Q.yy, Q.zz, Q.xy};
+      Multipole[3*cellIdx+2] = (float4){Q.xz, Q.yz, 0.0f, 0.0f};
     }
   }
 }
@@ -122,9 +115,7 @@ class Pass {
 	      cudaVec<float4> & bodyPos,
 	      cudaVec<CellData> & sourceCells,
 	      cudaVec<float4> & sourceCenter,
-	      cudaVec<float4> & Monopole,
-	      cudaVec<float4> & Quadrupole0,
-              cudaVec<float4> & Quadrupole1) {
+	      cudaVec<float4> & Multipole) {
     const int numBodies = bodyPos.size();
     const int numSources = sourceCells.size();
     const int NWARP = 1 << (NTHREAD2 - WARP_SIZE2);
@@ -134,8 +125,7 @@ class Pass {
     const double t0 = get_time();
     getMultipoles<<<NBLOCK,NTHREAD>>>(numBodies, numSources, sourceCells.d(),
 				      bodyPos.d(), 1.0 / theta,
-				      sourceCenter.d(), Monopole.d(),
-				      Quadrupole0.d(), Quadrupole1.d());
+				      sourceCenter.d(), Multipole.d());
     kernelSuccess("getMultipoles");
     const double dt = get_time() - t0;
     fprintf(stdout,"Upward pass          : %.7f s\n", dt);

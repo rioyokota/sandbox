@@ -7,9 +7,7 @@
 namespace {
   texture<uint4,  1, cudaReadModeElementType> texCell;
   texture<float4, 1, cudaReadModeElementType> texCellCenter;
-  texture<float4, 1, cudaReadModeElementType> texMonopole;
-  texture<float4, 1, cudaReadModeElementType> texQuad0;
-  texture<float4, 1, cudaReadModeElementType> texQuad1;
+  texture<float4, 1, cudaReadModeElementType> texMultipole;
   texture<float4, 1, cudaReadModeElementType> texBody;
 
   static __device__ __forceinline__
@@ -107,9 +105,9 @@ namespace {
 		   const float EPS2) {
     float4 M0, Q0, Q1;
     if (FULL || cellIdx >= 0) {
-      M0 = tex1Dfetch(texMonopole, cellIdx);
-      Q0 = tex1Dfetch(texQuad0,    cellIdx);
-      Q1 = tex1Dfetch(texQuad1,    cellIdx);
+      M0 = tex1Dfetch(texMultipole, 3*cellIdx+0);
+      Q0 = tex1Dfetch(texMultipole, 3*cellIdx+1);
+      Q1 = tex1Dfetch(texMultipole, 3*cellIdx+2);
     } else {
       M0 = Q0 = Q1 = make_float4(0.0f, 0.0f, 0.0f, 0.0f);
     }
@@ -417,9 +415,7 @@ class Traversal {
 		cudaVec<int2> & targetRange,
 		cudaVec<CellData> & sourceCells,
 		cudaVec<float4> & sourceCenter,
-		cudaVec<float4> & Monopole,
-		cudaVec<float4> & Quadrupole0,
-		cudaVec<float4> & Quadrupole1,
+		cudaVec<float4> & Multipole,
 		cudaVec<int2> & levelRange) {
     const int NWARP = 1 << (NTHREAD2 - WARP_SIZE2);
     const int NBLOCK = numTargets / NTHREAD;
@@ -428,9 +424,7 @@ class Traversal {
     const int numSources = sourceCells.size();
     sourceCells.bind(texCell);
     sourceCenter.bind(texCellCenter);
-    Monopole.bind(texMonopole);
-    Quadrupole0.bind(texQuad0);
-    Quadrupole1.bind(texQuad1);
+    Multipole.bind(texMultipole);
     bodyPos.bind(texBody);
     cudaVec<int> globalPool(poolSize);
     cudaDeviceSynchronize();
@@ -458,9 +452,7 @@ class Traversal {
 
     sourceCells.unbind(texCell);
     sourceCenter.unbind(texCellCenter);
-    Monopole.unbind(texMonopole);
-    Quadrupole0.unbind(texQuad0);
-    Quadrupole1.unbind(texQuad1);
+    Multipole.unbind(texMultipole);
     bodyPos.unbind(texBody);
     return interactions;
   }
