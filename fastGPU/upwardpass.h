@@ -109,7 +109,7 @@ namespace {
       const float cellOp2 = cellOp*cellOp;
       atomicAdd(&nflops, nflop);
       sourceCenter[cellIdx] = (float4){com.x, com.y, com.z, cellOp2};
-      monopole[cellIdx]     = (float4){M.x, M.y, M.z, M.w};  
+      monopole[cellIdx]     = (float4){M.x, M.y, M.z, M.w};
       quadrupole0[cellIdx]  = (float4){Q.xx, Q.yy, Q.zz, Q.xy};
       quadrupole1[cellIdx]  = (float2){Q.xz, Q.yz};
     }

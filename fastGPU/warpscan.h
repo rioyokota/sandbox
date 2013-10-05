@@ -1,6 +1,6 @@
 #pragma once
-  
-static __device__ __forceinline__ 
+
+static __device__ __forceinline__
 void getMinMax(float3 &_rmin, float3 &_rmax, const float3 pos) {
   float3 rmin = pos;
   float3 rmax = rmin;

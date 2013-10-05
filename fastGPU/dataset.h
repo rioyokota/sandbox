@@ -7,9 +7,9 @@
 class Dataset {
  public:
   std::vector<double4> pos;
-  Dataset(unsigned long n, 
-	  unsigned int seed = 19810614, 
-	  const char *filename = "plummer.dat") : pos(n) {
+ Dataset(unsigned long n,
+	 unsigned int seed = 19810614,
+	 const char *filename = "plummer.dat") : pos(n) {
     std::ifstream file(filename);
     if (!file.fail()) {
       unsigned long ntmp, stmp;
@@ -40,16 +40,16 @@ class Dataset {
 	ldiv_t tmp_i = ldiv(i, n/64);
 	if(tmp_i.rem == 0) {
 	  printf(".");
-	  fflush(stdout); 
+	  fflush(stdout);
 	}
-	i++; 
-      }		
+	i++;
+      }
     }
     double4 com = {0.0};
     for (i=0; i<n; i++) {
-      com.x += pos[i].w * pos[i].x; 
-      com.y += pos[i].w * pos[i].y; 
-      com.z += pos[i].w * pos[i].z; 
+      com.x += pos[i].w * pos[i].x;
+      com.y += pos[i].w * pos[i].y;
+      com.z += pos[i].w * pos[i].z;
       com.w += pos[i].w;
     }
     com.x /= com.w;
@@ -57,9 +57,9 @@ class Dataset {
     com.z /= com.w;
 
     for(i=0; i<n; i++) {
-      pos[i].x -= com.x; 
-      pos[i].y -= com.y; 
-      pos[i].z -= com.z; 
+      pos[i].x -= com.x;
+      pos[i].y -= com.y;
+      pos[i].z -= com.z;
     }
     printf("\n");
     std::ofstream ofs(filename);

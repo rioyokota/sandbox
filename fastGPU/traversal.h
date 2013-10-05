@@ -128,13 +128,13 @@ namespace {
   template<int NI>
     static __device__
     uint2 traverseWarp(float4 * acc_i,
-			const float3 * pos_i,
-			const float3 targetCenter,
-			const float3 targetSize,
-			const float EPS2,
-			const int2 rootRange,
-			volatile int * tempQueue,
-			int * cellQueue) {
+		       const float3 * pos_i,
+		       const float3 targetCenter,
+		       const float3 targetSize,
+		       const float EPS2,
+		       const int2 rootRange,
+		       volatile int * tempQueue,
+		       int * cellQueue) {
     const int laneIdx = threadIdx.x & (WARP_SIZE-1);
 
     uint2 counters = {0,0};
@@ -158,9 +158,9 @@ namespace {
       const bool isNode = sourceData.isNode();                  // Is non-leaf cell
       const bool isClose = applyMAC(sourceCenter, sourceData, targetCenter, targetSize);// Is too close for MAC
       const bool isSource = sourceIdx < numSources;             // Source index is within bounds
-      const bool isSplit = isNode && isClose && isSource;       // Source cell must be split
 
       // Split
+      const bool isSplit = isNode && isClose && isSource;       // Source cell must be split
       const int childBegin = sourceData.child();                // First child cell
       const int numChild = sourceData.nchild() & IF(isSplit);   // Number of child cells (masked by split flag)
       const int numChildScan = inclusiveScanInt(numChild);      // Inclusive scan of numChild

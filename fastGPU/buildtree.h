@@ -158,7 +158,7 @@ namespace {
       const int bodyIdx = min(i+laneIdx, bodyEnd-1);
       float4 pos = bodyPos[bodyIdx];
       int bodyOctant = getOctant(box, pos);
-      int bodySubOctant = getOctant(childBox[bodyOctant], pos);  
+      int bodySubOctant = getOctant(childBox[bodyOctant], pos);
       if (i+laneIdx > bodyIdx)
 	bodyOctant = bodySubOctant = 8;                         // Out of bounds lanes
 
@@ -513,11 +513,11 @@ namespace {
 class Build {
  public:
   template<int NCRIT>
-  int2 tree(cudaVec<float4> & bodyPos,
-	    cudaVec<float4> & bodyPos2,
-	    float4 & domain,
-	    cudaVec<int2> & levelRange,
-	    cudaVec<CellData> & sourceCells) {
+    int2 tree(cudaVec<float4> & bodyPos,
+	      cudaVec<float4> & bodyPos2,
+	      float4 & domain,
+	      cudaVec<int2> & levelRange,
+	      cudaVec<CellData> & sourceCells) {
     const int numBodies = bodyPos.size();
     const int maxNode = numBodies / 10;
     cudaVec<float3> bounds(2048);
