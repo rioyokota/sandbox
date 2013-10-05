@@ -1,7 +1,7 @@
 #pragma once
 #include <algorithm>
 
-#define MEM_PER_WARP (4096*32)
+#define MEM_PER_WARP (4096 * WARP_SIZE)
 #define IF(x) (-(int)(x))
 
 namespace {
@@ -62,7 +62,7 @@ namespace {
     return acc;
   }
 
-  static __device__
+  static __device__ __forceinline__
     float4 M2P(float4 acc,
 	       const float3 pos,
 	       const float4 M0,
