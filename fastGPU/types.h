@@ -66,12 +66,12 @@ class CellData {
     data = make_uint4(parentPack, childPack, body, nbody);
   }
   __host__ __device__ CellData(const uint4 data) : data(data) {}
-  __host__ __device__ int level()  const { return data.x >> LEVEL_SHIFT; }
+  __host__ __device__ int level() const { return data.x >> LEVEL_SHIFT; }
   __host__ __device__ int parent() const { return data.x & LEVEL_MASK; }
-  __host__ __device__ int child()  const { return data.y & CHILD_MASK; }
+  __host__ __device__ int child() const { return data.y & CHILD_MASK; }
   __host__ __device__ int nchild() const { return (data.y >> CHILD_SHIFT)+1; }
-  __host__ __device__ int body()   const { return data.z; }
-  __host__ __device__ int nbody()  const { return data.w; }
+  __host__ __device__ int body() const { return data.z; }
+  __host__ __device__ int nbody() const { return data.w; }
   __host__ __device__ bool isLeaf() const { return data.y == 0; }
   __host__ __device__ bool isNode() const { return !isLeaf(); }
   __host__ __device__ void setParent(const unsigned int parent) {
