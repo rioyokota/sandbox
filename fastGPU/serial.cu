@@ -44,7 +44,7 @@ int main(int argc, char * argv[]) {
   cudaVec<float4> sourceCenter(numSources);
   cudaVec<float4> Monopole(numSources);
   cudaVec<float4> Quadrupole0(numSources);
-  cudaVec<float2> Quadrupole1(numSources);
+  cudaVec<float4> Quadrupole1(numSources);
   Group group;
   int numTargets = group.targets(bodyPos, bodyPos2, domain, targetRange, 5);
   Pass pass;

@@ -9,7 +9,7 @@ namespace {
   texture<float4, 1, cudaReadModeElementType> texCellCenter;
   texture<float4, 1, cudaReadModeElementType> texMonopole;
   texture<float4, 1, cudaReadModeElementType> texQuad0;
-  texture<float2, 1, cudaReadModeElementType> texQuad1;
+  texture<float4, 1, cudaReadModeElementType> texQuad1;
   texture<float4, 1, cudaReadModeElementType> texBody;
 
   static __device__ __forceinline__
@@ -105,15 +105,13 @@ namespace {
 		   const float3 pos_i[NI],
 		   const int cellIdx,
 		   const float EPS2) {
-    float4 M0, Q0;
-    float2 Q1;
+    float4 M0, Q0, Q1;
     if (FULL || cellIdx >= 0) {
       M0 = tex1Dfetch(texMonopole, cellIdx);
       Q0 = tex1Dfetch(texQuad0,    cellIdx);
       Q1 = tex1Dfetch(texQuad1,    cellIdx);
     } else {
-      M0 = Q0 = make_float4(0.0f, 0.0f, 0.0f, 0.0f);
-      Q1 = make_float2(0.0f, 0.0f);
+      M0 = Q0 = Q1 = make_float4(0.0f, 0.0f, 0.0f, 0.0f);
     }
     for (int j=0; j<WARP_SIZE; j++) {
       const float4 jM0 = make_float4(__shfl(M0.x, j), __shfl(M0.y, j), __shfl(M0.z, j), __shfl(M0.w,j));
@@ -421,7 +419,7 @@ class Traversal {
 		cudaVec<float4> & sourceCenter,
 		cudaVec<float4> & Monopole,
 		cudaVec<float4> & Quadrupole0,
-		cudaVec<float2> & Quadrupole1,
+		cudaVec<float4> & Quadrupole1,
 		cudaVec<int2> & levelRange) {
     const int NWARP = 1 << (NTHREAD2 - WARP_SIZE2);
     const int NBLOCK = numTargets / NTHREAD;

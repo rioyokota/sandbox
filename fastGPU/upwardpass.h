@@ -62,7 +62,7 @@ namespace {
 		       float4 *sourceCenter,
 		       float4 *monopole,
 		       float4 *quadrupole0,
-		       float2 *quadrupole1) {
+		       float4 *quadrupole1) {
     const int warpIdx = threadIdx.x >> WARP_SIZE2;
     const int laneIdx = threadIdx.x & (WARP_SIZE-1);
     const int NWARP2  = NTHREAD2 - WARP_SIZE2;
@@ -111,7 +111,7 @@ namespace {
       sourceCenter[cellIdx] = (float4){com.x, com.y, com.z, cellOp2};
       monopole[cellIdx]     = (float4){M.x, M.y, M.z, M.w};
       quadrupole0[cellIdx]  = (float4){Q.xx, Q.yy, Q.zz, Q.xy};
-      quadrupole1[cellIdx]  = (float2){Q.xz, Q.yz};
+      quadrupole1[cellIdx]  = (float4){Q.xz, Q.yz, 0.0f, 0.0f};
     }
   }
 }
@@ -124,7 +124,7 @@ class Pass {
 	      cudaVec<float4> & sourceCenter,
 	      cudaVec<float4> & Monopole,
 	      cudaVec<float4> & Quadrupole0,
-              cudaVec<float2> & Quadrupole1) {
+              cudaVec<float4> & Quadrupole1) {
     const int numBodies = bodyPos.size();
     const int numSources = sourceCells.size();
     const int NWARP = 1 << (NTHREAD2 - WARP_SIZE2);
