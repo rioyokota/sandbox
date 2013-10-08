@@ -1,31 +1,61 @@
+FC=gfortran -O3 --openmp
 
-hfmm3dpart:
-	make -f hfmm3dpart.make -j4
+.f.o:
+	$(FC) -c $<
 
-lfmm3dpart:
-	make -f lfmm3dpart.make -j4
+.SUFFIXES: .o .f
 
-hfmm3dtria:
-	make -f hfmm3dtria.make -j4
+vpath %.f ../src
 
-lfmm3dtria:
-	make -f lfmm3dtria.make -j4
+LP = lfmm3dpart_driver.f lfmm3dpart.f lfmm3drouts.f \
+     d3tstrcr.f d3mtreeplot.f  \
+     prini.f l3dterms.f laprouts3d.f l3dtrans.f \
+     prinm.f yrecursion.f \
+     legeexps.f rotviarecur3.f \
+     hkrand.f dlaran.f
 
-hfmm3dpart-openmp:
-	make -f hfmm3dpart.make HOST=linux-gfortran-openmp -j4
+LT = lfmm3dtria_driver.f lfmm3dtria.f lfmm3drouts.f \
+     d3tstrcr.f d3mtreeplot.f  \
+     prini.f l3dterms.f laprouts3d.f l3dtrans.f \
+     prinm.f yrecursion.f \
+     legeexps.f rotviarecur3.f \
+     hkrand.f dlaran.f \
+     triahquad.f triagauc.f triasymq.f l3dtrirouts.f \
+     triquadflatlib.f trilib.f
 
-cfmm3dpart-openmp:
-	make -f lfmm3dpart.make HOST=linux-gfortran-openmp -j4
+HP = hfmm3dpart_driver.f hfmm3dpart.f hfmm3drouts.f \
+     d3tstrcr.f d3mtreeplot.f  \
+     prini.f h3dterms.f helmrouts3d.f h3dtrans.f projections.f cdjseval3d.f \
+     prinm.f yrecursion.f \
+     legeexps.f rotviarecur3.f rotproj.f dfft.f \
+     hkrand.f dlaran.f
 
-hfmm3dtria-openmp:
-	make -f hfmm3dtria.make HOST=linux-gfortran-openmp -j4
+HT = hfmm3dtria_driver.f hfmm3dtria.f hfmm3drouts.f \
+     d3tstrcr.f d3mtreeplot.f  \
+     prini.f h3dterms.f helmrouts3d.f h3dtrans.f projections.f cdjseval3d.f \
+     prinm.f yrecursion.f \
+     legeexps.f rotviarecur3.f rotproj.f dfft.f \
+     hkrand.f dlaran.f \
+     triahquad.f triagauc.f triasymq.f h3dtrirouts.f \
+     triquadflatlib.f trilib.f \
+     lfmm3dtria.f lfmm3drouts.f l3dterms.f laprouts3d.f l3dtrans.f \
+     l3dtrirouts.f
 
-cfmm3dtria-openmp:
-	make -f lfmm3dtria.make HOST=linux-gfortran-openmp -j4
+lp: $(LP:.f=.o)
+	$(FC) $?
+	./a.out
 
-clean: 
+lt: $(LT:.f=.o)
+	$(FC) $?
+	./a.out
+
+hp: $(HP:.f=.o)
+	$(FC) $?
+	./a.out
+
+ht: $(HT:.f=.o)
+	$(FC) $?
+	./a.out
+
+clean:
 	rm -f *.o
- 
-distclean: 
-	rm -f int2 fort.* *.o
-
