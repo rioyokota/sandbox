@@ -32,7 +32,7 @@ c
         do i=1,n
         write(iw,1000) z(1,i),z(2,i),z(3,i)
         enddo
- 1000   format(6(1x,e11.5))
+ 1000   format(6(1x,e12.5))
         return
         end
 c
@@ -93,7 +93,7 @@ c
         write(iw,1200)
         write(iw,1000) 
 c       
- 1000   format(6(1x,e11.5))
+ 1000   format(6(1x,e12.5))
  1200   format(80a1)
         return
         end 

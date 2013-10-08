@@ -278,7 +278,7 @@ c     ifprint is an internal information printing flag.
 c     Suppressed if ifprint=0.
 c     Prints timing breakdown and other things if ifprint=1.
 c       
-        ifprint=1
+        ifprint=0
 c
 c     set fmm tolerance based on iprec flag.
 c
@@ -292,7 +292,7 @@ c
         if( iprec .eq. 5 ) epsfmm=.5d-15
         if( iprec .eq. 6 ) epsfmm=0
 c       
-        if (ifprint .ge. 1) call prin2('epsfmm=*',epsfmm,1)
+        if (ifprint .ge. 1) print*,'epsfmm =',epsfmm
 c
 c
 c     set criterion for box subdivision (number of sources per box)
@@ -307,7 +307,7 @@ c
         if( iprec .eq. 5 ) nbox=1400*1.0
         if( iprec .eq. 6 ) nbox=nsource+ntarget
 c
-        if (ifprint .ge. 1) call prinf('nbox=*',nbox,1)
+        if (ifprint .ge. 1) print*,'nbox   =',nbox
 c
 c
 c     create oct-tree data structure
@@ -336,7 +336,7 @@ c
            return
         endif
         t2=omp_get_wtime()
-        if( ifprint .eq. 1 ) call prin2('time in d3tstrcr=*',t2-t1,1)
+c        if( ifprint .eq. 1 ) call prin2('time in d3tstrcr=*',t2-t1,1)
 c
 c     lused7 is counter that steps through workspace,
 c     keeping track of total memory used.
@@ -346,7 +346,7 @@ c
         scale(i) = 1.0d0
         enddo
 c       
-        if (ifprint .ge. 1) call prin2('scale=*',scale,nlev+1)
+c        if (ifprint .ge. 1) call prin2('scale=*',scale,nlev+1)
 c       
 c
 c       carve up workspace further
@@ -400,7 +400,7 @@ c
         endif
         lused7=lused7+lfldtarg
 c      
-        if (ifprint .ge. 1) call prinf(' lused7 is *',lused7,1)
+c        if (ifprint .ge. 1) call prinf(' lused7 is *',lused7,1)
 c
 c       based on FMM tolerance, compute expansion lengths nterms(i)
 c      
@@ -412,8 +412,8 @@ c
            if (nterms(i).gt. nmax .and. i.ge. 2) nmax = nterms(i)
         enddo
 c
-        if (ifprint .ge. 1) call prinf('nterms=*',nterms,nlev+1)
-        if (ifprint .ge. 1) call prinf('nmax=*',nmax,1)
+        if (ifprint .ge. 1) print*,'nterms =',nterms_lap
+c        if (ifprint .ge. 1) call prinf('nmax=*',nmax,1)
 c
 c     Multipole and local expansions will be held in workspace
 c     in locations pointed to by array iaddr(2,nboxes).
@@ -445,12 +445,11 @@ c
         call l3dreordertarg(ntarget,target,wlists(iitarget),
      1       w(itargetsort))
 c
-        if (ifprint .ge. 1) call prinf('finished reordering=*',ier,1)
-        if (ifprint .ge. 1) call prinf('ier=*',ier,1)
-        if (ifprint .ge. 1) call prinf('nboxes=*',nboxes,1)
-        if (ifprint .ge. 1) call prinf('nlev=*',nlev,1)
-        if (ifprint .ge. 1) call prinf('nboxes=*',nboxes,1)
-        if (ifprint .ge. 1) call prinf('lused7=*',lused7,1)
+c        if (ifprint .ge. 1) call prinf('finished reordering=*',ier,1)
+c        if (ifprint .ge. 1) call prinf('ier=*',ier,1)
+        if (ifprint .ge. 1) print*,'nboxes =',nboxes
+c        if (ifprint .ge. 1) call prinf('nlev=*',nlev,1)
+c        if (ifprint .ge. 1) call prinf('lused7=*',lused7,1)
 c
 c     allocate memory need by multipole, local expansions at all
 c     levels
@@ -458,11 +457,11 @@ c     irmlexp is pointer for workspace need by various fmm routines,
 c
         call l3dmpalloc(wlists(iwlists),w(iiaddr),nboxes,lmptot,nterms)
 c
-        if (ifprint .ge. 1) call prinf(' lmptot is *',lmptot,1)
+c        if (ifprint .ge. 1) call prinf(' lmptot is *',lmptot,1)
 c       
         irmlexp = 1
         lused7 = irmlexp + lmptot 
-        if (ifprint .ge. 1) call prinf(' lused7 is *',lused7,1)
+c        if (ifprint .ge. 1) call prinf(' lused7 is *',lused7,1)
         allocate(wrmlexp(lused7),stat=ier)
         if (ier.ne.0) then
            call prinf(' cannot allocate mpole expansion workspace,
@@ -499,16 +498,16 @@ c
      $     nboxes,laddr,nlev,scale,bsize,nterms,
      $     wlists(iwlists),lwlists)
         t2=omp_get_wtime()
-        if( ifprint .eq. 1 ) call prin2('time in fmm main=*',t2-t1,1)
+c        if( ifprint .eq. 1 ) call prin2('time in fmm main=*',t2-t1,1)
 c
 c       parameter ier from targmain routine is currently meaningless, reset to 0
         if( ier .ne. 0 ) ier = 0
 c
-        if (ifprint .ge. 1) call prinf('lwlists=*',lused,1)
-        if (ifprint .ge. 1) call prinf('lused total =*',lused7,1)
+c        if (ifprint .ge. 1) call prinf('lwlists=*',lused,1)
+c        if (ifprint .ge. 1) call prinf('lused total =*',lused7,1)
 c       
-        if (ifprint .ge. 1) 
-     $      call prin2('memory / point = *',(lused7)/dble(nsource),1)
+c        if (ifprint .ge. 1) 
+c     $      call prin2('memory / point = *',(lused7)/dble(nsource),1)
 c       
 ccc        call prin2('after w=*', w(1+lused7-100), 2*100)
 c
@@ -630,7 +629,7 @@ c     Suppressed if ifprint=0.
 c     Prints timing breakdown and other things if ifprint=1.
 c     Prints timing breakdown, list information, and other things if ifprint=2.
 c       
-        ifprint=1
+        ifprint=0
 c
 c     
 c       ... set the potential and field to zero

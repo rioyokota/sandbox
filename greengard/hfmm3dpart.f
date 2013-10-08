@@ -278,7 +278,7 @@ c     ifprint is an internal information printing flag.
 c     Suppressed if ifprint=0.
 c     Prints timing breakdown and other things if ifprint=1.
 c       
-        ifprint=1
+        ifprint=0
 c
 c     set fmm tolerance based on iprec flag.
 c
@@ -601,7 +601,7 @@ c     Suppressed if ifprint=0.
 c     Prints timing breakdown and other things if ifprint=1.
 c     Prints timing breakdown, list information, and other things if ifprint=2.
 c       
-        ifprint=1
+        ifprint=0
 c
 c
 c       ... set the potential and field to zero

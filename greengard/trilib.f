@@ -127,7 +127,7 @@ c
         write(iw,*) nverts, nfaces
         write(iw,1800) (verts(1,j),verts(2,j),verts(3,j),j=1,nverts) 
         write(iw,1900) (ifaces(1,j),ifaces(2,j),ifaces(3,j),j=1,nfaces) 
- 1800   format(3(1x,e22.16))
+ 1800   format(3(1x,e23.16))
  1900   format(3(1x,i7))
 c
         return
@@ -147,7 +147,7 @@ c
         write(iw,1200) (verts(1,j),verts(2,j),verts(3,j),j=1,nVerts) 
         write(iw,1400) (ifaces(1,itrinew(j)),ifaces(2,itrinew(j)),
      1      ifaces(3,itrinew(j)),j=1,nFaces) 
- 1200   format(3(1x,e22.16))
+ 1200   format(3(1x,e23.16))
  1400   format(3(1x,i7))
 
 c
@@ -173,7 +173,7 @@ c
       write(iw,1200) (verts(1,j),verts(2,j),verts(3,j),j=1,nVerts) 
       write(iw,1400) (nedges,ifaces(1,j),ifaces(2,j),
      1     ifaces(3,j),j=1,nFaces) 
- 1200 format(3(1x,e22.16))
+ 1200 format(3(1x,e23.16))
  1400 format(4(1x,i7))
 c     
       return

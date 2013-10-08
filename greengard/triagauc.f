@@ -441,7 +441,7 @@ c
         implicit real *8 (a-h,o-z)
         dimension z(2,3)
 c
- 1200 format(2x,e11.5,2x,e11.5)
+ 1200 format(2x,e12.5,2x,e12.5)
 c
         write(iw,1200) z(1,1),z(2,1)
         write(iw,1200) z(1,2),z(2,2)

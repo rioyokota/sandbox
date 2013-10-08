@@ -79,12 +79,9 @@ c
            target(3,i)=.5d0*cos(theta)
         enddo
 c
-        call prinf('ntarget=*',ntarget,1)
-c       
-c     set precision flag
-c
+        print*,'ntarget=',ntarget
         iprec=1
-        call prinf('iprec=*',iprec,1)
+        print*,'iprec  =',iprec
 c       
 c     set source type flags and output flags
 c
@@ -130,11 +127,7 @@ c
         t2=omp_get_wtime()
 c       
 c       
-        call prinf('nsource=*',nsource,1)
-        call prinf('ntarget=*',ntarget,1)
-        call prin2('after fmm, time (sec)=*',t2-t1,1)
-        call prin2('after fmm, speed (points+targets/sec)=*',
-     $     (nsource+ntarget)/(t2-t1),1)
+        print*,'FMM    =',t2-t1
 c       
 c     call direct calculation with subset of points to assess accuracy
 c
@@ -143,19 +136,19 @@ c
 c     ifprint=0 suppresses printing of source locations
 c     ifprint=1 turns on printing of source locations
 c
-        ifprint=0
-        if (ifprint .eq. 1) then
-        call prin2('source=*',source,3*nsource)
-        endif
+c        ifprint=0
+c        if (ifprint .eq. 1) then
+c        call prin2('source=*',source,3*nsource)
+c        endif
 c
 c     ifprint=0 suppresses printing of potentials and fields
 c     ifprint=1 turns on printing of potentials and fields
 c
-        ifprint=0
-        if (ifprint .eq. 1) then
-           if( ifpot.eq.1 ) call prin2('after fmm, pot=*',pot,2*m)
-           if( iffld.eq.1 ) call prin2('after fmm, fld=*',fld,3*2*m)
-        endif
+c        ifprint=0
+c        if (ifprint .eq. 1) then
+c           if( ifpot.eq.1 ) call prin2('after fmm, pot=*',pot,2*m)
+c           if( iffld.eq.1 ) call prin2('after fmm, fld=*',fld,3*2*m)
+c        endif
 c
 c       for direct calculation, initialize pot2,fld2 arrays to zero.
 c
@@ -206,24 +199,21 @@ c
 c
 c       ifprint=1 turns on printing of first m values of potential and field
 c
-        if (ifprint .eq. 1) then
-           if( ifpot.eq.1 ) call prin2('directly, pot=*',pot2,2*m)
-           if( iffld.eq.1 ) call prin2('directly, fld=*',fld2,3*2*m)
-        endif
+c        if (ifprint .eq. 1) then
+c           if( ifpot.eq.1 ) call prin2('directly, pot=*',pot2,2*m)
+c           if( iffld.eq.1 ) call prin2('directly, fld=*',fld2,3*2*m)
+c        endif
 c
-        call prin2('directly, estimated time (sec)=*',
-     $     (t2-t1)*dble(nsource)/dble(m),1)
-        call prin2('directly, estimated speed (points/sec)=*',
-     $     m/(t2-t1),1)
+        print*,'Direct =',(t2-t1)*dble(nsource)/dble(m)
 c       
         if (ifpot .eq. 1)  then
            call h3derror(pot,pot2,m,aerr,rerr)
-           call prin2('relative L2 error in potential=*',rerr,1)
+           print*,'Err pot=',rerr
         endif
 c
         if (iffld .eq. 1) then
            call h3derror(fld,fld2,3*m,aerr,rerr)
-           call prin2('relative L2 error in field=*',rerr,1)
+           print*,'Err acc=',rerr
         endif
 c       
 c
@@ -275,34 +265,34 @@ c
 c
 c
 c
-        if (ifprint .eq. 1) then
-           if( ifpottarg.eq.1 ) 
-     $        call prin2('after fmm, pottarg=*',pottarg,2*m)
-           if( iffldtarg.eq.1 ) 
-     $        call prin2('after fmm, fldtarg=*',fldtarg,3*2*m)
-        endif
+c        if (ifprint .eq. 1) then
+c           if( ifpottarg.eq.1 ) 
+c     $        call prin2('after fmm, pottarg=*',pottarg,2*m)
+c           if( iffldtarg.eq.1 ) 
+c     $        call prin2('after fmm, fldtarg=*',fldtarg,3*2*m)
+c        endif
 
-        if (ifprint .eq. 1) then
-           if (ifpottarg .eq. 1) 
-     $        call prin2('directly, pottarg=*',pot2,2*m)
-           if( iffldtarg.eq.1 ) 
-     $        call prin2('directly, fldtarg=*',fld2,3*2*m)
-        endif
+c        if (ifprint .eq. 1) then
+c           if (ifpottarg .eq. 1) 
+c     $        call prin2('directly, pottarg=*',pot2,2*m)
+c           if( iffldtarg.eq.1 ) 
+c     $        call prin2('directly, fldtarg=*',fld2,3*2*m)
+c        endif
 c
-        call prin2('directly, estimated time (sec)=*',
-     $     (t2-t1)*dble(ntarget)/dble(m),1)
-        call prin2('directly, estimated speed (targets/sec)=*',
-     $     m/(t2-t1),1)
+c        call prin2('directly, estimated time (sec)=*',
+c     $     (t2-t1)*dble(ntarget)/dble(m),1)
+c        call prin2('directly, estimated speed (targets/sec)=*',
+c     $     m/(t2-t1),1)
 c       
-        if (ifpottarg .eq. 1) then
-           call h3derror(pottarg,pot2,m,aerr,rerr)
-           call prin2('relative L2 error in target potential=*',rerr,1)
-        endif
+c        if (ifpottarg .eq. 1) then
+c           call h3derror(pottarg,pot2,m,aerr,rerr)
+c           call prin2('relative L2 error in target potential=*',rerr,1)
+c        endif
 c
-        if (iffldtarg .eq. 1) then
-           call h3derror(fldtarg,fld2,3*m,aerr,rerr)
-           call prin2('relative L2 error in target field=*',rerr,1)
-        endif
+c        if (iffldtarg .eq. 1) then
+c           call h3derror(fldtarg,fld2,3*m,aerr,rerr)
+c           call prin2('relative L2 error in target field=*',rerr,1)
+c        endif
 c       
         stop
         end

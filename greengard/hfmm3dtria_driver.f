@@ -144,10 +144,9 @@ c
          call triangle_area(triangles(1,1,itri),triarea(itri))
       enddo
 c
-      call prinf('ntri=*',ntri,1)
-c
+      print*,'ntarget=',ntri
       iprec=1
-      call prinf('iprec=*',iprec,1)
+      print*,'iprec  =',iprec
 c
       ifpot=1
       iffld=1
@@ -156,10 +155,10 @@ c
       ifpottarg=1
       iffldtarg=1
 
-      call prinf('ifpot=*',ifpot,1)
-      call prinf('iffld=*',iffld,1)
-      call prinf('ifslp=*',ifslp,1)
-      call prinf('ifdlp=*',ifdlp,1)
+c      call prinf('ifpot=*',ifpot,1)
+c      call prinf('iffld=*',iffld,1)
+c      call prinf('ifslp=*',ifslp,1)
+c      call prinf('ifdlp=*',ifdlp,1)
 c
       if( ifslp .eq. 1 ) then
          do i=1,ntri
@@ -204,7 +203,7 @@ c
 ccc      call prin2('half of pot is =*',pothalf,2*ntri)
 ccc      call prin2('charge is =*',charge,2*ntri)
 ccc      call prin2('dipstr is =*',dipstr,2*ntri)
-        call prinf('ntarget=*',ntarget,1)
+c        call prinf('ntarget=*',ntarget,1)
 c
         t1=omp_get_wtime()
 c
@@ -225,29 +224,27 @@ c
         enddo
       endif
 c
-      call prin2('after fmm, time (sec)=*',t2-t1,1)
-      call prin2('after fmm, speed (triangles+targets/sec)=*',
-     $     (ntri+ntarget)/(t2-t1),1)
+      print*,'FMM    =',t2-t1
 c
 c
-      err = 0.0d0
-      err7 = 0.0d0
-      denom = 0.0d0
-      denom7 = 0.0d0
-      do i=1,ntri
-         err = err + abs(pothalf(i)-pot(i))**2
-         denom = denom + abs(pothalf(i))**2
-         pot2(i) = fld(1,i)*trinorm(1,i) +
-     1      fld(2,i)*trinorm(2,i) +
-     1      fld(3,i)*trinorm(3,i)
-         pot2(i) = potn(i)/ (2*pi)
-         err7 = err7 + abs(pot2(i)-charge(i))**2
-         denom7 = denom7 + abs(charge(i))**2
-      enddo
-      err = sqrt(err/denom)
-      err7 = sqrt(err7/denom7)
-      call prin2(' Greens identity error in ext is *',err,1)
-      call prin2(' Greens identity error in dudn is *',err7,1)
+c      err = 0.0d0
+c      err7 = 0.0d0
+c      denom = 0.0d0
+c      denom7 = 0.0d0
+c      do i=1,ntri
+c         err = err + abs(pothalf(i)-pot(i))**2
+c         denom = denom + abs(pothalf(i))**2
+c         pot2(i) = fld(1,i)*trinorm(1,i) +
+c     1      fld(2,i)*trinorm(2,i) +
+c     1      fld(3,i)*trinorm(3,i)
+c         pot2(i) = potn(i)/ (2*pi)
+c         err7 = err7 + abs(pot2(i)-charge(i))**2
+c         denom7 = denom7 + abs(charge(i))**2
+c      enddo
+c      err = sqrt(err/denom)
+c      err7 = sqrt(err7/denom7)
+c      call prin2(' Greens identity error in ext is *',err,1)
+c      call prin2(' Greens identity error in dudn is *',err7,1)
 c        
 c
       do i=1,ntri
@@ -304,32 +301,31 @@ c
 c       
         t2=omp_get_wtime()
 c
-      ifprint = 1
-      call prinf(' ifpot=*',ifpot,1)
+      ifprint = 0
+c      call prinf(' ifpot=*',ifpot,1)
 c
-      if (ifprint .eq. 1) then
-         if( ifpot .eq. 1 ) call prin2('from fmm, pot=*',pot,2*m)
-         if( ifpot .eq. 1 ) call prin2('directly, pot2=*',pot2,2*m)
-         if( iffld .eq. 1 ) call prin2('from fmm, fld=*',fld,6*m)
-         if( iffld .eq. 1 ) call prin2('directly, fld2=*',fld2,6*m)
-      endif
+c      if (ifprint .eq. 1) then
+c         if( ifpot .eq. 1 ) call prin2('from fmm, pot=*',pot,2*m)
+c         if( ifpot .eq. 1 ) call prin2('directly, pot2=*',pot2,2*m)
+c         if( iffld .eq. 1 ) call prin2('from fmm, fld=*',fld,6*m)
+c         if( iffld .eq. 1 ) call prin2('directly, fld2=*',fld2,6*m)
+c      endif
 c
-      call prin2('directly, time (sec)=*',
-     $     (t2-t1)*dble(ntri)/dble(m),1)
-      call prin2('directly, speed (triangles/sec)=*',
-     $     m/(t2-t1),1)
+c      print*,'Direct =',(t2-t1)*dble(ntri)/dble(m)
 c       
-      if (ifpot .eq. 1) then
-         call h3derror(pot,pot2,m,aerr,rerr)
-         call prin2('abs error in potential=*',aerr,1)
-         call prin2('relative error in potential=*',rerr,1)
-      endif
+c      if (ifpot .eq. 1) then
+c         call h3derror(pot,pot2,m,aerr,rerr)
+c         print*,'Err pot=',rerr
+c         call prin2('abs error in potential=*',aerr,1)
+c         call prin2('relative error in potential=*',rerr,1)
+c      endif
 c       
-      if (iffld .eq. 1) then
-         call h3derror(fld,fld2,3*m,aerr,rerr)
-         call prin2('abs error in field=*',aerr,1)
-         call prin2('relative error in field=*',rerr,1)
-      endif
+c      if (iffld .eq. 1) then
+c         call h3derror(fld,fld2,3*m,aerr,rerr)
+c         print*,'Err acc=',rerr
+c         call prin2('abs error in field=*',aerr,1)
+c         call prin2('relative error in field=*',rerr,1)
+c      endif
 c
       do i=1,ntarget
          if (ifpottarg.ne.0) pot2(i)=0
@@ -376,33 +372,36 @@ C$OMP END PARALLEL DO
 c
         t2=omp_get_wtime()
 c
-      ifprint = 1
+      ifprint = 0
 c
-      if (ifprint .eq. 1) then
-         if( ifpottarg .eq. 1 ) call prin2('fmm, pottarg=*',pottarg,2*m)
-         if( ifpottarg .eq. 1 ) call prin2('directly, pot2=*',pot2,2*m)
-         if( iffldtarg .eq. 1 ) call prin2('fmm, fldtarg=*',fldtarg,6*m)
-         if( iffldtarg .eq. 1 ) call prin2('directly, fld2=*',fld2,6*m)
-      endif
+c      if (ifprint .eq. 1) then
+c         if( ifpottarg .eq. 1 ) call prin2('fmm, pottarg=*',pottarg,2*m)
+c         if( ifpottarg .eq. 1 ) call prin2('directly, pot2=*',pot2,2*m)
+c         if( iffldtarg .eq. 1 ) call prin2('fmm, fldtarg=*',fldtarg,6*m)
+c         if( iffldtarg .eq. 1 ) call prin2('directly, fld2=*',fld2,6*m)
+c      endif
 c
-      call prin2('directly, time (sec)=*',
-     $     (t2-t1)*dble(ntri)/dble(m),1)
-      call prin2('directly, speed (targets/sec)=*',
-     $     m/(t2-t1),1)
+      print*,'Direct =',(t2-t1)*dble(ntri)/dble(m)
+c      call prin2('directly, time (sec)=*',
+c     $     (t2-t1)*dble(ntri)/dble(m),1)
+c      call prin2('directly, speed (targets/sec)=*',
+c     $     m/(t2-t1),1)
 c       
       if (ifpottarg .eq. 1) then
          call h3derror(pottarg,pot2,m,aerr,rerr)
-         call prin2('abs error in target potential=*',aerr,1)
-         call prin2('relative error in target potential=*',rerr,1)
+         print*,'Err pot=',rerr
+c         call prin2('abs error in target potential=*',aerr,1)
+c         call prin2('relative error in target potential=*',rerr,1)
       endif
 c       
       if (iffldtarg .eq. 1) then
          call h3derror(fldtarg,fld2,3*m,aerr,rerr)
-         call prin2('abs error in target field=*',aerr,1)
-         call prin2('relative error in target field=*',rerr,1)
+         print*,'Err acc=',rerr
+c         call prin2('abs error in target field=*',aerr,1)
+c         call prin2('relative error in target field=*',rerr,1)
       endif
 c       
-      call prinf('=== test multipole expansion in far field*',i,0)
+c      call prinf('=== test multipole expansion in far field*',i,0)
 c
 c     finally, test the far field evaluation via multipole expansion 
 c     by congtructing a distant sphere of targets.
@@ -424,20 +423,20 @@ c
 c
         t2=omp_get_wtime()
 c
-      call prin2('via mp, time (sec)=*',
-     $     (t2-t1),1)
-      call prin2('via mp, speed (targets/sec)=*',
-     $     ntarget/(t2-t1),1)
+c      call prin2('via mp, time (sec)=*',
+c     $     (t2-t1),1)
+c      call prin2('via mp, speed (targets/sec)=*',
+c     $     ntarget/(t2-t1),1)
 c       
-      if (ifprint .eq. 1) then
+c      if (ifprint .eq. 1) then
 c
-         if( ifpottarg .eq. 1 ) 
-     $     call prin2('via mp, pottarg=*',pot3,2*m)
-         if( iffldtarg .eq. 1 ) 
-     $     call prin2('via mp, fldtarg=*',fld3,6*m)
-      endif
+c         if( ifpottarg .eq. 1 ) 
+c     $     call prin2('via mp, pottarg=*',pot3,2*m)
+c         if( iffldtarg .eq. 1 ) 
+c     $     call prin2('via mp, fldtarg=*',fld3,6*m)
+c      endif
 c
-      call prinf(' ifpot=*',ifpot,1)
+c      call prinf(' ifpot=*',ifpot,1)
       do i=1,ntarget
          if (ifpottarg.eq.1) pot2(i)=0
          if (iffldtarg .eq. 1) then
@@ -482,17 +481,17 @@ c
         t2=omp_get_wtime()
 c
 
-      if (ifpottarg .eq. 1) then
-        call h3derror(pot3,pot2,m,aerr,rerr)
-        call prin2('abs error in target potential=*',aerr,1)
-        call prin2('relative error in target potential=*',rerr,1)
-      endif
+c      if (ifpottarg .eq. 1) then
+c        call h3derror(pot3,pot2,m,aerr,rerr)
+c        call prin2('abs error in target potential=*',aerr,1)
+c        call prin2('relative error in target potential=*',rerr,1)
+c      endif
 c       
-      if (iffldtarg .eq. 1) then
-        call h3derror(fld3,fld2,3*m,aerr,rerr)
-        call prin2('abs error in target field=*',aerr,1)
-        call prin2('relative error in target field=*',rerr,1)
-      endif
+c      if (iffldtarg .eq. 1) then
+c        call h3derror(fld3,fld2,3*m,aerr,rerr)
+c        call prin2('abs error in target field=*',aerr,1)
+c        call prin2('relative error in target field=*',rerr,1)
+c      endif
 c
       stop
       end

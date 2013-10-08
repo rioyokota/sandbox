@@ -18,7 +18,7 @@ C
 C
 C     print out coefficients of multipole expansion
 C
-1000  FORMAT(6(2X,E11.5))
+1000  FORMAT(6(2X,E12.5))
 1001  FORMAT(/)
       DO 100 L = 0,NTERMS
          WRITE(6,1000)(MPOLE(L,M),M=-L,L)

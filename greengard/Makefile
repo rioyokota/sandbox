@@ -1,7 +1,8 @@
 FC=ifort -O3 -fopenmp
+MAKEFLAGS += --no-print-directory
 
 .f.o:
-	$(FC) -c $<
+	@$(FC) -c $<
 
 .SUFFIXES: .o .f
 
@@ -34,20 +35,20 @@ all:
 	make clean; make ht
 
 lp: $(LP:.f=.o)
-	$(FC) $?
+	@$(FC) $?
 	./a.out
 
 lt: $(LT:.f=.o)
-	$(FC) $?
+	@$(FC) $?
 	./a.out
 
 hp: $(HP:.f=.o)
-	$(FC) $?
+	@$(FC) $?
 	./a.out
 
 ht: $(HT:.f=.o)
-	$(FC) $?
+	@$(FC) $?
 	./a.out
 
 clean:
-	rm -f *.o
+	@rm -f *.o
