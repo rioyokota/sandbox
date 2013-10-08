@@ -51,7 +51,7 @@ c     file fort.13.
 c
         call prini(6,13)
 c
-        nsource= 1000000
+        nsource= 100000
 c
 c     set Helmholtz parameter  (used only by H3D prefix routines)
 c
