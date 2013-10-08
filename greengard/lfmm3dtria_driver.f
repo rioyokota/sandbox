@@ -205,8 +205,7 @@ ccc      call prin2('charge is =*',charge,2*ntri)
 ccc      call prin2('dipstr is =*',dipstr,2*ntri)
         call prinf('ntarget=*',ntarget,1)
 c
-      t1=second()
-C$        t1=omp_get_wtime()
+        t1=omp_get_wtime()
 c
       call lfmm3dtriatarg(ier,iprec,ntri,
      $   triangles,trinorm,centroids,
@@ -214,8 +213,7 @@ c
      $   ifpot,pot,iffld,fld,
      $   ntarget,target,ifpottarg,pottarg,iffldtarg,fldtarg)
 c
-      t2=second()
-C$        t2=omp_get_wtime()        
+        t2=omp_get_wtime()        
 c
 c
       if( iffld .eq. 1 ) then
@@ -262,8 +260,7 @@ c
 c        
       m=min(ntri,10)
 c
-      t1=second()
-C$        t1=omp_get_wtime()
+        t1=omp_get_wtime()
 c
       nqtri = 6
 C$OMP PARALLEL DO DEFAULT(SHARED)
@@ -302,8 +299,7 @@ c
          enddo
       endif
 c       
-      t2=second()
-C$        t2=omp_get_wtime()
+        t2=omp_get_wtime()
 c
       ifprint = 1
 c
@@ -341,8 +337,7 @@ c
       enddo
 c        
       m=min(ntarget,10)
-      t1=second()
-C$        t1=omp_get_wtime()
+        t1=omp_get_wtime()
 c
       nqtri = 6
 C$OMP PARALLEL DO DEFAULT(SHARED)
@@ -373,8 +368,7 @@ cccC$OMP$NUM_THREADS(4)
       enddo
 C$OMP END PARALLEL DO
 c
-      t2=second()
-C$        t2=omp_get_wtime()
+        t2=omp_get_wtime()
 c
       ifprint = 1
 c
@@ -402,7 +396,7 @@ c
          call prin2('relative error in target field=*',rerr,1)
       endif
 c       
-      return
+      stop
       end
 c
 c

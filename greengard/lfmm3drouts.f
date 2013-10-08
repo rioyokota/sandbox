@@ -194,8 +194,7 @@ c
 c
          if (ifprint .ge. 1) 
      $      call prinf('=== STEP 3 (merge mp) ===*',i,0)
-         t1=second()
-C$        t1=omp_get_wtime()
+        t1=omp_get_wtime()
 c
 c       ... step 3, merge all multipole expansions
 c       
@@ -288,15 +287,13 @@ ccc        stop
 c      END DEBUGGING SEGMENT
 c------------------------------------------------------------
 c
-         t2=second()
-C$        t2=omp_get_wtime()
+        t2=omp_get_wtime()
 ccc        call prin2('time=*',t2-t1,1)
          timeinfo(3)=t2-t1
 c
         if (ifprint .ge. 1)
      $     call prinf('=== STEP 4 (mp to lo) ===*',i,0)
-        t1=second()
-C$        t1=omp_get_wtime()
+        t1=omp_get_wtime()
 c
 c       ... precompute rotation matrices, useful up to order 10 or so
 c       (approximately 30kB of storage for ldm=10)
@@ -355,8 +352,7 @@ ccc        call prinf('itable=*',itable,7*7*7)
         do 4300 ilev=3,nlev+1
 ccc        call l3dterms_list2(epsfmm, itable, ier)
 ccc        call prinf('itable=*',itable,7*7*7)
-c        t3=second()
-cC$        t3=omp_get_wtime()
+c        t3=omp_get_wtime()
 C$OMP PARALLEL DO DEFAULT(SHARED)
 C$OMP$PRIVATE(ibox,box,center0,corners0,level0,list,nlist)
 C$OMP$PRIVATE(jbox,box1,center1,corners1,level1,ifdirect2,radius)
@@ -481,24 +477,15 @@ ccc              call prin2('theta=*',thetas(-ii,-jj,-kk),1)
  4150       continue
         endif
  4200   continue
-C$OMP END PARALLEL DO
-c        t4=second()
-cC$        t4=omp_get_wtime()
-c        write(*,*) 'level ', ilev, ' time in list2:', t4-t3
-ccc        write(*,*) 'time in list2:', second()-t1
-ccc        write(*,*) 'ntops:', ntops
-ccc        write(*,*) 'speed:', ntops/(second()-t1)
  4300   continue
 c
-        t2=second()
-C$        t2=omp_get_wtime()
+        t2=omp_get_wtime()
 ccc     call prin2('time=*',t2-t1,1)
         timeinfo(4)=t2-t1
 c       
         if (ifprint .ge. 1) 
      $     call prinf('=== STEP 5 (split lo) ===*',i,0)
-        t1=second()
-C$        t1=omp_get_wtime()
+        t1=omp_get_wtime()
 c
 c       ... step 5, split all local expansions
 c
@@ -565,8 +552,7 @@ c
 C$OMP END PARALLEL DO
  5300   continue
 c       
-        t2=second()
-C$        t2=omp_get_wtime()
+        t2=omp_get_wtime()
 ccc     call prin2('time=*',t2-t1,1)
         timeinfo(5)=t2-t1
 c

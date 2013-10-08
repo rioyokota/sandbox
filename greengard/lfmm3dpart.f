@@ -312,8 +312,7 @@ c
 c
 c     create oct-tree data structure
 c
-        t1=second()
-C$        t1=omp_get_wtime()
+        t1=omp_get_wtime()
         ntot = 100*(nsource+ntarget)+10000
         do ii = 1,10
            allocate (wlists(ntot))
@@ -336,8 +335,7 @@ C$        t1=omp_get_wtime()
            ier = 4
            return
         endif
-        t2=second()
-C$        t2=omp_get_wtime()
+        t2=omp_get_wtime()
         if( ifprint .eq. 1 ) call prin2('time in d3tstrcr=*',t2-t1,1)
 c
 c     lused7 is counter that steps through workspace,
@@ -488,8 +486,7 @@ c
         ifevalfar=1
         ifevalloc=1
 c
-        t1=second()
-C$        t1=omp_get_wtime()
+        t1=omp_get_wtime()
         call lfmm3dparttargmain(ier,iprec,
      $     ifevalfar,ifevalloc,
      $     nsource,w(isourcesort),wlists(iisource),
@@ -501,8 +498,7 @@ C$        t1=omp_get_wtime()
      $     epsfmm,w(iiaddr),wrmlexp(irmlexp),w(imptemp),lmptemp,
      $     nboxes,laddr,nlev,scale,bsize,nterms,
      $     wlists(iwlists),lwlists)
-        t2=second()
-C$        t2=omp_get_wtime()
+        t2=omp_get_wtime()
         if( ifprint .eq. 1 ) call prin2('time in fmm main=*',t2-t1,1)
 c
 c       parameter ier from targmain routine is currently meaningless, reset to 0
@@ -697,8 +693,7 @@ C$OMP END PARALLEL DO
 c
 c
         if (ifprint .ge. 1) call prinf('=== STEP 1 (form mp) ====*',i,0)
-        t1=second()
-C$        t1=omp_get_wtime()
+        t1=omp_get_wtime()
 c
 c       ... step 1, locate all charges, assign them to boxes, and
 c       form multipole expansions
@@ -777,14 +772,12 @@ c
 C$OMP END PARALLEL DO
  1300    continue
 c
-         t2=second()
-C$        t2=omp_get_wtime()
+        t2=omp_get_wtime()
 ccc        call prin2('time=*',t2-t1,1)
          timeinfo(1)=t2-t1
 c       
         if (ifprint .ge. 1) call prinf('=== STEP 2 (form lo) ====*',i,0)
-        t1=second()
-C$        t1=omp_get_wtime()
+        t1=omp_get_wtime()
 c
 c-----------------------------------------------------------------------
 c       Step 2: In the adaptive FMM, a large leaf node may need to interact
@@ -876,8 +869,7 @@ c
  3251    continue
 C$OMP END PARALLEL DO
 c
-         t2=second()
-C$        t2=omp_get_wtime()
+        t2=omp_get_wtime()
 ccc        call prin2('time=*',t2-t1,1)
          timeinfo(2)=t2-t1
 c
@@ -901,8 +893,7 @@ c
 c
 c
         if (ifprint .ge. 1) call prinf('=== STEP 6 (eval mp) ====*',i,0)
-        t1=second()
-C$        t1=omp_get_wtime()
+        t1=omp_get_wtime()
 c
 c-----------------------------------------------------------------------
 c       Step 6: In the adaptive FMM, a small leaf node may need to interact
@@ -992,8 +983,7 @@ c
 C$OMP END PARALLEL DO
 c
 c
-        t2=second()
-C$        t2=omp_get_wtime()
+        t2=omp_get_wtime()
 ccc     call prin2('time=*',t2-t1,1)
         timeinfo(6)=t2-t1
 c
@@ -1002,8 +992,7 @@ c       Step 7: Evaluate the local expansions for all relevant sources/targets.
 c-----------------------------------------------------------------------
 c
         if (ifprint .ge. 1) call prinf('=== STEP 7 (eval lo) ====*',i,0)
-        t1=second()
-C$        t1=omp_get_wtime()
+        t1=omp_get_wtime()
 c
 c       ... step 7, evaluate local expansions
 c       and all fields directly
@@ -1062,8 +1051,7 @@ c
 c
  6201   continue
 C$OMP END PARALLEL DO
-        t2=second()
-C$        t2=omp_get_wtime()
+        t2=omp_get_wtime()
 ccc     call prin2('time=*',t2-t1,1)
         timeinfo(7)=t2-t1
 c
@@ -1074,8 +1062,7 @@ c
         if( ifevalloc .eq. 0 ) goto 9000
 c 
         if (ifprint .ge. 1) call prinf('=== STEP 8 (direct) =====*',i,0)
-        t1=second()
-C$        t1=omp_get_wtime()
+        t1=omp_get_wtime()
 c
 c-----------------------------------------------------------------------
 c       Step 8: Evaluate direct interactions locally
@@ -1151,8 +1138,7 @@ c
 ccc        call prin2('inside fmm, pot=*',pot,2*nsource)
 c
 c
-        t2=second()
-C$        t2=omp_get_wtime()
+        t2=omp_get_wtime()
 ccc     call prin2('time=*',t2-t1,1)
         timeinfo(8)=t2-t1
 c

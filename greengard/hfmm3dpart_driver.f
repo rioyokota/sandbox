@@ -116,8 +116,7 @@ c
 c
 c     initialize timing call
 c
-        t1=second()
-C$        t1=omp_get_wtime()
+        t1=omp_get_wtime()
 c       
 c     call FMM3D routine for sources and targets
 c
@@ -128,8 +127,7 @@ c
 c       
 c     get time for FMM call
 c
-        t2=second()
-C$        t2=omp_get_wtime()
+        t2=omp_get_wtime()
 c       
 c       
         call prinf('nsource=*',nsource,1)
@@ -170,8 +168,7 @@ c
            endif
         enddo
 c        
-        t1=second()
-C$        t1=omp_get_wtime()
+        t1=omp_get_wtime()
 c
 C$OMP PARALLEL DO DEFAULT(SHARED)
 C$OMP$PRIVATE(i,j,ptemp,ftemp) 
@@ -205,8 +202,7 @@ cccC$OMP$NUM_THREADS(4)
         enddo
 C$OMP END PARALLEL DO
 c
-        t2=second()
-C$        t2=omp_get_wtime()
+        t2=omp_get_wtime()
 c
 c       ifprint=1 turns on printing of first m values of potential and field
 c
@@ -240,8 +236,7 @@ c
            endif
         enddo
 c        
-        t1=second()
-C$        t1=omp_get_wtime()
+        t1=omp_get_wtime()
 c
 C$OMP PARALLEL DO DEFAULT(SHARED)
 C$OMP$PRIVATE(i,j,ptemp,ftemp) 
@@ -276,8 +271,7 @@ c
         enddo
 C$OMP END PARALLEL DO
 c
-        t2=second()
-C$        t2=omp_get_wtime()
+        t2=omp_get_wtime()
 c
 c
 c

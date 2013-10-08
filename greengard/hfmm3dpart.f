@@ -661,8 +661,7 @@ c
 c
         if(ifprint .ge. 1) 
      $     call prinf('=== STEP 1 (form mp) ====*',i,0)
-        t1=second()
-C$        t1=omp_get_wtime()
+        t1=omp_get_wtime()
 c
 c       ... step 1, locate all charges, assign them to boxes, and
 c       form multipole expansions
@@ -736,15 +735,13 @@ c
 C$OMP END PARALLEL DO
  1300    continue
 c
-         t2=second()
-C$        t2=omp_get_wtime()
+        t2=omp_get_wtime()
 ccc        call prin2('time=*',t2-t1,1)
          timeinfo(1)=t2-t1
 c       
          if(ifprint .ge. 1)
      $      call prinf('=== STEP 2 (form lo) ====*',i,0)
-        t1=second()
-C$        t1=omp_get_wtime()
+        t1=omp_get_wtime()
 c
 c       ... step 2, adaptive part, form local expansions, 
 c           or evaluate the potentials and fields directly
@@ -825,8 +822,7 @@ C$OMP END PARALLEL DO
 c
  3251    continue
 c
-         t2=second()
-C$        t2=omp_get_wtime()
+        t2=omp_get_wtime()
 ccc        call prin2('time=*',t2-t1,1)
          timeinfo(2)=t2-t1
 c
@@ -843,8 +839,7 @@ c
 c
         if(ifprint .ge. 1)
      $     call prinf('=== STEP 6 (eval mp) ====*',i,0)
-        t1=second()
-C$        t1=omp_get_wtime()
+        t1=omp_get_wtime()
 c
 c       ... step 6, adaptive part, evaluate multipole expansions, 
 c           or evaluate the potentials and fields directly
@@ -918,16 +913,14 @@ c
 C$OMP END PARALLEL DO
  3252   continue
 c
-        t2=second()
-C$        t2=omp_get_wtime()
+        t2=omp_get_wtime()
 ccc     call prin2('time=*',t2-t1,1)
         timeinfo(6)=t2-t1
 c
 
         if(ifprint .ge. 1)
      $     call prinf('=== STEP 7 (eval lo) ====*',i,0)
-        t1=second()
-C$        t1=omp_get_wtime()
+        t1=omp_get_wtime()
 c
 c       ... step 7, evaluate local expansions
 c       and all fields directly
@@ -986,8 +979,7 @@ c
 c
  6201   continue
 C$OMP END PARALLEL DO
-        t2=second()
-C$        t2=omp_get_wtime()
+        t2=omp_get_wtime()
 ccc     call prin2('time=*',t2-t1,1)
         timeinfo(7)=t2-t1
 c
@@ -999,8 +991,7 @@ c
 c 
         if(ifprint .ge. 1)
      $     call prinf('=== STEP 8 (direct) =====*',i,0)
-        t1=second()
-C$        t1=omp_get_wtime()
+        t1=omp_get_wtime()
 c
 c       ... step 8, evaluate direct interactions 
 c
@@ -1073,8 +1064,7 @@ c
 ccc        call prin2('inside fmm, pot=*',pot,2*nsource)
 c
 c
-        t2=second()
-C$        t2=omp_get_wtime()
+        t2=omp_get_wtime()
 ccc     call prin2('time=*',t2-t1,1)
         timeinfo(8)=t2-t1
 c
