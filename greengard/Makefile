@@ -1,73 +1,59 @@
-# master makefile 
+FC=gfortran -O3 --openmp
 
-default:
-	@echo Specify what to make:
-	@echo " test - compile and run a simple test"
-	@echo " test-openmp - compile and run a simple OpenMP test"
-	@echo " lib - fortran libraries"
-	@echo " doc - compile documentation"
-	@echo " mwrap - build matlab wrapper generator"
-	@echo " mex - build octave/matlab mex files"
-	@echo " test-mex-octave - test octave mex files"
-	@echo " test-mex-matlab - test matlab mex files"
-	@echo " test-mwrap-mex-octave: build and test mwrap wrapper generator" 
-	@echo " all - (almost) all of the above"
-	@echo " clean - remove object files"
+.f.o:
+	$(FC) -c $<
 
-SRC = ./src
-DOC = ./doc
-MATLAB = ./matlab
-EXAMPLES = ./examples
-MWRAP = ./contrib/mwrap-0.33.3
+.SUFFIXES: .o .f
 
-test: 
-	cd $(EXAMPLES); $(MAKE) clean hfmm3dpart
+LP = lfmm3dpart_driver.f lfmm3dpart.f lfmm3drouts.f \
+     d3tstrcr.f d3mtreeplot.f  \
+     prini.f l3dterms.f laprouts3d.f l3dtrans.f \
+     prinm.f yrecursion.f \
+     legeexps.f rotviarecur3.f \
+     hkrand.f dlaran.f
 
-test-openmp: 
-	cd $(EXAMPLES); $(MAKE) clean hfmm3dpart-openmp
+LT = lfmm3dtria_driver.f lfmm3dtria.f lfmm3drouts.f \
+     d3tstrcr.f d3mtreeplot.f  \
+     prini.f l3dterms.f laprouts3d.f l3dtrans.f \
+     prinm.f yrecursion.f \
+     legeexps.f rotviarecur3.f \
+     hkrand.f dlaran.f \
+     triahquad.f triagauc.f triasymq.f l3dtrirouts.f \
+     triquadflatlib.f trilib.f
 
-lib: 
-	cd $(SRC); $(MAKE) 
+HP = hfmm3dpart_driver.f hfmm3dpart.f hfmm3drouts.f \
+     d3tstrcr.f d3mtreeplot.f  \
+     prini.f h3dterms.f helmrouts3d.f h3dtrans.f projections.f cdjseval3d.f \
+     prinm.f yrecursion.f \
+     legeexps.f rotviarecur3.f rotproj.f dfft.f \
+     hkrand.f dlaran.f
 
-doc: 
-	cd $(DOC); $(MAKE) 
+HT = hfmm3dtria_driver.f hfmm3dtria.f hfmm3drouts.f \
+     d3tstrcr.f d3mtreeplot.f  \
+     prini.f h3dterms.f helmrouts3d.f h3dtrans.f projections.f cdjseval3d.f \
+     prinm.f yrecursion.f \
+     legeexps.f rotviarecur3.f rotproj.f dfft.f \
+     hkrand.f dlaran.f \
+     triahquad.f triagauc.f triasymq.f h3dtrirouts.f \
+     triquadflatlib.f trilib.f \
+     lfmm3dtria.f lfmm3drouts.f l3dterms.f laprouts3d.f l3dtrans.f \
+     l3dtrirouts.f
 
-mex: mex-octave mex-matlab
+lp: $(LP:.f=.o)
+	$(FC) $?
+	./a.out
 
-mex-octave:
-	cd $(MATLAB); $(MAKE) linux-octave-64bit
+lt: $(LT:.f=.o)
+	$(FC) $?
+	./a.out
 
-test-mex-octave: 
-	cd $(MATLAB); octave test_hfmm3dpart_direct.m
+hp: $(HP:.f=.o)
+	$(FC) $?
+	./a.out
 
-mex-matlab: 
-	cd $(MATLAB); $(MAKE) linux-matlab-64bit
-
-test-mex-matlab: 
-	cd $(MATLAB); matlab -nodesktop -nojvm < test_hfmm3dpart_direct.m
-
-test-mwrap-mex-octave: mwrap 
-	cd $(MATLAB); $(MAKE) MWRAP=../bin linux-octave-64bit
-
-mwrap: 
-	cd $(MWRAP); $(MAKE) 
-	cp -f $(MWRAP)/mwrap ./bin
-
-all: lib test doc mwrap mex test-mex-octave
-
+ht: $(HT:.f=.o)
+	$(FC) $?
+	./a.out
 
 clean:
-	cd $(SRC); $(MAKE) clean
-	cd $(MATLAB); $(MAKE) clean
-	cd $(EXAMPLES); $(MAKE) clean
-	cd $(MWRAP); $(MAKE) clean
-	cd $(DOC); $(MAKE) clean
-
-distclean:
-	cd $(SRC); $(MAKE) distclean
-	cd $(MATLAB); $(MAKE) distclean
-	cd $(EXAMPLES); $(MAKE) distclean
-	cd $(MWRAP); $(MAKE) realclean
-	cd $(DOC); $(MAKE) distclean
-	rm -f ./bin/mwrap
-
+	rm -f *.o
