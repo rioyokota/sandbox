@@ -155,7 +155,6 @@ c        if the memory is insufficient - bomb
 c
         if( lw .lt. 45*n ) then
         ier=64
-ccc        call prinf('in d3tstrcr before d3tallb, ier=*',ier,1)
         return
         endif
 c
@@ -178,7 +177,6 @@ c
 c        if the memory is insufficient - bomb
 c
         if(ier .eq. 0) goto 1100
-ccc           call prinf('in d3tstrcr after d3tallb, ier=*',ier,1)
         if(ier .eq. 4) ier=32
         return
  1100 continue
@@ -214,12 +212,10 @@ c
 c       now, construct all lists for all boxes
 c
         
-ccc           call prinf('before d3tlsts, lwlists=*',lwlists,1)
         call d3tlsts(ier,w(iboxes),nboxes,w(icorners),
      1        w(iwlists),lwlists,lused)
 c
         lused777=lused+iwlists
-ccc        call prinf('after d3tlsts, ier=*',ier,1)
 c
 c       store all pointers
 c
@@ -431,7 +427,6 @@ c
 c       . . . initialize the storage-retrieval routine for all 
 c             boxes
 c
-ccc         call prinf('in d3tlsts, nboxes=*',nboxes,1)
 c       
          lused=0
          lused2=0
@@ -439,7 +434,6 @@ c
         ier=0
         ntypes=5
         call d3tlinkinit(jer,nboxes,ntypes,w,lw)
-cccc         call prinf('in d3tlsts after d3tlinkinit, jer=*',ier,1)
 c
 c        construct lists 5,2 for all boxes
 c
@@ -498,7 +492,6 @@ c
         if(ier .eq. 32) return        
  2000 continue
 c
-ccc        call prinf('constructed lists 5,2; lused=*',lused,1)
 c
 c       now, construct lists 1, 3
 c
@@ -528,7 +521,6 @@ c
  2200 continue
  3000 continue
 c
-ccc        call prinf('constructed lists 1,3, lused=*',lused,1)
 c
         if( 1 .eq. 2 ) then
 c
@@ -579,7 +571,6 @@ c
  4400 continue
         lused=lused2
 
-ccc         call prinf('exiting d3tlsts, lused=*',lused,1)
         return
         end        
 c
@@ -1016,7 +1007,6 @@ c  iwork - must be at least n+2 integer*4 elements long.
 c
 c        . . . find the main box containing the whole picture
 c
-cccc          call prinf('in d3tallb, maxboxes=*',maxboxes,1)
 c
         ier=0
         xmin=z(1,1)
@@ -1434,8 +1424,6 @@ c
         is(8)=is(7)+ns(7)
         ns(8)=n8
 c
-cccc        call prinf('is as created*',is,8)
-cccc        call prinf('ns as created*',ns,8)
         return
         end
 c
@@ -1683,9 +1671,6 @@ c       of elements in each of the lists
 c
         lused=w(iilists)+w(inumele)*2+10
         ntypes7=w(intypes)
-         call prinf('in d3tlinkinfo, lused=*',lused,1)
-         call prinf('in d3tlinkinfo, ntypes7=*',ntypes7,1)
-         call prinf('in w(inumele)=*',w(inumele),1)
         do 6200 i=1,ntypes7
         nums(i)=w(inums(i))
  6200 continue

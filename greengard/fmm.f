@@ -58,7 +58,6 @@ c     create oct-tree data structure
          if (ier.eq.0) exit
          deallocate(wlists)
          ntot = ntot*1.5
-         call prinf(' increasing allocation, ntot is *',ntot,1)
       enddo
       lused7=1
       do i = 0,nlev

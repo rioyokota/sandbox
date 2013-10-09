@@ -17,7 +17,6 @@
         done=1
         pi=4*atan(done)
         lused7=0
-        ifprint=0
         iisource=1
         lused7=lused7+nsource
         if (lused7 .ge. lw) ier=128
@@ -89,25 +88,12 @@ c       ... prune all sourceless boxes
             radius = radius + (corners0(2,1) - center0(2))**2
             radius = radius + (corners0(3,1) - center0(3))**2
             radius = sqrt(radius)
-            if( ifprint .ge. 2 ) then
-               call prin2('radius=*',radius,1)
-               call prinf('ibox=*',ibox,1)
-               call prinf('box=*',box,20)
-               call prinf('nkids=*',nkids,1)
-            endif
 c       ... merge multipole expansions of the kids 
             call h3dzero(rmlexp(iaddr(1,ibox)),nterms(level0))
-            if (ifprint .ge. 2) then
-               call prin2('center0=*',center0,3)
-            endif
             do 2100 i = 1,8
                jbox = box(5+i)
                if (jbox.eq.0) goto 2100
                call d3tgetb(ier,jbox,box1,center1,corners1,wlists)
-               if (ifprint .ge. 2) then
-               call prinf('jbox=*',jbox,1)
-               call prin2('center1=*',center1,3)
-               endif
                level1=box1(1)
                call h3dmpmpquadu_add(zk,scale(level1),center1,
      1            rmlexp(iaddr(1,jbox)),nterms(level1),scale(level0),
@@ -115,9 +101,6 @@ c       ... merge multipole expansions of the kids
      $            nterms(level0),nterms(level0),
      1            radius,xnodes2,wts2,nquad2,ier)
  2100       continue
-            if (ifprint .ge. 2) then
-            call prinf('=============*',x,0)
-            endif
 c       ... mark the local expansion of all kids and the parent
             endif
          endif
