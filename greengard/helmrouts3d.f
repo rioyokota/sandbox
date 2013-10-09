@@ -224,437 +224,9 @@ c     hder(n)=scale* hvec(n-1) - (n+1)/z * hvec(n)
       return
       end
 c**********************************************************************
-      subroutine h3dtaeval(wavek,rscale,center,locexp,nterms,
-     1		ztarg,pot,fld,ier)
-c**********************************************************************
-c
-c     This subroutine evaluates a j-expansion centered at CENTER
-c     at the target point ZTARG. 
-c
-c     pot =  sum sum  locexp(n,m) j_n(k r) Y_nm(theta,phi)
-c             n   m
-c
-c---------------------------------------------------------------------
-c     INPUT:
-c
-c     wavek      : the Helmholtz coefficient
-c     rscale     : scaling parameter used in forming expansion
-c                                   (see h3dformmp1)
-c     center     : coordinates of the expansion center
-c     locexp     : coeffs of the j-expansion
-c     nterms     : order of the h-expansion
-c     ztarg(3)   : target vector
-c---------------------------------------------------------------------
-c     OUTPUT:
-c
-c     ier        : error return code
-c		      ier=0	returned successfully
-c		      ier=8 insuffficient workspace 
-c		      ier=16 insufficient memory 
-c                            in subroutine "jfuns3d"
-c     pot        : potential at ztarg(3)
-c     fld(3)     : gradient at ztarg (if requested)
-c     lused      : amount of work space "w" used
-c
-c     NOTE: Parameter lwfjs is set to nterms+1000
-c           Should be sufficient for any Helmholtz parameter
-c---------------------------------------------------------------------
-      implicit real *8 (a-h,o-z)
-      integer lwfjs
-      real *8 center(3),ztarg(3)
-      real *8, allocatable :: w(:)
-      complex *16 wavek,pot,fld(3)
-      complex *16 locexp(0:nterms,-nterms:nterms)
-c
-c ... Assigning work spaces for various temporary arrays:
-c
-      ier=0
-c
-      lwfjs=nterms+1000
-      ipp=1
-      lpp=(nterms+1)**2+3
-      ippd  = ipp+lpp
-c
-      iephi=ippd+lpp
-      lephi=2*(2*nterms+1)+7
-c
-      iiscale=iephi+lephi
-      liscale=(lwfjs+1)+3
-c
-      ifjs=iiscale+liscale
-      lfjs=2*(lwfjs+1)+3
-c
-      ifjder=ifjs+lfjs
-      lfjder=2*(nterms+1)+3
-c
-      lused=ifjder+lfjder
-      allocate(w(lused))
-c
-      call h3dtaeval0(jer,wavek,rscale,center,locexp,nterms,ztarg,
-     1	     pot,fld,w(ipp),w(ippd),w(iephi),w(ifjs),
-     2       w(ifjder),lwfjs,w(iiscale))
-      if (jer.ne.0) ier=16
-c
-      return
-      end
-c
-c
-c
-c**********************************************************************
-      subroutine h3dtaeval0(ier,wavek,rscale,center,locexp,nterms,
-     1		ztarg,pot,fld,pp,ppd,ephi,fjs,fjder,lwfjs,iscale)
-c**********************************************************************
-c
-c     See h3dtaeval for comments.
-c     (pp and ppd are storage arrays for Ynm and Ynm')
-c
-c----------------------------------------------------------------------
-      implicit real *8 (a-h,o-z)
-      integer iscale(0:1)
-      real *8 center(3),ztarg(3),zdiff(3)
-      real *8 pp(0:nterms,0:nterms)
-      real *8 ppd(0:nterms,0:nterms)
-      complex *16 wavek,pot,fld(3),ephi1,ephi1inv
-      complex *16 locexp(0:nterms,-nterms:nterms)
-      complex *16 ephi(-nterms-1:nterms+1)
-      complex *16 fjsuse,fjs(0:1),fjder(0:1)
-c
-      complex *16 eye,ur,utheta,uphi
-      complex *16 ztmp,z
-      complex *16 ztmp1,ztmp2,ztmp3,ztmpsum
-      complex *16 ux,uy,uz
-c
-      data eye/(0.0d0,1.0d0)/
-c
-      ier=0
-      done=1.0d0
-c
-      zdiff(1)=ztarg(1)-center(1)
-      zdiff(2)=ztarg(2)-center(2)
-      zdiff(3)=ztarg(3)-center(3)
-c
-c     Convert to spherical coordinates
-c
-      call cart2polar(zdiff,r,theta,phi)
-      ctheta = dcos(theta)
-      stheta=sqrt(done-ctheta*ctheta)
-      cphi = dcos(phi)
-      sphi = dsin(phi)
-      ephi1 = dcmplx(cphi,sphi)
-c
-c     compute e^{eye*m*phi} array.
-c
-c
-      ephi(0)=1.0d0
-      ephi(1)=ephi1
-      ephi(-1)=dconjg(ephi1)
-      do i=2,nterms+1
-         ephi(i)=ephi(i-1)*ephi1
-         ephi(-i)=ephi(-i+1)*ephi(-1)
-      enddo
-c
-c     compute coefficients in change of variables from spherical
-c     to Cartesian gradients. In phix, phiy, we leave out the 
-c     1/sin(theta) contribution, since we use values of Ynm (which
-c     multiplies phix and phiy) that are scaled by 
-c     1/sin(theta).
-c
-c     In thetax, thetaty, phix, phiy we leave out the 1/r factors in the 
-c     change of variables to avoid blow-up at the origin.
-c     For the n=0 mode, it is not relevant. For n>0 modes,
-c     we use the recurrence relation 
-c
-c     (2n+1)fjs_n(kr)/(kr) = fjs(n+1)*rscale + fjs(n-1)/rscale
-c
-c     to avoid division by r. The variable fjsuse is set to fjs(n)/r:
-c
-c           fjsuse = fjs(n+1)*rscale + fjs(n-1)/rscale
-c	    fjsuse = wavek*fjsuse/(2*n+1.0d0)
-c
-c     
-c
-      rx = stheta*cphi
-      thetax = ctheta*cphi
-      phix = -sphi
-      ry = stheta*sphi
-      thetay = ctheta*sphi
-      phiy = cphi
-      rz = ctheta
-      thetaz = -stheta
-      phiz = 0.0d0
-c
-c     get the associated Legendre functions:
-c
-      call ylgndr2s(nterms,ctheta,pp,ppd)
-c
-c     get the spherical Bessel functions and their derivatives.
-c
-      ifder=1
-      z=wavek*r
-      call jfuns3d(jer,nterms,z,rscale,fjs,ifder,fjder,
-     1	      lwfjs,iscale,ntop)
-      if (jer.ne.0) then
-         ier=8
-         return
-      endif
-c
-c     scale derivatives of Bessel functions so that they are
-c     derivatives with respect to r.
-c
-c
-      pot=locexp(0,0)*fjs(0)
-      do i=0,nterms
-         fjder(i)=fjder(i)*wavek
-      enddo
-      ur = locexp(0,0)*fjder(0)
-      utheta = 0.0d0
-      uphi = 0.0d0
-c
-c     compute the potential and the field:
-c
-      do n=1,nterms
-         pot=pot+locexp(n,0)*fjs(n)*pp(n,0)
-         ur = ur + fjder(n)*pp(n,0)*locexp(n,0)
-         fjsuse = fjs(n+1)*rscale + fjs(n-1)/rscale
-         fjsuse = wavek*fjsuse/(2*n+1.0d0)
-         utheta = utheta -locexp(n,0)*fjsuse*ppd(n,0)*stheta
-         do m=1,n
-            ztmp1=fjs(n)*pp(n,m)*stheta
-            ztmp2 = locexp(n,m)*ephi(m) 
-            ztmp3 = locexp(n,-m)*ephi(-m)
-            ztmpsum = ztmp2+ztmp3
-            pot=pot+ztmp1*ztmpsum
-            ur = ur + fjder(n)*pp(n,m)*stheta*ztmpsum
-            utheta = utheta -ztmpsum*fjsuse*ppd(n,m)
-            ztmpsum = eye*m*(ztmp2 - ztmp3)
-            uphi = uphi + fjsuse*pp(n,m)*ztmpsum
-         enddo
-      enddo
-      ux = ur*rx + utheta*thetax + uphi*phix
-      uy = ur*ry + utheta*thetay + uphi*phiy
-      uz = ur*rz + utheta*thetaz + uphi*phiz
-      fld(1) = -ux
-      fld(2) = -uy
-      fld(3) = -uz
-      return
-      end
-c
-c
-c
-c
-c
-c**********************************************************************
-      subroutine h3dformta(ier,zk,rscale,sources,charge,ns,center,
-     1		           nterms,locexp)
-c**********************************************************************
-c
-c     This subroutine creates a local (j) expansion about the point
-c     CENTER due to the NS sources at the locations SOURCES(3,*).
-c     This is the memory management routine. Work is done in the
-c     secondary call to h3dformta1/h3dformta0 below.
-c
-c----------------------------------------------------------------------
-c     INPUT:
-c
-c     zk       : Helmholtz coefficient
-c     rscale   : scaling parameter
-c                     should be less than one in magnitude.
-c                     Needed for low frequency regime only
-c                     with rsclale abs(wavek) recommended.
-c     sources   : coordinates of the sources
-c     charge    : charge strengths
-c     ns        : number of sources
-c     center    : coordinates of the expansion center
-c     nterms    : order of the j-expansion
-c----------------------------------------------------------------------
-c     OUTPUT:
-c
-c     ier       : error return code
-c		  ier=0	returned successfully;
-c		  ier=2	insufficient memory in workspace w
-c	 	  ier=4  d is out of range in h3dall
-c
-c     locexp    : coeffs for the j-expansion
-c----------------------------------------------------------------------
-cf2py intent(in) zk,rscale,sources,charge,ns,center,nterms
-cf2py intent(out) ier,locexp
-      implicit real *8 (a-h,o-z)
-      integer ns
-      real *8 sources(3,ns),center(3)
-      complex *16 zk,locexp(0:nterms,-nterms:nterms), charge(ns)
-      complex *16 eye
-      data eye/(0.0d0,1.0d0)/
-c
-c     initialize local exp
-c
-      do l = 0,nterms
-         do m = -l,l
-            locexp(l,m) = 0.0d0
-         enddo
-      enddo
-c
-      do i = 1,ns
-         call h3dformta1(ier,zk,rscale,sources(1,i),charge(i),
-     1		center,nterms,locexp)
-      enddo
-c
-c     scale by (i*k)
-c
-      do l = 0,nterms
-         do m=-l,l
-            locexp(l,m) = locexp(l,m)*eye*zk
-         enddo
-      enddo
-C
-      return
-      end
-c
-c
-c
-c
-c
-c
-c**********************************************************************
-      subroutine h3dformta1(ier,wavek,rscale,source,charge,center,
-     &		nterms,locexp)
-c**********************************************************************
-c
-c     This subroutine creates the local expansion about CENTER
-c     due to a single charge located at SOURCE.
-c     This is the memory management routine. Work is done in the
-c     secondary call to h3dformta0 below.
-c
-c---------------------------------------------------------------------
-c INPUT:
-c
-c     wavek     : the Helmholtz coefficient
-c     rscale    : scaling parameter
-c                         should be less than one in magnitude.
-c                         Needed for low frequency regime only
-c                         with rsclale abs(wavek) recommended.
-c     source    : coordinates of the source
-c     charge    : coordinates of the source
-c     center    : coordinates of the expansion center
-c     nterms    : order of the j-expansion
-c---------------------------------------------------------------------
-c OUTPUT:
-c
-c     ier    : error return code
-c	           ier=0 successful execution
-c		   ier=2 insufficient memory in workspace w
-c	 	   ier=4 d is out of range in h3dall
-c     locexp : coefficients of the local expansion
-c---------------------------------------------------------------------
-      implicit real *8 (a-h,o-z)
-      real *8 source(3),center(3)
-      real *8, allocatable :: w(:)
-      complex *16 wavek,locexp(0:nterms,-nterms:nterms), charge
-c
-c     Carve up workspace
-c
-      ier=0
-c
-      ipp=1
-      lpp=(nterms+1)**2+7
-c
-      iephi=ipp+lpp
-      lephi=2*(2*nterms+1)+7
-c
-      ifhs=iephi+lephi
-      lfhs=2*(nterms+1)+7
-c
-      lused=ifhs+lfhs
-      allocate(w(lused))
-c
-      call h3dformta0(jer,wavek,rscale,source,charge,center,
-     &		nterms,locexp,w(ipp),w(iephi),w(ifhs))
-      if (jer.ne.0) ier=4
-c
-      return
-      end
-c
-c
-c
-c**********************************************************************
-      subroutine h3dformta0(ier,wavek,rscale,source,charge,
-     &		center,nterms,locexp,pp,ephi,fhs)
-c**********************************************************************
-c
-c     See h3dformta/h3dformta1 for comments
-c
-c---------------------------------------------------------------------
-      implicit real *8 (a-h,o-z)
-      real *8 source(3),center(3),zdiff(3)
-      real *8 pp(0:nterms,0:nterms)
-      complex *16 wavek,locexp(0:nterms,-nterms:nterms), charge
-      complex *16 ephi(-nterms:nterms),ephi1,ephi1inv
-      complex *16 fhs(0:nterms),ztmp,fhder(0:1),z
-      data thresh/1.0d-15/
-c
-      ier=0
-c
-      zdiff(1)=source(1)-center(1)
-      zdiff(2)=source(2)-center(2)
-      zdiff(3)=source(3)-center(3)
-c
-      done=1
-      call cart2polar(zdiff,r,theta,phi)
-      ctheta = dcos(theta)
-      stheta=sqrt(done-ctheta*ctheta)
-      cphi = dcos(phi)
-      sphi = dsin(phi)
-      ephi1 = dcmplx(cphi,sphi)
-c
-c     Compute the e^{eye*m*phi} array
-c
-      ephi1inv=1.0d0/ephi1
-c
-      ephi(0)=1.0d0
-      ephi(1)=ephi1
-      ephi(-1)=ephi1inv
-      do i=2,nterms
-         ephi(i)=ephi(i-1)*ephi1
-         ephi(-i)=ephi(-i+1)*ephi1inv
-      enddo
-c
-c     get the Ynm
-c
-      call ylgndr(nterms,ctheta,pp)
-c
-c     compute Hankel functions and scale them by charge strength.
-c
-      ifder=0
-      z=wavek*r
-      if (abs(z).lt.thresh) then
-         ier = 4
-         return
-      endif
-      call h3dall(nterms,z,rscale,fhs,ifder,fhder)
-      do n = 0, nterms
-         fhs(n) = fhs(n)*charge
-      enddo
-c
-c     Compute contributions to locexp
-c
-      locexp(0,0)=locexp(0,0) + fhs(0)
-      do n=1,nterms
-         locexp(n,0)=locexp(n,0) + pp(n,0)*fhs(n)
-         do m=1,n
-            ztmp=pp(n,m)*fhs(n)
-	    locexp(n,m)=locexp(n,m) + ztmp*ephi(-m)
-	    locexp(n,-m)=locexp(n,-m) + ztmp*ephi(m)
-         enddo
-      enddo
-      return
-      end
-c
-c
-c
-c**********************************************************************
       subroutine hpotfld3dall(sources,charge,ns,
      1                   target,wavek,pot,fld)
 c**********************************************************************
-c
 c     This subroutine calculates the potential POT and field FLD
 c     at the target point TARGET, due to a collection of charges at 
 c     SOURCE(3,ns). The scaling is that required of the delta function
@@ -662,22 +234,17 @@ c     response: i.e.,
 c     
 c              	pot = exp(i*k*r)/r
 c		fld = -grad(pot)
-c
 c---------------------------------------------------------------------
 c     INPUT:
-c
 c     sources(3,*)  : location of the sources
 c     charge        : charge strengths
 c     ns            : number of sources
 c     target        : location of the target
 c     wavek         : helmholtz parameter
-c
 c---------------------------------------------------------------------
 c     OUTPUT:
-c
 c     pot   (real *8)        : calculated potential
 c     fld   (real *8)        : calculated gradient
-c
 c---------------------------------------------------------------------
       implicit real *8 (a-h,o-z)
       real *8 sources(3,ns),target(3)
@@ -699,15 +266,10 @@ c---------------------------------------------------------------------
       enddo
       return
       end
-c
-c
-c
-c
 c**********************************************************************
       subroutine hpotfld3d(source,charge,target,wavek,pot,fld)
       implicit real *8 (a-h,o-z)
 c**********************************************************************
-c
 c     This subroutine calculates the potential POT and field FLD
 c     at the target point TARGET, due to a charge at 
 c     SOURCE. The scaling is that required of the delta function
@@ -715,21 +277,16 @@ c     response: i.e.,
 c     
 c              	pot = exp(i*k*r)/r
 c		fld = -grad(pot)
-c
 c---------------------------------------------------------------------
 c     INPUT:
-c
 c     source    : location of the source 
 c     charge    : charge strength
 c     target    : location of the target
 c     wavek     : helmholtz parameter
-c
 c---------------------------------------------------------------------
 c     OUTPUT:
-c
 c     pot       : calculated potential
 c     fld       : calculated gradient
-c
 c---------------------------------------------------------------------
       real *8 source(3),target(3)
       complex *16 wavek,pot,fld(3)
@@ -748,24 +305,19 @@ c---------------------------------------------------------------------
       fld(3)=cd*zdiff
       return
       end
-c
 c**********************************************************************
       subroutine h3dtaevalall_trunc(wavek,rscale,center,locexp,nterms,
      1     nterms1,ztarg,nt,pot,fld,wlege,nlege,ier)
 c**********************************************************************
-c
 c     This subroutine evaluates a j-expansion centered at CENTER
 c     at the target point ZTARG. 
 c
 c     pot =  sum sum  locexp(n,m) j_n(k r) Y_nm(theta,phi)
 c             n   m
-c
 c---------------------------------------------------------------------
 c     INPUT:
-c
 c     wavek      : the Helmholtz coefficient
 c     rscale     : scaling parameter used in forming expansion
-c                                   (see h3dformmp1)
 c     center     : coordinates of the expansion center
 c     locexp     : coeffs of the j-expansion
 c     nterms     : order of the h-expansion
@@ -776,15 +328,9 @@ c     wlege  :    precomputed array of scaling coeffs for Pnm
 c     nlege  :    dimension parameter for wlege
 c---------------------------------------------------------------------
 c     OUTPUT:
-c
 c     ier        : error return code
-c		      ier=0	returned successfully
-c		      ier=8 insuffficient workspace 
-c		      ier=16 insufficient memory 
-c                            in subroutine "jfuns3d"
 c     pot        : potential at ztarg (if requested)
 c     fld(3)     : gradient at ztarg (if requested)
-c
 c     NOTE: Parameter lwfjs is set to nterms+1000
 c           Should be sufficient for any Helmholtz parameter
 c---------------------------------------------------------------------
@@ -794,31 +340,21 @@ c---------------------------------------------------------------------
       real *8, allocatable :: w(:)
       complex *16 wavek,pot(1),fld(3,1),pot0,fld0(3)
       complex *16 locexp(0:nterms,-nterms:nterms)
-c
-c ... Assigning work spaces for various temporary arrays:
-c
       ier=0
-c
       lwfjs=nterms+1000
       ipp=1
       lpp=(nterms+1)**2+3
       ippd  = ipp+lpp
-c
       iephi=ippd+lpp
       lephi=2*(2*nterms+1)+7
-c
       iiscale=iephi+lephi
       liscale=(lwfjs+1)+3
-c
       ifjs=iiscale+liscale
       lfjs=2*(lwfjs+1)+3
-c
       ifjder=ifjs+lfjs
       lfjder=2*(nterms+1)+3
-c
       lused=ifjder+lfjder
       allocate(w(lused))
-c
       do i=1,nt
       call h3dtaeval_trunc0(jer,wavek,rscale,center,locexp,
      1   nterms,nterms1,ztarg(1,i),
@@ -829,12 +365,8 @@ c
       fld(2,i)=fld(2,i)+fld0(2)
       fld(3,i)=fld(3,i)+fld0(3)
       enddo
-ccc      if (jer.ne.0) ier=16
-c
       return
       end
-c
-c
 c**********************************************************************
       subroutine h3dtaeval_trunc(wavek,rscale,center,locexp,nterms,
      $     nterms1,
