@@ -267,98 +267,29 @@ C$OMP END PARALLEL DO
         timeinfo(5)=t2-t1
         return
         end
-c
-c
-c
-c
-c
-ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
-c
-c        this is the end of the debugging code and the beginning 
-c        of the auxiliary routines
-c
-ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
-c
-c
-c
-c
-c
+
         subroutine h3dpsort(n,isource,psort,pot)
         implicit real *8 (a-h,o-z)
         dimension isource(1)
         complex *16 pot(1),psort(1)
-c
-ccc        call prinf('isource=*',isource,n)
-c        
         do i=1,n
-        pot(isource(i))=psort(i)
+           pot(isource(i))=psort(i)
         enddo
-c
         return
         end
-c
-c
-c
-c
-c
+
         subroutine h3dfsort(n,isource,fldsort,fld)
         implicit real *8 (a-h,o-z)
         dimension isource(1)
         complex *16 fld(3,1),fldsort(3,1)
-c        
-ccc        call prinf('isource=*',isource,n)
-c
         do i=1,n
-        fld(1,isource(i))=fldsort(1,i)
-        fld(2,isource(i))=fldsort(2,i)
-        fld(3,isource(i))=fldsort(3,i)
+           fld(1,isource(i))=fldsort(1,i)
+           fld(2,isource(i))=fldsort(2,i)
+           fld(3,isource(i))=fldsort(3,i)
         enddo
-c
         return
         end
-c
-c
-c
-c
-c
-        subroutine h3dpsortsub(n,isource,psort,pot)
-        implicit real *8 (a-h,o-z)
-        dimension isource(1)
-        complex *16 pot(1),psort(1)
-c
-ccc        call prinf('isource=*',isource,n)
-c        
-        do i=1,n
-        pot(isource(i))=pot(isource(i))-psort(i)
-        enddo
-c
-        return
-        end
-c
-c
-c
-c
-c
-        subroutine h3dfsortsub(n,isource,fldsort,fld)
-        implicit real *8 (a-h,o-z)
-        dimension isource(1)
-        complex *16 fld(3,1),fldsort(3,1)
-c        
-ccc        call prinf('isource=*',isource,n)
-c
-        do i=1,n
-        fld(1,isource(i))=fld(1,isource(i))-fldsort(1,i)
-        fld(2,isource(i))=fld(2,isource(i))-fldsort(2,i)
-        fld(3,isource(i))=fld(3,isource(i))-fldsort(3,i)
-        enddo
-c
-        return
-        end
-c
-c
-c
-c
-c
+
         subroutine h3dreorder(nsource,source,
      $     ifcharge,charge,isource,sourcesort,chargesort) 
         implicit real *8 (a-h,o-z)
@@ -372,78 +303,18 @@ c
         enddo
         return
         end
-c
-c
-c
-c
-c
-        subroutine h3dreordertarg(ntarget,target,itarget,targetsort)
-        implicit real *8 (a-h,o-z)
-        dimension target(3,1),targetsort(3,1),itarget(1)
-c       
-ccc        call prinf('ntarget=*',ntarget,1)
-        do i = 1,ntarget
-        targetsort(1,i) = target(1,itarget(i))
-        targetsort(2,i) = target(2,itarget(i))
-        targetsort(3,i) = target(3,itarget(i))
-        enddo
-        return
-        end
-c
-c
-c
-c
-c
-        subroutine h3dreordertria(nsource,isource,
-     $     triaflat,triaflatsort,trianorm,trianormsort)
-c
-        implicit real *8 (a-h,o-z)
-        dimension isource(1)
-        dimension triaflat(3,3,1),triaflatsort(3,3,1)
-        dimension trianorm(3,1),trianormsort(3,1)
-c
-        do i = 1,nsource
-        triaflatsort(1,1,i) = triaflat(1,1,isource(i))
-        triaflatsort(2,1,i) = triaflat(2,1,isource(i))
-        triaflatsort(3,1,i) = triaflat(3,1,isource(i))
-        triaflatsort(1,2,i) = triaflat(1,2,isource(i))
-        triaflatsort(2,2,i) = triaflat(2,2,isource(i))
-        triaflatsort(3,2,i) = triaflat(3,2,isource(i))
-        triaflatsort(1,3,i) = triaflat(1,3,isource(i))
-        triaflatsort(2,3,i) = triaflat(2,3,isource(i))
-        triaflatsort(3,3,i) = triaflat(3,3,isource(i))
-        trianormsort(1,i) = trianorm(1,isource(i))
-        trianormsort(2,i) = trianorm(2,isource(i))
-        trianormsort(3,i) = trianorm(3,isource(i))
-        enddo
-c
-        return
-        end
-c
-c
-c
-c
-c
+
         subroutine h3dzero(mpole,nterms)
         implicit real *8 (a-h,o-z)
-c
-c       ... set multipole to zero
-c
         complex *16 mpole(0:nterms,-nterms:nterms)
-c       
         do n=0,nterms
         do m=-n,n
         mpole(n,m)=0
         enddo
         enddo
-c
         return
         end
-c
-c
-c
-c
-c
+
         subroutine h3dmpalloc(wlists,iaddr,nboxes,lmptot,nterms)
         implicit real *8 (a-h,o-z)
         integer box(20)
@@ -451,31 +322,17 @@ c
         dimension iaddr(2,nboxes)
         dimension center0(3),corners0(3,8)
         dimension wlists(1)
-c
-c       ... construct pointer array iaddr for addressing multipole and
-c       local expansion
-c
         iptr=1
         do ibox=1,nboxes
         call d3tgetb(ier,ibox,box,center0,corners0,wlists)
         level=box(1)
-c
 c       ... first, allocate memory for the multipole expansion
-c       
         iaddr(1,ibox)=iptr
         iptr=iptr+(nterms(level)+1)*(2*nterms(level)+1)*2
-c
 c       ... then, allocate memory for the local expansion
-c       
         iaddr(2,ibox)=iptr
         iptr=iptr+(nterms(level)+1)*(2*nterms(level)+1)*2
-c       
         enddo
         lmptot = iptr
         return
         end
-c
-c
-c
-c
-c
