@@ -1,4 +1,4 @@
-        program testhelm
+        program main
         implicit real *8 (a-h,o-z)
         real *8     source(3,1 000 000)
         real *8     target(3,2 000 000)
