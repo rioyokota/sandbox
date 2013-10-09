@@ -62,15 +62,11 @@ c     create oct-tree data structure
      1        nbox,epsfmm,iisource,iitarget,iwlists,lwlists,
      1        nboxes,laddr,nlev,center,size,
      1        wlists,ntot,lused7)
-           if (ier.ne.0) then
-              deallocate(wlists)
-              ntot = ntot*1.5
-              call prinf(' increasing allocation, ntot is *',ntot,1)
-           else
-             goto 1200
-           endif
+           if (ier.eq.0) cycle
+           deallocate(wlists)
+           ntot = ntot*1.5
+           call prinf(' increasing allocation, ntot is *',ntot,1)
         enddo
-1200    continue
         if (ier.ne.0) then
            call prinf(' exceeded max allocation, ntot is *',ntot,1)
            ier = 4
