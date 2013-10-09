@@ -389,11 +389,6 @@ c
         do i=1,10
         timeinfo(i)=0
         enddo
-c
-c
-        if( ifevalfar .eq. 0 ) goto 8000
-c       
-c
 c       ... initialize Legendre function evaluation routines
 c
         nlege=200
@@ -658,8 +653,6 @@ c       and all fields directly
 c
 C$OMP PARALLEL DO DEFAULT(SHARED)
 C$OMP$PRIVATE(ibox,box,center0,corners0,level,npts,nkids,ier)
-cccC$OMP$SCHEDULE(DYNAMIC)
-cccC$OMP$NUM_THREADS(1) 
         do 6201 ibox=1,nboxes
 c
         call d3tgetb(ier,ibox,box,center0,corners0,wlists)
@@ -688,14 +681,6 @@ c
      $     ifpot,pot(box(14)),
      $     iffld,fld(1,box(14)),
      $     wlege,nlege,ier)
-
-        call h3dtaevalall_trunc(zk,scale(level),center0,
-     $     rmlexp(iaddr(2,ibox)),
-     $     nterms(level),nterms_eval(1,level),
-     $     targetsort(1,box(16)),box(17),
-     $     ifpottarg,pottarg(box(16)),
-     $     iffldtarg,fldtarg(1,box(16)),
-     $     wlege,nlege,ier)
         
         endif
 c
@@ -706,64 +691,37 @@ C$OMP END PARALLEL DO
         t2=omp_get_wtime()
 ccc     call prin2('time=*',t2-t1,1)
         timeinfo(7)=t2-t1
-c
-c
- 8000   continue
-c
-c
-        if( ifevalloc .eq. 0 ) goto 9000
-c 
         t1=omp_get_wtime()
-c
 c       ... step 8, evaluate direct interactions 
-c
 C$OMP PARALLEL DO DEFAULT(SHARED)
 C$OMP$PRIVATE(ibox,box,center0,corners0,nkids,list,nlist,npts)
 C$OMP$PRIVATE(jbox,box1,center1,corners1)
 C$OMP$PRIVATE(ier,ilist,itype) 
 C$OMP$SCHEDULE(DYNAMIC)
-        do 6202 ibox=1,nboxes
-c
-        call d3tgetb(ier,ibox,box,center0,corners0,wlists)
-        call d3tnkids(box,nkids)
-c
-        if (nkids .eq. 0) then
-c
-c       ... evaluate self interactions
-c
-        call hfmm3dpart_direct_self(zk,box,sourcesort,
-     $     chargesort,pot,fld)
-c
-c       ... retrieve list #1
-c
-c       ... evaluate interactions with the nearest neighbours
-c
-        itype=1
-        call d3tgetl(ier,ibox,itype,list,nlist,wlists)
-        if (ifprint .ge. 2) call prinf('list1=*',list,nlist)
-c
-c       ... for all pairs in list #1, 
-c       evaluate the potentials and fields directly
-c
-            do 6203 ilist=1,nlist
-               jbox=list(ilist)
-               call d3tgetb(ier,jbox,box1,center1,corners1,wlists)
-c
-c       ... prune all sourceless boxes
-c
-         if( box1(15) .eq. 0 ) goto 6203
-c    
-            call hfmm3dpart_direct_targ(zk,box1,box,sourcesort,
-     $         chargesort,pot,fld)
-c
- 6203       continue
-        endif
-c
- 6202   continue
+        do ibox=1,nboxes
+           call d3tgetb(ier,ibox,box,center0,corners0,wlists)
+           call d3tnkids(box,nkids)
+           if (nkids .eq. 0) then
+c     ... evaluate self interactions
+              call hfmm3dpart_direct_self(zk,box,sourcesort,
+     $             chargesort,pot,fld)
+c     ... evaluate interactions with the nearest neighbours
+              itype=1
+              call d3tgetl(ier,ibox,itype,list,nlist,wlists)
+c     ... for all pairs in list #1, evaluate the potentials and fields directly
+              do ilist=1,nlist
+                 jbox=list(ilist)
+                 call d3tgetb(ier,jbox,box1,center1,corners1,wlists)
+c     ... prune all sourceless boxes
+                 if( box1(15) .eq. 0 ) cycle
+                 call hfmm3dpart_direct_targ(zk,box1,box,sourcesort,
+     1                chargesort,pot,fld)
+              enddo
+           endif
+        enddo
 C$OMP END PARALLEL DO
         t2=omp_get_wtime()
         timeinfo(8)=t2-t1
- 9000   continue
         return
         end
 
