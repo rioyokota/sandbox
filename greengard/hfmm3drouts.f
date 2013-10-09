@@ -567,27 +567,15 @@ c
 c
 c
         subroutine h3dreorder(nsource,source,
-     $     ifcharge,charge,isource,ifdipole,
-     1     dipstr,dipvec,sourcesort,chargesort,dipvecsort,dipstrsort) 
+     $     ifcharge,charge,isource,sourcesort,chargesort) 
         implicit real *8 (a-h,o-z)
         dimension source(3,1),sourcesort(3,1),isource(1)
-        dimension dipvec(3,1),dipvecsort(3,1)
-        complex *16 charge(1),chargesort(1),dipstr(1),dipstrsort(1)
-c       
-ccc        call prinf('nsource=*',nsource,1)
+        complex *16 charge(1),chargesort(1)
         do i = 1,nsource
-        sourcesort(1,i) = source(1,isource(i))
-        sourcesort(2,i) = source(2,isource(i))
-        sourcesort(3,i) = source(3,isource(i))
-        if( ifcharge .ge. 1 ) then
-        chargesort(i) = charge(isource(i))
-        endif
-        if (ifdipole .ge. 1) then
-        dipstrsort(i) = dipstr(isource(i))
-        dipvecsort(1,i) = dipvec(1,isource(i))
-        dipvecsort(2,i) = dipvec(2,isource(i))
-        dipvecsort(3,i) = dipvec(3,isource(i))
-        endif
+           sourcesort(1,i) = source(1,isource(i))
+           sourcesort(2,i) = source(2,isource(i))
+           sourcesort(3,i) = source(3,isource(i))
+           chargesort(i) = charge(isource(i))
         enddo
         return
         end

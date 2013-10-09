@@ -2,9 +2,6 @@
         implicit real *8 (a-h,o-z)
         real *8     source(3,1 000 000)
         complex *16 charge(1 000 000)
-
-        complex *16 dipstr(1 000 000)
-        real *8     dipvec(3,1 000 000)
         complex *16 pot(1 000 000)
         complex *16 fld(3,1 000 000)
         complex *16 pot2(1 000 000)
@@ -13,8 +10,7 @@
         complex *16 ima
         complex *16 zk
         data ima/(0.0d0,1.0d0)/
-        done=1
-        pi=4*atan(done)
+        pi=4*atan(1.0d0)
         call prini(6,13)
         nsource= 100000
         zk = 1.0d0 + ima*0.1d0
@@ -25,14 +21,13 @@
         ifpot=1
         iffld=1
         ifcharge=1
-        ifdipole=0
         do i=1,nsource
            charge(i)=source(1,i)+ima*source(2,i)
         enddo
 c FMM
         t1=omp_get_wtime()
         call hfmm3dparttarg(ier,iprec, zk,
-     $     nsource,source,ifcharge,charge,ifdipole,dipstr,dipvec,
+     $     nsource,source,ifcharge,charge,
      $     ifpot,pot,iffld,fld)
         t2=omp_get_wtime()
         print*,'FMM    =',t2-t1

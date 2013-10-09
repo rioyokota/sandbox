@@ -1,11 +1,8 @@
       subroutine hfmm3dparttarg(ier,iprec,zk,nsource,source,
-     $     ifcharge,charge,ifdipole,dipstr,dipvec,
-     $     ifpot,pot,iffld,fld)
+     $     ifcharge,charge,ifpot,pot,iffld,fld)
       implicit real *8 (a-h,o-z)
       dimension source(3,nsource)
       complex *16 charge(nsource)
-      complex *16 dipstr(nsource)
-      dimension dipvec(3,nsource)
       complex *16 ima
       complex *16 pot(nsource)
       complex *16 fld(3,nsource)
@@ -71,22 +68,11 @@ c     create oct-tree data structure
       enddo
 c     isourcesort is pointer for sorted source coordinates
 c     ichargesort is pointer for sorted charge densities
-c     idipvecsort is pointer for sorted dipole orientation vectors
-c     idipstrsort is pointer for sorted dipole densities
       isourcesort = lused7 + 5
       lsourcesort = 3*nsource
       ichargesort = isourcesort+lsourcesort
       lchargesort = 2*nsource
-      idipvecsort = ichargesort+lchargesort
-      if (ifdipole.eq.1) then
-         ldipvec = 3*nsource
-         ldipstr = 2*nsource
-      else
-         ldipvec = 3
-         ldipstr = 2
-      endif
-      idipstrsort = idipvecsort + ldipvec
-      lused7 = idipstrsort + ldipstr
+      lused7 = ichargesort+lchargesort
 c     ... allocate the potential and field arrays
       ipot = lused7
       lpot = 2*nsource
@@ -123,8 +109,7 @@ c     imptemp is pointer for single expansion (dimensioned by nmax)
       lused7 = imptemp + lmptemp
       allocate(w(lused7),stat=ier)
       call h3dreorder(nsource,source,ifcharge,charge,wlists(iisource),
-     1     ifdipole,dipstr,dipvec,
-     1     w(isourcesort),w(ichargesort),w(idipvecsort),w(idipstrsort)) 
+     1     w(isourcesort),w(ichargesort)) 
       ifinit=1
       call legewhts(nquad,w(ixnodes),w(iwts),ifinit)
       call h3dmpalloc(wlists(iwlists),w(iiaddr),nboxes,lmptot,nterms)
@@ -333,8 +318,8 @@ c     ... evaluate local expansions
      1              rmlexp(iaddr(2,ibox)),
      1              nterms(level),nterms_eval(1,level),
      1              sourcesort(1,box(14)),box(15),
-     1              ifpot,pot(box(14)),
-     1              iffld,fld(1,box(14)),
+     1              pot(box(14)),
+     1              fld(1,box(14)),
      1              wlege,nlege,ier)
             endif
          endif
@@ -403,8 +388,8 @@ c$OMP END PARALLEL DO
      1     source,charge,pot,fld)
       implicit real *8 (a-h,o-z)
       integer box(20),box1(20)
-      dimension source(3,1),dipvec(3,1)
-      complex *16 charge(1),dipstr(1),zk
+      dimension source(3,1)
+      complex *16 charge(1),zk
       complex *16 pot(1),fld(3,1)
       complex *16 ptemp,ftemp(3)
       do j=box1(14),box1(14)+box1(15)-1

@@ -151,7 +151,7 @@ c
 c
 c**********************************************************************
       subroutine h3dmpeval(zk,rscale,center,mpole,nterms,ztarg,
-     1		pot,iffld,fld,ier)
+     1		pot,fld,ier)
 c**********************************************************************
 c
 c     This subroutine evaluates the potential and gradient of the 
@@ -159,7 +159,6 @@ c     potential due to an outgoing partial wave expansion.
 c
 c     pot =  sum sum  mpole(n,m) h_n(k r) Y_nm(theta,phi)
 c             n   m
-c     fld = -gradient(pot) if iffld = 0.
 c
 c-----------------------------------------------------------------------
 c     INPUT:
@@ -170,9 +169,6 @@ c     center :    expansion center
 c     mpole  :    multipole expansion in 2d matrix format
 c     nterms :    order of the multipole expansion
 c     ztarg  :    target location
-c     iffld  :   flag controlling evaluation of gradient:
-c                   iffld = 0, do not compute gradient.
-c                   iffld = 1, compute gradient.
 c-----------------------------------------------------------------------
 c     OUTPUT:
 c
@@ -203,11 +199,7 @@ c
 c
 c     workspace for azimuthal argument (ephi)
 c
-      if (iffld.eq.1) then
-         iephi=ippd+lpp
-      else
-         iephi = ippd+2
-      endif
+      iephi=ippd+lpp
       lephi=2*(2*nterms+3)+5
 c
 c     workspace for spherical Hankel functions
@@ -224,7 +216,7 @@ c
       allocate(w(lused))
 c
       call h3dmpeval0(jer,zk,rscale,center,mpole,nterms,ztarg,
-     1	   pot,iffld,fld,w(ipp),w(ippd),w(iephi),w(ifhs),w(ifhder))
+     1	   pot,fld,w(ipp),w(ippd),w(iephi),w(ifhs),w(ifhder))
       if (jer.ne.0) ier=16
 c
       return
@@ -234,7 +226,7 @@ c
 c
 c**********************************************************************
       subroutine h3dmpeval0(ier,zk,rscale,center,mpole,nterms,
-     1		ztarg,pot,iffld,fld,ynm,ynmd,ephi,fhs,fhder)
+     1		ztarg,pot,fld,ynm,ynmd,ephi,fhs,fhder)
 c**********************************************************************
 c
 c     See h3dmpeval for comments.
@@ -291,29 +283,23 @@ c     1/sin(theta) contribution, since we use values of Ynm (which
 c     multiplies phix and phiy) that are scaled by 
 c     1/sin(theta).
 c
-      if (iffld.eq.1) then
-         rx = stheta*cphi
-         thetax = ctheta*cphi/r
-         phix = -sphi/r
-         ry = stheta*sphi
-         thetay = ctheta*sphi/r
-         phiy = cphi/r
-         rz = ctheta
-         thetaz = -stheta/r
-         phiz = 0.0d0
-      endif
+      rx = stheta*cphi
+      thetax = ctheta*cphi/r
+      phix = -sphi/r
+      ry = stheta*sphi
+      thetay = ctheta*sphi/r
+      phiy = cphi/r
+      rz = ctheta
+      thetaz = -stheta/r
+      phiz = 0.0d0
 c
 c     get the associated Legendre functions:
 c
-      if (iffld.eq.1) then
-         call ylgndr2s(nterms,ctheta,ynm,ynmd)
-      else
-         call ylgndr(nterms,ctheta,ynm)
-      endif
+      call ylgndr2s(nterms,ctheta,ynm,ynmd)
 c
 c     get the Hankel functions:
 c
-      ifder=iffld
+      ifder=1
       z=zk*r
       call h3dall(nterms,z,rscale,fhs,ifder,fhder)
 c
@@ -321,51 +307,38 @@ c     initialize computed values and
 c     scale derivatives of Hankel functions so that they are
 c     derivatives with respect to r.
 c
-      if (iffld.eq.1) then
-         do i=0,nterms
-            fhder(i)=fhder(i)*zk
-         enddo
-         ur = mpole(0,0)*fhder(0)
-         utheta = 0.0d0
-         uphi = 0.0d0
-      endif
+      do i=0,nterms
+         fhder(i)=fhder(i)*zk
+      enddo
+      ur = mpole(0,0)*fhder(0)
+      utheta = 0.0d0
+      uphi = 0.0d0
       pot=mpole(0,0)*fhs(0)
 c
 c     compute the potential and the field:
 c
-      if (iffld.eq.1) then
-         do n=1,nterms
-	    pot=pot+mpole(n,0)*fhs(n)*ynm(n,0)
-	    ur = ur + fhder(n)*ynm(n,0)*mpole(n,0)
-	    utheta = utheta -mpole(n,0)*fhs(n)*ynmd(n,0)*stheta
-	    do m=1,n
-	       ztmp1=fhs(n)*ynm(n,m)*stheta
-	       ztmp2 = mpole(n,m)*ephi(m) 
-	       ztmp3 = mpole(n,-m)*ephi(-m)
-	       ztmpsum = ztmp2+ztmp3
-	       pot=pot+ztmp1*ztmpsum
-	       ur = ur + fhder(n)*ynm(n,m)*stheta*ztmpsum
-	       utheta = utheta -ztmpsum*fhs(n)*ynmd(n,m)
-	       ztmpsum = eye*m*(ztmp2 - ztmp3)
-	       uphi = uphi + fhs(n)*ynm(n,m)*ztmpsum
-            enddo
+      do n=1,nterms
+         pot=pot+mpole(n,0)*fhs(n)*ynm(n,0)
+         ur = ur + fhder(n)*ynm(n,0)*mpole(n,0)
+         utheta = utheta -mpole(n,0)*fhs(n)*ynmd(n,0)*stheta
+         do m=1,n
+            ztmp1=fhs(n)*ynm(n,m)*stheta
+            ztmp2 = mpole(n,m)*ephi(m) 
+            ztmp3 = mpole(n,-m)*ephi(-m)
+            ztmpsum = ztmp2+ztmp3
+            pot=pot+ztmp1*ztmpsum
+            ur = ur + fhder(n)*ynm(n,m)*stheta*ztmpsum
+            utheta = utheta -ztmpsum*fhs(n)*ynmd(n,m)
+            ztmpsum = eye*m*(ztmp2 - ztmp3)
+            uphi = uphi + fhs(n)*ynm(n,m)*ztmpsum
          enddo
-	 ux = ur*rx + utheta*thetax + uphi*phix
-	 uy = ur*ry + utheta*thetay + uphi*phiy
-	 uz = ur*rz + utheta*thetaz + uphi*phiz
-	 fld(1) = -ux
-	 fld(2) = -uy
-	 fld(3) = -uz
-      else
-         do n=1,nterms
-	    pot=pot+mpole(n,0)*fhs(n)*ynm(n,0)
-	    do m=1,n
-	       ztmp1=fhs(n)*ynm(n,m)
-	       ztmp2 = mpole(n,m)*ephi(m) + mpole(n,-m)*ephi(-m)
-	       pot=pot+ztmp1*ztmp2
-            enddo
-         enddo
-      endif
+      enddo
+      ux = ur*rx + utheta*thetax + uphi*phix
+      uy = ur*ry + utheta*thetay + uphi*phiy
+      uz = ur*rz + utheta*thetaz + uphi*phiz
+      fld(1) = -ux
+      fld(2) = -uy
+      fld(3) = -uz
       return
       end
 c
@@ -821,7 +794,7 @@ c
 c
 c**********************************************************************
       subroutine h3dtaeval(wavek,rscale,center,locexp,nterms,
-     1		ztarg,pot,iffld,fld,ier)
+     1		ztarg,pot,fld,ier)
 c**********************************************************************
 c
 c     This subroutine evaluates a j-expansion centered at CENTER
@@ -840,9 +813,6 @@ c     center     : coordinates of the expansion center
 c     locexp     : coeffs of the j-expansion
 c     nterms     : order of the h-expansion
 c     ztarg(3)   : target vector
-c     iffld      : flag for gradient computation
-c		                    iffld=0  - gradient is not computed
-c		                    iffld=1  - gradient is computed
 c---------------------------------------------------------------------
 c     OUTPUT:
 c
@@ -890,7 +860,7 @@ c
       allocate(w(lused))
 c
       call h3dtaeval0(jer,wavek,rscale,center,locexp,nterms,ztarg,
-     1	     pot,iffld,fld,w(ipp),w(ippd),w(iephi),w(ifjs),
+     1	     pot,fld,w(ipp),w(ippd),w(iephi),w(ifjs),
      2       w(ifjder),lwfjs,w(iiscale))
       if (jer.ne.0) ier=16
 c
@@ -901,7 +871,7 @@ c
 c
 c**********************************************************************
       subroutine h3dtaeval0(ier,wavek,rscale,center,locexp,nterms,
-     1		ztarg,pot,iffld,fld,pp,ppd,ephi,fjs,fjder,lwfjs,iscale)
+     1		ztarg,pot,fld,pp,ppd,ephi,fjs,fjder,lwfjs,iscale)
 c**********************************************************************
 c
 c     See h3dtaeval for comments.
@@ -972,34 +942,23 @@ c	    fjsuse = wavek*fjsuse/(2*n+1.0d0)
 c
 c     
 c
-      if (iffld.eq.1) then
-         rx = stheta*cphi
-ccc         thetax = ctheta*cphi/r
-ccc         phix = -sphi/r
-         thetax = ctheta*cphi
-         phix = -sphi
-         ry = stheta*sphi
-ccc         thetay = ctheta*sphi/r
-ccc         phiy = cphi/r
-         thetay = ctheta*sphi
-         phiy = cphi
-         rz = ctheta
-ccc         thetaz = -stheta/r
-         thetaz = -stheta
-         phiz = 0.0d0
-      endif
+      rx = stheta*cphi
+      thetax = ctheta*cphi
+      phix = -sphi
+      ry = stheta*sphi
+      thetay = ctheta*sphi
+      phiy = cphi
+      rz = ctheta
+      thetaz = -stheta
+      phiz = 0.0d0
 c
 c     get the associated Legendre functions:
 c
-      if (iffld.eq.1) then
-         call ylgndr2s(nterms,ctheta,pp,ppd)
-      else
-         call ylgndr(nterms,ctheta,pp)
-      endif
+      call ylgndr2s(nterms,ctheta,pp,ppd)
 c
 c     get the spherical Bessel functions and their derivatives.
 c
-      ifder=iffld
+      ifder=1
       z=wavek*r
       call jfuns3d(jer,nterms,z,rscale,fjs,ifder,fjder,
      1	      lwfjs,iscale,ntop)
@@ -1013,55 +972,39 @@ c     derivatives with respect to r.
 c
 c
       pot=locexp(0,0)*fjs(0)
-      if (iffld.eq.1) then
-         do i=0,nterms
-            fjder(i)=fjder(i)*wavek
-         enddo
-         ur = locexp(0,0)*fjder(0)
-         utheta = 0.0d0
-         uphi = 0.0d0
-      endif
+      do i=0,nterms
+         fjder(i)=fjder(i)*wavek
+      enddo
+      ur = locexp(0,0)*fjder(0)
+      utheta = 0.0d0
+      uphi = 0.0d0
 c
 c     compute the potential and the field:
 c
-      if (iffld.eq.1) then
-         do n=1,nterms
-            pot=pot+locexp(n,0)*fjs(n)*pp(n,0)
-	    ur = ur + fjder(n)*pp(n,0)*locexp(n,0)
-	    fjsuse = fjs(n+1)*rscale + fjs(n-1)/rscale
-	    fjsuse = wavek*fjsuse/(2*n+1.0d0)
-	    utheta = utheta -locexp(n,0)*fjsuse*ppd(n,0)*stheta
-	    do m=1,n
-	       ztmp1=fjs(n)*pp(n,m)*stheta
-	       ztmp2 = locexp(n,m)*ephi(m) 
-	       ztmp3 = locexp(n,-m)*ephi(-m)
-	       ztmpsum = ztmp2+ztmp3
-	       pot=pot+ztmp1*ztmpsum
-	       ur = ur + fjder(n)*pp(n,m)*stheta*ztmpsum
-	       utheta = utheta -ztmpsum*fjsuse*ppd(n,m)
-	       ztmpsum = eye*m*(ztmp2 - ztmp3)
-	       uphi = uphi + fjsuse*pp(n,m)*ztmpsum
-            enddo
+      do n=1,nterms
+         pot=pot+locexp(n,0)*fjs(n)*pp(n,0)
+         ur = ur + fjder(n)*pp(n,0)*locexp(n,0)
+         fjsuse = fjs(n+1)*rscale + fjs(n-1)/rscale
+         fjsuse = wavek*fjsuse/(2*n+1.0d0)
+         utheta = utheta -locexp(n,0)*fjsuse*ppd(n,0)*stheta
+         do m=1,n
+            ztmp1=fjs(n)*pp(n,m)*stheta
+            ztmp2 = locexp(n,m)*ephi(m) 
+            ztmp3 = locexp(n,-m)*ephi(-m)
+            ztmpsum = ztmp2+ztmp3
+            pot=pot+ztmp1*ztmpsum
+            ur = ur + fjder(n)*pp(n,m)*stheta*ztmpsum
+            utheta = utheta -ztmpsum*fjsuse*ppd(n,m)
+            ztmpsum = eye*m*(ztmp2 - ztmp3)
+            uphi = uphi + fjsuse*pp(n,m)*ztmpsum
          enddo
-ccc	 call prin2(' ur is *',ur,2)
-ccc	 call prin2(' utheta is *',utheta,2)
-ccc	 call prin2(' uphi is *',uphi,2)
-	 ux = ur*rx + utheta*thetax + uphi*phix
-	 uy = ur*ry + utheta*thetay + uphi*phiy
-	 uz = ur*rz + utheta*thetaz + uphi*phiz
-	 fld(1) = -ux
-	 fld(2) = -uy
-	 fld(3) = -uz
-      else
-         do n=1,nterms
-	    pot=pot+locexp(n,0)*fjs(n)*pp(n,0)
-	    do m=1,n
-	       ztmp1=fjs(n)*pp(n,m)
-	       ztmp2 = locexp(n,m)*ephi(m)+locexp(n,-m)*ephi(-m)
-	       pot=pot+ztmp1*ztmp2
-            enddo
-         enddo
-      endif
+      enddo
+      ux = ur*rx + utheta*thetax + uphi*phix
+      uy = ur*ry + utheta*thetay + uphi*phiy
+      uz = ur*rz + utheta*thetaz + uphi*phiz
+      fld(1) = -ux
+      fld(2) = -uy
+      fld(3) = -uz
       return
       end
 c
@@ -2239,12 +2182,6 @@ c     nterms :    order of the multipole expansion
 c     nterms1:    order of the truncated expansion
 c     ztarg  :    target locations
 c     nt     :    number of targets
-c     ifpot  :   flag controlling evaluation of potential:
-c                   ifpot = 0, do not compute potential.
-c                   ifpot = 1, compute potential.
-c     iffld  :   flag controlling evaluation of gradient:
-c                   iffld = 0, do not compute gradient.
-c                   iffld = 1, compute gradient.
 c     wlege  :    precomputed array of scaling coeffs for Pnm
 c     nlege  :    dimension parameter for wlege
 c
@@ -2300,15 +2237,13 @@ c
 c
       do i=1,nt
       call h3dmpeval_trunc0(jer,zk,rscale,center,mpole,
-     $   nterms,nterms1,ztarg(1,i),
+     1   nterms,nterms1,ztarg(1,i),
      1   pot0,iffld,fld0,w(ipp),w(ippd),w(iephi),w(ifhs),w(ifhder),
-     $   wlege,nlege)
-      if( ifpot .eq. 1 ) pot(i)=pot(i)+pot0
-      if( iffld .eq. 1 ) then
-        fld(1,i)=fld(1,i)+fld0(1)
-        fld(2,i)=fld(2,i)+fld0(2)
-        fld(3,i)=fld(3,i)+fld0(3)
-      endif
+     1   wlege,nlege)
+      pot(i)=pot(i)+pot0
+      fld(1,i)=fld(1,i)+fld0(1)
+      fld(2,i)=fld(2,i)+fld0(2)
+      fld(3,i)=fld(3,i)+fld0(3)
       enddo
 c
 ccc      if (jer.ne.0) ier=16
@@ -2340,12 +2275,6 @@ c     mpole  :    multipole expansion in 2d matrix format
 c     nterms :    order of the multipole expansion
 c     nterms1:    order of the truncated expansion
 c     ztarg  :    target location
-c     ifpot  :   flag controlling evaluation of potential:
-c                   ifpot = 0, do not compute potential.
-c                   ifpot = 1, compute potential.
-c     iffld  :   flag controlling evaluation of gradient:
-c                   iffld = 0, do not compute gradient.
-c                   iffld = 1, compute gradient.
 c     wlege  :    precomputed array of scaling coeffs for Pnm
 c     nlege  :    dimension parameter for wlege
 c
@@ -2400,7 +2329,7 @@ c
 c
       call h3dmpeval_trunc0(jer,zk,rscale,center,mpole,
      $   nterms,nterms1,ztarg,
-     1	   pot,iffld,fld,w(ipp),w(ippd),w(iephi),w(ifhs),w(ifhder),
+     1	   pot,fld,w(ipp),w(ippd),w(iephi),w(ifhs),w(ifhder),
      $   wlege,nlege)
       if (jer.ne.0) ier=16
 c
@@ -2412,7 +2341,7 @@ c
 c**********************************************************************
       subroutine h3dmpeval_trunc0(ier,zk,rscale,center,mpole,
      $     nterms,nterms1,
-     1		ztarg,pot,iffld,fld,ynm,ynmd,ephi,fhs,fhder,
+     1		ztarg,pot,fld,ynm,ynmd,ephi,fhs,fhder,
      $     wlege,nlege)
 c**********************************************************************
 c
@@ -2470,31 +2399,23 @@ c     1/sin(theta) contribution, since we use values of Ynm (which
 c     multiplies phix and phiy) that are scaled by 
 c     1/sin(theta).
 c
-      if (iffld.eq.1) then
-         rx = stheta*cphi
-         thetax = ctheta*cphi/r
-         phix = -sphi/r
-         ry = stheta*sphi
-         thetay = ctheta*sphi/r
-         phiy = cphi/r
-         rz = ctheta
-         thetaz = -stheta/r
-         phiz = 0.0d0
-      endif
+      rx = stheta*cphi
+      thetax = ctheta*cphi/r
+      phix = -sphi/r
+      ry = stheta*sphi
+      thetay = ctheta*sphi/r
+      phiy = cphi/r
+      rz = ctheta
+      thetaz = -stheta/r
+      phiz = 0.0d0
 c
 c     get the associated Legendre functions:
 c
-      if (iffld.eq.1) then
-ccc         call ylgndr2s(nterms,ctheta,ynm,ynmd)
-         call ylgndr2sfw(nterms1,ctheta,ynm,ynmd,wlege,nlege)
-      else
-ccc         call ylgndr(nterms,ctheta,ynm)
-         call ylgndrfw(nterms1,ctheta,ynm,wlege,nlege)
-      endif
+      call ylgndr2sfw(nterms1,ctheta,ynm,ynmd,wlege,nlege)
 c
 c     get the Hankel functions:
 c
-      ifder=iffld
+      ifder=1
       z=zk*r
       call h3dall(nterms1,z,rscale,fhs,ifder,fhder)
 c
@@ -2502,51 +2423,38 @@ c     initialize computed values and
 c     scale derivatives of Hankel functions so that they are
 c     derivatives with respect to r.
 c
-      if (iffld.eq.1) then
-         do i=0,nterms1
-            fhder(i)=fhder(i)*zk
-         enddo
-         ur = mpole(0,0)*fhder(0)
-         utheta = 0.0d0
-         uphi = 0.0d0
-      endif
+      do i=0,nterms1
+         fhder(i)=fhder(i)*zk
+      enddo
+      ur = mpole(0,0)*fhder(0)
+      utheta = 0.0d0
+      uphi = 0.0d0
       pot=mpole(0,0)*fhs(0)
 c
 c     compute the potential and the field:
 c
-      if (iffld.eq.1) then
-         do n=1,nterms1
-	    pot=pot+mpole(n,0)*fhs(n)*ynm(n,0)
-	    ur = ur + fhder(n)*ynm(n,0)*mpole(n,0)
-	    utheta = utheta -mpole(n,0)*fhs(n)*ynmd(n,0)*stheta
-	    do m=1,n
-	       ztmp1=fhs(n)*ynm(n,m)*stheta
-	       ztmp2 = mpole(n,m)*ephi(m) 
-	       ztmp3 = mpole(n,-m)*ephi(-m)
-	       ztmpsum = ztmp2+ztmp3
-	       pot=pot+ztmp1*ztmpsum
-	       ur = ur + fhder(n)*ynm(n,m)*stheta*ztmpsum
-	       utheta = utheta -ztmpsum*fhs(n)*ynmd(n,m)
-	       ztmpsum = eye*m*(ztmp2 - ztmp3)
-	       uphi = uphi + fhs(n)*ynm(n,m)*ztmpsum
-            enddo
+      do n=1,nterms1
+         pot=pot+mpole(n,0)*fhs(n)*ynm(n,0)
+         ur = ur + fhder(n)*ynm(n,0)*mpole(n,0)
+         utheta = utheta -mpole(n,0)*fhs(n)*ynmd(n,0)*stheta
+         do m=1,n
+            ztmp1=fhs(n)*ynm(n,m)*stheta
+            ztmp2 = mpole(n,m)*ephi(m) 
+            ztmp3 = mpole(n,-m)*ephi(-m)
+            ztmpsum = ztmp2+ztmp3
+            pot=pot+ztmp1*ztmpsum
+            ur = ur + fhder(n)*ynm(n,m)*stheta*ztmpsum
+            utheta = utheta -ztmpsum*fhs(n)*ynmd(n,m)
+            ztmpsum = eye*m*(ztmp2 - ztmp3)
+            uphi = uphi + fhs(n)*ynm(n,m)*ztmpsum
          enddo
-	 ux = ur*rx + utheta*thetax + uphi*phix
-	 uy = ur*ry + utheta*thetay + uphi*phiy
-	 uz = ur*rz + utheta*thetaz + uphi*phiz
-	 fld(1) = -ux
-	 fld(2) = -uy
-	 fld(3) = -uz
-      else
-         do n=1,nterms1
-	    pot=pot+mpole(n,0)*fhs(n)*ynm(n,0)
-	    do m=1,n
-	       ztmp1=fhs(n)*ynm(n,m)
-	       ztmp2 = mpole(n,m)*ephi(m) + mpole(n,-m)*ephi(-m)
-	       pot=pot+ztmp1*ztmp2
-            enddo
-         enddo
-      endif
+      enddo
+      ux = ur*rx + utheta*thetax + uphi*phix
+      uy = ur*ry + utheta*thetay + uphi*phiy
+      uz = ur*rz + utheta*thetaz + uphi*phiz
+      fld(1) = -ux
+      fld(2) = -uy
+      fld(3) = -uz
       return
       end
 c
@@ -2556,8 +2464,7 @@ c
 c
 c**********************************************************************
       subroutine h3dtaevalall_trunc(wavek,rscale,center,locexp,nterms,
-     $     nterms1,ztarg,nt,
-     $     ifpot,pot,iffld,fld,wlege,nlege,ier)
+     1     nterms1,ztarg,nt,pot,fld,wlege,nlege,ier)
 c**********************************************************************
 c
 c     This subroutine evaluates a j-expansion centered at CENTER
@@ -2578,12 +2485,6 @@ c     nterms     : order of the h-expansion
 c     nterms1    : order of the truncated expansion
 c     ztarg(3)   : target vector
 c     nt         : number of targets
-c     ifpot      : flag for potential computation
-c		        ifpot=0  - potential is not computed
-c		        ifpot=1  - potential is computed
-c     iffld      : flag for gradient computation
-c		        iffld=0  - gradient is not computed
-c		        iffld=1  - gradient is computed
 c     wlege  :    precomputed array of scaling coeffs for Pnm
 c     nlege  :    dimension parameter for wlege
 c---------------------------------------------------------------------
@@ -2633,15 +2534,13 @@ c
 c
       do i=1,nt
       call h3dtaeval_trunc0(jer,wavek,rscale,center,locexp,
-     $   nterms,nterms1,ztarg(1,i),
-     1	     pot0,iffld,fld0,w(ipp),w(ippd),w(iephi),w(ifjs),
-     2       w(ifjder),lwfjs,w(iiscale),wlege,nlege)
-      if( ifpot .eq. 1 ) pot(i)=pot(i)+pot0
-      if( iffld .eq. 1 ) then
-        fld(1,i)=fld(1,i)+fld0(1)
-        fld(2,i)=fld(2,i)+fld0(2)
-        fld(3,i)=fld(3,i)+fld0(3)
-      endif
+     1   nterms,nterms1,ztarg(1,i),
+     1	     pot0,fld0,w(ipp),w(ippd),w(iephi),w(ifjs),
+     1       w(ifjder),lwfjs,w(iiscale),wlege,nlege)
+      pot(i)=pot(i)+pot0
+      fld(1,i)=fld(1,i)+fld0(1)
+      fld(2,i)=fld(2,i)+fld0(2)
+      fld(3,i)=fld(3,i)+fld0(3)
       enddo
 ccc      if (jer.ne.0) ier=16
 c
@@ -2652,7 +2551,7 @@ c
 c**********************************************************************
       subroutine h3dtaeval_trunc(wavek,rscale,center,locexp,nterms,
      $     nterms1,
-     1		ztarg,pot,iffld,fld,wlege,nlege,ier)
+     1		ztarg,pot,fld,wlege,nlege,ier)
 c**********************************************************************
 c
 c     This subroutine evaluates a j-expansion centered at CENTER
@@ -2672,12 +2571,6 @@ c     locexp     : coeffs of the j-expansion
 c     nterms     : order of the h-expansion
 c     nterms1    : order of the truncated expansion
 c     ztarg      : target vector
-c     ifpot      : flag for potential computation
-c		        ifpot=0  - potential is not computed
-c		        ifpot=1  - potential is computed
-c     iffld      : flag for gradient computation
-c		        iffld=0  - gradient is not computed
-c		        iffld=1  - gradient is computed
 c     wlege  :    precomputed array of scaling coeffs for Pnm
 c     nlege  :    dimension parameter for wlege
 c---------------------------------------------------------------------
@@ -2727,7 +2620,7 @@ c
 c
       call h3dtaeval_trunc0(jer,wavek,rscale,center,locexp,
      $   nterms,nterms1,ztarg,
-     1	     pot,iffld,fld,w(ipp),w(ippd),w(iephi),w(ifjs),
+     1	     pot,fld,w(ipp),w(ippd),w(iephi),w(ifjs),
      2       w(ifjder),lwfjs,w(iiscale),wlege,nlege)
       if (jer.ne.0) ier=16
 c
@@ -2739,7 +2632,7 @@ c
 c**********************************************************************
       subroutine h3dtaeval_trunc0(ier,wavek,rscale,center,locexp,
      $     nterms,nterms1,ztarg,
-     $     pot,iffld,fld,pp,ppd,ephi,fjs,fjder,lwfjs,iscale,
+     $     pot,fld,pp,ppd,ephi,fjs,fjder,lwfjs,iscale,
      $     wlege,nlege)
 c**********************************************************************
 c
@@ -2811,36 +2704,23 @@ c	    fjsuse = wavek*fjsuse/(2*n+1.0d0)
 c
 c     
 c
-      if (iffld.eq.1) then
-         rx = stheta*cphi
-ccc         thetax = ctheta*cphi/r
-ccc         phix = -sphi/r
-         thetax = ctheta*cphi
-         phix = -sphi
-         ry = stheta*sphi
-ccc         thetay = ctheta*sphi/r
-ccc         phiy = cphi/r
-         thetay = ctheta*sphi
-         phiy = cphi
-         rz = ctheta
-ccc         thetaz = -stheta/r
-         thetaz = -stheta
-         phiz = 0.0d0
-      endif
+      rx = stheta*cphi
+      thetax = ctheta*cphi
+      phix = -sphi
+      ry = stheta*sphi
+      thetay = ctheta*sphi
+      phiy = cphi
+      rz = ctheta
+      thetaz = -stheta
+      phiz = 0.0d0
 c
 c     get the associated Legendre functions:
 c
-      if (iffld.eq.1) then
-ccc         call ylgndr2s(nterms,ctheta,pp,ppd)
-         call ylgndr2sfw(nterms1,ctheta,pp,ppd,wlege,nlege)
-      else
-ccc         call ylgndr(nterms,ctheta,pp)
-         call ylgndrfw(nterms1,ctheta,pp,wlege,nlege)
-      endif
+      call ylgndr2sfw(nterms1,ctheta,pp,ppd,wlege,nlege)
 c
 c     get the spherical Bessel functions and their derivatives.
 c
-      ifder=iffld
+      ifder=1
       z=wavek*r
       call jfuns3d(jer,nterms1,z,rscale,fjs,ifder,fjder,
      1	      lwfjs,iscale,ntop)
@@ -2854,55 +2734,39 @@ c     derivatives with respect to r.
 c
 c
       pot=locexp(0,0)*fjs(0)
-      if (iffld.eq.1) then
-         do i=0,nterms1
-            fjder(i)=fjder(i)*wavek
-         enddo
-         ur = locexp(0,0)*fjder(0)
-         utheta = 0.0d0
-         uphi = 0.0d0
-      endif
-c
+      do i=0,nterms1
+         fjder(i)=fjder(i)*wavek
+      enddo
+      ur = locexp(0,0)*fjder(0)
+      utheta = 0.0d0
+      uphi = 0.0d0
+c     
 c     compute the potential and the field:
 c
-      if (iffld.eq.1) then
-         do n=1,nterms1
-            pot=pot+locexp(n,0)*fjs(n)*pp(n,0)
-	    ur = ur + fjder(n)*pp(n,0)*locexp(n,0)
-	    fjsuse = fjs(n+1)*rscale + fjs(n-1)/rscale
-	    fjsuse = wavek*fjsuse/(2*n+1.0d0)
-	    utheta = utheta -locexp(n,0)*fjsuse*ppd(n,0)*stheta
-	    do m=1,n
-	       ztmp1=fjs(n)*pp(n,m)*stheta
-	       ztmp2 = locexp(n,m)*ephi(m) 
-	       ztmp3 = locexp(n,-m)*ephi(-m)
-	       ztmpsum = ztmp2+ztmp3
-	       pot=pot+ztmp1*ztmpsum
-	       ur = ur + fjder(n)*pp(n,m)*stheta*ztmpsum
-	       utheta = utheta -ztmpsum*fjsuse*ppd(n,m)
-	       ztmpsum = eye*m*(ztmp2 - ztmp3)
-	       uphi = uphi + fjsuse*pp(n,m)*ztmpsum
-            enddo
+      do n=1,nterms1
+         pot=pot+locexp(n,0)*fjs(n)*pp(n,0)
+         ur = ur + fjder(n)*pp(n,0)*locexp(n,0)
+         fjsuse = fjs(n+1)*rscale + fjs(n-1)/rscale
+         fjsuse = wavek*fjsuse/(2*n+1.0d0)
+         utheta = utheta -locexp(n,0)*fjsuse*ppd(n,0)*stheta
+         do m=1,n
+            ztmp1=fjs(n)*pp(n,m)*stheta
+            ztmp2 = locexp(n,m)*ephi(m) 
+            ztmp3 = locexp(n,-m)*ephi(-m)
+            ztmpsum = ztmp2+ztmp3
+            pot=pot+ztmp1*ztmpsum
+            ur = ur + fjder(n)*pp(n,m)*stheta*ztmpsum
+            utheta = utheta -ztmpsum*fjsuse*ppd(n,m)
+            ztmpsum = eye*m*(ztmp2 - ztmp3)
+            uphi = uphi + fjsuse*pp(n,m)*ztmpsum
          enddo
-ccc	 call prin2(' ur is *',ur,2)
-ccc	 call prin2(' utheta is *',utheta,2)
-ccc	 call prin2(' uphi is *',uphi,2)
-	 ux = ur*rx + utheta*thetax + uphi*phix
-	 uy = ur*ry + utheta*thetay + uphi*phiy
-	 uz = ur*rz + utheta*thetaz + uphi*phiz
-	 fld(1) = -ux
-	 fld(2) = -uy
-	 fld(3) = -uz
-      else
-         do n=1,nterms1
-	    pot=pot+locexp(n,0)*fjs(n)*pp(n,0)
-	    do m=1,n
-	       ztmp1=fjs(n)*pp(n,m)
-	       ztmp2 = locexp(n,m)*ephi(m)+locexp(n,-m)*ephi(-m)
-	       pot=pot+ztmp1*ztmp2
-            enddo
-         enddo
-      endif
+      enddo
+      ux = ur*rx + utheta*thetax + uphi*phix
+      uy = ur*ry + utheta*thetay + uphi*phiy
+      uz = ur*rz + utheta*thetaz + uphi*phiz
+      fld(1) = -ux
+      fld(2) = -uy
+      fld(3) = -uz
       return
       end
 c
