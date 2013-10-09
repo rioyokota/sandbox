@@ -402,77 +402,46 @@ c
      1       nterms_eval(itype,i),ier)
         enddo
         enddo
-c
-        if (ifprint .ge. 2) 
-     $     call prinf('nterms_eval=*',nterms_eval,4*(nlev+1))
-c
 c       ... set all multipole and local expansions to zero
-c
         do ibox = 1,nboxes
-        call d3tgetb(ier,ibox,box,center0,corners0,wlists)
-        level=box(1)
-        call h3dzero(rmlexp(iaddr(1,ibox)),nterms(level))
-        call h3dzero(rmlexp(iaddr(2,ibox)),nterms(level))
+           call d3tgetb(ier,ibox,box,center0,corners0,wlists)
+           level=box(1)
+           call h3dzero(rmlexp(iaddr(1,ibox)),nterms(level))
+           call h3dzero(rmlexp(iaddr(2,ibox)),nterms(level))
         enddo
-c
-c
-        if(ifprint .ge. 1) 
-     $     call prinf('=== STEP 1 (form mp) ====*',i,0)
+
         t1=omp_get_wtime()
-c
 c       ... step 1, locate all charges, assign them to boxes, and
 c       form multipole expansions
-c
-ccc        do 1200 ibox=1,nboxes
-        do 1300 ilev=3,nlev+1
-C$OMP PARALLEL DO DEFAULT(SHARED)
-C$OMP$PRIVATE(ibox,box,center0,corners0,level,npts,nkids,radius)
-C$OMP$PRIVATE(lused,ier,i,j,ptemp,ftemp,cd) 
-cccC$OMP$SCHEDULE(DYNAMIC)
-cccC$OMP$NUM_THREADS(1) 
-        do 1200 ibox=laddr(1,ilev),laddr(1,ilev)+laddr(2,ilev)-1
-c
-        call d3tgetb(ier,ibox,box,center0,corners0,wlists)
-        call d3tnkids(box,nkids)
-c
-        level=box(1)
-c
-c
-        if (ifprint .ge. 2) then
-           call prinf('ibox=*',ibox,1)
-           call prinf('box=*',box,20)
-           call prinf('nkids=*',nkids,1)
-        endif
-c
-        if (nkids .eq. 0) then
-c        ipts=box(14)
-c        npts=box(15)
-c        call prinf('ipts=*',ipts,1)
-c        call prinf('npts=*',npts,1)
-        npts=box(15)
-        if (ifprint .ge. 2) then
-           call prinf('npts=*',npts,1)
-           call prinf('isource=*',isource(box(14)),box(15))
-        endif
-        endif
-c
-c       ... prune all sourceless boxes
-c
-        if (nkids .eq. 0 .and. box(15) .ne. 0) then
-c       ... form multipole expansions
-	    radius = (corners0(1,1) - center0(1))**2
-	    radius = radius + (corners0(2,1) - center0(2))**2
-	    radius = radius + (corners0(3,1) - center0(3))**2
-	    radius = sqrt(radius)
-            call h3dzero(rmlexp(iaddr(1,ibox)),nterms(level))
-            if_use_trunc = 1
-            call h3dformmp_add_trunc(ier,zk,scale(level),
-     1         sourcesort(1,box(14)),chargesort(box(14)),npts,center0,
-     1         nterms(level),nterms_eval(1,level),
-     1         rmlexp(iaddr(1,ibox)),wlege,nlege)
-         endif
+        do ilev=3,nlev+1
+c$OMP PARALLEL DO DEFAULT(SHARED)
+c$OMP$PRIVATE(ibox,box,center0,corners0,level,npts,nkids,radius)
+c$OMP$PRIVATE(lused,ier,i,j,ptemp,ftemp,cd) 
+           do ibox=laddr(1,ilev),laddr(1,ilev)+laddr(2,ilev)-1
+              call d3tgetb(ier,ibox,box,center0,corners0,wlists)
+              call d3tnkids(box,nkids)
+              level=box(1)
+              if (nkids .eq. 0) then
+                 npts=box(15)
+              endif
+c     ... prune all sourceless boxes
+              if( box(15) .eq. 0 ) cycle
+              if (nkids .eq. 0 ) then
+c     ... form multipole expansions
+                 radius = (corners0(1,1) - center0(1))**2
+                 radius = radius + (corners0(2,1) - center0(2))**2
+                 radius = radius + (corners0(3,1) - center0(3))**2
+                 radius = sqrt(radius)
+                 call h3dzero(rmlexp(iaddr(1,ibox)),nterms(level))
+                 if_use_trunc = 1
+                 call h3dformmp_add_trunc(ier,zk,scale(level),
+     1                sourcesort(1,box(14)),chargesort(box(14)),npts,
+     1                center0,nterms(level),nterms_eval(1,level),
+     1                rmlexp(iaddr(1,ibox)),wlege,nlege)
+              endif
+           enddo
 c$OMP END PARALLEL DO
- 1300    continue
+        enddo
         t2=omp_get_wtime()
         timeinfo(1)=t2-t1
 
