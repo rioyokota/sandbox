@@ -78,11 +78,7 @@ c     ... allocate the potential and field arrays
       lpot = 2*nsource
       lused7=lused7+lpot
       ifld = lused7
-      if( iffld .eq. 1) then
-         lfld = 2*(3*nsource)
-      else
-         lfld=6
-      endif
+      lfld = 2*(3*nsource)
       lused7=lused7+lfld
       ifldtarg = lused7
 c     based on FMM tolerance, compute expansion lengths nterms(i)
@@ -231,76 +227,11 @@ c$OMP END PARALLEL DO
       t2=omp_get_wtime()
       timeinfo(1)=t2-t1
 
-      t1=omp_get_wtime()
-c     ... step 2, adaptive part, form local expansions, 
-c     or evaluate the potentials and fields directly
-      do ibox=1,nboxes
-         call d3tgetb(ier,ibox,box,center0,corners0,wlists)
-         itype=3
-         call d3tgetl(ier,ibox,itype,list,nlist,wlists)
-c     ... prune all sourceless boxes
-         if( box(15) .eq. 0 ) nlist=0
-c     ... note that lists 3 and 4 are dual
-c     ... form local expansions for all boxes in list 3
-c     ... if target is childless, evaluate directly (if cheaper)
-c$OMP PARALLEL DO DEFAULT(SHARED)
-c$OMP$PRIVATE(level,npts,nkids)
-c$OMP$PRIVATE(jbox,box1,center1,corners1,level1,ifdirect3,radius)
-c$OMP$PRIVATE(lused,ier,i,j,ptemp,ftemp,cd,ilist) 
-         do ilist=1,nlist
-            jbox=list(ilist)
-            call d3tgetb(ier,jbox,box1,center1,corners1,wlists)
-            level1=box1(1)
-            npts=box(15)
-            if_use_trunc = 1
-            call h3dformta_add_trunc(ier,zk,scale(level1),
-     1           sourcesort(1,box(14)),chargesort(box(14)),
-     1           npts,center1,
-     1           nterms(level1),nterms_eval(1,level1),
-     1           rmlexp(iaddr(2,jbox)),wlege,nlege)
-         enddo
-c$OMP END PARALLEL DO
-      enddo
-      t2=omp_get_wtime()
-      timeinfo(2)=t2-t1
       ifprune_list2 = 0
       call hfmm3d_list2
      1     (zk,bsize,nlev,laddr,scale,nterms,rmlexp,iaddr,epsfmm,
      1     timeinfo,wlists,mptemp,lmptemp,xnodes,wts,nquad,
      1     ifprune_list2)
-
-      t1=omp_get_wtime()
-c     ... step 6, adaptive part, evaluate multipole expansions, 
-c     or evaluate the potentials and fields directly
-      do ibox=1,nboxes
-         call d3tgetb(ier,ibox,box,center0,corners0,wlists)
-         itype=4
-         call d3tgetl(ier,ibox,itype,list,nlist,wlists)
-c     ... prune all sourceless boxes
-         if( box(15) .eq. 0 ) nlist=0
-c     ... note that lists 3 and 4 are dual
-c     ... evaluate multipole expansions for all boxes in list 4 
-c     ... if source is childless, evaluate directly (if cheaper)
-c$OMP PARALLEL DO DEFAULT(SHARED)
-c$OMP$PRIVATE(jbox,box1,center1,corners1,level1,level,radius)
-c$OMP$PRIVATE(ier,i,j,ptemp,ftemp,cd,ilist) 
-         do ilist=1,nlist
-            jbox=list(ilist)
-            call d3tgetb(ier,jbox,box1,center1,corners1,wlists)
-            level=box(1)
-            call h3dmpevalall_trunc(zk,scale(level),center0,
-     1           rmlexp(iaddr(1,ibox)),
-     1           nterms(level),nterms_eval(1,level),
-     1           sourcesort(1,box1(14)),box1(15),
-     1           ifpot,pot(box1(14)),
-     1           iffld,fld(1,box1(14)),
-     1           wlege,nlege,ier)
-            
-         enddo
-c$OMP END PARALLEL DO
-      enddo
-      t2=omp_get_wtime()
-      timeinfo(6)=t2-t1
 
       t1=omp_get_wtime()
 c     ... step 7, evaluate local expansions and all fields directly
@@ -310,7 +241,6 @@ c$OMP$PRIVATE(ibox,box,center0,corners0,level,npts,nkids,ier)
          call d3tgetb(ier,ibox,box,center0,corners0,wlists)
          call d3tnkids(box,nkids)
          if (nkids .eq. 0) then
-c     ... evaluate local expansions
             level=box(1)
             npts=box(15)
             if (level .ge. 2) then
