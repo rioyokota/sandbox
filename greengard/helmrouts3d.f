@@ -368,97 +368,11 @@ c---------------------------------------------------------------------
       return
       end
 c**********************************************************************
-      subroutine h3dtaeval_trunc(wavek,rscale,center,locexp,nterms,
-     $     nterms1,
-     1		ztarg,pot,fld,wlege,nlege,ier)
-c**********************************************************************
-c
-c     This subroutine evaluates a j-expansion centered at CENTER
-c     at the target point ZTARG. 
-c
-c     pot =  sum sum  locexp(n,m) j_n(k r) Y_nm(theta,phi)
-c             n   m
-c
-c---------------------------------------------------------------------
-c     INPUT:
-c
-c     wavek      : the Helmholtz coefficient
-c     rscale     : scaling parameter used in forming expansion
-c                                   (see h3dformmp1)
-c     center     : coordinates of the expansion center
-c     locexp     : coeffs of the j-expansion
-c     nterms     : order of the h-expansion
-c     nterms1    : order of the truncated expansion
-c     ztarg      : target vector
-c     wlege  :    precomputed array of scaling coeffs for Pnm
-c     nlege  :    dimension parameter for wlege
-c---------------------------------------------------------------------
-c     OUTPUT:
-c
-c     ier        : error return code
-c		      ier=0	returned successfully
-c		      ier=8 insuffficient workspace 
-c		      ier=16 insufficient memory 
-c                            in subroutine "jfuns3d"
-c     pot        : potential at ztarg (if requested)
-c     fld        : gradient at ztarg (if requested)
-c
-c     NOTE: Parameter lwfjs is set to nterms+1000
-c           Should be sufficient for any Helmholtz parameter
-c---------------------------------------------------------------------
-      implicit real *8 (a-h,o-z)
-      integer lwfjs
-      real *8 center(3),ztarg(3)
-      real *8, allocatable :: w(:)
-      complex *16 wavek,pot,fld(3)
-      complex *16 locexp(0:nterms,-nterms:nterms)
-c
-c ... Assigning work spaces for various temporary arrays:
-c
-      ier=0
-c
-      lwfjs=nterms+1000
-      ipp=1
-      lpp=(nterms+1)**2+3
-      ippd  = ipp+lpp
-c
-      iephi=ippd+lpp
-      lephi=2*(2*nterms+1)+7
-c
-      iiscale=iephi+lephi
-      liscale=(lwfjs+1)+3
-c
-      ifjs=iiscale+liscale
-      lfjs=2*(lwfjs+1)+3
-c
-      ifjder=ifjs+lfjs
-      lfjder=2*(nterms+1)+3
-c
-      lused=ifjder+lfjder
-      allocate(w(lused))
-c
-      call h3dtaeval_trunc0(jer,wavek,rscale,center,locexp,
-     $   nterms,nterms1,ztarg,
-     1	     pot,fld,w(ipp),w(ippd),w(iephi),w(ifjs),
-     2       w(ifjder),lwfjs,w(iiscale),wlege,nlege)
-      if (jer.ne.0) ier=16
-c
-      return
-      end
-c
-c
-c
-c**********************************************************************
       subroutine h3dtaeval_trunc0(ier,wavek,rscale,center,locexp,
      $     nterms,nterms1,ztarg,
      $     pot,fld,pp,ppd,ephi,fjs,fjder,lwfjs,iscale,
      $     wlege,nlege)
 c**********************************************************************
-c
-c     See h3dtaeval for comments.
-c     (pp and ppd are storage arrays for Ynm and Ynm')
-c
-c----------------------------------------------------------------------
       implicit real *8 (a-h,o-z)
       integer iscale(0:1)
       real *8 center(3),ztarg(3),zdiff(3)
@@ -468,33 +382,24 @@ c----------------------------------------------------------------------
       complex *16 locexp(0:nterms,-nterms:nterms)
       complex *16 ephi(-nterms-1:nterms+1)
       complex *16 fjsuse,fjs(0:1),fjder(0:1)
-c
       complex *16 eye,ur,utheta,uphi
       complex *16 ztmp,z
       complex *16 ztmp1,ztmp2,ztmp3,ztmpsum
       complex *16 ux,uy,uz
-c
       data eye/(0.0d0,1.0d0)/
-c
       ier=0
       done=1.0d0
-c
       zdiff(1)=ztarg(1)-center(1)
       zdiff(2)=ztarg(2)-center(2)
       zdiff(3)=ztarg(3)-center(3)
-c
 c     Convert to spherical coordinates
-c
       call cart2polar(zdiff,r,theta,phi)
       ctheta = dcos(theta)
       stheta=sqrt(done-ctheta*ctheta)
       cphi = dcos(phi)
       sphi = dsin(phi)
       ephi1 = dcmplx(cphi,sphi)
-c
 c     compute e^{eye*m*phi} array.
-c
-c
       ephi(0)=1.0d0
       ephi(1)=ephi1
       ephi(-1)=dconjg(ephi1)
@@ -502,27 +407,6 @@ c
          ephi(i)=ephi(i-1)*ephi1
          ephi(-i)=ephi(-i+1)*ephi(-1)
       enddo
-c
-c     compute coefficients in change of variables from spherical
-c     to Cartesian gradients. In phix, phiy, we leave out the 
-c     1/sin(theta) contribution, since we use values of Ynm (which
-c     multiplies phix and phiy) that are scaled by 
-c     1/sin(theta).
-c
-c     In thetax, thetaty, phix, phiy we leave out the 1/r factors in the 
-c     change of variables to avoid blow-up at the origin.
-c     For the n=0 mode, it is not relevant. For n>0 modes,
-c     we use the recurrence relation 
-c
-c     (2n+1)fjs_n(kr)/(kr) = fjs(n+1)*rscale + fjs(n-1)/rscale
-c
-c     to avoid division by r. The variable fjsuse is set to fjs(n)/r:
-c
-c           fjsuse = fjs(n+1)*rscale + fjs(n-1)/rscale
-c	    fjsuse = wavek*fjsuse/(2*n+1.0d0)
-c
-c     
-c
       rx = stheta*cphi
       thetax = ctheta*cphi
       phix = -sphi
@@ -532,13 +416,9 @@ c
       rz = ctheta
       thetaz = -stheta
       phiz = 0.0d0
-c
 c     get the associated Legendre functions:
-c
       call ylgndr2sfw(nterms1,ctheta,pp,ppd,wlege,nlege)
-c
 c     get the spherical Bessel functions and their derivatives.
-c
       ifder=1
       z=wavek*r
       call jfuns3d(jer,nterms1,z,rscale,fjs,ifder,fjder,
@@ -547,11 +427,8 @@ c
          ier=8
          return
       endif
-c
 c     scale derivatives of Bessel functions so that they are
 c     derivatives with respect to r.
-c
-c
       pot=locexp(0,0)*fjs(0)
       do i=0,nterms1
          fjder(i)=fjder(i)*wavek
@@ -559,9 +436,7 @@ c
       ur = locexp(0,0)*fjder(0)
       utheta = 0.0d0
       uphi = 0.0d0
-c     
 c     compute the potential and the field:
-c
       do n=1,nterms1
          pot=pot+locexp(n,0)*fjs(n)*pp(n,0)
          ur = ur + fjder(n)*pp(n,0)*locexp(n,0)
@@ -588,11 +463,6 @@ c
       fld(3) = -uz
       return
       end
-c
-c
-c
-c
-c
 C***********************************************************************
       subroutine h3dformmp_trunc(ier,zk,scale,sources,charge,ns,center,
      1                  nterms,nterms1,mpole,wlege,nlege)
