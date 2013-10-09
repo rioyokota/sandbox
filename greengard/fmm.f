@@ -458,28 +458,19 @@ c        call prinf('npts=*',npts,1)
 c
 c       ... prune all sourceless boxes
 c
-        if( box(15) .eq. 0 ) goto 1200
-c
-        if (nkids .eq. 0) then
-c
+        if (nkids .eq. 0 .and. box(15) .ne. 0) then
 c       ... form multipole expansions
-c
 	    radius = (corners0(1,1) - center0(1))**2
 	    radius = radius + (corners0(2,1) - center0(2))**2
 	    radius = radius + (corners0(3,1) - center0(3))**2
 	    radius = sqrt(radius)
-c
             call h3dzero(rmlexp(iaddr(1,ibox)),nterms(level))
             if_use_trunc = 1
-
-            if( ifcharge .eq. 1 ) then
             call h3dformmp_add_trunc(ier,zk,scale(level),
      1         sourcesort(1,box(14)),chargesort(box(14)),npts,center0,
-     $         nterms(level),nterms_eval(1,level),
-     2         rmlexp(iaddr(1,ibox)),wlege,nlege)
-            endif
+     1         nterms(level),nterms_eval(1,level),
+     1         rmlexp(iaddr(1,ibox)),wlege,nlege)
          endif
- 1200    continue
 c$OMP END PARALLEL DO
  1300    continue
         t2=omp_get_wtime()
