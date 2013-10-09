@@ -543,13 +543,6 @@ cccC$OMP$NUM_THREADS(1)
 c        
             level1=box1(1)
 c
-            ifdirect3 = 0
-            if( box1(15) .lt. (nterms(level1)+1)**2/4 .and.
-     $          box(15) .lt. (nterms(level1)+1)**2/4 ) ifdirect3 = 1
-c
-            ifdirect3 = 0
-c
-            if( ifdirect3 .eq. 0 ) then
                npts=box(15)
                if_use_trunc = 1
 c
@@ -570,15 +563,6 @@ c
      3            nterms(level1),nterms_eval(1,level1),
      $            rmlexp(iaddr(2,jbox)),wlege,nlege)
                endif
-c
-            else
-
-            call hfmm3dpart_direct_targ(zk,box,box1,sourcesort,
-     $         ifcharge,chargesort,ifdipole,dipstrsort,dipvecsort,
-     $         ifpot,pot,iffld,fld,
-     $         targetsort,ifpottarg,pottarg,iffldtarg,fldtarg)
-
-            endif
          enddo
 C$OMP END PARALLEL DO
 c
@@ -639,13 +623,6 @@ c
             level=box(1)
 c
             ifdirect4 = 0
-c
-            if (box1(15) .lt. (nterms(level)+1)**2/4 .and.
-     $         box(15) .lt. (nterms(level)+1)**2/4 ) ifdirect4 = 1
-c
-            ifdirect4 = 0
-c
-            if (ifdirect4 .eq. 0) then
 
             call h3dmpevalall_trunc(zk,scale(level),center0,
      $         rmlexp(iaddr(1,ibox)),
@@ -663,14 +640,6 @@ c
      $         iffldtarg,fldtarg(1,box1(16)),
      $         wlege,nlege,ier)
 
-            else
-            
-c            call hfmm3dpart_direct_targ(zk,box,box1,sourcesort,
-c     $         ifcharge,chargesort,ifdipole,dipstrsort,dipvecsort,
-c     $         ifpot,pot,iffld,fld,
-c     $         targetsort,ifpottarg,pottarg,iffldtarg,fldtarg)
-
-            endif
         enddo
 C$OMP END PARALLEL DO
  3252   continue
@@ -695,13 +664,6 @@ cccC$OMP$NUM_THREADS(1)
 c
         call d3tgetb(ier,ibox,box,center0,corners0,wlists)
         call d3tnkids(box,nkids)
-c
-        if (ifprint .ge. 2) then
-           call prinf('ibox=*',ibox,1)
-           call prinf('box=*',box,20)
-           call prinf('nkids=*',nkids,1)
-        endif
-c
         if (nkids .eq. 0) then
             npts=box(15)
             if (ifprint .ge. 2) then
@@ -751,8 +713,6 @@ c
 c
         if( ifevalloc .eq. 0 ) goto 9000
 c 
-        if(ifprint .ge. 1)
-     $     call prinf('=== STEP 8 (direct) =====*',i,0)
         t1=omp_get_wtime()
 c
 c       ... step 8, evaluate direct interactions 
@@ -767,21 +727,6 @@ cccC$OMP$NUM_THREADS(1)
 c
         call d3tgetb(ier,ibox,box,center0,corners0,wlists)
         call d3tnkids(box,nkids)
-c
-        if (ifprint .ge. 2) then
-           call prinf('ibox=*',ibox,1)
-           call prinf('box=*',box,20)
-           call prinf('nkids=*',nkids,1)
-        endif
-c
-        if (nkids .eq. 0) then
-            npts=box(15)
-            if (ifprint .ge. 2) then
-               call prinf('npts=*',npts,1)
-               call prinf('isource=*',isource(box(14)),box(15))
-            endif
-        endif
-c
 c
         if (nkids .eq. 0) then
 c
@@ -822,26 +767,9 @@ c
 c
  6202   continue
 C$OMP END PARALLEL DO
-c
-ccc        call prin2('inside fmm, pot=*',pot,2*nsource)
-c
-c
         t2=omp_get_wtime()
-ccc     call prin2('time=*',t2-t1,1)
         timeinfo(8)=t2-t1
-c
  9000   continue
-c
-ccc        call prinf('=== DOWNWARD PASS COMPLETE ===*',i,0)
-c
-        if (ifprint .ge. 1) call prin2('timeinfo=*',timeinfo,8)
-c       
-        if (ifprint .ge. 1) then
-        call prinf('nboxes=*',nboxes,1)
-        call prinf('nsource=*',nsource,1)
-        call prinf('ntarget=*',ntarget,1)
-        endif
-c       
         return
         end
 c
@@ -985,182 +913,5 @@ ccC$OMP$NUM_THREADS(1)
         enddo
 ccC$OMP END PARALLEL DO
         endif
-
-        if( ifpottarg .eq. 1 .or. iffldtarg .eq. 1 ) then
-ccC$OMP PARALLEL DO DEFAULT(SHARED)
-ccC$OMP$PRIVATE(i,j,ptemp,ftemp) 
-ccC$OMP$SCHEDULE(DYNAMIC)
-ccC$OMP$NUM_THREADS(1) 
-        do j=box1(16),box1(16)+box1(17)-1
-        if (ifcharge .eq. 1 ) then
-        call hpotfld3dall
-     $     (iffldtarg,source(1,box(14)),charge(box(14)),
-     1     box(15),target(1,j),zk,ptemp,ftemp)
-        if (ifpottarg .eq. 1) pottarg(j)=pottarg(j)+ptemp
-        if (iffldtarg .eq. 1) then
-        fldtarg(1,j)=fldtarg(1,j)+ftemp(1)
-        fldtarg(2,j)=fldtarg(2,j)+ftemp(2)
-        fldtarg(3,j)=fldtarg(3,j)+ftemp(3)
-        endif
-        endif
-        if (ifdipole .eq. 1) then
-        call hpotfld3dall_dp(iffldtarg,source(1,box(14)),
-     $     dipstr(box(14)),dipvec(1,box(14)),
-     $     box(15),target(1,j),zk,ptemp,ftemp)
-        if (ifpottarg .eq. 1) pottarg(j)=pottarg(j)+ptemp
-        if (iffldtarg .eq. 1) then
-        fldtarg(1,j)=fldtarg(1,j)+ftemp(1)
-        fldtarg(2,j)=fldtarg(2,j)+ftemp(2)
-        fldtarg(3,j)=fldtarg(3,j)+ftemp(3)
-        endif
-        endif
-        enddo
-ccC$OMP END PARALLEL DO
-        endif
-
         return
         end
-c
-c
-c
-c
-c
-        subroutine h3dpartdirect(zk,nsource,
-     $     source,ifcharge,charge,ifdipole,dipstr,dipvec,
-     $     ifpot,pot,iffld,fld,ntarget,
-     $     target,ifpottarg,pottarg,iffldtarg,fldtarg)
-        implicit real *8 (a-h,o-z)
-c
-c       Helmholtz interactions in R^3: evaluate all pairwise particle
-c       interactions (ignoring self-interaction) 
-c       and interactions with targets via direct O(N^2) algorithm.
-c
-c       We use (exp(ikr)/r) for the Green's function,
-c       without the (1/4 pi) scaling.  Self-interactions are not-included.
-c   
-c       INPUT PARAMETERS:
-c
-c       zk: complex *16: Helmholtz parameter
-c       nsource: integer:  number of sources
-c       source: real *8 (3,nsource):  source locations
-c       ifcharge:  charge computation flag
-c                  ifcharge = 1   =>  include charge contribution
-c                                     otherwise do not
-c       charge: complex *16 (nsource): charge strengths
-c       ifdipole:  dipole computation flag
-c                  ifdipole = 1   =>  include dipole contribution
-c                                     otherwise do not
-c       dipstr: complex *16 (nsource): dipole strengths
-c       dipvec: real *8 (3,nsource): dipole orientation vectors. 
-c
-c       ifpot:  potential flag (1=compute potential, otherwise no)
-c       iffld:  field flag (1=compute field, otherwise no)
-c       ntarget: integer:  number of targets
-c       target: real *8 (3,ntarget):  target locations
-c       ifpottarg:  target potential flag 
-c                   (1=compute potential, otherwise no)
-c       iffldtarg:  target field flag 
-c                   (1=compute field, otherwise no)
-c
-c       OUTPUT PARAMETERS:
-c
-c       pot: complex *16 (nsource): potential at source locations
-c       fld: complex *16 (3,nsource): field (-gradient) at source locations
-c       pottarg: complex *16 (ntarget): potential at target locations 
-c       fldtarg: complex *16 (3,ntarget): field (-gradient) at target locations 
-c
-        dimension source(3,1),dipvec(3,1)
-        complex *16 charge(1),dipstr(1),zk
-        dimension target(3,1)
-c
-        complex *16 pot(1),fld(3,1),pottarg(1),fldtarg(3,1)
-        complex *16 ptemp,ftemp(3)
-c
-        do i=1,nsource
-        if( ifpot .eq. 1) pot(i)=0
-        if( iffld .eq. 1) then
-           fld(1,i)=0
-           fld(2,i)=0
-           fld(3,i)=0
-        endif
-        enddo
-c       
-        do i=1,ntarget
-        if( ifpottarg .eq. 1) pottarg(i)=0
-        if( iffldtarg .eq. 1) then
-           fldtarg(1,i)=0
-           fldtarg(2,i)=0
-           fldtarg(3,i)=0
-        endif
-        enddo
-c
-        if( ifpot .eq. 1 .or. iffld .eq. 1 ) then
-C$OMP PARALLEL DO DEFAULT(SHARED)
-C$OMP$PRIVATE(i,j,ptemp,ftemp) 
-        do 6160 j=1,nsource
-        do 6150 i=1,nsource
-            if (i .eq. j) goto 6150
-            if (ifcharge .eq. 1 ) then
-            call hpotfld3d(iffld,source(1,i),charge(i),
-     1           source(1,j),zk,ptemp,ftemp)
-            if (ifpot .eq. 1) pot(j)=pot(j)+ptemp
-            if (iffld .eq. 1) then
-               fld(1,j)=fld(1,j)+ftemp(1)
-               fld(2,j)=fld(2,j)+ftemp(2)
-               fld(3,j)=fld(3,j)+ftemp(3)
-            endif
-            endif
-            if (ifdipole .eq. 1) then
-               call hpotfld3d_dp(iffld,source(1,i),
-     $              dipstr(i),dipvec(1,i),
-     $              source(1,j),zk,ptemp,ftemp)
-               if (ifpot .eq. 1) pot(j)=pot(j)+ptemp
-               if (iffld .eq. 1) then
-                  fld(1,j)=fld(1,j)+ftemp(1)
-                  fld(2,j)=fld(2,j)+ftemp(2)
-                  fld(3,j)=fld(3,j)+ftemp(3)
-               endif
-            endif
- 6150   continue
- 6160   continue
-C$OMP END PARALLEL DO
-        endif
-
-        if( ifpottarg .eq. 1 .or. iffldtarg .eq. 1 ) then
-C$OMP PARALLEL DO DEFAULT(SHARED)
-C$OMP$PRIVATE(i,j,ptemp,ftemp) 
-        do j=1,ntarget
-        do i=1,nsource
-            if (ifcharge .eq. 1 ) then
-            call hpotfld3d(iffldtarg,source(1,i),charge(i),
-     1           target(1,j),zk,ptemp,ftemp)
-            if (ifpottarg .eq. 1) pottarg(j)=pottarg(j)+ptemp
-            if (iffldtarg .eq. 1) then
-               fldtarg(1,j)=fldtarg(1,j)+ftemp(1)
-               fldtarg(2,j)=fldtarg(2,j)+ftemp(2)
-               fldtarg(3,j)=fldtarg(3,j)+ftemp(3)
-            endif
-            endif
-            if (ifdipole .eq. 1) then
-               call hpotfld3d_dp(iffldtarg,source(1,i),
-     $              dipstr(i),dipvec(1,i),
-     $              target(1,j),zk,ptemp,ftemp)
-               if (ifpottarg .eq. 1 ) pottarg(j)=pottarg(j)+ptemp
-               if (iffldtarg .eq. 1) then
-                  fldtarg(1,j)=fldtarg(1,j)+ftemp(1)
-                  fldtarg(2,j)=fldtarg(2,j)+ftemp(2)
-                  fldtarg(3,j)=fldtarg(3,j)+ftemp(3)
-               endif
-            endif
-        enddo
-        enddo
-C$OMP END PARALLEL DO
-        endif
-c
-        return
-        end
-c
-c
-c
-c
-c
