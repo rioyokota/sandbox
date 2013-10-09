@@ -41,49 +41,6 @@ c         e^( i k r}/(ikr) =
 c         \sum_n \sum_m  j_n(k|S|) Ylm*(S) h_n(k|T|) Ylm(T)
 c
 c
-c-----------------------------------------------------------------------
-c
-c      h3dformmp: creates multipole expansion (outgoing) due to 
-c                 a collection of charges.
-c
-c      cart2polar: utility function.
-c                  converts Cartesian coordinates into polar
-c                  representation needed by other routines.
-c
-c      h3d01: computes h0, h1 (first two spherical Hankel fns.)
-c      h3dall: computes Hankel functions of all orders and scales them
-c
-c      h3dtaeval: computes potential and -grad(potential) 
-c                 due to local expansion
-c                 at a single target.
-c
-c      h3dformta: creates local expansion due to 
-c                 a collection of charges.
-c
-c      hpotfld3dall:  direct calculation for a collection of charge sources
-c      hpotfld3d : direct calculation for a single charge source
-c
-c      h3dtaevalall_trunc: computes potential and -grad(potential)
-c                 due to a local expansion (OPTIMIZED VERSION)
-c                 at a collection of targets.
-c
-c      h3dtaeval_trunc: computes potential and -grad(potential)
-c                 due to a local expansion (OPTIMIZED VERSION)
-c                 at a single target.
-c
-c      h3dformmp_trunc: creates multipole expansion (outgoing) 
-c                 due to a collection of charges (OPTIMIZED VERSION).
-c
-c      h3dformmp_add_trunc: *increments* multipole expansion (outgoing) 
-c                 due to a collection of charges (OPTIMIZED VERSION).
-c
-c      h3dformta_add_trunc: *increments* local expansion (incoming) due to 
-c                 a collection of charges (OPTIMIZED VERSION).
-c
-c      h3dformta_add_trunc: *increments* local expansion (incoming) due to 
-c                 a collection of dipoles (OPTIMIZED VERSION).
-c
-c
 c**********************************************************************
       subroutine cart2polar(zat,r,theta,phi)
 c**********************************************************************
@@ -366,7 +323,6 @@ c**********************************************************************
      $     nterms,nterms1,ztarg,
      $     pot,fld,pp,ppd,ephi,fjs,fjder,lwfjs,iscale,
      $     wlege,nlege)
-c**********************************************************************
       implicit real *8 (a-h,o-z)
       integer iscale(0:1)
       real *8 center(3),ztarg(3),zdiff(3)
@@ -629,7 +585,6 @@ c**********************************************************************
       subroutine h3dformmp_trunc0(ier,zk,rscale,source,charge,center,
      1		nterms,nterms1,
      1     mpole,pp,ppd,ephi,fjs,lwfjs,iscale,fjder,wlege,nlege)
-c**********************************************************************
       implicit real *8 (a-h,o-z)
       integer iscale(0:1)
       real *8 source(3),center(3),zdiff(3)
