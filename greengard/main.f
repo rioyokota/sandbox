@@ -24,7 +24,6 @@
         zk = 1.0d0 + ima*0.1d0
         call random_number(source)
         call random_number(target)
- 
         print*,'ntarget=',ntarget
         iprec=0
         print*,'iprec  =',iprec
@@ -48,56 +47,33 @@ c FMM
 c Direct
         m=min(nsource,100)
         do i=1,nsource
-           if (ifpot .eq. 1) pot2(i)=0
-           if (iffld .eq. 1) then
-              fld2(1,i)=0
-              fld2(2,i)=0
-              fld2(3,i)=0
-           endif
+           pot2(i)=0
+           fld2(1,i)=0
+           fld2(2,i)=0
+           fld2(3,i)=0
         enddo
         t1=omp_get_wtime()
 C$OMP PARALLEL DO DEFAULT(SHARED)
 C$OMP$PRIVATE(i,j,ptemp,ftemp) 
-cccC$OMP$SCHEDULE(DYNAMIC)
-cccC$OMP$NUM_THREADS(4) 
         do j=1,m
            do i=1,nsource       
               if( i .eq. j ) cycle
-              if( ifcharge .eq. 1 ) then
                  call hpotfld3d(iffld,source(1,i),charge(i),
      $              source(1,j),zk,ptemp,ftemp)
-                 if (ifpot .eq. 1) pot2(j)=pot2(j)+ptemp
-                 if (iffld .eq. 1) then
-                    fld2(1,j)=fld2(1,j)+ftemp(1)
-                    fld2(2,j)=fld2(2,j)+ftemp(2)
-                    fld2(3,j)=fld2(3,j)+ftemp(3)
-                 endif
-              endif
-              if (ifdipole .eq. 1) then
-                 call hpotfld3d_dp(iffld,source(1,i),
-     $              dipstr(i),dipvec(1,i),
-     $              source(1,j),zk,ptemp,ftemp)
-                 if (ifpot .eq. 1) pot2(j)=pot2(j)+ptemp
-                 if (iffld .eq. 1) then
-                    fld2(1,j)=fld2(1,j)+ftemp(1)
-                    fld2(2,j)=fld2(2,j)+ftemp(2)
-                    fld2(3,j)=fld2(3,j)+ftemp(3)
-                 endif
-              endif
+                 pot2(j)=pot2(j)+ptemp
+                 fld2(1,j)=fld2(1,j)+ftemp(1)
+                 fld2(2,j)=fld2(2,j)+ftemp(2)
+                 fld2(3,j)=fld2(3,j)+ftemp(3)
            enddo
         enddo
 C$OMP END PARALLEL DO
         t2=omp_get_wtime()
         print*,'Direct =',t2-t1
 c Error
-        if (ifpot .eq. 1)  then
-           call h3derror(pot,pot2,m,aerr,rerr)
-           print*,'Err pot=',rerr
-        endif
-        if (iffld .eq. 1) then
-           call h3derror(fld,fld2,3*m,aerr,rerr)
-           print*,'Err acc=',rerr
-        endif
+        call h3derror(pot,pot2,m,aerr,rerr)
+        print*,'Err pot=',rerr
+        call h3derror(fld,fld2,3*m,aerr,rerr)
+        print*,'Err acc=',rerr
         stop
         end
 c

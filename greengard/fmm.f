@@ -722,7 +722,6 @@ C$OMP$PRIVATE(ibox,box,center0,corners0,nkids,list,nlist,npts)
 C$OMP$PRIVATE(jbox,box1,center1,corners1)
 C$OMP$PRIVATE(ier,ilist,itype) 
 C$OMP$SCHEDULE(DYNAMIC)
-cccC$OMP$NUM_THREADS(1) 
         do 6202 ibox=1,nboxes
 c
         call d3tgetb(ier,ibox,box,center0,corners0,wlists)
@@ -733,10 +732,7 @@ c
 c       ... evaluate self interactions
 c
         call hfmm3dpart_direct_self(zk,box,sourcesort,
-     $     ifcharge,chargesort,ifdipole,dipstrsort,dipvecsort,
-     $     ifpot,pot,iffld,fld,
-     $     targetsort,ifpottarg,pottarg,iffldtarg,fldtarg)
-c
+     $     chargesort,pot,fld)
 c
 c       ... retrieve list #1
 c
@@ -758,9 +754,7 @@ c
          if( box1(15) .eq. 0 ) goto 6203
 c    
             call hfmm3dpart_direct_targ(zk,box1,box,sourcesort,
-     $         ifcharge,chargesort,ifdipole,dipstrsort,dipvecsort,
-     $         ifpot,pot,iffld,fld,
-     $         targetsort,ifpottarg,pottarg,iffldtarg,fldtarg)
+     $         chargesort,pot,fld)
 c
  6203       continue
         endif
@@ -772,146 +766,45 @@ C$OMP END PARALLEL DO
  9000   continue
         return
         end
-c
-c
-c
-c
-c
+
         subroutine hfmm3dpart_direct_self(zk,box,
-     $     source,ifcharge,charge,ifdipole,dipstr,dipvec,
-     $     ifpot,pot,iffld,fld,
-     $     target,ifpottarg,pottarg,iffldtarg,fldtarg)
+     1     source,charge,pot,fld)
         implicit real *8 (a-h,o-z)
-c
         integer box(20),box1(20)
-c
-        dimension source(3,1),dipvec(3,1)
-        complex *16 charge(1),dipstr(1),zk
-        dimension target(3,1)
-c
-        complex *16 pot(1),fld(3,1),pottarg(1),fldtarg(3,1)
+        dimension source(3,1)
+        complex *16 charge(1),zk
+        complex *16 pot(1),fld(3,1)
         complex *16 ptemp,ftemp(3)
-c
-        if( ifpot .eq. 1 .or. iffld .eq. 1 ) then
-c
-ccC$OMP PARALLEL DO DEFAULT(SHARED)
-ccC$OMP$PRIVATE(i,j,ptemp,ftemp) 
-ccC$OMP$SCHEDULE(DYNAMIC)
-cccC$OMP$NUM_THREADS(1) 
-        do 6160 j=box(14),box(14)+box(15)-1
-        do 6150 i=box(14),box(14)+box(15)-1
-            if (i .eq. j) goto 6150
-            if (ifcharge .eq. 1 ) then
-            call hpotfld3d(iffld,source(1,i),charge(i),
-     1           source(1,j),zk,ptemp,ftemp)
-            if (ifpot .eq. 1) pot(j)=pot(j)+ptemp
-            if (iffld .eq. 1) then
-               fld(1,j)=fld(1,j)+ftemp(1)
-               fld(2,j)=fld(2,j)+ftemp(2)
-               fld(3,j)=fld(3,j)+ftemp(3)
-            endif
-            endif
-            if (ifdipole .eq. 1) then
-               call hpotfld3d_dp(iffld,source(1,i),
-     $              dipstr(i),dipvec(1,i),
-     $              source(1,j),zk,ptemp,ftemp)
-               if (ifpot .eq. 1) pot(j)=pot(j)+ptemp
-               if (iffld .eq. 1) then
-                  fld(1,j)=fld(1,j)+ftemp(1)
-                  fld(2,j)=fld(2,j)+ftemp(2)
-                  fld(3,j)=fld(3,j)+ftemp(3)
-               endif
-            endif
- 6150   continue
- 6160   continue
-ccC$OMP END PARALLEL DO
-        endif
-
-        if( ifpottarg .eq. 1 .or. iffldtarg .eq. 1 ) then
-ccC$OMP PARALLEL DO DEFAULT(SHARED)
-ccC$OMP$PRIVATE(i,j,ptemp,ftemp) 
-ccC$OMP$SCHEDULE(DYNAMIC)
-cccC$OMP$NUM_THREADS(1) 
-        do j=box(16),box(16)+box(17)-1
-        do i=box(14),box(14)+box(15)-1
-            if (ifcharge .eq. 1 ) then
-            call hpotfld3d(iffldtarg,source(1,i),charge(i),
-     1           target(1,j),zk,ptemp,ftemp)
-            if (ifpottarg .eq. 1) pottarg(j)=pottarg(j)+ptemp
-            if (iffldtarg .eq. 1) then
-               fldtarg(1,j)=fldtarg(1,j)+ftemp(1)
-               fldtarg(2,j)=fldtarg(2,j)+ftemp(2)
-               fldtarg(3,j)=fldtarg(3,j)+ftemp(3)
-            endif
-            endif
-            if (ifdipole .eq. 1) then
-               call hpotfld3d_dp(iffldtarg,source(1,i),
-     $              dipstr(i),dipvec(1,i),
-     $              target(1,j),zk,ptemp,ftemp)
-               if (ifpottarg .eq. 1 ) pottarg(j)=pottarg(j)+ptemp
-               if (iffldtarg .eq. 1) then
-                  fldtarg(1,j)=fldtarg(1,j)+ftemp(1)
-                  fldtarg(2,j)=fldtarg(2,j)+ftemp(2)
-                  fldtarg(3,j)=fldtarg(3,j)+ftemp(3)
-               endif
-            endif
+        do j=box(14),box(14)+box(15)-1
+           do i=box(14),box(14)+box(15)-1
+              if (i .eq. j) cycle
+              call hpotfld3d(1,source(1,i),charge(i),
+     1             source(1,j),zk,ptemp,ftemp)
+              pot(j)=pot(j)+ptemp
+              fld(1,j)=fld(1,j)+ftemp(1)
+              fld(2,j)=fld(2,j)+ftemp(2)
+              fld(3,j)=fld(3,j)+ftemp(3)
+           enddo
         enddo
-        enddo
-ccC$OMP END PARALLEL DO
-        endif
-
         return
         end
-c
-c
-c
-c
-c
+
         subroutine hfmm3dpart_direct_targ(zk,box,box1,
-     $     source,ifcharge,charge,ifdipole,dipstr,dipvec,
-     $     ifpot,pot,iffld,fld,
-     $     target,ifpottarg,pottarg,iffldtarg,fldtarg)
+     1     source,charge,pot,fld)
         implicit real *8 (a-h,o-z)
-c
         integer box(20),box1(20)
-c
         dimension source(3,1),dipvec(3,1)
         complex *16 charge(1),dipstr(1),zk
         dimension target(3,1)
-c
-        complex *16 pot(1),fld(3,1),pottarg(1),fldtarg(3,1)
+        complex *16 pot(1),fld(3,1)
         complex *16 ptemp,ftemp(3)
-c
-        if( ifpot .eq. 1 .or. iffld .eq. 1 ) then
-ccC$OMP PARALLEL DO DEFAULT(SHARED)
-ccC$OMP$PRIVATE(i,j,ptemp,ftemp) 
-ccC$OMP$SCHEDULE(DYNAMIC)
-ccC$OMP$NUM_THREADS(1) 
         do j=box1(14),box1(14)+box1(15)-1
-        if (ifcharge .eq. 1 ) then
-        call hpotfld3dall
-     $     (iffld,source(1,box(14)),charge(box(14)),
+        call hpotfld3dall(1,source(1,box(14)),charge(box(14)),
      1     box(15),source(1,j),zk,ptemp,ftemp)
-        if (ifpot .eq. 1) pot(j)=pot(j)+ptemp
-        if (iffld .eq. 1) then
+        pot(j)=pot(j)+ptemp
         fld(1,j)=fld(1,j)+ftemp(1)
         fld(2,j)=fld(2,j)+ftemp(2)
         fld(3,j)=fld(3,j)+ftemp(3)
-        endif
-        endif
-        if (ifdipole .eq. 1) then
-        call hpotfld3dall_dp(iffld,source(1,box(14)),
-     $     dipstr(box(14)),dipvec(1,box(14)),
-     $     box(15),source(1,j),zk,ptemp,ftemp)
-        if (ifpot .eq. 1) pot(j)=pot(j)+ptemp
-        if (iffld .eq. 1) then
-        fld(1,j)=fld(1,j)+ftemp(1)
-        fld(2,j)=fld(2,j)+ftemp(2)
-        fld(3,j)=fld(3,j)+ftemp(3)
-        endif
-        endif
         enddo
-ccC$OMP END PARALLEL DO
-        endif
         return
         end
