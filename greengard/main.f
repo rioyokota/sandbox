@@ -1,7 +1,6 @@
         program main
         implicit real *8 (a-h,o-z)
         real *8     source(3,1 000 000)
-        real *8     target(3,2 000 000)
         complex *16 charge(1 000 000)
 
         complex *16 dipstr(1 000 000)
@@ -10,8 +9,6 @@
         complex *16 fld(3,1 000 000)
         complex *16 pot2(1 000 000)
         complex *16 fld2(3,1 000 000)
-        complex *16 pottarg(2 000 000)
-        complex *16 fldtarg(3,2 000 000)
         complex *16 ptemp,ftemp(3)
         complex *16 ima
         complex *16 zk
@@ -20,19 +17,15 @@
         pi=4*atan(done)
         call prini(6,13)
         nsource= 100000
-        ntarget=nsource
         zk = 1.0d0 + ima*0.1d0
         call random_number(source)
-        call random_number(target)
-        print*,'ntarget=',ntarget
+        print*,'nsource=',nsource
         iprec=0
         print*,'iprec  =',iprec
         ifpot=1
         iffld=1
         ifcharge=1
         ifdipole=0
-        ifpottarg=0
-        iffldtarg=0
         do i=1,nsource
            charge(i)=source(1,i)+ima*source(2,i)
         enddo
@@ -40,8 +33,7 @@ c FMM
         t1=omp_get_wtime()
         call hfmm3dparttarg(ier,iprec, zk,
      $     nsource,source,ifcharge,charge,ifdipole,dipstr,dipvec,
-     $     ifpot,pot,iffld,fld,ntarget,target,
-     $     ifpottarg,pottarg,iffldtarg,fldtarg)
+     $     ifpot,pot,iffld,fld)
         t2=omp_get_wtime()
         print*,'FMM    =',t2-t1
 c Direct

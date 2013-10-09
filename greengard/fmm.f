@@ -1,165 +1,139 @@
-        subroutine hfmm3dparttarg(ier,iprec,zk,nsource,source,
+      subroutine hfmm3dparttarg(ier,iprec,zk,nsource,source,
      $     ifcharge,charge,ifdipole,dipstr,dipvec,
-     $     ifpot,pot,iffld,fld,
-     $     ntarget,target,ifpottarg,pottarg,iffldtarg,fldtarg)
-        implicit real *8 (a-h,o-z)
-        dimension source(3,nsource)
-        complex *16 charge(nsource)
-        complex *16 dipstr(nsource)
-        dimension dipvec(3,nsource)
-        complex *16 ima
-        complex *16 pot(nsource)
-        complex *16 fld(3,nsource)
-        dimension target(3,ntarget)
-        complex *16 pottarg(ntarget)
-        complex *16 fldtarg(3,ntarget)
-        dimension timeinfo(10)
-        dimension laddr(2,200)
-        dimension bsize(0:200)
-        dimension nterms(0:200)
-        integer box(20)
-        integer box1(20)
-        dimension scale(0:200)
-        dimension center(3)
-        dimension center0(3),corners0(3,8)
-        dimension center1(3),corners1(3,8)
-        real *8, allocatable :: w(:)
-        real *8, allocatable :: wlists(:)
-        real *8, allocatable :: wrmlexp(:)
-        complex *16 ptemp,ftemp(3)
-        data ima/(0.0d0,1.0d0)/
-        ier=0
-        lused7 = 0
-        done=1
-        pi=4*atan(done)
-        ifprint=0
+     $     ifpot,pot,iffld,fld)
+      implicit real *8 (a-h,o-z)
+      dimension source(3,nsource)
+      complex *16 charge(nsource)
+      complex *16 dipstr(nsource)
+      dimension dipvec(3,nsource)
+      complex *16 ima
+      complex *16 pot(nsource)
+      complex *16 fld(3,nsource)
+      dimension timeinfo(10)
+      dimension laddr(2,200)
+      dimension bsize(0:200)
+      dimension nterms(0:200)
+      integer box(20)
+      integer box1(20)
+      dimension scale(0:200)
+      dimension center(3)
+      dimension center0(3),corners0(3,8)
+      dimension center1(3),corners1(3,8)
+      real *8, allocatable :: w(:)
+      real *8, allocatable :: wlists(:)
+      real *8, allocatable :: wrmlexp(:)
+      complex *16 ptemp,ftemp(3)
+      data ima/(0.0d0,1.0d0)/
+      ier=0
+      lused7 = 0
+      done=1
+      pi=4*atan(done)
+      ifprint=0
 c     set fmm tolerance based on iprec flag.
-        if( iprec .eq. -2 ) epsfmm=.5d-0 
-        if( iprec .eq. -1 ) epsfmm=.5d-1
-        if( iprec .eq. 0 ) epsfmm=.5d-2
-        if( iprec .eq. 1 ) epsfmm=.5d-3
-        if( iprec .eq. 2 ) epsfmm=.5d-6
-        if( iprec .eq. 3 ) epsfmm=.5d-9
-        if( iprec .eq. 4 ) epsfmm=.5d-12
-        if( iprec .eq. 5 ) epsfmm=.5d-15
-        if( iprec .eq. 6 ) epsfmm=0
+      if( iprec .eq. -2 ) epsfmm=.5d-0 
+      if( iprec .eq. -1 ) epsfmm=.5d-1
+      if( iprec .eq. 0 ) epsfmm=.5d-2
+      if( iprec .eq. 1 ) epsfmm=.5d-3
+      if( iprec .eq. 2 ) epsfmm=.5d-6
+      if( iprec .eq. 3 ) epsfmm=.5d-9
+      if( iprec .eq. 4 ) epsfmm=.5d-12
+      if( iprec .eq. 5 ) epsfmm=.5d-15
+      if( iprec .eq. 6 ) epsfmm=0
 c     set criterion for box subdivision (number of sources per box)
-        if( iprec .eq. -2 ) nbox=40
-        if( iprec .eq. -1 ) nbox=50
-        if( iprec .eq. 0 ) nbox=80
-        if( iprec .eq. 1 ) nbox=160
-        if( iprec .eq. 2 ) nbox=400
-        if( iprec .eq. 3 ) nbox=800
-        if( iprec .eq. 4 ) nbox=1200
-        if( iprec .eq. 5 ) nbox=1400
-        if( iprec .eq. 6 ) nbox=nsource+ntarget
+      if( iprec .eq. -2 ) nbox=40
+      if( iprec .eq. -1 ) nbox=50
+      if( iprec .eq. 0 ) nbox=80
+      if( iprec .eq. 1 ) nbox=160
+      if( iprec .eq. 2 ) nbox=400
+      if( iprec .eq. 3 ) nbox=800
+      if( iprec .eq. 4 ) nbox=1200
+      if( iprec .eq. 5 ) nbox=1400
+      if( iprec .eq. 6 ) nbox=nsource
 c     create oct-tree data structure
-        ntot = 100*(nsource+ntarget)+10000
-        do ii = 1,10
-           allocate (wlists(ntot))
-           call hfmm3dparttree(ier,iprec,zk,
-     1        nsource,source,ntarget,target,
-     1        nbox,epsfmm,iisource,iitarget,iwlists,lwlists,
+      ntot = 100*nsource+10000
+      do ii = 1,10
+         allocate (wlists(ntot))
+         call hfmm3dparttree(ier,iprec,zk,
+     1        nsource,source,
+     1        nbox,epsfmm,iisource,iwlists,lwlists,
      1        nboxes,laddr,nlev,center,size,
      1        wlists,ntot,lused7)
-           if (ier.eq.0) cycle
-           deallocate(wlists)
-           ntot = ntot*1.5
-           call prinf(' increasing allocation, ntot is *',ntot,1)
-        enddo
-        if (ier.ne.0) then
-           call prinf(' exceeded max allocation, ntot is *',ntot,1)
-           ier = 4
-           return
-        endif
-        lused7=1
-        do i = 0,nlev
-           scale(i) = 1.0d0
-           boxsize = abs((size/2.0**i)*zk)
-           if (boxsize .lt. 1) scale(i) = boxsize
-        enddo
+         if (ier.eq.0) exit
+         deallocate(wlists)
+         ntot = ntot*1.5
+         call prinf(' increasing allocation, ntot is *',ntot,1)
+      enddo
+      lused7=1
+      do i = 0,nlev
+         scale(i) = 1.0d0
+         boxsize = abs((size/2.0**i)*zk)
+         if (boxsize .lt. 1) scale(i) = boxsize
+      enddo
 c     isourcesort is pointer for sorted source coordinates
-c     itargetsort is pointer for sorted target locations
 c     ichargesort is pointer for sorted charge densities
 c     idipvecsort is pointer for sorted dipole orientation vectors
 c     idipstrsort is pointer for sorted dipole densities
-        isourcesort = lused7 + 5
-        lsourcesort = 3*nsource
-        itargetsort = isourcesort+lsourcesort
-        ltargetsort = 3*ntarget
-        ichargesort = itargetsort+ltargetsort
-        lchargesort = 2*nsource
-        idipvecsort = ichargesort+lchargesort
-        if (ifdipole.eq.1) then
-          ldipvec = 3*nsource
-          ldipstr = 2*nsource
-        else
-          ldipvec = 3
-          ldipstr = 2
-        endif
-        idipstrsort = idipvecsort + ldipvec
-        lused7 = idipstrsort + ldipstr
-c
-c       ... allocate the potential and field arrays
-c
-        ipot = lused7
-        lpot = 2*nsource
-        lused7=lused7+lpot
-c       
-        ifld = lused7
-        if( iffld .eq. 1) then
-        lfld = 2*(3*nsource)
-        else
-        lfld=6
-        endif
-        lused7=lused7+lfld
-        ipottarg = lused7
-        lpottarg = 2*ntarget
-        lused7=lused7+lpottarg
-        ifldtarg = lused7
-        if( iffldtarg .eq. 1) then
-        lfldtarg = 2*(3*ntarget)
-        else
-        lfldtarg=6
-        endif
-        lused7=lused7+lfldtarg
-c       based on FMM tolerance, compute expansion lengths nterms(i)
-        nmax = 0
-        do i = 0,nlev
-           bsize(i)=size/2.0d0**i
-           call h3dterms(bsize(i),zk,epsfmm, nterms(i), ier)
-           if (nterms(i).gt. nmax .and. i.ge. 2) nmax = nterms(i)
-        enddo
-        nquad=2*nmax               
+      isourcesort = lused7 + 5
+      lsourcesort = 3*nsource
+      ichargesort = isourcesort+lsourcesort
+      lchargesort = 2*nsource
+      idipvecsort = ichargesort+lchargesort
+      if (ifdipole.eq.1) then
+         ldipvec = 3*nsource
+         ldipstr = 2*nsource
+      else
+         ldipvec = 3
+         ldipstr = 2
+      endif
+      idipstrsort = idipvecsort + ldipvec
+      lused7 = idipstrsort + ldipstr
+c     ... allocate the potential and field arrays
+      ipot = lused7
+      lpot = 2*nsource
+      lused7=lused7+lpot
+      ifld = lused7
+      if( iffld .eq. 1) then
+         lfld = 2*(3*nsource)
+      else
+         lfld=6
+      endif
+      lused7=lused7+lfld
+      ifldtarg = lused7
+c     based on FMM tolerance, compute expansion lengths nterms(i)
+      nmax = 0
+      do i = 0,nlev
+         bsize(i)=size/2.0d0**i
+         call h3dterms(bsize(i),zk,epsfmm, nterms(i), ier)
+         if (nterms(i).gt. nmax .and. i.ge. 2) nmax = nterms(i)
+      enddo
+      nquad=2*nmax               
 c     ixnodes is pointer for quadrature nodes
 c     iwhts is pointer for quadrature weights
-        ixnodes = lused7 
-        iwts = ixnodes + nquad
-        lused7 = iwts + nquad
+      ixnodes = lused7 
+      iwts = ixnodes + nquad
+      lused7 = iwts + nquad
 c     Multipole and local expansions will be held in workspace
 c     in locations pointed to by array iaddr(2,nboxes).
 
 c     iiaddr is pointer to iaddr array, itself contained in workspace.
 c     imptemp is pointer for single expansion (dimensioned by nmax)
-        iiaddr = lused7 
-        imptemp = iiaddr + 2*nboxes
-        lmptemp = (nmax+1)*(2*nmax+1)*2
-        lused7 = imptemp + lmptemp
-        allocate(w(lused7),stat=ier)
-        call h3dreorder(nsource,source,ifcharge,charge,wlists(iisource),
+      iiaddr = lused7 
+      imptemp = iiaddr + 2*nboxes
+      lmptemp = (nmax+1)*(2*nmax+1)*2
+      lused7 = imptemp + lmptemp
+      allocate(w(lused7),stat=ier)
+      call h3dreorder(nsource,source,ifcharge,charge,wlists(iisource),
      1     ifdipole,dipstr,dipvec,
      1     w(isourcesort),w(ichargesort),w(idipvecsort),w(idipstrsort)) 
-        call h3dreordertarg(ntarget,target,wlists(iitarget),
-     1       w(itargetsort))
-        ifinit=1
-        call legewhts(nquad,w(ixnodes),w(iwts),ifinit)
-        call h3dmpalloc(wlists(iwlists),w(iiaddr),nboxes,lmptot,nterms)
-        irmlexp = 1
-        lused7 = irmlexp + lmptot 
-        allocate(wrmlexp(lused7),stat=ier)
-        ifevalfar=1
-        ifevalloc=1
-        call hfmm3dparttargmain(ier,iprec,zk,
+      ifinit=1
+      call legewhts(nquad,w(ixnodes),w(iwts),ifinit)
+      call h3dmpalloc(wlists(iwlists),w(iiaddr),nboxes,lmptot,nterms)
+      irmlexp = 1
+      lused7 = irmlexp + lmptot 
+      allocate(wrmlexp(lused7),stat=ier)
+      ifevalfar=1
+      ifevalloc=1
+      call hfmm3dparttargmain(ier,iprec,zk,
      1     ifevalfar,ifevalloc,
      1     nsource,w(isourcesort),wlists(iisource),
      1     ifcharge,w(ichargesort),
@@ -168,13 +142,13 @@ c     imptemp is pointer for single expansion (dimensioned by nmax)
      1     w(ixnodes),w(iwts),nquad,
      1     nboxes,laddr,nlev,scale,bsize,nterms,
      1     wlists(iwlists),lwlists)
-        call h3dpsort(nsource,wlists(iisource),w(ipot),pot)
-        call h3dfsort(nsource,wlists(iisource),w(ifld),fld)
+      call h3dpsort(nsource,wlists(iisource),w(ipot),pot)
+      call h3dfsort(nsource,wlists(iisource),w(ifld),fld)
 
-        return
-        end
+      return
+      end
 
-        subroutine hfmm3dparttargmain(ier,iprec,zk,
+      subroutine hfmm3dparttargmain(ier,iprec,zk,
      1     ifevalfar,ifevalloc,
      1     nsource,sourcesort,isource,
      1     ifcharge,chargesort,
@@ -182,105 +156,105 @@ c     imptemp is pointer for single expansion (dimensioned by nmax)
      1     epsfmm,iaddr,rmlexp,mptemp,lmptemp,xnodes,wts,nquad,
      1     nboxes,laddr,nlev,scale,bsize,nterms,
      1     wlists,lwlists)
-        implicit real *8 (a-h,o-z)
-        dimension sourcesort(3,1), isource(1)
-        complex *16 chargesort(1),zk
-        complex *16 ima
-        complex *16 pot(1)
-        complex *16 fld(3,1)
-        dimension wlists(1)
-        dimension iaddr(2,nboxes)
-        real *8 rmlexp(1)
-        complex *16 mptemp(lmptemp)
-        dimension xnodes(nquad),wts(nquad)
-        dimension timeinfo(10)
-        dimension center(3)
-        dimension laddr(2,200)
-        dimension scale(0:200)
-        dimension bsize(0:200)
-        dimension nterms(0:200)
-        dimension list(10 000)
-        complex *16 ptemp,ftemp(3)
-        integer box(20)
-        dimension center0(3),corners0(3,8)
-        integer box1(20)
-        dimension center1(3),corners1(3,8)
-        dimension itable(-3:3,-3:3,-3:3)
-        dimension wlege(100 000)
-        dimension nterms_eval(4,0:200)
-        data ima/(0.0d0,1.0d0)/
-c       ... set the potential and field to zero
-        do i=1,nsource
-           pot(i)=0
-           fld(1,i)=0
-           fld(2,i)=0
-           fld(3,i)=0
-        enddo
-        do i=1,10
-           timeinfo(i)=0
-        enddo
-c       ... initialize Legendre function evaluation routines
-        nlege=200
-        lw7=100 000
-        call ylgndrfwini(nlege,wlege,lw7,lused7)
-        do i=0,nlev
-           do itype=1,4
-              call h3dterms_eval(itype,bsize(i),zk,epsfmm,
-     1             nterms_eval(itype,i),ier)
-           enddo
-        enddo
-c       ... set all multipole and local expansions to zero
-        do ibox = 1,nboxes
-           call d3tgetb(ier,ibox,box,center0,corners0,wlists)
-           level=box(1)
-           call h3dzero(rmlexp(iaddr(1,ibox)),nterms(level))
-           call h3dzero(rmlexp(iaddr(2,ibox)),nterms(level))
-        enddo
+      implicit real *8 (a-h,o-z)
+      dimension sourcesort(3,1), isource(1)
+      complex *16 chargesort(1),zk
+      complex *16 ima
+      complex *16 pot(1)
+      complex *16 fld(3,1)
+      dimension wlists(1)
+      dimension iaddr(2,nboxes)
+      real *8 rmlexp(1)
+      complex *16 mptemp(lmptemp)
+      dimension xnodes(nquad),wts(nquad)
+      dimension timeinfo(10)
+      dimension center(3)
+      dimension laddr(2,200)
+      dimension scale(0:200)
+      dimension bsize(0:200)
+      dimension nterms(0:200)
+      dimension list(10 000)
+      complex *16 ptemp,ftemp(3)
+      integer box(20)
+      dimension center0(3),corners0(3,8)
+      integer box1(20)
+      dimension center1(3),corners1(3,8)
+      dimension itable(-3:3,-3:3,-3:3)
+      dimension wlege(100 000)
+      dimension nterms_eval(4,0:200)
+      data ima/(0.0d0,1.0d0)/
+c     ... set the potential and field to zero
+      do i=1,nsource
+         pot(i)=0
+         fld(1,i)=0
+         fld(2,i)=0
+         fld(3,i)=0
+      enddo
+      do i=1,10
+         timeinfo(i)=0
+      enddo
+c     ... initialize Legendre function evaluation routines
+      nlege=200
+      lw7=100 000
+      call ylgndrfwini(nlege,wlege,lw7,lused7)
+      do i=0,nlev
+         do itype=1,4
+            call h3dterms_eval(itype,bsize(i),zk,epsfmm,
+     1           nterms_eval(itype,i),ier)
+         enddo
+      enddo
+c     ... set all multipole and local expansions to zero
+      do ibox = 1,nboxes
+         call d3tgetb(ier,ibox,box,center0,corners0,wlists)
+         level=box(1)
+         call h3dzero(rmlexp(iaddr(1,ibox)),nterms(level))
+         call h3dzero(rmlexp(iaddr(2,ibox)),nterms(level))
+      enddo
 
-        t1=omp_get_wtime()
-c       ... step 1, locate all charges, assign them to boxes, and
-c       form multipole expansions
-        do ilev=3,nlev+1
+      t1=omp_get_wtime()
+c     ... step 1, locate all charges, assign them to boxes, and
+c     form multipole expansions
+      do ilev=3,nlev+1
 c$OMP PARALLEL DO DEFAULT(SHARED)
 c$OMP$PRIVATE(ibox,box,center0,corners0,level,npts,nkids,radius)
 c$OMP$PRIVATE(lused,ier,i,j,ptemp,ftemp,cd) 
-           do ibox=laddr(1,ilev),laddr(1,ilev)+laddr(2,ilev)-1
-              call d3tgetb(ier,ibox,box,center0,corners0,wlists)
-              call d3tnkids(box,nkids)
-              level=box(1)
-              if (nkids .eq. 0) then
-                 npts=box(15)
-              endif
+         do ibox=laddr(1,ilev),laddr(1,ilev)+laddr(2,ilev)-1
+            call d3tgetb(ier,ibox,box,center0,corners0,wlists)
+            call d3tnkids(box,nkids)
+            level=box(1)
+            if (nkids .eq. 0) then
+               npts=box(15)
+            endif
 c     ... prune all sourceless boxes
-              if( box(15) .eq. 0 ) cycle
-              if (nkids .eq. 0 ) then
+            if( box(15) .eq. 0 ) cycle
+            if (nkids .eq. 0 ) then
 c     ... form multipole expansions
-                 radius = (corners0(1,1) - center0(1))**2
-                 radius = radius + (corners0(2,1) - center0(2))**2
-                 radius = radius + (corners0(3,1) - center0(3))**2
-                 radius = sqrt(radius)
-                 call h3dzero(rmlexp(iaddr(1,ibox)),nterms(level))
-                 if_use_trunc = 1
-                 call h3dformmp_add_trunc(ier,zk,scale(level),
-     1                sourcesort(1,box(14)),chargesort(box(14)),npts,
-     1                center0,nterms(level),nterms_eval(1,level),
-     1                rmlexp(iaddr(1,ibox)),wlege,nlege)
-              endif
-           enddo
+               radius = (corners0(1,1) - center0(1))**2
+               radius = radius + (corners0(2,1) - center0(2))**2
+               radius = radius + (corners0(3,1) - center0(3))**2
+               radius = sqrt(radius)
+               call h3dzero(rmlexp(iaddr(1,ibox)),nterms(level))
+               if_use_trunc = 1
+               call h3dformmp_add_trunc(ier,zk,scale(level),
+     1              sourcesort(1,box(14)),chargesort(box(14)),npts,
+     1              center0,nterms(level),nterms_eval(1,level),
+     1              rmlexp(iaddr(1,ibox)),wlege,nlege)
+            endif
+         enddo
 c$OMP END PARALLEL DO
-        enddo
-        t2=omp_get_wtime()
-        timeinfo(1)=t2-t1
+      enddo
+      t2=omp_get_wtime()
+      timeinfo(1)=t2-t1
 
-        t1=omp_get_wtime()
-c       ... step 2, adaptive part, form local expansions, 
-c           or evaluate the potentials and fields directly
-        do ibox=1,nboxes
-           call d3tgetb(ier,ibox,box,center0,corners0,wlists)
-           itype=3
-           call d3tgetl(ier,ibox,itype,list,nlist,wlists)
+      t1=omp_get_wtime()
+c     ... step 2, adaptive part, form local expansions, 
+c     or evaluate the potentials and fields directly
+      do ibox=1,nboxes
+         call d3tgetb(ier,ibox,box,center0,corners0,wlists)
+         itype=3
+         call d3tgetl(ier,ibox,itype,list,nlist,wlists)
 c     ... prune all sourceless boxes
-           if( box(15) .eq. 0 ) nlist=0
+         if( box(15) .eq. 0 ) nlist=0
 c     ... note that lists 3 and 4 are dual
 c     ... form local expansions for all boxes in list 3
 c     ... if target is childless, evaluate directly (if cheaper)
@@ -288,58 +262,58 @@ c$OMP PARALLEL DO DEFAULT(SHARED)
 c$OMP$PRIVATE(level,npts,nkids)
 c$OMP$PRIVATE(jbox,box1,center1,corners1,level1,ifdirect3,radius)
 c$OMP$PRIVATE(lused,ier,i,j,ptemp,ftemp,cd,ilist) 
-           do ilist=1,nlist
-              jbox=list(ilist)
-              call d3tgetb(ier,jbox,box1,center1,corners1,wlists)
-              level1=box1(1)
-              npts=box(15)
-              if_use_trunc = 1
-              call h3dformta_add_trunc(ier,zk,scale(level1),
-     1             sourcesort(1,box(14)),chargesort(box(14)),
-     1             npts,center1,
-     1             nterms(level1),nterms_eval(1,level1),
-     1             rmlexp(iaddr(2,jbox)),wlege,nlege)
-           enddo
+         do ilist=1,nlist
+            jbox=list(ilist)
+            call d3tgetb(ier,jbox,box1,center1,corners1,wlists)
+            level1=box1(1)
+            npts=box(15)
+            if_use_trunc = 1
+            call h3dformta_add_trunc(ier,zk,scale(level1),
+     1           sourcesort(1,box(14)),chargesort(box(14)),
+     1           npts,center1,
+     1           nterms(level1),nterms_eval(1,level1),
+     1           rmlexp(iaddr(2,jbox)),wlege,nlege)
+         enddo
 c$OMP END PARALLEL DO
-        enddo
-        t2=omp_get_wtime()
-        timeinfo(2)=t2-t1
-        ifprune_list2 = 0
-        call hfmm3d_list2
+      enddo
+      t2=omp_get_wtime()
+      timeinfo(2)=t2-t1
+      ifprune_list2 = 0
+      call hfmm3d_list2
      1     (zk,bsize,nlev,laddr,scale,nterms,rmlexp,iaddr,epsfmm,
      1     timeinfo,wlists,mptemp,lmptemp,xnodes,wts,nquad,
      1     ifprune_list2)
 
-        t1=omp_get_wtime()
-c       ... step 6, adaptive part, evaluate multipole expansions, 
-c           or evaluate the potentials and fields directly
-         do ibox=1,nboxes
-            call d3tgetb(ier,ibox,box,center0,corners0,wlists)
-            itype=4
-            call d3tgetl(ier,ibox,itype,list,nlist,wlists)
+      t1=omp_get_wtime()
+c     ... step 6, adaptive part, evaluate multipole expansions, 
+c     or evaluate the potentials and fields directly
+      do ibox=1,nboxes
+         call d3tgetb(ier,ibox,box,center0,corners0,wlists)
+         itype=4
+         call d3tgetl(ier,ibox,itype,list,nlist,wlists)
 c     ... prune all sourceless boxes
-            if( box(15) .eq. 0 ) nlist=0
+         if( box(15) .eq. 0 ) nlist=0
 c     ... note that lists 3 and 4 are dual
 c     ... evaluate multipole expansions for all boxes in list 4 
 c     ... if source is childless, evaluate directly (if cheaper)
 c$OMP PARALLEL DO DEFAULT(SHARED)
 c$OMP$PRIVATE(jbox,box1,center1,corners1,level1,level,radius)
 c$OMP$PRIVATE(ier,i,j,ptemp,ftemp,cd,ilist) 
-            do ilist=1,nlist
-               jbox=list(ilist)
-               call d3tgetb(ier,jbox,box1,center1,corners1,wlists)
-               level=box(1)
-               call h3dmpevalall_trunc(zk,scale(level),center0,
-     1              rmlexp(iaddr(1,ibox)),
-     1              nterms(level),nterms_eval(1,level),
-     1              sourcesort(1,box1(14)),box1(15),
-     1              ifpot,pot(box1(14)),
-     1              iffld,fld(1,box1(14)),
-     1              wlege,nlege,ier)
-               
-            enddo
-c$OMP END PARALLEL DO
+         do ilist=1,nlist
+            jbox=list(ilist)
+            call d3tgetb(ier,jbox,box1,center1,corners1,wlists)
+            level=box(1)
+            call h3dmpevalall_trunc(zk,scale(level),center0,
+     1           rmlexp(iaddr(1,ibox)),
+     1           nterms(level),nterms_eval(1,level),
+     1           sourcesort(1,box1(14)),box1(15),
+     1           ifpot,pot(box1(14)),
+     1           iffld,fld(1,box1(14)),
+     1           wlege,nlege,ier)
+            
          enddo
+c$OMP END PARALLEL DO
+      enddo
       t2=omp_get_wtime()
       timeinfo(6)=t2-t1
 

@@ -29,39 +29,18 @@ c
 c
 c
         subroutine hfmm3dparttree(ier,iprec,zk,
-     $     nsource,source,ntarget,target,
-     $     nbox,epsfmm,iisource,iitarget,iwlists,lwlists,
+     $     nsource,source,
+     $     nbox,epsfmm,iisource,iwlists,lwlists,
      $     nboxes,laddr,nlev,center,size,
      $     w,lw,lused7)
         implicit real *8 (a-h,o-z)
-c       
-c       Helmholtz FMM in R^3: build the oct-tree
-c
-c     INPUT PARAMETERS:
-c
-c       zk: complex *16: Helmholtz parameter
-c       nsource: integer:  number of sources
-c       source: real *8 (3,n):  source locations
-c       w: real *8 (lw): workspace
-c       lw:  length of workspace
-c
-c     OUTPUT PARAMETERS:
-c
-c       ier   =  error return code
-c       lused7 = the amount of workspace used
-c
-c
-        dimension source(3,1),target(3,1)
-c       
+        dimension source(3,1)
         dimension center(3)
-c       
         dimension laddr(2,200)
         integer box(20)
         dimension center0(3),corners0(3,8)
-c       
         integer box1(20)
         dimension center1(3),corners1(3,8)
-c
         complex *16 zk
         dimension w(1)
 c       
@@ -75,82 +54,21 @@ c
 c       
         iisource=1
         lused7=lused7+nsource
-        if (ifprint.eq.1) call prinf('lused7=*',lused7,1)
         if (lused7 .ge. lw) ier=128
         if( ier .ne. 0 ) return
-c
-        iitarget=iisource+nsource
-        lused7=lused7+ntarget
-        if (ifprint.eq.1) call prinf('lused7=*',lused7,1)
         if (lused7 .ge. lw) ier=128
         if( ier .ne. 0 ) return
 c
         iwlists=iisource+lused7+10
-c
 c       ... construct the adaptive FMM oct-tree structure
-c
         call d3tstrcr(ier,source,nsource,nbox,
      $     nboxes,w(iisource),laddr,nlev,center,size,
-     $     target,ntarget,w(iitarget),w(iwlists),lw-lused7,lused)
-c
+     $     w(iwlists),lw-lused7,lused)
         if( ier .ne. 0 ) return
-c
         lwlists=lused
         lused7=lused7+lwlists
         if (lused7 .ge. lw) ier=128
         if( ier .ne. 0 ) return
-c       
-        if (ifprint.eq.1) 
-     $       call prin2('after d3tstrcr, center=*',center,3)
-        if (ifprint.eq.1) 
-     $       call prin2('after d3tstrcr, size=*',size,1)
-        if (ifprint.eq.1) 
-     $       call prinf('after d3tstrcr, nlev=*',nlev,1)
-        if (ifprint.eq.1) 
-     $       call prinf('after d3tstrcr, nbox=*',nbox,1)
-        if (ifprint.eq.1) 
-     $       call prinf('after d3tstrcr, laddr=*',laddr,2*(nlev+1))
-c
-ccc        call prinf('after d3tstrcr, isource=*',w(iisource),nsource)
-ccc        call prinf('after d3tstrcr, itarget=*',w(iitarget),ntarget)
-c
-ccc        call d3tprint(w(iwlists),lwlists)
-c
-c       ... optional, plot the oct-tree in gnuplot compatible format
-c
-        ifplot = 0
-        if (ifplot .eq. 1 .and. nsource .lt. 10000 ) then
-c
-c       ... plot the boxes
-c
-        iw=51
-        call plot_box3d(iw,center,size)
-c       
-        itag=1
-        iw=52
-        call plot_label3d(iw,center,size,itag,itag)
-c
-        iw=60
-        call plot_points3d(iw,source,nsource)
-c       
-        iw=63
-        call plot_points3d(iw,target,ntarget)
-c       
-        do ibox=1,nboxes
-           call d3tgetb(ier,ibox,box,center0,corners0,w(iwlists))
-           level=box(1)
-           size0=size/2**level
-c
-           iw=61
-           call plot_box3d(iw,center0,size0)
-c       
-           itag=ibox
-           iw=62
-           call plot_label3d(iw,center0,size0,itag,itag)
-        enddo  
-c      
-        endif
-c
         return
         end
 c

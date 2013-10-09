@@ -30,10 +30,10 @@ c
 c
         subroutine d3tstrcr(ier,z,n,nbox,
      1    nboxes,iz,laddr,nlev,center,size,
-     $    ztarg,ntarg,iztarg,w,lw,lused777)
+     $    w,lw,lused777)
         implicit real *8 (a-h,o-z)
-        integer iz(*),iztarg(*),w(*),laddr(2,*)
-        real *8 z(3,*),ztarg(3,*),center(3),corners(3,8)
+        integer iz(*),w(*),laddr(2,*)
+        real *8 z(3,*),center(3),corners(3,8)
 ccc        save
 c
 c        this subroutine constructs the logical structure for the 
@@ -75,10 +75,6 @@ c  z - the user-specified points in the space
 c  n - the number of elements in array z
 c  nbox - the maximum number of points in a box on the finest level
 c  lw - the amount of memory in the array w (in integer elements)
-c
-c  ztarg - the user-specified targets in the space
-c  ntarg - the number of targets in array ztarg
-c
 c
 c                            output parameters:
 c
@@ -103,17 +99,6 @@ c         (z(1,j+nj),z(2,j+nj),z(3,j+nj)),
 c
 c         with j=boxes(14,ibox), and nj=boxes(15,ibox)
 c        
-c  iztarg - the integer array addressing the targets in 
-c         all boxes. 
-c
-c         (ztarg(1,j),ztarg(2,j),ztarg(3,j)),
-c         (ztarg(1,j+1),ztarg(2,j+1),ztarg(3,j+1)),
-c         (ztarg(1,j+2),ztarg(2,j+2),ztarg(3,j+3)), . . . 
-c         (ztarg(1,j+nj-1),ztarg(2,j+nj-1),ztarg(3,j+nj-1)),
-c         (ztarg(1,j+nj),ztarg(2,j+nj),ztarg(3,j+nj)),
-c
-c         with j=boxes(16,ibox), and nj=boxes(17,ibox)
-c
 c  laddr - an integer array dimensioned (2,nlev), describing the
 c         numbers of boxes on various levels of sybdivision, so that
 c         the first box on level (i-1) has sequence number laddr(1,i),
@@ -159,7 +144,7 @@ c
         lptr=500
 c
         iiwork=iptr+lptr
-        liwork=n+ntarg+4
+        liwork=n+4
 c     
         iboxes=iiwork+liwork
         lboxes=lw-liwork-5
@@ -179,17 +164,13 @@ c
         do i=1,n
 	iz(i)=i
 	enddo
-c
-        do i=1,ntarg
-	iztarg(i)=i
-	enddo
-c
+
         ifempty=0
         minlevel=0
         maxlevel=100
         call d3tallbem(ier,z,n,nbox,w(iboxes),maxboxes,
      1    nboxes,iz,laddr,nlev,center,size,w(iiwork),
-     $     ifempty,minlevel,maxlevel,ztarg,ntarg,iztarg)
+     $     ifempty,minlevel,maxlevel)
 c
 ccc        call d3tallb(ier,z,n,nbox,w(iboxes),maxboxes,
 ccc     1    nboxes,iz,laddr,nlev,center,size,w(iiwork) )
@@ -253,7 +234,7 @@ c
         w(8)=nbox
         w(9)=nlev
         w(10)=ier
-        w(11)=ntarg
+        w(11)=0
         w(12)=ifempty
         w(13)=minlevel
         w(14)=maxlevel
@@ -261,329 +242,19 @@ c
         w(100+2*i-2)=laddr(1,i)
         w(100+2*i-1)=laddr(2,i)
         enddo
-c
         return
         end
-c
-c
-c
-c
-        subroutine d3tstrcrem(ier,z,n,nbox,
-     1    nboxes,iz,laddr,nlev,center,size,
-     $    ztarg,ntarg,iztarg,w,lw,lused777,
-     $    ifempty,minlevel,maxlevel)
-        implicit real *8 (a-h,o-z)
-        integer iz(*),iztarg(*),w(*),laddr(2,*)
-        real *8 z(3,*),ztarg(*),center(3),corners(3,8)
-ccc        save
-c
-c        this subroutine constructs the logical structure for the 
-c        fully adaptive FMM in three dimensions and stores it in the
-c        array w in the form of a link-list. after that, the user 
-c        can obtain the information about various boxes and lists 
-c        in it by calling the entries d3tgetb, d3tgetl, d3tlinfo
-c        of this subroutine (see).
-c
-c        this subroutine constructs the tree on sources and targets
-c
-c              note on the list conventions. 
-c
-c    list 1 of the box ibox - the list of all boxes with which the
-c           box ibox interacts directly, including the boxes on the 
-c           same level as ibox, boxes on the finer levels, and boxes 
-c           on the coarser levels. obviously, list 1 is empty for any
-c           box that is not childless.
-c
-c    list 2 of the box ibox - the list of all boxes with which the
-c           box ibox interacts in the regular multipole fashion, i.e. 
-c           boxes on the same level as ibox that are separated from it
-c           but whose daddies are not separated from the daddy of ibox.
-c
-c    list 3 of the box ibox - for a childless ibox, the list of all 
-c           boxes on the levels finer than that of ibox, which are 
-c           separated from ibox, and whose daddys are not separated 
-c           from ibox. for a box with children, list 3 is empty.
-c           
-c    list 4 is dual to list 3, i.e. jbox is on the list 4 of ibox if 
-c           and only if ibox is on the list 3 of jbox. 
-c
-c    list 5 of the box ibox - the list of all boxes at the same level 
-c           that are adjacent to the box ibox - the list of colleagues
-c
-c                            input parameters:
-c
-c  z - the user-specified points in the space
-c  n - the number of elements in array z
-c  nbox - the maximum number of points in a box on the finest level
-c  lw - the amount of memory in the array w (in integer elements)
-c
-c  ztarg - the user-specified targets in the space
-c  ntarg - the number of targets in array ztarg
-c
-c  ifempty - ifempty=0 - remove empty boxes, ifempty=1 - keep empty boxes 
-c  minlevel - minimum level of refinement
-c  maxlevel - minimum level of refinement
-c
-c                            output parameters:
-c
-c  ier - error return code
-c    ier=0   means successful execution
-c    ier=16 means that the subroutine attempted to construct more 
-c        than 197 levels of subdivision; indicates bad trouble.
-c    ier=32  means that the amount lw of space in array w
-c                 is insufficient
-c    ier=64  means that the amount lw of space in array w
-c                 is severely insufficient
-c  nboxes - the total number of boxes created
-c  iz - the integer array addressing the particles in 
-c         all boxes. 
-c       explanation: for a box ibox, the particles living in
-c         it are:
-c
-c         (z(1,j),z(2,j),z(3,j)),(z(1,j+1),z(2,j+1),z(3,j+1)),
-c         (z(1,j+2),z(2,j+2),z(3,j+3)), . . . 
-c         (z(1,j+nj-1),z(2,j+nj-1),z(3,j+nj-1)),
-c         (z(1,j+nj),z(2,j+nj),z(3,j+nj)),
-c
-c         with j=boxes(14,ibox), and nj=boxes(15,ibox)
-c        
-c  iztarg - the integer array addressing the targets in 
-c         all boxes. 
-c
-c         (ztarg(1,j),ztarg(2,j),ztarg(3,j)),
-c         (ztarg(1,j+1),ztarg(2,j+1),ztarg(3,j+1)),
-c         (ztarg(1,j+2),ztarg(2,j+2),ztarg(3,j+3)), . . . 
-c         (ztarg(1,j+nj-1),ztarg(2,j+nj-1),ztarg(3,j+nj-1)),
-c         (ztarg(1,j+nj),ztarg(2,j+nj),ztarg(3,j+nj)),
-c
-c         with j=boxes(16,ibox), and nj=boxes(17,ibox)
-c        
-c  laddr - an integer array dimensioned (2,nlev), describing the
-c         numbers of boxes on various levels of sybdivision, so that
-c         the first box on level (i-1) has sequence number laddr(1,i),
-c         and there are laddr(2,i) boxes on level i-1
-c  nlev - the maximum level number on which any boxes have 
-c         been created. the maximum number possible is 200. 
-c         it is recommended that the array laddr above be 
-c         dimensioned at least (2,200), in case the user underestimates
-c         the number of levels required.
-c  center - the center of the box on the level 0, containing
-c         the whole simulation
-c  size - the side of the box on the level 0
-c  w - the array containing all tables describing boxes, lists, etc. 
-c         it is a link-list (for the most part), and can only be accessed
-c         via the entries d3tgetb, d3tgetl, d3tlinfo, of this  subroutine 
-c         (see below). the first lused 777 integer locations of 
-c         this array should not be altered between the call to this
-c         entry and subsequent calls to the entries d3tgetb, d3tgetl,
-c         d3tlinfo, of this  subroutine 
-c        
-c  lused777 - the amount of space in the array w (in integer words)
-c        that is occupied by various tables on exit from this 
-c        subroutine. this space should not be altered between the
-c        call to this entry and subsequent calls to entries d3tgetb,
-c        d3tgetl, d3tlinfo, of this  subroutine (see below).
-c  
-c        . . . construct the oct-tree structure for the user-specified 
-c              set of points
-c
-c       size of real *8 must not exceed the size of two integers
-c
-        if( n .lt. 1 ) then
-c       number of particles less than one, abort
-        ier=128
-        return
-        endif
-c
-        ier=0
-c
-        ninire=2
-c
-        iptr=1
-        lptr=500
-c
-        iiwork=iptr+lptr
-        liwork=n+ntarg+4
-c     
-        iboxes=iiwork+liwork
-        lboxes=lw-liwork-5
-        maxboxes=lboxes/20-1
-c
-c
-c        if the memory is insufficient - bomb
-c
-        if( lw .lt. 45*n ) then
-        ier=64
-ccc        call prinf('in d3tstrcr before d3tallb, ier=*',ier,1)
-        return
-        endif
-c
-c	 initialize the sorting index 
-c
-        do i=1,n
-	iz(i)=i
-	enddo
-c
-        do i=1,ntarg
-	iztarg(i)=i
-	enddo
-c
-        call d3tallbem(ier,z,n,nbox,w(iboxes),maxboxes,
-     1    nboxes,iz,laddr,nlev,center,size,w(iiwork),
-     $     ifempty,minlevel,maxlevel,ztarg,ntarg,iztarg)
-c
-ccc        call d3tallb(ier,z,n,nbox,w(iboxes),maxboxes,
-ccc     1    nboxes,iz,laddr,nlev,center,size,w(iiwork) )
-c
-c        if the memory is insufficient - bomb
-c
-        if(ier .eq. 0) goto 1100
-ccc           call prinf('in d3tstrcr after d3tallb, ier=*',ier,1)
-        if(ier .eq. 4) ier=32
-        return
- 1100 continue
-c
-c       compress the array w
-c   
-        nn=nboxes*20
-        do 1200 i=1,nn
-        w(iiwork+i-1)=w(iboxes+i-1)
- 1200 continue
-        iboxes=iiwork
- 1300 continue
-        lboxes=nboxes*20+20
-c
-c       ... align array for real *16 storage
-        lboxes=lboxes+4-mod(lboxes,4)
-c
-c       construct the centers and the corners for all boxes
-c       in the oct-tree
-c
-        icenters=iboxes+lboxes
-        lcenters=(nboxes*3+2)*ninire
-c
-        icorners=icenters+lcenters
-        lcorners=(nboxes*24+2)*ninire
-c
-        iwlists=icorners+lcorners
-        lwlists=lw-iwlists-6
-c
-        call d3tcentc(center,size,w(iboxes),nboxes,
-     1      w(icenters),w(icorners) )
-c
-c       now, construct all lists for all boxes
-c
-        
-ccc           call prinf('before d3tlsts, lwlists=*',lwlists,1)
-        call d3tlsts(ier,w(iboxes),nboxes,w(icorners),
-     1        w(iwlists),lwlists,lused)
-c
-        lused777=lused+iwlists
-ccc        call prinf('after d3tlsts, ier=*',ier,1)
-c
-c       store all pointers
-c
-        w(1)=nboxes
-        w(2)=iboxes
-        w(3)=icorners
-        w(4)=icenters
-        w(5)=iwlists
-        w(6)=lused777
-c
-        w(7)=n
-        w(8)=nbox
-        w(9)=nlev
-        w(10)=ier
-        w(11)=ntarg
-        w(12)=ifempty
-        w(13)=minlevel
-        w(14)=maxlevel
-        do i=1,200
-        w(100+2*i-2)=laddr(1,i)
-        w(100+2*i-1)=laddr(2,i)
-        enddo
-c
-        return
-        end
-c
-c
-c
-c
+
         subroutine d3tnkids(box,nkids)
         implicit real *8 (a-h,o-z)
         integer box(20)
-c       
         nkids=0
         do ikid=1,8
         if( box(5+ikid) .ne. 0 ) nkids=nkids+1
         enddo
         return
         end
-c
-c
-c
-c
-c
-        subroutine d3tprint(w,lw)
-        implicit real *8 (a-h,o-z)
-        integer w(*),box(20)
-        real *8 center0(3),corners0(3,8)
-c
-c       ... retrieve stored oct-tree parameters 
-c
-        ibox=1
-        call d3tgetb(ier,ibox,box,center0,corners0,w)
-c
-        call prin2('after d3tstrcr, center0=*',center0,3)
-c
-        size0=corners0(1,5)-corners0(1,1)
-        call prin2('after d3tstrcr, size0=*',size0,1)
-c
-        nlev0=w(9)
-        call prinf('after d3tstrcr, nlev0=*',nlev0,1)
-c
-        nbox0=w(8)
-        call prinf('after d3tstrcr, nbox0=*',nbox0,1)        
-c
-        call prinf('after d3tstrcr, laddr0=*',w(100),2*(nlev0+1))
-c
-        return
-        end
-c
-c
-c
-        subroutine d3trestore(nboxes,laddr,nlev,center,size,w,lw)
-        implicit real *8 (a-h,o-z)
-        integer w(*),box(20)
-        real *8 center(3),center0(3),corners0(3,8)
-        integer laddr(2,200)
-c
-c       ... retrieve stored oct-tree parameters 
-c
-        nboxes=w(1)
-c
-        do i=1,nlev+1
-        laddr(1,i)=w(100+2*i-2)
-        laddr(2,i)=w(100+2*i-1)
-        enddo
-c
-        nlev=w(9)
-c
-        ibox=1
-        call d3tgetb(ier,ibox,box,center0,corners0,w)
-c
-        center(1)=center0(1)
-        center(2)=center0(2)
-        center(3)=center0(3)
-c
-        size=corners0(1,5)-corners0(1,1)
-c
-        return
-        end
-c
-c
-c
-c
+
         subroutine d3tgetb(ier,ibox,box,center,corners,w)
         implicit real *8 (a-h,o-z)
         integer w(*),box(20),nums(*)
@@ -1248,12 +919,12 @@ c
 c
         subroutine d3tallbem(ier,z,n,nbox,boxes,maxboxes,
      1    nboxes,iz,laddr,nlev,center0,size,iwork,
-     $    ifempty,minlevel,maxlevel,ztarg,ntarg,iztarg)
+     1    ifempty,minlevel,maxlevel)
         implicit real *8 (a-h,o-z)
-        integer boxes(20,*),iz(*),iztarg(*),laddr(2,*),iwork(*),
-     1      is(8),ns(8),istarg(8),nstarg(8),
-     $      iisons(8),jjsons(8),kksons(8)
-        real *8 z(3,*),ztarg(3,*),center0(3),center(3)
+        integer boxes(20,*),iz(*),laddr(2,*),iwork(*),
+     1      is(8),ns(8),
+     1      iisons(8),jjsons(8),kksons(8)
+        real *8 z(3,*),center0(3),center(3)
         data kksons/1,1,1,1,2,2,2,2/,jjsons/1,1,2,2,1,1,2,2/,
      1      iisons/1,2,1,2,1,2,1,2/
 ccc        save
@@ -1266,9 +937,7 @@ c
 c  z - the set of points in the space
 c  n - the number of elements in z
 c
-c  ztarg - the user-specified targets in the space
-c  ntarg - the number of targets in array ztarg
-c
+
 c  nbox - the maximum number of points permitted in a box on 
 c        the finest level. in other words, a box will be further
 c        subdivided if it contains more than nbox points.
@@ -1326,17 +995,6 @@ c         (z(1,j+nj),z(2,j+nj),z(3,j+nj)),
 c
 c         with j=boxes(14,ibox), and nj=boxes(15,ibox)
 c        
-c  iztarg - the integer array addressing the targets in 
-c         all boxes. 
-c
-c         (ztarg(1,j),ztarg(2,j),ztarg(3,j)),
-c         (ztarg(1,j+1),ztarg(2,j+1),ztarg(3,j+1)),
-c         (ztarg(1,j+2),ztarg(2,j+2),ztarg(3,j+3)), . . . 
-c         (ztarg(1,j+nj-1),ztarg(2,j+nj-1),ztarg(3,j+nj-1)),
-c         (ztarg(1,j+nj),ztarg(2,j+nj),ztarg(3,j+nj)),
-c
-c         with j=boxes(16,ibox), and nj=boxes(17,ibox)
-c
 c  laddr - an integer array dimensioned (2,numlev), containing
 c         the map of array boxes, as follows:
 c       laddr(1,i) is the location in array boxes of the information
@@ -1383,36 +1041,14 @@ c
         if(z(3,i) .lt. zmin) zmin=z(3,i)
         if(z(3,i) .gt. zmax) zmax=z(3,i)
  1100 continue
-        do 1150 i=1,ntarg
-        if(ztarg(1,i) .lt. xmin) xmin=ztarg(1,i)
-        if(ztarg(1,i) .gt. xmax) xmax=ztarg(1,i)
-        if(ztarg(2,i) .lt. ymin) ymin=ztarg(2,i)
-        if(ztarg(2,i) .gt. ymax) ymax=ztarg(2,i)
-        if(ztarg(3,i) .lt. zmin) zmin=ztarg(3,i)
-        if(ztarg(3,i) .gt. zmax) zmax=ztarg(3,i)
- 1150 continue
         size=xmax-xmin
         sizey=ymax-ymin
         sizez=zmax-zmin
         if(sizey .gt. size) size=sizey
         if(sizez .gt. size) size=sizez
-c
         center0(1)=(xmin+xmax)/2
         center0(2)=(ymin+ymax)/2
         center0(3)=(zmin+zmax)/2
-c
-c        center0(1)=0
-c        sizex=max(abs(xmin),abs(xmax))
-c        if(sizex .gt. size) size=sizex
-c        center0(2)=0
-c        sizey=max(abs(ymin),abs(ymax))
-c        if(sizey .gt. size) size=sizey
-c        center0(3)=0
-c        sizez=max(abs(zmin),abs(zmax))
-c        if(sizez .gt. size) size=sizez
-cccc         call prin2('in d3tallb, center0=*',center0,3)
-cccc         call prin2('in d3tallb, size=*',size,1)
-c
         boxes(1,1)=0
         boxes(2,1)=1
         boxes(3,1)=1
@@ -1429,11 +1065,10 @@ c
         boxes(14,1)=1
         boxes(15,1)=n
         boxes(16,1)=1
-        boxes(17,1)=ntarg
+        boxes(17,1)=0
         if( n .le. 0 ) boxes(18,1)=0
-        if( ntarg .le. 0 ) boxes(19,1)=0
         if( n .gt. 0 ) boxes(18,1)=1
-        if( ntarg .gt. 0 ) boxes(19,1)=1
+        boxes(19,1)=0
         boxes(20,1)=0
 c
         laddr(1,1)=1
@@ -1443,97 +1078,44 @@ c
         iz(i)=i
  1200 continue
 c
-        do 1250 i=1,ntarg
-        iztarg(i)=i
- 1250 continue
-c
 c       recursively (one level after another) subdivide all 
 c       boxes till none are left with more than nbox particles
-c
         maxson=maxboxes
-c
-cccc         call prinf('in d3tallb, maxson=*',maxson,1) 
-c
         maxlev=198
         if( maxlevel .lt. maxlev ) maxlev=maxlevel
-c
-c
         ison=1
         nlev=0
-cccc         call prinf('in d3tallb, nbox=*',nbox,1) 
-cccc         call prinf('in d3tallb, n=*',n,1) 
         do 3000 level=0,maxlev-1
-cccc          call prinf('in d3tallb, level=*',level,1) 
         laddr(1,level+2)=laddr(1,level+1)+laddr(2,level+1)
         nlevson=0
         idad0=laddr(1,level+1)
         idad1=idad0+laddr(2,level+1)-1
-c
         do 2000 idad=idad0,idad1
-c
 c       subdivide the box number idad (if needed)
-c
         numpdad=boxes(15,idad)
         numtdad=boxes(17,idad)
-c
-c       ... refine on sources only
-ccc        if(numpdad .le. nbox .and. level .ge. minlevel ) goto 2000
-c
-c       ... not a leaf node on sources
-ccc        if( numpdad .gt. nbox ) then
-ccc        if( boxes(18,idad) .eq. 1 ) boxes(18,idad)=2
-ccc        if( boxes(19,idad) .eq. 1 ) boxes(19,idad)=2
-ccc        endif
-c
-c       ... refine on targets only
-cccc        if(numtdad .le. nbox .and. level .ge. minlevel ) goto 2000
-c
-cccc        if( numtdad .gt. nbox ) then
-cccc        if( boxes(18,idad) .eq. 1 ) boxes(18,idad)=2
-cccc        if( boxes(19,idad) .eq. 1 ) boxes(19,idad)=2
-cccc        endif
-c
 c       ... refine on both sources and targets
         if(numpdad .le. nbox .and. numtdad .le. nbox .and.
      $     level .ge. minlevel ) goto 2000
-c
-c       
 c       ... not a leaf node on sources or targets
         if( numpdad .gt. nbox .or. numtdad .gt. nbox ) then
         if( boxes(18,idad) .eq. 1 ) boxes(18,idad)=2
         if( boxes(19,idad) .eq. 1 ) boxes(19,idad)=2
         endif
-c
-c
         ii=boxes(2,idad)
         jj=boxes(3,idad)
         kk=boxes(4,idad)
         call d3tcentf(center0,size,level,ii,jj,kk,center)
-c
         iiz=boxes(14,idad)
         nz=boxes(15,idad)
-c
-        iiztarg=boxes(16,idad)
-        nztarg=boxes(17,idad)
-c
-cccc        call prinf('before d2msepa1, nz=*',nz,1)
-c
-        call d3tsepa1(center,z,iz(iiz),nz,iwork,
-     1    is,ns)
-c
-        call d3tsepa1(center,ztarg,iztarg(iiztarg),nztarg,iwork,
-     1    istarg,nstarg)
-c
-cccc        call prinf('after d3tsepa1, is=*',is,8)
-cccc        call prinf('after d3tsepa1, ns=*',ns,8)
-c
+        call d3tsepa1(center,z,iz(iiz),nz,iwork,is,ns)
 c
 c       store in array boxes the sons obtained by the routine 
 c       d3tsepa1
 c
          idadson=6
         do 1600 i=1,8
-        if(ns(i) .eq. 0 .and. nstarg(i) .eq. 0 .and. 
+        if(ns(i) .eq. 0 .and. 
      $     ifempty .ne. 1) goto 1600
         nlevson=nlevson+1
         ison=ison+1
@@ -1565,15 +1147,12 @@ c
         boxes(14,ison)=is(i)+iiz-1
         boxes(15,ison)=ns(i)
 c
-        boxes(16,ison)=istarg(i)+iiztarg-1
-        boxes(17,ison)=nstarg(i)
-c
+        boxes(16,ison)=0
+        boxes(17,ison)=0
         if( ns(i) .le. 0 ) boxes(18,ison)=0
-        if( nstarg(i) .le. 0 ) boxes(19,ison)=0
         if( ns(i) .gt. 0 ) boxes(18,ison)=1
-        if( nstarg(i) .gt. 0 ) boxes(19,ison)=1
+        boxes(19,ison)=0
         boxes(20,ison)=0
-c
         boxes(idadson,idad)=ison
         idadson=idadson+1
         nboxes=ison
