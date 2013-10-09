@@ -491,18 +491,11 @@ c
  1200    continue
 C$OMP END PARALLEL DO
  1300    continue
-c
         t2=omp_get_wtime()
-ccc        call prin2('time=*',t2-t1,1)
-         timeinfo(1)=t2-t1
-c       
-         if(ifprint .ge. 1)
-     $      call prinf('=== STEP 2 (form lo) ====*',i,0)
+        timeinfo(1)=t2-t1
         t1=omp_get_wtime()
-c
 c       ... step 2, adaptive part, form local expansions, 
 c           or evaluate the potentials and fields directly
-c 
         do ibox=1,nboxes
            call d3tgetb(ier,ibox,box,center0,corners0,wlists)
            itype=3
@@ -512,10 +505,10 @@ c     ... prune all sourceless boxes
 c     ... note that lists 3 and 4 are dual
 c     ... form local expansions for all boxes in list 3
 c     ... if target is childless, evaluate directly (if cheaper)
-C     $OMP PARALLEL DO DEFAULT(SHARED)
-C     $OMP$PRIVATE(level,npts,nkids)
-C     $OMP$PRIVATE(jbox,box1,center1,corners1,level1,ifdirect3,radius)
-C     $OMP$PRIVATE(lused,ier,i,j,ptemp,ftemp,cd,ilist) 
+c$OMP PARALLEL DO DEFAULT(SHARED)
+c$OMP$PRIVATE(level,npts,nkids)
+c$OMP$PRIVATE(jbox,box1,center1,corners1,level1,ifdirect3,radius)
+c$OMP$PRIVATE(lused,ier,i,j,ptemp,ftemp,cd,ilist) 
            do ilist=1,nlist
               jbox=list(ilist)
               call d3tgetb(ier,jbox,box1,center1,corners1,wlists)
@@ -528,7 +521,7 @@ C     $OMP$PRIVATE(lused,ier,i,j,ptemp,ftemp,cd,ilist)
      1             nterms(level1),nterms_eval(1,level1),
      1             rmlexp(iaddr(2,jbox)),wlege,nlege)
            enddo
-C     $OMP END PARALLEL DO
+c$OMP END PARALLEL DO
         enddo
         t2=omp_get_wtime()
         timeinfo(2)=t2-t1
@@ -550,9 +543,9 @@ c     ... prune all sourceless boxes
 c     ... note that lists 3 and 4 are dual
 c     ... evaluate multipole expansions for all boxes in list 4 
 c     ... if source is childless, evaluate directly (if cheaper)
-C     $OMP PARALLEL DO DEFAULT(SHARED)
-C     $OMP$PRIVATE(jbox,box1,center1,corners1,level1,level,radius)
-C     $OMP$PRIVATE(ier,i,j,ptemp,ftemp,cd,ilist) 
+c$OMP PARALLEL DO DEFAULT(SHARED)
+c$OMP$PRIVATE(jbox,box1,center1,corners1,level1,level,radius)
+c$OMP$PRIVATE(ier,i,j,ptemp,ftemp,cd,ilist) 
             do ilist=1,nlist
                jbox=list(ilist)
                call d3tgetb(ier,jbox,box1,center1,corners1,wlists)
@@ -566,15 +559,15 @@ C     $OMP$PRIVATE(ier,i,j,ptemp,ftemp,cd,ilist)
      1              wlege,nlege,ier)
                
             enddo
-C     $OMP END PARALLEL DO
+c$OMP END PARALLEL DO
          enddo
       t2=omp_get_wtime()
       timeinfo(6)=t2-t1
 
       t1=omp_get_wtime()
 c     ... step 7, evaluate local expansions and all fields directly
-c     $OMP PARALLEL DO DEFAULT(SHARED)
-c     $OMP$PRIVATE(ibox,box,center0,corners0,level,npts,nkids,ier)
+c$OMP PARALLEL DO DEFAULT(SHARED)
+c$OMP$PRIVATE(ibox,box,center0,corners0,level,npts,nkids,ier)
       do ibox=1,nboxes
          call d3tgetb(ier,ibox,box,center0,corners0,wlists)
          call d3tnkids(box,nkids)
@@ -593,17 +586,17 @@ c     ... evaluate local expansions
             endif
          endif
       enddo
-c     $OMP END PARALLEL DO
+c$OMP END PARALLEL DO
       t2=omp_get_wtime()
       timeinfo(7)=t2-t1
 
       t1=omp_get_wtime()
 c     ... step 8, evaluate direct interactions 
-c     $OMP PARALLEL DO DEFAULT(SHARED)
-c     $OMP$PRIVATE(ibox,box,center0,corners0,nkids,list,nlist,npts)
-c     $OMP$PRIVATE(jbox,box1,center1,corners1)
-c     $OMP$PRIVATE(ier,ilist,itype) 
-c     $OMP$SCHEDULE(DYNAMIC)
+c$OMP PARALLEL DO DEFAULT(SHARED)
+c$OMP$PRIVATE(ibox,box,center0,corners0,nkids,list,nlist,npts)
+c$OMP$PRIVATE(jbox,box1,center1,corners1)
+c$OMP$PRIVATE(ier,ilist,itype) 
+c$OMP$SCHEDULE(DYNAMIC)
       do ibox=1,nboxes
          call d3tgetb(ier,ibox,box,center0,corners0,wlists)
          call d3tnkids(box,nkids)
@@ -625,7 +618,7 @@ c     ... prune all sourceless boxes
             enddo
          endif
       enddo
-c     $OMP END PARALLEL DO
+c$OMP END PARALLEL DO
       t2=omp_get_wtime()
       timeinfo(8)=t2-t1
       return
