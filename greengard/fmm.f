@@ -503,49 +503,33 @@ c
 c       ... step 2, adaptive part, form local expansions, 
 c           or evaluate the potentials and fields directly
 c 
-         do 3251 ibox=1,nboxes
-c
-         call d3tgetb(ier,ibox,box,center0,corners0,wlists)
-c
-         itype=3
-         call d3tgetl(ier,ibox,itype,list,nlist,wlists)
-         if (nlist .gt. 0) then 
-            if (ifprint .ge. 2) then
-               call prinf('ibox=*',ibox,1)
-               call prinf('list3=*',list,nlist)
-            endif
-         endif
-c
-c       ... prune all sourceless boxes
-c
-         if( box(15) .eq. 0 ) nlist=0
-c
-c
-c       ... note that lists 3 and 4 are dual
-c
-c       ... form local expansions for all boxes in list 3
-c       ... if target is childless, evaluate directly (if cheaper)
-c        
-C$OMP PARALLEL DO DEFAULT(SHARED)
-C$OMP$PRIVATE(level,npts,nkids)
-C$OMP$PRIVATE(jbox,box1,center1,corners1,level1,ifdirect3,radius)
-C$OMP$PRIVATE(lused,ier,i,j,ptemp,ftemp,cd,ilist) 
-         do ilist=1,nlist
-            jbox=list(ilist)
-            call d3tgetb(ier,jbox,box1,center1,corners1,wlists)
-            level1=box1(1)
-            npts=box(15)
-            if_use_trunc = 1
-            call h3dformta_add_trunc(ier,zk,scale(level1),
-     1           sourcesort(1,box(14)),chargesort(box(14)),
-     1           npts,center1,
-     1           nterms(level1),nterms_eval(1,level1),
-     1           rmlexp(iaddr(2,jbox)),wlege,nlege)
-         enddo
-C$OMP END PARALLEL DO
-c
- 3251    continue
-c
+        do ibox=1,nboxes
+           call d3tgetb(ier,ibox,box,center0,corners0,wlists)
+           itype=3
+           call d3tgetl(ier,ibox,itype,list,nlist,wlists)
+c     ... prune all sourceless boxes
+           if( box(15) .eq. 0 ) nlist=0
+c     ... note that lists 3 and 4 are dual
+c     ... form local expansions for all boxes in list 3
+c     ... if target is childless, evaluate directly (if cheaper)
+C     $OMP PARALLEL DO DEFAULT(SHARED)
+C     $OMP$PRIVATE(level,npts,nkids)
+C     $OMP$PRIVATE(jbox,box1,center1,corners1,level1,ifdirect3,radius)
+C     $OMP$PRIVATE(lused,ier,i,j,ptemp,ftemp,cd,ilist) 
+           do ilist=1,nlist
+              jbox=list(ilist)
+              call d3tgetb(ier,jbox,box1,center1,corners1,wlists)
+              level1=box1(1)
+              npts=box(15)
+              if_use_trunc = 1
+              call h3dformta_add_trunc(ier,zk,scale(level1),
+     1             sourcesort(1,box(14)),chargesort(box(14)),
+     1             npts,center1,
+     1             nterms(level1),nterms_eval(1,level1),
+     1             rmlexp(iaddr(2,jbox)),wlege,nlege)
+           enddo
+C     $OMP END PARALLEL DO
+        enddo
         t2=omp_get_wtime()
         timeinfo(2)=t2-t1
         ifprune_list2 = 0
@@ -557,135 +541,134 @@ c
         t1=omp_get_wtime()
 c       ... step 6, adaptive part, evaluate multipole expansions, 
 c           or evaluate the potentials and fields directly
-         do 3252 ibox=1,nboxes
-         call d3tgetb(ier,ibox,box,center0,corners0,wlists)
-         itype=4
-         call d3tgetl(ier,ibox,itype,list,nlist,wlists)
-c       ... prune all sourceless boxes
-         if( box(15) .eq. 0 ) nlist=0
-c       ... note that lists 3 and 4 are dual
-c       ... evaluate multipole expansions for all boxes in list 4 
-c       ... if source is childless, evaluate directly (if cheaper)
-C$OMP PARALLEL DO DEFAULT(SHARED)
-C$OMP$PRIVATE(jbox,box1,center1,corners1,level1,level,radius)
-C$OMP$PRIVATE(ier,i,j,ptemp,ftemp,cd,ilist) 
-         do ilist=1,nlist
-            jbox=list(ilist)
-            call d3tgetb(ier,jbox,box1,center1,corners1,wlists)
-            level=box(1)
-            call h3dmpevalall_trunc(zk,scale(level),center0,
-     1         rmlexp(iaddr(1,ibox)),
-     1         nterms(level),nterms_eval(1,level),
-     1         sourcesort(1,box1(14)),box1(15),
-     1         ifpot,pot(box1(14)),
-     1         iffld,fld(1,box1(14)),
-     1         wlege,nlege,ier)
-
-        enddo
-C$OMP END PARALLEL DO
- 3252   continue
-        t2=omp_get_wtime()
-        timeinfo(6)=t2-t1
-
-        t1=omp_get_wtime()
-c       ... step 7, evaluate local expansions and all fields directly
-C$OMP PARALLEL DO DEFAULT(SHARED)
-C$OMP$PRIVATE(ibox,box,center0,corners0,level,npts,nkids,ier)
-        do ibox=1,nboxes
-           call d3tgetb(ier,ibox,box,center0,corners0,wlists)
-           call d3tnkids(box,nkids)
-           if (nkids .eq. 0) then
-c     ... evaluate local expansions
-              level=box(1)
-              npts=box(15)
-              if (level .ge. 2) then
-                 call h3dtaevalall_trunc(zk,scale(level),center0,
-     1                rmlexp(iaddr(2,ibox)),
-     1                nterms(level),nterms_eval(1,level),
-     1                sourcesort(1,box(14)),box(15),
-     1                ifpot,pot(box(14)),
-     1                iffld,fld(1,box(14)),
-     1                wlege,nlege,ier)
-              endif
-           endif
-        enddo
-C$OMP END PARALLEL DO
-        t2=omp_get_wtime()
-ccc     call prin2('time=*',t2-t1,1)
-        timeinfo(7)=t2-t1
-
-        t1=omp_get_wtime()
-c       ... step 8, evaluate direct interactions 
-C$OMP PARALLEL DO DEFAULT(SHARED)
-C$OMP$PRIVATE(ibox,box,center0,corners0,nkids,list,nlist,npts)
-C$OMP$PRIVATE(jbox,box1,center1,corners1)
-C$OMP$PRIVATE(ier,ilist,itype) 
-C$OMP$SCHEDULE(DYNAMIC)
-        do ibox=1,nboxes
-           call d3tgetb(ier,ibox,box,center0,corners0,wlists)
-           call d3tnkids(box,nkids)
-           if (nkids .eq. 0) then
-c     ... evaluate self interactions
-              call hfmm3dpart_direct_self(zk,box,sourcesort,
-     1             chargesort,pot,fld)
-c     ... evaluate interactions with the nearest neighbours
-              itype=1
-              call d3tgetl(ier,ibox,itype,list,nlist,wlists)
-c     ... for all pairs in list #1, evaluate the potentials and fields directly
-              do ilist=1,nlist
-                 jbox=list(ilist)
-                 call d3tgetb(ier,jbox,box1,center1,corners1,wlists)
+         do ibox=1,nboxes
+            call d3tgetb(ier,ibox,box,center0,corners0,wlists)
+            itype=4
+            call d3tgetl(ier,ibox,itype,list,nlist,wlists)
 c     ... prune all sourceless boxes
-                 if( box1(15) .eq. 0 ) cycle
-                 call hfmm3dpart_direct_targ(zk,box1,box,sourcesort,
-     1                chargesort,pot,fld)
-              enddo
-           endif
-        enddo
-C$OMP END PARALLEL DO
-        t2=omp_get_wtime()
-        timeinfo(8)=t2-t1
-        return
-        end
+            if( box(15) .eq. 0 ) nlist=0
+c     ... note that lists 3 and 4 are dual
+c     ... evaluate multipole expansions for all boxes in list 4 
+c     ... if source is childless, evaluate directly (if cheaper)
+C     $OMP PARALLEL DO DEFAULT(SHARED)
+C     $OMP$PRIVATE(jbox,box1,center1,corners1,level1,level,radius)
+C     $OMP$PRIVATE(ier,i,j,ptemp,ftemp,cd,ilist) 
+            do ilist=1,nlist
+               jbox=list(ilist)
+               call d3tgetb(ier,jbox,box1,center1,corners1,wlists)
+               level=box(1)
+               call h3dmpevalall_trunc(zk,scale(level),center0,
+     1              rmlexp(iaddr(1,ibox)),
+     1              nterms(level),nterms_eval(1,level),
+     1              sourcesort(1,box1(14)),box1(15),
+     1              ifpot,pot(box1(14)),
+     1              iffld,fld(1,box1(14)),
+     1              wlege,nlege,ier)
+               
+            enddo
+C     $OMP END PARALLEL DO
+         enddo
+      t2=omp_get_wtime()
+      timeinfo(6)=t2-t1
 
-        subroutine hfmm3dpart_direct_self(zk,box,
-     1     source,charge,pot,fld)
-        implicit real *8 (a-h,o-z)
-        integer box(20),box1(20)
-        dimension source(3,1)
-        complex *16 charge(1),zk
-        complex *16 pot(1),fld(3,1)
-        complex *16 ptemp,ftemp(3)
-        do j=box(14),box(14)+box(15)-1
-           do i=box(14),box(14)+box(15)-1
-              if (i .eq. j) cycle
-              call hpotfld3d(1,source(1,i),charge(i),
-     1             source(1,j),zk,ptemp,ftemp)
-              pot(j)=pot(j)+ptemp
-              fld(1,j)=fld(1,j)+ftemp(1)
-              fld(2,j)=fld(2,j)+ftemp(2)
-              fld(3,j)=fld(3,j)+ftemp(3)
-           enddo
-        enddo
-        return
-        end
+      t1=omp_get_wtime()
+c     ... step 7, evaluate local expansions and all fields directly
+c     $OMP PARALLEL DO DEFAULT(SHARED)
+c     $OMP$PRIVATE(ibox,box,center0,corners0,level,npts,nkids,ier)
+      do ibox=1,nboxes
+         call d3tgetb(ier,ibox,box,center0,corners0,wlists)
+         call d3tnkids(box,nkids)
+         if (nkids .eq. 0) then
+c     ... evaluate local expansions
+            level=box(1)
+            npts=box(15)
+            if (level .ge. 2) then
+               call h3dtaevalall_trunc(zk,scale(level),center0,
+     1              rmlexp(iaddr(2,ibox)),
+     1              nterms(level),nterms_eval(1,level),
+     1              sourcesort(1,box(14)),box(15),
+     1              ifpot,pot(box(14)),
+     1              iffld,fld(1,box(14)),
+     1              wlege,nlege,ier)
+            endif
+         endif
+      enddo
+c     $OMP END PARALLEL DO
+      t2=omp_get_wtime()
+      timeinfo(7)=t2-t1
 
-        subroutine hfmm3dpart_direct_targ(zk,box,box1,
+      t1=omp_get_wtime()
+c     ... step 8, evaluate direct interactions 
+c     $OMP PARALLEL DO DEFAULT(SHARED)
+c     $OMP$PRIVATE(ibox,box,center0,corners0,nkids,list,nlist,npts)
+c     $OMP$PRIVATE(jbox,box1,center1,corners1)
+c     $OMP$PRIVATE(ier,ilist,itype) 
+c     $OMP$SCHEDULE(DYNAMIC)
+      do ibox=1,nboxes
+         call d3tgetb(ier,ibox,box,center0,corners0,wlists)
+         call d3tnkids(box,nkids)
+         if (nkids .eq. 0) then
+c     ... evaluate self interactions
+            call hfmm3dpart_direct_self(zk,box,sourcesort,
+     1           chargesort,pot,fld)
+c     ... evaluate interactions with the nearest neighbours
+            itype=1
+            call d3tgetl(ier,ibox,itype,list,nlist,wlists)
+c     ... for all pairs in list #1, evaluate the potentials and fields directly
+            do ilist=1,nlist
+               jbox=list(ilist)
+               call d3tgetb(ier,jbox,box1,center1,corners1,wlists)
+c     ... prune all sourceless boxes
+               if( box1(15) .eq. 0 ) cycle
+               call hfmm3dpart_direct_targ(zk,box1,box,sourcesort,
+     1              chargesort,pot,fld)
+            enddo
+         endif
+      enddo
+c     $OMP END PARALLEL DO
+      t2=omp_get_wtime()
+      timeinfo(8)=t2-t1
+      return
+      end
+
+      subroutine hfmm3dpart_direct_self(zk,box,
      1     source,charge,pot,fld)
-        implicit real *8 (a-h,o-z)
-        integer box(20),box1(20)
-        dimension source(3,1),dipvec(3,1)
-        complex *16 charge(1),dipstr(1),zk
-        dimension target(3,1)
-        complex *16 pot(1),fld(3,1)
-        complex *16 ptemp,ftemp(3)
-        do j=box1(14),box1(14)+box1(15)-1
-        call hpotfld3dall(1,source(1,box(14)),charge(box(14)),
-     1     box(15),source(1,j),zk,ptemp,ftemp)
-        pot(j)=pot(j)+ptemp
-        fld(1,j)=fld(1,j)+ftemp(1)
-        fld(2,j)=fld(2,j)+ftemp(2)
-        fld(3,j)=fld(3,j)+ftemp(3)
-        enddo
-        return
-        end
+      implicit real *8 (a-h,o-z)
+      integer box(20),box1(20)
+      dimension source(3,1)
+      complex *16 charge(1),zk
+      complex *16 pot(1),fld(3,1)
+      complex *16 ptemp,ftemp(3)
+      do j=box(14),box(14)+box(15)-1
+         do i=box(14),box(14)+box(15)-1
+            if (i .eq. j) cycle
+            call hpotfld3d(1,source(1,i),charge(i),
+     1           source(1,j),zk,ptemp,ftemp)
+            pot(j)=pot(j)+ptemp
+            fld(1,j)=fld(1,j)+ftemp(1)
+            fld(2,j)=fld(2,j)+ftemp(2)
+            fld(3,j)=fld(3,j)+ftemp(3)
+         enddo
+      enddo
+      return
+      end
+
+      subroutine hfmm3dpart_direct_targ(zk,box,box1,
+     1     source,charge,pot,fld)
+      implicit real *8 (a-h,o-z)
+      integer box(20),box1(20)
+      dimension source(3,1),dipvec(3,1)
+      complex *16 charge(1),dipstr(1),zk
+      dimension target(3,1)
+      complex *16 pot(1),fld(3,1)
+      complex *16 ptemp,ftemp(3)
+      do j=box1(14),box1(14)+box1(15)-1
+         call hpotfld3dall(1,source(1,box(14)),charge(box(14)),
+     1        box(15),source(1,j),zk,ptemp,ftemp)
+         pot(j)=pot(j)+ptemp
+         fld(1,j)=fld(1,j)+ftemp(1)
+         fld(2,j)=fld(2,j)+ftemp(2)
+         fld(3,j)=fld(3,j)+ftemp(3)
+      enddo
+      return
+      end
