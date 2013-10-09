@@ -27,23 +27,13 @@
         real *8, allocatable :: wlists(:)
         real *8, allocatable :: wrmlexp(:)
         complex *16 ptemp,ftemp(3)
-c       
         data ima/(0.0d0,1.0d0)/
-c       
         ier=0
         lused7 = 0
-c       
         done=1
         pi=4*atan(done)
-c
-c     ifprint is an internal information printing flag. 
-c     Suppressed if ifprint=0.
-c     Prints timing breakdown and other things if ifprint=1.
-c       
         ifprint=0
-c
 c     set fmm tolerance based on iprec flag.
-c
         if( iprec .eq. -2 ) epsfmm=.5d-0 
         if( iprec .eq. -1 ) epsfmm=.5d-1
         if( iprec .eq. 0 ) epsfmm=.5d-2
@@ -53,12 +43,7 @@ c
         if( iprec .eq. 4 ) epsfmm=.5d-12
         if( iprec .eq. 5 ) epsfmm=.5d-15
         if( iprec .eq. 6 ) epsfmm=0
-c       
-        if (ifprint .ge. 1) call prin2('epsfmm=*',epsfmm,1)
-c
-c
 c     set criterion for box subdivision (number of sources per box)
-c
         if( iprec .eq. -2 ) nbox=40
         if( iprec .eq. -1 ) nbox=50
         if( iprec .eq. 0 ) nbox=80
@@ -68,20 +53,15 @@ c
         if( iprec .eq. 4 ) nbox=1200
         if( iprec .eq. 5 ) nbox=1400
         if( iprec .eq. 6 ) nbox=nsource+ntarget
-c
-        if (ifprint .ge. 1) call prinf('nbox=*',nbox,1)
-c
-c
 c     create oct-tree data structure
-c
         ntot = 100*(nsource+ntarget)+10000
         do ii = 1,10
            allocate (wlists(ntot))
            call hfmm3dparttree(ier,iprec,zk,
-     $        nsource,source,ntarget,target,
-     $        nbox,epsfmm,iisource,iitarget,iwlists,lwlists,
-     $        nboxes,laddr,nlev,center,size,
-     $        wlists,ntot,lused7)
+     1        nsource,source,ntarget,target,
+     1        nbox,epsfmm,iisource,iitarget,iwlists,lwlists,
+     1        nboxes,laddr,nlev,center,size,
+     1        wlists,ntot,lused7)
            if (ier.ne.0) then
               deallocate(wlists)
               ntot = ntot*1.5
@@ -96,31 +76,17 @@ c
            ier = 4
            return
         endif
-c
-c     lused7 is counter that steps through workspace,
-c     keeping track of total memory used.
-c
         lused7=1
-c
-c       ... prepare data structures 
-c
         do i = 0,nlev
-        scale(i) = 1.0d0
-        boxsize = abs((size/2.0**i)*zk)
-        if (boxsize .lt. 1) scale(i) = boxsize
+           scale(i) = 1.0d0
+           boxsize = abs((size/2.0**i)*zk)
+           if (boxsize .lt. 1) scale(i) = boxsize
         enddo
-c       
-        if (ifprint .ge. 1) call prin2('scale=*',scale,nlev+1)
-c       
-c
-c       carve up workspace further
-c
 c     isourcesort is pointer for sorted source coordinates
 c     itargetsort is pointer for sorted target locations
 c     ichargesort is pointer for sorted charge densities
 c     idipvecsort is pointer for sorted dipole orientation vectors
 c     idipstrsort is pointer for sorted dipole densities
-c
         isourcesort = lused7 + 5
         lsourcesort = 3*nsource
         itargetsort = isourcesort+lsourcesort
@@ -151,11 +117,9 @@ c
         lfld=6
         endif
         lused7=lused7+lfld
-c      
         ipottarg = lused7
         lpottarg = 2*ntarget
         lused7=lused7+lpottarg
-c       
         ifldtarg = lused7
         if( iffldtarg .eq. 1) then
         lfldtarg = 2*(3*ntarget)
