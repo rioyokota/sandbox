@@ -478,21 +478,13 @@ c
      $         nterms(level),nterms_eval(1,level),
      2         rmlexp(iaddr(1,ibox)),wlege,nlege)
             endif
-c 
-            if (ifdipole .eq. 1 ) then
-            call h3dformmp_dp_add_trunc(ier,zk,scale(level),
-     $         sourcesort(1,box(14)),
-     1         dipstrsort(box(14)),dipvecsort(1,box(14)),
-     $         npts,center0,nterms(level),nterms_eval(1,level),
-     2         rmlexp(iaddr(1,ibox)),wlege,nlege)
-            endif
          endif
-c
  1200    continue
-C$OMP END PARALLEL DO
+c$OMP END PARALLEL DO
  1300    continue
         t2=omp_get_wtime()
         timeinfo(1)=t2-t1
+
         t1=omp_get_wtime()
 c       ... step 2, adaptive part, form local expansions, 
 c           or evaluate the potentials and fields directly
