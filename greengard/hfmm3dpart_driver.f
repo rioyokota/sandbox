@@ -1,96 +1,33 @@
-cc Copyright (C) 2009-2012: Leslie Greengard and Zydrunas Gimbutas
-cc Contact: greengard@cims.nyu.edu
-cc 
-cc This program is free software; you can redistribute it and/or modify 
-cc it under the terms of the GNU General Public License as published by 
-cc the Free Software Foundation; either version 2 of the License, or 
-cc (at your option) any later version.  This program is distributed in 
-cc the hope that it will be useful, but WITHOUT ANY WARRANTY; without 
-cc even the implied warranty of MERCHANTABILITY or FITNESS FOR A 
-cc PARTICULAR PURPOSE.  See the GNU General Public License for more 
-cc details. You should have received a copy of the GNU General Public 
-cc License along with this program; 
-cc if not, see <http://www.gnu.org/licenses/>.
-ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
-c
-c     This is the first release of the FMM3D library, together with
-c     associated subroutines, which computes N-body interactions
-c     governed by the Laplace or Helmholtz equations.
-c  
-c
         program testhelm
         implicit real *8 (a-h,o-z)
         real *8     source(3,1 000 000)
+        real *8     target(3,2 000 000)
         complex *16 charge(1 000 000)
         complex *16 dipstr(1 000 000)
         real *8     dipvec(3,1 000 000)
         complex *16 pot(1 000 000)
         complex *16 fld(3,1 000 000)
-c       
         complex *16 pot2(1 000 000)
         complex *16 fld2(3,1 000 000)
-c       
-        real *8     target(3,2 000 000)
         complex *16 pottarg(2 000 000)
         complex *16 fldtarg(3,2 000 000)
-c
         complex *16 ptemp,ftemp(3)
-c       
         complex *16 ima
         complex *16 zk
         data ima/(0.0d0,1.0d0)/
-c
         done=1
         pi=4*atan(done)
-c
-c     Initialize simple printing routines. The parameters to prini
-c     define output file numbers using standard Fortran conventions.
-c
-c     Calling prini(6,13) causes printing to the screen and to 
-c     file fort.13.     
-c
         call prini(6,13)
-c
         nsource= 100000
-c
-c     set Helmholtz parameter  (used only by H3D prefix routines)
-c
-        zk = 1.0d0 + ima*0.1d0
-c
-c     construct randomly located charge distribution on a unit sphere
-c 
-        d=hkrand(0)
-        do i=1,nsource
-c           theta=hkrand(0)*pi
-c           phi=hkrand(0)*2*pi
-c           source(1,i)=.5d0*cos(phi)*sin(theta)
-c           source(2,i)=.5d0*sin(phi)*sin(theta)
-c           source(3,i)=.5d0*cos(theta)
-           source(1,i)=hkrand(0)
-           source(2,i)=hkrand(0)
-           source(3,i)=hkrand(0)
-        enddo
-c
-c     construct target distribution on a target unit sphere 
-c
         ntarget=nsource
-        do i=1,ntarget
-c           theta=hkrand(0)*pi
-c           phi=hkrand(0)*2*pi
-c           target(1,i)=.5d0*cos(phi)*sin(theta)
-c           target(2,i)=.5d0*sin(phi)*sin(theta)
-c           target(3,i)=.5d0*cos(theta)
-           target(1,i)=hkrand(0)
-           target(2,i)=hkrand(0)
-           target(3,i)=hkrand(0)
-        enddo
-c
+        zk = 1.0d0 + ima*0.1d0
+        call random_number(source)
+        call random_number(target)
+ 
         print*,'ntarget=',ntarget
         iprec=0
         print*,'iprec  =',iprec
-c       
 c     set source type flags and output flags
-c
         ifpot=1
         iffld=1
 c
@@ -99,25 +36,9 @@ c
 c
         ifpottarg=1
         iffldtarg=1
-c
-c       set source strengths
-c
-        if (ifcharge .eq. 1 ) then
-           do i=1,nsource
-              charge(i)=hkrand(0) + ima*hkrand(0)
-           enddo
-        endif
-c
-        if (ifdipole .eq. 1) then
-           do i=1,nsource
-              dipstr(i)=hkrand(0) + ima*hkrand(0)
-              dipvec(1,i)=hkrand(0)
-              dipvec(2,i)=hkrand(0)
-              dipvec(3,i)=hkrand(0)
-           enddo
-        endif
-c
-c     initialize timing call
+        do i=1,nsource
+           charge(i)=source(1,i)+ima*source(2,i)
+        enddo
 c
         t1=omp_get_wtime()
 c       
@@ -268,38 +189,6 @@ c
 C$OMP END PARALLEL DO
 c
         t2=omp_get_wtime()
-c
-c
-c
-c        if (ifprint .eq. 1) then
-c           if( ifpottarg.eq.1 ) 
-c     $        call prin2('after fmm, pottarg=*',pottarg,2*m)
-c           if( iffldtarg.eq.1 ) 
-c     $        call prin2('after fmm, fldtarg=*',fldtarg,3*2*m)
-c        endif
-
-c        if (ifprint .eq. 1) then
-c           if (ifpottarg .eq. 1) 
-c     $        call prin2('directly, pottarg=*',pot2,2*m)
-c           if( iffldtarg.eq.1 ) 
-c     $        call prin2('directly, fldtarg=*',fld2,3*2*m)
-c        endif
-c
-c        call prin2('directly, estimated time (sec)=*',
-c     $     (t2-t1)*dble(ntarget)/dble(m),1)
-c        call prin2('directly, estimated speed (targets/sec)=*',
-c     $     m/(t2-t1),1)
-c       
-c        if (ifpottarg .eq. 1) then
-c           call h3derror(pottarg,pot2,m,aerr,rerr)
-c           call prin2('relative L2 error in target potential=*',rerr,1)
-c        endif
-c
-c        if (iffldtarg .eq. 1) then
-c           call h3derror(fldtarg,fld2,3*m,aerr,rerr)
-c           call prin2('relative L2 error in target field=*',rerr,1)
-c        endif
-c       
         stop
         end
 c
