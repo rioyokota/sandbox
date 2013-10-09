@@ -77,14 +77,8 @@ c
 c      h3dformmp_add_trunc: *increments* multipole expansion (outgoing) 
 c                 due to a collection of charges (OPTIMIZED VERSION).
 c
-c      h3dformta_trunc: creates local expansion (incoming) due to 
-c                 a collection of charges (OPTIMIZED VERSION).
-c
 c      h3dformta_add_trunc: *increments* local expansion (incoming) due to 
 c                 a collection of charges (OPTIMIZED VERSION).
-c
-c      h3dformta_trunc: creates local expansion (incoming) due to 
-c                 a collection of dipoles (OPTIMIZED VERSION).
 c
 c      h3dformta_add_trunc: *increments* local expansion (incoming) due to 
 c                 a collection of dipoles (OPTIMIZED VERSION).
@@ -467,7 +461,7 @@ C***********************************************************************
       subroutine h3dformmp_trunc(ier,zk,scale,sources,charge,ns,center,
      1                  nterms,nterms1,mpole,wlege,nlege)
 C***********************************************************************
-C
+
 C     Constructs multipole (h) expansion about CENTER due to NS sources 
 C     located at SOURCES(3,*).
 C
@@ -489,11 +483,6 @@ c-----------------------------------------------------------------------
 C     OUTPUT:
 C
 c     ier             : error return code
-c		                   ier=0  returned successfully
-c		                   ier=8  insufficient memory 
-c		                   ier=16 insufficient memory 
-c                                         in subroutine "jfuns3d"
-c                                         called in h3dformmp1
 c     mpole           : coeffs of the h-expansion
 c-----------------------------------------------------------------------
       implicit real *8 (a-h,o-z)
@@ -503,32 +492,26 @@ c-----------------------------------------------------------------------
       complex *16 mpole(0:nterms,-nterms:nterms)
       complex *16 eye,zk,charge(1)
       data eye/(0.0d0,1.0d0)/
-C
 C----- set mpole to zero
-C
       do l = 0,nterms
          do m=-l,l
             mpole(l,m) = 0.0d0
          enddo
       enddo
-c
       ier = 0
       do i = 1, ns
          call h3dformmp_trunc1
-     $   (ier1,zk,scale,sources(1,i),charge(i),center,
+     1   (ier1,zk,scale,sources(1,i),charge(i),center,
      1        nterms,nterms1,mpole,wlege,nlege)
       enddo
       if (ier1.ne.0) ier = ier1
-c
       do l = 0,nterms
          do m=-l,l
             mpole(l,m) = mpole(l,m)*eye*zk
          enddo
       enddo
-C
       return
       end
-C
 C***********************************************************************
       subroutine h3dformmp_add_trunc
      $     (ier,zk,scale,sources,charge,ns,center,
@@ -556,13 +539,6 @@ c-----------------------------------------------------------------------
 C     OUTPUT:
 C
 c     ier             : error return code
-c		                   ier=0  returned successfully
-c		                   ier=8  insufficient memory 
-c		                   ier=16 insufficient memory 
-c                                         in subroutine "jfuns3d"
-c                                         called in h3dformmp1
-c    
-c
 c     mpole           : coeffs of the h-expansion
 c-----------------------------------------------------------------------
       implicit real *8 (a-h,o-z)
@@ -573,19 +549,15 @@ c-----------------------------------------------------------------------
       complex *16 eye,zk,charge(1)
       complex *16, allocatable :: mptemp(:,:)
       data eye/(0.0d0,1.0d0)/
-C
 C----- set mpole to zero
-C
         allocate( mptemp(0:nterms,-nterms:nterms) )
-
         do l = 0,nterms
           do m=-l,l
              mptemp(l,m) = 0
           enddo
         enddo
-
         call h3dformmp_trunc
-     $     (ier,zk,scale,sources,charge,ns,center,
+     1     (ier,zk,scale,sources,charge,ns,center,
      1     nterms,nterms1,mptemp,wlege,nlege)
 
       do l = 0,nterms
@@ -593,10 +565,8 @@ C
             mpole(l,m) = mpole(l,m)+mptemp(l,m)
          enddo
       enddo
-C
       return
       end
-C
 c**********************************************************************
       subroutine h3dformmp_trunc1(ier,zk,rscale,source,charge,center,
      1		nterms,nterms1,mpole,wlege,nlege)
@@ -623,14 +593,7 @@ c-----------------------------------------------------------------------
 c     OUTPUT:
 c
 c     ier     : error return code
-c		      ier=0 returned successfully
-c		      ier=8	insufficient memory 
-c		      ier=16 insufficient memory 
-c                            in subroutine "jfuns3d"
-c                            called in h3dformmp0
-c                            
 c     mpole   : coeffs of the h-expansion
-c            
 c     NOTE: Parameter lwfjs is set to nterms+1000
 c           Should be sufficient for any Helmholtz parameter
 c-----------------------------------------------------------------------
@@ -640,51 +603,33 @@ c-----------------------------------------------------------------------
       real *8, allocatable :: w(:)
       complex *16 zk,mpole(0:nterms,-nterms:nterms)
       complex *16 charge
-c
-c ... Assign work spaces:
-c
       ier=0
-c
       lwfjs=nterms+1000
       ipp=1
       lpp=(nterms+1)**2+7
       ippd = ipp + lpp
-c
       iephi=ippd+lpp
       lephi=2*(2*nterms+1)+7
-c
       ifjder=iephi+lephi
       lfjder=2*(nterms+1)+7
-c
       ifjs=ifjder+lfjder
       lfjs=2*(lwfjs+1)+7
-c
       iiscale=ifjs+lfjs
       liscale=(lwfjs+1)+7
-c
       lused=iiscale+liscale
       allocate(w(lused))
-c
       call h3dformmp_trunc0(jer,zk,rscale,source,charge,center,
-     $   nterms,nterms1,
+     1   nterms,nterms1,
      1		mpole,w(ipp),w(ippd),w(iephi),w(ifjs),lwfjs,
-     2          w(iiscale),w(ifjder),wlege,nlege)
+     1          w(iiscale),w(ifjder),wlege,nlege)
       if (jer.ne.0) ier=16
-c
       return
       end
-c
-c
-c
 c**********************************************************************
       subroutine h3dformmp_trunc0(ier,zk,rscale,source,charge,center,
      1		nterms,nterms1,
-     $     mpole,pp,ppd,ephi,fjs,lwfjs,iscale,fjder,wlege,nlege)
+     1     mpole,pp,ppd,ephi,fjs,lwfjs,iscale,fjder,wlege,nlege)
 c**********************************************************************
-c
-c     See h3dformmp1 for comments.
-c
-c----------------------------------------------------------------------
       implicit real *8 (a-h,o-z)
       integer iscale(0:1)
       real *8 source(3),center(3),zdiff(3)
@@ -695,23 +640,17 @@ c----------------------------------------------------------------------
       complex *16 ephi(-nterms:nterms),ephi1,ephi1inv
       complex *16 fjs(0:1),ztmp,fjder(0:1),z
       data thresh/1.0d-15/
-c
-c
       ier=0
-c
       zdiff(1)=source(1)-center(1)
       zdiff(2)=source(2)-center(2)
       zdiff(3)=source(3)-center(3)
-c
       call cart2polar(zdiff,r,theta,phi)
       ctheta = dcos(theta)
       stheta=sqrt(1.0d0-ctheta*ctheta)
       cphi = dcos(phi)
       sphi = dsin(phi)
       ephi1 = dcmplx(cphi,sphi)
-c
 c     compute exp(eye*m*phi) array
-c
       ephi(0)=1.0d0
       ephi(1)=ephi1
       ephi(-1)=dconjg(ephi1)
@@ -719,25 +658,14 @@ c
          ephi(i)=ephi(i-1)*ephi1
          ephi(-i)=ephi(-i+1)*ephi(-1)
       enddo
-c
 c     get the associated Legendre functions:
-c
-ccc      call ylgndr(nterms,ctheta,pp)
       call ylgndrfw(nterms1,ctheta,pp,wlege,nlege)
-ccc      call ylgndr2s(nterms,ctheta,pp,ppd)
-ccc      call prinf(' after ylgndr with nterms = *',nterms,1)
-ccc      call prinm2(pp,nterms)
-c
 c     get Bessel functions:
-c
       ifder=0
       z=zk*r
       call jfuns3d(jer,nterms1,z,rscale,fjs,ifder,fjder,
      1	      lwfjs,iscale,ntop)
-c
-c
 c     multiply all jn by charge strength.
-c
       do n = 0,nterms1
          fjs(n) = fjs(n)*charge
       enddo
@@ -745,8 +673,6 @@ c
 	 ier=16
 	 return
       endif
-c
-c
 c     Compute contribution to mpole coefficients.
 c
 c     Recall that there are multiple definitions of scaling for
@@ -771,299 +697,9 @@ c
          dtmp=pp(n,0)
          mpole(n,0)= mpole(n,0) + dtmp*fjs(n)
          do m=1,n
-cc            ztmp=stheta*pp(n,m)*fjs(n)
             ztmp=pp(n,m)*fjs(n)
             mpole(n, m)= mpole(n, m) + ztmp*dconjg(ephi(m))
             mpole(n,-m)= mpole(n,-m) + ztmp*dconjg(ephi(-m))
-         enddo
-      enddo
-c
-
-c
-      return
-      end
-c
-c
-c
-c
-c
-c
-c**********************************************************************
-      subroutine h3dformta_trunc
-     $     (ier,zk,rscale,sources,charge,ns,center,
-     1     nterms,nterms1,locexp,wlege,nlege)
-c**********************************************************************
-c
-c     This subroutine creates a local (j) expansion about the point
-c     CENTER due to the NS sources at the locations SOURCES(3,*).
-c     This is the memory management routine. Work is done in the
-c     secondary call to h3dformta1/h3dformta0 below.
-c
-c----------------------------------------------------------------------
-c     INPUT:
-c
-c     zk       : Helmholtz coefficient
-c     rscale   : scaling parameter
-c                     should be less than one in magnitude.
-c                     Needed for low frequency regime only
-c                     with rsclale abs(wavek) recommended.
-c     sources   : coordinates of the sources
-c     charge    : charge strengths
-c     ns        : number of sources
-c     center    : coordinates of the expansion center
-c     nterms    : order of the j-expansion
-C     nterms1 : order of truncated expansion
-c     wlege   :    precomputed array of scaling coeffs for Pnm
-c     nlege   :    dimension parameter for wlege
-c----------------------------------------------------------------------
-c     OUTPUT:
-c
-c     ier       : error return code
-c		  ier=0	returned successfully;
-c	 	  ier=4  d is out of range in h3dall
-c
-c     locexp    : coeffs for the j-expansion
-c----------------------------------------------------------------------
-      implicit real *8 (a-h,o-z)
-      integer ns
-      real *8 sources(3,ns),center(3)
-      complex *16 zk,locexp(0:nterms,-nterms:nterms), charge(ns)
-      complex *16 eye
-      data eye/(0.0d0,1.0d0)/
-c
-c     initialize local exp
-c
-      do l = 0,nterms
-         do m = -l,l
-            locexp(l,m) = 0.0d0
-         enddo
-      enddo
-c
-      do i = 1,ns
-         call h3dformta_trunc1(ier,zk,rscale,sources(1,i),charge(i),
-     1		center,nterms,nterms1,locexp,wlege,nlege)
-      enddo
-c
-c     scale by (i*k)
-c
-      do l = 0,nterms
-         do m=-l,l
-            locexp(l,m) = locexp(l,m)*eye*zk
-         enddo
-      enddo
-C
-      return
-      end
-c
-c
-c**********************************************************************
-      subroutine h3dformta_add_trunc
-     $     (ier,zk,rscale,sources,charge,ns,center,
-     1     nterms,nterms1,locexp,wlege,nlege)
-c**********************************************************************
-c
-c     This subroutine creates a local (j) expansion about the point
-c     CENTER due to the NS sources at the locations SOURCES(3,*).
-c     This is the memory management routine. Work is done in the
-c     secondary call to h3dformta1/h3dformta0 below.
-c
-c----------------------------------------------------------------------
-c     INPUT:
-c
-c     zk       : Helmholtz coefficient
-c     rscale   : scaling parameter
-c                     should be less than one in magnitude.
-c                     Needed for low frequency regime only
-c                     with rsclale abs(wavek) recommended.
-c     sources   : coordinates of the sources
-c     charge    : charge strengths
-c     ns        : number of sources
-c     center    : coordinates of the expansion center
-c     nterms    : order of the j-expansion
-c     nterms1   : order of the truncated expansion
-c     wlege   :    precomputed array of scaling coeffs for Pnm
-c     nlege   :    dimension parameter for wlege
-c----------------------------------------------------------------------
-c     OUTPUT:
-c
-c     ier       : error return code
-c		  ier=0	returned successfully;
-c		  ier=2	insufficient memory in workspace w
-c	 	  ier=4  d is out of range in h3dall
-c
-c     locexp    : coeffs for the j-expansion
-c----------------------------------------------------------------------
-      implicit real *8 (a-h,o-z)
-      integer ns
-      real *8 sources(3,ns),center(3)
-      complex *16 zk,locexp(0:nterms,-nterms:nterms), charge(ns)
-      complex *16 eye
-      complex *16, allocatable :: mptemp(:,:)
-      data eye/(0.0d0,1.0d0)/
-c
-c     initialize local exp
-c
-
-        allocate( mptemp(0:nterms,-nterms:nterms) )
-c
-        do l = 0,nterms
-          do m=-l,l
-             mptemp(l,m) = 0
-          enddo
-        enddo
-c
-        call h3dformta_trunc
-     $     (ier,zk,rscale,sources,charge,ns,center,
-     1     nterms,nterms1,mptemp,wlege,nlege)
-c
-      do l = 0,nterms
-         do m=-l,l
-            locexp(l,m) = locexp(l,m)+mptemp(l,m)
-         enddo
-      enddo
-C
-      return
-      end
-c
-c
-c
-c
-c
-c
-c**********************************************************************
-      subroutine h3dformta_trunc1(ier,wavek,rscale,source,charge,center,
-     &		nterms,nterms1,locexp,wlege,nlege)
-c**********************************************************************
-c
-c     This subroutine creates the local expansion about CENTER
-c     due to a single charge located at SOURCE.
-c     This is the memory management routine. Work is done in the
-c     secondary call to h3dformta0 below.
-c
-c---------------------------------------------------------------------
-c INPUT:
-c
-c     wavek     : the Helmholtz coefficient
-c     rscale    : scaling parameter
-c                         should be less than one in magnitude.
-c                         Needed for low frequency regime only
-c                         with rsclale abs(wavek) recommended.
-c     source    : coordinates of the source
-c     charge    : coordinates of the source
-c     center    : coordinates of the expansion center
-c     nterms    : order of the j-expansion
-c     nterms1   : order of truncated expansion
-c     wlege   :    precomputed array of scaling coeffs for Pnm
-c     nlege   :    dimension parameter for wlege
-c---------------------------------------------------------------------
-c OUTPUT:
-c
-c     ier    : error return code
-c	           ier=0 successful execution
-c		   ier=2 insufficient memory in workspace w
-c	 	   ier=4 d is out of range in h3dall
-c     locexp : coefficients of the local expansion
-c---------------------------------------------------------------------
-      implicit real *8 (a-h,o-z)
-      real *8 source(3),center(3)
-      real *8, allocatable :: w(:)
-      complex *16 wavek,locexp(0:nterms,-nterms:nterms), charge
-c
-c     Carve up workspace
-c
-      ier=0
-c
-      ipp=1
-      lpp=(nterms+1)**2+7
-c
-      iephi=ipp+lpp
-      lephi=2*(2*nterms+1)+7
-c
-      ifhs=iephi+lephi
-      lfhs=2*(nterms+1)+7
-c
-      lused=ifhs+lfhs
-      allocate(w(lused))
-c
-      call h3dformta_trunc0(jer,wavek,rscale,source,charge,center,
-     &		nterms,nterms1,locexp,w(ipp),w(iephi),w(ifhs),
-     $   wlege,nlege)
-      if (jer.ne.0) ier=4
-c
-      return
-      end
-c
-c
-c
-c**********************************************************************
-      subroutine h3dformta_trunc0(ier,wavek,rscale,source,charge,
-     &		center,nterms,nterms1,locexp,pp,ephi,fhs,wlege,nlege)
-c**********************************************************************
-c
-c     See h3dformta/h3dformta1 for comments
-c
-c---------------------------------------------------------------------
-      implicit real *8 (a-h,o-z)
-      real *8 source(3),center(3),zdiff(3)
-      real *8 pp(0:nterms,0:nterms)
-      complex *16 wavek,locexp(0:nterms,-nterms:nterms), charge
-      complex *16 ephi(-nterms:nterms),ephi1,ephi1inv
-      complex *16 fhs(0:nterms),ztmp,fhder(0:1),z
-      data thresh/1.0d-15/
-c
-      ier=0
-c
-      zdiff(1)=source(1)-center(1)
-      zdiff(2)=source(2)-center(2)
-      zdiff(3)=source(3)-center(3)
-c
-      done=1
-      call cart2polar(zdiff,r,theta,phi)
-      ctheta = dcos(theta)
-      stheta=sqrt(done-ctheta*ctheta)
-      cphi = dcos(phi)
-      sphi = dsin(phi)
-      ephi1 = dcmplx(cphi,sphi)
-c
-c     Compute the e^{eye*m*phi} array
-c
-      ephi1inv=1.0d0/ephi1
-c
-      ephi(0)=1.0d0
-      ephi(1)=ephi1
-      ephi(-1)=ephi1inv
-      do i=2,nterms
-         ephi(i)=ephi(i-1)*ephi1
-         ephi(-i)=ephi(-i+1)*ephi1inv
-      enddo
-c
-c     get the Ynm
-c
-ccc      call ylgndr(nterms,ctheta,pp)
-      call ylgndrfw(nterms,ctheta,pp,wlege,nlege)
-c
-c     compute Hankel functions and scale them by charge strength.
-c
-      ifder=0
-      z=wavek*r
-      if (abs(z).lt.thresh) then
-         ier = 4
-         return
-      endif
-      call h3dall(nterms1,z,rscale,fhs,ifder,fhder)
-      do n = 0, nterms1
-         fhs(n) = fhs(n)*charge
-      enddo
-c
-c     Compute contributions to locexp
-c
-      locexp(0,0)=locexp(0,0) + fhs(0)
-      do n=1,nterms1
-         locexp(n,0)=locexp(n,0) + pp(n,0)*fhs(n)
-         do m=1,n
-            ztmp=pp(n,m)*fhs(n)
-	    locexp(n,m)=locexp(n,m) + ztmp*ephi(-m)
-	    locexp(n,-m)=locexp(n,-m) + ztmp*ephi(m)
          enddo
       enddo
       return
