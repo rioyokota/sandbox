@@ -163,176 +163,71 @@ c
         lfldtarg=6
         endif
         lused7=lused7+lfldtarg
-c      
-        if (ifprint .ge. 1) call prinf(' lused7 is *',lused7,1)
-c
 c       based on FMM tolerance, compute expansion lengths nterms(i)
-c      
         nmax = 0
         do i = 0,nlev
            bsize(i)=size/2.0d0**i
            call h3dterms(bsize(i),zk,epsfmm, nterms(i), ier)
            if (nterms(i).gt. nmax .and. i.ge. 2) nmax = nterms(i)
         enddo
-c
-        if (ifprint.eq.1) 
-     $     call prin2('in hfmm3dpart, bsize(0) zk/2 pi=*',
-     $     abs(bsize(0)*zk)/2/pi,1)
-c
-        if (ifprint.eq.1) call prin2('zk=*',zk,2)
-        if (ifprint.eq.1) call prin2('bsize=*',bsize,nlev+1)
-c
-        nquad=2*nmax        
-c       
+        nquad=2*nmax               
 c     ixnodes is pointer for quadrature nodes
 c     iwhts is pointer for quadrature weights
-c
         ixnodes = lused7 
         iwts = ixnodes + nquad
         lused7 = iwts + nquad
-c
-        if (ifprint .ge. 1) call prinf('nterms=*',nterms,nlev+1)
-        if (ifprint .ge. 1) call prinf('nmax=*',nmax,1)
-c
 c     Multipole and local expansions will be held in workspace
 c     in locations pointed to by array iaddr(2,nboxes).
-c
+
 c     iiaddr is pointer to iaddr array, itself contained in workspace.
 c     imptemp is pointer for single expansion (dimensioned by nmax)
-c   
-c       ... allocate iaddr and temporary arrays
-c
         iiaddr = lused7 
         imptemp = iiaddr + 2*nboxes
         lmptemp = (nmax+1)*(2*nmax+1)*2
         lused7 = imptemp + lmptemp
         allocate(w(lused7),stat=ier)
-        if (ier.ne.0) then
-           call prinf(' cannot allocate bulk FMM workspace,
-     1                  lused7 is *',lused7,1)
-           ier = 8
-           return
-        endif
-c
-c     reorder sources, targets so that each box holds
-c     contiguous list of source/target numbers.
-c
         call h3dreorder(nsource,source,ifcharge,charge,wlists(iisource),
-     $     ifdipole,dipstr,dipvec,
+     1     ifdipole,dipstr,dipvec,
      1     w(isourcesort),w(ichargesort),w(idipvecsort),w(idipstrsort)) 
-c       
         call h3dreordertarg(ntarget,target,wlists(iitarget),
      1       w(itargetsort))
-c
-        if (ifprint .ge. 1) call prinf('finished reordering=*',ier,1)
-        if (ifprint .ge. 1) call prinf('ier=*',ier,1)
-        if (ifprint .ge. 1) call prinf('nboxes=*',nboxes,1)
-        if (ifprint .ge. 1) call prinf('nlev=*',nlev,1)
-        if (ifprint .ge. 1) call prinf('nboxes=*',nboxes,1)
-        if (ifprint .ge. 1) call prinf('lused7=*',lused7,1)
-c
         ifinit=1
         call legewhts(nquad,w(ixnodes),w(iwts),ifinit)
-c
-ccc        call prin2('xnodes=*',xnodes,nquad)
-ccc        call prin2('wts=*',wts,nquad)
-
-c     allocate memory need by multipole, local expansions at all
-c     levels
-c     irmlexp is pointer for workspace need by various fmm routines,
-c
         call h3dmpalloc(wlists(iwlists),w(iiaddr),nboxes,lmptot,nterms)
-c
-        if (ifprint .ge. 1) call prinf(' lmptot is *',lmptot,1)
-c       
         irmlexp = 1
         lused7 = irmlexp + lmptot 
-        if (ifprint .ge. 1) call prinf(' lused7 is *',lused7,1)
         allocate(wrmlexp(lused7),stat=ier)
-        if (ier.ne.0) then
-           call prinf(' cannot allocate mpole expansion workspace,
-     1                  lused7 is *',lused7,1)
-           ier = 16
-           return
-        endif
-c
-c       
-ccc        do i=lused7+1,lused7+1+100
-ccc        w(i)=777
-ccc        enddo
-c
-c     Memory allocation is complete. 
-c     Call main fmm routine. There are, unfortunately, a lot
-c     of parameters here. ifevalfar and ifevalloc determine
-c     whether far field and local fields (respectively) are to 
-c     be evaluated. Setting both to 1 means that both will be
-c     computed (which is the normal scenario).
-c
         ifevalfar=1
         ifevalloc=1
-c
         call hfmm3dparttargmain(ier,iprec,zk,
-     $     ifevalfar,ifevalloc,
-     $     nsource,w(isourcesort),wlists(iisource),
-     $     ifcharge,w(ichargesort),
-     $     ifdipole,w(idipstrsort),w(idipvecsort),
-     $     ifpot,w(ipot),iffld,w(ifld),
-     $     ntarget,w(itargetsort),wlists(iitarget),
-     $     ifpottarg,w(ipottarg),iffldtarg,w(ifldtarg),
-     $     epsfmm,w(iiaddr),wrmlexp(irmlexp),w(imptemp),lmptemp,
-     $     w(ixnodes),w(iwts),nquad,
-     $     nboxes,laddr,nlev,scale,bsize,nterms,
-     $     wlists(iwlists),lwlists)
-c
-c       parameter ier from targmain routine is currently meaningless, reset to 0
-        if( ier .ne. 0 ) ier = 0
-c
-        if (ifprint .ge. 1) call prinf('lwlists=*',lused,1)
-        if (ifprint .ge. 1) call prinf('lused total =*',lused7,1)       
-c
-        if (ifprint .ge. 1) 
-     $      call prin2('memory / point = *',(lused7)/dble(nsource),1)
-c       
-ccc        call prin2('after w=*', w(1+lused7-100), 2*100)
-c
-        if(ifpot .eq. 1) 
-     $     call h3dpsort(nsource,wlists(iisource),w(ipot),pot)
-        if(iffld .eq. 1) 
-     $     call h3dfsort(nsource,wlists(iisource),w(ifld),fld)
-c
-        if(ifpottarg .eq. 1 )
-     $     call h3dpsort(ntarget,wlists(iitarget),w(ipottarg),pottarg)
-        if(iffldtarg .eq. 1) 
-     $     call h3dfsort(ntarget,wlists(iitarget),w(ifldtarg),fldtarg)
-c       
+     1     ifevalfar,ifevalloc,
+     1     nsource,w(isourcesort),wlists(iisource),
+     1     ifcharge,w(ichargesort),
+     1     ifpot,w(ipot),iffld,w(ifld),
+     1     epsfmm,w(iiaddr),wrmlexp(irmlexp),w(imptemp),lmptemp,
+     1     w(ixnodes),w(iwts),nquad,
+     1     nboxes,laddr,nlev,scale,bsize,nterms,
+     1     wlists(iwlists),lwlists)
+        call h3dpsort(nsource,wlists(iisource),w(ipot),pot)
+        call h3dfsort(nsource,wlists(iisource),w(ifld),fld)
+
         return
         end
-c
-c
-c
-c
-c
+
         subroutine hfmm3dparttargmain(ier,iprec,zk,
-     $     ifevalfar,ifevalloc,
-     $     nsource,sourcesort,isource,
-     $     ifcharge,chargesort,
-     $     ifdipole,dipstrsort,dipvecsort,
-     $     ifpot,pot,iffld,fld,ntarget,
-     $     targetsort,itarget,ifpottarg,pottarg,iffldtarg,fldtarg,
-     $     epsfmm,iaddr,rmlexp,mptemp,lmptemp,xnodes,wts,nquad,
-     $     nboxes,laddr,nlev,scale,bsize,nterms,
-     $     wlists,lwlists)
+     1     ifevalfar,ifevalloc,
+     1     nsource,sourcesort,isource,
+     1     ifcharge,chargesort,
+     1     ifpot,pot,iffld,fld,
+     1     epsfmm,iaddr,rmlexp,mptemp,lmptemp,xnodes,wts,nquad,
+     1     nboxes,laddr,nlev,scale,bsize,nterms,
+     1     wlists,lwlists)
         implicit real *8 (a-h,o-z)
         dimension sourcesort(3,1), isource(1)
         complex *16 chargesort(1),zk
-        complex *16 dipstrsort(1)
-        dimension dipvecsort(3,1)
         complex *16 ima
         complex *16 pot(1)
         complex *16 fld(3,1)
-        dimension targetsort(3,1), itarget(1)
-        complex *16 pottarg(1)
-        complex *16 fldtarg(3,1)
         dimension wlists(1)
         dimension iaddr(2,nboxes)
         real *8 rmlexp(1)
@@ -353,21 +248,8 @@ c
         dimension itable(-3:3,-3:3,-3:3)
         dimension wlege(100 000)
         dimension nterms_eval(4,0:200)
-c
         data ima/(0.0d0,1.0d0)/
-
-c
-c
-c     ifprint is an internal information printing flag. 
-c     Suppressed if ifprint=0.
-c     Prints timing breakdown and other things if ifprint=1.
-c     Prints timing breakdown, list information, and other things if ifprint=2.
-c       
-        ifprint=0
-c
-c
 c       ... set the potential and field to zero
-c
         do i=1,nsource
            pot(i)=0
            fld(1,i)=0
@@ -589,7 +471,6 @@ c$OMP END PARALLEL DO
       integer box(20),box1(20)
       dimension source(3,1),dipvec(3,1)
       complex *16 charge(1),dipstr(1),zk
-      dimension target(3,1)
       complex *16 pot(1),fld(3,1)
       complex *16 ptemp,ftemp(3)
       do j=box1(14),box1(14)+box1(15)-1
