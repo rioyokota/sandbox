@@ -18,8 +18,6 @@
         print*,'nsource=',nsource
         iprec=0
         print*,'iprec  =',iprec
-        ifpot=1
-        iffld=1
         ifcharge=1
         do i=1,nsource
            charge(i)=source(1,i)+ima*source(2,i)
@@ -28,7 +26,7 @@ c FMM
         t1=omp_get_wtime()
         call hfmm3dparttarg(ier,iprec, zk,
      $     nsource,source,ifcharge,charge,
-     $     ifpot,pot,iffld,fld)
+     $     pot,fld)
         t2=omp_get_wtime()
         print*,'FMM    =',t2-t1
 c Direct
@@ -45,7 +43,7 @@ C$OMP$PRIVATE(i,j,ptemp,ftemp)
         do j=1,m
            do i=1,nsource       
               if( i .eq. j ) cycle
-                 call hpotfld3d(iffld,source(1,i),charge(i),
+                 call hpotfld3d(source(1,i),charge(i),
      $              source(1,j),zk,ptemp,ftemp)
                  pot2(j)=pot2(j)+ptemp
                  fld2(1,j)=fld2(1,j)+ftemp(1)

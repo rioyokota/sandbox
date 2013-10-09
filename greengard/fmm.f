@@ -1,5 +1,5 @@
       subroutine hfmm3dparttarg(ier,iprec,zk,nsource,source,
-     $     ifcharge,charge,ifpot,pot,iffld,fld)
+     $     ifcharge,charge,pot,fld)
       implicit real *8 (a-h,o-z)
       dimension source(3,nsource)
       complex *16 charge(nsource)
@@ -117,8 +117,7 @@ c     imptemp is pointer for single expansion (dimensioned by nmax)
       call hfmm3dparttargmain(ier,iprec,zk,
      1     ifevalfar,ifevalloc,
      1     nsource,w(isourcesort),wlists(iisource),
-     1     ifcharge,w(ichargesort),
-     1     ifpot,w(ipot),iffld,w(ifld),
+     1     ifcharge,w(ichargesort),w(ipot),w(ifld),
      1     epsfmm,w(iiaddr),wrmlexp(irmlexp),w(imptemp),lmptemp,
      1     w(ixnodes),w(iwts),nquad,
      1     nboxes,laddr,nlev,scale,bsize,nterms,
@@ -132,8 +131,7 @@ c     imptemp is pointer for single expansion (dimensioned by nmax)
       subroutine hfmm3dparttargmain(ier,iprec,zk,
      1     ifevalfar,ifevalloc,
      1     nsource,sourcesort,isource,
-     1     ifcharge,chargesort,
-     1     ifpot,pot,iffld,fld,
+     1     ifcharge,chargesort,pot,fld,
      1     epsfmm,iaddr,rmlexp,mptemp,lmptemp,xnodes,wts,nquad,
      1     nboxes,laddr,nlev,scale,bsize,nterms,
      1     wlists,lwlists)
@@ -303,7 +301,7 @@ c$OMP END PARALLEL DO
       do j=box(14),box(14)+box(15)-1
          do i=box(14),box(14)+box(15)-1
             if (i .eq. j) cycle
-            call hpotfld3d(1,source(1,i),charge(i),
+            call hpotfld3d(source(1,i),charge(i),
      1           source(1,j),zk,ptemp,ftemp)
             pot(j)=pot(j)+ptemp
             fld(1,j)=fld(1,j)+ftemp(1)
@@ -323,7 +321,7 @@ c$OMP END PARALLEL DO
       complex *16 pot(1),fld(3,1)
       complex *16 ptemp,ftemp(3)
       do j=box1(14),box1(14)+box1(15)-1
-         call hpotfld3dall(1,source(1,box(14)),charge(box(14)),
+         call hpotfld3dall(source(1,box(14)),charge(box(14)),
      1        box(15),source(1,j),zk,ptemp,ftemp)
          pot(j)=pot(j)+ptemp
          fld(1,j)=fld(1,j)+ftemp(1)

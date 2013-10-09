@@ -1205,7 +1205,7 @@ c
 c
 c
 c**********************************************************************
-      subroutine hpotfld3dall(iffld,sources,charge,ns,
+      subroutine hpotfld3dall(sources,charge,ns,
      1                   target,wavek,pot,fld)
 c**********************************************************************
 c
@@ -1220,9 +1220,6 @@ c
 c---------------------------------------------------------------------
 c     INPUT:
 c
-c     iffld         : flag for computing gradient
-c	                 	   ffld = 0 -> dont compute 
-c		                   ffld = 1 -> do compute 
 c     sources(3,*)  : location of the sources
 c     charge        : charge strengths
 c     ns            : number of sources
@@ -1241,25 +1238,18 @@ c---------------------------------------------------------------------
       complex *16 wavek,pot,fld(3),potloc,fldloc(3)
       complex *16 h0,h1,cd,eye,z,ewavek
       complex *16 charge(ns)
-c
       data eye/(0.0d0,1.0d0)/
-c
       pot = 0.0d0
-      if (iffld.eq.1) then
-         fld(1) = 0.0d0
-         fld(2) = 0.0d0
-         fld(3) = 0.0d0
-      endif
-c
+      fld(1) = 0.0d0
+      fld(2) = 0.0d0
+      fld(3) = 0.0d0
       do i = 1,ns
-         call hpotfld3d(iffld,sources(1,i),charge(i),target,wavek,
+         call hpotfld3d(sources(1,i),charge(i),target,wavek,
      1        potloc,fldloc)
          pot = pot + potloc
-         if (iffld.eq.1) then
          fld(1) = fld(1) + fldloc(1)
          fld(2) = fld(2) + fldloc(2)
          fld(3) = fld(3) + fldloc(3)
-         endif
       enddo
       return
       end
@@ -1268,7 +1258,7 @@ c
 c
 c
 c**********************************************************************
-      subroutine hpotfld3d(iffld,source,charge,target,wavek,pot,fld)
+      subroutine hpotfld3d(source,charge,target,wavek,pot,fld)
       implicit real *8 (a-h,o-z)
 c**********************************************************************
 c
@@ -1283,9 +1273,6 @@ c
 c---------------------------------------------------------------------
 c     INPUT:
 c
-c     iffld     : flag for computing gradient
-c	                 	ffld = 0 -> dont compute 
-c		                ffld = 1 -> do compute 
 c     source    : location of the source 
 c     charge    : charge strength
 c     target    : location of the target
@@ -1302,53 +1289,17 @@ c---------------------------------------------------------------------
       complex *16 wavek,pot,fld(3)
       complex *16 h0,h1,cd,eye,z,ewavek
       complex *16 charge
-c
       data eye/(0.0d0,1.0d0)/
-c
-c ... Caculate offsets and distance
-c
       xdiff=target(1)-source(1)
       ydiff=target(2)-source(2)
       zdiff=target(3)-source(3)
       dd=xdiff*xdiff+ydiff*ydiff+zdiff*zdiff
       d=sqrt(dd)
-c
-c     ... slightly faster version
-c
-      if( iffld .eq. 0 ) then
-        pot=charge*cdexp(eye*wavek*d)/d
-        return
-      endif
-c
-      if( iffld .eq. 1 ) then
-        pot=charge*cdexp(eye*wavek*d)/d
-        cd=(1-eye*wavek*d)*pot/dd
-        fld(1)=cd*xdiff
-        fld(2)=cd*ydiff
-        fld(3)=cd*zdiff
-        return
-      endif
-c
-      return
-c
-c ... Calculate the potential and field in the regular case:
-c
-      z=d*wavek
-      call h3d01(z,h0,h1)
-c
-c ... Get potential and field as per required
-c
-c     Field is - grad(pot).
-c
-      ewavek=eye*wavek
-      pot=h0*ewavek*charge
-      if (iffld.eq.1) then
-         dinv=1.0d0/d
-         cd=h1*dinv*ewavek*wavek*charge
-         fld(1)=cd*xdiff
-         fld(2)=cd*ydiff
-         fld(3)=cd*zdiff
-      endif
+      pot=charge*cdexp(eye*wavek*d)/d
+      cd=(1-eye*wavek*d)*pot/dd
+      fld(1)=cd*xdiff
+      fld(2)=cd*ydiff
+      fld(3)=cd*zdiff
       return
       end
 c
