@@ -530,167 +530,90 @@ C$OMP PARALLEL DO DEFAULT(SHARED)
 C$OMP$PRIVATE(level,npts,nkids)
 C$OMP$PRIVATE(jbox,box1,center1,corners1,level1,ifdirect3,radius)
 C$OMP$PRIVATE(lused,ier,i,j,ptemp,ftemp,cd,ilist) 
-cccC$OMP$SCHEDULE(DYNAMIC)
-cccC$OMP$NUM_THREADS(1) 
          do ilist=1,nlist
             jbox=list(ilist)
             call d3tgetb(ier,jbox,box1,center1,corners1,wlists)
-c        
             level1=box1(1)
-c
-               npts=box(15)
-               if_use_trunc = 1
-c
-               if( ifcharge .eq. 1 ) then
-
-               call h3dformta_add_trunc(ier,zk,scale(level1),
-     1            sourcesort(1,box(14)),chargesort(box(14)),
-     $            npts,center1,
-     $            nterms(level1),nterms_eval(1,level1),
-     2            rmlexp(iaddr(2,jbox)),wlege,nlege)
-               
-               endif
-c
-               if( ifdipole .eq. 1 ) then
-               call h3dformta_dp_add_trunc(ier,zk,scale(level1),
-     1            sourcesort(1,box(14)),dipstrsort(box(14)),
-     2            dipvecsort(1,box(14)),npts,center1,
-     3            nterms(level1),nterms_eval(1,level1),
-     $            rmlexp(iaddr(2,jbox)),wlege,nlege)
-               endif
+            npts=box(15)
+            if_use_trunc = 1
+            call h3dformta_add_trunc(ier,zk,scale(level1),
+     1           sourcesort(1,box(14)),chargesort(box(14)),
+     1           npts,center1,
+     1           nterms(level1),nterms_eval(1,level1),
+     1           rmlexp(iaddr(2,jbox)),wlege,nlege)
          enddo
 C$OMP END PARALLEL DO
 c
  3251    continue
 c
         t2=omp_get_wtime()
-ccc        call prin2('time=*',t2-t1,1)
-         timeinfo(2)=t2-t1
-c
-c
-        if(ifprint .ge. 1)
-     $      call prinf('=== STEPS 3,4,5 ====*',i,0)
-        ifprune_list2 = 1
-        if (ifpot.eq.1) ifprune_list2 = 0
-        if (iffld.eq.1) ifprune_list2 = 0
+        timeinfo(2)=t2-t1
+        ifprune_list2 = 0
         call hfmm3d_list2
-     $     (zk,bsize,nlev,laddr,scale,nterms,rmlexp,iaddr,epsfmm,
-     $     timeinfo,wlists,mptemp,lmptemp,xnodes,wts,nquad,
-     $     ifprune_list2)
-c
-        if(ifprint .ge. 1)
-     $     call prinf('=== STEP 6 (eval mp) ====*',i,0)
+     1     (zk,bsize,nlev,laddr,scale,nterms,rmlexp,iaddr,epsfmm,
+     1     timeinfo,wlists,mptemp,lmptemp,xnodes,wts,nquad,
+     1     ifprune_list2)
+
         t1=omp_get_wtime()
-c
 c       ... step 6, adaptive part, evaluate multipole expansions, 
 c           or evaluate the potentials and fields directly
-c
          do 3252 ibox=1,nboxes
          call d3tgetb(ier,ibox,box,center0,corners0,wlists)
-c
          itype=4
          call d3tgetl(ier,ibox,itype,list,nlist,wlists)
-         if (nlist .gt. 0) then 
-            if (ifprint .ge. 2) then
-               call prinf('ibox=*',ibox,1)
-               call prinf('list4=*',list,nlist)
-            endif
-         endif
-c
 c       ... prune all sourceless boxes
-c
          if( box(15) .eq. 0 ) nlist=0
-c
 c       ... note that lists 3 and 4 are dual
-c
 c       ... evaluate multipole expansions for all boxes in list 4 
 c       ... if source is childless, evaluate directly (if cheaper)
-c
 C$OMP PARALLEL DO DEFAULT(SHARED)
-C$OMP$PRIVATE(jbox,box1,center1,corners1,level1,ifdirect4,level,radius)
+C$OMP$PRIVATE(jbox,box1,center1,corners1,level1,level,radius)
 C$OMP$PRIVATE(ier,i,j,ptemp,ftemp,cd,ilist) 
-cccC$OMP$SCHEDULE(DYNAMIC)
-cccC$OMP$NUM_THREADS(1) 
          do ilist=1,nlist
             jbox=list(ilist)
             call d3tgetb(ier,jbox,box1,center1,corners1,wlists)
-c
             level=box(1)
-c
-            ifdirect4 = 0
-
             call h3dmpevalall_trunc(zk,scale(level),center0,
-     $         rmlexp(iaddr(1,ibox)),
-     $         nterms(level),nterms_eval(1,level),
-     $         sourcesort(1,box1(14)),box1(15),
-     $         ifpot,pot(box1(14)),
-     $         iffld,fld(1,box1(14)),
-     $         wlege,nlege,ier)
-
-            call h3dmpevalall_trunc(zk,scale(level),center0,
-     $         rmlexp(iaddr(1,ibox)),
-     $         nterms(level),nterms_eval(1,level),
-     $         targetsort(1,box1(16)),box1(17),
-     $         ifpottarg,pottarg(box1(16)),
-     $         iffldtarg,fldtarg(1,box1(16)),
-     $         wlege,nlege,ier)
+     1         rmlexp(iaddr(1,ibox)),
+     1         nterms(level),nterms_eval(1,level),
+     1         sourcesort(1,box1(14)),box1(15),
+     1         ifpot,pot(box1(14)),
+     1         iffld,fld(1,box1(14)),
+     1         wlege,nlege,ier)
 
         enddo
 C$OMP END PARALLEL DO
  3252   continue
-c
         t2=omp_get_wtime()
-ccc     call prin2('time=*',t2-t1,1)
         timeinfo(6)=t2-t1
-c
 
-        if(ifprint .ge. 1)
-     $     call prinf('=== STEP 7 (eval lo) ====*',i,0)
         t1=omp_get_wtime()
-c
-c       ... step 7, evaluate local expansions
-c       and all fields directly
-c
+c       ... step 7, evaluate local expansions and all fields directly
 C$OMP PARALLEL DO DEFAULT(SHARED)
 C$OMP$PRIVATE(ibox,box,center0,corners0,level,npts,nkids,ier)
-        do 6201 ibox=1,nboxes
-c
-        call d3tgetb(ier,ibox,box,center0,corners0,wlists)
-        call d3tnkids(box,nkids)
-        if (nkids .eq. 0) then
-            npts=box(15)
-            if (ifprint .ge. 2) then
-               call prinf('npts=*',npts,1)
-               call prinf('isource=*',isource(box(14)),box(15))
-            endif
-        endif
-c
-        if (nkids .eq. 0) then
-c
-c       ... evaluate local expansions
-c       
-        level=box(1)
-        npts=box(15)
-c       
-        if (level .ge. 2) then
-
-        call h3dtaevalall_trunc(zk,scale(level),center0,
-     $     rmlexp(iaddr(2,ibox)),
-     $     nterms(level),nterms_eval(1,level),
-     $     sourcesort(1,box(14)),box(15),
-     $     ifpot,pot(box(14)),
-     $     iffld,fld(1,box(14)),
-     $     wlege,nlege,ier)
-        
-        endif
-c
-        endif
-c
- 6201   continue
+        do ibox=1,nboxes
+           call d3tgetb(ier,ibox,box,center0,corners0,wlists)
+           call d3tnkids(box,nkids)
+           if (nkids .eq. 0) then
+c     ... evaluate local expansions
+              level=box(1)
+              npts=box(15)
+              if (level .ge. 2) then
+                 call h3dtaevalall_trunc(zk,scale(level),center0,
+     1                rmlexp(iaddr(2,ibox)),
+     1                nterms(level),nterms_eval(1,level),
+     1                sourcesort(1,box(14)),box(15),
+     1                ifpot,pot(box(14)),
+     1                iffld,fld(1,box(14)),
+     1                wlege,nlege,ier)
+              endif
+           endif
+        enddo
 C$OMP END PARALLEL DO
         t2=omp_get_wtime()
 ccc     call prin2('time=*',t2-t1,1)
         timeinfo(7)=t2-t1
+
         t1=omp_get_wtime()
 c       ... step 8, evaluate direct interactions 
 C$OMP PARALLEL DO DEFAULT(SHARED)
@@ -704,7 +627,7 @@ C$OMP$SCHEDULE(DYNAMIC)
            if (nkids .eq. 0) then
 c     ... evaluate self interactions
               call hfmm3dpart_direct_self(zk,box,sourcesort,
-     $             chargesort,pot,fld)
+     1             chargesort,pot,fld)
 c     ... evaluate interactions with the nearest neighbours
               itype=1
               call d3tgetl(ier,ibox,itype,list,nlist,wlists)
