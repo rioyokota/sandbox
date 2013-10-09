@@ -369,38 +369,23 @@ c
 c       ... set the potential and field to zero
 c
         do i=1,nsource
-        if( ifpot .eq. 1) pot(i)=0
-        if( iffld .eq. 1) then
+           pot(i)=0
            fld(1,i)=0
            fld(2,i)=0
            fld(3,i)=0
-        endif
         enddo
-c       
-        do i=1,ntarget
-        if( ifpottarg .eq. 1) pottarg(i)=0
-        if( iffldtarg .eq. 1) then
-           fldtarg(1,i)=0
-           fldtarg(2,i)=0
-           fldtarg(3,i)=0
-        endif
-        enddo
-c
         do i=1,10
-        timeinfo(i)=0
+           timeinfo(i)=0
         enddo
 c       ... initialize Legendre function evaluation routines
-c
         nlege=200
         lw7=100 000
         call ylgndrfwini(nlege,wlege,lw7,lused7)
-ccc        write(*,*)' lused7 from  ylgndrfwini is',lused7
-c
         do i=0,nlev
-        do itype=1,4
-        call h3dterms_eval(itype,bsize(i),zk,epsfmm,
-     1       nterms_eval(itype,i),ier)
-        enddo
+           do itype=1,4
+              call h3dterms_eval(itype,bsize(i),zk,epsfmm,
+     1             nterms_eval(itype,i),ier)
+           enddo
         enddo
 c       ... set all multipole and local expansions to zero
         do ibox = 1,nboxes
