@@ -1,239 +1,8 @@
-cc Copyright (C) 2009-2010: Leslie Greengard and Zydrunas Gimbutas
-cc Contact: greengard@cims.nyu.edu
-cc 
-cc This program is free software; you can redistribute it and/or modify 
-cc it under the terms of the GNU General Public License as published by 
-cc the Free Software Foundation; either version 2 of the License, or 
-cc (at your option) any later version.  This program is distributed in 
-cc the hope that it will be useful, but WITHOUT ANY WARRANTY; without 
-cc even the implied warranty of MERCHANTABILITY or FITNESS FOR A 
-cc PARTICULAR PURPOSE.  See the GNU General Public License for more 
-cc details. You should have received a copy of the GNU General Public 
-cc License along with this program; 
-cc if not, see <http://www.gnu.org/licenses/>.
-ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
-c
-c    $Date: 2010-08-14 21:36:46 -0400 (Sat, 14 Aug 2010) $
-c    $Revision: 1166 $
-c
-c       
-c     This file contains the main FMM routines and some related
-c     subroutines for evaluating Helmholtz potentials and fields due to
-c     point charges and dipoles.  (FORTRAN 90 VERSION)
-c
-c     hfmm3dpart - Helmholtz FMM in R^3: evaluate all pairwise particle
-c         interactions (ignoring self-interaction)
-c
-c     hfmm3dpartself - Helmholtz FMM in R^3: evaluate all pairwise particle
-c         interactions (ignoring self-interaction)
-c
-c     hfmm3dparttarg - Helmholtz FMM in R^3: evaluate all pairwise
-c         particle interactions (ignoring self-interaction) +
-c         interactions with targets
-c
-c     h3dpartdirect - Helmholtz interactions in R^3:  evaluate all
-c         pairwise particle interactions (ignoring self-interaction) +
-c         interactions with targets via direct O(N^2) algorithm
-c
-ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
-c
-c        this is the end of the debugging code and the beginning 
-c        of the Helmholtz particle FMM in R^3
-c
-ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
-c
-c
-c
-        subroutine hfmm3dpart(ier,iprec,zk,nsource,source,
-     $     ifcharge,charge,ifdipole,dipstr,dipvec,
-     $     ifpot,pot,iffld,fld)
-        implicit real *8 (a-h,o-z)
-c              
-c              
-c       Helmholtz FMM in R^3: evaluate all pairwise particle
-c       interactions (ignoring self-interaction). 
-c       We use (exp(ikr)/r) for the Green's function, without the 
-c       (1/4 pi) scaling. Self-interactions are not included.
-c   
-c       The main FMM routine permits both evaluation at sources
-c       and at a collection of targets. 
-c       This subroutine is used to simplify the user interface 
-c       (by setting the number of targets to zero) and calling the more 
-c       general FMM.
-c
-c       See below for explanation of calling sequence arguments.
-c  
-c
-        dimension source(3,1)
-        complex *16 charge(1),zk
-        complex *16 dipstr(1)
-        dimension dipvec(3,1)
-        complex *16 ima
-        complex *16 pot(1)
-        complex *16 fld(3,1)
-        dimension w(1)
-c
-        dimension target(3,1)
-        complex *16 pottarg(1)
-        complex *16 fldtarg(3,1)        
-c
-        data ima/(0.0d0,1.0d0)/
-c       
-        ntarget=0
-        ifpottarg=0
-        iffldtarg=0
-c
-        call hfmm3dparttarg(ier,iprec,zk,nsource,source,
-     $     ifcharge,charge,ifdipole,dipstr,dipvec,
-     $     ifpot,pot,iffld,fld,
-     $     ntarget,target,ifpottarg,pottarg,iffldtarg,fldtarg)
-c
-        return
-        end
-c
-c
-c
-c
-c
-        subroutine hfmm3dpartself(ier,iprec,zk,nsource,source,
-     $     ifcharge,charge,ifdipole,dipstr,dipvec,
-     $     ifpot,pot,iffld,fld)
-        implicit real *8 (a-h,o-z)
-c              
-c              
-c       Helmholtz FMM in R^3: evaluate all pairwise particle
-c       interactions (ignoring self-interaction). 
-c       We use (exp(ikr)/r) for the Green's function, without the 
-c       (1/4 pi) scaling. Self-interactions are not included.
-c   
-c       The main FMM routine permits both evaluation at sources
-c       and at a collection of targets. 
-c       This subroutine is used to simplify the user interface 
-c       (by setting the number of targets to zero) and calling the more 
-c       general FMM.
-c
-c       See below for explanation of calling sequence arguments.
-c  
-c
-        dimension source(3,1)
-        complex *16 charge(1),zk
-        complex *16 dipstr(1)
-        dimension dipvec(3,1)
-        complex *16 ima
-        complex *16 pot(1)
-        complex *16 fld(3,1)
-        dimension w(1)
-c
-        dimension target(3,1)
-        complex *16 pottarg(1)
-        complex *16 fldtarg(3,1)        
-c
-        data ima/(0.0d0,1.0d0)/
-c       
-        ntarget=0
-        ifpottarg=0
-        iffldtarg=0
-c
-        call hfmm3dparttarg(ier,iprec,zk,nsource,source,
-     $     ifcharge,charge,ifdipole,dipstr,dipvec,
-     $     ifpot,pot,iffld,fld,
-     $     ntarget,target,ifpottarg,pottarg,iffldtarg,fldtarg)
-c
-        return
-        end
-c
-c
-c
-c
-c
         subroutine hfmm3dparttarg(ier,iprec,zk,nsource,source,
      $     ifcharge,charge,ifdipole,dipstr,dipvec,
      $     ifpot,pot,iffld,fld,
      $     ntarget,target,ifpottarg,pottarg,iffldtarg,fldtarg)
         implicit real *8 (a-h,o-z)
-c       
-c       Helmholtz FMM in R^3: evaluate all pairwise particle
-c       interactions (ignoring self-interaction) 
-c       and interactions with targets.
-c
-c       We use (exp(ikr)/r) for the Green's function,
-c       without the (1/4 pi) scaling.  Self-interactions are not included.
-c   
-c       This is primarily a memory management code. 
-c       The actual work is carried out in subroutine hfmm3dparttargmain.
-c
-c       INPUT PARAMETERS:
-c
-c       iprec:  FMM precision flag
-c
-c                 -2 => tolerance =.5d0
-c                 -1 => tolerance =.5d-1
-c                  0 => tolerance =.5d-2
-c                  1 => tolerance =.5d-3
-c                  2 => tolerance =.5d-6
-c                  3 => tolerance =.5d-9
-c                  4 => tolerance =.5d-12
-c                  5 => tolerance =.5d-15
-c
-c       zk: complex *16: Helmholtz parameter
-c       nsource: integer:  number of sources
-c       source: real *8 (3,nsource):  source locations
-c       ifcharge:  charge computation flag
-c                  ifcharge = 1   =>  include charge contribution
-c                                     otherwise do not
-c       charge: complex *16 (nsource): charge strengths
-c       ifdipole:  dipole computation flag
-c                  ifdipole = 1   =>  include dipole contribution
-c                                     otherwise do not
-c       dipstr: complex *16 (nsource): dipole strengths
-c       dipvec: real *8 (3,nsource): dipole orientation vectors. 
-c
-c       ifpot:  potential flag (1=compute potential, otherwise no)
-c       iffld:  field flag (1=compute field, otherwise no)
-c       ntarget: integer:  number of targets
-c       target: real *8 (3,ntarget):  target locations
-c       ifpottarg:  target potential flag 
-c                   (1=compute potential, otherwise no)
-c       iffldtarg:  target field flag 
-c                   (1=compute field, otherwise no)
-c
-c       OUTPUT PARAMETERS:
-c
-c       ier   =  error return code
-c                ier=0     =>  normal execution
-c                ier=4     =>  cannot allocate tree workspace
-c                ier=8     =>  cannot allocate bulk FMM  workspace
-c                ier=16    =>  cannot allocate mpole expansion
-c                              workspace in FMM
-c
-c       pot: complex *16 (nsource): potential at source locations
-c       fld: complex *16 (3,nsource): field (-gradient) at source locations
-c       pottarg: complex *16 (ntarget): potential at target locations 
-c       fldtarg: complex *16 (3,ntarget): field (-gradient) at target locations 
-c
-cf2py   intent(out) ier
-cf2py   intent(in) iprec, zk
-cf2py   intent(in) nsource, source
-cf2py   intent(in) ifcharge,charge
-cf2py   check(!ifcharge || (shape(charge,0) == nsource))  charge
-cf2py   depend(nsource)  charge
-cf2py   intent(in) ifdipole,dipvec,dipstr
-cf2py   check(!ifdipole || (shape(dipstr,0) == nsource))  dipstr
-cf2py   depend(nsource)  dipstr
-cf2py   intent(in) ifpot,iffld
-cf2py   intent(out) pot,fld
-cf2py   intent(in) ifpottarg, iffldtarg
-cf2py   intent(in) target
-cf2py   intent(in) ntarget
-cf2py   check((!ifpottarg && !iffldtarg) || (shape(target,0)==3 && shape(target,1) == ntarget))  target
-cf2py   check((!ifpottarg) || (shape(pottarg,0)==ntarget))  pottarg
-cf2py   check((!iffldtarg) || (shape(fldtarg,0)==3 && shape(fldtarg,1) == ntarget))  fldtarg
-c
-c       (F2PY workaround: pottarg, fldtarg must be input because f2py
-c       refuses to allocate zero-size output arrays.)
-c
-cf2py   intent(in,out) pottarg,fldtarg
-c
         dimension source(3,nsource)
         complex *16 charge(nsource)
         complex *16 dipstr(nsource)
@@ -244,14 +13,7 @@ c
         dimension target(3,ntarget)
         complex *16 pottarg(ntarget)
         complex *16 fldtarg(3,ntarget)
-c
         dimension timeinfo(10)
-c
-c     Note: various arrays dimensioned here to 200.
-c     That allows for 200 evels of refinment, which is 
-c     more than enough for any non-pathological case.
-c
- 
         dimension laddr(2,200)
         dimension bsize(0:200)
         dimension nterms(0:200)
@@ -903,10 +665,10 @@ c
 
             else
             
-            call hfmm3dpart_direct_targ(zk,box,box1,sourcesort,
-     $         ifcharge,chargesort,ifdipole,dipstrsort,dipvecsort,
-     $         ifpot,pot,iffld,fld,
-     $         targetsort,ifpottarg,pottarg,iffldtarg,fldtarg)
+c            call hfmm3dpart_direct_targ(zk,box,box1,sourcesort,
+c     $         ifcharge,chargesort,ifdipole,dipstrsort,dipvecsort,
+c     $         ifpot,pot,iffld,fld,
+c     $         targetsort,ifpottarg,pottarg,iffldtarg,fldtarg)
 
             endif
         enddo
