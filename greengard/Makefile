@@ -7,8 +7,8 @@ MAKEFLAGS += --no-print-directory
 
 .SUFFIXES: .o .f
 
-SRC = main.f fmm.f hfmm3drouts.f \
-     h3dterms.f helmrouts3d.f h3dtrans.f projections.f cdjseval3d.f \
+SRC = main.f fmm.f kernels.f hfmm3drouts.f \
+     h3dterms.f h3dtrans.f projections.f cdjseval3d.f \
      rotproj.f dfft.f d3tstrcr.f yrecursion.f\
      legeexps.f rotviarecur3.f
 

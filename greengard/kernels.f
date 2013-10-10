@@ -377,59 +377,7 @@ c     compute the potential and the field:
       fld(3) = -uz
       return
       end
-C***********************************************************************
-      subroutine h3dformmp_trunc(ier,zk,scale,sources,charge,ns,center,
-     1                  nterms,nterms1,mpole,wlege,nlege)
-C***********************************************************************
 
-C     Constructs multipole (h) expansion about CENTER due to NS sources 
-C     located at SOURCES(3,*).
-C
-c-----------------------------------------------------------------------
-C     INPUT:
-c
-C     zk              : Helmholtz parameter 
-C     scale           : the scaling factor.
-C     sources         : coordinates of sources
-C     charge          : source strengths
-C     ns              : number of sources
-C     center          : epxansion center
-C     nterms          : order of multipole expansion
-C     nterms1         : order of truncated expansion
-c     wlege  :    precomputed array of scaling coeffs for Pnm
-c     nlege  :    dimension parameter for wlege
-C
-c-----------------------------------------------------------------------
-C     OUTPUT:
-C
-c     ier             : error return code
-c     mpole           : coeffs of the h-expansion
-c-----------------------------------------------------------------------
-      implicit real *8 (a-h,o-z)
-      real *8 center(1),sources(3,ns)
-      complex *16 mpole(0:nterms,-nterms:nterms)
-      complex *16 eye,zk,charge(1)
-      data eye/(0.0d0,1.0d0)/
-      lwfjs=nterms+1000
-      do l = 0,nterms
-         do m=-l,l
-            mpole(l,m) = 0.0d0
-         enddo
-      enddo
-      ier = 0
-      do i = 1, ns
-         call h3dformmp_trunc1
-     1   (ier1,zk,scale,sources(1,i),charge(i),center,
-     1        nterms,nterms1,lwfjs,mpole,wlege,nlege)
-      enddo
-      if (ier1.ne.0) ier = ier1
-      do l = 0,nterms
-         do m=-l,l
-            mpole(l,m) = mpole(l,m)*eye*zk
-         enddo
-      enddo
-      return
-      end
 C***********************************************************************
       subroutine P2M2M
      $     (ier,zk,scale,sources,charge,ns,center,
@@ -464,23 +412,24 @@ c-----------------------------------------------------------------------
       real *8 center(1),sources(3,ns)
       real *8 scale
       complex *16 mpole(0:nterms,-nterms:nterms)
-      complex *16 eye,zk,charge(1)
+      complex *16 i1,zk,charge(1)
       complex *16, allocatable :: mptemp(:,:)
-      data eye/(0.0d0,1.0d0)/
-C----- set mpole to zero
-        allocate( mptemp(0:nterms,-nterms:nterms) )
-        do l = 0,nterms
-          do m=-l,l
-             mptemp(l,m) = 0
-          enddo
-        enddo
-        call h3dformmp_trunc
-     1     (ier,zk,scale,sources,charge,ns,center,
-     1     nterms,nterms1,mptemp,wlege,nlege)
-
+      data i1/(0.0d0,1.0d0)/
+      lwfjs=nterms+1000
+      allocate( mptemp(0:nterms,-nterms:nterms) )
       do l = 0,nterms
          do m=-l,l
-            mpole(l,m) = mpole(l,m)+mptemp(l,m)
+            mptemp(l,m) = 0
+         enddo
+      enddo
+      do i = 1, ns
+         call h3dformmp_trunc1
+     1        (ier,zk,scale,sources(1,i),charge(i),center,
+     1        nterms,nterms1,lwfjs,mptemp,wlege,nlege)
+      enddo
+      do l = 0,nterms
+         do m=-l,l
+            mpole(l,m) = mpole(l,m)+mptemp(l,m)*i1*zk
          enddo
       enddo
       return
