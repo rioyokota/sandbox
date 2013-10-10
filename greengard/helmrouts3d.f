@@ -175,49 +175,6 @@ c     hder(n)=scale* hvec(n-1) - (n+1)/z * hvec(n)
       return
       end
 c**********************************************************************
-      subroutine hpotfld3dall(sources,charge,ns,
-     1                   target,wavek,pot,fld)
-c**********************************************************************
-c     This subroutine calculates the potential POT and field FLD
-c     at the target point TARGET, due to a collection of charges at 
-c     SOURCE(3,ns). The scaling is that required of the delta function
-c     response: i.e.,
-c     
-c              	pot = exp(i*k*r)/r
-c		fld = -grad(pot)
-c---------------------------------------------------------------------
-c     INPUT:
-c     sources(3,*)  : location of the sources
-c     charge        : charge strengths
-c     ns            : number of sources
-c     target        : location of the target
-c     wavek         : helmholtz parameter
-c---------------------------------------------------------------------
-c     OUTPUT:
-c     pot   (real *8)        : calculated potential
-c     fld   (real *8)        : calculated gradient
-c---------------------------------------------------------------------
-      implicit real *8 (a-h,o-z)
-      real *8 sources(3,ns),target(3)
-      complex *16 wavek,pot,fld(3),potloc,fldloc(3)
-      complex *16 h0,h1,cd,eye,z,ewavek
-      complex *16 charge(ns)
-      data eye/(0.0d0,1.0d0)/
-      pot = 0.0d0
-      fld(1) = 0.0d0
-      fld(2) = 0.0d0
-      fld(3) = 0.0d0
-      do i = 1,ns
-         call P2P(sources(1,i),charge(i),target,wavek,
-     1        potloc,fldloc)
-         pot = pot + potloc
-         fld(1) = fld(1) + fldloc(1)
-         fld(2) = fld(2) + fldloc(2)
-         fld(3) = fld(3) + fldloc(3)
-      enddo
-      return
-      end
-c**********************************************************************
       subroutine P2P(source,charge,target,wavek,pot,fld)
       implicit none
 c**********************************************************************
@@ -241,18 +198,20 @@ c     fld       : calculated gradient
 c---------------------------------------------------------------------
       real *8 dx,dy,dz,R2,R
       real *8 source(3),target(3)
-      complex *16 i1,wavek,acc,charge(1),pot(1),fld(3)
+      complex *16 i1,wavek,coef1,coef2,charge(1),pot(1),fld(3)
       data i1/(0.0d0,1.0d0)/
       dx=target(1)-source(1)
       dy=target(2)-source(2)
       dz=target(3)-source(3)
       R2=dx*dx+dy*dy+dz*dz
+      if(R2.eq.0) return
       R=sqrt(R2)
-      pot=charge*cdexp(i1*wavek*R)/R
-      acc=(1-i1*wavek*R)*pot(1)/R2
-      fld(1)=acc*dx
-      fld(2)=acc*dy
-      fld(3)=acc*dz
+      coef1=charge(1)*cdexp(i1*wavek*R)/R
+      coef2=(1-i1*wavek*R)*coef1/R2
+      pot=pot+coef1
+      fld(1)=fld(1)+coef2*dx
+      fld(2)=fld(2)+coef2*dy
+      fld(3)=fld(3)+coef2*dz
       return
       end
 c**********************************************************************

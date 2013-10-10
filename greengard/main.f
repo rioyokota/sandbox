@@ -5,7 +5,6 @@
         complex *16 pot(1 000 000)
         complex *16 fld(3,1 000 000)
         complex *16 pot2,fld2(3)
-        complex *16 ptemp,ftemp(3)
         complex *16 ima
         complex *16 zk
         data ima/(0.0d0,1.0d0)/
@@ -34,7 +33,7 @@ c Direct
         fnorm = 0
         t1=omp_get_wtime()
 C$OMP PARALLEL DO DEFAULT(SHARED)
-C$OMP$PRIVATE(i,j,ptemp,ftemp,pot2,fld2)
+C$OMP$PRIVATE(i,j,pot2,fld2)
 C$OMP$REDUCTION(+:pdiff,pnorm,fdiff,fnorm)
         do i=1,min(nsource,100)
            pot2=0
@@ -43,12 +42,8 @@ C$OMP$REDUCTION(+:pdiff,pnorm,fdiff,fnorm)
            enddo
            do j=1,nsource       
               if( i .eq. j ) cycle
-                 call P2P(source(1,j),charge(j),
-     1              source(1,i),zk,ptemp,ftemp)
-                 pot2=pot2+ptemp
-                 fld2(1)=fld2(1)+ftemp(1)
-                 fld2(2)=fld2(2)+ftemp(2)
-                 fld2(3)=fld2(3)+ftemp(3)
+              call P2P(source(1,j),charge(j),
+     1             source(1,i),zk,pot2,fld2)
            enddo
            pdiff = pdiff+abs(pot(i)-pot2)**2
            pnorm = pnorm+abs(pot2)**2

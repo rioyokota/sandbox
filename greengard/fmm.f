@@ -260,7 +260,7 @@ c$OMP$SCHEDULE(DYNAMIC)
          call d3tnkids(box,nkids)
          if (nkids .eq. 0) then
 c     ... evaluate self interactions
-            call hfmm3dpart_direct_self(zk,box,sourcesort,
+            call hfmm3dpart_direct_targ(zk,box,box,sourcesort,
      1           chargesort,pot,fld)
 c     ... evaluate interactions with the nearest neighbours
             itype=1
@@ -281,28 +281,6 @@ c$OMP END PARALLEL DO
       return
       end
 
-      subroutine hfmm3dpart_direct_self(zk,box,
-     1     source,charge,pot,fld)
-      implicit real *8 (a-h,o-z)
-      integer box(20)
-      dimension source(3,1)
-      complex *16 charge(1),zk
-      complex *16 pot(1),fld(3,1)
-      complex *16 ptemp,ftemp(3)
-      do j=box(14),box(14)+box(15)-1
-         do i=box(14),box(14)+box(15)-1
-            if (i .eq. j) cycle
-            call P2P(source(1,i),charge(i),
-     1           source(1,j),zk,ptemp,ftemp)
-            pot(j)=pot(j)+ptemp
-            fld(1,j)=fld(1,j)+ftemp(1)
-            fld(2,j)=fld(2,j)+ftemp(2)
-            fld(3,j)=fld(3,j)+ftemp(3)
-         enddo
-      enddo
-      return
-      end
-
       subroutine hfmm3dpart_direct_targ(zk,box,box1,
      1     source,charge,pot,fld)
       implicit real *8 (a-h,o-z)
@@ -310,15 +288,10 @@ c$OMP END PARALLEL DO
       dimension source(3,1)
       complex *16 charge(1),zk
       complex *16 pot(1),fld(3,1)
-      complex *16 ptemp,ftemp(3)
       do j=box1(14),box1(14)+box1(15)-1
          do i=box(14),box(14)+box(15)-1
             call P2P(source(1,i),charge(i),source(1,j),zk,
-     1           ptemp,ftemp)
-            pot(j)=pot(j)+ptemp
-            fld(1,j)=fld(1,j)+ftemp(1)
-            fld(2,j)=fld(2,j)+ftemp(2)
-            fld(3,j)=fld(3,j)+ftemp(3)
+     1           pot(j),fld(1,j))
          enddo
       enddo
       return
