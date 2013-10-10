@@ -200,3 +200,109 @@ c       ... computational box is too big, set nterms to 1000
         nterms=1000
       return
       end
+
+c**********************************************************************
+      subroutine h3dall(nterms,z,scale,hvec,ifder,hder)
+c**********************************************************************
+c     This subroutine computes scaled versions of the spherical Hankel 
+c     functions h_n of orders 0 to nterms.
+c
+c       	hvec(n)= h_n(z)*scale^(n)
+c
+c     The parameter SCALE is useful when |z| < 1, in which case
+c     it damps out the rapid growth of h_n as n increases. In such 
+c     cases, we recommend setting 
+c                                 
+c               scale = |z|
+c
+c     or something close. If |z| > 1, set scale = 1.
+c
+c     If the flag IFDER is set to one, it also computes the 
+c     derivatives of h_n.
+c
+c		hder(n)= h_n'(z)*scale^(n)
+c
+c     NOTE: If |z| < 1.0d-15, the subroutine returns zero.
+c-----------------------------------------------------------------------
+c     INPUT:
+c     nterms  : highest order of the Hankel functions to be computed.
+c     z       : argument of the Hankel functions.
+c     scale   : scaling parameter discussed above
+c     ifder   : flag indcating whether derivatives should be computed.
+c		ifder = 1   ==> compute 
+c		ifder = 0   ==> do not compute
+c-----------------------------------------------------------------------
+c     OUTPUT:
+c     hvec    : the vector of spherical Hankel functions 
+c     hder    : the derivatives of the spherical Hankel functions 
+c-----------------------------------------------------------------------
+      implicit real *8 (a-h,o-z)
+      complex *16 hvec(0:nterms),hder(0:nterms)
+      complex *16 zk2,z,zinv,ztmp,fhextra
+      data thresh/1.0d-15/,done/1.0d0/
+c     If |z| < thresh, return zeros.
+      if (abs(z).lt.thresh) then
+         do i=0,nterms
+            hvec(i)=0
+            hder(i)=0
+         enddo
+         return
+      endif
+c     Otherwise, get h_0 and h_1 analytically and the rest via recursion.
+      call h3d01(z,hvec(0),hvec(1))
+      hvec(0)=hvec(0)
+      hvec(1)=hvec(1)*scale
+c     From Abramowitz and Stegun (10.1.19)
+c     h_{n+1}(z)=(2n+1)/z * h_n(z) - h_{n-1}(z)
+c     With scaling:
+c     hvec(n+1)=scale*(2n+1)/z * hvec(n) -(scale**2) hvec(n-1)
+      scal2=scale*scale
+      zinv=scale/z
+      do i=1,nterms-1
+	 dtmp=(2*i+done)
+	 ztmp=zinv*dtmp
+	 hvec(i+1)=ztmp*hvec(i)-scal2*hvec(i-1)
+      enddo
+c     From Abramowitz and Stegun (10.1.21)
+c     h_{n}'(z)= h_{n-1}(z) - (n+1)/z * h_n(z)
+c     With scaling:
+c     hder(n)=scale* hvec(n-1) - (n+1)/z * hvec(n)
+      if (ifder.eq.1) then
+	 hder(0)=-hvec(1)/scale
+         zinv=1.0d0/z
+         do i=1,nterms
+	    dtmp=(i+done)
+	    ztmp=zinv*dtmp
+	    hder(i)=scale*hvec(i-1)-ztmp*hvec(i)
+	 enddo
+      endif
+      return
+      end
+c**********************************************************************
+      subroutine h3d01(z,h0,h1)
+c**********************************************************************
+c     Compute spherical Hankel functions of order 0 and 1 
+c     h0(z)  =   exp(i*z)/(i*z),
+c     h1(z)  =   - h0' = -h0*(i-1/z) = h0*(1/z-i)
+c-----------------------------------------------------------------------
+c     INPUT:
+c	z   :  argument of Hankel functions
+c              if abs(z)<1.0d-15, returns zero.
+c-----------------------------------------------------------------------
+c     OUTPUT:
+c	h0  :  h0(z)    (spherical Hankel function of order 0).
+c	h1  :  -h0'(z)  (spherical Hankel function of order 1).
+c-----------------------------------------------------------------------
+      implicit real *8 (a-h,o-z)
+      complex *16 z,zinv,eye,cd,h0,h1
+      data eye/(0.0d0,1.0d0)/, thresh/1.0d-15/, done/1.0d0/
+      if (abs(z).lt.thresh) then
+         h0=0.0d0
+         h1=0.0d0
+         return
+      endif
+      cd = eye*z
+      h0=exp(cd)/cd
+      h1=h0*(done/z - eye)
+      return
+      end
