@@ -260,8 +260,8 @@ c$OMP$SCHEDULE(DYNAMIC)
          call d3tnkids(box,nkids)
          if (nkids .eq. 0) then
 c     ... evaluate self interactions
-            call hfmm3dpart_direct_targ(zk,box,box,sourcesort,
-     1           sourcesort,chargesort,pot,fld)
+            call hfmm3dpart_direct_targ(box,sourcesort,pot,fld,
+     1           box,sourcesort,chargesort,zk)
 c     ... evaluate interactions with the nearest neighbours
             itype=1
             call d3tgetl(ier,ibox,itype,list,nlist,wlists)
@@ -271,8 +271,8 @@ c     ... for all pairs in list #1, evaluate the potentials and fields directly
                call d3tgetb(ier,jbox,box1,center1,corners1,wlists)
 c     ... prune all sourceless boxes
                if( box1(15) .eq. 0 ) cycle
-               call hfmm3dpart_direct_targ(zk,box1,box,sourcesort,
-     1              sourcesort,chargesort,pot,fld)
+               call hfmm3dpart_direct_targ(box,sourcesort,pot,fld,
+     1              box1,sourcesort,chargesort,zk)
             enddo
          endif
       enddo
@@ -281,15 +281,15 @@ c$OMP END PARALLEL DO
       return
       end
 
-      subroutine hfmm3dpart_direct_targ(zk,box,box1,
-     1     target,source,charge,pot,fld)
+      subroutine hfmm3dpart_direct_targ(ibox,target,pot,fld,
+     1     jbox,source,charge,zk)
       implicit real *8 (a-h,o-z)
-      integer box(20),box1(20)
+      integer ibox(20),jbox(20)
       dimension target(3,1),source(3,1)
       complex *16 charge(1),zk
       complex *16 pot(1),fld(3,1)
-      do i=box1(14),box1(14)+box1(15)-1
-         do j=box(14),box(14)+box(15)-1
+      do i=ibox(14),ibox(14)+ibox(15)-1
+         do j=jbox(14),jbox(14)+jbox(15)-1
             call P2P(source(1,j),charge(j),target(1,i),zk,
      1           pot(i),fld(1,i))
          enddo

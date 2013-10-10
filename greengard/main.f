@@ -41,8 +41,8 @@ c Direct
         jbox(14) = 1
         jbox(15) = nsource
         t1=omp_get_wtime()
-        call hfmm3dpart_direct_targ(zk,jbox,ibox,source,source,charge,
-     1       pot2,fld2)
+        call hfmm3dpart_direct_targ(ibox,source,pot2,fld2,
+     1       jbox,source,charge,zk)
         t2=omp_get_wtime()
         print*,'Direct =',t2-t1
         pdiff = 0
