@@ -192,9 +192,9 @@ c     ... set all multipole and local expansions to zero
 
 c     ... step 1: P2M
       do ilev=3,nlev+1
-c     $OMP PARALLEL DO DEFAULT(SHARED)
-c     $OMP$PRIVATE(ibox,box,center0,corners0,level,npts,nkids,radius)
-c     $OMP$PRIVATE(lused,ier,i,j,ptemp,ftemp,cd) 
+c$OMP PARALLEL DO DEFAULT(SHARED)
+c$OMP$PRIVATE(ibox,box,center0,corners0,level,npts,nkids,radius)
+c$OMP$PRIVATE(lused,ier,i,j,ptemp,ftemp,cd) 
          do ibox=laddr(1,ilev),laddr(1,ilev)+laddr(2,ilev)-1
             call d3tgetb(ier,ibox,box,center0,corners0,wlists)
             call d3tnkids(box,nkids)
@@ -214,7 +214,7 @@ c     $OMP$PRIVATE(lused,ier,i,j,ptemp,ftemp,cd)
      1              rmlexp(iaddr(1,ibox)),wlege,nlege)
             endif
          enddo
-c     $OMP END PARALLEL DO
+c$OMP END PARALLEL DO
       enddo
 
       ifprune_list2 = 0
@@ -227,10 +227,10 @@ c     ... step 3, merge all multipole expansions
          nquad2=max(6,nquad2)
          ifinit2=1
          call legewhts(nquad2,xnodes2,wts2,ifinit2)
-C     $OMP PARALLEL DO DEFAULT(SHARED)
-C     $OMP$PRIVATE(ibox,box,center0,corners0,level0,level,npts,nkids,radius)
-C     $OMP$PRIVATE(jbox,box1,center1,corners1,level1)
-C     $OMP$PRIVATE(lused,ier,i,j,ptemp,ftemp,cd) 
+c$OMP PARALLEL DO DEFAULT(SHARED)
+c$OMP$PRIVATE(ibox,box,center0,corners0,level0,level,npts,nkids,radius)
+c$OMP$PRIVATE(jbox,box1,center1,corners1,level1)
+c$OMP$PRIVATE(lused,ier,i,j,ptemp,ftemp,cd) 
          do 2200 ibox=laddr(1,ilev),laddr(1,ilev)+laddr(2,ilev)-1
             call d3tgetb(ier,ibox,box,center0,corners0,wlists)
             call d3tnkids(box,nkids)
@@ -260,7 +260,7 @@ c     ... mark the local expansion of all kids and the parent
                endif
             endif
  2200    continue
-C     $OMP END PARALLEL DO
+c$OMP END PARALLEL DO
  2300 continue
 
 c     ... precompute rotation matrices, useful up to order 10 or so
@@ -300,12 +300,12 @@ c     ... step 4, convert multipole expansions into the local ones
          nquad2=max(6,nquad2)
          ifinit2=1
          call legewhts(nquad2,xnodes2,wts2,ifinit2)
-C     $OMP PARALLEL DO DEFAULT(SHARED)
-C     $OMP$PRIVATE(ibox,box,center0,corners0,list,nlist)
-C     $OMP$PRIVATE(jbox,box1,center1,corners1,level1,ifdirect2,radius)
-C     $OMP$PRIVATE(lused,ier,i,j,ptemp,ftemp,cd,ilist,itype)
-C     $OMP$PRIVATE(if_use_trunc,nterms_trunc,ii,jj,kk) 
-C     $OMP$SCHEDULE(DYNAMIC)
+c$OMP PARALLEL DO DEFAULT(SHARED)
+c$OMP$PRIVATE(ibox,box,center0,corners0,list,nlist)
+c$OMP$PRIVATE(jbox,box1,center1,corners1,level1,ifdirect2,radius)
+c$OMP$PRIVATE(lused,ier,i,j,ptemp,ftemp,cd,ilist,itype)
+c$OMP$PRIVATE(if_use_trunc,nterms_trunc,ii,jj,kk) 
+c$OMP$SCHEDULE(DYNAMIC)
          do 4200 ibox=laddr(1,ilev),laddr(1,ilev)+laddr(2,ilev)-1
             call d3tgetb(ier,ibox,box,center0,corners0,wlists)
             level0=box(1)
@@ -368,10 +368,10 @@ c     ... step 5, split all local expansions
          nquad2=max(6,nquad2)
          ifinit2=1
          call legewhts(nquad2,xnodes2,wts2,ifinit2)
-C     $OMP PARALLEL DO DEFAULT(SHARED)
-C     $OMP$PRIVATE(ibox,box,center0,corners0,level0,level,npts,nkids,radius)
-C     $OMP$PRIVATE(jbox,box1,center1,corners1,level1)
-C     $OMP$PRIVATE(lused,ier,i,j,ptemp,ftemp,cd) 
+c$OMP PARALLEL DO DEFAULT(SHARED)
+c$OMP$PRIVATE(ibox,box,center0,corners0,level0,level,npts,nkids,radius)
+c$OMP$PRIVATE(jbox,box1,center1,corners1,level1)
+c$OMP$PRIVATE(lused,ier,i,j,ptemp,ftemp,cd) 
          do 5200 ibox=laddr(1,ilev),laddr(1,ilev)+laddr(2,ilev)-1
             call d3tgetb(ier,ibox,box,center0,corners0,wlists)
             call d3tnkids(box,nkids)
@@ -397,12 +397,12 @@ c     ... split local expansion of the parent box
                endif
             endif
  5200    continue
-C     $OMP END PARALLEL DO
+c$OMP END PARALLEL DO
  5300 continue
 
 c     ... step 7: L2P
-c     $OMP PARALLEL DO DEFAULT(SHARED)
-c     $OMP$PRIVATE(ibox,box,center0,corners0,level,npts,nkids,ier)
+c$OMP PARALLEL DO DEFAULT(SHARED)
+c$OMP$PRIVATE(ibox,box,center0,corners0,level,npts,nkids,ier)
       do ibox=1,nboxes
          call d3tgetb(ier,ibox,box,center0,corners0,wlists)
          call d3tnkids(box,nkids)
@@ -420,13 +420,13 @@ c     $OMP$PRIVATE(ibox,box,center0,corners0,level,npts,nkids,ier)
             endif
          endif
       enddo
-c     $OMP END PARALLEL DO
+c$OMP END PARALLEL DO
 
 c     ... step 8: P2P
-c     $OMP PARALLEL DO DEFAULT(SHARED)
-c     $OMP$PRIVATE(ibox,box,center0,corners0,nkids,list,nlist,npts)
-c     $OMP$PRIVATE(jbox,box1,center1,corners1,ier,ilist,itype) 
-c     $OMP$SCHEDULE(DYNAMIC)
+c$OMP PARALLEL DO DEFAULT(SHARED)
+c$OMP$PRIVATE(ibox,box,center0,corners0,nkids,list,nlist,npts)
+c$OMP$PRIVATE(jbox,box1,center1,corners1,ier,ilist,itype) 
+c$OMP$SCHEDULE(DYNAMIC)
       do ibox=1,nboxes
          call d3tgetb(ier,ibox,box,center0,corners0,wlists)
          call d3tnkids(box,nkids)
@@ -448,6 +448,6 @@ c     ... prune all sourceless boxes
             enddo
          endif
       enddo
-c     $OMP END PARALLEL DO
+c$OMP END PARALLEL DO
       return
       end
