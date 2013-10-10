@@ -200,9 +200,7 @@ c     evaluation of normalized Legendre functions and their derivatives
       rat2(0,0)=1
       do m=0, nmax
 	 if (m.gt.0)  rat1(m,m)=sqrt((2*m-1.0d0)/(2*m))
-	 if (m.gt.0)  rat2(m,m)=1
 	 if (m.lt.nmax)  rat1(m+1,m)=sqrt(2*m+1.0d0)
-	 if (m.lt.nmax)  rat2(m+1,m)=1
 	 do n=m+2, nmax
 	    rat1(n,m)=(2*n-1)
             rat2(n,m)=sqrt((n+m-1.0d0)*(n-m-1.0d0))

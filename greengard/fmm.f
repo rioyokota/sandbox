@@ -194,9 +194,6 @@ c$OMP$PRIVATE(lused,ier,i,j,ptemp,ftemp,cd)
             call d3tnkids(box,nkids)
             level=box(1)
             lwfjs = nterms(level)+1000
-            if (nkids .eq. 0) then
-               npts=box(15)
-            endif
 c     ... prune all sourceless boxes
             if( box(15) .eq. 0 ) cycle
             if (nkids .eq. 0 ) then
@@ -208,7 +205,7 @@ c     ... form multipole expansions
                call h3dzero(rmlexp(iaddr(1,ibox)),nterms(level))
                if_use_trunc = 1
                call P2M2M(ier,zk,scale(level),
-     1              sourcesort(1,box(14)),chargesort(box(14)),npts,
+     1              sourcesort(1,box(14)),chargesort(box(14)),box(15),
      1              center0,nterms(level),nterms_eval(1,level),lwfjs,
      1              rmlexp(iaddr(1,ibox)),wlege,nlege)
             endif

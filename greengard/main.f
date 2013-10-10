@@ -11,11 +11,11 @@
         complex *16 zk
         data ima/(0.0d0,1.0d0)/
         pi=4*atan(1.0d0)
-        nsource= 100000
+        nsource= 20000
         zk = 1.0d0 + ima*0.1d0
         call random_number(source)
         print*,'nsource=',nsource
-        iprec=0
+        iprec=4
         print*,'iprec  =',iprec
         ifcharge=1
         do i=1,nsource

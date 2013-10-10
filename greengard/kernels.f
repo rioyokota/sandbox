@@ -412,7 +412,7 @@ c-----------------------------------------------------------------------
       integer iscale(0:lwfjs)
       real *8 r,theta,phi,ctheta,stheta,cphi,sphi,wlege,rscale,dtmp
       real *8 thresh
-      real *8 center(3),source(3,ns),zdiff(3)
+      real *8 center(3),source(3,ns),dX(3)
       real *8 pp(0:nterms,0:nterms)
       real *8 ppd(0:nterms,0:nterms)
       complex *16 charge(ns),i1,zk,z,ztmp,ephi1,ephi1inv
@@ -429,12 +429,12 @@ c-----------------------------------------------------------------------
          enddo
       enddo
       do i = 1, ns
-         zdiff(1)=source(1,i)-center(1)
-         zdiff(2)=source(2,i)-center(2)
-         zdiff(3)=source(3,i)-center(3)
-         call cart2polar(zdiff,r,theta,phi)
+         dX(1)=source(1,i)-center(1)
+         dX(2)=source(2,i)-center(2)
+         dX(3)=source(3,i)-center(3)
+         call cart2polar(dX,r,theta,phi)
          ctheta=dcos(theta)
-         stheta=sqrt(1.0d0-ctheta*ctheta)
+         stheta=dsin(theta)
          cphi=dcos(phi)
          sphi=dsin(phi)
          ephi1=dcmplx(cphi,sphi)
