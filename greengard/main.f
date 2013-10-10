@@ -5,8 +5,8 @@
         complex *16 charge(1000000)
         complex *16 pot(1000000)
         complex *16 fld(3,1000000)
-        complex *16 pot2(100)
-        complex *16 fld2(3,100)
+        complex *16 pot2(1000000)
+        complex *16 fld2(3,1000000)
         complex *16 ima
         complex *16 zk
         data ima/(0.0d0,1.0d0)/
@@ -41,8 +41,7 @@ c Direct
         jbox(14) = 1
         jbox(15) = nsource
         t1=omp_get_wtime()
-        call hfmm3dpart_direct_targ(ibox,source,pot2,fld2,
-     1       jbox,source,charge,zk)
+        call P2P(ibox,source,pot2,fld2,jbox,source,charge,zk)
         t2=omp_get_wtime()
         print*,'Direct =',t2-t1
         pdiff = 0

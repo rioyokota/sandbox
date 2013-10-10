@@ -174,9 +174,9 @@ c     hder(n)=scale* hvec(n-1) - (n+1)/z * hvec(n)
       endif
       return
       end
+
 c**********************************************************************
-      subroutine P2P(source,charge,target,wavek,pot,fld)
-      implicit none
+      subroutine P2P(ibox,target,pot,fld,jbox,source,charge,zk) 
 c**********************************************************************
 c     This subroutine calculates the potential POT and field FLD
 c     at the target point TARGET, due to a charge at 
@@ -190,28 +190,34 @@ c     INPUT:
 c     source    : location of the source 
 c     charge    : charge strength
 c     target    : location of the target
-c     wavek     : helmholtz parameter
+c     zk        : helmholtz parameter
 c---------------------------------------------------------------------
 c     OUTPUT:
 c     pot       : calculated potential
 c     fld       : calculated gradient
 c---------------------------------------------------------------------
-      real *8 dx,dy,dz,R2,R
-      real *8 source(3),target(3)
-      complex *16 i1,wavek,coef1,coef2,charge(1),pot(1),fld(3)
+      implicit none
+      integer i,j,ibox(20),jbox(20)
+      real *8 dx,dy,dz,R2,R,target(3,1000000),source(3,1000000)
+      complex *16 i1,zk,coef1,coef2
+      complex *16 charge(1000000),pot(1000000),fld(3,1000000)
       data i1/(0.0d0,1.0d0)/
-      dx=target(1)-source(1)
-      dy=target(2)-source(2)
-      dz=target(3)-source(3)
-      R2=dx*dx+dy*dy+dz*dz
-      if(R2.eq.0) return
-      R=sqrt(R2)
-      coef1=charge(1)*cdexp(i1*wavek*R)/R
-      coef2=(1-i1*wavek*R)*coef1/R2
-      pot=pot+coef1
-      fld(1)=fld(1)+coef2*dx
-      fld(2)=fld(2)+coef2*dy
-      fld(3)=fld(3)+coef2*dz
+      do i=ibox(14),ibox(14)+ibox(15)-1
+         do j=jbox(14),jbox(14)+jbox(15)-1
+            dx=target(1,i)-source(1,j)
+            dy=target(2,i)-source(2,j)
+            dz=target(3,i)-source(3,j)
+            R2=dx*dx+dy*dy+dz*dz
+            if(R2.eq.0) cycle
+            R=sqrt(R2)
+            coef1=charge(j)*cdexp(i1*zk*R)/R
+            coef2=(1-i1*zk*R)*coef1/R2
+            pot(i)=pot(i)+coef1
+            fld(1,i)=fld(1,i)+coef2*dx
+            fld(2,i)=fld(2,i)+coef2*dy
+            fld(3,i)=fld(3,i)+coef2*dz
+         enddo
+      enddo
       return
       end
 c**********************************************************************
@@ -427,7 +433,7 @@ C----- set mpole to zero
       return
       end
 C***********************************************************************
-      subroutine h3dformmp_add_trunc
+      subroutine P2M2M
      $     (ier,zk,scale,sources,charge,ns,center,
      1                  nterms,nterms1,mpole,wlege,nlege)
 C***********************************************************************
@@ -519,10 +525,7 @@ c-----------------------------------------------------------------------
       complex *16 charge
       ier=0
       lwfjs=nterms+1000
-      ipp=1
-      lpp=(nterms+1)**2+7
-      ippd = ipp + lpp
-      iephi=ippd+lpp
+      iephi=nterms
       lephi=2*(2*nterms+1)+7
       ifjder=iephi+lephi
       lfjder=2*(nterms+1)+7
@@ -534,24 +537,24 @@ c-----------------------------------------------------------------------
       allocate(w(lused))
       call h3dformmp_trunc0(jer,zk,rscale,source,charge,center,
      1   nterms,nterms1,
-     1		mpole,w(ipp),w(ippd),w(iephi),w(ifjs),lwfjs,
-     1          w(iiscale),w(ifjder),wlege,nlege)
+     1		mpole,lwfjs,
+     1          wlege,nlege)
       if (jer.ne.0) ier=16
       return
       end
 c**********************************************************************
       subroutine h3dformmp_trunc0(ier,zk,rscale,source,charge,center,
      1		nterms,nterms1,
-     1     mpole,pp,ppd,ephi,fjs,lwfjs,iscale,fjder,wlege,nlege)
+     1     mpole,lwfjs,wlege,nlege)
       implicit real *8 (a-h,o-z)
-      integer iscale(0:1)
+      integer iscale(0:lwfjs)
       real *8 source(3),center(3),zdiff(3)
       real *8 pp(0:nterms,0:nterms)
       real *8 ppd(0:nterms,0:nterms)
       complex *16 zk,mpole(0:nterms,-nterms:nterms)
       complex *16 charge
       complex *16 ephi(-nterms:nterms),ephi1,ephi1inv
-      complex *16 fjs(0:1),ztmp,fjder(0:1),z
+      complex *16 fjs(0:lwfjs),ztmp,fjder(0:lwfjs),z
       data thresh/1.0d-15/
       ier=0
       zdiff(1)=source(1)-center(1)

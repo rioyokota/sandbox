@@ -185,8 +185,7 @@ c     ... set all multipole and local expansions to zero
       enddo
 
       t1=omp_get_wtime()
-c     ... step 1, locate all charges, assign them to boxes, and
-c     form multipole expansions
+c     ... step 1: P2M & M2M
       do ilev=3,nlev+1
 c$OMP PARALLEL DO DEFAULT(SHARED)
 c$OMP$PRIVATE(ibox,box,center0,corners0,level,npts,nkids,radius)
@@ -208,7 +207,7 @@ c     ... form multipole expansions
                radius = sqrt(radius)
                call h3dzero(rmlexp(iaddr(1,ibox)),nterms(level))
                if_use_trunc = 1
-               call h3dformmp_add_trunc(ier,zk,scale(level),
+               call P2M2M(ier,zk,scale(level),
      1              sourcesort(1,box(14)),chargesort(box(14)),npts,
      1              center0,nterms(level),nterms_eval(1,level),
      1              rmlexp(iaddr(1,ibox)),wlege,nlege)
@@ -260,7 +259,7 @@ c$OMP$SCHEDULE(DYNAMIC)
          call d3tnkids(box,nkids)
          if (nkids .eq. 0) then
 c     ... evaluate self interactions
-            call hfmm3dpart_direct_targ(box,sourcesort,pot,fld,
+            call P2P(box,sourcesort,pot,fld,
      1           box,sourcesort,chargesort,zk)
 c     ... evaluate interactions with the nearest neighbours
             itype=1
@@ -271,28 +270,12 @@ c     ... for all pairs in list #1, evaluate the potentials and fields directly
                call d3tgetb(ier,jbox,box1,center1,corners1,wlists)
 c     ... prune all sourceless boxes
                if( box1(15) .eq. 0 ) cycle
-               call hfmm3dpart_direct_targ(box,sourcesort,pot,fld,
+               call P2P(box,sourcesort,pot,fld,
      1              box1,sourcesort,chargesort,zk)
             enddo
          endif
       enddo
 c$OMP END PARALLEL DO
       t2=omp_get_wtime()
-      return
-      end
-
-      subroutine hfmm3dpart_direct_targ(ibox,target,pot,fld,
-     1     jbox,source,charge,zk)
-      implicit real *8 (a-h,o-z)
-      integer ibox(20),jbox(20)
-      dimension target(3,1),source(3,1)
-      complex *16 charge(1),zk
-      complex *16 pot(1),fld(3,1)
-      do i=ibox(14),ibox(14)+ibox(15)-1
-         do j=jbox(14),jbox(14)+jbox(15)-1
-            call P2P(source(1,j),charge(j),target(1,i),zk,
-     1           pot(i),fld(1,i))
-         enddo
-      enddo
       return
       end

@@ -1,41 +1,9 @@
-cc Copyright (C) 2009: Leslie Greengard, Zydrunas Gimbutas, Vladimir Rokhlin
-cc Contact: greengard@cims.nyu.edu
-cc 
-cc This program is free software; you can redistribute it and/or modify 
-cc it under the terms of the GNU General Public License as published by 
-cc the Free Software Foundation; either version 2 of the License, or 
-cc (at your option) any later version.  This program is distributed in 
-cc the hope that it will be useful, but WITHOUT ANY WARRANTY; without 
-cc even the implied warranty of MERCHANTABILITY or FITNESS FOR A 
-cc PARTICULAR PURPOSE.  See the GNU General Public License for more 
-cc details. You should have received a copy of the GNU General Public 
-cc License along with this program; 
-cc if not, see <http://www.gnu.org/licenses/>.
-ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
-c
-c    $Date: 2011-09-08 19:16:01 -0400 (Thu, 08 Sep 2011) $
-c    $Revision: 2337 $
-c
-c
-ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
-c
-c
-c         this is the end of the debugging code and the beginning
-c         of the actual logic subroutines for the FMM in the space
-c
-c
-ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
-c
-c
-c
         subroutine d3tstrcr(ier,z,n,nbox,
      1    nboxes,iz,laddr,nlev,center,size,
      $    w,lw,lused777)
         implicit real *8 (a-h,o-z)
         integer iz(*),w(*),laddr(2,*)
         real *8 z(3,*),center(3),corners(3,8)
-ccc        save
-c
 c        this subroutine constructs the logical structure for the 
 c        fully adaptive FMM in three dimensions and stores it in the
 c        array w in the form of a link-list. after that, the user 
@@ -78,27 +46,6 @@ c  lw - the amount of memory in the array w (in integer elements)
 c
 c                            output parameters:
 c
-c  ier - error return code
-c    ier=0   means successful execution
-c    ier=16 means that the subroutine attempted to construct more 
-c        than 199 levels of subdivision; indicates bad trouble.
-c    ier=32  means that the amount lw of space in array w
-c                 is insufficient
-c    ier=64  means that the amount lw of space in array w
-c                 is severely insufficient
-c  nboxes - the total number of boxes created
-c  iz - the integer array addressing the particles in 
-c         all boxes. 
-c       explanation: for a box ibox, the particles living in
-c         it are:
-c
-c         (z(1,j),z(2,j),z(3,j)),(z(1,j+1),z(2,j+1),z(3,j+1)),
-c         (z(1,j+2),z(2,j+2),z(3,j+3)), . . . 
-c         (z(1,j+nj-1),z(2,j+nj-1),z(3,j+nj-1)),
-c         (z(1,j+nj),z(2,j+nj),z(3,j+nj)),
-c
-c         with j=boxes(14,ibox), and nj=boxes(15,ibox)
-c        
 c  laddr - an integer array dimensioned (2,nlev), describing the
 c         numbers of boxes on various levels of sybdivision, so that
 c         the first box on level (i-1) has sequence number laddr(1,i),
@@ -118,24 +65,6 @@ c         (see below). the first lused 777 integer locations of
 c         this array should not be altered between the call to this
 c         entry and subsequent calls to the entries d3tgetb, d3tgetl,
 c         d3tlinfo, of this  subroutine 
-c        
-c  lused777 - the amount of space in the array w (in integer words)
-c        that is occupied by various tables on exit from this 
-c        subroutine. this space should not be altered between the
-c        call to this entry and subsequent calls to entries d3tgetb,
-c        d3tgetl, d3tlinfo, of this  subroutine (see below).
-c  
-c        . . . construct the oct-tree structure for the user-specified 
-c              set of points
-c
-c       size of real *8 must not exceed the size of two integers
-c
-        if( n .lt. 1 ) then
-c       number of particles less than one, abort
-        ier=128
-        return
-        endif
-c
         ier=0
 c
         ninire=2
@@ -149,19 +78,11 @@ c
         iboxes=iiwork+liwork
         lboxes=lw-liwork-5
         maxboxes=lboxes/20-1
-c
-c
-c        if the memory is insufficient - bomb
-c
-        if( lw .lt. 45*n ) then
-        ier=64
-        return
-        endif
-c
+
 c	 initialize the sorting index 
 c
         do i=1,n
-	iz(i)=i
+           iz(i)=i
 	enddo
 
         ifempty=0
@@ -170,19 +91,7 @@ c
         call d3tallbem(ier,z,n,nbox,w(iboxes),maxboxes,
      1    nboxes,iz,laddr,nlev,center,size,w(iiwork),
      $     ifempty,minlevel,maxlevel)
-c
-ccc        call d3tallb(ier,z,n,nbox,w(iboxes),maxboxes,
-ccc     1    nboxes,iz,laddr,nlev,center,size,w(iiwork) )
-c
-c        if the memory is insufficient - bomb
-c
-        if(ier .eq. 0) goto 1100
-        if(ier .eq. 4) ier=32
-        return
- 1100 continue
-c
 c       compress the array w
-c   
         nn=nboxes*20
         do 1200 i=1,nn
         w(iiwork+i-1)=w(iboxes+i-1)
