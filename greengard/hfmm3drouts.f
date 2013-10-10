@@ -41,8 +41,8 @@ c       ... construct the adaptive FMM oct-tree structure
      $     wlists,mptemp,lmptemp,xnodes,wts,nquad,
      $     ifprune_list2)
         implicit real *8 (a-h,o-z)
-        integer iaddr(2,1),laddr(2,1),nterms(0:1)
-        dimension rmlexp(1),scale(0:1),itable(-3:3,-3:3,-3:3)
+        integer iaddr(2,1),laddr(2,1),nterms(0:200)
+        dimension rmlexp(1),scale(0:200),itable(-3:3,-3:3,-3:3)
         integer list(10 000)
         integer box(20)
         dimension bsize(0:200)
@@ -64,7 +64,6 @@ c       ... construct the adaptive FMM oct-tree structure
         max_nodes = 10000
         allocate( xnodes2(max_nodes) )
         allocate( wts2(max_nodes) )
-        t1=omp_get_wtime()
 c       ... step 3, merge all multipole expansions
          do 2300 ilev=nlev,3,-1
         nquad2=nterms(ilev-1)*2.5
@@ -106,9 +105,7 @@ c       ... mark the local expansion of all kids and the parent
  2200    continue
 C$OMP END PARALLEL DO
  2300    continue
-        t2=omp_get_wtime()
 
-        t1=omp_get_wtime()
 c       ... precompute rotation matrices, useful up to order 10 or so
 c       (approximately 30kB of storage for ldm=10)
 c       (approximately 40MB of storage for ldm=30)
@@ -203,9 +200,7 @@ c       ... if source is childless, evaluate directly (if cheaper)
  4200   continue
  4300   continue
 c
-        t2=omp_get_wtime()
 
-        t1=omp_get_wtime()
 c       ... step 5, split all local expansions
         do 5300 ilev=3,nlev
         nquad2=nterms(ilev-1)*2
@@ -243,7 +238,6 @@ c       ... split local expansion of the parent box
  5200   continue
 C$OMP END PARALLEL DO
  5300   continue
-        t2=omp_get_wtime()
         return
         end
 
@@ -297,7 +291,7 @@ C$OMP END PARALLEL DO
         subroutine h3dmpalloc(wlists,iaddr,nboxes,lmptot,nterms)
         implicit real *8 (a-h,o-z)
         integer box(20)
-        dimension nterms(0:1)
+        dimension nterms(0:200)
         dimension iaddr(2,nboxes)
         dimension center0(3),corners0(3,8)
         dimension wlists(1)

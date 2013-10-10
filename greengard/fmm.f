@@ -184,7 +184,6 @@ c     ... set all multipole and local expansions to zero
          call h3dzero(rmlexp(iaddr(2,ibox)),nterms(level))
       enddo
 
-      t1=omp_get_wtime()
 c     ... step 1: P2M & M2M
       do ilev=3,nlev+1
 c$OMP PARALLEL DO DEFAULT(SHARED)
@@ -215,7 +214,6 @@ c     ... form multipole expansions
          enddo
 c$OMP END PARALLEL DO
       enddo
-      t2=omp_get_wtime()
 
       ifprune_list2 = 0
       call hfmm3d_list2
@@ -223,7 +221,6 @@ c$OMP END PARALLEL DO
      1     wlists,mptemp,lmptemp,xnodes,wts,nquad,
      1     ifprune_list2)
 
-      t1=omp_get_wtime()
 c     ... step 7, evaluate local expansions and all fields directly
 c$OMP PARALLEL DO DEFAULT(SHARED)
 c$OMP$PRIVATE(ibox,box,center0,corners0,level,npts,nkids,ier)
@@ -245,9 +242,7 @@ c$OMP$PRIVATE(ibox,box,center0,corners0,level,npts,nkids,ier)
          endif
       enddo
 c$OMP END PARALLEL DO
-      t2=omp_get_wtime()
 
-      t1=omp_get_wtime()
 c     ... step 8, evaluate direct interactions 
 c$OMP PARALLEL DO DEFAULT(SHARED)
 c$OMP$PRIVATE(ibox,box,center0,corners0,nkids,list,nlist,npts)
@@ -276,6 +271,5 @@ c     ... prune all sourceless boxes
          endif
       enddo
 c$OMP END PARALLEL DO
-      t2=omp_get_wtime()
       return
       end

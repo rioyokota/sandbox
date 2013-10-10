@@ -22,11 +22,11 @@
            charge(i)=source(1,i)+ima*source(2,i)
         enddo
 c FMM
-        t1=omp_get_wtime()
+c$      t1=omp_get_wtime()
         call fmm(ier,iprec, zk,
      1     nsource,source,ifcharge,charge,
      1     pot,fld)
-        t2=omp_get_wtime()
+c$      t2=omp_get_wtime()
         print*,'FMM    =',t2-t1
 c Direct
         ntarget = min(nsource,100)
@@ -40,9 +40,9 @@ c Direct
         ibox(15) = ntarget
         jbox(14) = 1
         jbox(15) = nsource
-        t1=omp_get_wtime()
+c$      t1=omp_get_wtime()
         call P2P(ibox,source,pot2,fld2,jbox,source,charge,zk)
-        t2=omp_get_wtime()
+c$      t2=omp_get_wtime()
         print*,'Direct =',t2-t1
         pdiff = 0
         pnorm = 0

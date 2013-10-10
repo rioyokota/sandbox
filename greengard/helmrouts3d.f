@@ -133,7 +133,7 @@ c     hvec    : the vector of spherical Hankel functions
 c     hder    : the derivatives of the spherical Hankel functions 
 c-----------------------------------------------------------------------
       implicit real *8 (a-h,o-z)
-      complex *16 hvec(0:1),hder(0:1)
+      complex *16 hvec(0:nterms),hder(0:nterms)
       complex *16 zk2,z,zinv,ztmp,fhextra
       data thresh/1.0d-15/,done/1.0d0/
 c     If |z| < thresh, return zeros.
@@ -520,32 +520,16 @@ c-----------------------------------------------------------------------
       implicit real *8 (a-h,o-z)
       integer lwfjs
       real *8 source(3),center(3)
-      real *8, allocatable :: w(:)
       complex *16 zk,mpole(0:nterms,-nterms:nterms)
       complex *16 charge
-      ier=0
       lwfjs=nterms+1000
-      iephi=nterms
-      lephi=2*(2*nterms+1)+7
-      ifjder=iephi+lephi
-      lfjder=2*(nterms+1)+7
-      ifjs=ifjder+lfjder
-      lfjs=2*(lwfjs+1)+7
-      iiscale=ifjs+lfjs
-      liscale=(lwfjs+1)+7
-      lused=iiscale+liscale
-      allocate(w(lused))
-      call h3dformmp_trunc0(jer,zk,rscale,source,charge,center,
-     1   nterms,nterms1,
-     1		mpole,lwfjs,
-     1          wlege,nlege)
-      if (jer.ne.0) ier=16
+      call h3dformmp_trunc0(ier,zk,rscale,source,charge,center,
+     1   nterms,nterms1,mpole,lwfjs,wlege,nlege)
       return
       end
 c**********************************************************************
       subroutine h3dformmp_trunc0(ier,zk,rscale,source,charge,center,
-     1		nterms,nterms1,
-     1     mpole,lwfjs,wlege,nlege)
+     1		nterms,nterms1,mpole,lwfjs,wlege,nlege)
       implicit real *8 (a-h,o-z)
       integer iscale(0:lwfjs)
       real *8 source(3),center(3),zdiff(3)
@@ -553,7 +537,7 @@ c**********************************************************************
       real *8 ppd(0:nterms,0:nterms)
       complex *16 zk,mpole(0:nterms,-nterms:nterms)
       complex *16 charge
-      complex *16 ephi(-nterms:nterms),ephi1,ephi1inv
+      complex *16 ephi(-nterms-1:nterms+1),ephi1,ephi1inv
       complex *16 fjs(0:lwfjs),ztmp,fjder(0:lwfjs),z
       data thresh/1.0d-15/
       ier=0
