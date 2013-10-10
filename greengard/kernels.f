@@ -380,8 +380,8 @@ c     compute the potential and the field:
 
 C***********************************************************************
       subroutine P2M2M
-     $     (ier,zk,scale,sources,charge,ns,center,
-     1                  nterms,nterms1,mpole,wlege,nlege)
+     1     (ier,zk,rscale,source,charge,ns,center,
+     1     nterms,nterms1,mpole,wlege,nlege)
 C***********************************************************************
 C
 C     Constructs multipole (h) expansion about CENTER due to NS sources 
@@ -407,47 +407,46 @@ C
 c     ier             : error return code
 c     mpole           : coeffs of the h-expansion
 c-----------------------------------------------------------------------
-      implicit real *8 (a-h,o-z)
-      integer nterms,ns,i,l,m, ier, ier1, lused
-      real *8 center(1),sources(3,ns)
-      real *8 scale
+      implicit none
+      integer nterms,nterms1,ns,i,l,m,ier,lused,lwfjs,nlege
+      real *8 center(3),source(3,ns)
+      real *8 rscale,thresh,wlege
       complex *16 mpole(0:nterms,-nterms:nterms)
+      complex *16 mtemp(0:nterms,-nterms:nterms)
       complex *16 i1,zk,charge(1)
-      complex *16, allocatable :: mptemp(:,:)
       data i1/(0.0d0,1.0d0)/
+      data thresh/1.0d-15/
+      ier=0
       lwfjs=nterms+1000
-      allocate( mptemp(0:nterms,-nterms:nterms) )
       do l = 0,nterms
          do m=-l,l
-            mptemp(l,m) = 0
+            mtemp(l,m) = 0
          enddo
       enddo
       do i = 1, ns
          call h3dformmp_trunc1
-     1        (ier,zk,scale,sources(1,i),charge(i),center,
-     1        nterms,nterms1,lwfjs,mptemp,wlege,nlege)
+     1        (ier,zk,rscale,source(1,i),charge(i),center,
+     1        nterms,nterms1,lwfjs,mtemp,wlege,nlege)
       enddo
       do l = 0,nterms
          do m=-l,l
-            mpole(l,m) = mpole(l,m)+mptemp(l,m)*i1*zk
+            mpole(l,m) = mpole(l,m)+mtemp(l,m)*i1*zk
          enddo
       enddo
       return
       end
 
       subroutine h3dformmp_trunc1(ier,zk,rscale,source,charge,center,
-     1		nterms,nterms1,lwfjs,mpole,wlege,nlege)
+     1		nterms,nterms1,lwfjs,mtemp,wlege,nlege)
       implicit real *8 (a-h,o-z)
       integer iscale(0:lwfjs)
       real *8 source(3),center(3),zdiff(3)
       real *8 pp(0:nterms,0:nterms)
       real *8 ppd(0:nterms,0:nterms)
-      complex *16 zk,mpole(0:nterms,-nterms:nterms)
+      complex *16 zk,mtemp(0:nterms,-nterms:nterms)
       complex *16 charge
       complex *16 ephi(-nterms-1:nterms+1),ephi1,ephi1inv
       complex *16 fjs(0:lwfjs),ztmp,fjder(0:lwfjs),z
-      data thresh/1.0d-15/
-      ier=0
       zdiff(1)=source(1)-center(1)
       zdiff(2)=source(2)-center(2)
       zdiff(3)=source(3)-center(3)
@@ -457,7 +456,6 @@ c-----------------------------------------------------------------------
       cphi = dcos(phi)
       sphi = dsin(phi)
       ephi1 = dcmplx(cphi,sphi)
-c     compute exp(eye*m*phi) array
       ephi(0)=1.0d0
       ephi(1)=ephi1
       ephi(-1)=dconjg(ephi1)
@@ -465,25 +463,22 @@ c     compute exp(eye*m*phi) array
          ephi(i)=ephi(i-1)*ephi1
          ephi(-i)=ephi(-i+1)*ephi(-1)
       enddo
-c     get the associated Legendre functions:
       call ylgndrfw(nterms1,ctheta,pp,wlege,nlege)
-c     get Bessel functions:
       ifder=0
       z=zk*r
       call jfuns3d(jer,nterms1,z,rscale,fjs,ifder,fjder,
      1	      lwfjs,iscale,ntop)
-c     multiply all jn by charge strength.
       do n = 0,nterms1
          fjs(n) = fjs(n)*charge
       enddo
-      mpole(0,0)= mpole(0,0) + fjs(0)
+      mtemp(0,0)= mtemp(0,0) + fjs(0)
       do n=1,nterms1
          dtmp=pp(n,0)
-         mpole(n,0)= mpole(n,0) + dtmp*fjs(n)
+         mtemp(n,0)= mtemp(n,0) + dtmp*fjs(n)
          do m=1,n
             ztmp=pp(n,m)*fjs(n)
-            mpole(n, m)= mpole(n, m) + ztmp*dconjg(ephi(m))
-            mpole(n,-m)= mpole(n,-m) + ztmp*dconjg(ephi(-m))
+            mtemp(n, m)= mtemp(n, m) + ztmp*dconjg(ephi(m))
+            mtemp(n,-m)= mtemp(n,-m) + ztmp*dconjg(ephi(-m))
          enddo
       enddo
       return
