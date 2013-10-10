@@ -193,6 +193,7 @@ c$OMP$PRIVATE(lused,ier,i,j,ptemp,ftemp,cd)
             call d3tgetb(ier,ibox,box,center0,corners0,wlists)
             call d3tnkids(box,nkids)
             level=box(1)
+            lwfjs = nterms(level)+1000
             if (nkids .eq. 0) then
                npts=box(15)
             endif
@@ -208,7 +209,7 @@ c     ... form multipole expansions
                if_use_trunc = 1
                call P2M2M(ier,zk,scale(level),
      1              sourcesort(1,box(14)),chargesort(box(14)),npts,
-     1              center0,nterms(level),nterms_eval(1,level),
+     1              center0,nterms(level),nterms_eval(1,level),lwfjs,
      1              rmlexp(iaddr(1,ibox)),wlege,nlege)
             endif
          enddo
