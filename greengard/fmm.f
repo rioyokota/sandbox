@@ -204,7 +204,7 @@ c     ... form multipole expansions
                radius = sqrt(radius)
                call h3dzero(rmlexp(iaddr(1,ibox)),nterms(level))
                if_use_trunc = 1
-               call P2M2M(ier,zk,scale(level),
+               call P2M(ier,zk,scale(level),
      1              sourcesort(1,box(14)),chargesort(box(14)),box(15),
      1              center0,nterms(level),nterms_eval(1,level),lwfjs,
      1              rmlexp(iaddr(1,ibox)),wlege,nlege)
@@ -228,10 +228,11 @@ c$OMP$PRIVATE(ibox,box,center0,corners0,level,npts,nkids,ier)
          if (nkids .eq. 0) then
             level=box(1)
             npts=box(15)
+            lwfjs = nterms(level)+1000
             if (level .ge. 2) then
-               call h3dtaevalall_trunc(zk,scale(level),center0,
+               call L2P(zk,scale(level),center0,
      1              rmlexp(iaddr(2,ibox)),
-     1              nterms(level),nterms_eval(1,level),
+     1              nterms(level),nterms_eval(1,level),lwfjs,
      1              sourcesort(1,box(14)),box(15),
      1              pot(box(14)),
      1              fld(1,box(14)),
