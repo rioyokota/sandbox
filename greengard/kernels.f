@@ -485,36 +485,9 @@ C----- set mpole to zero
       enddo
       return
       end
-c**********************************************************************
+
       subroutine h3dformmp_trunc1(ier,zk,rscale,source,charge,center,
      1		nterms,nterms1,lwfjs,mpole,wlege,nlege)
-c**********************************************************************
-c
-c     This subroutine creates the h-expansion about CENTER
-c     due to a charge located at the point SOURCE.
-c     This is the memory management routine. Work is done in the
-c     secondary call to h3dformmp0 below.
-c
-c-----------------------------------------------------------------------
-c     INPUT:
-c
-c     zk      : the Helmholtz coefficient
-c     rscale  : scaling parameter
-c     source  : coordinates of the charge
-c     charge  : complex charge strength
-c     center  : coordinates of the expansion center
-c     nterms  : order of the h-expansion
-C     nterms1 : order of truncated expansion
-c     wlege   :    precomputed array of scaling coeffs for Pnm
-c     nlege   :    dimension parameter for wlege
-c-----------------------------------------------------------------------
-c     OUTPUT:
-c
-c     ier     : error return code
-c     mpole   : coeffs of the h-expansion
-c     NOTE: Parameter lwfjs is set to nterms+1000
-c           Should be sufficient for any Helmholtz parameter
-c-----------------------------------------------------------------------
       implicit real *8 (a-h,o-z)
       integer iscale(0:lwfjs)
       real *8 source(3),center(3),zdiff(3)
