@@ -261,7 +261,7 @@ c$OMP$SCHEDULE(DYNAMIC)
          if (nkids .eq. 0) then
 c     ... evaluate self interactions
             call hfmm3dpart_direct_targ(zk,box,box,sourcesort,
-     1           chargesort,pot,fld)
+     1           sourcesort,chargesort,pot,fld)
 c     ... evaluate interactions with the nearest neighbours
             itype=1
             call d3tgetl(ier,ibox,itype,list,nlist,wlists)
@@ -272,7 +272,7 @@ c     ... for all pairs in list #1, evaluate the potentials and fields directly
 c     ... prune all sourceless boxes
                if( box1(15) .eq. 0 ) cycle
                call hfmm3dpart_direct_targ(zk,box1,box,sourcesort,
-     1              chargesort,pot,fld)
+     1              sourcesort,chargesort,pot,fld)
             enddo
          endif
       enddo
@@ -282,16 +282,16 @@ c$OMP END PARALLEL DO
       end
 
       subroutine hfmm3dpart_direct_targ(zk,box,box1,
-     1     source,charge,pot,fld)
+     1     target,source,charge,pot,fld)
       implicit real *8 (a-h,o-z)
       integer box(20),box1(20)
-      dimension source(3,1)
+      dimension target(3,1),source(3,1)
       complex *16 charge(1),zk
       complex *16 pot(1),fld(3,1)
-      do j=box1(14),box1(14)+box1(15)-1
-         do i=box(14),box(14)+box(15)-1
-            call P2P(source(1,i),charge(i),source(1,j),zk,
-     1           pot(j),fld(1,j))
+      do i=box1(14),box1(14)+box1(15)-1
+         do j=box(14),box(14)+box(15)-1
+            call P2P(source(1,j),charge(j),target(1,i),zk,
+     1           pot(i),fld(1,i))
          enddo
       enddo
       return
