@@ -406,13 +406,11 @@ c     ier             : error return code
 c     mpole           : coeffs of the h-expansion
 c-----------------------------------------------------------------------
       implicit real *8 (a-h,o-z)
-      integer nterms,ns,i,l,m, ier, ier1, lused
       real *8 center(1),sources(3,ns)
-      real *8 scale
       complex *16 mpole(0:nterms,-nterms:nterms)
       complex *16 eye,zk,charge(1)
       data eye/(0.0d0,1.0d0)/
-C----- set mpole to zero
+      lwfjs=nterms+1000
       do l = 0,nterms
          do m=-l,l
             mpole(l,m) = 0.0d0
@@ -422,7 +420,7 @@ C----- set mpole to zero
       do i = 1, ns
          call h3dformmp_trunc1
      1   (ier1,zk,scale,sources(1,i),charge(i),center,
-     1        nterms,nterms1,mpole,wlege,nlege)
+     1        nterms,nterms1,lwfjs,mpole,wlege,nlege)
       enddo
       if (ier1.ne.0) ier = ier1
       do l = 0,nterms
@@ -489,7 +487,7 @@ C----- set mpole to zero
       end
 c**********************************************************************
       subroutine h3dformmp_trunc1(ier,zk,rscale,source,charge,center,
-     1		nterms,nterms1,mpole,wlege,nlege)
+     1		nterms,nterms1,lwfjs,mpole,wlege,nlege)
 c**********************************************************************
 c
 c     This subroutine creates the h-expansion about CENTER
@@ -517,19 +515,6 @@ c     mpole   : coeffs of the h-expansion
 c     NOTE: Parameter lwfjs is set to nterms+1000
 c           Should be sufficient for any Helmholtz parameter
 c-----------------------------------------------------------------------
-      implicit real *8 (a-h,o-z)
-      integer lwfjs
-      real *8 source(3),center(3)
-      complex *16 zk,mpole(0:nterms,-nterms:nterms)
-      complex *16 charge
-      lwfjs=nterms+1000
-      call h3dformmp_trunc0(ier,zk,rscale,source,charge,center,
-     1   nterms,nterms1,mpole,lwfjs,wlege,nlege)
-      return
-      end
-c**********************************************************************
-      subroutine h3dformmp_trunc0(ier,zk,rscale,source,charge,center,
-     1		nterms,nterms1,mpole,lwfjs,wlege,nlege)
       implicit real *8 (a-h,o-z)
       integer iscale(0:lwfjs)
       real *8 source(3),center(3),zdiff(3)

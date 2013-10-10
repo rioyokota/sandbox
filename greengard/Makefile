@@ -1,4 +1,5 @@
 FC=ifort -O3 -fopenmp
+#FC=ifort -check -traceback
 MAKEFLAGS += --no-print-directory
 
 .f.o:
