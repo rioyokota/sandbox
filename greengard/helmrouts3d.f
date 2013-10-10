@@ -554,29 +554,6 @@ c     multiply all jn by charge strength.
       do n = 0,nterms1
          fjs(n) = fjs(n)*charge
       enddo
-      if (jer.ne.0) then
-	 ier=16
-	 return
-      endif
-c     Compute contribution to mpole coefficients.
-c
-c     Recall that there are multiple definitions of scaling for
-c     Ylm. Using our standard definition, 
-c     the addition theorem takes the simple form 
-c
-c        e^( i k r}/r = 
-c         (ik) \sum_n \sum_m  j_n(k|S|) Ylm*(S) h_n(k|T|)Ylm(T)
-c
-c     so contribution is j_n(k|S|) times
-c   
-c       Ylm*(S)  = P_l,m * dconjg(ephi(m))               for m > 0   
-c       Yl,m*(S)  = P_l,|m| * dconjg(ephi(m))            for m < 0
-c                   
-c       where P_l,m is the scaled associated Legendre function.
-c
-c     The factor (i*k) is taken care of after all source contributions
-c     have been included in the calling subroutine h3dformmp.
-c
       mpole(0,0)= mpole(0,0) + fjs(0)
       do n=1,nterms1
          dtmp=pp(n,0)
