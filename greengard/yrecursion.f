@@ -22,39 +22,6 @@ c     Ynm(x) = sqrt(2n+1)  sqrt( (n-m)!/ (n+m)! ) Pnm(x)
       return
       end
 
-      subroutine ylgndr2(nmax, x, y, d)
-      implicit none
-c      Ynm(x) = sqrt(2n+1)  sqrt( (n-m)!/ (n+m)! ) Pnm(x)
-c      d Ynm(x) / dx = sqrt(2n+1)  sqrt( (n-m)!/ (n+m)! ) d Pnm(x) / dx
-      integer nmax, m, n
-      real *8 x, y(0:nmax,0:nmax), d(0:nmax,0:nmax), u, du
-      u=-sqrt((1-x)*(1+x))
-      du=x/sqrt((1-x)*(1+x))
-      y(0,0)=1
-      d(0,0)=0
-      do m=0, nmax
-	 if (m.gt.0)  y(m,m)=y(m-1,m-1)*u*sqrt((2*m-1.0d0)/(2*m))
-	 if (m.gt.0)  d(m,m)=y(m,m)*(-m)*x/u**2
-	 if (m.lt.nmax)  y(m+1,m)=x*y(m,m)*sqrt(2*m+1.0d0)
-	 if (m.lt.nmax)  d(m+1,m)=(x*d(m,m)+y(m,m))*sqrt(2*m+1.0d0)
-	 do n=m+2, nmax
-	    y(n,m)=((2*n-1)*x*y(n-1,m) - 
-     1               sqrt((n+m-1.0d0)*(n-m-1.0d0))*y(n-2,m))
-     2               /sqrt((n-m+0.0d0)*(n+m))
-	    d(n,m)=((2*n-1)*(x*d(n-1,m)+y(n-1,m)) - 
-     1               sqrt((n+m-1.0d0)*(n-m-1.0d0))*d(n-2,m))
-     2               /sqrt((n-m+0.0d0)*(n+m))
-         enddo
-      enddo
-      do n=0, nmax
-	 do m=0, n
-	    y(n,m)=y(n,m)*sqrt(2*n+1.0d0)
-	    d(n,m)=d(n,m)*sqrt(2*n+1.0d0)
-         enddo
-      enddo
-      return
-      end
-
       subroutine ylgndr2s(nmax, x, y, d)
       implicit none
 c      Ynm(x) = sqrt(2n+1)  sqrt( (n-m)!/ (n+m)! ) Pnm(x)
