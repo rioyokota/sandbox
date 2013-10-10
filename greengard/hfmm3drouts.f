@@ -38,7 +38,7 @@ c       ... construct the adaptive FMM oct-tree structure
 
         subroutine hfmm3d_list2
      $     (zk,bsize,nlev,laddr,scale,nterms,rmlexp,iaddr,epsfmm,
-     $     timeinfo,wlists,mptemp,lmptemp,xnodes,wts,nquad,
+     $     wlists,mptemp,lmptemp,xnodes,wts,nquad,
      $     ifprune_list2)
         implicit real *8 (a-h,o-z)
         integer iaddr(2,1),laddr(2,1),nterms(0:1)
@@ -60,7 +60,6 @@ c       ... construct the adaptive FMM oct-tree structure
         real *8, allocatable :: rotmatb(:,:,:,:)
         real *8, allocatable :: thetas(:,:,:)
         real *8 rvec(3)
-        dimension timeinfo(10)
         real *8, allocatable :: xnodes2(:), wts2(:)
         max_nodes = 10000
         allocate( xnodes2(max_nodes) )
@@ -108,7 +107,6 @@ c       ... mark the local expansion of all kids and the parent
 C$OMP END PARALLEL DO
  2300    continue
         t2=omp_get_wtime()
-        timeinfo(3)=t2-t1
 
         t1=omp_get_wtime()
 c       ... precompute rotation matrices, useful up to order 10 or so
@@ -206,7 +204,6 @@ c       ... if source is childless, evaluate directly (if cheaper)
  4300   continue
 c
         t2=omp_get_wtime()
-        timeinfo(4)=t2-t1
 
         t1=omp_get_wtime()
 c       ... step 5, split all local expansions
@@ -247,7 +244,6 @@ c       ... split local expansion of the parent box
 C$OMP END PARALLEL DO
  5300   continue
         t2=omp_get_wtime()
-        timeinfo(5)=t2-t1
         return
         end
 

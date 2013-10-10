@@ -208,7 +208,7 @@ c---------------------------------------------------------------------
       fld(2) = 0.0d0
       fld(3) = 0.0d0
       do i = 1,ns
-         call hpotfld3d(sources(1,i),charge(i),target,wavek,
+         call P2P(sources(1,i),charge(i),target,wavek,
      1        potloc,fldloc)
          pot = pot + potloc
          fld(1) = fld(1) + fldloc(1)
@@ -218,8 +218,8 @@ c---------------------------------------------------------------------
       return
       end
 c**********************************************************************
-      subroutine hpotfld3d(source,charge,target,wavek,pot,fld)
-      implicit real *8 (a-h,o-z)
+      subroutine P2P(source,charge,target,wavek,pot,fld)
+      implicit none
 c**********************************************************************
 c     This subroutine calculates the potential POT and field FLD
 c     at the target point TARGET, due to a charge at 
@@ -239,21 +239,20 @@ c     OUTPUT:
 c     pot       : calculated potential
 c     fld       : calculated gradient
 c---------------------------------------------------------------------
+      real *8 dx,dy,dz,R2,R
       real *8 source(3),target(3)
-      complex *16 wavek,pot,fld(3)
-      complex *16 h0,h1,cd,eye,z,ewavek
-      complex *16 charge
-      data eye/(0.0d0,1.0d0)/
-      xdiff=target(1)-source(1)
-      ydiff=target(2)-source(2)
-      zdiff=target(3)-source(3)
-      dd=xdiff*xdiff+ydiff*ydiff+zdiff*zdiff
-      d=sqrt(dd)
-      pot=charge*cdexp(eye*wavek*d)/d
-      cd=(1-eye*wavek*d)*pot/dd
-      fld(1)=cd*xdiff
-      fld(2)=cd*ydiff
-      fld(3)=cd*zdiff
+      complex *16 i1,wavek,acc,charge(1),pot(1),fld(3)
+      data i1/(0.0d0,1.0d0)/
+      dx=target(1)-source(1)
+      dy=target(2)-source(2)
+      dz=target(3)-source(3)
+      R2=dx*dx+dy*dy+dz*dz
+      R=sqrt(R2)
+      pot=charge*cdexp(i1*wavek*R)/R
+      acc=(1-i1*wavek*R)*pot(1)/R2
+      fld(1)=acc*dx
+      fld(2)=acc*dy
+      fld(3)=acc*dz
       return
       end
 c**********************************************************************

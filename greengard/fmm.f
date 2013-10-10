@@ -1,4 +1,4 @@
-      subroutine hfmm3dparttarg(ier,iprec,zk,nsource,source,
+      subroutine fmm(ier,iprec,zk,nsource,source,
      $     ifcharge,charge,pot,fld)
       implicit real *8 (a-h,o-z)
       dimension source(3,nsource)
@@ -23,8 +23,7 @@
       data ima/(0.0d0,1.0d0)/
       ier=0
       lused7 = 0
-      done=1
-      pi=4*atan(done)
+      pi=4*atan(1.0d0)
       ifprint=0
 c     set fmm tolerance based on iprec flag.
       if( iprec .eq. -2 ) epsfmm=.5d-0 
@@ -145,7 +144,6 @@ c     imptemp is pointer for single expansion (dimensioned by nmax)
       real *8 rmlexp(1)
       complex *16 mptemp(lmptemp)
       dimension xnodes(nquad),wts(nquad)
-      dimension timeinfo(10)
       dimension center(3)
       dimension laddr(2,200)
       dimension scale(0:200)
@@ -167,9 +165,6 @@ c     ... set the potential and field to zero
          fld(1,i)=0
          fld(2,i)=0
          fld(3,i)=0
-      enddo
-      do i=1,10
-         timeinfo(i)=0
       enddo
 c     ... initialize Legendre function evaluation routines
       nlege=200
@@ -222,12 +217,11 @@ c     ... form multipole expansions
 c$OMP END PARALLEL DO
       enddo
       t2=omp_get_wtime()
-      timeinfo(1)=t2-t1
 
       ifprune_list2 = 0
       call hfmm3d_list2
      1     (zk,bsize,nlev,laddr,scale,nterms,rmlexp,iaddr,epsfmm,
-     1     timeinfo,wlists,mptemp,lmptemp,xnodes,wts,nquad,
+     1     wlists,mptemp,lmptemp,xnodes,wts,nquad,
      1     ifprune_list2)
 
       t1=omp_get_wtime()
@@ -253,7 +247,6 @@ c$OMP$PRIVATE(ibox,box,center0,corners0,level,npts,nkids,ier)
       enddo
 c$OMP END PARALLEL DO
       t2=omp_get_wtime()
-      timeinfo(7)=t2-t1
 
       t1=omp_get_wtime()
 c     ... step 8, evaluate direct interactions 
@@ -285,14 +278,13 @@ c     ... prune all sourceless boxes
       enddo
 c$OMP END PARALLEL DO
       t2=omp_get_wtime()
-      timeinfo(8)=t2-t1
       return
       end
 
       subroutine hfmm3dpart_direct_self(zk,box,
      1     source,charge,pot,fld)
       implicit real *8 (a-h,o-z)
-      integer box(20),box1(20)
+      integer box(20)
       dimension source(3,1)
       complex *16 charge(1),zk
       complex *16 pot(1),fld(3,1)
@@ -300,7 +292,7 @@ c$OMP END PARALLEL DO
       do j=box(14),box(14)+box(15)-1
          do i=box(14),box(14)+box(15)-1
             if (i .eq. j) cycle
-            call hpotfld3d(source(1,i),charge(i),
+            call P2P(source(1,i),charge(i),
      1           source(1,j),zk,ptemp,ftemp)
             pot(j)=pot(j)+ptemp
             fld(1,j)=fld(1,j)+ftemp(1)
@@ -320,12 +312,14 @@ c$OMP END PARALLEL DO
       complex *16 pot(1),fld(3,1)
       complex *16 ptemp,ftemp(3)
       do j=box1(14),box1(14)+box1(15)-1
-         call hpotfld3dall(source(1,box(14)),charge(box(14)),
-     1        box(15),source(1,j),zk,ptemp,ftemp)
-         pot(j)=pot(j)+ptemp
-         fld(1,j)=fld(1,j)+ftemp(1)
-         fld(2,j)=fld(2,j)+ftemp(2)
-         fld(3,j)=fld(3,j)+ftemp(3)
+         do i=box(14),box(14)+box(15)-1
+            call P2P(source(1,i),charge(i),source(1,j),zk,
+     1           ptemp,ftemp)
+            pot(j)=pot(j)+ptemp
+            fld(1,j)=fld(1,j)+ftemp(1)
+            fld(2,j)=fld(2,j)+ftemp(2)
+            fld(3,j)=fld(3,j)+ftemp(3)
+         enddo
       enddo
       return
       end
