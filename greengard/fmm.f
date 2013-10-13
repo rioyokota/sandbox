@@ -248,11 +248,12 @@ c$OMP$PRIVATE(lused,ier,i,j,ptemp,ftemp,cd)
                      if (jbox.eq.0) cycle
                      call d3tgetb(ier,jbox,box1,center1,corners1,wlists)
                      level1=box1(1)
-                     call h3dmpmpquadu_add(zk,scale(level1),center1,
+                     nq = max(nquad2,2*nterms(level0)+2)
+                     call M2M(zk,scale(level1),center1,
      1                    rmlexp(iaddr(1,jbox)),nterms(level1),
      1                    scale(level0),center0,rmlexp(iaddr(1,ibox)),
      1                    nterms(level0),nterms(level0),
-     1                    radius,xnodes2,wts2,nquad2,ier)
+     1                    radius,xnodes2,wts2,nquad2,nq,ier)
                   enddo
                endif
             endif
