@@ -221,8 +221,8 @@ c$OMP END PARALLEL DO
       max_nodes = 10000
       allocate( xnodes2(max_nodes) )
       allocate( wts2(max_nodes) )
-c     ... step 3, merge all multipole expansions
-      do 2300 ilev=nlev,3,-1
+c     ... step 2, M2M
+      do ilev=nlev,3,-1
          nquad2=nterms(ilev-1)*2.5
          nquad2=max(6,nquad2)
          ifinit2=1
@@ -231,11 +231,10 @@ c$OMP PARALLEL DO DEFAULT(SHARED)
 c$OMP$PRIVATE(ibox,box,center0,corners0,level0,level,npts,nkids,radius)
 c$OMP$PRIVATE(jbox,box1,center1,corners1,level1)
 c$OMP$PRIVATE(lused,ier,i,j,ptemp,ftemp,cd) 
-         do 2200 ibox=laddr(1,ilev),laddr(1,ilev)+laddr(2,ilev)-1
+         do ibox=laddr(1,ilev),laddr(1,ilev)+laddr(2,ilev)-1
             call d3tgetb(ier,ibox,box,center0,corners0,wlists)
             call d3tnkids(box,nkids)
-c     ... prune all sourceless boxes
-            if( box(15) .eq. 0 ) goto 2200
+            if( box(15) .eq. 0 ) cycle
             if (nkids .ne. 0) then
                level0=box(1)
                if( level0 .ge. 2 ) then
@@ -243,11 +242,10 @@ c     ... prune all sourceless boxes
                   radius = radius + (corners0(2,1) - center0(2))**2
                   radius = radius + (corners0(3,1) - center0(3))**2
                   radius = sqrt(radius)
-c     ... merge multipole expansions of the kids 
                   call h3dzero(rmlexp(iaddr(1,ibox)),nterms(level0))
-                  do 2100 i = 1,8
+                  do i = 1,8
                      jbox = box(5+i)
-                     if (jbox.eq.0) goto 2100
+                     if (jbox.eq.0) cycle
                      call d3tgetb(ier,jbox,box1,center1,corners1,wlists)
                      level1=box1(1)
                      call h3dmpmpquadu_add(zk,scale(level1),center1,
@@ -255,15 +253,14 @@ c     ... merge multipole expansions of the kids
      1                    scale(level0),center0,rmlexp(iaddr(1,ibox)),
      1                    nterms(level0),nterms(level0),
      1                    radius,xnodes2,wts2,nquad2,ier)
- 2100             continue
-c     ... mark the local expansion of all kids and the parent
+                  enddo
                endif
             endif
- 2200    continue
+         enddo
 c$OMP END PARALLEL DO
- 2300 continue
+      enddo
 
-c     ... precompute rotation matrices, useful up to order 10 or so
+c     ... step 3, precompute rotation matrices
 c     (approximately 30kB of storage for ldm=10)
 c     (approximately 40MB of storage for ldm=30)
       ldm = 1
@@ -293,7 +290,7 @@ c     (approximately 40MB of storage for ldm=30)
             enddo
          enddo
       enddo
-c     ... step 4, convert multipole expansions into the local ones
+c     ... step 4, M2L
       do 4300 ilev=3,nlev+1
          call h3dterms_list2(bsize(ilev-1),zk,epsfmm, itable, ier)
          nquad2=nterms(ilev-1)*1.2
@@ -362,7 +359,7 @@ c     ... if source is childless, evaluate directly (if cheaper)
  4300 continue
 c     
 
-c     ... step 5, split all local expansions
+c     ... step 5, L2L
       do 5300 ilev=3,nlev
          nquad2=nterms(ilev-1)*2
          nquad2=max(6,nquad2)
@@ -400,7 +397,7 @@ c     ... split local expansion of the parent box
 c$OMP END PARALLEL DO
  5300 continue
 
-c     ... step 7: L2P
+c     ... step 6: L2P
 c$OMP PARALLEL DO DEFAULT(SHARED)
 c$OMP$PRIVATE(ibox,box,center0,corners0,level,npts,nkids,ier)
       do ibox=1,nboxes
