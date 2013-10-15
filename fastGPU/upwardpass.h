@@ -42,8 +42,8 @@ namespace {
 		       const CellData * cells,
 		       const float4 * __restrict__ bodyPos,
 		       const float invTheta,
-		       float4 *sourceCenter,
-		       float4 *Multipole) {
+		       float4 * sourceCenter,
+		       float4 * Multipole) {
     const int laneIdx = threadIdx.x & (WARP_SIZE-1);
     const int warpIdx = threadIdx.x >> WARP_SIZE2;
     const int NWARP2  = NTHREAD2 - WARP_SIZE2;
@@ -52,38 +52,38 @@ namespace {
 
     const CellData cell = cells[cellIdx];
     const float huge = 1e10f;
-    float3 rmin = {+huge,+huge,+huge};
-    float3 rmax = {-huge,-huge,-huge};
+    float3 Xmin = {+huge,+huge,+huge};
+    float3 Xmax = {-huge,-huge,-huge};
     double4 M[3];
     const int bodyBegin = cell.body();
     const int bodyEnd = cell.body() + cell.nbody();
     for (int i=bodyBegin; i<bodyEnd; i+=WARP_SIZE) {
       float4 body = bodyPos[min(i+laneIdx,bodyEnd-1)];
       if (i + laneIdx >= bodyEnd) body.w = 0.0f;
-      getMinMax(rmin, rmax, make_float3(body.x,body.y,body.z));
+      getMinMax(Xmin, Xmax, make_float3(body.x,body.y,body.z));
       addMultipole(M, body);
     }
+    const double invM = 1.0/M[0].w;
+    M[0].x *= invM;
+    M[0].y *= invM;
+    M[0].z *= invM;
+    M[1].x = M[1].x * invM - M[0].x * M[0].x;
+    M[1].y = M[1].y * invM - M[0].y * M[0].y;
+    M[1].z = M[1].z * invM - M[0].z * M[0].z;
+    M[1].w = M[1].w * invM - M[0].x * M[0].y;
+    M[2].x = M[2].x * invM - M[0].x * M[0].z;
+    M[2].y = M[2].y * invM - M[0].y * M[0].z;
+    const float3 X = {(Xmax.x+Xmin.x)*0.5f, (Xmax.y+Xmin.y)*0.5f, (Xmax.z+Xmin.z)*0.5f};
+    const float3 R = {(Xmax.x-Xmin.x)*0.5f, (Xmax.y-Xmin.y)*0.5f, (Xmax.z-Xmin.z)*0.5f};
+    const float3 com = {M[0].x, M[0].y, M[0].z};
+    const float dx = X.x - com.x;
+    const float dy = X.y - com.y;
+    const float dz = X.z - com.z;
+    const float  s = sqrt(dx*dx + dy*dy + dz*dz);
+    const float  l = max(2.0f*max(R.x, max(R.y, R.z)), 1.0e-6f);
+    const float cellOp = l*invTheta + s;
+    const float cellOp2 = cellOp*cellOp;
     if (laneIdx == 0) {
-      const double inv_mass = 1.0/M[0].w;
-      M[0].x *= inv_mass;
-      M[0].y *= inv_mass;
-      M[0].z *= inv_mass;
-      M[1].x = M[1].x*inv_mass - M[0].x*M[0].x;
-      M[1].y = M[1].y*inv_mass - M[0].y*M[0].y;
-      M[1].z = M[1].z*inv_mass - M[0].z*M[0].z;
-      M[1].w = M[1].w*inv_mass - M[0].x*M[0].y;
-      M[2].x = M[2].x*inv_mass - M[0].x*M[0].z;
-      M[2].y = M[2].y*inv_mass - M[0].y*M[0].z;
-      const float3 X = {(rmax.x+rmin.x)*0.5f, (rmax.y+rmin.y)*0.5f, (rmax.z+rmin.z)*0.5f};
-      const float3 R = {(rmax.x-rmin.x)*0.5f, (rmax.y-rmin.y)*0.5f, (rmax.z-rmin.z)*0.5f};
-      const float3 com = {M[0].x, M[0].y, M[0].z};
-      const float dx = X.x - com.x;
-      const float dy = X.y - com.y;
-      const float dz = X.z - com.z;
-      const float  s = sqrt(dx*dx + dy*dy + dz*dz);
-      const float  l = max(2.0f*max(R.x, max(R.y, R.z)), 1.0e-6f);
-      const float cellOp = l*invTheta + s;
-      const float cellOp2 = cellOp*cellOp;
       sourceCenter[cellIdx] = (float4){com.x, com.y, com.z, cellOp2};
       for (int i=0; i<3; i++) Multipole[3*cellIdx+i] = (float4){M[i].x, M[i].y, M[i].z, M[i].w};
     }
