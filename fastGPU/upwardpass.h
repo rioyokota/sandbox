@@ -2,53 +2,38 @@
 
 namespace {
   static __device__ __forceinline__
-    void addMonopole(double4 &_M, const float4 body) {
+    void addMultipole(double4 * __restrict__ _M, const float4 body) {
     const float x = body.x;
     const float y = body.y;
     const float z = body.z;
     const float m = body.w;
-    float4 M = {m*x,m*y,m*z,m};
+    float4 M[3];
+    M[0].x = m*x;
+    M[0].y = m*y;
+    M[0].z = m*z;
+    M[0].w = m;
+    M[1].x = m*x*x;
+    M[1].y = m*y*y;
+    M[1].z = m*z*z;
+    M[1].w = m*x*y;
+    M[2].x = m*x*z;
+    M[2].y = m*y*z;
+    M[2].z = 0.0f;
+    M[2].w = 0.0f;
 #pragma unroll
-    for (int i=WARP_SIZE2-1; i>=0; i--) {
-      M.x += __shfl_xor(M.x, 1<<i);
-      M.y += __shfl_xor(M.y, 1<<i);
-      M.z += __shfl_xor(M.z, 1<<i);
-      M.w += __shfl_xor(M.w, 1<<i);
-    }
-    _M.x += M.x;
-    _M.y += M.y;
-    _M.z += M.z;
-    _M.w += M.w;
-  }
-
-  static __device__ __forceinline__
-    void addQuadrupole(double6 &_Q, const float4 body) {
-    const float x = body.x;
-    const float y = body.y;
-    const float z = body.z;
-    const float m = body.w;
-    float6 Q;
-    Q.xx = m * x*x;
-    Q.yy = m * y*y;
-    Q.zz = m * z*z;
-    Q.xy = m * x*y;
-    Q.xz = m * x*z;
-    Q.yz = m * y*z;
+    for (int j=0; j<3; j++) {
 #pragma unroll
-    for (int i=WARP_SIZE2-1; i>=0; i--) {
-      Q.xx += __shfl_xor(Q.xx, 1<<i);
-      Q.yy += __shfl_xor(Q.yy, 1<<i);
-      Q.zz += __shfl_xor(Q.zz, 1<<i);
-      Q.xy += __shfl_xor(Q.xy, 1<<i);
-      Q.xz += __shfl_xor(Q.xz, 1<<i);
-      Q.yz += __shfl_xor(Q.yz, 1<<i);
+      for (int i=WARP_SIZE2-1; i>=0; i--) {
+	M[j].x += __shfl_xor(M[j].x, 1<<i);
+	M[j].y += __shfl_xor(M[j].y, 1<<i);
+	M[j].z += __shfl_xor(M[j].z, 1<<i);
+	M[j].w += __shfl_xor(M[j].w, 1<<i);
+      }
+      _M[j].x += M[j].x;
+      _M[j].y += M[j].y;
+      _M[j].z += M[j].z;
+      _M[j].w += M[j].w;
     }
-    _Q.xx += Q.xx;
-    _Q.yy += Q.yy;
-    _Q.zz += Q.zz;
-    _Q.xy += Q.xy;
-    _Q.xz += Q.xz;
-    _Q.yz += Q.yz;
   }
 
   static __global__ __launch_bounds__(NTHREAD)
@@ -69,31 +54,29 @@ namespace {
     const float huge = 1e10f;
     float3 rmin = {+huge,+huge,+huge};
     float3 rmax = {-huge,-huge,-huge};
-    double4 M;
-    double6 Q;
+    double4 M[3];
     const int bodyBegin = cell.body();
     const int bodyEnd = cell.body() + cell.nbody();
     for (int i=bodyBegin; i<bodyEnd; i+=WARP_SIZE) {
       float4 body = bodyPos[min(i+laneIdx,bodyEnd-1)];
       if (i + laneIdx >= bodyEnd) body.w = 0.0f;
       getMinMax(rmin, rmax, make_float3(body.x,body.y,body.z));
-      addMonopole(M, body);
-      addQuadrupole(Q, body);
+      addMultipole(M, body);
     }
     if (laneIdx == 0) {
-      const double inv_mass = 1.0/M.w;
-      M.x *= inv_mass;
-      M.y *= inv_mass;
-      M.z *= inv_mass;
-      Q.xx = Q.xx*inv_mass - M.x*M.x;
-      Q.yy = Q.yy*inv_mass - M.y*M.y;
-      Q.zz = Q.zz*inv_mass - M.z*M.z;
-      Q.xy = Q.xy*inv_mass - M.x*M.y;
-      Q.xz = Q.xz*inv_mass - M.x*M.z;
-      Q.yz = Q.yz*inv_mass - M.y*M.z;
+      const double inv_mass = 1.0/M[0].w;
+      M[0].x *= inv_mass;
+      M[0].y *= inv_mass;
+      M[0].z *= inv_mass;
+      M[1].x = M[1].x*inv_mass - M[0].x*M[0].x;
+      M[1].y = M[1].y*inv_mass - M[0].y*M[0].y;
+      M[1].z = M[1].z*inv_mass - M[0].z*M[0].z;
+      M[1].w = M[1].w*inv_mass - M[0].x*M[0].y;
+      M[2].x = M[2].x*inv_mass - M[0].x*M[0].z;
+      M[2].y = M[2].y*inv_mass - M[0].y*M[0].z;
       const float3 X = {(rmax.x+rmin.x)*0.5f, (rmax.y+rmin.y)*0.5f, (rmax.z+rmin.z)*0.5f};
       const float3 R = {(rmax.x-rmin.x)*0.5f, (rmax.y-rmin.y)*0.5f, (rmax.z-rmin.z)*0.5f};
-      const float3 com = {M.x, M.y, M.z};
+      const float3 com = {M[0].x, M[0].y, M[0].z};
       const float dx = X.x - com.x;
       const float dy = X.y - com.y;
       const float dz = X.z - com.z;
@@ -102,9 +85,7 @@ namespace {
       const float cellOp = l*invTheta + s;
       const float cellOp2 = cellOp*cellOp;
       sourceCenter[cellIdx] = (float4){com.x, com.y, com.z, cellOp2};
-      Multipole[3*cellIdx+0] = (float4){M.x, M.y, M.z, M.w};
-      Multipole[3*cellIdx+1] = (float4){Q.xx, Q.yy, Q.zz, Q.xy};
-      Multipole[3*cellIdx+2] = (float4){Q.xz, Q.yz, 0.0f, 0.0f};
+      for (int i=0; i<3; i++) Multipole[3*cellIdx+i] = (float4){M[i].x, M[i].y, M[i].z, M[i].w};
     }
   }
 }

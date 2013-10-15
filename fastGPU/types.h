@@ -12,24 +12,6 @@
 #include "logger.h"
 #include "warpscan.h"
 
-struct float6 {
-  float xx;
-  float yy;
-  float zz;
-  float xy;
-  float xz;
-  float yz;
-};
-
-struct double6 {
-  double xx;
-  double yy;
-  double zz;
-  double xy;
-  double xz;
-  double yz;
-};
-
 static void kernelSuccess(const char kernel[] = "kernel") {
   cudaDeviceSynchronize();
   const cudaError_t err = cudaGetLastError();
