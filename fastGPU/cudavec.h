@@ -54,7 +54,7 @@ public:
 
   void h2d() {
     assert(PIN);
-    CUDA_SAFE_CALL(cudaMemcpy(DEVC, HOST, SIZE*sizeof(T), cudaMemcpyHostToDevice ));
+    CUDA_SAFE_CALL(cudaMemcpy(DEVC, HOST, SIZE*sizeof(T), cudaMemcpyHostToDevice));
   }
 
   void h2d(int size) {

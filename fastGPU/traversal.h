@@ -11,18 +11,6 @@ namespace {
   texture<float4, 1, cudaReadModeElementType> texBody;
 
   static __device__ __forceinline__
-    float6 make_float6(float xx, float yy, float zz, float xy, float xz, float yz) {
-    float6 v;
-    v.xx = xx;
-    v.yy = yy;
-    v.zz = zz;
-    v.xy = xy;
-    v.xz = xz;
-    v.yz = yz;
-    return v;
-  }
-
-  static __device__ __forceinline__
     int ringAddr(const int i) {
     return i & (MEM_PER_WARP - 1);
   }
@@ -63,14 +51,13 @@ namespace {
   static __device__ __forceinline__
     float4 M2P(float4 acc,
 	       const float3 pos,
-	       const float4 M0,
-	       const float6 Q0,
+	       const float4 * __restrict__ M,
 	       float EPS2) {
-    const float3 dr = make_float3(pos.x - M0.x, pos.y - M0.y, pos.z - M0.z);
+    const float3 dr = make_float3(pos.x - M[0].x, pos.y - M[0].y, pos.z - M[0].z);
     const float  r2 = dr.x * dr.x + dr.y * dr.y + dr.z * dr.z + EPS2;
     const float rinv  = rsqrtf(r2);
     const float rinv2 = rinv * rinv;
-    const float mrinv  = M0.w * rinv;
+    const float mrinv  = M[0].w * rinv;
     const float mrinv3 = rinv2 * mrinv;
     const float mrinv5 = rinv2 * mrinv3;
     const float mrinv7 = rinv2 * mrinv5;
@@ -78,12 +65,12 @@ namespace {
     const float  D1 = -mrinv3;
     const float  D2 =  mrinv5 * 3.0f;
     const float  D3 = -mrinv7 * 15.0f;
-    const float q11 = Q0.xx;
-    const float q22 = Q0.yy;
-    const float q33 = Q0.zz;
-    const float q12 = Q0.xy;
-    const float q13 = Q0.xz;
-    const float q23 = Q0.yz;
+    const float q11 = M[1].x;
+    const float q22 = M[1].y;
+    const float q33 = M[1].z;
+    const float q12 = M[1].w;
+    const float q13 = M[2].x;
+    const float q23 = M[2].y;
     const float  q  = q11 + q22 + q33;
     const float3 qR = make_float3(q11 * dr.x + q12 * dr.y + q13 * dr.z,
 				  q12 * dr.x + q22 * dr.y + q23 * dr.z,
@@ -103,21 +90,19 @@ namespace {
 		   const float3 pos_i[2],
 		   const int cellIdx,
 		   const float EPS2) {
-    float4 M0, Q0, Q1;
+    float4 MLane[3], M[3];
     if (FULL || cellIdx >= 0) {
-      M0 = tex1Dfetch(texMultipole, 3*cellIdx+0);
-      Q0 = tex1Dfetch(texMultipole, 3*cellIdx+1);
-      Q1 = tex1Dfetch(texMultipole, 3*cellIdx+2);
+#pragma unroll
+      for (int i=0; i<3; i++) MLane[i] = tex1Dfetch(texMultipole, 3*cellIdx+i);
     } else {
-      M0 = Q0 = Q1 = make_float4(0.0f, 0.0f, 0.0f, 0.0f);
+#pragma unroll
+      for (int i=0; i<3; i++) MLane[i] = make_float4(0.0f, 0.0f, 0.0f, 0.0f);
     }
     for (int j=0; j<WARP_SIZE; j++) {
-      const float4 jM0 = make_float4(__shfl(M0.x, j), __shfl(M0.y, j), __shfl(M0.z, j), __shfl(M0.w,j));
-      const float6 jQ0 = make_float6(__shfl(Q0.x, j), __shfl(Q0.y, j), __shfl(Q0.z, j), __shfl(Q0.w,j),
-				     __shfl(Q1.x, j), __shfl(Q1.y, j));
 #pragma unroll
+      for (int i=0; i<3; i++) M[i] = make_float4(__shfl(MLane[i].x, j), __shfl(MLane[i].y, j), __shfl(MLane[i].z, j), __shfl(MLane[i].w,j));
       for (int k=0; k<2; k++)
-	acc_i[k] = M2P(acc_i[k], pos_i[k], jM0, jQ0, EPS2);
+	acc_i[k] = M2P(acc_i[k], pos_i[k], M, EPS2);
     }
   }
 
