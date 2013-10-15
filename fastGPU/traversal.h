@@ -97,10 +97,10 @@ namespace {
     return acc;
   }
 
-  template<int NI, bool FULL>
+  template<bool FULL>
     static __device__
-    void approxAcc(float4 acc_i[NI],
-		   const float3 pos_i[NI],
+    void approxAcc(float4 acc_i[2],
+		   const float3 pos_i[2],
 		   const int cellIdx,
 		   const float EPS2) {
     float4 M0, Q0, Q1;
@@ -116,13 +116,12 @@ namespace {
       const float6 jQ0 = make_float6(__shfl(Q0.x, j), __shfl(Q0.y, j), __shfl(Q0.z, j), __shfl(Q0.w,j),
 				     __shfl(Q1.x, j), __shfl(Q1.y, j));
 #pragma unroll
-      for (int k=0; k<NI; k++)
+      for (int k=0; k<2; k++)
 	acc_i[k] = M2P(acc_i[k], pos_i[k], jM0, jQ0, EPS2);
     }
   }
 
-  template<int NI>
-    static __device__
+  static __device__
     uint2 traverseWarp(float4 * acc_i,
 		       const float3 * pos_i,
 		       const float3 targetCenter,
@@ -180,7 +179,7 @@ namespace {
       if (isApprox && approxIdx < WARP_SIZE)                    // If approx flag is true and index is within bounds
 	tempQueue[approxIdx] = sourceQueue;                     //  Fill approx queue with current sources
       if (approxOffset + numApproxWarp >= WARP_SIZE) {          // If approx queue is larger than the warp size
-	approxAcc<NI,true>(acc_i, pos_i, tempQueue[laneIdx], EPS2);// Call M2P kernel
+	approxAcc<true>(acc_i, pos_i, tempQueue[laneIdx], EPS2);// Call M2P kernel
 	approxOffset -= WARP_SIZE;                              //  Decrement approx queue size
 	approxIdx = approxOffset + numApproxLane;               //  Update approx index using new queue size
 	if (isApprox && approxIdx >= 0)                         //  If approx flag is true and index is within bounds
@@ -215,7 +214,7 @@ namespace {
 					     __shfl(pos.z, j),  //    Get source z value from lane j
 					     __shfl(pos.w, j)); //    Get source w value from lane j
 #pragma unroll                                                  //    Unroll loop
-	    for (int k=0; k<NI; k++)                            //    Loop over NI targets
+	    for (int k=0; k<2; k++)                             //    Loop over two targets
 	      acc_i[k] = P2P(acc_i[k], pos_i[k], pos_j, EPS2);  //     Call P2P kernel
 	  }                                                     //   End loop over the warp size
 	  numBodiesWarp -= WARP_SIZE;                           //   Decrement body queue size
@@ -235,7 +234,7 @@ namespace {
 					       __shfl(pos.z, j),//     Get source z value from lane j
 					       __shfl(pos.w, j));//    Get source w value from lane j
 #pragma unroll                                                  //     Unroll loop
-	      for (int k=0; k<NI; k++)                          //     Loop over NI targets
+	      for (int k=0; k<2; k++)                           //     Loop over two targets
 		acc_i[k] = P2P(acc_i[k], pos_i[k], pos_j, EPS2);//      Call P2P kernel
 	    }                                                   //    End loop over the warp size
 	    bodyOffset -= WARP_SIZE;                            //    Decrement body queue size
@@ -255,7 +254,7 @@ namespace {
       }                                                         // End if for level finalization
     }
     if (approxOffset > 0) {
-      approxAcc<NI,false>(acc_i, pos_i, laneIdx < approxOffset ? approxQueue : -1, EPS2);
+      approxAcc<false>(acc_i, pos_i, laneIdx < approxOffset ? approxQueue : -1, EPS2);
       counters.x += approxOffset;
       approxOffset = 0;
     }
@@ -268,7 +267,7 @@ namespace {
 					 __shfl(pos.z, j),
 					 __shfl(pos.w, j));
 #pragma unroll
-	for (int k=0; k<NI; k++)
+	for (int k=0; k<2; k++)
 	  acc_i[k] = P2P(acc_i[k], pos_i[k], pos_j, EPS2);
       }
       counters.y += bodyOffset;
@@ -282,8 +281,7 @@ namespace {
   __device__ unsigned long long sumM2PGlob = 0;
   __device__ unsigned int       maxM2PGlob = 0;
 
-  template<int NI>
-    static __global__ __launch_bounds__(NTHREAD, 4)
+  static __global__ __launch_bounds__(NTHREAD, 4)
     void traverse(const int numTargets,
 		  const float EPS2,
 		  const int2 * levelRange,
@@ -307,15 +305,15 @@ namespace {
       const int2 target = targetRange[targetIdx];
       const int bodyBegin = target.x;
       const int bodyEnd   = target.x+target.y;
-      float3 pos_i[NI];
-      for (int i=0; i<NI; i++) {
+      float3 pos_i[2];
+      for (int i=0; i<2; i++) {
         const int bodyIdx = min(bodyBegin+i*WARP_SIZE+laneIdx, bodyEnd-1);
 	const float4 pos = bodyPos[bodyIdx];
 	pos_i[i] = make_float3(pos.x, pos.y, pos.z);
       }
       float3 rmin = pos_i[0];
       float3 rmax = rmin;
-      for (int i=0; i<NI; i++)
+      for (int i=0; i<2; i++)
 	getMinMax(rmin, rmax, pos_i[i]);
       rmin.x = __shfl(rmin.x,0);
       rmin.y = __shfl(rmin.y,0);
@@ -325,9 +323,10 @@ namespace {
       rmax.z = __shfl(rmax.z,0);
       const float3 targetCenter = {.5f*(rmax.x+rmin.x), .5f*(rmax.y+rmin.y), .5f*(rmax.z+rmin.z)};
       const float3 targetSize = {.5f*(rmax.x-rmin.x), .5f*(rmax.y-rmin.y), .5f*(rmax.z-rmin.z)};
-      float4 acc_i[NI] = {0.0f, 0.0f, 0.0f, 0.0f};
-      const uint2 counters = traverseWarp<NI>
-	(acc_i, pos_i, targetCenter, targetSize, EPS2, levelRange[1], tempQueue, cellQueue);
+      float4 acc_i[2] = {0.0f, 0.0f, 0.0f, 0.0f};
+      const uint2 counters = traverseWarp(acc_i, pos_i, targetCenter, targetSize, EPS2,
+					  
+levelRange[1], tempQueue, cellQueue);
       assert(!(counters.x == 0xFFFFFFFF && counters.y == 0xFFFFFFFF));
 
       int maxP2P = counters.y;
@@ -335,7 +334,7 @@ namespace {
       int maxM2P = counters.x;
       int sumM2P = 0;
       const int bodyIdx = bodyBegin + laneIdx;
-      for (int i=0; i<NI; i++)
+      for (int i=0; i<2; i++)
 	if (i*WARP_SIZE + bodyIdx < bodyEnd) {
 	  sumM2P += counters.x;
 	  sumP2P += counters.y;
@@ -353,7 +352,7 @@ namespace {
 	atomicMax(&maxM2PGlob,                     maxM2P);
 	atomicAdd(&sumM2PGlob, (unsigned long long)sumM2P);
       }
-      for (int i=0; i<NI; i++)
+      for (int i=0; i<2; i++)
 	if (bodyIdx + i * WARP_SIZE < bodyEnd)
 	  bodyAcc[i*WARP_SIZE + bodyIdx] = acc_i[i];
     }
@@ -429,10 +428,10 @@ class Traversal {
     cudaVec<int> globalPool(poolSize);
     cudaDeviceSynchronize();
     const double t0 = get_time();
-    CUDA_SAFE_CALL(cudaFuncSetCacheConfig(&traverse<2>, cudaFuncCachePreferL1));
-    traverse<2><<<NBLOCK,NTHREAD>>>(numTargets, eps*eps, levelRange.d(),
-				    bodyPos2.d(), bodyAcc.d(),
-				    targetRange.d(), globalPool.d());
+    CUDA_SAFE_CALL(cudaFuncSetCacheConfig(&traverse, cudaFuncCachePreferL1));
+    traverse<<<NBLOCK,NTHREAD>>>(numTargets, eps*eps, levelRange.d(),
+				 bodyPos2.d(), bodyAcc.d(),
+				 targetRange.d(), globalPool.d());
     kernelSuccess("traverse");
     const double dt = get_time() - t0;
 
