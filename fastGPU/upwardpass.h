@@ -36,10 +36,30 @@ namespace {
     }
   }
 
+  static __global__
+    void collectLeafs(const int numCells,
+                      const CellData * sourceCells,
+                      int * leafCells) {
+    const int NWARP = 1 << (NTHREAD2 - WARP_SIZE2);
+    const int laneIdx = threadIdx.x & (WARP_SIZE-1);
+    const int warpIdx = threadIdx.x >> WARP_SIZE2;
+    const int cellIdx = blockDim.x * blockIdx.x + threadIdx.x;
+    const CellData cell = sourceCells[min(cellIdx, numCells-1)];
+    const bool isLeaf = cellIdx < numCells & cell.isLeaf();
+    const int numLeafsLane = exclusiveScanBool(isLeaf);
+    const int numLeafsWarp = reduceBool(isLeaf);
+    __shared__ int numLeafsBase[NWARP];
+    int & numLeafsScan = numLeafsBase[warpIdx];
+    if (laneIdx == 0 && numLeafsWarp > 0)
+      numLeafsScan = atomicAdd(&numLeafsGlob, numLeafsWarp);
+    if (isLeaf)
+      leafCells[numLeafsScan+numLeafsLane] = cellIdx;
+  }
+
   static __global__ __launch_bounds__(NTHREAD)
     void getMultipoles(const int numBodies,
-		       const int numSources,
-		       const CellData * cells,
+		       const int numCells,
+		       const CellData * __restrict__ cells,
 		       const float4 * __restrict__ bodyPos,
 		       const float invTheta,
 		       float4 * sourceCenter,
@@ -48,7 +68,7 @@ namespace {
     const int warpIdx = threadIdx.x >> WARP_SIZE2;
     const int NWARP2  = NTHREAD2 - WARP_SIZE2;
     const int cellIdx = (blockIdx.x<<NWARP2) + warpIdx;
-    if (cellIdx >= numSources) return;
+    if (cellIdx >= numCells) return;
 
     const CellData cell = cells[cellIdx];
     const float huge = 1e10f;
@@ -63,7 +83,60 @@ namespace {
       getMinMax(Xmin, Xmax, make_float3(body.x,body.y,body.z));
       addMultipole(M, body);
     }
-    const double invM = 1.0/M[0].w;
+    const double invM = 1.0 / M[0].w;
+    M[0].x *= invM;
+    M[0].y *= invM;
+    M[0].z *= invM;
+    M[1].x = M[1].x * invM - M[0].x * M[0].x;
+    M[1].y = M[1].y * invM - M[0].y * M[0].y;
+    M[1].z = M[1].z * invM - M[0].z * M[0].z;
+    M[1].w = M[1].w * invM - M[0].x * M[0].y;
+    M[2].x = M[2].x * invM - M[0].x * M[0].z;
+    M[2].y = M[2].y * invM - M[0].y * M[0].z;
+    const float3 X = {(Xmax.x+Xmin.x)*0.5f, (Xmax.y+Xmin.y)*0.5f, (Xmax.z+Xmin.z)*0.5f};
+    const float3 R = {(Xmax.x-Xmin.x)*0.5f, (Xmax.y-Xmin.y)*0.5f, (Xmax.z-Xmin.z)*0.5f};
+    const float3 com = {M[0].x, M[0].y, M[0].z};
+    const float dx = X.x - com.x;
+    const float dy = X.y - com.y;
+    const float dz = X.z - com.z;
+    const float  s = sqrt(dx*dx + dy*dy + dz*dz);
+    const float  l = max(2.0f*max(R.x, max(R.y, R.z)), 1.0e-6f);
+    const float cellOp = l*invTheta + s;
+    const float cellOp2 = cellOp*cellOp;
+    if (laneIdx == 0) {
+      sourceCenter[cellIdx] = (float4){com.x, com.y, com.z, cellOp2};
+      for (int i=0; i<3; i++) Multipole[3*cellIdx+i] = (float4){M[i].x, M[i].y, M[i].z, M[i].w};
+    }
+  }
+
+  static __global__ __launch_bounds__(NTHREAD)
+    void P2M(const int numBodies,
+	     const int numLeafs,
+	     const CellData * __restrict__ cells,
+	     const float4 * __restrict__ bodyPos,
+	     const float invTheta,
+	     float4 * sourceCenter,
+	     float4 * Multipole) {
+    const int laneIdx = threadIdx.x & (WARP_SIZE-1);
+    const int warpIdx = threadIdx.x >> WARP_SIZE2;
+    const int NWARP2  = NTHREAD2 - WARP_SIZE2;
+    const int cellIdx = (blockIdx.x<<NWARP2) + warpIdx;
+    if (cellIdx >= numLeafs) return;
+
+    const CellData cell = cells[cellIdx];
+    const float huge = 1e10f;
+    float3 Xmin = {+huge,+huge,+huge};
+    float3 Xmax = {-huge,-huge,-huge};
+    double4 M[3];
+    const int bodyBegin = cell.body();
+    const int bodyEnd = cell.body() + cell.nbody();
+    for (int i=bodyBegin; i<bodyEnd; i+=WARP_SIZE) {
+      float4 body = bodyPos[min(i+laneIdx,bodyEnd-1)];
+      if (i + laneIdx >= bodyEnd) body.w = 0.0f;
+      getMinMax(Xmin, Xmax, make_float3(body.x,body.y,body.z));
+      addMultipole(M, body);
+    }
+    const double invM = 1.0 / M[0].w;
     M[0].x *= invM;
     M[0].y *= invM;
     M[0].z *= invM;
@@ -92,19 +165,25 @@ namespace {
 
 class Pass {
  public:
-  void upward(const float theta,
+  void upward(const int numLeafs,
+	      const int numLevels,
+	      const float theta,
 	      cudaVec<float4> & bodyPos,
 	      cudaVec<CellData> & sourceCells,
 	      cudaVec<float4> & sourceCenter,
 	      cudaVec<float4> & Multipole) {
     const int numBodies = bodyPos.size();
-    const int numSources = sourceCells.size();
+    const int numCells = sourceCells.size();
     const int NWARP = 1 << (NTHREAD2 - WARP_SIZE2);
-    const int NBLOCK = (numSources-1) / NWARP + 1;
+    int NBLOCK = (numCells-1) / NTHREAD + 1;
+    cudaVec<int> leafCells(numLeafs);
+    collectLeafs<<<NBLOCK,NTHREAD>>>(numCells, sourceCells.d(), leafCells.d());
+    kernelSuccess("collectLeafs");
+    NBLOCK = (numCells-1) / NWARP + 1;
     CUDA_SAFE_CALL(cudaFuncSetCacheConfig(&getMultipoles,cudaFuncCachePreferL1));
     cudaDeviceSynchronize();
     const double t0 = get_time();
-    getMultipoles<<<NBLOCK,NTHREAD>>>(numBodies, numSources, sourceCells.d(),
+    getMultipoles<<<NBLOCK,NTHREAD>>>(numBodies, numCells, sourceCells.d(),
 				      bodyPos.d(), 1.0 / theta,
 				      sourceCenter.d(), Multipole.d());
     kernelSuccess("getMultipoles");

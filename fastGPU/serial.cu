@@ -37,16 +37,17 @@ int main(int argc, char * argv[]) {
   float4 domain;
   cudaVec<int2> levelRange(32);
   cudaVec<CellData> sourceCells(numBodies);
-  int2 numLS = build.tree<ncrit>(bodyPos, bodyPos2, domain, levelRange, sourceCells);
-  int numLevels = numLS.x;
-  int numSources = numLS.y;
+  int3 counts = build.tree<ncrit>(bodyPos, bodyPos2, domain, levelRange, sourceCells);
+  int numLevels = counts.x;
+  int numSources = counts.y;
+  int numLeafs = counts.z;
   cudaVec<int2> targetRange(numBodies);
   cudaVec<float4> sourceCenter(numSources);
   cudaVec<float4> Multipole(3*numSources);
   Group group;
   int numTargets = group.targets(bodyPos, bodyPos2, domain, targetRange, 5);
   Pass pass;
-  pass.upward(theta, bodyPos, sourceCells, sourceCenter, Multipole);
+  pass.upward(numLeafs, numLevels, theta, bodyPos, sourceCells, sourceCenter, Multipole);
   Traversal traversal;
   const float4 interactions = traversal.approx(numTargets, eps,
 					       bodyPos, bodyPos2, bodyAcc,

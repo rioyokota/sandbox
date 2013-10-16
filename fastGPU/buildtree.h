@@ -3,7 +3,7 @@
 extern void sort(const int size, int * key, int * value);
 
 namespace {
-  __constant__ int maxCellsGlob;
+  __constant__ int maxNodesGlob;
   __device__ float4 domainGlob;
   __device__ unsigned int counterGlob = 0;
   __device__ unsigned int numNodesGlob = 0;
@@ -269,7 +269,7 @@ namespace {
     const int numNodesWarp = reduceBool(numBodiesOctantLane > NCRIT);
     if (threadIdx.x == 0 && numNodesWarp > 0) {
       numNodesScan = atomicAdd(&numNodesGlob, numNodesWarp);
-      assert(numNodesScan < maxCellsGlob);
+      assert(numNodesScan < maxNodesGlob);
     }
 
     const int numChildWarp = reduceBool(numBodiesOctantLane > 0);
@@ -395,7 +395,7 @@ namespace {
     blockCounterPool = d_blockCounterPool;
     bodyRangePool = d_bodyRangePool;
 
-    int *octantSize = new int[8];
+    int * octantSize = new int[8];
     for (int k=0; k<8; k++)
       octantSize[k] = 0;
     getRootOctantSize<<<NTHREAD, NTHREAD>>>(numBodies, octantSize, domainGlob, d_bodyPos);
@@ -488,39 +488,19 @@ namespace {
     sourceCells[cellIdx] = cell;
     if (cellIdx == 0) numLeafsGlob = 0;
   }
-
-  static __global__
-    void collectLeafs(const int numCells,
-		      const CellData * sourceCells,
-		      int * leafCells) {
-    const int NWARP = 1 << (NTHREAD2 - WARP_SIZE2);
-    const int laneIdx = threadIdx.x & (WARP_SIZE-1);
-    const int warpIdx = threadIdx.x >> WARP_SIZE2;
-    const int cellIdx = blockDim.x * blockIdx.x + threadIdx.x;
-    const CellData cell = sourceCells[min(cellIdx, numCells-1)];
-    const bool isLeaf = cellIdx < numCells & cell.isLeaf();
-    const int numLeafsLane = exclusiveScanBool(isLeaf);
-    const int numLeafsWarp = reduceBool(isLeaf);
-    __shared__ int numLeafsBase[NWARP];
-    int & numLeafsScan = numLeafsBase[warpIdx];
-    if (laneIdx == 0 && numLeafsWarp > 0)
-      numLeafsScan = atomicAdd(&numLeafsGlob, numLeafsWarp);
-    if (isLeaf)
-      leafCells[numLeafsScan+numLeafsLane] = cellIdx;
-  }
 }
 
 class Build {
  public:
   template<int NCRIT>
-    int2 tree(cudaVec<float4> & bodyPos,
+    int3 tree(cudaVec<float4> & bodyPos,
 	      cudaVec<float4> & bodyPos2,
 	      float4 & domain,
 	      cudaVec<int2> & levelRange,
 	      cudaVec<CellData> & sourceCells) {
     const int numBodies = bodyPos.size();
     const int maxNode = numBodies / 10;
-    cudaVec<float3> bounds(2048);
+    cudaVec<float3> bounds(2*NTHREAD);
     cudaVec<int> octantSizePool(8*maxNode);
     cudaVec<int> octantSizeScanPool(8*maxNode);
     cudaVec<int> subOctantSizeScanPool(64*maxNode);
@@ -538,7 +518,7 @@ class Build {
     double dt = get_time() - t0;
     fprintf(stdout,"Get bounds           : %.7f s\n",  dt);
 
-    CUDA_SAFE_CALL(cudaMemcpyToSymbol(maxCellsGlob, &maxNode, sizeof(int), 0, cudaMemcpyHostToDevice));
+    CUDA_SAFE_CALL(cudaMemcpyToSymbol(maxNodesGlob, &maxNode, sizeof(int), 0, cudaMemcpyHostToDevice));
     octantSizePool.zeros();
     octantSizeScanPool.zeros();
     subOctantSizeScanPool.zeros();
@@ -558,32 +538,29 @@ class Build {
     kernelSuccess("buildOctree");
     dt = get_time() - t0;
     fprintf(stdout,"Grow tree            : %.7f s\n",  dt);
-    int numLevels, numSources, numLeafs;
+    int numLevels, numCells, numLeafs;
     CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&domain, domainGlob, sizeof(float4)));
     CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&numLevels, numLevelsGlob, sizeof(int)));
-    CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&numSources, numCellsGlob, sizeof(int)));
+    CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&numCells, numCellsGlob, sizeof(int)));
     CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&numLeafs, numLeafsGlob, sizeof(int)));
-    cudaVec<int> leafCells(numLeafs);
     cudaDeviceSynchronize();
 
     t0 = get_time();
-    const int NBLOCK = (numSources-1) / NTHREAD + 1;
-    cudaVec<CellData> sourceCells2(numSources);
-    getKeys<<<NBLOCK,NTHREAD>>>(numSources, sourceCells.d(), sourceCells2.d(), key.d(), value.d());
+    const int NBLOCK = (numCells-1) / NTHREAD + 1;
+    cudaVec<CellData> sourceCells2(numCells);
+    getKeys<<<NBLOCK,NTHREAD>>>(numCells, sourceCells.d(), sourceCells2.d(), key.d(), value.d());
     kernelSuccess("getKeys");
-    sort(numSources, key.d(), value.d());
-    getLevelRange<<<NBLOCK,NTHREAD>>>(numSources, key.d(), levelRange.d());
+    sort(numCells, key.d(), value.d());
+    getLevelRange<<<NBLOCK,NTHREAD>>>(numCells, key.d(), levelRange.d());
     kernelSuccess("getLevelRange");
-    getPermutation<<<NBLOCK,NTHREAD>>>(numSources, value.d(), key.d());
+    getPermutation<<<NBLOCK,NTHREAD>>>(numCells, value.d(), key.d());
     kernelSuccess("getPermutation");
-    sourceCells.alloc(numSources);
-    permuteCells<<<NBLOCK,NTHREAD>>>(numSources, value.d(), key.d(), sourceCells2.d(), sourceCells.d());
+    sourceCells.alloc(numCells);
+    permuteCells<<<NBLOCK,NTHREAD>>>(numCells, value.d(), key.d(), sourceCells2.d(), sourceCells.d());
     kernelSuccess("permuteCells");
-    collectLeafs<<<NBLOCK,NTHREAD>>>(numSources, sourceCells.d(), leafCells.d());
-    kernelSuccess("collectLeafs");
     dt = get_time() - t0;
     fprintf(stdout,"Link tree            : %.7f s\n", dt);
-    int2 numLS = {numLevels, numSources};
-    return numLS;
+    int3 counts = {numLevels, numCells, numLeafs};
+    return counts;
   }
 };

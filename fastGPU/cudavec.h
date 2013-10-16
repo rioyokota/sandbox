@@ -34,6 +34,10 @@ public:
     CUDA_SAFE_CALL(cudaMalloc(&DEVC, SIZE*sizeof(T)));
   }
 
+  void resize(int size) {
+    SIZE = size;
+  }
+
   void zeros() {
     CUDA_SAFE_CALL(cudaMemset(DEVC, 0, SIZE*sizeof(T)));
   }
