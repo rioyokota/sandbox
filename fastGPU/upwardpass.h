@@ -189,7 +189,6 @@ namespace {
     for( int i=begin; i<end; i++ ) {
       float4 pos = Multipole[3*i];
       mon.w += pos.w;
-      printf("%d %d %f\n",level,i,mon.w);
       mon.x += pos.w * pos.x;
       mon.y += pos.w * pos.y;
       mon.z += pos.w * pos.z;
@@ -235,7 +234,7 @@ class Pass {
     collectLeafs<<<NBLOCK,NTHREAD>>>(numCells, sourceCells.d(), leafCells.d());
     kernelSuccess("collectLeafs");
     const double t0 = get_time();
-#if 1
+#if 0
     const int NWARP = 1 << (NTHREAD2 - WARP_SIZE2);
     NBLOCK = (numCells-1) / NWARP + 1;
     CUDA_SAFE_CALL(cudaFuncSetCacheConfig(&getMultipoles,cudaFuncCachePreferL1));
