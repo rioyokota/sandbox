@@ -162,7 +162,9 @@ namespace {
     const float cellOp = l*invTheta + s;
     const float cellOp2 = cellOp*cellOp;
     sourceCenter[cellIdx] = (float4){com.x, com.y, com.z, cellOp2};
-    Multipole[3*cellIdx] = make_float4(mon.x, mon.y, mon.z, mon.w);
+    Multipole[3*cellIdx+0] = make_float4(mon.x, mon.y, mon.z, mon.w);
+    Multipole[3*cellIdx+1] = make_float4(0.0f, 0.0f, 0.0f, 0.0f);
+    Multipole[3*cellIdx+2] = make_float4(0.0f, 0.0f, 0.0f, 0.0f);
     cellXmin[cellIdx] = make_float4(Xmin.x, Xmin.y, Xmin.z, 2.0f);
     cellXmax[cellIdx] = make_float4(Xmax.x, Xmax.y, Xmax.z, 2.0f);
     return;
@@ -177,12 +179,11 @@ namespace {
 			     float4 * cellXmax,
 			     float4  * Multipole) {
     const uint cellIdx = blockIdx.x * blockDim.x + threadIdx.x + levelRange[level].x;
-    if(cellIdx >= levelRange[level].y) return;
+    if (cellIdx >= levelRange[level].y) return;
     const CellData cell = cells[cellIdx];
     const uint begin = cell.child();
-    const uint nchild = cell.nchild()-1;
-    const uint end = begin + nchild + 1;
-    if(nchild == 0) return;
+    const uint end = begin + cell.nchild();
+    if (cell.isLeaf()) return;
     float4 mon = {0.0f};
     float3 Xmin = {1e10f};
     float3 Xmax = {-1e10f};
@@ -210,7 +211,9 @@ namespace {
     const float cellOp = l*invTheta + s;
     const float cellOp2 = cellOp*cellOp;
     sourceCenter[cellIdx] = make_float4(com.x, com.y, com.z, cellOp2);
-    Multipole[3*cellIdx] = make_float4(mon.x, mon.y, mon.z, mon.w);
+    Multipole[3*cellIdx+0] = make_float4(mon.x, mon.y, mon.z, mon.w);
+    Multipole[3*cellIdx+1] = make_float4(0.0f, 0.0f, 0.0f, 0.0f);
+    Multipole[3*cellIdx+2] = make_float4(0.0f, 0.0f, 0.0f, 0.0f);
     cellXmin[cellIdx] = make_float4(Xmin.x, Xmin.y, Xmin.z, 0.0f);
     cellXmax[cellIdx] = make_float4(Xmax.x, Xmax.y, Xmax.z, 0.0f);
     return;
