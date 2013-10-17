@@ -310,8 +310,7 @@ namespace {
       const float3 targetSize = {.5f*(rmax.x-rmin.x), .5f*(rmax.y-rmin.y), .5f*(rmax.z-rmin.z)};
       float4 acc_i[2] = {0.0f, 0.0f, 0.0f, 0.0f};
       const uint2 counters = traverseWarp(acc_i, pos_i, targetCenter, targetSize, EPS2,
-					  
-levelRange[1], tempQueue, cellQueue);
+					  levelRange[1], tempQueue, cellQueue);
       assert(!(counters.x == 0xFFFFFFFF && counters.y == 0xFFFFFFFF));
 
       int maxP2P = counters.y;
