@@ -9,7 +9,7 @@ OBJ = $(SRC:%.cu=%.o)
 
 serial: $(OBJ)
 	$(NVCC) $^ $(LFLAGS)
-	./a.out
+	./a.out 64
 
 %.o: %.cu
 	$(NVCC) -c $<
