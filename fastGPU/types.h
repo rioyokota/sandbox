@@ -42,9 +42,9 @@ class CellData {
 			       const unsigned int body,
 			       const unsigned int nbody,
 			       const unsigned int child = 0,
-			       const unsigned int nchild = 0) {
+			       const unsigned int nchild = 1) {
     const unsigned int parentPack = parent | (level << LEVEL_SHIFT);
-    const unsigned int childPack = child | (nchild << CHILD_SHIFT);
+    const unsigned int childPack = child | ((nchild-1) << CHILD_SHIFT);
     data = make_uint4(parentPack, childPack, body, nbody);
   }
   __host__ __device__ CellData(const uint4 data) : data(data) {}

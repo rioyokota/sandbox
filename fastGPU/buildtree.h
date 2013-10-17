@@ -275,7 +275,7 @@ namespace {
     const int numChildWarp = reduceBool(numBodiesOctantLane > 0);
     if (threadIdx.x == 0 && numChildWarp > 0) {
       numCellsScan = atomicAdd(&numCellsGlob, numChildWarp);
-      const CellData cellData(level, cellParentIndex, bodyRange->x, numBodies, numCellsScan, numChildWarp-1);
+      const CellData cellData(level, cellParentIndex, bodyRange->x, numBodies, numCellsScan, numChildWarp);
       sourceCells[cellIndexBase + blockIdx.y] = cellData;
     }
     __syncthreads();                                            // Sync numCellsScan, sourceCells
@@ -333,14 +333,12 @@ namespace {
       if (level & 1) {
 	for (int bodyIdx=bodyBeginOctant+laneIdx; bodyIdx<bodyEndOctant; bodyIdx+=WARP_SIZE) {
 	  if (bodyIdx < bodyEndOctant) {
-	    bodyPos2[bodyIdx].w = 8;
 	  }
         }
       } else {
 	for (int bodyIdx=bodyBeginOctant+laneIdx; bodyIdx<bodyEndOctant; bodyIdx+=WARP_SIZE) {
 	  if (bodyIdx < bodyEndOctant) {
 	    bodyPos[bodyIdx] = bodyPos2[bodyIdx];
-	    bodyPos[bodyIdx].w = 8;
 	  }
         }
       }
