@@ -5,7 +5,7 @@
 #include "traversal.h"
 #include "upwardpass.h"
 
-int main(int argc, char * argv[]) {
+int main(int argc, char ** argv) {
   const int numBodies = (1 << 24) - 1;
   const float eps = 0.05;
   const float theta = 0.75;
@@ -57,8 +57,8 @@ int main(int argc, char * argv[]) {
   float flops = (interactions.x * 20 + interactions.z * 64) * numBodies / dt / 1e12;
   fprintf(stdout,"--- Total runtime ----------------\n");
   fprintf(stdout,"Total FMM            : %.7f s (%.7f TFlops)\n",dt,flops);
-  const int numTarget = 512; // Number of threads per block will be set to this value
-  const int numBlock = 128;
+  const int numTarget = min(512,numBodies); // Number of threads per block will be set to this value
+  const int numBlock = min(128,(numBodies-1)/numTarget+1);
   t0 = get_time();
   traversal.direct(numTarget, numBlock, eps, bodyPos2, bodyAcc2);
   dt = get_time() - t0;

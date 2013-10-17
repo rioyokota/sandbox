@@ -8,19 +8,16 @@ class Dataset {
  public:
   std::vector<double4> pos;
  Dataset(unsigned long n,
-	 unsigned int seed = 19810614,
 	 const char *filename = "plummer.dat") : pos(n) {
     std::ifstream file(filename);
     if (!file.fail()) {
-      unsigned long ntmp, stmp;
+      unsigned long ntmp;
       file.read((char *)&ntmp, sizeof(unsigned long));
-      file.read((char *)&stmp, sizeof(unsigned long));
-      if (n == ntmp && seed == stmp) {
+      if (n == ntmp) {
 	file.read((char *)&pos[0], n*sizeof(double4));
 	return;
       }
     }
-    srand48(seed);
     unsigned long i = 0;
     while (i < n) {
       double X1 = drand48();
@@ -65,9 +62,7 @@ class Dataset {
     std::ofstream ofs(filename);
     if(!ofs.fail()){
       unsigned long ntmp = n;
-      unsigned long stmp = seed;
       ofs.write((char *)&ntmp, sizeof(unsigned long));
-      ofs.write((char *)&stmp, sizeof(unsigned long));
       ofs.write((char *)&pos[0], n*sizeof(double4));
     }
   }

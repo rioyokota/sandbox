@@ -402,7 +402,7 @@ class Traversal {
 		cudaVec<float4> & Multipole,
 		cudaVec<int2> & levelRange) {
     const int NWARP = 1 << (NTHREAD2 - WARP_SIZE2);
-    const int NBLOCK = numTargets / NTHREAD;
+    const int NBLOCK = (numTargets - 1) / NTHREAD + 1;
     const int poolSize = MEM_PER_WARP * NWARP * NBLOCK;
     const int numBodies = bodyPos.size();
     const int numSources = sourceCells.size();
