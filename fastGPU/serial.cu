@@ -6,7 +6,8 @@
 #include "upwardpass.h"
 
 int main(int argc, char ** argv) {
-  const int numBodies = (1 << 24) - 1;
+  //const int numBodies = (1 << 24) - 1;
+  const int numBodies = 64;
   const float eps = 0.05;
   const float theta = 0.75;
   const int ncrit = 64;
@@ -35,7 +36,7 @@ int main(int argc, char ** argv) {
   double t0 = get_time();
   Build build;
   float4 domain;
-  cudaVec<int2> levelRange(32);
+  cudaVec<int2> levelRange(32,true);
   cudaVec<CellData> sourceCells(numBodies);
   int3 counts = build.tree<ncrit>(bodyPos, bodyPos2, domain, levelRange, sourceCells);
   int numLevels = counts.x;
@@ -47,7 +48,8 @@ int main(int argc, char ** argv) {
   Group group;
   int numTargets = group.targets(bodyPos, bodyPos2, domain, targetRange, 5);
   Pass pass;
-  pass.upward(numLeafs, numLevels, theta, bodyPos, sourceCells, sourceCenter, Multipole);
+  levelRange.d2h();
+  pass.upward(numLeafs, numLevels, theta, levelRange, bodyPos, sourceCells, sourceCenter, Multipole);
   Traversal traversal;
   const float4 interactions = traversal.approx(numTargets, eps,
 					       bodyPos, bodyPos2, bodyAcc,
