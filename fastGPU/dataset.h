@@ -33,8 +33,7 @@ class Dataset {
 	pos[i].x = X;
 	pos[i].y = Y;
 	pos[i].z = Z;
-	//pos[i].w = drand48() / n;
-	pos[i].w = 1.0;
+	pos[i].w = drand48() / n;
 	ldiv_t tmp_i = ldiv(i, n/64);
 	if(tmp_i.rem == 0) {
 	  printf(".");

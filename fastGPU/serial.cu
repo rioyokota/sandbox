@@ -7,7 +7,6 @@
 
 int main(int argc, char ** argv) {
   const int numBodies = (1 << 24) - 1;
-  //const int numBodies = 1 << 16;
   const float eps = 0.05;
   const float theta = 0.75;
   const int ncrit = 64;
@@ -48,7 +47,6 @@ int main(int argc, char ** argv) {
   Group group;
   int numTargets = group.targets(bodyPos, bodyPos2, domain, targetRange, 5);
   Pass pass;
-  levelRange.d2h();
   pass.upward(numLeafs, numLevels, theta, levelRange, bodyPos, sourceCells, sourceCenter, Multipole);
   Traversal traversal;
   const float4 interactions = traversal.approx(numTargets, eps,

@@ -171,63 +171,17 @@ namespace {
     return;
   }
 
-  static __global__ void P2M2(const int numCells,
-			      const float invTheta,
-			      CellData * cells,
-			      float4 * sourceCenter,
-			      float4 * bodyPos,
-			      float4 * Multipole) {
-    const uint cellIdx = blockIdx.x * blockDim.x + threadIdx.x;
-    if (cellIdx >= numCells) return;
-    const CellData cell = cells[cellIdx];
-    const uint begin = cell.body();
-    const uint end = begin + cell.nbody();
-    float4 M[3];
-    const float huge = 1e10f;
-    float3 Xmin = {+huge,+huge,+huge};
-    float3 Xmax = {-huge,-huge,-huge};
-    for( int i=begin; i<end; i++ ) {
-      float4 body = bodyPos[i];
-      M[0].x += body.w * body.x;
-      M[0].y += body.w * body.y;
-      M[0].z += body.w * body.z;
-      M[0].w += body.w;
-      pairMinMax(Xmin, Xmax, body, body);
-    }
-    const double invM = 1.0 / M[0].w;
-    M[0].x *= invM;
-    M[0].y *= invM;
-    M[0].z *= invM;
-    const float3 X = {(Xmax.x+Xmin.x)*0.5f, (Xmax.y+Xmin.y)*0.5f, (Xmax.z+Xmin.z)*0.5f};
-    const float3 R = {(Xmax.x-Xmin.x)*0.5f, (Xmax.y-Xmin.y)*0.5f, (Xmax.z-Xmin.z)*0.5f};
-    const float3 com = {M[0].x, M[0].y, M[0].z};
-    const float dx = X.x - com.x;
-    const float dy = X.y - com.y;
-    const float dz = X.z - com.z;
-    const float  s = sqrt(dx*dx + dy*dy + dz*dz);
-    const float  l = max(2.0f*max(R.x, max(R.y, R.z)), 1.0e-6f);
-    const float cellOp = l*invTheta + s;
-    const float cellOp2 = cellOp*cellOp;
-    sourceCenter[cellIdx] = (float4){com.x, com.y, com.z, cellOp2};
-    Multipole[3*cellIdx+0] = (float4){M[0].x, M[0].y, M[0].z, M[0].w};
-    Multipole[3*cellIdx+1] = make_float4(0.0f, 0.0f, 0.0f, 0.0f);
-    Multipole[3*cellIdx+2] = make_float4(0.0f, 0.0f, 0.0f, 0.0f);
-    return;
-  }
-
   static __global__ void M2M(const int level,
 			     const float invTheta,
 			     int2 * levelRange,
 			     CellData * cells,
 			     float4 * sourceCenter,
-			     float4 * bodyPos,
 			     float4 * cellXmin,
 			     float4 * cellXmax,
 			     float4 * Multipole) {
     const uint cellIdx = blockIdx.x * blockDim.x + threadIdx.x + levelRange[level].x;
     if (cellIdx >= levelRange[level].y) return;
     const CellData cell = cells[cellIdx];
-#if 0
     const uint begin = cell.child();
     const uint end = begin + cell.nchild();
     if (cell.isLeaf()) return;
@@ -243,22 +197,6 @@ namespace {
       mon.z += pos.w * pos.z;
       pairMinMax(Xmin, Xmax, cellXmin[i], cellXmax[i]);
     }
-#else
-    const uint begin = cell.body();
-    const uint end = begin + cell.nbody();
-    float4 mon = {0.0f, 0.0f, 0.0f, 0.0f};
-    const float huge = 1e10f;
-    float3 Xmin = {+huge,+huge,+huge};
-    float3 Xmax = {-huge,-huge,-huge};
-    for( int i=begin; i<end; i++ ) {
-      float4 pos = bodyPos[i];
-      mon.w += pos.w;
-      mon.x += pos.w * pos.x;
-      mon.y += pos.w * pos.y;
-      mon.z += pos.w * pos.z;
-      pairMinMax(Xmin, Xmax, pos, pos);
-    }
-#endif
     float im = 1.0 / mon.w;
     if(mon.w == 0) im = 0;
     mon.x *= im;
@@ -295,33 +233,12 @@ class Pass {
 	      cudaVec<float4> & sourceCenter,
 	      cudaVec<float4> & Multipole) {
     const int numBodies = bodyPos.size();
-    const int numCells = sourceCells.size();
+    int numCells = sourceCells.size();
     int NBLOCK = (numCells-1) / NTHREAD + 1;
     cudaVec<int> leafCells(numLeafs);
     collectLeafs<<<NBLOCK,NTHREAD>>>(numCells, sourceCells.d(), leafCells.d());
     kernelSuccess("collectLeafs");
     const double t0 = get_time();
-#if 0
-
-#if 0
-    const int NWARP = 1 << (NTHREAD2 - WARP_SIZE2);
-    NBLOCK = (numCells-1) / NWARP + 1;
-    CUDA_SAFE_CALL(cudaFuncSetCacheConfig(&getMultipoles,cudaFuncCachePreferL1));
-    cudaDeviceSynchronize();
-    getMultipoles<<<NBLOCK,NTHREAD>>>(numBodies, numCells, sourceCells.d(),
-				      bodyPos.d(), 1.0 / theta,
-				      sourceCenter.d(), Multipole.d());
-    kernelSuccess("getMultipoles");
-#else
-    NBLOCK = (numCells - 1) / NTHREAD + 1;
-    CUDA_SAFE_CALL(cudaFuncSetCacheConfig(&P2M2,cudaFuncCachePreferL1));
-    cudaDeviceSynchronize();
-    P2M2<<<NBLOCK,NTHREAD>>>(numCells,1.0/theta,sourceCells.d(),sourceCenter.d(),
-			     bodyPos.d(),Multipole.d());
-    kernelSuccess("P2M2");
-#endif
-
-#else
     cudaVec<float4> cellXmin(numCells);
     cudaVec<float4> cellXmax(numCells);
     CUDA_SAFE_CALL(cudaFuncSetCacheConfig(&P2M,cudaFuncCachePreferL1));
@@ -331,18 +248,14 @@ class Pass {
     P2M<<<NBLOCK,NTHREAD>>>(numLeafs,1.0/theta,leafCells.d(),sourceCells.d(),sourceCenter.d(),
 			    bodyPos.d(),cellXmin.d(),cellXmax.d(),Multipole.d());
     kernelSuccess("P2M");
-    int sumCells = 0;
+    levelRange.d2h();
     for( int level=numLevels; level>=1; level-- ) {
-      int numCells2 = levelRange[level].y - levelRange[level].x;
-      sumCells += numCells2;
-      printf("%d %d\n",level,numCells2);
-      NBLOCK = (numCells2 - 1) / NTHREAD + 1;
+      numCells = levelRange[level].y - levelRange[level].x;
+      NBLOCK = (numCells - 1) / NTHREAD + 1;
       M2M<<<NBLOCK,NTHREAD>>>(level,1.0/theta,levelRange.d(),sourceCells.d(),sourceCenter.d(),
-			      bodyPos.d(),cellXmin.d(),cellXmax.d(),Multipole.d());
+			      cellXmin.d(),cellXmax.d(),Multipole.d());
       kernelSuccess("M2M");
     }
-    printf("%d %d\n",numCells,sumCells);
-#endif
     const double dt = get_time() - t0;
     fprintf(stdout,"Upward pass          : %.7f s\n", dt);
   }
