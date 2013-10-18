@@ -2,9 +2,9 @@
 
 namespace {
   static __device__ __forceinline__
-    float3 setCenter(int size, float4 * __restrict__ position, int stride) {
-    float mass;
-    float3 center;
+    double3 setCenter(int size, float4 * __restrict__ position, int stride) {
+    double mass;
+    double3 center;
     for (int i=0; i<size; i++) {
       const float4 pos = position[stride*i];
       mass += pos.w;
@@ -12,7 +12,7 @@ namespace {
       center.y += pos.w * pos.y;
       center.z += pos.w * pos.z;
     }
-    const float invM = 1.0f / mass;
+    const double invM = 1.0f / mass;
     center.x *= invM;
     center.y *= invM;
     center.z *= invM;
@@ -63,7 +63,7 @@ namespace {
     const int begin = cell.body();
     const int size = cell.nbody();
     const int end = begin + size;
-    const float3 center = setCenter(size,bodyPos+begin,1);
+    const double3 center = setCenter(size,bodyPos+begin,1);
     double4 M[3];
     const float huge = 1e10f;
     float3 Xmin = {+huge, +huge, +huge};
@@ -71,7 +71,6 @@ namespace {
     for( int i=begin; i<end; i++ ) {
       float4 body = bodyPos[i];
       M[0].w += body.w;
-#if 0
       float dx = center.x - body.x;
       float dy = center.y - body.y;
       float dz = center.z - body.z;
@@ -81,20 +80,8 @@ namespace {
       M[1].w += body.w * dx * dy;
       M[2].x += body.w * dx * dz;
       M[2].y += body.w * dy * dz;
-#else
-      M[0].x += body.w * body.x;
-      M[0].y += body.w * body.y;
-      M[0].z += body.w * body.z;
-      M[1].x += body.w * body.x * body.x;
-      M[1].y += body.w * body.y * body.y;
-      M[1].z += body.w * body.z * body.z;
-      M[1].w += body.w * body.x * body.y;
-      M[2].x += body.w * body.x * body.z;
-      M[2].y += body.w * body.y * body.z;
-#endif
       pairMinMax(Xmin, Xmax, body, body);
     }
-#if 0
     float invM = 1.0 / M[0].w;
     M[0].x = center.x;
     M[0].y = center.y;
@@ -105,19 +92,6 @@ namespace {
     M[1].w *= invM;
     M[2].x *= invM;
     M[2].y *= invM;
-#else
-    float invM = 1.0 / M[0].w;
-    if(M[0].w == 0) invM = 0;
-    M[0].x *= invM;
-    M[0].y *= invM;
-    M[0].z *= invM;
-    M[1].x = M[1].x * invM - M[0].x * M[0].x;
-    M[1].y = M[1].y * invM - M[0].y * M[0].y;
-    M[1].z = M[1].z * invM - M[0].z * M[0].z;
-    M[1].w = M[1].w * invM - M[0].x * M[0].y;
-    M[2].x = M[2].x * invM - M[0].x * M[0].z;
-    M[2].y = M[2].y * invM - M[0].y * M[0].z;
-#endif
     const float3 X = {(Xmax.x+Xmin.x)*0.5f, (Xmax.y+Xmin.y)*0.5f, (Xmax.z+Xmin.z)*0.5f};
     const float3 R = {(Xmax.x-Xmin.x)*0.5f, (Xmax.y-Xmin.y)*0.5f, (Xmax.z-Xmin.z)*0.5f};
     const float dx = X.x - center.x;
@@ -148,7 +122,7 @@ namespace {
     const int begin = cell.body();
     const int size = cell.nbody();
     const int end = begin + size;
-    const float3 center = setCenter(size,bodyPos+begin,1);
+    const double3 center = setCenter(size,bodyPos+begin,1);
     float4 M[3];
     const float huge = 1e10f;
     float3 Xmin = {+huge, +huge, +huge};
@@ -201,7 +175,7 @@ namespace {
     const int size = cell.nchild();
     const int end = begin + size;
     if (cell.isLeaf()) return;
-    const float3 center = setCenter(size,Multipole+3*begin,3);
+    const double3 center = setCenter(size,Multipole+3*begin,3);
     float4 Mi[3], Mj[3];
     const float huge = 1e10f;
     float3 Xmin = {+huge, +huge, +huge};
