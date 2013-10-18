@@ -51,54 +51,6 @@ namespace {
   }
 
   static __global__ __launch_bounds__(NTHREAD)
-    void P2M2(const int numCells,
-	      const float invTheta,
-	      CellData * cells,
-	      float4 * sourceCenter,
-	      float4 * bodyPos,
-	      float4 * Multipole) {
-    const int cellIdx = blockIdx.x * blockDim.x + threadIdx.x;
-    if (cellIdx >= numCells) return;
-    const CellData cell = cells[cellIdx];
-    const int begin = cell.body();
-    const int size = cell.nbody();
-    const int end = begin + size;
-    const double3 center = setCenter(size,bodyPos+begin,1);
-    double4 M[3];
-    const float huge = 1e10f;
-    float3 Xmin = {+huge, +huge, +huge};
-    float3 Xmax = {-huge, -huge, -huge};
-    for( int i=begin; i<end; i++ ) {
-      float4 body = bodyPos[i];
-      float dx = center.x - body.x;
-      float dy = center.y - body.y;
-      float dz = center.z - body.z;
-      M[0].w += body.w;
-      M[1].x += body.w * dx * dx;
-      M[1].y += body.w * dy * dy;
-      M[1].z += body.w * dz * dz;
-      M[1].w += body.w * dx * dy;
-      M[2].x += body.w * dx * dz;
-      M[2].y += body.w * dy * dz;
-      pairMinMax(Xmin, Xmax, body, body);
-    }
-    M[0].x = center.x;
-    M[0].y = center.y;
-    M[0].z = center.z;
-    const float3 X = {(Xmax.x+Xmin.x)*0.5f, (Xmax.y+Xmin.y)*0.5f, (Xmax.z+Xmin.z)*0.5f};
-    const float3 R = {(Xmax.x-Xmin.x)*0.5f, (Xmax.y-Xmin.y)*0.5f, (Xmax.z-Xmin.z)*0.5f};
-    const float dx = X.x - center.x;
-    const float dy = X.y - center.y;
-    const float dz = X.z - center.z;
-    const float  s = sqrt(dx*dx + dy*dy + dz*dz);
-    const float  l = max(2.0f*max(R.x, max(R.y, R.z)), 1.0e-6f);
-    const float cellOp = l*invTheta + s;
-    const float cellOp2 = cellOp*cellOp;
-    sourceCenter[cellIdx] = make_float4(center.x, center.y, center.z, cellOp2);
-    for (int i=0; i<3; i++) Multipole[3*cellIdx+i] = (float4){M[i].x,M[i].y,M[i].z,M[i].w};
-  }
-
-  static __global__ __launch_bounds__(NTHREAD)
     void P2M(const int numLeafs,
 	     const float invTheta,
 	     int * leafCells,
@@ -165,7 +117,6 @@ namespace {
     const int cellIdx = blockIdx.x * blockDim.x + threadIdx.x + levelRange[level].x;
     if (cellIdx >= levelRange[level].y) return;
     const CellData cell = cells[cellIdx];
-#if 0
     const int begin = cell.child();
     const int size = cell.nchild();
     const int end = begin + size;
@@ -182,39 +133,20 @@ namespace {
       float dy = center.y - Mj[0].y;
       float dz = center.z - Mj[0].z;
       Mi[0].w += Mj[0].w;
-      Mi[1].x += Mj[0].w * dx * dx + Mj[1].x;
-      Mi[1].y += Mj[0].w * dy * dy + Mj[1].y;
-      Mi[1].z += Mj[0].w * dz * dz + Mj[1].z;
-      Mi[1].w += Mj[0].w * dx * dy + Mj[1].w;
-      Mi[2].x += Mj[0].w * dx * dz + Mj[2].x;
-      Mi[2].y += Mj[0].w * dy * dz + Mj[2].y;
+      Mi[1].x += Mj[1].x;
+      Mi[1].y += Mj[1].y;
+      Mi[1].z += Mj[1].z;
+      Mi[1].w += Mj[1].w;
+      Mi[2].x += Mj[2].x;
+      Mi[2].y += Mj[2].y;
+      Mi[1].x += Mj[0].w * dx * dx;
+      Mi[1].y += Mj[0].w * dy * dy;
+      Mi[1].z += Mj[0].w * dz * dz;
+      Mi[1].w += Mj[0].w * dx * dy;
+      Mi[2].x += Mj[0].w * dx * dz;
+      Mi[2].y += Mj[0].w * dy * dz;
       pairMinMax(Xmin, Xmax, cellXmin[i], cellXmax[i]);
     }
-#else
-    const int begin = cell.body();
-    const int size = cell.nbody();
-    const int end = begin + size;
-    if (cell.isLeaf()) return;
-    const double3 center = setCenter(size,bodyPos+begin,1);
-    double4 Mi[3];
-    const float huge = 1e10f;
-    float3 Xmin = {+huge, +huge, +huge};
-    float3 Xmax = {-huge, -huge, -huge};
-    for( int i=begin; i<end; i++ ) {
-      float4 body = bodyPos[i];
-      float dx = center.x - body.x;
-      float dy = center.y - body.y;
-      float dz = center.z - body.z;
-      Mi[0].w += body.w;
-      Mi[1].x += body.w * dx * dx;
-      Mi[1].y += body.w * dy * dy;
-      Mi[1].z += body.w * dz * dz;
-      Mi[1].w += body.w * dx * dy;
-      Mi[2].x += body.w * dx * dz;
-      Mi[2].y += body.w * dy * dz;
-      pairMinMax(Xmin, Xmax, body, body);
-    }
-#endif
     Mi[0].x = center.x;
     Mi[0].y = center.y;
     Mi[0].z = center.z;
@@ -263,7 +195,6 @@ class Pass {
     collectLeafs<<<NBLOCK,NTHREAD>>>(numCells, sourceCells.d(), leafCells.d());
     kernelSuccess("collectLeafs");
     const double t0 = get_time();
-#if 0
     cudaVec<float4> cellXmin(numCells);
     cudaVec<float4> cellXmax(numCells);
     CUDA_SAFE_CALL(cudaFuncSetCacheConfig(&P2M,cudaFuncCachePreferL1));
@@ -281,11 +212,6 @@ class Pass {
 			      bodyPos.d(),cellXmin.d(),cellXmax.d(),Multipole.d());
       kernelSuccess("M2M");
     }
-#else
-    P2M2<<<NBLOCK,NTHREAD>>>(numCells,1.0/theta,sourceCells.d(),sourceCenter.d(),
-			     bodyPos.d(),Multipole.d());
-    kernelSuccess("P2M2");
-#endif
     numCells = sourceCells.size();
     NBLOCK = (numCells - 1) / NTHREAD + 1;
     normalize<<<NBLOCK,NTHREAD>>>(numCells, Multipole.d()); 
