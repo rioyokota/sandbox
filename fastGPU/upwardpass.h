@@ -2,9 +2,9 @@
 
 namespace {
   static __device__ __forceinline__
-    double3 setCenter(int size, float4 * __restrict__ position, int stride) {
-    double mass;
-    double3 center;
+    float3 setCenter(int size, float4 * __restrict__ position, int stride) {
+    float mass;
+    float3 center;
     for (int i=0; i<size; i++) {
       const float4 pos = position[stride*i];
       mass += pos.w;
@@ -12,7 +12,7 @@ namespace {
       center.y += pos.w * pos.y;
       center.z += pos.w * pos.z;
     }
-    const double invM = 1.0f / mass;
+    const float invM = 1.0f / mass;
     center.x *= invM;
     center.y *= invM;
     center.z *= invM;
@@ -67,8 +67,8 @@ namespace {
     const int begin = cell.body();
     const int size = cell.nbody();
     const int end = begin + size;
-    const double3 center = setCenter(size,bodyPos+begin,1);
-    double4 M[3];
+    const float3 center = setCenter(size,bodyPos+begin,1);
+    float4 M[3];
     const float huge = 1e10f;
     float3 Xmin = {+huge, +huge, +huge};
     float3 Xmax = {-huge, -huge, -huge};
@@ -121,8 +121,8 @@ namespace {
     const int size = cell.nchild();
     const int end = begin + size;
     if (cell.isLeaf()) return;
-    const double3 center = setCenter(size,Multipole+3*begin,3);
-    double4 Mi[3];
+    const float3 center = setCenter(size,Multipole+3*begin,3);
+    float Mi[12];
     float4 Mj[3];
     const float huge = 1e10f;
     float3 Xmin = {+huge, +huge, +huge};
@@ -132,24 +132,24 @@ namespace {
       float dx = center.x - Mj[0].x;
       float dy = center.y - Mj[0].y;
       float dz = center.z - Mj[0].z;
-      Mi[0].w += Mj[0].w;
-      Mi[1].x += Mj[1].x;
-      Mi[1].y += Mj[1].y;
-      Mi[1].z += Mj[1].z;
-      Mi[1].w += Mj[1].w;
-      Mi[2].x += Mj[2].x;
-      Mi[2].y += Mj[2].y;
-      Mi[1].x += Mj[0].w * dx * dx;
-      Mi[1].y += Mj[0].w * dy * dy;
-      Mi[1].z += Mj[0].w * dz * dz;
-      Mi[1].w += Mj[0].w * dx * dy;
-      Mi[2].x += Mj[0].w * dx * dz;
-      Mi[2].y += Mj[0].w * dy * dz;
+      Mi[3] += Mj[0].w;
+      Mi[4] += Mj[1].x;
+      Mi[5] += Mj[1].y;
+      Mi[6] += Mj[1].z;
+      Mi[7] += Mj[1].w;
+      Mi[8] += Mj[2].x;
+      Mi[9] += Mj[2].y;
+      Mi[4] += Mj[0].w * dx * dx;
+      Mi[5] += Mj[0].w * dy * dy;
+      Mi[6] += Mj[0].w * dz * dz;
+      Mi[7] += Mj[0].w * dx * dy;
+      Mi[8] += Mj[0].w * dx * dz;
+      Mi[9] += Mj[0].w * dy * dz;
       pairMinMax(Xmin, Xmax, cellXmin[i], cellXmax[i]);
     }
-    Mi[0].x = center.x;
-    Mi[0].y = center.y;
-    Mi[0].z = center.z;
+    Mi[0] = center.x;
+    Mi[1] = center.y;
+    Mi[2] = center.z;
     const float3 X = {(Xmax.x+Xmin.x)*0.5f, (Xmax.y+Xmin.y)*0.5f, (Xmax.z+Xmin.z)*0.5f};
     const float3 R = {(Xmax.x-Xmin.x)*0.5f, (Xmax.y-Xmin.y)*0.5f, (Xmax.z-Xmin.z)*0.5f};
     const float dx = X.x - center.x;
@@ -160,7 +160,7 @@ namespace {
     const float cellOp = l*invTheta + s;
     const float cellOp2 = cellOp*cellOp;
     sourceCenter[cellIdx] = make_float4(center.x, center.y, center.z, cellOp2);
-    for (int i=0; i<3; i++) Multipole[3*cellIdx+i] = (float4){Mi[i].x,Mi[i].y,Mi[i].z,Mi[i].w};
+    for (int i=0; i<3; i++) Multipole[3*cellIdx+i] = make_float4(Mi[4*i+0],Mi[4*i+1],Mi[4*i+2],Mi[4*i+3]);
     cellXmin[cellIdx] = make_float4(Xmin.x, Xmin.y, Xmin.z, 0.0f);
     cellXmax[cellIdx] = make_float4(Xmax.x, Xmax.y, Xmax.z, 0.0f);
   }
