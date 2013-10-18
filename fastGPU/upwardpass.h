@@ -72,7 +72,7 @@ namespace {
     const float huge = 1e10f;
     float3 Xmin = {+huge, +huge, +huge};
     float3 Xmax = {-huge, -huge, -huge};
-    for( int i=begin; i<end; i++ ) {
+    for (int i=begin; i<end; i++) {
       float4 body = bodyPos[i];
       float dx = center.x - body.x;
       float dy = center.y - body.y;
@@ -127,8 +127,8 @@ namespace {
     const float huge = 1e10f;
     float3 Xmin = {+huge, +huge, +huge};
     float3 Xmax = {-huge, -huge, -huge};
-    for( int i=begin; i<end; i++ ) {
-      Mj[0] = Multipole[3*i];
+    for (int i=begin; i<end; i++) {
+      for (int j=0; j<3; j++) Mj[j] = Multipole[3*i+j];
       float dx = center.x - Mj[0].x;
       float dy = center.y - Mj[0].y;
       float dz = center.z - Mj[0].z;
