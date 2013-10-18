@@ -50,10 +50,11 @@ namespace {
 
   static __device__ __forceinline__
     float4 M2P(float4 acc,
-	       const float3 pos,
+	       const float3 pos_i,
+	       const float4 pos_j,
 	       const float * __restrict__ M,
 	       float EPS2) {
-    const float3 dX = make_float3(pos.x - M[0], pos.y - M[1], pos.z - M[2]);
+    const float3 dX = make_float3(pos_i.x - pos_j.x, pos_i.y - pos_j.y, pos_i.z - pos_j.z);
     const float R2 = dX.x * dX.x + dX.y * dX.y + dX.z * dX.z + EPS2;
     const float invR = rsqrtf(R2);
     const float invR2 = -invR * invR;
@@ -88,6 +89,7 @@ namespace {
 		   const float EPS2) {
     float4 M4[3];
     float M[12];
+    const float4 Xj = tex1Dfetch(texCellCenter, cellIdx);
     if (FULL || cellIdx >= 0) {
 #pragma unroll
       for (int i=0; i<3; i++) M4[i] = tex1Dfetch(texMultipole, 3*cellIdx+i);
@@ -96,6 +98,7 @@ namespace {
       for (int i=0; i<3; i++) M4[i] = make_float4(0.0f, 0.0f, 0.0f, 0.0f);
     }
     for (int j=0; j<WARP_SIZE; j++) {
+      const float4 pos_j = make_float4(__shfl(Xj.x, j),__shfl(Xj.y, j),__shfl(Xj.z, j),__shfl(Xj.w, j));
 #pragma unroll
       for (int i=0; i<3; i++) {
         M[4*i+0] = __shfl(M4[i].x, j);
@@ -104,7 +107,7 @@ namespace {
         M[4*i+3] = __shfl(M4[i].w, j);
       }
       for (int k=0; k<2; k++)
-	acc_i[k] = M2P(acc_i[k], pos_i[k], M, EPS2);
+	acc_i[k] = M2P(acc_i[k], pos_i[k], pos_j, M, EPS2);
     }
   }
 
