@@ -54,8 +54,8 @@ namespace {
 	       const float * __restrict__ M,
 	       float EPS2) {
     const float3 dX = make_float3(pos.x - M[0], pos.y - M[1], pos.z - M[2]);
-    const float  R2 = dX.x * dX.x + dX.y * dX.y + dX.z * dX.z + EPS2;
-    const float invR  = rsqrtf(R2);
+    const float R2 = dX.x * dX.x + dX.y * dX.y + dX.z * dX.z + EPS2;
+    const float invR = rsqrtf(R2);
     const float invR2 = -invR * invR;
     const float invR1 = M[3] * invR;
     const float invR3 = invR2 * invR1;
@@ -67,7 +67,7 @@ namespace {
     const float q12 = M[7];
     const float q13 = M[8];
     const float q23 = M[9];
-    const float  q  = q11 + q22 + q33;
+    const float q = q11 + q22 + q33;
     const float3 qR = make_float3(q11 * dX.x + q12 * dX.y + q13 * dX.z,
 				  q12 * dX.x + q22 * dX.y + q23 * dX.z,
 				  q13 * dX.x + q23 * dX.y + q33 * dX.z);
@@ -86,22 +86,22 @@ namespace {
 		   const float3 pos_i[2],
 		   const int cellIdx,
 		   const float EPS2) {
-    float4 MLane[3];
+    float4 M4[3];
     float M[12];
     if (FULL || cellIdx >= 0) {
 #pragma unroll
-      for (int i=0; i<3; i++) MLane[i] = tex1Dfetch(texMultipole, 3*cellIdx+i);
+      for (int i=0; i<3; i++) M4[i] = tex1Dfetch(texMultipole, 3*cellIdx+i);
     } else {
 #pragma unroll
-      for (int i=0; i<3; i++) MLane[i] = make_float4(0.0f, 0.0f, 0.0f, 0.0f);
+      for (int i=0; i<3; i++) M4[i] = make_float4(0.0f, 0.0f, 0.0f, 0.0f);
     }
     for (int j=0; j<WARP_SIZE; j++) {
 #pragma unroll
       for (int i=0; i<3; i++) {
-        M[4*i+0] = __shfl(MLane[i].x, j);
-        M[4*i+1] = __shfl(MLane[i].y, j);
-        M[4*i+2] = __shfl(MLane[i].z, j);
-        M[4*i+3] = __shfl(MLane[i].w, j);
+        M[4*i+0] = __shfl(M4[i].x, j);
+        M[4*i+1] = __shfl(M4[i].y, j);
+        M[4*i+2] = __shfl(M4[i].z, j);
+        M[4*i+3] = __shfl(M4[i].w, j);
       }
       for (int k=0; k<2; k++)
 	acc_i[k] = M2P(acc_i[k], pos_i[k], M, EPS2);
