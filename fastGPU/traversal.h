@@ -58,7 +58,7 @@ namespace {
     const float R2 = dX.x * dX.x + dX.y * dX.y + dX.z * dX.z + EPS2;
     const float invR = rsqrtf(R2);
     const float invR2 = -invR * invR;
-    const float invR1 = M[3] * invR;
+    const float invR1 = M[0] * invR;
     const float invR3 = invR2 * invR1;
     const float invR5 = 3 * invR2 * invR3;
     const float invR7 = 5 * invR2 * invR5;

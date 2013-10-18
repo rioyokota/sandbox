@@ -27,7 +27,7 @@ namespace {
     float3 center;
     for (int i=0; i<numChild; i++) {
       float4 pos = sourceCenter[i];
-      pos.w = Multipole[3*i].w;
+      pos.w = Multipole[3*i].x;
       mass += pos.w;
       center.x += pos.w * pos.x;
       center.y += pos.w * pos.y;
@@ -98,7 +98,7 @@ namespace {
       float dx = center.x - body.x;
       float dy = center.y - body.y;
       float dz = center.z - body.z;
-      M[3] += body.w;
+      M[0] += body.w;
       M[4] += body.w * dx * dx;
       M[5] += body.w * dy * dy;
       M[6] += body.w * dz * dz;
@@ -107,9 +107,6 @@ namespace {
       M[9] += body.w * dy * dz;
       pairMinMax(Xmin, Xmax, body, body);
     }
-    M[0] = center.x;
-    M[1] = center.y;
-    M[2] = center.z;
     const float3 X = {(Xmax.x+Xmin.x)*0.5f, (Xmax.y+Xmin.y)*0.5f, (Xmax.z+Xmin.z)*0.5f};
     const float3 R = {(Xmax.x-Xmin.x)*0.5f, (Xmax.y-Xmin.y)*0.5f, (Xmax.z-Xmin.z)*0.5f};
     const float dx = X.x - center.x;
@@ -153,24 +150,21 @@ namespace {
       float dx = Xi.x - Xj.x;
       float dy = Xi.y - Xj.y;
       float dz = Xi.z - Xj.z;
-      Mi[3] += Mj[3];
+      Mi[0] += Mj[0];
       Mi[4] += Mj[4];
       Mi[5] += Mj[5];
       Mi[6] += Mj[6];
       Mi[7] += Mj[7];
       Mi[8] += Mj[8];
       Mi[9] += Mj[9];
-      Mi[4] += Mj[3] * dx * dx;
-      Mi[5] += Mj[3] * dy * dy;
-      Mi[6] += Mj[3] * dz * dz;
-      Mi[7] += Mj[3] * dx * dy;
-      Mi[8] += Mj[3] * dx * dz;
-      Mi[9] += Mj[3] * dy * dz;
+      Mi[4] += Mj[0] * dx * dx;
+      Mi[5] += Mj[0] * dy * dy;
+      Mi[6] += Mj[0] * dz * dz;
+      Mi[7] += Mj[0] * dx * dy;
+      Mi[8] += Mj[0] * dx * dz;
+      Mi[9] += Mj[0] * dy * dz;
       pairMinMax(Xmin, Xmax, cellXmin[i], cellXmax[i]);
     }
-    Mi[0] = Xi.x;
-    Mi[1] = Xi.y;
-    Mi[2] = Xi.z;
     const float3 X = {(Xmax.x+Xmin.x)*0.5f, (Xmax.y+Xmin.y)*0.5f, (Xmax.z+Xmin.z)*0.5f};
     const float3 R = {(Xmax.x-Xmin.x)*0.5f, (Xmax.y-Xmin.y)*0.5f, (Xmax.z-Xmin.z)*0.5f};
     const float dx = X.x - Xi.x;
@@ -190,7 +184,10 @@ namespace {
     void normalize(const int numCells, float4 * Multipole) {
     const int cellIdx = blockIdx.x * blockDim.x + threadIdx.x;
     if (cellIdx >= numCells) return;
-    const float invM = 1.0 / Multipole[3*cellIdx].w;
+    const float invM = 1.0 / Multipole[3*cellIdx].x;
+    Multipole[3*cellIdx].y *= invM;
+    Multipole[3*cellIdx].z *= invM;
+    Multipole[3*cellIdx].w *= invM;
     for (int i=1; i<3; i++) {
       Multipole[3*cellIdx+i].x *= invM;
       Multipole[3*cellIdx+i].y *= invM;
