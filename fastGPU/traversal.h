@@ -73,11 +73,11 @@ namespace {
 				  q12 * dX.x + q22 * dX.y + q23 * dX.z,
 				  q13 * dX.x + q23 * dX.y + q33 * dX.z);
     const float qRR = qR.x * dX.x + qR.y * dX.y + qR.z * dX.z;
-    acc.w -= invR1 + 0.5f * (invR3 * q + invR5 * qRR);
-    const float C = invR3 + 0.5f * (invR5 * q + invR7 * qRR);
-    acc.x += C * dX.x + invR5 * qR.x;
-    acc.y += C * dX.y + invR5 * qR.y;
-    acc.z += C * dX.z + invR5 * qR.z;
+    acc.w -= invR1 + invR3 * q + invR5 * qRR;
+    const float C = invR3 + invR5 * q + invR7 * qRR;
+    acc.x += C * dX.x + 2 * invR5 * qR.x;
+    acc.y += C * dX.y + 2 * invR5 * qR.y;
+    acc.z += C * dX.z + 2 * invR5 * qR.z;
     return acc;
   }
 
