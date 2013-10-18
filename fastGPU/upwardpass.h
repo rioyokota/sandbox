@@ -63,7 +63,7 @@ namespace {
     const int begin = cell.body();
     const int size = cell.nbody();
     const int end = begin + size;
-    //const float3 center = setCenter(size,bodyPos+begin,1);
+    const float3 center = setCenter(size,bodyPos+begin,1);
     double4 M[3];
     const float huge = 1e10f;
     float3 Xmin = {+huge, +huge, +huge};
@@ -94,7 +94,18 @@ namespace {
 #endif
       pairMinMax(Xmin, Xmax, body, body);
     }
-#if 1
+#if 0
+    float invM = 1.0 / M[0].w;
+    M[0].x = center.x;
+    M[0].y = center.y;
+    M[0].z = center.z;
+    M[1].x *= invM;
+    M[1].y *= invM;
+    M[1].z *= invM;
+    M[1].w *= invM;
+    M[2].x *= invM;
+    M[2].y *= invM;
+#else
     float invM = 1.0 / M[0].w;
     if(M[0].w == 0) invM = 0;
     M[0].x *= invM;
@@ -109,7 +120,6 @@ namespace {
 #endif
     const float3 X = {(Xmax.x+Xmin.x)*0.5f, (Xmax.y+Xmin.y)*0.5f, (Xmax.z+Xmin.z)*0.5f};
     const float3 R = {(Xmax.x-Xmin.x)*0.5f, (Xmax.y-Xmin.y)*0.5f, (Xmax.z-Xmin.z)*0.5f};
-    const float3 center = make_float3(M[0].x, M[0].y, M[0].z);
     const float dx = X.x - center.x;
     const float dy = X.y - center.y;
     const float dz = X.z - center.z;
