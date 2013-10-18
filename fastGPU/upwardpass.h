@@ -2,11 +2,32 @@
 
 namespace {
   static __device__ __forceinline__
-    float3 setCenter(int size, float4 * __restrict__ position, int stride) {
+    float3 setCenter(int numBodies, float4 * bodyPos) {
     float mass;
     float3 center;
-    for (int i=0; i<size; i++) {
-      const float4 pos = position[stride*i];
+    for (int i=0; i<numBodies; i++) {
+      const float4 pos = bodyPos[i];
+      mass += pos.w;
+      center.x += pos.w * pos.x;
+      center.y += pos.w * pos.y;
+      center.z += pos.w * pos.z;
+    }
+    const float invM = 1.0f / mass;
+    center.x *= invM;
+    center.y *= invM;
+    center.z *= invM;
+    return center;
+  }
+
+  static __device__ __forceinline__
+    float3 setCenter(int numChild,
+		     float4 * sourceCenter,
+		     float4 * Multipole) {
+    float mass;
+    float3 center;
+    for (int i=0; i<numChild; i++) {
+      float4 pos = sourceCenter[i];
+      pos.w = Multipole[3*i].w;
       mass += pos.w;
       center.x += pos.w * pos.x;
       center.y += pos.w * pos.y;
@@ -67,7 +88,7 @@ namespace {
     const int begin = cell.body();
     const int size = cell.nbody();
     const int end = begin + size;
-    const float3 center = setCenter(size,bodyPos+begin,1);
+    const float3 center = setCenter(size,bodyPos+begin);
     float M[12];
     const float huge = 1e10f;
     float3 Xmin = {+huge, +huge, +huge};
@@ -121,7 +142,7 @@ namespace {
     const int size = cell.nchild();
     const int end = begin + size;
     if (cell.isLeaf()) return;
-    const float3 Xi = setCenter(size,Multipole+3*begin,3);
+    const float3 Xi = setCenter(size,sourceCenter+begin,Multipole+3*begin);
     float Mi[12];
     const float huge = 1e10f;
     float3 Xmin = {+huge, +huge, +huge};
