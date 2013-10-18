@@ -51,32 +51,32 @@ namespace {
   static __device__ __forceinline__
     float4 M2P(float4 acc,
 	       const float3 pos,
-	       const float4 * __restrict__ M,
+	       const float * __restrict__ M,
 	       float EPS2) {
-    const float3 dX = make_float3(pos.x - M[0].x, pos.y - M[0].y, pos.z - M[0].z);
+    const float3 dX = make_float3(pos.x - M[0], pos.y - M[1], pos.z - M[2]);
     const float  R2 = dX.x * dX.x + dX.y * dX.y + dX.z * dX.z + EPS2;
     const float invR  = rsqrtf(R2);
     const float invR2 = -invR * invR;
-    const float invR1  = M[0].w * invR;
+    const float invR1 = M[3] * invR;
     const float invR3 = invR2 * invR1;
     const float invR5 = 3 * invR2 * invR3;
     const float invR7 = 5 * invR2 * invR5;
-    const float q11 = M[1].x;
-    const float q22 = M[1].y;
-    const float q33 = M[1].z;
-    const float q12 = M[1].w;
-    const float q13 = M[2].x;
-    const float q23 = M[2].y;
+    const float q11 = M[4];
+    const float q22 = M[5];
+    const float q33 = M[6];
+    const float q12 = M[7];
+    const float q13 = M[8];
+    const float q23 = M[9];
     const float  q  = q11 + q22 + q33;
     const float3 qR = make_float3(q11 * dX.x + q12 * dX.y + q13 * dX.z,
 				  q12 * dX.x + q22 * dX.y + q23 * dX.z,
 				  q13 * dX.x + q23 * dX.y + q33 * dX.z);
     const float qRR = qR.x * dX.x + qR.y * dX.y + qR.z * dX.z;
-    acc.w  -= invR1 + 0.5f * (invR3 * q + invR5 * qRR);
+    acc.w -= invR1 + 0.5f * (invR3 * q + invR5 * qRR);
     const float C = invR3 + 0.5f * (invR5 * q + invR7 * qRR);
-    acc.x  += C * dX.x + invR5 * qR.x;
-    acc.y  += C * dX.y + invR5 * qR.y;
-    acc.z  += C * dX.z + invR5 * qR.z;
+    acc.x += C * dX.x + invR5 * qR.x;
+    acc.y += C * dX.y + invR5 * qR.y;
+    acc.z += C * dX.z + invR5 * qR.z;
     return acc;
   }
 
@@ -86,7 +86,8 @@ namespace {
 		   const float3 pos_i[2],
 		   const int cellIdx,
 		   const float EPS2) {
-    float4 MLane[3], M[3];
+    float4 MLane[3];
+    float M[12];
     if (FULL || cellIdx >= 0) {
 #pragma unroll
       for (int i=0; i<3; i++) MLane[i] = tex1Dfetch(texMultipole, 3*cellIdx+i);
@@ -96,7 +97,12 @@ namespace {
     }
     for (int j=0; j<WARP_SIZE; j++) {
 #pragma unroll
-      for (int i=0; i<3; i++) M[i] = make_float4(__shfl(MLane[i].x, j), __shfl(MLane[i].y, j), __shfl(MLane[i].z, j), __shfl(MLane[i].w,j));
+      for (int i=0; i<3; i++) {
+        M[4*i+0] = __shfl(MLane[i].x, j);
+        M[4*i+1] = __shfl(MLane[i].y, j);
+        M[4*i+2] = __shfl(MLane[i].z, j);
+        M[4*i+3] = __shfl(MLane[i].w, j);
+      }
       for (int k=0; k<2; k++)
 	acc_i[k] = M2P(acc_i[k], pos_i[k], M, EPS2);
     }
