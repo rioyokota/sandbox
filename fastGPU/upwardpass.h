@@ -68,7 +68,7 @@ namespace {
     const int size = cell.nbody();
     const int end = begin + size;
     const float3 center = setCenter(size,bodyPos+begin,1);
-    float4 M[3];
+    float M[12];
     const float huge = 1e10f;
     float3 Xmin = {+huge, +huge, +huge};
     float3 Xmax = {-huge, -huge, -huge};
@@ -77,18 +77,18 @@ namespace {
       float dx = center.x - body.x;
       float dy = center.y - body.y;
       float dz = center.z - body.z;
-      M[0].w += body.w;
-      M[1].x += body.w * dx * dx;
-      M[1].y += body.w * dy * dy;
-      M[1].z += body.w * dz * dz;
-      M[1].w += body.w * dx * dy;
-      M[2].x += body.w * dx * dz;
-      M[2].y += body.w * dy * dz;
+      M[3] += body.w;
+      M[4] += body.w * dx * dx;
+      M[5] += body.w * dy * dy;
+      M[6] += body.w * dz * dz;
+      M[7] += body.w * dx * dy;
+      M[8] += body.w * dx * dz;
+      M[9] += body.w * dy * dz;
       pairMinMax(Xmin, Xmax, body, body);
     }
-    M[0].x = center.x;
-    M[0].y = center.y;
-    M[0].z = center.z;
+    M[0] = center.x;
+    M[1] = center.y;
+    M[2] = center.z;
     const float3 X = {(Xmax.x+Xmin.x)*0.5f, (Xmax.y+Xmin.y)*0.5f, (Xmax.z+Xmin.z)*0.5f};
     const float3 R = {(Xmax.x-Xmin.x)*0.5f, (Xmax.y-Xmin.y)*0.5f, (Xmax.z-Xmin.z)*0.5f};
     const float dx = X.x - center.x;
@@ -99,7 +99,7 @@ namespace {
     const float cellOp = l*invTheta + s;
     const float cellOp2 = cellOp*cellOp;
     sourceCenter[cellIdx] = make_float4(center.x, center.y, center.z, cellOp2);
-    for (int i=0; i<3; i++) Multipole[3*cellIdx+i] = (float4){M[i].x,M[i].y,M[i].z,M[i].w};
+    for (int i=0; i<3; i++) Multipole[3*cellIdx+i] = (float4){M[4*i+0],M[4*i+1],M[4*i+2],M[4*i+3]};
     cellXmin[cellIdx] = make_float4(Xmin.x, Xmin.y, Xmin.z, 0.0f);
     cellXmax[cellIdx] = make_float4(Xmax.x, Xmax.y, Xmax.z, 0.0f);
   }
