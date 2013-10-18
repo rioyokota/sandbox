@@ -20,14 +20,14 @@ namespace {
 		  const CellData sourceData,
 		  const float3 targetCenter,
 		  const float3 targetSize) {
-    float3 dr = make_float3(fabsf(targetCenter.x - sourceCenter.x) - (targetSize.x),
+    float3 dX = make_float3(fabsf(targetCenter.x - sourceCenter.x) - (targetSize.x),
                             fabsf(targetCenter.y - sourceCenter.y) - (targetSize.y),
                             fabsf(targetCenter.z - sourceCenter.z) - (targetSize.z));
-    dr.x += fabsf(dr.x); dr.x *= 0.5f;
-    dr.y += fabsf(dr.y); dr.y *= 0.5f;
-    dr.z += fabsf(dr.z); dr.z *= 0.5f;
-    const float ds2 = dr.x*dr.x + dr.y*dr.y + dr.z*dr.z;
-    return ds2 < fabsf(sourceCenter.w) || sourceData.nbody() < 3;
+    dX.x += fabsf(dX.x); dX.x *= 0.5f;
+    dX.y += fabsf(dX.y); dX.y *= 0.5f;
+    dX.z += fabsf(dX.z); dX.z *= 0.5f;
+    const float R2 = dX.x * dX.x + dX.y * dX.y + dX.z * dX.z;
+    return R2 < fabsf(sourceCenter.w) || sourceData.nbody() < 3;
   }
 
   static __device__ __forceinline__
@@ -35,16 +35,16 @@ namespace {
 	       const float3 pos,
 	       const float4 posj,
 	       const float EPS2) {
-    const float3 dr    = make_float3(posj.x - pos.x, posj.y - pos.y, posj.z - pos.z);
-    const float r2     = dr.x*dr.x + dr.y*dr.y + dr.z*dr.z + EPS2;
-    const float rinv   = rsqrtf(r2);
-    const float rinv2  = rinv*rinv;
-    const float mrinv  = posj.w * rinv;
-    const float mrinv3 = mrinv * rinv2;
-    acc.w -= mrinv;
-    acc.x += mrinv3 * dr.x;
-    acc.y += mrinv3 * dr.y;
-    acc.z += mrinv3 * dr.z;
+    const float3 dX    = make_float3(posj.x - pos.x, posj.y - pos.y, posj.z - pos.z);
+    const float  R2    = dX.x * dX.x + dX.y * dX.y + dX.z * dX.z + EPS2;
+    const float  invR  = rsqrtf(R2);
+    const float  invR2 = invR*invR;
+    const float  invR1 = posj.w * invR;
+    const float  invR3 = invR1 * invR2;
+    acc.w -= invR1;
+    acc.x += invR3 * dX.x;
+    acc.y += invR3 * dX.y;
+    acc.z += invR3 * dX.z;
     return acc;
   }
 
@@ -53,18 +53,14 @@ namespace {
 	       const float3 pos,
 	       const float4 * __restrict__ M,
 	       float EPS2) {
-    const float3 dr = make_float3(pos.x - M[0].x, pos.y - M[0].y, pos.z - M[0].z);
-    const float  r2 = dr.x * dr.x + dr.y * dr.y + dr.z * dr.z + EPS2;
-    const float rinv  = rsqrtf(r2);
-    const float rinv2 = rinv * rinv;
-    const float mrinv  = M[0].w * rinv;
-    const float mrinv3 = rinv2 * mrinv;
-    const float mrinv5 = rinv2 * mrinv3;
-    const float mrinv7 = rinv2 * mrinv5;
-    const float  D0 =  mrinv;
-    const float  D1 = -mrinv3;
-    const float  D2 =  mrinv5 * 3.0f;
-    const float  D3 = -mrinv7 * 15.0f;
+    const float3 dX = make_float3(pos.x - M[0].x, pos.y - M[0].y, pos.z - M[0].z);
+    const float  R2 = dX.x * dX.x + dX.y * dX.y + dX.z * dX.z + EPS2;
+    const float invR  = rsqrtf(R2);
+    const float invR2 = -invR * invR;
+    const float invR1  = M[0].w * invR;
+    const float invR3 = invR2 * invR1;
+    const float invR5 = 3 * invR2 * invR3;
+    const float invR7 = 5 * invR2 * invR5;
     const float q11 = M[1].x;
     const float q22 = M[1].y;
     const float q33 = M[1].z;
@@ -72,15 +68,15 @@ namespace {
     const float q13 = M[2].x;
     const float q23 = M[2].y;
     const float  q  = q11 + q22 + q33;
-    const float3 qR = make_float3(q11 * dr.x + q12 * dr.y + q13 * dr.z,
-				  q12 * dr.x + q22 * dr.y + q23 * dr.z,
-				  q13 * dr.x + q23 * dr.y + q33 * dr.z);
-    const float qRR = qR.x * dr.x + qR.y * dr.y + qR.z * dr.z;
-    acc.w  -= D0 + 0.5f * (D1*q + D2 * qRR);
-    const float C = D1 + 0.5f * (D2*q + D3 * qRR);
-    acc.x  += C * dr.x + D2 * qR.x;
-    acc.y  += C * dr.y + D2 * qR.y;
-    acc.z  += C * dr.z + D2 * qR.z;
+    const float3 qR = make_float3(q11 * dX.x + q12 * dX.y + q13 * dX.z,
+				  q12 * dX.x + q22 * dX.y + q23 * dX.z,
+				  q13 * dX.x + q23 * dX.y + q33 * dX.z);
+    const float qRR = qR.x * dX.x + qR.y * dX.y + qR.z * dX.z;
+    acc.w  -= invR1 + 0.5f * (invR3 * q + invR5 * qRR);
+    const float C = invR3 + 0.5f * (invR5 * q + invR7 * qRR);
+    acc.x  += C * dX.x + invR5 * qR.x;
+    acc.y  += C * dX.y + invR5 * qR.y;
+    acc.z  += C * dX.z + invR5 * qR.z;
     return acc;
   }
 

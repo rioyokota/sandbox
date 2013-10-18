@@ -70,10 +70,10 @@ namespace {
     float3 Xmax = {-huge, -huge, -huge};
     for( int i=begin; i<end; i++ ) {
       float4 body = bodyPos[i];
-      M[0].w += body.w;
       float dx = center.x - body.x;
       float dy = center.y - body.y;
       float dz = center.z - body.z;
+      M[0].w += body.w;
       M[1].x += body.w * dx * dx;
       M[1].y += body.w * dy * dy;
       M[1].z += body.w * dz * dz;
@@ -82,16 +82,9 @@ namespace {
       M[2].y += body.w * dy * dz;
       pairMinMax(Xmin, Xmax, body, body);
     }
-    float invM = 1.0 / M[0].w;
     M[0].x = center.x;
     M[0].y = center.y;
     M[0].z = center.z;
-    M[1].x *= invM;
-    M[1].y *= invM;
-    M[1].z *= invM;
-    M[1].w *= invM;
-    M[2].x *= invM;
-    M[2].y *= invM;
     const float3 X = {(Xmax.x+Xmin.x)*0.5f, (Xmax.y+Xmin.y)*0.5f, (Xmax.z+Xmin.z)*0.5f};
     const float3 R = {(Xmax.x-Xmin.x)*0.5f, (Xmax.y-Xmin.y)*0.5f, (Xmax.z-Xmin.z)*0.5f};
     const float dx = X.x - center.x;
@@ -123,7 +116,7 @@ namespace {
     const int size = cell.nbody();
     const int end = begin + size;
     const double3 center = setCenter(size,bodyPos+begin,1);
-    float4 M[3];
+    double4 M[3];
     const float huge = 1e10f;
     float3 Xmin = {+huge, +huge, +huge};
     float3 Xmax = {-huge, -huge, -huge};
@@ -154,7 +147,7 @@ namespace {
     const float cellOp = l*invTheta + s;
     const float cellOp2 = cellOp*cellOp;
     sourceCenter[cellIdx] = make_float4(center.x, center.y, center.z, cellOp2);
-    for (int i=0; i<3; i++) Multipole[3*cellIdx+i] = M[i];
+    for (int i=0; i<3; i++) Multipole[3*cellIdx+i] = (float4){M[i].x,M[i].y,M[i].z,M[i].w};
     cellXmin[cellIdx] = make_float4(Xmin.x, Xmin.y, Xmin.z, 0.0f);
     cellXmax[cellIdx] = make_float4(Xmax.x, Xmax.y, Xmax.z, 0.0f);
   }
@@ -165,18 +158,21 @@ namespace {
 	     int2 * levelRange,
 	     CellData * cells,
 	     float4 * sourceCenter,
+	     float4 * bodyPos,
 	     float4 * cellXmin,
 	     float4 * cellXmax,
 	     float4 * Multipole) {
     const int cellIdx = blockIdx.x * blockDim.x + threadIdx.x + levelRange[level].x;
     if (cellIdx >= levelRange[level].y) return;
     const CellData cell = cells[cellIdx];
+#if 0
     const int begin = cell.child();
     const int size = cell.nchild();
     const int end = begin + size;
     if (cell.isLeaf()) return;
     const double3 center = setCenter(size,Multipole+3*begin,3);
-    float4 Mi[3], Mj[3];
+    double4 Mi[3];
+    float4 Mj[3];
     const float huge = 1e10f;
     float3 Xmin = {+huge, +huge, +huge};
     float3 Xmax = {-huge, -huge, -huge};
@@ -194,6 +190,31 @@ namespace {
       Mi[2].y += Mj[0].w * dy * dz + Mj[2].y;
       pairMinMax(Xmin, Xmax, cellXmin[i], cellXmax[i]);
     }
+#else
+    const int begin = cell.body();
+    const int size = cell.nbody();
+    const int end = begin + size;
+    if (cell.isLeaf()) return;
+    const double3 center = setCenter(size,bodyPos+begin,1);
+    double4 Mi[3];
+    const float huge = 1e10f;
+    float3 Xmin = {+huge, +huge, +huge};
+    float3 Xmax = {-huge, -huge, -huge};
+    for( int i=begin; i<end; i++ ) {
+      float4 body = bodyPos[i];
+      float dx = center.x - body.x;
+      float dy = center.y - body.y;
+      float dz = center.z - body.z;
+      Mi[0].w += body.w;
+      Mi[1].x += body.w * dx * dx;
+      Mi[1].y += body.w * dy * dy;
+      Mi[1].z += body.w * dz * dz;
+      Mi[1].w += body.w * dx * dy;
+      Mi[2].x += body.w * dx * dz;
+      Mi[2].y += body.w * dy * dz;
+      pairMinMax(Xmin, Xmax, body, body);
+    }
+#endif
     Mi[0].x = center.x;
     Mi[0].y = center.y;
     Mi[0].z = center.z;
@@ -207,7 +228,7 @@ namespace {
     const float cellOp = l*invTheta + s;
     const float cellOp2 = cellOp*cellOp;
     sourceCenter[cellIdx] = make_float4(center.x, center.y, center.z, cellOp2);
-    for (int i=0; i<3; i++) Multipole[3*cellIdx+i] = Mi[i];
+    for (int i=0; i<3; i++) Multipole[3*cellIdx+i] = (float4){Mi[i].x,Mi[i].y,Mi[i].z,Mi[i].w};
     cellXmin[cellIdx] = make_float4(Xmin.x, Xmin.y, Xmin.z, 0.0f);
     cellXmax[cellIdx] = make_float4(Xmax.x, Xmax.y, Xmax.z, 0.0f);
   }
@@ -257,17 +278,17 @@ class Pass {
       numCells = levelRange[level].y - levelRange[level].x;
       NBLOCK = (numCells - 1) / NTHREAD + 1;
       M2M<<<NBLOCK,NTHREAD>>>(level,1.0/theta,levelRange.d(),sourceCells.d(),sourceCenter.d(),
-			      cellXmin.d(),cellXmax.d(),Multipole.d());
+			      bodyPos.d(),cellXmin.d(),cellXmax.d(),Multipole.d());
       kernelSuccess("M2M");
     }
-    numCells = sourceCells.size();
-    NBLOCK = (numCells - 1) / NTHREAD + 1;
-    normalize<<<NBLOCK,NTHREAD>>>(numCells, Multipole.d()); 
 #else
     P2M2<<<NBLOCK,NTHREAD>>>(numCells,1.0/theta,sourceCells.d(),sourceCenter.d(),
 			     bodyPos.d(),Multipole.d());
     kernelSuccess("P2M2");
 #endif
+    numCells = sourceCells.size();
+    NBLOCK = (numCells - 1) / NTHREAD + 1;
+    normalize<<<NBLOCK,NTHREAD>>>(numCells, Multipole.d()); 
     const double dt = get_time() - t0;
     fprintf(stdout,"Upward pass          : %.7f s\n", dt);
   }
