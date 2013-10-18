@@ -2,8 +2,26 @@
 
 namespace {
   static __device__ __forceinline__
-  void pairMinMax(float3 & xmin, float3 & xmax,
-		  float4 reg_min, float4 reg_max) {
+    float3 setCenter(int numBodies, float4 * __restrict__ bodyPos) {
+    float mass;
+    float3 center;
+    for (int i=0; i<numBodies; i++) {
+      const float4 body = bodyPos[i];
+      mass += body.w;
+      center.x += body.w * body.x;
+      center.y += body.w * body.y;
+      center.z += body.w * body.z;
+    }
+    const float invM = 1.0f / mass;
+    center.x *= invM;
+    center.y *= invM;
+    center.z *= invM;
+    return center;
+  }
+
+  static __device__ __forceinline__
+    void pairMinMax(float3 & xmin, float3 & xmax,
+		    float4 reg_min, float4 reg_max) {
     xmin.x = fminf(xmin.x, reg_min.x);
     xmin.y = fminf(xmin.y, reg_min.y);
     xmin.z = fminf(xmin.z, reg_min.z);
@@ -47,7 +65,9 @@ namespace {
     int cellIdx = leafCells[leafIdx];
     const CellData cell = cells[cellIdx];
     const int begin = cell.body();
-    const int end = begin + cell.nbody();
+    const int size = cell.nbody();
+    const int end = begin + size;
+    const float3 com = setCenter(size,bodyPos+begin);
     float4 M[3];
     const float huge = 1e10f;
     float3 Xmin = {+huge, +huge, +huge};
@@ -79,7 +99,6 @@ namespace {
     M[2].y = M[2].y * invM - M[0].y * M[0].z;
     const float3 X = {(Xmax.x+Xmin.x)*0.5f, (Xmax.y+Xmin.y)*0.5f, (Xmax.z+Xmin.z)*0.5f};
     const float3 R = {(Xmax.x-Xmin.x)*0.5f, (Xmax.y-Xmin.y)*0.5f, (Xmax.z-Xmin.z)*0.5f};
-    const float3 com = {M[0].x, M[0].y, M[0].z};
     const float dx = X.x - com.x;
     const float dy = X.y - com.y;
     const float dz = X.z - com.z;
@@ -119,12 +138,12 @@ namespace {
       Mi[0].y += Mj[0].w * Mj[0].y;
       Mi[0].z += Mj[0].w * Mj[0].z;
       Mi[0].w += Mj[0].w;
-      Mi[1].x += Mj[0].w * Mj[0].x * Mj[0].x;
-      Mi[1].y += Mj[0].w * Mj[0].y * Mj[0].y;
-      Mi[1].z += Mj[0].w * Mj[0].z * Mj[0].z;
-      Mi[1].w += Mj[0].w * Mj[0].x * Mj[0].y;
-      Mi[2].x += Mj[0].w * Mj[0].x * Mj[0].z;
-      Mi[2].y += Mj[0].w * Mj[0].y * Mj[0].z;
+      Mi[1].x += Mj[0].w * (Mj[0].x * Mj[0].x + Mj[1].x);
+      Mi[1].y += Mj[0].w * (Mj[0].y * Mj[0].y + Mj[1].y);
+      Mi[1].z += Mj[0].w * (Mj[0].z * Mj[0].z + Mj[1].z);
+      Mi[1].w += Mj[0].w * (Mj[0].x * Mj[0].y + Mj[1].w);
+      Mi[2].x += Mj[0].w * (Mj[0].x * Mj[0].z + Mj[2].x);
+      Mi[2].y += Mj[0].w * (Mj[0].y * Mj[0].z + Mj[2].y);
       pairMinMax(Xmin, Xmax, cellXmin[i], cellXmax[i]);
     }
     float invM = 1.0 / Mi[0].w;
