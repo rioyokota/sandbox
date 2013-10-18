@@ -105,9 +105,9 @@ namespace {
       M[4] += .5 * body.w * dx * dx;
       M[5] += .5 * body.w * dy * dy;
       M[6] += .5 * body.w * dz * dz;
-      M[7] += .5 * body.w * dx * dy;
-      M[8] += .5 * body.w * dx * dz;
-      M[9] += .5 * body.w * dy * dz;
+      M[7] += body.w * dx * dy;
+      M[8] += body.w * dx * dz;
+      M[9] += body.w * dy * dz;
       pairMinMax(Xmin, Xmax, body, body);
     }
     const float3 X = {(Xmax.x+Xmin.x)*0.5f, (Xmax.y+Xmin.y)*0.5f, (Xmax.z+Xmin.z)*0.5f};
@@ -157,9 +157,9 @@ namespace {
       Mi[4] += .5 * Mj[0] * dx * dx;
       Mi[5] += .5 * Mj[0] * dy * dy;
       Mi[6] += .5 * Mj[0] * dz * dz;
-      Mi[7] += .5 * Mj[0] * dx * dy;
-      Mi[8] += .5 * Mj[0] * dx * dz;
-      Mi[9] += .5 * Mj[0] * dy * dz;
+      Mi[7] += Mj[0] * dx * dy;
+      Mi[8] += Mj[0] * dx * dz;
+      Mi[9] += Mj[0] * dy * dz;
       pairMinMax(Xmin, Xmax, cellXmin[i], cellXmax[i]);
     }
     const float3 X = {(Xmax.x+Xmin.x)*0.5f, (Xmax.y+Xmin.y)*0.5f, (Xmax.z+Xmin.z)*0.5f};

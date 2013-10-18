@@ -48,6 +48,7 @@ namespace {
     return acc;
   }
 
+#if 1
   static __device__ __forceinline__
     float4 M2P(float4 acc,
 	       const float3 pos_i,
@@ -65,9 +66,9 @@ namespace {
     const float q11 = M[4];
     const float q22 = M[5];
     const float q33 = M[6];
-    const float q12 = M[7];
-    const float q13 = M[8];
-    const float q23 = M[9];
+    const float q12 = 0.5f * M[7];
+    const float q13 = 0.5f * M[8];
+    const float q23 = 0.5f * M[9];
     const float q = q11 + q22 + q33;
     const float3 qR = make_float3(q11 * dX.x + q12 * dX.y + q13 * dX.z,
 				  q12 * dX.x + q22 * dX.y + q23 * dX.z,
@@ -80,6 +81,56 @@ namespace {
     acc.z += C * dX.z + 2 * invR5 * qR.z;
     return acc;
   }
+#else
+  static __device__ __forceinline__
+    float4 M2P(float4 acc,
+	       const float3 pos_i,
+	       const float4 pos_j,
+	       const float * __restrict__ M,
+	       float EPS2) {
+    const float x = pos_i.x - pos_j.x;
+    const float y = pos_i.y - pos_j.y;
+    const float z = pos_i.z - pos_j.z;
+    const float R2 = x * x + y * y + z * z + EPS2;
+    const float invR = rsqrtf(R2);
+    const float invR2 = -invR * invR;
+    float C[20];
+    const float invR1 = M[0] * invR;
+    C[0] = invR1;
+    const float invR3 = invR2 * invR1;
+    C[1] = x * invR3;
+    C[2] = y * invR3;
+    C[3] = z * invR3;
+    const float invR5 = 3 * invR2 * invR3;
+    float t = x * invR5;
+    C[4] = x * t + invR3;
+    C[5] = y * t;
+    C[6] = z * t;
+    t = y * invR5;
+    C[7] = y * t + invR3;
+    C[8] = z * t;
+    C[9] = z * z * invR5 + invR3;
+    const float invR7 = 5 * invR2 * invR5;
+    t = x * x * invR7;
+    C[10] = x * (t + 3 * invR5);
+    C[11] = y * (t +     invR5);
+    C[12] = z * (t +     invR5);
+    t = y * y * invR7;
+    C[13] = x * (t +     invR5);
+    C[16] = y * (t + 3 * invR5);
+    C[17] = z * (t +     invR5);
+    t = z * z * invR7;
+    C[15] = x * (t +     invR5);
+    C[18] = y * (t +     invR5);
+    C[19] = z * (t + 3 * invR5);
+    C[14] = x * y * z * invR7;
+    acc.w -= C[0]+M[4]*C[4] +M[7]*C[5] +M[8]*C[6] +M[5]*C[7] +M[9]*C[8] +M[6]*C[9];
+    acc.x += C[1]+M[4]*C[10]+M[7]*C[11]+M[8]*C[12]+M[5]*C[13]+M[9]*C[14]+M[6]*C[15];
+    acc.y += C[2]+M[4]*C[11]+M[7]*C[13]+M[8]*C[14]+M[5]*C[16]+M[9]*C[17]+M[6]*C[18];
+    acc.z += C[3]+M[4]*C[12]+M[7]*C[14]+M[8]*C[15]+M[5]*C[17]+M[9]*C[18]+M[6]*C[19];
+    return acc;
+  }
+#endif
 
   template<bool FULL>
     static __device__
