@@ -2,15 +2,15 @@
 
 namespace {
   static __device__ __forceinline__
-    float3 setCenter(int numBodies, float4 * __restrict__ bodyPos) {
+    float3 setCenter(int size, float4 * __restrict__ position, int stride) {
     float mass;
     float3 center;
-    for (int i=0; i<numBodies; i++) {
-      const float4 body = bodyPos[i];
-      mass += body.w;
-      center.x += body.w * body.x;
-      center.y += body.w * body.y;
-      center.z += body.w * body.z;
+    for (int i=0; i<size; i++) {
+      const float4 pos = position[stride*i];
+      mass += pos.w;
+      center.x += pos.w * pos.x;
+      center.y += pos.w * pos.y;
+      center.z += pos.w * pos.z;
     }
     const float invM = 1.0f / mass;
     center.x *= invM;
@@ -67,16 +67,13 @@ namespace {
     const int begin = cell.body();
     const int size = cell.nbody();
     const int end = begin + size;
-    const float3 com = setCenter(size,bodyPos+begin);
+    const float3 com = setCenter(size,bodyPos+begin,1);
     float4 M[3];
     const float huge = 1e10f;
     float3 Xmin = {+huge, +huge, +huge};
     float3 Xmax = {-huge, -huge, -huge};
     for( int i=begin; i<end; i++ ) {
       float4 body = bodyPos[i];
-      M[0].x += body.w * body.x;
-      M[0].y += body.w * body.y;
-      M[0].z += body.w * body.z;
       M[0].w += body.w;
       M[1].x += body.w * body.x * body.x;
       M[1].y += body.w * body.y * body.y;
@@ -86,17 +83,15 @@ namespace {
       M[2].y += body.w * body.y * body.z;
       pairMinMax(Xmin, Xmax, body, body);
     }
-    float invM = 1.0 / M[0].w;
-    if(M[0].w == 0) invM = 0;
-    M[0].x *= invM;
-    M[0].y *= invM;
-    M[0].z *= invM;
-    M[1].x = M[1].x * invM - M[0].x * M[0].x;
-    M[1].y = M[1].y * invM - M[0].y * M[0].y;
-    M[1].z = M[1].z * invM - M[0].z * M[0].z;
-    M[1].w = M[1].w * invM - M[0].x * M[0].y;
-    M[2].x = M[2].x * invM - M[0].x * M[0].z;
-    M[2].y = M[2].y * invM - M[0].y * M[0].z;
+    M[0].x = com.x;
+    M[0].y = com.y;
+    M[0].z = com.z;
+    M[1].x -= M[0].x * M[0].x * M[0].w;
+    M[1].y -= M[0].y * M[0].y * M[0].w;
+    M[1].z -= M[0].z * M[0].z * M[0].w;
+    M[1].w -= M[0].x * M[0].y * M[0].w;
+    M[2].x -= M[0].x * M[0].z * M[0].w;
+    M[2].y -= M[0].y * M[0].z * M[0].w;
     const float3 X = {(Xmax.x+Xmin.x)*0.5f, (Xmax.y+Xmin.y)*0.5f, (Xmax.z+Xmin.z)*0.5f};
     const float3 R = {(Xmax.x-Xmin.x)*0.5f, (Xmax.y-Xmin.y)*0.5f, (Xmax.z-Xmin.z)*0.5f};
     const float dx = X.x - com.x;
@@ -110,7 +105,6 @@ namespace {
     for (int i=0; i<3; i++) Multipole[3*cellIdx+i] = M[i];
     cellXmin[cellIdx] = make_float4(Xmin.x, Xmin.y, Xmin.z, 0.0f);
     cellXmax[cellIdx] = make_float4(Xmax.x, Xmax.y, Xmax.z, 0.0f);
-    return;
   }
 
   static __global__ __launch_bounds__(NTHREAD)
@@ -126,40 +120,36 @@ namespace {
     if (cellIdx >= levelRange[level].y) return;
     const CellData cell = cells[cellIdx];
     const int begin = cell.child();
-    const int end = begin + cell.nchild();
+    const int size = cell.nchild();
+    const int end = begin + size;
     if (cell.isLeaf()) return;
+    const float3 com = setCenter(size,Multipole+3*begin,3);
     float4 Mi[3], Mj[3];
     const float huge = 1e10f;
     float3 Xmin = {+huge, +huge, +huge};
     float3 Xmax = {-huge, -huge, -huge};
     for( int i=begin; i<end; i++ ) {
       Mj[0] = Multipole[3*i];
-      Mi[0].x += Mj[0].w * Mj[0].x;
-      Mi[0].y += Mj[0].w * Mj[0].y;
-      Mi[0].z += Mj[0].w * Mj[0].z;
       Mi[0].w += Mj[0].w;
-      Mi[1].x += Mj[0].w * (Mj[0].x * Mj[0].x + Mj[1].x);
-      Mi[1].y += Mj[0].w * (Mj[0].y * Mj[0].y + Mj[1].y);
-      Mi[1].z += Mj[0].w * (Mj[0].z * Mj[0].z + Mj[1].z);
-      Mi[1].w += Mj[0].w * (Mj[0].x * Mj[0].y + Mj[1].w);
-      Mi[2].x += Mj[0].w * (Mj[0].x * Mj[0].z + Mj[2].x);
-      Mi[2].y += Mj[0].w * (Mj[0].y * Mj[0].z + Mj[2].y);
+      Mi[1].x += Mj[0].w * (com.x * com.x + Mj[1].x);
+      Mi[1].y += Mj[0].w * (com.y * com.y + Mj[1].y);
+      Mi[1].z += Mj[0].w * (com.z * com.z + Mj[1].z);
+      Mi[1].w += Mj[0].w * (com.x * com.y + Mj[1].w);
+      Mi[2].x += Mj[0].w * (com.x * com.z + Mj[2].x);
+      Mi[2].y += Mj[0].w * (com.y * com.z + Mj[2].y);
       pairMinMax(Xmin, Xmax, cellXmin[i], cellXmax[i]);
     }
-    float invM = 1.0 / Mi[0].w;
-    if(Mi[0].w == 0) invM = 0;
-    Mi[0].x *= invM;
-    Mi[0].y *= invM;
-    Mi[0].z *= invM;
-    Mi[1].x = Mi[1].x * invM - Mi[0].x * Mi[0].x;
-    Mi[1].y = Mi[1].y * invM - Mi[0].y * Mi[0].y;
-    Mi[1].z = Mi[1].z * invM - Mi[0].z * Mi[0].z;
-    Mi[1].w = Mi[1].w * invM - Mi[0].x * Mi[0].y;
-    Mi[2].x = Mi[2].x * invM - Mi[0].x * Mi[0].z;
-    Mi[2].y = Mi[2].y * invM - Mi[0].y * Mi[0].z;
+    Mi[0].x = com.x;
+    Mi[0].y = com.y;
+    Mi[0].z = com.z;
+    Mi[1].x -= Mi[0].x * Mi[0].x * Mi[0].w;
+    Mi[1].y -= Mi[0].y * Mi[0].y * Mi[0].w;
+    Mi[1].z -= Mi[0].z * Mi[0].z * Mi[0].w;
+    Mi[1].w -= Mi[0].x * Mi[0].y * Mi[0].w;
+    Mi[2].x -= Mi[0].x * Mi[0].z * Mi[0].w;
+    Mi[2].y -= Mi[0].y * Mi[0].z * Mi[0].w;
     const float3 X = {(Xmax.x+Xmin.x)*0.5f, (Xmax.y+Xmin.y)*0.5f, (Xmax.z+Xmin.z)*0.5f};
     const float3 R = {(Xmax.x-Xmin.x)*0.5f, (Xmax.y-Xmin.y)*0.5f, (Xmax.z-Xmin.z)*0.5f};
-    const float3 com = {Mi[0].x, Mi[0].y, Mi[0].z};
     const float dx = X.x - com.x;
     const float dy = X.y - com.y;
     const float dz = X.z - com.z;
@@ -171,7 +161,19 @@ namespace {
     for (int i=0; i<3; i++) Multipole[3*cellIdx+i] = Mi[i];
     cellXmin[cellIdx] = make_float4(Xmin.x, Xmin.y, Xmin.z, 0.0f);
     cellXmax[cellIdx] = make_float4(Xmax.x, Xmax.y, Xmax.z, 0.0f);
-    return;
+  }
+
+  static __global__ __launch_bounds__(NTHREAD)
+    void normalize(const int numCells, float4 * Multipole) {
+    const int cellIdx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (cellIdx >= numCells) return;
+    const float invM = 1.0 / Multipole[3*cellIdx].w;
+    for (int i=1; i<3; i++) {
+      Multipole[3*cellIdx+i].x *= invM;
+      Multipole[3*cellIdx+i].y *= invM;
+      Multipole[3*cellIdx+i].z *= invM;
+      Multipole[3*cellIdx+i].w *= invM;
+    }
   }
 }
 
@@ -208,6 +210,9 @@ class Pass {
 			      cellXmin.d(),cellXmax.d(),Multipole.d());
       kernelSuccess("M2M");
     }
+    numCells = sourceCells.size();
+    NBLOCK = (numCells - 1) / NTHREAD + 1;
+    normalize<<<NBLOCK,NTHREAD>>>(numCells, Multipole.d()); 
     const double dt = get_time() - t0;
     fprintf(stdout,"Upward pass          : %.7f s\n", dt);
   }
