@@ -74,24 +74,21 @@ namespace {
     float3 Xmax = {-huge, -huge, -huge};
     for( int i=begin; i<end; i++ ) {
       float4 body = bodyPos[i];
+      float dx = center.x - body.x;
+      float dy = center.y - body.y;
+      float dz = center.z - body.z;
       M[0].w += body.w;
-      M[1].x += body.w * body.x * body.x;
-      M[1].y += body.w * body.y * body.y;
-      M[1].z += body.w * body.z * body.z;
-      M[1].w += body.w * body.x * body.y;
-      M[2].x += body.w * body.x * body.z;
-      M[2].y += body.w * body.y * body.z;
+      M[1].x += body.w * dx * dx;
+      M[1].y += body.w * dy * dy;
+      M[1].z += body.w * dz * dz;
+      M[1].w += body.w * dx * dy;
+      M[2].x += body.w * dx * dz;
+      M[2].y += body.w * dy * dz;
       pairMinMax(Xmin, Xmax, body, body);
     }
     M[0].x = center.x;
     M[0].y = center.y;
     M[0].z = center.z;
-    M[1].x -= M[0].x * M[0].x * M[0].w;
-    M[1].y -= M[0].y * M[0].y * M[0].w;
-    M[1].z -= M[0].z * M[0].z * M[0].w;
-    M[1].w -= M[0].x * M[0].y * M[0].w;
-    M[2].x -= M[0].x * M[0].z * M[0].w;
-    M[2].y -= M[0].y * M[0].z * M[0].w;
     const float3 X = {(Xmax.x+Xmin.x)*0.5f, (Xmax.y+Xmin.y)*0.5f, (Xmax.z+Xmin.z)*0.5f};
     const float3 R = {(Xmax.x-Xmin.x)*0.5f, (Xmax.y-Xmin.y)*0.5f, (Xmax.z-Xmin.z)*0.5f};
     const float dx = X.x - center.x;
@@ -130,24 +127,21 @@ namespace {
     float3 Xmax = {-huge, -huge, -huge};
     for( int i=begin; i<end; i++ ) {
       Mj[0] = Multipole[3*i];
+      float dx = center.x - Mj[0].x;
+      float dy = center.y - Mj[0].y;
+      float dz = center.z - Mj[0].z;
       Mi[0].w += Mj[0].w;
-      Mi[1].x += Mj[0].w * (center.x * center.x + Mj[1].x);
-      Mi[1].y += Mj[0].w * (center.y * center.y + Mj[1].y);
-      Mi[1].z += Mj[0].w * (center.z * center.z + Mj[1].z);
-      Mi[1].w += Mj[0].w * (center.x * center.y + Mj[1].w);
-      Mi[2].x += Mj[0].w * (center.x * center.z + Mj[2].x);
-      Mi[2].y += Mj[0].w * (center.y * center.z + Mj[2].y);
+      Mi[1].x += Mj[0].w * dx * dx + Mj[1].x;
+      Mi[1].y += Mj[0].w * dy * dy + Mj[1].y;
+      Mi[1].z += Mj[0].w * dz * dz + Mj[1].z;
+      Mi[1].w += Mj[0].w * dx * dy + Mj[1].w;
+      Mi[2].x += Mj[0].w * dx * dz + Mj[2].x;
+      Mi[2].y += Mj[0].w * dy * dz + Mj[2].y;
       pairMinMax(Xmin, Xmax, cellXmin[i], cellXmax[i]);
     }
     Mi[0].x = center.x;
     Mi[0].y = center.y;
     Mi[0].z = center.z;
-    Mi[1].x -= Mi[0].x * Mi[0].x * Mi[0].w;
-    Mi[1].y -= Mi[0].y * Mi[0].y * Mi[0].w;
-    Mi[1].z -= Mi[0].z * Mi[0].z * Mi[0].w;
-    Mi[1].w -= Mi[0].x * Mi[0].y * Mi[0].w;
-    Mi[2].x -= Mi[0].x * Mi[0].z * Mi[0].w;
-    Mi[2].y -= Mi[0].y * Mi[0].z * Mi[0].w;
     const float3 X = {(Xmax.x+Xmin.x)*0.5f, (Xmax.y+Xmin.y)*0.5f, (Xmax.z+Xmin.z)*0.5f};
     const float3 R = {(Xmax.x-Xmin.x)*0.5f, (Xmax.y-Xmin.y)*0.5f, (Xmax.z-Xmin.z)*0.5f};
     const float dx = X.x - center.x;
