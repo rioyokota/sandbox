@@ -53,14 +53,18 @@ namespace {
 #if 1
   static __device__ __forceinline__
     float4 M2P(float4 acc,
-	       const fvec3 pos_i,
+	       const fvec3 & pos_i,
 	       const fvec3 & pos_j,
 	       const float * __restrict__ M,
 	       float EPS2) {
     fvec3 dX;
+#if 1
+    dX = pos_i - pos_j;
+#else
     dX[0] = pos_i[0] - pos_j[0];
     dX[1] = pos_i[1] - pos_j[1];
     dX[2] = pos_i[2] - pos_j[2];
+#endif
     const float R2 = dX[0] * dX[0] + dX[1] * dX[1] + dX[2] * dX[2] + EPS2;
     const float invR = rsqrtf(R2);
     const float invR2 = -invR * invR;
