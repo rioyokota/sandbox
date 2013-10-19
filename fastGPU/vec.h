@@ -1,22 +1,33 @@
 #ifndef vec_h
 #define vec_h
 #include <ostream>
+#include <functional>
 #define NEWTON 1
 
-template<int N>
-struct Vec {
+template<typename T>
+struct Sub {
   __host__ __device__ __forceinline__
-  static void sub(float * temp, const float * data, const float * v) {
-    temp[N-1] = data[N-1] - v[N-1];
-    Vec<N-1>::sub(temp, data, v);
+  const T operator() (const T a, const T b) const {
+    return a - b;
   }
 };
 
-template<>
-struct Vec<1> {
+template<typename Op, int N>
+struct Unroll {
   __host__ __device__ __forceinline__
-  static void sub(float * temp, const float * data, const float * v) {
-    temp[0] = data[0] - v[0];
+  static void operation(float * temp, const float * data, const float * v) {
+    Op op;
+    temp[N-1] = op(data[N-1], v[N-1]);
+    Unroll<Op,N-1>::operation(temp, data, v);
+  }
+};
+
+template<typename Op>
+struct Unroll<Op,1> {
+  __host__ __device__ __forceinline__
+  static void operation(float * temp, const float * data, const float * v) {
+    Op op;
+    temp[0] = op(data[0],v[0]);
   }
 };
 
@@ -35,7 +46,7 @@ template<int N, typename T>
     __host__ __device__ __forceinline__
     vec operator-(const vec &v) const {                         // Vector arithmetic (subtract)
       vec temp;
-      Vec<N>::sub(temp,data,v);
+      Unroll<Sub<T>,N>::operation(temp,data,v);
       return temp;
     }
     __host__ __device__ __forceinline__
