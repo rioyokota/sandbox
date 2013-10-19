@@ -52,39 +52,18 @@ namespace {
   }
 
   static __global__ __launch_bounds__(NTHREAD)
-    void collectLeafs(const int numCells,
-                      const CellData * sourceCells,
-                      int * leafCells) {
-    const int NWARP = 1 << (NTHREAD2 - WARP_SIZE2);
-    const int laneIdx = threadIdx.x & (WARP_SIZE-1);
-    const int warpIdx = threadIdx.x >> WARP_SIZE2;
-    const int cellIdx = blockDim.x * blockIdx.x + threadIdx.x;
-    const CellData cell = sourceCells[min(cellIdx, numCells-1)];
-    const bool isLeaf = cellIdx < numCells & cell.isLeaf();
-    const int numLeafsLane = exclusiveScanBool(isLeaf);
-    const int numLeafsWarp = reduceBool(isLeaf);
-    __shared__ int numLeafsBase[NWARP];
-    int & numLeafsScan = numLeafsBase[warpIdx];
-    if (laneIdx == 0 && numLeafsWarp > 0)
-      numLeafsScan = atomicAdd(&numLeafsGlob, numLeafsWarp);
-    if (isLeaf)
-      leafCells[numLeafsScan+numLeafsLane] = cellIdx;
-  }
-
-  static __global__ __launch_bounds__(NTHREAD)
-    void P2M(const int numLeafs,
+    void P2M(const int numCells,
 	     const float invTheta,
-	     int * leafCells,
 	     CellData * cells,
 	     float4 * sourceCenter,
 	     float4 * bodyPos,
 	     float4 * cellXmin,
 	     float4 * cellXmax,
 	     float4 * Multipole) {
-    const int leafIdx = blockIdx.x * blockDim.x + threadIdx.x;
-    if (leafIdx >= numLeafs) return;
-    int cellIdx = leafCells[leafIdx];
+    const int cellIdx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (cellIdx >= numCells) return;
     const CellData cell = cells[cellIdx];
+    if (cell.isNode()) return;
     const int begin = cell.body();
     const int size = cell.nbody();
     const int end = begin + size;
@@ -138,10 +117,10 @@ namespace {
     const int cellIdx = blockIdx.x * blockDim.x + threadIdx.x + levelRange[level].x;
     if (cellIdx >= levelRange[level].y) return;
     const CellData cell = cells[cellIdx];
+    if (cell.isLeaf()) return;
     const int begin = cell.child();
     const int size = cell.nchild();
     const int end = begin + size;
-    if (cell.isLeaf()) return;
     const float3 Xi = setCenter(size,sourceCenter+begin,Multipole+3*begin);
     float Mi[12];
     const float huge = 1e10f;
@@ -206,17 +185,13 @@ class Pass {
 	      cudaVec<float4> & Multipole) {
     int numCells = sourceCells.size();
     int NBLOCK = (numCells-1) / NTHREAD + 1;
-    cudaVec<int> leafCells(numLeafs);
-    collectLeafs<<<NBLOCK,NTHREAD>>>(numCells, sourceCells.d(), leafCells.d());
-    kernelSuccess("collectLeafs");
     const double t0 = get_time();
     cudaVec<float4> cellXmin(numCells);
     cudaVec<float4> cellXmax(numCells);
     CUDA_SAFE_CALL(cudaFuncSetCacheConfig(&P2M,cudaFuncCachePreferL1));
     CUDA_SAFE_CALL(cudaFuncSetCacheConfig(&M2M,cudaFuncCachePreferL1));
     cudaDeviceSynchronize();
-    NBLOCK = (numLeafs - 1) / NTHREAD + 1;
-    P2M<<<NBLOCK,NTHREAD>>>(numLeafs,1.0/theta,leafCells.d(),sourceCells.d(),sourceCenter.d(),
+    P2M<<<NBLOCK,NTHREAD>>>(numCells,1.0/theta,sourceCells.d(),sourceCenter.d(),
 			    bodyPos.d(),cellXmin.d(),cellXmax.d(),Multipole.d());
     kernelSuccess("P2M");
     levelRange.d2h();
