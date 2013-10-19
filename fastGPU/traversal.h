@@ -32,14 +32,14 @@ namespace {
 
   static __device__ __forceinline__
     float4 P2P(float4 acc,
-	       const float3 pos,
-	       const float4 posj,
+	       const fvec3 pos_i,
+	       const float4 pos_j,
 	       const float EPS2) {
-    const float3 dX    = make_float3(posj.x - pos.x, posj.y - pos.y, posj.z - pos.z);
+    const float3 dX    = make_float3(pos_j.x - pos_i[0], pos_j.y - pos_i[1], pos_j.z - pos_i[2]);
     const float  R2    = dX.x * dX.x + dX.y * dX.y + dX.z * dX.z + EPS2;
     const float  invR  = rsqrtf(R2);
     const float  invR2 = invR*invR;
-    const float  invR1 = posj.w * invR;
+    const float  invR1 = pos_j.w * invR;
     const float  invR3 = invR1 * invR2;
     acc.w -= invR1;
     acc.x += invR3 * dX.x;
@@ -48,15 +48,20 @@ namespace {
     return acc;
   }
 
+
+
 #if 1
   static __device__ __forceinline__
     float4 M2P(float4 acc,
-	       const float3 pos_i,
-	       const float4 pos_j,
+	       const fvec3 pos_i,
+	       const fvec3 & pos_j,
 	       const float * __restrict__ M,
 	       float EPS2) {
-    const float3 dX = make_float3(pos_i.x - pos_j.x, pos_i.y - pos_j.y, pos_i.z - pos_j.z);
-    const float R2 = dX.x * dX.x + dX.y * dX.y + dX.z * dX.z + EPS2;
+    fvec3 dX;
+    dX[0] = pos_i[0] - pos_j[0];
+    dX[1] = pos_i[1] - pos_j[1];
+    dX[2] = pos_i[2] - pos_j[2];
+    const float R2 = dX[0] * dX[0] + dX[1] * dX[1] + dX[2] * dX[2] + EPS2;
     const float invR = rsqrtf(R2);
     const float invR2 = -invR * invR;
     const float invR1 = M[0] * invR;
@@ -70,27 +75,28 @@ namespace {
     const float q13 = 0.5f * M[8];
     const float q23 = 0.5f * M[9];
     const float q = q11 + q22 + q33;
-    const float3 qR = make_float3(q11 * dX.x + q12 * dX.y + q13 * dX.z,
-				  q12 * dX.x + q22 * dX.y + q23 * dX.z,
-				  q13 * dX.x + q23 * dX.y + q33 * dX.z);
-    const float qRR = qR.x * dX.x + qR.y * dX.y + qR.z * dX.z;
+    fvec3 qR;
+    qR[0] = q11 * dX[0] + q12 * dX[1] + q13 * dX[2];
+    qR[1] = q12 * dX[0] + q22 * dX[1] + q23 * dX[2];
+    qR[2] = q13 * dX[0] + q23 * dX[1] + q33 * dX[2];
+    const float qRR = qR[0] * dX[0] + qR[1] * dX[1] + qR[2] * dX[2];
     acc.w -= invR1 + invR3 * q + invR5 * qRR;
     const float C = invR3 + invR5 * q + invR7 * qRR;
-    acc.x += C * dX.x + 2 * invR5 * qR.x;
-    acc.y += C * dX.y + 2 * invR5 * qR.y;
-    acc.z += C * dX.z + 2 * invR5 * qR.z;
+    acc.x += C * dX[0] + 2 * invR5 * qR[0];
+    acc.y += C * dX[1] + 2 * invR5 * qR[1];
+    acc.z += C * dX[2] + 2 * invR5 * qR[2];
     return acc;
   }
 #else
   static __device__ __forceinline__
     float4 M2P(float4 acc,
-	       const float3 pos_i,
-	       const float4 pos_j,
+	       const fvec3 pos_i,
+	       const fvec3 pos_j,
 	       const float * __restrict__ M,
 	       float EPS2) {
-    const float x = pos_i.x - pos_j.x;
-    const float y = pos_i.y - pos_j.y;
-    const float z = pos_i.z - pos_j.z;
+    const float x = pos_i[0] - pos_j[0];
+    const float y = pos_i[1] - pos_j[1];
+    const float z = pos_i[2] - pos_j[2];
     const float R2 = x * x + y * y + z * z + EPS2;
     const float invR = rsqrtf(R2);
     const float invR2 = -invR * invR;
@@ -135,7 +141,7 @@ namespace {
   template<bool FULL>
     static __device__
     void approxAcc(float4 acc_i[2],
-		   const float3 pos_i[2],
+		   const fvec3 pos_i[2],
 		   const int cellIdx,
 		   const float EPS2) {
     float4 M4[3];
@@ -149,7 +155,7 @@ namespace {
       for (int i=0; i<3; i++) M4[i] = make_float4(0.0f, 0.0f, 0.0f, 0.0f);
     }
     for (int j=0; j<WARP_SIZE; j++) {
-      const float4 pos_j = make_float4(__shfl(Xj.x, j),__shfl(Xj.y, j),__shfl(Xj.z, j),__shfl(Xj.w, j));
+      const fvec3 pos_j = make_fvec3(__shfl(Xj.x, j),__shfl(Xj.y, j),__shfl(Xj.z, j));
 #pragma unroll
       for (int i=0; i<3; i++) {
         M[4*i+0] = __shfl(M4[i].x, j);
@@ -164,7 +170,7 @@ namespace {
 
   static __device__
     uint2 traverseWarp(float4 * acc_i,
-		       const float3 * pos_i,
+		       const fvec3 pos_i[2],
 		       const float3 targetCenter,
 		       const float3 targetSize,
 		       const float EPS2,
@@ -346,13 +352,13 @@ namespace {
       const int2 target = targetRange[targetIdx];
       const int bodyBegin = target.x;
       const int bodyEnd   = target.x+target.y;
-      float3 pos_i[2];
+      fvec3 pos_i[2];
       for (int i=0; i<2; i++) {
         const int bodyIdx = min(bodyBegin+i*WARP_SIZE+laneIdx, bodyEnd-1);
 	const float4 pos = bodyPos[bodyIdx];
-	pos_i[i] = make_float3(pos.x, pos.y, pos.z);
+	pos_i[i] = make_fvec3(pos.x, pos.y, pos.z);
       }
-      float3 rmin = pos_i[0];
+      float3 rmin = make_float3(pos_i[0][0],pos_i[0][1],pos_i[0][2]);
       float3 rmax = rmin;
       for (int i=0; i<2; i++)
 	getMinMax(rmin, rmax, pos_i[i]);

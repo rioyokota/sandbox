@@ -1,8 +1,8 @@
 #pragma once
 
 static __device__ __forceinline__
-void getMinMax(float3 &_rmin, float3 &_rmax, const float3 pos) {
-  float3 rmin = pos;
+void getMinMax(float3 &_rmin, float3 &_rmax, const fvec3 & pos) {
+  float3 rmin = make_float3(pos[0],pos[1],pos[2]);
   float3 rmax = rmin;
 #pragma unroll
   for (int i=0; i<WARP_SIZE2; i++) {
