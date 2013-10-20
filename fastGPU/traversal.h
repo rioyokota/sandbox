@@ -409,41 +409,42 @@ namespace {
     const int numChunk = (numSource - 1) / gridDim.x + 1;
     const int numWarpChunk = (numChunk - 1) / WARP_SIZE + 1;
     const int blockOffset = blockIdx.x * numChunk;
-    float4 accs, accc, posi = tex1Dfetch(texBody, threadIdx.x);
+    fvec4 accs, accc, pos = tex1Dfetch(texBody, threadIdx.x);
+    fvec3 pos_i = make_fvec3(pos[0],pos[1],pos[2]);
     for (int jb=0; jb<numWarpChunk; jb++) {
       const int sourceIdx = min(blockOffset+jb*WARP_SIZE+laneIdx, numSource-1);
-      float4 posj = tex1Dfetch(texBody, sourceIdx);
-      if (sourceIdx >= numSource) posj.w = 0;
+      pos = tex1Dfetch(texBody, sourceIdx);
+      if (sourceIdx >= numSource) pos[3] = 0;
       for (int j=0; j<WARP_SIZE; j++) {
-	float dx = __shfl(posj.x,j) - posi.x;
-	float dy = __shfl(posj.y,j) - posi.y;
-	float dz = __shfl(posj.z,j) - posi.z;
-	float R2 = dx * dx + dy * dy + dz * dz + EPS2;
+        fvec3 pos_j = make_fvec3(__shfl(pos[0],j),__shfl(pos[1],j),__shfl(pos[2],j));
+	float q_j = __shfl(pos[3],j);
+	fvec3 dX = pos_j - pos_i;
+	float R2 = norm(dX) + EPS2;
 	float invR = rsqrtf(R2);
-        float y = - __shfl(posj.w,j) * invR - accc.w;
-        float t = accs.w + y;
-        accc.w = (t - accs.w) - y;
-        accs.w = t;
-	float invR3 = invR * invR * invR * __shfl(posj.w,j);
-        y = dx * invR3 - accc.x;
-        t = accs.x + y;
-        accc.x = (t - accs.x) - y;
-        accs.x = t;
-        y = dy * invR3 - accc.y;
-        t = accs.y + y;
-        accc.y = (t - accs.y) - y;
-        accs.y = t;
-        y = dz * invR3 - accc.z;
-        t = accs.z + y;
-        accc.z = (t - accs.z) - y;
-        accs.z = t;
+        float y = - q_j * invR - accc[3];
+        float t = accs[3] + y;
+        accc[3] = (t - accs[3]) - y;
+        accs[3] = t;
+	float invR3 = invR * invR * invR * q_j;
+        y = dX[0] * invR3 - accc[0];
+        t = accs[0] + y;
+        accc[0] = (t - accs[0]) - y;
+        accs[0] = t;
+        y = dX[1] * invR3 - accc[1];
+        t = accs[1] + y;
+        accc[1] = (t - accs[1]) - y;
+        accs[1] = t;
+        y = dX[2] * invR3 - accc[2];
+        t = accs[2] + y;
+        accc[2] = (t - accs[2]) - y;
+        accs[2] = t;
       }
     }
     const int targetIdx = blockIdx.x * blockDim.x + threadIdx.x;
-    bodyAcc[targetIdx].x = accs.x + accc.x;
-    bodyAcc[targetIdx].y = accs.y + accc.y;
-    bodyAcc[targetIdx].z = accs.z + accc.z;
-    bodyAcc[targetIdx].w = accs.w + accc.w;
+    bodyAcc[targetIdx].x = accs[0] + accc[0];
+    bodyAcc[targetIdx].y = accs[1] + accc[1];
+    bodyAcc[targetIdx].z = accs[2] + accc[2];
+    bodyAcc[targetIdx].w = accs[3] + accc[3];
   }
 }
 
