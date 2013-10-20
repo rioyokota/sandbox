@@ -30,7 +30,7 @@ namespace {
   }
 
   static __global__ __launch_bounds__(NTHREAD)
-    void P2M(const int numCells,
+    void P2M2(const int numCells,
 	     CellData * cells,
 	     float4 * sourceCenter,
 	     float4 * bodyPos,
@@ -72,7 +72,7 @@ namespace {
   }
 
   static __global__ __launch_bounds__(NTHREAD)
-    void M2M(const int level,
+    void M2M2(const int level,
 	     int2 * levelRange,
 	     CellData * cells,
 	     float4 * sourceCenter,
@@ -113,7 +113,7 @@ namespace {
   }
 
   static __global__ __launch_bounds__(NTHREAD)
-    void P2M2(const int numCells,
+    void P2M(const int numCells,
 	     CellData * cells,
 	     float4 * sourceCenter,
 	     float4 * bodyPos,
@@ -146,7 +146,7 @@ namespace {
   }
 
   static __global__ __launch_bounds__(NTHREAD)
-    void M2M2(const int level,
+    void M2M(const int level,
 	     int2 * levelRange,
 	     CellData * cells,
 	     float4 * sourceCenter,
@@ -231,29 +231,29 @@ class Pass {
     //CUDA_SAFE_CALL(cudaFuncSetCacheConfig(&P2M,cudaFuncCachePreferL1));
     //CUDA_SAFE_CALL(cudaFuncSetCacheConfig(&M2M,cudaFuncCachePreferL1));
     //cudaDeviceSynchronize();
-    P2M<<<NBLOCK,NTHREAD>>>(numCells,sourceCells.d(),sourceCenter.d(),
-			    bodyPos.d(),cellXmin.d(),cellXmax.d(),Multipole.d());
-    kernelSuccess("P2M");
+    P2M2<<<NBLOCK,NTHREAD>>>(numCells,sourceCells.d(),sourceCenter.d(),
+			     bodyPos.d(),cellXmin.d(),cellXmax.d(),Multipole.d());
+    kernelSuccess("P2M2");
     levelRange.d2h();
     for (int level=numLevels; level>=1; level--) {
       numCells = levelRange[level].y - levelRange[level].x;
       NBLOCK = (numCells - 1) / NTHREAD + 1;
-      M2M<<<NBLOCK,NTHREAD>>>(level,levelRange.d(),sourceCells.d(),sourceCenter.d(),
-			      bodyPos.d(),cellXmin.d(),cellXmax.d(),Multipole.d());
-      kernelSuccess("M2M");
+      M2M2<<<NBLOCK,NTHREAD>>>(level,levelRange.d(),sourceCells.d(),sourceCenter.d(),
+			       bodyPos.d(),cellXmin.d(),cellXmax.d(),Multipole.d());
+      kernelSuccess("M2M2");
     }
     Multipole.zeros();
     numCells = sourceCells.size();
     NBLOCK = (numCells-1) / NTHREAD + 1;
-    P2M2<<<NBLOCK,NTHREAD>>>(numCells,sourceCells.d(),sourceCenter.d(),
-			     bodyPos.d(),Multipole.d());
-    kernelSuccess("P2M2");
+    P2M<<<NBLOCK,NTHREAD>>>(numCells,sourceCells.d(),sourceCenter.d(),
+			    bodyPos.d(),Multipole.d());
+    kernelSuccess("P2M");
     for (int level=numLevels; level>=1; level--) {
       numCells = levelRange[level].y - levelRange[level].x;
       NBLOCK = (numCells - 1) / NTHREAD + 1;
-      M2M2<<<NBLOCK,NTHREAD>>>(level,levelRange.d(),sourceCells.d(),
-			       sourceCenter.d(),Multipole.d());
-      kernelSuccess("M2M2");
+      M2M<<<NBLOCK,NTHREAD>>>(level,levelRange.d(),sourceCells.d(),
+			      sourceCenter.d(),Multipole.d());
+      kernelSuccess("M2M");
     }
     numCells = sourceCells.size();
     NBLOCK = (numCells - 1) / NTHREAD + 1;
