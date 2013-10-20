@@ -4,56 +4,62 @@
 namespace Ops {
   template<typename T> struct Assign {
     __host__ __device__ __forceinline__
-    const T operator() (T & a, const T & b) const {
-      return a = b;
+    const T operator() (T & lhs, const T & rhs) const {
+      return lhs = rhs;
     }
   };
   template<typename T> struct Add {
     __host__ __device__ __forceinline__
-    const T operator() (T & a, const T & b) const {
-      return a += b;
+    const T operator() (T & lhs, const T & rhs) const {
+      return lhs += rhs;
     }
   };
   template<typename T> struct Sub {
     __host__ __device__ __forceinline__
-    const T operator() (T & a, const T & b) const {
-      return a -= b;
+    const T operator() (T & lhs, const T & rhs) const {
+      return lhs -= rhs;
     }
   };
   template<typename T> struct Mul {
     __host__ __device__ __forceinline__
-    const T operator() (T & a, const T & b) const {
-      return a *= b;
+    const T operator() (T & lhs, const T & rhs) const {
+      return lhs *= rhs;
     }
   };
   template<typename T> struct Div {
     __host__ __device__ __forceinline__
-    const T operator() (T & a, const T & b) const {
-      return a /= b;
+    const T operator() (T & lhs, const T & rhs) const {
+      return lhs /= rhs;
     }
   };
   template<typename T> struct Gt {
     __host__ __device__ __forceinline__
-    bool operator() (T & a, const T & b) const {
-      return a >= b;
+    bool operator() (T & lhs, const T & rhs) const {
+      return lhs >= rhs;
     }
   };
   template<typename T> struct Lt {
     __host__ __device__ __forceinline__
-    bool operator() (T & a, const T & b) const {
-      return a <= b;
+    bool operator() (T & lhs, const T & rhs) const {
+      return lhs <= rhs;
     }
   };
   template<typename T> struct And {
     __host__ __device__ __forceinline__
-    int operator() (int & a, const int & b) const {
-      return a &= b;
+    int operator() (int & lhs, const int & rhs) const {
+      return lhs &= rhs;
     }
   };
   template<typename T> struct Or {
     __host__ __device__ __forceinline__
-    int operator() (int & a, const int & b) const {
-      return a |= b;
+    int operator() (int & lhs, const int & rhs) const {
+      return lhs |= rhs;
+    }
+  };
+  template<typename T> struct Negate {
+    __host__ __device__ __forceinline__
+    T operator() (T & lhs, const T & rhs) const {
+      return lhs = -rhs;
     }
   };
 }
@@ -61,39 +67,39 @@ namespace Ops {
 template<typename Op, typename T, int N>
   struct Unroll {
     __host__ __device__ __forceinline__
-    static void loop(T * data, const T * v) {
+    static void loop(T * lhs, const T * rhs) {
       Op operation;
-      operation(data[N-1], v[N-1]);
-      Unroll<Op,T,N-1>::loop(data, v);
+      operation(lhs[N-1], rhs[N-1]);
+      Unroll<Op,T,N-1>::loop(lhs, rhs);
     }
     __host__ __device__ __forceinline__
-    static void loop(T * data, const T v) {
+    static void loop(T * lhs, const T rhs) {
       Op operation;
-      operation(data[N-1], v);
-      Unroll<Op,T,N-1>::loop(data, v);
+      operation(lhs[N-1], rhs);
+      Unroll<Op,T,N-1>::loop(lhs, rhs);
     }
     __host__ __device__ __forceinline__
-    static const T reduce(const T * v) {
+    static const T reduce(const T * val) {
       Op operation;
-      return operation(const_cast<T*>(v)[N-1],Unroll<Op,T,N-1>::reduce(v));
+      return operation(const_cast<T*>(val)[N-1],Unroll<Op,T,N-1>::reduce(val));
     }
   };
 
 template<typename Op, typename T>
   struct Unroll<Op,T,1> {
     __host__ __device__ __forceinline__
-    static void loop(T * data, const T * v) {
+    static void loop(T * lhs, const T * rhs) {
       Op operation;
-      operation(data[0], v[0]);
+      operation(lhs[0], rhs[0]);
     }
     __host__ __device__ __forceinline__
-    static void loop(T * data, const T v) {
+    static void loop(T * lhs, const T rhs) {
       Op operation;
-      operation(data[0], v);
+      operation(lhs[0], rhs);
     }
     __host__ __device__ __forceinline__
-    static const T reduce(const T * v) {
-      return v[0];
+    static const T reduce(const T * val) {
+      return val[0];
     }
 };
 

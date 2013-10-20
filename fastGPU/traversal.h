@@ -17,18 +17,19 @@ namespace {
   }
 
   static __device__ __forceinline__
-    bool applyMAC(const fvec4 sourceCenter,
+    bool applyMAC(const fvec3 sourceCenter,
+		  const float MAC,
 		  const CellData sourceData,
 		  const fvec3 targetCenter,
-		  const float3 targetSize) {
-    float3 dX = make_float3(fabsf(targetCenter[0] - sourceCenter[0]) - (targetSize.x),
-                            fabsf(targetCenter[1] - sourceCenter[1]) - (targetSize.y),
-                            fabsf(targetCenter[2] - sourceCenter[2]) - (targetSize.z));
+		  const fvec3 targetSize) {
+    float3 dX = make_float3(fabsf(targetCenter[0] - sourceCenter[0]) - (targetSize[0]),
+                            fabsf(targetCenter[1] - sourceCenter[1]) - (targetSize[1]),
+                            fabsf(targetCenter[2] - sourceCenter[2]) - (targetSize[2]));
     dX.x += fabsf(dX.x); dX.x *= 0.5f;
     dX.y += fabsf(dX.y); dX.y *= 0.5f;
     dX.z += fabsf(dX.z); dX.z *= 0.5f;
     const float R2 = dX.x * dX.x + dX.y * dX.y + dX.z * dX.z;
-    return R2 < fabsf(sourceCenter[3]) || sourceData.nbody() < 3;
+    return R2 < fabsf(MAC) || sourceData.nbody() < 3;
   }
 
   static __device__ __forceinline__
@@ -169,7 +170,7 @@ namespace {
     uint2 traverseWarp(fvec4 * acc_i,
 		       const fvec3 pos_i[2],
 		       const fvec3 targetCenter,
-		       const float3 targetSize,
+		       const fvec3 targetSize,
 		       const float EPS2,
 		       const int2 rootRange,
 		       volatile int * tempQueue,
@@ -192,10 +193,11 @@ namespace {
     while (numSources > 0) {
       const int sourceIdx = sourceOffset + laneIdx;             // Source cell index of current lane
       const int sourceQueue = cellQueue[ringAddr(oldSources + sourceIdx)];// Global source cell index in queue
-      const fvec4 sourceCenter = tex1Dfetch(texCellCenter, sourceQueue);// Source cell center
+      const fvec4 MAC = tex1Dfetch(texCellCenter, sourceQueue); // Source cell center + MAC
+      const fvec3 sourceCenter(MAC[0],MAC[1],MAC[2]);           // Source cell center
       const CellData sourceData = tex1Dfetch(texCell, sourceQueue);// Source cell data
       const bool isNode = sourceData.isNode();                  // Is non-leaf cell
-      const bool isClose = applyMAC(sourceCenter, sourceData, targetCenter, targetSize);// Is too close for MAC
+      const bool isClose = applyMAC(sourceCenter, MAC[3], sourceData, targetCenter, targetSize);// Is too close for MAC
       const bool isSource = sourceIdx < numSources;             // Source index is within bounds
 
       // Split
@@ -366,7 +368,7 @@ namespace {
       Xmax[1] = __shfl(Xmax[1],0);
       Xmax[2] = __shfl(Xmax[2],0);
       const fvec3 targetCenter = (Xmax+Xmin) * 0.5f;
-      const float3 targetSize = {.5f*(Xmax[0]-Xmin[0]), .5f*(Xmax[1]-Xmin[1]), .5f*(Xmax[2]-Xmin[2])};
+      const fvec3 targetSize = (Xmax-Xmin) * 0.5f;
       fvec4 acc_i[2] = {0.0f, 0.0f};
       const uint2 counters = traverseWarp(acc_i, pos_i, targetCenter, targetSize, EPS2,
 					  levelRange[1], tempQueue, cellQueue);
