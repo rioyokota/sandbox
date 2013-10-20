@@ -204,15 +204,11 @@ class vec {
   }
   __host__ __device__ __forceinline__
   friend T sum(const vec &v) {                                  // Sum vector
-    T temp = 0;
-    for (int i=0; i<N; i++) temp += v[i];
-    return temp;
+    return Unroll<Ops::Add<T>,T,N>::reduce(v);
   }
   __host__ __device__ __forceinline__
   friend T norm(const vec &v) {                                 // L2 norm squared
-    T temp = 0;
-    for (int i=0; i<N; i++) temp += v[i] * v[i];
-    return temp;
+    return sum(v * v);
   }
   __host__ __device__ __forceinline__
   friend vec min(const vec &v, const vec &w) {                  // Element-wise minimum

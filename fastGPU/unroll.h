@@ -72,14 +72,29 @@ template<typename Op, typename T, int N>
       operation(data[N-1], v);
       Unroll<Op,T,N-1>::loop(data, v);
     }
+    __host__ __device__ __forceinline__
+    static const T reduce(const T * v) {
+      Op operation;
+      return operation(const_cast<T*>(v)[N-1],Unroll<Op,T,N-1>::reduce(v));
+    }
   };
 
 template<typename Op, typename T>
-  struct Unroll<Op,T,0> {
-  __host__ __device__ __forceinline__
-    static void loop(T *, const T *) {}
-  __host__ __device__ __forceinline__
-    static void loop(T *, const T) {}
+  struct Unroll<Op,T,1> {
+    __host__ __device__ __forceinline__
+    static void loop(T * data, const T * v) {
+      Op operation;
+      operation(data[0], v[0]);
+    }
+    __host__ __device__ __forceinline__
+    static void loop(T * data, const T v) {
+      Op operation;
+      operation(data[0], v);
+    }
+    __host__ __device__ __forceinline__
+    static const T reduce(const T * v) {
+      return v[0];
+    }
 };
 
 #endif
