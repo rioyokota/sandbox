@@ -19,11 +19,11 @@ namespace {
   static __device__ __forceinline__
     bool applyMAC(const fvec4 sourceCenter,
 		  const CellData sourceData,
-		  const float3 targetCenter,
+		  const fvec3 targetCenter,
 		  const float3 targetSize) {
-    float3 dX = make_float3(fabsf(targetCenter.x - sourceCenter[0]) - (targetSize.x),
-                            fabsf(targetCenter.y - sourceCenter[1]) - (targetSize.y),
-                            fabsf(targetCenter.z - sourceCenter[2]) - (targetSize.z));
+    float3 dX = make_float3(fabsf(targetCenter[0] - sourceCenter[0]) - (targetSize.x),
+                            fabsf(targetCenter[1] - sourceCenter[1]) - (targetSize.y),
+                            fabsf(targetCenter[2] - sourceCenter[2]) - (targetSize.z));
     dX.x += fabsf(dX.x); dX.x *= 0.5f;
     dX.y += fabsf(dX.y); dX.y *= 0.5f;
     dX.z += fabsf(dX.z); dX.z *= 0.5f;
@@ -168,7 +168,7 @@ namespace {
   static __device__
     uint2 traverseWarp(fvec4 * acc_i,
 		       const fvec3 pos_i[2],
-		       const float3 targetCenter,
+		       const fvec3 targetCenter,
 		       const float3 targetSize,
 		       const float EPS2,
 		       const int2 rootRange,
@@ -365,7 +365,7 @@ namespace {
       Xmax[0] = __shfl(Xmax[0],0);
       Xmax[1] = __shfl(Xmax[1],0);
       Xmax[2] = __shfl(Xmax[2],0);
-      const float3 targetCenter = {.5f*(Xmax[0]+Xmin[0]), .5f*(Xmax[1]+Xmin[1]), .5f*(Xmax[2]+Xmin[2])};
+      const fvec3 targetCenter = (Xmax+Xmin) * 0.5f;
       const float3 targetSize = {.5f*(Xmax[0]-Xmin[0]), .5f*(Xmax[1]-Xmin[1]), .5f*(Xmax[2]-Xmin[2])};
       fvec4 acc_i[2] = {0.0f, 0.0f};
       const uint2 counters = traverseWarp(acc_i, pos_i, targetCenter, targetSize, EPS2,
