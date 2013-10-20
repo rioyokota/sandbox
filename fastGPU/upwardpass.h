@@ -44,29 +44,13 @@ namespace {
     const int begin = cell.body();
     const int end = begin + cell.nbody();
     const float4 center = setCenter(begin, end, bodyPos);
-    float M[12];
     const float huge = 1e10f;
     float3 Xmin = {+huge, +huge, +huge};
     float3 Xmax = {-huge, -huge, -huge};
     for (int i=begin; i<end; i++) {
-      float4 body = bodyPos[i];
-      float dx = center.x - body.x;
-      float dy = center.y - body.y;
-      float dz = center.z - body.z;
-      M[0] += body.w;
-      M[1] += body.w * dx;
-      M[2] += body.w * dy;
-      M[3] += body.w * dz;
-      M[4] += .5 * body.w * dx * dx;
-      M[5] += .5 * body.w * dy * dy;
-      M[6] += .5 * body.w * dz * dz;
-      M[7] += body.w * dx * dy;
-      M[8] += body.w * dx * dz;
-      M[9] += body.w * dy * dz;
-      pairMinMax(Xmin, Xmax, body, body);
+      pairMinMax(Xmin, Xmax, bodyPos[i], bodyPos[i]);
     }
     sourceCenter[cellIdx] = center;
-    for (int i=0; i<3; i++) Multipole[3*cellIdx+i] = (float4){M[4*i+0],M[4*i+1],M[4*i+2],M[4*i+3]};
     cellXmin[cellIdx] = make_float4(Xmin.x, Xmin.y, Xmin.z, 0.0f);
     cellXmax[cellIdx] = make_float4(Xmax.x, Xmax.y, Xmax.z, 0.0f);
   }
@@ -87,27 +71,13 @@ namespace {
     const int begin = cell.child();
     const int end = begin + cell.nchild();
     const float4 Xi = setCenter(begin,end,sourceCenter);
-    float Mi[12];
     const float huge = 1e10f;
     float3 Xmin = {+huge, +huge, +huge};
     float3 Xmax = {-huge, -huge, -huge};
     for (int i=begin; i<end; i++) {
-      float * Mj = (float*) &Multipole[3*i];
-      float4 Xj = sourceCenter[i];
-      float dx = Xi.x - Xj.x;
-      float dy = Xi.y - Xj.y;
-      float dz = Xi.z - Xj.z;
-      for (int j=0; j<10; j++) Mi[j] += Mj[j];
-      Mi[4] += .5 * Mj[0] * dx * dx;
-      Mi[5] += .5 * Mj[0] * dy * dy;
-      Mi[6] += .5 * Mj[0] * dz * dz;
-      Mi[7] += Mj[0] * dx * dy;
-      Mi[8] += Mj[0] * dx * dz;
-      Mi[9] += Mj[0] * dy * dz;
       pairMinMax(Xmin, Xmax, cellXmin[i], cellXmax[i]);
     }
     sourceCenter[cellIdx] = Xi;
-    for (int i=0; i<3; i++) Multipole[3*cellIdx+i] = make_float4(Mi[4*i+0],Mi[4*i+1],Mi[4*i+2],Mi[4*i+3]);
     cellXmin[cellIdx] = make_float4(Xmin.x, Xmin.y, Xmin.z, 0.0f);
     cellXmax[cellIdx] = make_float4(Xmax.x, Xmax.y, Xmax.z, 0.0f);
   }
