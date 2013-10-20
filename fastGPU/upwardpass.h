@@ -53,7 +53,6 @@ namespace {
 
   static __global__ __launch_bounds__(NTHREAD)
     void P2M(const int numCells,
-	     const float invTheta,
 	     CellData * cells,
 	     float4 * sourceCenter,
 	     float4 * bodyPos,
@@ -89,16 +88,7 @@ namespace {
       M[9] += body.w * dy * dz;
       pairMinMax(Xmin, Xmax, body, body);
     }
-    const float3 X = {(Xmax.x+Xmin.x)*0.5f, (Xmax.y+Xmin.y)*0.5f, (Xmax.z+Xmin.z)*0.5f};
-    const float3 R = {(Xmax.x-Xmin.x)*0.5f, (Xmax.y-Xmin.y)*0.5f, (Xmax.z-Xmin.z)*0.5f};
-    const float dx = X.x - center.x;
-    const float dy = X.y - center.y;
-    const float dz = X.z - center.z;
-    const float  s = sqrt(dx*dx + dy*dy + dz*dz);
-    const float  l = max(2.0f*max(R.x, max(R.y, R.z)), 1.0e-6f);
-    const float cellOp = l * invTheta + s;
-    const float cellOp2 = cellOp*cellOp;
-    sourceCenter[cellIdx] = make_float4(center.x, center.y, center.z, cellOp2);
+    sourceCenter[cellIdx] = make_float4(center.x, center.y, center.z, 0.0f);
     for (int i=0; i<3; i++) Multipole[3*cellIdx+i] = (float4){M[4*i+0],M[4*i+1],M[4*i+2],M[4*i+3]};
     cellXmin[cellIdx] = make_float4(Xmin.x, Xmin.y, Xmin.z, 0.0f);
     cellXmax[cellIdx] = make_float4(Xmax.x, Xmax.y, Xmax.z, 0.0f);
@@ -106,7 +96,6 @@ namespace {
 
   static __global__ __launch_bounds__(NTHREAD)
     void M2M(const int level,
-	     const float invTheta,
 	     int2 * levelRange,
 	     CellData * cells,
 	     float4 * sourceCenter,
@@ -141,6 +130,20 @@ namespace {
       Mi[9] += Mj[0] * dy * dz;
       pairMinMax(Xmin, Xmax, cellXmin[i], cellXmax[i]);
     }
+    sourceCenter[cellIdx] = make_float4(Xi.x, Xi.y, Xi.z, 0.0f);
+    for (int i=0; i<3; i++) Multipole[3*cellIdx+i] = make_float4(Mi[4*i+0],Mi[4*i+1],Mi[4*i+2],Mi[4*i+3]);
+    cellXmin[cellIdx] = make_float4(Xmin.x, Xmin.y, Xmin.z, 0.0f);
+    cellXmax[cellIdx] = make_float4(Xmax.x, Xmax.y, Xmax.z, 0.0f);
+  }
+
+  static __global__ __launch_bounds__(NTHREAD)
+    void setMAC(const int numCells, const float invTheta, float4 * sourceCenter,
+		float4 * cellXmin, float4 * cellXmax) {
+    const int cellIdx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (cellIdx >= numCells) return;
+    const float4 Xmin = cellXmin[cellIdx];
+    const float4 Xmax = cellXmax[cellIdx];
+    const float4 Xi = sourceCenter[cellIdx];
     const float3 X = {(Xmax.x+Xmin.x)*0.5f, (Xmax.y+Xmin.y)*0.5f, (Xmax.z+Xmin.z)*0.5f};
     const float3 R = {(Xmax.x-Xmin.x)*0.5f, (Xmax.y-Xmin.y)*0.5f, (Xmax.z-Xmin.z)*0.5f};
     const float dx = X.x - Xi.x;
@@ -148,12 +151,9 @@ namespace {
     const float dz = X.z - Xi.z;
     const float  s = sqrt(dx*dx + dy*dy + dz*dz);
     const float  l = max(2.0f*max(R.x, max(R.y, R.z)), 1.0e-6f);
-    const float cellOp = l * invTheta + s;
-    const float cellOp2 = cellOp*cellOp;
-    sourceCenter[cellIdx] = make_float4(Xi.x, Xi.y, Xi.z, cellOp2);
-    for (int i=0; i<3; i++) Multipole[3*cellIdx+i] = make_float4(Mi[4*i+0],Mi[4*i+1],Mi[4*i+2],Mi[4*i+3]);
-    cellXmin[cellIdx] = make_float4(Xmin.x, Xmin.y, Xmin.z, 0.0f);
-    cellXmax[cellIdx] = make_float4(Xmax.x, Xmax.y, Xmax.z, 0.0f);
+    const float MAC = l * invTheta + s;
+    const float MAC2 = MAC * MAC;
+    sourceCenter[cellIdx].w = MAC2;
   }
 
   static __global__ __launch_bounds__(NTHREAD)
@@ -191,20 +191,22 @@ class Pass {
     CUDA_SAFE_CALL(cudaFuncSetCacheConfig(&P2M,cudaFuncCachePreferL1));
     CUDA_SAFE_CALL(cudaFuncSetCacheConfig(&M2M,cudaFuncCachePreferL1));
     cudaDeviceSynchronize();
-    P2M<<<NBLOCK,NTHREAD>>>(numCells,1.0/theta,sourceCells.d(),sourceCenter.d(),
+    P2M<<<NBLOCK,NTHREAD>>>(numCells,sourceCells.d(),sourceCenter.d(),
 			    bodyPos.d(),cellXmin.d(),cellXmax.d(),Multipole.d());
     kernelSuccess("P2M");
     levelRange.d2h();
     for( int level=numLevels; level>=1; level-- ) {
       numCells = levelRange[level].y - levelRange[level].x;
       NBLOCK = (numCells - 1) / NTHREAD + 1;
-      M2M<<<NBLOCK,NTHREAD>>>(level,1.0/theta,levelRange.d(),sourceCells.d(),sourceCenter.d(),
+      M2M<<<NBLOCK,NTHREAD>>>(level,levelRange.d(),sourceCells.d(),sourceCenter.d(),
 			      bodyPos.d(),cellXmin.d(),cellXmax.d(),Multipole.d());
       kernelSuccess("M2M");
     }
     numCells = sourceCells.size();
     NBLOCK = (numCells - 1) / NTHREAD + 1;
-    normalize<<<NBLOCK,NTHREAD>>>(numCells, Multipole.d()); 
+    setMAC<<<NBLOCK,NTHREAD>>>(numCells, 1.0/theta, sourceCenter.d(),
+			       cellXmin.d(),cellXmax.d());
+    normalize<<<NBLOCK,NTHREAD>>>(numCells, Multipole.d());
     const double dt = get_time() - t0;
     fprintf(stdout,"Upward pass          : %.7f s\n", dt);
   }
