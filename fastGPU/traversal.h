@@ -409,7 +409,8 @@ namespace {
     const int numChunk = (numSource - 1) / gridDim.x + 1;
     const int numWarpChunk = (numChunk - 1) / WARP_SIZE + 1;
     const int blockOffset = blockIdx.x * numChunk;
-    fvec4 accs, accc, pos = tex1Dfetch(texBody, threadIdx.x);
+    kvec4 acc;
+    fvec4 pos = tex1Dfetch(texBody, threadIdx.x);
     fvec3 pos_i = make_fvec3(pos[0],pos[1],pos[2]);
     for (int jb=0; jb<numWarpChunk; jb++) {
       const int sourceIdx = min(blockOffset+jb*WARP_SIZE+laneIdx, numSource-1);
@@ -421,30 +422,18 @@ namespace {
 	fvec3 dX = pos_j - pos_i;
 	float R2 = norm(dX) + EPS2;
 	float invR = rsqrtf(R2);
-        float y = - q_j * invR - accc[3];
-        float t = accs[3] + y;
-        accc[3] = (t - accs[3]) - y;
-        accs[3] = t;
+        acc[3] -= q_j * invR;
 	float invR3 = invR * invR * invR * q_j;
-        y = dX[0] * invR3 - accc[0];
-        t = accs[0] + y;
-        accc[0] = (t - accs[0]) - y;
-        accs[0] = t;
-        y = dX[1] * invR3 - accc[1];
-        t = accs[1] + y;
-        accc[1] = (t - accs[1]) - y;
-        accs[1] = t;
-        y = dX[2] * invR3 - accc[2];
-        t = accs[2] + y;
-        accc[2] = (t - accs[2]) - y;
-        accs[2] = t;
+        acc[0] += dX[0] * invR3;
+        acc[1] += dX[1] * invR3;
+        acc[2] += dX[2] * invR3;
       }
     }
     const int targetIdx = blockIdx.x * blockDim.x + threadIdx.x;
-    bodyAcc[targetIdx].x = accs[0] + accc[0];
-    bodyAcc[targetIdx].y = accs[1] + accc[1];
-    bodyAcc[targetIdx].z = accs[2] + accc[2];
-    bodyAcc[targetIdx].w = accs[3] + accc[3];
+    bodyAcc[targetIdx].x = acc[0];
+    bodyAcc[targetIdx].y = acc[1];
+    bodyAcc[targetIdx].z = acc[2];
+    bodyAcc[targetIdx].w = acc[3];
   }
 }
 
