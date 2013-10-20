@@ -35,16 +35,16 @@ namespace {
 	      const fvec3 pos_j,
 	      const float q_j,
 	      const float EPS2) {
-    const fvec3 dX = pos_j - pos_i;
+    fvec3 dX = pos_j - pos_i;
     const float R2 = norm(dX) + EPS2;
     const float invR = rsqrtf(R2);
     const float invR2 = invR * invR;
     const float invR1 = q_j * invR;
-    const float invR3 = invR1 * invR2;
+    dX *= invR1 * invR2;
     acc[0] -= invR1;
-    acc[1] += invR3 * dX[0];
-    acc[2] += invR3 * dX[1];
-    acc[3] += invR3 * dX[2];
+    acc[1] += dX[0];
+    acc[2] += dX[1];
+    acc[3] += dX[2];
     return acc;
   }
 
@@ -422,18 +422,20 @@ namespace {
 	fvec3 dX = pos_j - pos_i;
 	const float R2 = norm(dX) + EPS2;
 	const float invR = rsqrtf(R2);
-        acc[3] -= q_j * invR;
-	dX *= invR * invR * invR * q_j;
-        acc[0] += dX[0];
-        acc[1] += dX[1];
-        acc[2] += dX[2];
+	const float invR2 = invR * invR;
+	const float invR1 = q_j * invR;
+	dX *= invR1 * invR2;
+        acc[0] -= invR1;
+        acc[1] += dX[0];
+        acc[2] += dX[1];
+        acc[3] += dX[2];
       }
     }
     const int targetIdx = blockIdx.x * blockDim.x + threadIdx.x;
-    bodyAcc[targetIdx].x = acc[0];
-    bodyAcc[targetIdx].y = acc[1];
-    bodyAcc[targetIdx].z = acc[2];
-    bodyAcc[targetIdx].w = acc[3];
+    bodyAcc[targetIdx].x = acc[3];
+    bodyAcc[targetIdx].y = acc[0];
+    bodyAcc[targetIdx].z = acc[1];
+    bodyAcc[targetIdx].w = acc[2];
   }
 }
 
