@@ -19,14 +19,17 @@ namespace {
   }
 
   static __device__ __forceinline__
-    void pairMinMax(float3 & xmin, float3 & xmax,
-		    float4 reg_min, float4 reg_max) {
-    xmin.x = fminf(xmin.x, reg_min.x);
-    xmin.y = fminf(xmin.y, reg_min.y);
-    xmin.z = fminf(xmin.z, reg_min.z);
-    xmax.x = fmaxf(xmax.x, reg_max.x);
-    xmax.y = fmaxf(xmax.y, reg_max.y);
-    xmax.z = fmaxf(xmax.z, reg_max.z);
+    void getMinMax(const int begin, const int end,
+		   float4 * XminGlob, float4 * XmaxGlob,
+		   float3 & Xmin, float3 & Xmax) {
+    for (int i=begin; i<end; i++) {
+      Xmin.x = fminf(Xmin.x, XminGlob[i].x);
+      Xmin.y = fminf(Xmin.y, XminGlob[i].y);
+      Xmin.z = fminf(Xmin.z, XminGlob[i].z);
+      Xmax.x = fmaxf(Xmax.x, XmaxGlob[i].x);
+      Xmax.y = fmaxf(Xmax.y, XmaxGlob[i].y);
+      Xmax.z = fmaxf(Xmax.z, XmaxGlob[i].z);
+    }
   }
 
   static __device__ __forceinline__
@@ -97,17 +100,13 @@ namespace {
       const int begin = cell.body();
       const int end = begin + cell.nbody();
       center = setCenter(begin, end, bodyPos);
-      for (int i=begin; i<end; i++) {
-	pairMinMax(Xmin, Xmax, bodyPos[i], bodyPos[i]);
-      }
+      getMinMax(begin, end, bodyPos, bodyPos, Xmin, Xmax);
       P2M(begin, end, bodyPos, center, M);
     } else {
       const int begin = cell.child();
       const int end = begin + cell.nchild();
       center = setCenter(begin,end,sourceCenter);
-      for (int i=begin; i<end; i++) {
-	pairMinMax(Xmin, Xmax, cellXmin[i], cellXmax[i]);
-      }
+      getMinMax(begin, end, cellXmin, cellXmax, Xmin, Xmax);
       M2M(begin, end, center, sourceCenter, Multipole, M); 
     }
     sourceCenter[cellIdx] = center;
