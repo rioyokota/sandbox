@@ -31,28 +31,27 @@ namespace {
   }
 
   static __device__ __forceinline__
-    float4 P2P(float4 acc,
-	       const fvec3 pos_i,
-	       const float4 pos_j,
-	       const float EPS2) {
-    const float3 dX    = make_float3(pos_j.x - pos_i[0], pos_j.y - pos_i[1], pos_j.z - pos_i[2]);
+    fvec4 P2P(fvec4 acc,
+	      const fvec3 pos_i,
+	      const fvec3 pos_j,
+	      const float q_j,
+	      const float EPS2) {
+    const float3 dX    = make_float3(pos_j[0] - pos_i[0], pos_j[1] - pos_i[1], pos_j[2] - pos_i[2]);
     const float  R2    = dX.x * dX.x + dX.y * dX.y + dX.z * dX.z + EPS2;
     const float  invR  = rsqrtf(R2);
     const float  invR2 = invR*invR;
-    const float  invR1 = pos_j.w * invR;
+    const float  invR1 = q_j * invR;
     const float  invR3 = invR1 * invR2;
-    acc.w -= invR1;
-    acc.x += invR3 * dX.x;
-    acc.y += invR3 * dX.y;
-    acc.z += invR3 * dX.z;
+    acc[0] -= invR1;
+    acc[1] += invR3 * dX.x;
+    acc[2] += invR3 * dX.y;
+    acc[3] += invR3 * dX.z;
     return acc;
   }
 
-
-
 #if 1
   static __device__ __forceinline__
-    float4 M2P(float4 acc,
+    fvec4 M2P(fvec4 acc,
 	       const fvec3 & pos_i,
 	       const fvec3 & pos_j,
 	       const float * __restrict__ M,
@@ -77,16 +76,16 @@ namespace {
     qR[1] = q12 * dX[0] + q22 * dX[1] + q23 * dX[2];
     qR[2] = q13 * dX[0] + q23 * dX[1] + q33 * dX[2];
     const float qRR = qR[0] * dX[0] + qR[1] * dX[1] + qR[2] * dX[2];
-    acc.w -= invR1 + invR3 * q + invR5 * qRR;
+    acc[0] -= invR1 + invR3 * q + invR5 * qRR;
     const float C = invR3 + invR5 * q + invR7 * qRR;
-    acc.x += C * dX[0] + 2 * invR5 * qR[0];
-    acc.y += C * dX[1] + 2 * invR5 * qR[1];
-    acc.z += C * dX[2] + 2 * invR5 * qR[2];
+    acc[1] += C * dX[0] + 2 * invR5 * qR[0];
+    acc[2] += C * dX[1] + 2 * invR5 * qR[1];
+    acc[3] += C * dX[2] + 2 * invR5 * qR[2];
     return acc;
   }
 #else
   static __device__ __forceinline__
-    float4 M2P(float4 acc,
+    fvec4 M2P(fvec4 acc,
 	       const fvec3 pos_i,
 	       const fvec3 pos_j,
 	       const float * __restrict__ M,
@@ -127,17 +126,17 @@ namespace {
     C[18] = y * (t +     invR5);
     C[19] = z * (t + 3 * invR5);
     C[14] = x * y * z * invR7;
-    acc.w -= C[0]+M[4]*C[4] +M[7]*C[5] +M[8]*C[6] +M[5]*C[7] +M[9]*C[8] +M[6]*C[9];
-    acc.x += C[1]+M[4]*C[10]+M[7]*C[11]+M[8]*C[12]+M[5]*C[13]+M[9]*C[14]+M[6]*C[15];
-    acc.y += C[2]+M[4]*C[11]+M[7]*C[13]+M[8]*C[14]+M[5]*C[16]+M[9]*C[17]+M[6]*C[18];
-    acc.z += C[3]+M[4]*C[12]+M[7]*C[14]+M[8]*C[15]+M[5]*C[17]+M[9]*C[18]+M[6]*C[19];
+    acc[0] -= C[0]+M[4]*C[4] +M[7]*C[5] +M[8]*C[6] +M[5]*C[7] +M[9]*C[8] +M[6]*C[9];
+    acc[1] += C[1]+M[4]*C[10]+M[7]*C[11]+M[8]*C[12]+M[5]*C[13]+M[9]*C[14]+M[6]*C[15];
+    acc[2] += C[2]+M[4]*C[11]+M[7]*C[13]+M[8]*C[14]+M[5]*C[16]+M[9]*C[17]+M[6]*C[18];
+    acc[3] += C[3]+M[4]*C[12]+M[7]*C[14]+M[8]*C[15]+M[5]*C[17]+M[9]*C[18]+M[6]*C[19];
     return acc;
   }
 #endif
 
   template<bool FULL>
     static __device__
-    void approxAcc(float4 acc_i[2],
+    void approxAcc(fvec4 acc_i[2],
 		   const fvec3 pos_i[2],
 		   const int cellIdx,
 		   const float EPS2) {
@@ -166,7 +165,7 @@ namespace {
   }
 
   static __device__
-    uint2 traverseWarp(float4 * acc_i,
+    uint2 traverseWarp(fvec4 * acc_i,
 		       const fvec3 pos_i[2],
 		       const float3 targetCenter,
 		       const float3 targetSize,
@@ -253,13 +252,13 @@ namespace {
 	if (numBodiesWarp >= WARP_SIZE) {                       //  If warp is full of bodies
 	  const float4 pos = tex1Dfetch(texBody, bodyQueue);    //   Load position of source bodies
 	  for (int j=0; j<WARP_SIZE; j++) {                     //   Loop over the warp size
-	    const float4 pos_j = make_float4(__shfl(pos.x, j),  //    Get source x value from lane j
-					     __shfl(pos.y, j),  //    Get source y value from lane j
-					     __shfl(pos.z, j),  //    Get source z value from lane j
-					     __shfl(pos.w, j)); //    Get source w value from lane j
+	    const fvec3 pos_j = make_fvec3(__shfl(pos.x, j),    //    Get source x value from lane j
+					   __shfl(pos.y, j),    //    Get source y value from lane j
+					   __shfl(pos.z, j));   //    Get source z value from lane j
+	    const float q_j = __shfl(pos.w, j);                 //    Get source w value from lane j
 #pragma unroll                                                  //    Unroll loop
 	    for (int k=0; k<2; k++)                             //    Loop over two targets
-	      acc_i[k] = P2P(acc_i[k], pos_i[k], pos_j, EPS2);  //     Call P2P kernel
+	      acc_i[k] = P2P(acc_i[k], pos_i[k], pos_j, q_j, EPS2);  //     Call P2P kernel
 	  }                                                     //   End loop over the warp size
 	  numBodiesWarp -= WARP_SIZE;                           //   Decrement body queue size
 	  numBodiesLane -= WARP_SIZE;                           //   Derecment lane offset of body index
@@ -273,13 +272,13 @@ namespace {
 	  if (bodyOffset >= WARP_SIZE) {                        //   If this causes the body queue to spill
 	    const float4 pos = tex1Dfetch(texBody, tempQueue[laneIdx]);// Load position of source bodies
 	    for (int j=0; j<WARP_SIZE; j++) {                   //    Loop over the warp size
-	      const float4 pos_j = make_float4(__shfl(pos.x, j),//     Get source x value from lane j
-					       __shfl(pos.y, j),//     Get source y value from lane j
-					       __shfl(pos.z, j),//     Get source z value from lane j
-					       __shfl(pos.w, j));//    Get source w value from lane j
+  	      const fvec3 pos_j = make_fvec3(__shfl(pos.x, j),  //    Get source x value from lane j
+	  				     __shfl(pos.y, j),  //    Get source y value from lane j
+					     __shfl(pos.z, j)); //    Get source z value from lane j
+	      const float q_j = __shfl(pos.w, j);               //    Get source w value from lane j
 #pragma unroll                                                  //     Unroll loop
 	      for (int k=0; k<2; k++)                           //     Loop over two targets
-		acc_i[k] = P2P(acc_i[k], pos_i[k], pos_j, EPS2);//      Call P2P kernel
+		acc_i[k] = P2P(acc_i[k], pos_i[k], pos_j, q_j, EPS2);//      Call P2P kernel
 	    }                                                   //    End loop over the warp size
 	    bodyOffset -= WARP_SIZE;                            //    Decrement body queue size
 	    bodyIdx -= WARP_SIZE;                               //    Decrement body index of current lane
@@ -306,13 +305,13 @@ namespace {
       const int bodyQueue = laneIdx < bodyOffset ? directQueue : -1;
       const float4 pos = bodyQueue >= 0 ? tex1Dfetch(texBody, bodyQueue) : make_float4(0.0f, 0.0f, 0.0f, 0.0f);
       for (int j=0; j<WARP_SIZE; j++) {
-	const float4 pos_j = make_float4(__shfl(pos.x, j),
-					 __shfl(pos.y, j),
-					 __shfl(pos.z, j),
-					 __shfl(pos.w, j));
+	const fvec3 pos_j = make_fvec3(__shfl(pos.x, j),        //    Get source x value from lane j
+			       	       __shfl(pos.y, j),        //    Get source y value from lane j
+				       __shfl(pos.z, j));       //    Get source z value from lane j
+	const float q_j = __shfl(pos.w, j);                     //    Get source w value from lane j
 #pragma unroll
 	for (int k=0; k<2; k++)
-	  acc_i[k] = P2P(acc_i[k], pos_i[k], pos_j, EPS2);
+	  acc_i[k] = P2P(acc_i[k], pos_i[k], pos_j, q_j, EPS2);
       }
       counters.y += bodyOffset;
       bodyOffset = 0;
@@ -367,7 +366,7 @@ namespace {
       rmax.z = __shfl(rmax.z,0);
       const float3 targetCenter = {.5f*(rmax.x+rmin.x), .5f*(rmax.y+rmin.y), .5f*(rmax.z+rmin.z)};
       const float3 targetSize = {.5f*(rmax.x-rmin.x), .5f*(rmax.y-rmin.y), .5f*(rmax.z-rmin.z)};
-      float4 acc_i[2] = {0.0f, 0.0f, 0.0f, 0.0f};
+      fvec4 acc_i[2] = {0.0f, 0.0f};
       const uint2 counters = traverseWarp(acc_i, pos_i, targetCenter, targetSize, EPS2,
 					  levelRange[1], tempQueue, cellQueue);
       assert(!(counters.x == 0xFFFFFFFF && counters.y == 0xFFFFFFFF));
@@ -397,7 +396,7 @@ namespace {
       }
       for (int i=0; i<2; i++)
 	if (bodyIdx + i * WARP_SIZE < bodyEnd)
-	  bodyAcc[i*WARP_SIZE + bodyIdx] = acc_i[i];
+	  bodyAcc[i*WARP_SIZE + bodyIdx] = make_float4(acc_i[i][1],acc_i[i][2],acc_i[i][3],acc_i[i][0]);
     }
   }
 
