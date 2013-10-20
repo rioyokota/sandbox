@@ -354,18 +354,18 @@ namespace {
 	const float4 pos = bodyPos[bodyIdx];
 	pos_i[i] = make_fvec3(pos.x, pos.y, pos.z);
       }
-      float3 Xmin = make_float3(pos_i[0][0],pos_i[0][1],pos_i[0][2]);
-      float3 Xmax = Xmin;
+      fvec3 Xmin = pos_i[0];
+      fvec3 Xmax = Xmin;
       for (int i=0; i<2; i++)
 	getMinMax(Xmin, Xmax, pos_i[i]);
-      Xmin.x = __shfl(Xmin.x,0);
-      Xmin.y = __shfl(Xmin.y,0);
-      Xmin.z = __shfl(Xmin.z,0);
-      Xmax.x = __shfl(Xmax.x,0);
-      Xmax.y = __shfl(Xmax.y,0);
-      Xmax.z = __shfl(Xmax.z,0);
-      const float3 targetCenter = {.5f*(Xmax.x+Xmin.x), .5f*(Xmax.y+Xmin.y), .5f*(Xmax.z+Xmin.z)};
-      const float3 targetSize = {.5f*(Xmax.x-Xmin.x), .5f*(Xmax.y-Xmin.y), .5f*(Xmax.z-Xmin.z)};
+      Xmin[0] = __shfl(Xmin[0],0);
+      Xmin[1] = __shfl(Xmin[1],0);
+      Xmin[2] = __shfl(Xmin[2],0);
+      Xmax[0] = __shfl(Xmax[0],0);
+      Xmax[1] = __shfl(Xmax[1],0);
+      Xmax[2] = __shfl(Xmax[2],0);
+      const float3 targetCenter = {.5f*(Xmax[0]+Xmin[0]), .5f*(Xmax[1]+Xmin[1]), .5f*(Xmax[2]+Xmin[2])};
+      const float3 targetSize = {.5f*(Xmax[0]-Xmin[0]), .5f*(Xmax[1]-Xmin[1]), .5f*(Xmax[2]-Xmin[2])};
       fvec4 acc_i[2] = {0.0f, 0.0f};
       const uint2 counters = traverseWarp(acc_i, pos_i, targetCenter, targetSize, EPS2,
 					  levelRange[1], tempQueue, cellQueue);

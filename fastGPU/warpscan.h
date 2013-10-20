@@ -1,7 +1,7 @@
 #pragma once
 
 static __device__ __forceinline__
-void getMinMax(float3 &_Xmin, float3 &_Xmax, const fvec3 & pos) {
+void getMinMax(fvec3 & _Xmin, fvec3 & _Xmax, const fvec3 & pos) {
   fvec3 Xmin = pos;
   fvec3 Xmax = Xmin;
 #pragma unroll
@@ -13,12 +13,12 @@ void getMinMax(float3 &_Xmin, float3 &_Xmax, const fvec3 & pos) {
     Xmax[1] = max(Xmax[1], __shfl_xor(Xmax[1], 1<<i));
     Xmax[2] = max(Xmax[2], __shfl_xor(Xmax[2], 1<<i));
   }
-  _Xmin.x = min(_Xmin.x, Xmin[0]);
-  _Xmin.y = min(_Xmin.y, Xmin[1]);
-  _Xmin.z = min(_Xmin.z, Xmin[2]);
-  _Xmax.x = max(_Xmax.x, Xmax[0]);
-  _Xmax.y = max(_Xmax.y, Xmax[1]);
-  _Xmax.z = max(_Xmax.z, Xmax[2]);
+  _Xmin[0] = min(_Xmin[0], Xmin[0]);
+  _Xmin[1] = min(_Xmin[1], Xmin[1]);
+  _Xmin[2] = min(_Xmin[2], Xmin[2]);
+  _Xmax[0] = max(_Xmax[0], Xmax[0]);
+  _Xmax[1] = max(_Xmax[1], Xmax[1]);
+  _Xmax[2] = max(_Xmax[2], Xmax[2]);
 }
 
 // Scan int
