@@ -152,7 +152,7 @@ namespace {
       for (int i=0; i<3; i++) M4[i] = make_float4(0.0f, 0.0f, 0.0f, 0.0f);
     }
     for (int j=0; j<WARP_SIZE; j++) {
-      const fvec3 pos_j = make_fvec3(__shfl(Xj[0],j), __shfl(Xj[1],j), __shfl(Xj[2],j));
+      const fvec3 pos_j(__shfl(Xj[0],j), __shfl(Xj[1],j), __shfl(Xj[2],j));
 #pragma unroll
       for (int i=0; i<3; i++) {
         M[4*i+0] = __shfl(M4[i].x, j);
@@ -253,9 +253,9 @@ namespace {
 	if (numBodiesWarp >= WARP_SIZE) {                       //  If warp is full of bodies
 	  const float4 pos = tex1Dfetch(texBody, bodyQueue);    //   Load position of source bodies
 	  for (int j=0; j<WARP_SIZE; j++) {                     //   Loop over the warp size
-	    const fvec3 pos_j = make_fvec3(__shfl(pos.x, j),    //    Get source x value from lane j
-					   __shfl(pos.y, j),    //    Get source y value from lane j
-					   __shfl(pos.z, j));   //    Get source z value from lane j
+	    const fvec3 pos_j(__shfl(pos.x, j),                 //    Get source x value from lane j
+			      __shfl(pos.y, j),                 //    Get source y value from lane j
+			      __shfl(pos.z, j));                //    Get source z value from lane j
 	    const float q_j = __shfl(pos.w, j);                 //    Get source w value from lane j
 #pragma unroll                                                  //    Unroll loop
 	    for (int k=0; k<2; k++)                             //    Loop over two targets
@@ -273,9 +273,9 @@ namespace {
 	  if (bodyOffset >= WARP_SIZE) {                        //   If this causes the body queue to spill
 	    const float4 pos = tex1Dfetch(texBody, tempQueue[laneIdx]);// Load position of source bodies
 	    for (int j=0; j<WARP_SIZE; j++) {                   //    Loop over the warp size
-  	      const fvec3 pos_j = make_fvec3(__shfl(pos.x, j),  //    Get source x value from lane j
-	  				     __shfl(pos.y, j),  //    Get source y value from lane j
-					     __shfl(pos.z, j)); //    Get source z value from lane j
+  	      const fvec3 pos_j(__shfl(pos.x, j),               //    Get source x value from lane j
+	  			__shfl(pos.y, j),               //    Get source y value from lane j
+				__shfl(pos.z, j));              //    Get source z value from lane j
 	      const float q_j = __shfl(pos.w, j);               //    Get source w value from lane j
 #pragma unroll                                                  //     Unroll loop
 	      for (int k=0; k<2; k++)                           //     Loop over two targets
@@ -306,9 +306,9 @@ namespace {
       const int bodyQueue = laneIdx < bodyOffset ? directQueue : -1;
       const float4 pos = bodyQueue >= 0 ? tex1Dfetch(texBody, bodyQueue) : make_float4(0.0f, 0.0f, 0.0f, 0.0f);
       for (int j=0; j<WARP_SIZE; j++) {
-	const fvec3 pos_j = make_fvec3(__shfl(pos.x, j),        //    Get source x value from lane j
-			       	       __shfl(pos.y, j),        //    Get source y value from lane j
-				       __shfl(pos.z, j));       //    Get source z value from lane j
+	const fvec3 pos_j(__shfl(pos.x, j),                     //    Get source x value from lane j
+			  __shfl(pos.y, j),                     //    Get source y value from lane j
+			  __shfl(pos.z, j));                    //    Get source z value from lane j
 	const float q_j = __shfl(pos.w, j);                     //    Get source w value from lane j
 #pragma unroll
 	for (int k=0; k<2; k++)
