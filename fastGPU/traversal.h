@@ -22,13 +22,10 @@ namespace {
 		  const CellData sourceData,
 		  const fvec3 targetCenter,
 		  const fvec3 targetSize) {
-    float3 dX = make_float3(fabsf(targetCenter[0] - sourceCenter[0]) - (targetSize[0]),
-                            fabsf(targetCenter[1] - sourceCenter[1]) - (targetSize[1]),
-                            fabsf(targetCenter[2] - sourceCenter[2]) - (targetSize[2]));
-    dX.x += fabsf(dX.x); dX.x *= 0.5f;
-    dX.y += fabsf(dX.y); dX.y *= 0.5f;
-    dX.z += fabsf(dX.z); dX.z *= 0.5f;
-    const float R2 = dX.x * dX.x + dX.y * dX.y + dX.z * dX.z;
+    fvec3 dX = abs(targetCenter - sourceCenter) - targetSize;
+    dX += abs(dX);
+    dX *= 0.5f;
+    const float R2 = norm(dX);
     return R2 < fabsf(MAC) || sourceData.nbody() < 3;
   }
 
@@ -41,7 +38,7 @@ namespace {
     const fvec3 dX = pos_j - pos_i;
     const float R2 = norm(dX) + EPS2;
     const float invR = rsqrtf(R2);
-    const float invR2 = invR*invR;
+    const float invR2 = invR * invR;
     const float invR1 = q_j * invR;
     const float invR3 = invR1 * invR2;
     acc[0] -= invR1;
@@ -142,7 +139,7 @@ namespace {
 		   const fvec3 pos_i[2],
 		   const int cellIdx,
 		   const float EPS2) {
-    float4 M4[3];
+    fvec4 M4[3];
     float M[12];
     const fvec4 Xj = tex1Dfetch(texCellCenter, cellIdx);
     if (FULL || cellIdx >= 0) {
@@ -156,10 +153,10 @@ namespace {
       const fvec3 pos_j(__shfl(Xj[0],j), __shfl(Xj[1],j), __shfl(Xj[2],j));
 #pragma unroll
       for (int i=0; i<3; i++) {
-        M[4*i+0] = __shfl(M4[i].x, j);
-        M[4*i+1] = __shfl(M4[i].y, j);
-        M[4*i+2] = __shfl(M4[i].z, j);
-        M[4*i+3] = __shfl(M4[i].w, j);
+        M[4*i+0] = __shfl(M4[i][0], j);
+        M[4*i+1] = __shfl(M4[i][1], j);
+        M[4*i+2] = __shfl(M4[i][2], j);
+        M[4*i+3] = __shfl(M4[i][3], j);
       }
       for (int k=0; k<2; k++)
 	acc_i[k] = M2P(acc_i[k], pos_i[k], pos_j, M, EPS2);
@@ -253,12 +250,12 @@ namespace {
         const int bodyQueue = inclusiveSegscanInt(tempQueue[laneIdx], tempOffset);// Inclusive segmented scan of temp queue
         tempOffset = __shfl(bodyQueue, WARP_SIZE-1);            //  Last lane has the temp queue offset
 	if (numBodiesWarp >= WARP_SIZE) {                       //  If warp is full of bodies
-	  const float4 pos = tex1Dfetch(texBody, bodyQueue);    //   Load position of source bodies
+	  const fvec4 pos = tex1Dfetch(texBody, bodyQueue);     //   Load position of source bodies
 	  for (int j=0; j<WARP_SIZE; j++) {                     //   Loop over the warp size
-	    const fvec3 pos_j(__shfl(pos.x, j),                 //    Get source x value from lane j
-			      __shfl(pos.y, j),                 //    Get source y value from lane j
-			      __shfl(pos.z, j));                //    Get source z value from lane j
-	    const float q_j = __shfl(pos.w, j);                 //    Get source w value from lane j
+	    const fvec3 pos_j(__shfl(pos[0], j),                //    Get source x value from lane j
+			      __shfl(pos[1], j),                //    Get source y value from lane j
+			      __shfl(pos[2], j));               //    Get source z value from lane j
+	    const float q_j = __shfl(pos[3], j);                //    Get source w value from lane j
 #pragma unroll                                                  //    Unroll loop
 	    for (int k=0; k<2; k++)                             //    Loop over two targets
 	      acc_i[k] = P2P(acc_i[k], pos_i[k], pos_j, q_j, EPS2);  //     Call P2P kernel

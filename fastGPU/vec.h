@@ -206,7 +206,7 @@ class vec {
   __host__ __device__ __forceinline__
   vec operator-() const {                                       // Vector arithmetic (negation)
     vec temp;
-    for (int i=0; i<N; i++) temp[i] = -data[i];
+    Unroll<Ops::Negate<T>,T,N>::loop(temp,data);
     return temp;
   }
   __host__ __device__ __forceinline__
@@ -249,9 +249,15 @@ class vec {
     return temp;
   }
   __device__ __forceinline__
+  friend vec abs(const vec &v) {                                // Absolute value
+    vec temp;
+    Unroll<Ops::Abs<T>,T,N>::loop(temp,v);
+    return temp;
+  }
+  __device__ __forceinline__
   friend vec rsqrt(const vec &v) {                              // Reciprocal square root
     vec temp;
-    for (int i=0; i<N; i++) temp[i] = rsqrtf(v[i]);
+    Unroll<Ops::Rsqrt<T>,T,N>::loop(temp,v);
     return temp;
   }
 };

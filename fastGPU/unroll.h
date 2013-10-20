@@ -62,6 +62,30 @@ namespace Ops {
       return lhs = -rhs;
     }
   };
+  template<typename T> struct Min {
+    __host__ __device__ __forceinline__
+    T operator() (T & lhs, const T & rhs) const {
+      return lhs < rhs ? lhs : rhs;
+    }
+  };
+  template<typename T> struct Max {
+    __host__ __device__ __forceinline__
+    T operator() (T & lhs, const T & rhs) const {
+      return lhs > rhs ? lhs : rhs;
+    }
+  };
+  template<typename T> struct Abs {
+    __host__ __device__ __forceinline__
+    T operator() (T & lhs, const T & rhs) const {
+      return lhs = fabsf(rhs);
+    }
+  };
+  template<typename T> struct Rsqrt {
+    __host__ __device__ __forceinline__
+    T operator() (T & lhs, const T & rhs) const {
+      return lhs = rsqrtf(rhs);
+    }
+  };
 }
 
 template<typename Op, typename T, int N>
