@@ -78,14 +78,14 @@ int main(int argc, char ** argv) {
   double diffp = 0, diffa = 0;
   double normp = 0, norma = 0;
   for (int i=0; i<numTarget; i++) {
-    diffp += (bodyAcc[i][3] - bodyAcc2[i][3]) * (bodyAcc[i][3] - bodyAcc2[i][3]);
-    diffa += (bodyAcc[i][0] - bodyAcc2[i][0]) * (bodyAcc[i][0] - bodyAcc2[i][0])
-      + (bodyAcc[i][1] - bodyAcc2[i][1]) * (bodyAcc[i][1] - bodyAcc2[i][1])
-      + (bodyAcc[i][2] - bodyAcc2[i][2]) * (bodyAcc[i][2] - bodyAcc2[i][2]);
-    normp += bodyAcc2[i][3] * bodyAcc2[i][3];
-    norma += bodyAcc2[i][0] * bodyAcc2[i][0]
-      + bodyAcc2[i][1] * bodyAcc2[i][1]
-      + bodyAcc2[i][2] * bodyAcc2[i][2];
+    diffp += (bodyAcc[i][0] - bodyAcc2[i][0]) * (bodyAcc[i][0] - bodyAcc2[i][0]);
+    diffa += (bodyAcc[i][1] - bodyAcc2[i][1]) * (bodyAcc[i][1] - bodyAcc2[i][1])
+      + (bodyAcc[i][2] - bodyAcc2[i][2]) * (bodyAcc[i][2] - bodyAcc2[i][2])
+      + (bodyAcc[i][3] - bodyAcc2[i][3]) * (bodyAcc[i][3] - bodyAcc2[i][3]);
+    normp += bodyAcc2[i][0] * bodyAcc2[i][0];
+    norma += bodyAcc2[i][1] * bodyAcc2[i][1]
+      + bodyAcc2[i][2] * bodyAcc2[i][2]
+      + bodyAcc2[i][3] * bodyAcc2[i][3];
   }
   fprintf(stdout,"--- FMM vs. direct ---------------\n");
   fprintf(stdout,"Rel. L2 Error (pot)  : %.7e\n",sqrt(diffp/normp));

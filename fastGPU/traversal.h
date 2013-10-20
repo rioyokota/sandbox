@@ -397,7 +397,7 @@ namespace {
       }
       for (int i=0; i<2; i++)
 	if (bodyIdx + i * WARP_SIZE < bodyEnd)
-	  bodyAcc[i*WARP_SIZE + bodyIdx] = make_fvec4(acc_i[i][1],acc_i[i][2],acc_i[i][3],acc_i[i][0]);
+	  bodyAcc[i*WARP_SIZE + bodyIdx] = acc_i[i];
     }
   }
 
@@ -432,10 +432,7 @@ namespace {
       }
     }
     const int targetIdx = blockIdx.x * blockDim.x + threadIdx.x;
-    bodyAcc[targetIdx][0] = acc[1];
-    bodyAcc[targetIdx][1] = acc[2];
-    bodyAcc[targetIdx][2] = acc[3];
-    bodyAcc[targetIdx][3] = acc[0];
+    bodyAcc[targetIdx] = make_fvec4(acc[0],acc[1],acc[2],acc[3]);
   }
 }
 
