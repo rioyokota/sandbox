@@ -1,4 +1,5 @@
 #pragma once
+#include "warpscan.h"
 
 extern void sort(const int size, int * key, int * value);
 

@@ -22,6 +22,19 @@ class vec {
     Unroll<Ops::Assign<T>,T,N>::loop(data,v);
   }
   __host__ __device__ __forceinline__
+  vec(const float4 &v) {                                        // Copy constructor (float4)
+    data[0] = v.x;
+    data[1] = v.y;
+    data[2] = v.z;
+    data[3] = v.w;
+  }
+  __host__ __device__ __forceinline__
+  vec(const float3 &v) {                                        // Copy constructor (float3)
+    data[0] = v.x;
+    data[1] = v.y;
+    data[2] = v.z;
+  }
+  __host__ __device__ __forceinline__
   ~vec(){}                                                      // Destructor
   __host__ __device__ __forceinline__
   const vec &operator=(const T v) {                             // Scalar assignment

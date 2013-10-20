@@ -11,9 +11,9 @@
 #include "cudavec.h"
 #include "logger.h"
 #include "vec.h"
+
 typedef vec<3,float> fvec3;
 typedef vec<4,float> fvec4;
-#include "warpscan.h"
 
 __host__ __device__
 static fvec3 make_fvec3(float x, float y, float z) {

@@ -1,5 +1,6 @@
 #pragma once
 #include <algorithm>
+#include "warpscan.h"
 
 #define MEM_PER_WARP (4096 * WARP_SIZE)
 #define IF(x) (-(int)(x))
@@ -36,16 +37,16 @@ namespace {
 	      const fvec3 pos_j,
 	      const float q_j,
 	      const float EPS2) {
-    const float3 dX    = make_float3(pos_j[0] - pos_i[0], pos_j[1] - pos_i[1], pos_j[2] - pos_i[2]);
-    const float  R2    = dX.x * dX.x + dX.y * dX.y + dX.z * dX.z + EPS2;
-    const float  invR  = rsqrtf(R2);
-    const float  invR2 = invR*invR;
-    const float  invR1 = q_j * invR;
-    const float  invR3 = invR1 * invR2;
+    const fvec3 dX = pos_j - pos_i;
+    const float R2 = norm(dX) + EPS2;
+    const float invR = rsqrtf(R2);
+    const float invR2 = invR*invR;
+    const float invR1 = q_j * invR;
+    const float invR3 = invR1 * invR2;
     acc[0] -= invR1;
-    acc[1] += invR3 * dX.x;
-    acc[2] += invR3 * dX.y;
-    acc[3] += invR3 * dX.z;
+    acc[1] += invR3 * dX[0];
+    acc[2] += invR3 * dX[1];
+    acc[3] += invR3 * dX[2];
     return acc;
   }
 
@@ -86,10 +87,10 @@ namespace {
 #else
   static __device__ __forceinline__
     fvec4 M2P(fvec4 acc,
-	       const fvec3 pos_i,
-	       const fvec3 pos_j,
-	       const float * __restrict__ M,
-	       float EPS2) {
+	      const fvec3 pos_i,
+	      const fvec3 pos_j,
+	      const float * __restrict__ M,
+	      float EPS2) {
     const float x = pos_i[0] - pos_j[0];
     const float y = pos_i[1] - pos_j[1];
     const float z = pos_i[2] - pos_j[2];
@@ -142,7 +143,7 @@ namespace {
 		   const float EPS2) {
     float4 M4[3];
     float M[12];
-    const float4 Xj = tex1Dfetch(texCellCenter, cellIdx);
+    const fvec4 Xj = tex1Dfetch(texCellCenter, cellIdx);
     if (FULL || cellIdx >= 0) {
 #pragma unroll
       for (int i=0; i<3; i++) M4[i] = tex1Dfetch(texMultipole, 3*cellIdx+i);
@@ -151,7 +152,7 @@ namespace {
       for (int i=0; i<3; i++) M4[i] = make_float4(0.0f, 0.0f, 0.0f, 0.0f);
     }
     for (int j=0; j<WARP_SIZE; j++) {
-      const fvec3 pos_j = make_fvec3(__shfl(Xj.x, j),__shfl(Xj.y, j),__shfl(Xj.z, j));
+      const fvec3 pos_j = make_fvec3(__shfl(Xj[0],j), __shfl(Xj[1],j), __shfl(Xj[2],j));
 #pragma unroll
       for (int i=0; i<3; i++) {
         M[4*i+0] = __shfl(M4[i].x, j);
