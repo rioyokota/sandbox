@@ -432,10 +432,10 @@ namespace {
       }
     }
     const int targetIdx = blockIdx.x * blockDim.x + threadIdx.x;
-    bodyAcc[targetIdx][0] = acc[3];
-    bodyAcc[targetIdx][1] = acc[0];
-    bodyAcc[targetIdx][2] = acc[1];
-    bodyAcc[targetIdx][3] = acc[2];
+    bodyAcc[targetIdx][0] = acc[1];
+    bodyAcc[targetIdx][1] = acc[2];
+    bodyAcc[targetIdx][2] = acc[3];
+    bodyAcc[targetIdx][3] = acc[0];
   }
 }
 
