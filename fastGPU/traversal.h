@@ -17,18 +17,18 @@ namespace {
   }
 
   static __device__ __forceinline__
-    bool applyMAC(const float4 sourceCenter,
+    bool applyMAC(const fvec4 sourceCenter,
 		  const CellData sourceData,
 		  const float3 targetCenter,
 		  const float3 targetSize) {
-    float3 dX = make_float3(fabsf(targetCenter.x - sourceCenter.x) - (targetSize.x),
-                            fabsf(targetCenter.y - sourceCenter.y) - (targetSize.y),
-                            fabsf(targetCenter.z - sourceCenter.z) - (targetSize.z));
+    float3 dX = make_float3(fabsf(targetCenter.x - sourceCenter[0]) - (targetSize.x),
+                            fabsf(targetCenter.y - sourceCenter[1]) - (targetSize.y),
+                            fabsf(targetCenter.z - sourceCenter[2]) - (targetSize.z));
     dX.x += fabsf(dX.x); dX.x *= 0.5f;
     dX.y += fabsf(dX.y); dX.y *= 0.5f;
     dX.z += fabsf(dX.z); dX.z *= 0.5f;
     const float R2 = dX.x * dX.x + dX.y * dX.y + dX.z * dX.z;
-    return R2 < fabsf(sourceCenter.w) || sourceData.nbody() < 3;
+    return R2 < fabsf(sourceCenter[3]) || sourceData.nbody() < 3;
   }
 
   static __device__ __forceinline__
@@ -192,7 +192,7 @@ namespace {
     while (numSources > 0) {
       const int sourceIdx = sourceOffset + laneIdx;             // Source cell index of current lane
       const int sourceQueue = cellQueue[ringAddr(oldSources + sourceIdx)];// Global source cell index in queue
-      const float4 sourceCenter = tex1Dfetch(texCellCenter, sourceQueue);// Source cell center
+      const fvec4 sourceCenter = tex1Dfetch(texCellCenter, sourceQueue);// Source cell center
       const CellData sourceData = tex1Dfetch(texCell, sourceQueue);// Source cell data
       const bool isNode = sourceData.isNode();                  // Is non-leaf cell
       const bool isClose = applyMAC(sourceCenter, sourceData, targetCenter, targetSize);// Is too close for MAC
