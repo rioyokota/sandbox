@@ -1,24 +1,24 @@
 #pragma once
 
 static __device__ __forceinline__
-void getMinMax(float3 &_rmin, float3 &_rmax, const fvec3 & pos) {
-  float3 rmin = make_float3(pos[0],pos[1],pos[2]);
-  float3 rmax = rmin;
+void getMinMax(float3 &_Xmin, float3 &_Xmax, const fvec3 & pos) {
+  fvec3 Xmin = pos;
+  fvec3 Xmax = Xmin;
 #pragma unroll
   for (int i=0; i<WARP_SIZE2; i++) {
-    rmin.x = min(rmin.x, __shfl_xor(rmin.x, 1<<i));
-    rmin.y = min(rmin.y, __shfl_xor(rmin.y, 1<<i));
-    rmin.z = min(rmin.z, __shfl_xor(rmin.z, 1<<i));
-    rmax.x = max(rmax.x, __shfl_xor(rmax.x, 1<<i));
-    rmax.y = max(rmax.y, __shfl_xor(rmax.y, 1<<i));
-    rmax.z = max(rmax.z, __shfl_xor(rmax.z, 1<<i));
+    Xmin[0] = min(Xmin[0], __shfl_xor(Xmin[0], 1<<i));
+    Xmin[1] = min(Xmin[1], __shfl_xor(Xmin[1], 1<<i));
+    Xmin[2] = min(Xmin[2], __shfl_xor(Xmin[2], 1<<i));
+    Xmax[0] = max(Xmax[0], __shfl_xor(Xmax[0], 1<<i));
+    Xmax[1] = max(Xmax[1], __shfl_xor(Xmax[1], 1<<i));
+    Xmax[2] = max(Xmax[2], __shfl_xor(Xmax[2], 1<<i));
   }
-  _rmin.x = min(_rmin.x, rmin.x);
-  _rmin.y = min(_rmin.y, rmin.y);
-  _rmin.z = min(_rmin.z, rmin.z);
-  _rmax.x = max(_rmax.x, rmax.x);
-  _rmax.y = max(_rmax.y, rmax.y);
-  _rmax.z = max(_rmax.z, rmax.z);
+  _Xmin.x = min(_Xmin.x, Xmin[0]);
+  _Xmin.y = min(_Xmin.y, Xmin[1]);
+  _Xmin.z = min(_Xmin.z, Xmin[2]);
+  _Xmax.x = max(_Xmax.x, Xmax[0]);
+  _Xmax.y = max(_Xmax.y, Xmax[1]);
+  _Xmax.z = max(_Xmax.z, Xmax[2]);
 }
 
 // Scan int
