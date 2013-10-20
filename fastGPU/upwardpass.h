@@ -31,24 +31,24 @@ namespace {
   static __device__ __forceinline__
     void P2M(const int begin,
 	     const int end,
-	     float4 * bodyPos,
+	     fvec4 * bodyPos,
 	     const fvec4 center,
 	     float * M) {
     for (int i=begin; i<end; i++) {
-      float4 body = bodyPos[i];
-      float dx = center[0] - body.x;
-      float dy = center[1] - body.y;
-      float dz = center[2] - body.z;
-      M[0] += body.w;
-      M[1] += body.w * dx;
-      M[2] += body.w * dy;
-      M[3] += body.w * dz;
-      M[4] += .5 * body.w * dx * dx;
-      M[5] += .5 * body.w * dy * dy;
-      M[6] += .5 * body.w * dz * dz;
-      M[7] += body.w * dx * dy;
-      M[8] += body.w * dx * dz;
-      M[9] += body.w * dy * dz;
+      fvec4 body = bodyPos[i];
+      float dx = center[0] - body[0];
+      float dy = center[1] - body[1];
+      float dz = center[2] - body[2];
+      M[0] += body[3];
+      M[1] += body[3] * dx;
+      M[2] += body[3] * dy;
+      M[3] += body[3] * dz;
+      M[4] += .5 * body[3] * dx * dx;
+      M[5] += .5 * body[3] * dy * dy;
+      M[6] += .5 * body[3] * dz * dz;
+      M[7] += body[3] * dx * dy;
+      M[8] += body[3] * dx * dz;
+      M[9] += body[3] * dy * dz;
     }
   }
 
@@ -56,15 +56,15 @@ namespace {
     void M2M(const int begin,
 	     const int end,
 	     const fvec4 Xi,
-	     float4 * sourceCenter,
+	     fvec4 * sourceCenter,
 	     float4 * Multipole,
 	     float * Mi) {
     for (int i=begin; i<end; i++) {
       float * Mj = (float*) &Multipole[3*i];
-      float4 Xj = sourceCenter[i];
-      float dx = Xi[0] - Xj.x;
-      float dy = Xi[1] - Xj.y;
-      float dz = Xi[2] - Xj.z;
+      fvec4 Xj = sourceCenter[i];
+      float dx = Xi[0] - Xj[0];
+      float dy = Xi[1] - Xj[1];
+      float dz = Xi[2] - Xj[2];
       for (int j=0; j<10; j++) Mi[j] += Mj[j];
       Mi[4] += .5 * Mj[0] * dx * dx;
       Mi[5] += .5 * Mj[0] * dy * dy;
@@ -96,13 +96,13 @@ namespace {
       const int end = begin + cell.nbody();
       center = setCenter(begin, end, reinterpret_cast<fvec4*>(bodyPos));
       getMinMax(begin, end, reinterpret_cast<fvec4*>(bodyPos), reinterpret_cast<fvec4*>(bodyPos), Xmin, Xmax);
-      P2M(begin, end, bodyPos, center, M);
+      P2M(begin, end, reinterpret_cast<fvec4*>(bodyPos), center, M);
     } else {
       const int begin = cell.child();
       const int end = begin + cell.nchild();
       center = setCenter(begin, end, reinterpret_cast<fvec4*>(sourceCenter));
       getMinMax(begin, end, cellXmin, cellXmax, Xmin, Xmax);
-      M2M(begin, end, center, sourceCenter, Multipole, M); 
+      M2M(begin, end, center, reinterpret_cast<fvec4*>(sourceCenter), Multipole, M); 
     }
     sourceCenter[cellIdx] = make_float4(center[0],center[1],center[2],center[3]);
     cellXmin[cellIdx] = Xmin;
