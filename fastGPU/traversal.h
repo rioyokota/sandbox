@@ -410,14 +410,14 @@ namespace {
     const int numWarpChunk = (numChunk - 1) / WARP_SIZE + 1;
     const int blockOffset = blockIdx.x * numChunk;
     fvec4 pos = tex1Dfetch(texBody, threadIdx.x);
-    const fvec3 pos_i = make_fvec3(pos[0],pos[1],pos[2]);
+    const fvec3 pos_i(pos[0],pos[1],pos[2]);
     kvec4 acc;
     for (int jb=0; jb<numWarpChunk; jb++) {
       const int sourceIdx = min(blockOffset+jb*WARP_SIZE+laneIdx, numSource-1);
       pos = tex1Dfetch(texBody, sourceIdx);
       if (sourceIdx >= numSource) pos[3] = 0;
       for (int j=0; j<WARP_SIZE; j++) {
-        const fvec3 pos_j = make_fvec3(__shfl(pos[0],j),__shfl(pos[1],j),__shfl(pos[2],j));
+        const fvec3 pos_j(__shfl(pos[0],j),__shfl(pos[1],j),__shfl(pos[2],j));
 	const float q_j = __shfl(pos[3],j);
 	fvec3 dX = pos_j - pos_i;
 	const float R2 = norm(dX) + EPS2;

@@ -331,12 +331,7 @@ namespace {
 	const CellData leafData(level+1, cellIndexBase+blockIdx.y, bodyBeginOctant, bodyEndOctant-bodyBeginOctant);
 	sourceCells[numCellsScan + numNodesWarp + leafOffset] = leafData;
       }
-      if (level & 1) {
-	for (int bodyIdx=bodyBeginOctant+laneIdx; bodyIdx<bodyEndOctant; bodyIdx+=WARP_SIZE) {
-	  if (bodyIdx < bodyEndOctant) {
-	  }
-        }
-      } else {
+      if (!(level & 1)) {
 	for (int bodyIdx=bodyBeginOctant+laneIdx; bodyIdx<bodyEndOctant; bodyIdx+=WARP_SIZE) {
 	  if (bodyIdx < bodyEndOctant) {
 	    bodyPos[bodyIdx] = bodyPos2[bodyIdx];
