@@ -29,73 +29,12 @@ namespace {
     xmax.z = fmaxf(xmax.z, reg_max.z);
   }
 
-  static __global__ __launch_bounds__(NTHREAD)
-    void P2M2(const int numCells,
-	     CellData * cells,
-	     float4 * sourceCenter,
+  static __device__ __forceinline__
+    void P2M(const int begin,
+	     const int end,
 	     float4 * bodyPos,
-	     float4 * cellXmin,
-	     float4 * cellXmax,
-	     float4 * Multipole) {
-    const int cellIdx = blockIdx.x * blockDim.x + threadIdx.x;
-    if (cellIdx >= numCells) return;
-    const CellData cell = cells[cellIdx];
-    if (cell.isNode()) return;
-    const int begin = cell.body();
-    const int end = begin + cell.nbody();
-    const float4 center = setCenter(begin, end, bodyPos);
-    const float huge = 1e10f;
-    float3 Xmin = {+huge, +huge, +huge};
-    float3 Xmax = {-huge, -huge, -huge};
-    for (int i=begin; i<end; i++) {
-      pairMinMax(Xmin, Xmax, bodyPos[i], bodyPos[i]);
-    }
-    sourceCenter[cellIdx] = center;
-    cellXmin[cellIdx] = make_float4(Xmin.x, Xmin.y, Xmin.z, 0.0f);
-    cellXmax[cellIdx] = make_float4(Xmax.x, Xmax.y, Xmax.z, 0.0f);
-  }
-
-  static __global__ __launch_bounds__(NTHREAD)
-    void M2M2(const int level,
-	     int2 * levelRange,
-	     CellData * cells,
-	     float4 * sourceCenter,
-	     float4 * bodyPos,
-	     float4 * cellXmin,
-	     float4 * cellXmax,
-	     float4 * Multipole) {
-    const int cellIdx = blockIdx.x * blockDim.x + threadIdx.x + levelRange[level].x;
-    if (cellIdx >= levelRange[level].y) return;
-    const CellData cell = cells[cellIdx];
-    if (cell.isLeaf()) return;
-    const int begin = cell.child();
-    const int end = begin + cell.nchild();
-    const float4 Xi = setCenter(begin,end,sourceCenter);
-    const float huge = 1e10f;
-    float3 Xmin = {+huge, +huge, +huge};
-    float3 Xmax = {-huge, -huge, -huge};
-    for (int i=begin; i<end; i++) {
-      pairMinMax(Xmin, Xmax, cellXmin[i], cellXmax[i]);
-    }
-    sourceCenter[cellIdx] = Xi;
-    cellXmin[cellIdx] = make_float4(Xmin.x, Xmin.y, Xmin.z, 0.0f);
-    cellXmax[cellIdx] = make_float4(Xmax.x, Xmax.y, Xmax.z, 0.0f);
-  }
-
-  static __global__ __launch_bounds__(NTHREAD)
-    void P2M(const int numCells,
-	     CellData * cells,
-	     float4 * sourceCenter,
-	     float4 * bodyPos,
-	     float4 * Multipole) {
-    const int cellIdx = blockIdx.x * blockDim.x + threadIdx.x;
-    if (cellIdx >= numCells) return;
-    const CellData cell = cells[cellIdx];
-    if (cell.isNode()) return;
-    const int begin = cell.body();
-    const int end = begin + cell.nbody();
-    const float4 center = sourceCenter[cellIdx];
-    float M[12];
+	     const float4 center,
+	     float * M) {
     for (int i=begin; i<end; i++) {
       float4 body = bodyPos[i];
       float dx = center.x - body.x;
@@ -112,23 +51,15 @@ namespace {
       M[8] += body.w * dx * dz;
       M[9] += body.w * dy * dz;
     }
-    for (int i=0; i<3; i++) Multipole[3*cellIdx+i] = (float4){M[4*i+0],M[4*i+1],M[4*i+2],M[4*i+3]};
   }
 
-  static __global__ __launch_bounds__(NTHREAD)
-    void M2M(const int level,
-	     int2 * levelRange,
-	     CellData * cells,
+  static __device__ __forceinline__
+    void M2M(const int begin,
+	     const int end,
+	     const float4 Xi,
 	     float4 * sourceCenter,
-	     float4 * Multipole) {
-    const int cellIdx = blockIdx.x * blockDim.x + threadIdx.x + levelRange[level].x;
-    if (cellIdx >= levelRange[level].y) return;
-    const CellData cell = cells[cellIdx];
-    if (cell.isLeaf()) return;
-    const int begin = cell.child();
-    const int end = begin + cell.nchild();
-    const float4 Xi = sourceCenter[cellIdx];
-    float Mi[12];
+	     float4 * Multipole,
+	     float * Mi) {
     for (int i=begin; i<end; i++) {
       float * Mj = (float*) &Multipole[3*i];
       float4 Xj = sourceCenter[i];
@@ -143,7 +74,46 @@ namespace {
       Mi[8] += Mj[0] * dx * dz;
       Mi[9] += Mj[0] * dy * dz;
     }
-    for (int i=0; i<3; i++) Multipole[3*cellIdx+i] = make_float4(Mi[4*i+0],Mi[4*i+1],Mi[4*i+2],Mi[4*i+3]);
+  }
+
+  static __global__ __launch_bounds__(NTHREAD)
+    void upwardPass(const int level,
+		    int2 * levelRange,
+		    CellData * cells,
+		    float4 * sourceCenter,
+		    float4 * bodyPos,
+		    float4 * cellXmin,
+		    float4 * cellXmax,
+		    float4 * Multipole) {
+    const int cellIdx = blockIdx.x * blockDim.x + threadIdx.x + levelRange[level].x;
+    if (cellIdx >= levelRange[level].y) return;
+    const CellData cell = cells[cellIdx];
+    const float huge = 1e10f;
+    float3 Xmin = {+huge, +huge, +huge};
+    float3 Xmax = {-huge, -huge, -huge};
+    float4 center;
+    float M[12];
+    if (cell.isLeaf()) {
+      const int begin = cell.body();
+      const int end = begin + cell.nbody();
+      center = setCenter(begin, end, bodyPos);
+      for (int i=begin; i<end; i++) {
+	pairMinMax(Xmin, Xmax, bodyPos[i], bodyPos[i]);
+      }
+      P2M(begin, end, bodyPos, center, M);
+    } else {
+      const int begin = cell.child();
+      const int end = begin + cell.nchild();
+      center = setCenter(begin,end,sourceCenter);
+      for (int i=begin; i<end; i++) {
+	pairMinMax(Xmin, Xmax, cellXmin[i], cellXmax[i]);
+      }
+      M2M(begin, end, center, sourceCenter, Multipole, M); 
+    }
+    sourceCenter[cellIdx] = center;
+    cellXmin[cellIdx] = make_float4(Xmin.x, Xmin.y, Xmin.z, 0.0f);
+    cellXmax[cellIdx] = make_float4(Xmax.x, Xmax.y, Xmax.z, 0.0f);
+    for (int i=0; i<3; i++) Multipole[3*cellIdx+i] = (float4){M[4*i+0],M[4*i+1],M[4*i+2],M[4*i+3]};
   }
 
   static __global__ __launch_bounds__(NTHREAD)
@@ -198,32 +168,13 @@ class Pass {
     const double t0 = get_time();
     cudaVec<float4> cellXmin(numCells);
     cudaVec<float4> cellXmax(numCells);
-    //CUDA_SAFE_CALL(cudaFuncSetCacheConfig(&P2M,cudaFuncCachePreferL1));
-    //CUDA_SAFE_CALL(cudaFuncSetCacheConfig(&M2M,cudaFuncCachePreferL1));
-    //cudaDeviceSynchronize();
-    P2M2<<<NBLOCK,NTHREAD>>>(numCells,sourceCells.d(),sourceCenter.d(),
-			     bodyPos.d(),cellXmin.d(),cellXmax.d(),Multipole.d());
-    kernelSuccess("P2M2");
     levelRange.d2h();
     for (int level=numLevels; level>=1; level--) {
       numCells = levelRange[level].y - levelRange[level].x;
       NBLOCK = (numCells - 1) / NTHREAD + 1;
-      M2M2<<<NBLOCK,NTHREAD>>>(level,levelRange.d(),sourceCells.d(),sourceCenter.d(),
-			       bodyPos.d(),cellXmin.d(),cellXmax.d(),Multipole.d());
-      kernelSuccess("M2M2");
-    }
-    Multipole.zeros();
-    numCells = sourceCells.size();
-    NBLOCK = (numCells-1) / NTHREAD + 1;
-    P2M<<<NBLOCK,NTHREAD>>>(numCells,sourceCells.d(),sourceCenter.d(),
-			    bodyPos.d(),Multipole.d());
-    kernelSuccess("P2M");
-    for (int level=numLevels; level>=1; level--) {
-      numCells = levelRange[level].y - levelRange[level].x;
-      NBLOCK = (numCells - 1) / NTHREAD + 1;
-      M2M<<<NBLOCK,NTHREAD>>>(level,levelRange.d(),sourceCells.d(),
-			      sourceCenter.d(),Multipole.d());
-      kernelSuccess("M2M");
+      upwardPass<<<NBLOCK,NTHREAD>>>(level,levelRange.d(),sourceCells.d(),sourceCenter.d(),
+				      bodyPos.d(),cellXmin.d(),cellXmax.d(),Multipole.d());
+      kernelSuccess("upwardPass");
     }
     numCells = sourceCells.size();
     NBLOCK = (numCells - 1) / NTHREAD + 1;
