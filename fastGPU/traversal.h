@@ -330,7 +330,7 @@ namespace {
 		  const float EPS2,
 		  const int2 * levelRange,
 		  const float4 * bodyPos,
-		  float4 * bodyAcc,
+		  fvec4 * bodyAcc,
 		  const int2 * targetRange,
 		  int * globalPool) {
     const int laneIdx = threadIdx.x & (WARP_SIZE-1);
@@ -397,14 +397,14 @@ namespace {
       }
       for (int i=0; i<2; i++)
 	if (bodyIdx + i * WARP_SIZE < bodyEnd)
-	  bodyAcc[i*WARP_SIZE + bodyIdx] = make_float4(acc_i[i][1],acc_i[i][2],acc_i[i][3],acc_i[i][0]);
+	  bodyAcc[i*WARP_SIZE + bodyIdx] = make_fvec4(acc_i[i][1],acc_i[i][2],acc_i[i][3],acc_i[i][0]);
     }
   }
 
   static __global__
     void directKernel(const int numSource,
 		      const float EPS2,
-		      float4 * bodyAcc) {
+		      fvec4 * bodyAcc) {
     const int laneIdx = threadIdx.x & (WARP_SIZE-1);
     const int numChunk = (numSource - 1) / gridDim.x + 1;
     const int numWarpChunk = (numChunk - 1) / WARP_SIZE + 1;
@@ -432,10 +432,10 @@ namespace {
       }
     }
     const int targetIdx = blockIdx.x * blockDim.x + threadIdx.x;
-    bodyAcc[targetIdx].x = acc[3];
-    bodyAcc[targetIdx].y = acc[0];
-    bodyAcc[targetIdx].z = acc[1];
-    bodyAcc[targetIdx].w = acc[2];
+    bodyAcc[targetIdx][0] = acc[3];
+    bodyAcc[targetIdx][1] = acc[0];
+    bodyAcc[targetIdx][2] = acc[1];
+    bodyAcc[targetIdx][3] = acc[2];
   }
 }
 
@@ -445,7 +445,7 @@ class Traversal {
 		const float eps,
 		cudaVec<float4> & bodyPos,
 		cudaVec<float4> & bodyPos2,
-		cudaVec<float4> & bodyAcc,
+		cudaVec<fvec4> & bodyAcc,
 		cudaVec<int2> & targetRange,
 		cudaVec<CellData> & sourceCells,
 		cudaVec<float4> & sourceCenter,
@@ -495,7 +495,7 @@ class Traversal {
 	      const int numBlock,
 	      const float eps,
 	      cudaVec<float4> & bodyPos2,
-	      cudaVec<float4> & bodyAcc2) {
+	      cudaVec<fvec4> & bodyAcc2) {
     const int numBodies = bodyPos2.size();
     bodyPos2.bind(texBody);
     directKernel<<<numBlock,numTarget>>>(numBodies, eps*eps, bodyAcc2.d());

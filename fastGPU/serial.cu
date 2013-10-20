@@ -20,8 +20,8 @@ int main(int argc, char ** argv) {
 
   cudaVec<float4> bodyPos(numBodies,true);
   cudaVec<float4> bodyPos2(numBodies);
-  cudaVec<float4> bodyAcc(numBodies,true);
-  cudaVec<float4> bodyAcc2(numBodies,true);
+  cudaVec<fvec4> bodyAcc(numBodies,true);
+  cudaVec<fvec4> bodyAcc2(numBodies,true);
   for (int i=0; i<numBodies; i++) {
     bodyPos[i].x = data.pos[i].x;
     bodyPos[i].y = data.pos[i].y;
@@ -68,12 +68,9 @@ int main(int argc, char ** argv) {
   bodyAcc2.d2h();
 
   for (int i=0; i<numTarget; i++) {
-    float4 bodyAcc = bodyAcc2[i];
+    fvec4 bodyAcc = bodyAcc2[i];
     for (int j=1; j<numBlock; j++) {
-      bodyAcc.x += bodyAcc2[i+numTarget*j].x;
-      bodyAcc.y += bodyAcc2[i+numTarget*j].y;
-      bodyAcc.z += bodyAcc2[i+numTarget*j].z;
-      bodyAcc.w += bodyAcc2[i+numTarget*j].w;
+      bodyAcc += bodyAcc2[i+numTarget*j];
     }
     bodyAcc2[i] = bodyAcc;
   }
@@ -81,14 +78,14 @@ int main(int argc, char ** argv) {
   double diffp = 0, diffa = 0;
   double normp = 0, norma = 0;
   for (int i=0; i<numTarget; i++) {
-    diffp += (bodyAcc[i].w - bodyAcc2[i].w) * (bodyAcc[i].w - bodyAcc2[i].w);
-    diffa += (bodyAcc[i].x - bodyAcc2[i].x) * (bodyAcc[i].x - bodyAcc2[i].x)
-      + (bodyAcc[i].y - bodyAcc2[i].y) * (bodyAcc[i].y - bodyAcc2[i].y)
-      + (bodyAcc[i].z - bodyAcc2[i].z) * (bodyAcc[i].z - bodyAcc2[i].z);
-    normp += bodyAcc2[i].w * bodyAcc2[i].w;
-    norma += bodyAcc2[i].x * bodyAcc2[i].x
-      + bodyAcc2[i].y * bodyAcc2[i].y
-      + bodyAcc2[i].z * bodyAcc2[i].z;
+    diffp += (bodyAcc[i][3] - bodyAcc2[i][3]) * (bodyAcc[i][3] - bodyAcc2[i][3]);
+    diffa += (bodyAcc[i][0] - bodyAcc2[i][0]) * (bodyAcc[i][0] - bodyAcc2[i][0])
+      + (bodyAcc[i][1] - bodyAcc2[i][1]) * (bodyAcc[i][1] - bodyAcc2[i][1])
+      + (bodyAcc[i][2] - bodyAcc2[i][2]) * (bodyAcc[i][2] - bodyAcc2[i][2]);
+    normp += bodyAcc2[i][3] * bodyAcc2[i][3];
+    norma += bodyAcc2[i][0] * bodyAcc2[i][0]
+      + bodyAcc2[i][1] * bodyAcc2[i][1]
+      + bodyAcc2[i][2] * bodyAcc2[i][2];
   }
   fprintf(stdout,"--- FMM vs. direct ---------------\n");
   fprintf(stdout,"Rel. L2 Error (pot)  : %.7e\n",sqrt(diffp/normp));
