@@ -117,8 +117,6 @@ namespace {
 	     CellData * cells,
 	     float4 * sourceCenter,
 	     float4 * bodyPos,
-	     float4 * cellXmin,
-	     float4 * cellXmax,
 	     float4 * Multipole) {
     const int cellIdx = blockIdx.x * blockDim.x + threadIdx.x;
     if (cellIdx >= numCells) return;
@@ -126,11 +124,8 @@ namespace {
     if (cell.isNode()) return;
     const int begin = cell.body();
     const int end = begin + cell.nbody();
-    const float4 center = setCenter(begin, end, bodyPos);
+    const float4 center = sourceCenter[cellIdx];
     float M[12];
-    const float huge = 1e10f;
-    float3 Xmin = {+huge, +huge, +huge};
-    float3 Xmax = {-huge, -huge, -huge};
     for (int i=begin; i<end; i++) {
       float4 body = bodyPos[i];
       float dx = center.x - body.x;
@@ -146,12 +141,8 @@ namespace {
       M[7] += body.w * dx * dy;
       M[8] += body.w * dx * dz;
       M[9] += body.w * dy * dz;
-      pairMinMax(Xmin, Xmax, body, body);
     }
-    sourceCenter[cellIdx] = center;
     for (int i=0; i<3; i++) Multipole[3*cellIdx+i] = (float4){M[4*i+0],M[4*i+1],M[4*i+2],M[4*i+3]};
-    cellXmin[cellIdx] = make_float4(Xmin.x, Xmin.y, Xmin.z, 0.0f);
-    cellXmax[cellIdx] = make_float4(Xmax.x, Xmax.y, Xmax.z, 0.0f);
   }
 
   static __global__ __launch_bounds__(NTHREAD)
@@ -159,9 +150,6 @@ namespace {
 	     int2 * levelRange,
 	     CellData * cells,
 	     float4 * sourceCenter,
-	     float4 * bodyPos,
-	     float4 * cellXmin,
-	     float4 * cellXmax,
 	     float4 * Multipole) {
     const int cellIdx = blockIdx.x * blockDim.x + threadIdx.x + levelRange[level].x;
     if (cellIdx >= levelRange[level].y) return;
@@ -169,11 +157,8 @@ namespace {
     if (cell.isLeaf()) return;
     const int begin = cell.child();
     const int end = begin + cell.nchild();
-    const float4 Xi = setCenter(begin,end,sourceCenter);
+    const float4 Xi = sourceCenter[cellIdx];
     float Mi[12];
-    const float huge = 1e10f;
-    float3 Xmin = {+huge, +huge, +huge};
-    float3 Xmax = {-huge, -huge, -huge};
     for (int i=begin; i<end; i++) {
       float * Mj = (float*) &Multipole[3*i];
       float4 Xj = sourceCenter[i];
@@ -187,12 +172,8 @@ namespace {
       Mi[7] += Mj[0] * dx * dy;
       Mi[8] += Mj[0] * dx * dz;
       Mi[9] += Mj[0] * dy * dz;
-      pairMinMax(Xmin, Xmax, cellXmin[i], cellXmax[i]);
     }
-    sourceCenter[cellIdx] = Xi;
     for (int i=0; i<3; i++) Multipole[3*cellIdx+i] = make_float4(Mi[4*i+0],Mi[4*i+1],Mi[4*i+2],Mi[4*i+3]);
-    cellXmin[cellIdx] = make_float4(Xmin.x, Xmin.y, Xmin.z, 0.0f);
-    cellXmax[cellIdx] = make_float4(Xmax.x, Xmax.y, Xmax.z, 0.0f);
   }
 
   static __global__ __launch_bounds__(NTHREAD)
@@ -261,19 +242,17 @@ class Pass {
 			      bodyPos.d(),cellXmin.d(),cellXmax.d(),Multipole.d());
       kernelSuccess("M2M");
     }
+    Multipole.zeros();
     numCells = sourceCells.size();
     NBLOCK = (numCells-1) / NTHREAD + 1;
-    cellXmin.zeros();
-    cellXmax.zeros();
-    Multipole.zeros();
     P2M2<<<NBLOCK,NTHREAD>>>(numCells,sourceCells.d(),sourceCenter.d(),
-			     bodyPos.d(),cellXmin.d(),cellXmax.d(),Multipole.d());
+			     bodyPos.d(),Multipole.d());
     kernelSuccess("P2M2");
     for (int level=numLevels; level>=1; level--) {
       numCells = levelRange[level].y - levelRange[level].x;
       NBLOCK = (numCells - 1) / NTHREAD + 1;
-      M2M2<<<NBLOCK,NTHREAD>>>(level,levelRange.d(),sourceCells.d(),sourceCenter.d(),
-			       bodyPos.d(),cellXmin.d(),cellXmax.d(),Multipole.d());
+      M2M2<<<NBLOCK,NTHREAD>>>(level,levelRange.d(),sourceCells.d(),
+			       sourceCenter.d(),Multipole.d());
       kernelSuccess("M2M2");
     }
     numCells = sourceCells.size();
