@@ -17,6 +17,11 @@ typedef vec<3,float> fvec3;
 typedef vec<4,float> fvec4;
 typedef vec<4,kahan<float> > kvec4;
 
+texture<uint4,  1, cudaReadModeElementType> texCell;
+texture<float4, 1, cudaReadModeElementType> texCellCenter;
+texture<float4, 1, cudaReadModeElementType> texMultipole;
+texture<float4, 1, cudaReadModeElementType> texBody;
+
 __host__ __device__
 static fvec3 make_fvec3(float x, float y, float z) {
   fvec3 data;

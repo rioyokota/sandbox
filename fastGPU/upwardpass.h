@@ -2,10 +2,10 @@
 
 namespace {
   static __device__ __forceinline__
-    fvec4 setCenter(const int begin, const int end, float4 * posGlob) {
+    fvec4 setCenter(const int begin, const int end) {
     fvec4 center;
     for (int i=begin; i<end; i++) {
-      const fvec4 pos = posGlob[i];
+      const fvec4 pos = tex1Dfetch(texBody,i);
       center[0] += pos[3] * pos[0];
       center[1] += pos[3] * pos[1];
       center[2] += pos[3] * pos[2];
@@ -38,11 +38,10 @@ namespace {
   static __device__ __forceinline__
     void P2M(const int begin,
 	     const int end,
-	     float4 * bodyPos,
 	     const fvec4 center,
 	     float * M) {
     for (int i=begin; i<end; i++) {
-      fvec4 body = bodyPos[i];
+      fvec4 body = tex1Dfetch(texBody,i);
       float dx = center[0] - body[0];
       float dy = center[1] - body[1];
       float dz = center[2] - body[2];
@@ -87,7 +86,6 @@ namespace {
 		    int2 * levelRange,
 		    CellData * cells,
 		    fvec4 * sourceCenter,
-		    float4 * bodyPos,
 		    fvec3 * cellXmin,
 		    fvec3 * cellXmax,
 		    fvec4 * Multipole) {
@@ -102,13 +100,13 @@ namespace {
     if (cell.isLeaf()) {
       const int begin = cell.body();
       const int end = begin + cell.nbody();
-      center = setCenter(begin, end, bodyPos);
+      center = setCenter(begin, end);
       for (int i=begin; i<end; i++) {
-        fvec3 pos = make_fvec3(bodyPos[i]);
+        fvec3 pos = make_fvec3(tex1Dfetch(texBody,i));
         Xmin = min(Xmin, pos);
         Xmax = max(Xmax, pos);
       }
-      P2M(begin, end, bodyPos, center, M);
+      P2M(begin, end, center, M);
     } else {
       const int begin = cell.child();
       const int end = begin + cell.nchild();
@@ -169,6 +167,7 @@ class Pass {
 	      cudaVec<float4> & Multipole) {
     int numCells = sourceCells.size();
     int NBLOCK = (numCells-1) / NTHREAD + 1;
+    bodyPos.bind(texBody);
     const double t0 = get_time();
     cudaVec<fvec3> cellXmin(numCells);
     cudaVec<fvec3> cellXmax(numCells);
@@ -178,7 +177,6 @@ class Pass {
       NBLOCK = (numCells - 1) / NTHREAD + 1;
       upwardPass<<<NBLOCK,NTHREAD>>>(level,levelRange.d(),sourceCells.d(),
 				     reinterpret_cast<fvec4*>(sourceCenter.d()),
-				     bodyPos.d(),
 				     cellXmin.d(),cellXmax.d(),
 				     reinterpret_cast<fvec4*>(Multipole.d()));
       kernelSuccess("upwardPass");
@@ -191,5 +189,6 @@ class Pass {
     normalize<<<NBLOCK,NTHREAD>>>(numCells, reinterpret_cast<fvec4*>(Multipole.d()));
     const double dt = get_time() - t0;
     fprintf(stdout,"Upward pass          : %.7f s\n", dt);
+    bodyPos.unbind(texBody);
   }
 };

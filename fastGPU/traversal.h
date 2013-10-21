@@ -6,11 +6,6 @@
 #define IF(x) (-(int)(x))
 
 namespace {
-  texture<uint4,  1, cudaReadModeElementType> texCell;
-  texture<float4, 1, cudaReadModeElementType> texCellCenter;
-  texture<float4, 1, cudaReadModeElementType> texMultipole;
-  texture<float4, 1, cudaReadModeElementType> texBody;
-
   static __device__ __forceinline__
     int ringAddr(const int i) {
     return i & (MEM_PER_WARP - 1);
@@ -147,7 +142,7 @@ namespace {
       for (int i=0; i<3; i++) M4[i] = tex1Dfetch(texMultipole, 3*cellIdx+i);
     } else {
 #pragma unroll
-      for (int i=0; i<3; i++) M4[i] = make_float4(0.0f, 0.0f, 0.0f, 0.0f);
+      for (int i=0; i<3; i++) M4[i] = 0.0f;
     }
     for (int j=0; j<WARP_SIZE; j++) {
       const fvec3 pos_j(__shfl(Xj[0],j), __shfl(Xj[1],j), __shfl(Xj[2],j));
@@ -304,7 +299,7 @@ namespace {
     if (bodyOffset > 0) {                                       // If there are leftover direct cells
       const int bodyQueue = laneIdx < bodyOffset ? directQueue : -1;// Get body index
       const fvec4 pos = bodyQueue >= 0 ? tex1Dfetch(texBody, bodyQueue) :// Load position of source bodies
-	make_float4(0.0f,0.0f,0.0f,0.0f);                       //  With padding for invalid lanes
+	make_float4(0.0f, 0.0f, 0.0f, 0.0f);                    //  With padding for invalid lanes
       for (int j=0; j<WARP_SIZE; j++) {                         //  Loop over the warp size
 	const fvec3 pos_j(__shfl(pos[0], j),                    //   Get source x value from lane j
 			  __shfl(pos[1], j),                    //   Get source y value from lane j
@@ -329,7 +324,7 @@ namespace {
     void traverse(const int numTargets,
 		  const float EPS2,
 		  const int2 * levelRange,
-		  const float4 * bodyPos,
+		  const fvec4 * bodyPos,
 		  fvec4 * bodyAcc,
 		  const int2 * targetRange,
 		  int * globalPool) {
@@ -462,7 +457,7 @@ class Traversal {
     const double t0 = get_time();
     CUDA_SAFE_CALL(cudaFuncSetCacheConfig(&traverse, cudaFuncCachePreferL1));
     traverse<<<NBLOCK,NTHREAD>>>(numTargets, eps*eps, levelRange.d(),
-				 bodyPos2.d(), bodyAcc.d(),
+				 reinterpret_cast<fvec4*>(bodyPos2.d()), bodyAcc.d(),
 				 targetRange.d(), globalPool.d());
     kernelSuccess("traverse");
     const double dt = get_time() - t0;
