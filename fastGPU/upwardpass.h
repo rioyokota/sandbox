@@ -50,20 +50,6 @@ namespace {
   }
 
   static __device__ __forceinline__
-    void getMinMax(const int begin, const int end,
-                   fvec4 * XminGlob, fvec4 * XmaxGlob,
-                   fvec3 & Xmin, fvec3 & Xmax) {
-    for (int i=begin; i<end; i++) {
-      Xmin[0] = fminf(Xmin[0], XminGlob[i][0]);
-      Xmin[1] = fminf(Xmin[1], XminGlob[i][1]);
-      Xmin[2] = fminf(Xmin[2], XminGlob[i][2]);
-      Xmax[0] = fmaxf(Xmax[0], XmaxGlob[i][0]);
-      Xmax[1] = fmaxf(Xmax[1], XmaxGlob[i][1]);
-      Xmax[2] = fmaxf(Xmax[2], XmaxGlob[i][2]);
-    }
-  }
-
-  static __device__ __forceinline__
     void P2M(const int begin,
 	     const int end,
 	     float4 * bodyPos,
@@ -116,8 +102,8 @@ namespace {
 		    CellData * cells,
 		    fvec4 * sourceCenter,
 		    float4 * bodyPos,
-		    fvec4 * cellXmin,
-		    fvec4 * cellXmax,
+		    fvec3 * cellXmin,
+		    fvec3 * cellXmax,
 		    fvec4 * Multipole) {
     const int cellIdx = blockIdx.x * blockDim.x + threadIdx.x + levelRange[level].x;
     if (cellIdx >= levelRange[level].y) return;
@@ -137,22 +123,25 @@ namespace {
       const int begin = cell.child();
       const int end = begin + cell.nchild();
       center = setCenter(begin,end,sourceCenter);
-      getMinMax(begin, end, cellXmin, cellXmax, Xmin, Xmax);
+      for (int i=begin; i<end; i++) {
+	Xmin = min(Xmin, cellXmin[i]);
+	Xmax = max(Xmax, cellXmax[i]);
+      }
       M2M(begin, end, center, sourceCenter, Multipole, M); 
     }
     sourceCenter[cellIdx] = center;
-    cellXmin[cellIdx] = make_fvec4(Xmin[0], Xmin[1], Xmin[2], 0.0f);
-    cellXmax[cellIdx] = make_fvec4(Xmax[0], Xmax[1], Xmax[2], 0.0f);
+    cellXmin[cellIdx] = Xmin;
+    cellXmax[cellIdx] = Xmax;
     for (int i=0; i<3; i++) Multipole[3*cellIdx+i] = make_fvec4(M[4*i+0],M[4*i+1],M[4*i+2],M[4*i+3]);
   }
 
   static __global__ __launch_bounds__(NTHREAD)
     void setMAC(const int numCells, const float invTheta, fvec4 * sourceCenter,
-		fvec4 * cellXmin, fvec4 * cellXmax) {
+		fvec3 * cellXmin, fvec3 * cellXmax) {
     const int cellIdx = blockIdx.x * blockDim.x + threadIdx.x;
     if (cellIdx >= numCells) return;
-    const fvec3 Xmin = make_fvec3(cellXmin[cellIdx]);
-    const fvec3 Xmax = make_fvec3(cellXmax[cellIdx]);
+    const fvec3 Xmin = cellXmin[cellIdx];
+    const fvec3 Xmax = cellXmax[cellIdx];
     const fvec3 Xi = make_fvec3(sourceCenter[cellIdx]);
     const fvec3 X = (Xmax + Xmin) * 0.5f;
     const fvec3 R = (Xmax - Xmin) * 0.5f;
@@ -191,8 +180,8 @@ class Pass {
     int numCells = sourceCells.size();
     int NBLOCK = (numCells-1) / NTHREAD + 1;
     const double t0 = get_time();
-    cudaVec<fvec4> cellXmin(numCells);
-    cudaVec<fvec4> cellXmax(numCells);
+    cudaVec<fvec3> cellXmin(numCells);
+    cudaVec<fvec3> cellXmax(numCells);
     levelRange.d2h();
     for (int level=numLevels; level>=1; level--) {
       numCells = levelRange[level].y - levelRange[level].x;
