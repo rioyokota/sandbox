@@ -36,20 +36,6 @@ namespace {
   }
 
   static __device__ __forceinline__
-    void getMinMax(const int begin, const int end,
-		   float4 * XminGlob, float4 * XmaxGlob,
-		   fvec3 & Xmin, fvec3 & Xmax) {
-    for (int i=begin; i<end; i++) {
-      Xmin[0] = fminf(Xmin[0], XminGlob[i].x);
-      Xmin[1] = fminf(Xmin[1], XminGlob[i].y);
-      Xmin[2] = fminf(Xmin[2], XminGlob[i].z);
-      Xmax[0] = fmaxf(Xmax[0], XmaxGlob[i].x);
-      Xmax[1] = fmaxf(Xmax[1], XmaxGlob[i].y);
-      Xmax[2] = fmaxf(Xmax[2], XmaxGlob[i].z);
-    }
-  }
-
-  static __device__ __forceinline__
     void P2M(const int begin,
 	     const int end,
 	     float4 * bodyPos,
@@ -117,7 +103,11 @@ namespace {
       const int begin = cell.body();
       const int end = begin + cell.nbody();
       center = setCenter(begin, end, bodyPos);
-      getMinMax(begin, end, bodyPos, bodyPos, Xmin, Xmax);
+      for (int i=begin; i<end; i++) {
+        fvec3 pos = make_fvec3(bodyPos[i]);
+        Xmin = min(Xmin, pos);
+        Xmax = max(Xmax, pos);
+      }
       P2M(begin, end, bodyPos, center, M);
     } else {
       const int begin = cell.child();
@@ -147,7 +137,7 @@ namespace {
     const fvec3 R = (Xmax - Xmin) * 0.5f;
     const fvec3 dX = X - Xi;
     const float  s = sqrt(norm(dX));
-    const float  l = max(2.0f*max(R[0], max(R[1], R[2])), 1.0e-6f);
+    const float  l = max(2.0f * max(R), 1.0e-6f);
     const float MAC = l * invTheta + s;
     const float MAC2 = MAC * MAC;
     sourceCenter[cellIdx][3] = MAC2;
