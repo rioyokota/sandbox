@@ -47,17 +47,17 @@ namespace {
 
   static __global__
     void getKeys(const int numBodies,
-		 const float4 domain,
+		 const Box box,
 		 const float4 * bodyPos,
 		 unsigned long long * keys,
 		 int * values) {
     const int bodyIdx = blockIdx.x * blockDim.x + threadIdx.x;
     if (bodyIdx >= numBodies) return;
     const float4 pos = bodyPos[bodyIdx];
-    const float diameter = 2 * domain.w / (1<<NBITS);
-    const float3 Xmin = {domain.x - domain.w,
-			 domain.y - domain.w,
-			 domain.z - domain.w};
+    const float diameter = 2 * box.R / (1 << NBITS);
+    const float3 Xmin = {box.X[0] - box.R,
+			 box.X[1] - box.R,
+			 box.X[2] - box.R};
     const int ix = int((pos.x - Xmin.x) / diameter);
     const int iy = int((pos.y - Xmin.y) / diameter);
     const int iz = int((pos.z - Xmin.z) / diameter);
@@ -124,7 +124,7 @@ class Group {
  public:
   int targets(cudaVec<float4> & bodyPos,
 	      cudaVec<float4> & bodyPos2,
-	      float4 domain,
+	      Box box,
 	      cudaVec<int2> & targetRange,
 	      int levelSplit) {
     const int numBodies = bodyPos.size();
@@ -134,7 +134,7 @@ class Group {
     cudaDeviceSynchronize();
 
     const double t0 = get_time();
-    getKeys<<<NBLOCK,NTHREAD>>>(numBodies, domain, bodyPos.d(), key.d(), value.d());
+    getKeys<<<NBLOCK,NTHREAD>>>(numBodies, box, bodyPos.d(), key.d(), value.d());
     sort(numBodies, key.d(), value.d());
     permuteBodies<<<NBLOCK,NTHREAD>>>(numBodies, value.d(), bodyPos.d(), bodyPos2.d());
 

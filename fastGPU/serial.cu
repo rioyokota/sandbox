@@ -34,10 +34,10 @@ int main(int argc, char ** argv) {
   fprintf(stdout,"--- FMM Profiling ----------------\n");
   double t0 = get_time();
   Build build;
-  float4 domain;
+  Box box;
   cudaVec<int2> levelRange(32,true);
   cudaVec<CellData> sourceCells(numBodies);
-  int3 counts = build.tree<ncrit>(bodyPos, bodyPos2, domain, levelRange, sourceCells);
+  int3 counts = build.tree<ncrit>(bodyPos, bodyPos2, box, levelRange, sourceCells);
   int numLevels = counts.x;
   int numSources = counts.y;
   int numLeafs = counts.z;
@@ -45,7 +45,7 @@ int main(int argc, char ** argv) {
   cudaVec<float4> sourceCenter(numSources);
   cudaVec<float4> Multipole(3*numSources);
   Group group;
-  int numTargets = group.targets(bodyPos, bodyPos2, domain, targetRange, 5);
+  int numTargets = group.targets(bodyPos, bodyPos2, box, targetRange, 5);
   Pass pass;
   pass.upward(numLeafs, numLevels, theta, levelRange, bodyPos, sourceCells, sourceCenter, Multipole);
   Traversal traversal;

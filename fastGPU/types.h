@@ -76,6 +76,18 @@ inline void cudaSafeCall(cudaError err, const char *file, const int line) {
   }
 }
 
+//! Center and radius of bounding box
+struct Box {
+  fvec3 X;                                                      //!< Box center
+  float R;                                                      //!< Box radius
+};
+
+//! Min & max bounds of bounding box
+struct Bounds {
+  fvec3 Xmin;                                                   //!< Minimum value of coordinates
+  fvec3 Xmax;                                                   //!< Maximum value of coordinates
+};
+
 class CellData {
  private:
   static const int CHILD_SHIFT = 29;

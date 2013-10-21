@@ -5,7 +5,7 @@ extern void sort(const int size, int * key, int * value);
 
 namespace {
   __constant__ int maxNodesGlob;
-  __device__ float4 domainGlob;
+  __device__ Box boxGlob;
   __device__ unsigned int counterGlob = 0;
   __device__ unsigned int numNodesGlob = 0;
   __device__ unsigned int numLeafsGlob = 0;
@@ -19,17 +19,19 @@ namespace {
   __device__ CellData * sourceCells;
 
   static __device__ __forceinline__
-    int getOctant(const float4 &box, const float4 &body) {
-    return ((box.x <= body.x) << 0) + ((box.y <= body.y) << 1) + ((box.z <= body.z) << 2);
+    int getOctant(const Box &box, const float4 &body) {
+    return ((box.X[0] <= body.x) << 0) + ((box.X[1] <= body.y) << 1) + ((box.X[2] <= body.z) << 2);
   }
 
   static __device__ __forceinline__
-    float4 getChild(const float4 &box, const int octant) {
-    const float R = 0.5f * box.w;
-    return make_float4(box.x + R * (octant & 1 ? 1.0f : -1.0f),
-		       box.y + R * (octant & 2 ? 1.0f : -1.0f),
-		       box.z + R * (octant & 4 ? 1.0f : -1.0f),
-		       R);
+    Box getChild(const Box &box, const int octant) {
+    const float R = 0.5f * box.R;
+    Box childBox;
+    childBox.X = make_fvec3(box.X[0] + R * (octant & 1 ? 1.0f : -1.0f),
+			    box.X[1] + R * (octant & 2 ? 1.0f : -1.0f),
+			    box.X[2] + R * (octant & 4 ? 1.0f : -1.0f));
+    childBox.R = R;
+    return childBox;
   }
 
   static __device__
@@ -108,8 +110,8 @@ namespace {
 	const float3 X = {(Xmax.x+Xmin.x)*0.5f, (Xmax.y+Xmin.y)*0.5f, (Xmax.z+Xmin.z)*0.5f};
 	const float3 R = {(Xmax.x-Xmin.x)*0.5f, (Xmax.y-Xmin.y)*0.5f, (Xmax.z-Xmin.z)*0.5f};
 	const float r = fmax(R.x, fmax(R.y, R.z)) * 1.1f;
-	const float4 box = {X.x, X.y, X.z, r};
-	domainGlob = box;
+	const Box box = {make_fvec3(X.x, X.y, X.z), r};
+	boxGlob = box;
 	counterGlob = 0;
       }
     }
@@ -117,7 +119,7 @@ namespace {
 
   template<int NCRIT, bool ISROOT>
     static __global__ __launch_bounds__(NTHREAD, 8)
-    void buildOctant(float4 box,
+    void buildOctant(float4 box4,
 		     const int cellParentIndex,
 		     const int cellIndexBase,
 		     const int packedOctant,
@@ -144,7 +146,8 @@ namespace {
     const int childOctant = (packedOctant >> (3*blockIdx.y)) & 0x7;
     __shared__ int subOctantSizeLane[NWARP*8*8];
     __shared__ int subOctantSize[8*8];
-    float4 *childBox = (float4*)subOctantSize;
+    Box box = {make_fvec3(box4.x,box4.y,box4.z),box4.w};
+    Box * childBox = (Box*)subOctantSize;
 
     for (int i=0; i<8*8*NWARP; i+=blockDim.x)
       if (i+threadIdx.x < 8*8*NWARP)
@@ -319,8 +322,9 @@ namespace {
       if (threadIdx.x == 0) {
 	dim3 NBLOCK = min(max(maxBodiesOctant / NTHREAD, 1), 512);
         NBLOCK.y = numNodesWarp;
+        float4 box4 = make_float4(box.X[0],box.X[1],box.X[2],box.R);
 	buildOctant<NCRIT,false><<<NBLOCK,NTHREAD>>>
-	  (box, cellIndexBase+blockIdx.y, numCellsScan, packedOctant, octantSizeBase, octantSizeScanBase,
+	  (box4, cellIndexBase+blockIdx.y, numCellsScan, packedOctant, octantSizeBase, octantSizeScanBase,
 	   subOctantSizeScanBase, blockCounterBase, bodyRangeBase, bodyPos2, bodyPos, level+1);
       }
     }
@@ -349,7 +353,7 @@ namespace {
     int octantSizeLane[8] = {0};
     for (int i=begin; i<numBodies; i+=gridDim.x*blockDim.x) {
       const float4 pos = bodyPos[i];
-      const int octant = getOctant(domainGlob, pos);
+      const int octant = getOctant(boxGlob, pos);
       octantSizeLane[0] += (octant == 0);
       octantSizeLane[1] += (octant == 1);
       octantSizeLane[2] += (octant == 2);
@@ -388,30 +392,28 @@ namespace {
     blockCounterPool = d_blockCounterPool;
     bodyRangePool = d_bodyRangePool;
 
-    int * octantSize = new int[8];
-    for (int k=0; k<8; k++)
-      octantSize[k] = octantSizePool[k];
-    int * octantSizeScan = new int[8];
-    int * subOctantSizeScan = new int[64];
-    int * blockCounter = new int;
-    int2 * bodyRange = new int2;
-#pragma unroll
-    for (int k=0; k<8; k++)
-      octantSizeScan[k] = k == 0 ? 0 : octantSizeScan[k-1] + octantSize[k-1];
-#pragma unroll
-    for (int k=0; k<64; k++)
-      subOctantSizeScan[k] = 0;
-
     numNodesGlob = 0;
     numLeafsGlob = 0;
     numLevelsGlob = 0;
     numCellsGlob  = 0;
+    int * octantSize = new int[8];
+    for (int k=0; k<8; k++)
+      octantSize[k] = octantSizePool[k];
+    int * octantSizeScan = new int[8];
+    for (int k=0; k<8; k++)
+      octantSizeScan[k] = k == 0 ? 0 : octantSizeScan[k-1] + octantSize[k-1];
+    int * subOctantSizeScan = new int[64];
+    for (int k=0; k<64; k++)
+      subOctantSizeScan[k] = 0;
+    int * blockCounter = new int;
     *blockCounter = 0;
+    int2 * bodyRange = new int2;
     bodyRange->x = 0;
     bodyRange->y = numBodies;
-    const int NBLOCK = min(max(numBodies / NTHREAD, 1), 512);
+    const int NBLOCK = min((numBodies - 1) / NTHREAD + 1, 512);
+    float4 box4 = make_float4(boxGlob.X[0],boxGlob.X[1],boxGlob.X[2],boxGlob.R);
     buildOctant<NCRIT,true><<<NBLOCK, NTHREAD>>>
-      (domainGlob, 0, 0, 0, octantSize, octantSizeScan, subOctantSizeScan, blockCounter, bodyRange, d_bodyPos, d_bodyPos2);
+      (box4, 0, 0, 0, octantSize, octantSizeScan, subOctantSizeScan, blockCounter, bodyRange, d_bodyPos, d_bodyPos2);
     assert(cudaDeviceSynchronize() == cudaSuccess);
     delete [] octantSize;
     delete [] octantSizeScan;
@@ -484,7 +486,7 @@ class Build {
   template<int NCRIT>
     int3 tree(cudaVec<float4> & bodyPos,
 	      cudaVec<float4> & bodyPos2,
-	      float4 & domain,
+	      Box & box,
 	      cudaVec<int2> & levelRange,
 	      cudaVec<CellData> & sourceCells) {
     const int numBodies = bodyPos.size();
@@ -529,7 +531,7 @@ class Build {
     dt = get_time() - t0;
     fprintf(stdout,"Grow tree            : %.7f s\n",  dt);
     int numLevels, numCells, numLeafs;
-    CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&domain, domainGlob, sizeof(float4)));
+    CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&box, boxGlob, sizeof(float4)));
     CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&numLevels, numLevelsGlob, sizeof(int)));
     CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&numCells, numCellsGlob, sizeof(int)));
     CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&numLeafs, numLeafsGlob, sizeof(int)));
