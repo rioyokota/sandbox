@@ -2,19 +2,19 @@
 
 namespace {
   static __device__ __forceinline__
-    float4 setCenter(const int begin, const int end, float4 * posGlob) {
-    float4 center;
+    fvec4 setCenter(const int begin, const int end, float4 * posGlob) {
+    fvec4 center;
     for (int i=begin; i<end; i++) {
       const float4 pos = posGlob[i];
-      center.x += pos.w * pos.x;
-      center.y += pos.w * pos.y;
-      center.z += pos.w * pos.z;
-      center.w += pos.w;
+      center[0] += pos.w * pos.x;
+      center[1] += pos.w * pos.y;
+      center[2] += pos.w * pos.z;
+      center[3] += pos.w;
     }
-    const float invM = 1.0f / center.w;
-    center.x *= invM;
-    center.y *= invM;
-    center.z *= invM;
+    const float invM = 1.0f / center[3];
+    center[0] *= invM;
+    center[1] *= invM;
+    center[2] *= invM;
     return center;
   }
 
@@ -36,13 +36,13 @@ namespace {
     void P2M(const int begin,
 	     const int end,
 	     float4 * bodyPos,
-	     const float4 center,
+	     const fvec4 center,
 	     float * M) {
     for (int i=begin; i<end; i++) {
       float4 body = bodyPos[i];
-      float dx = center.x - body.x;
-      float dy = center.y - body.y;
-      float dz = center.z - body.z;
+      float dx = center[0] - body.x;
+      float dy = center[1] - body.y;
+      float dz = center[2] - body.z;
       M[0] += body.w;
       M[1] += body.w * dx;
       M[2] += body.w * dy;
@@ -59,16 +59,16 @@ namespace {
   static __device__ __forceinline__
     void M2M(const int begin,
 	     const int end,
-	     const float4 Xi,
+	     const fvec4 Xi,
 	     float4 * sourceCenter,
 	     float4 * Multipole,
 	     float * Mi) {
     for (int i=begin; i<end; i++) {
       float * Mj = (float*) &Multipole[3*i];
       float4 Xj = sourceCenter[i];
-      float dx = Xi.x - Xj.x;
-      float dy = Xi.y - Xj.y;
-      float dz = Xi.z - Xj.z;
+      float dx = Xi[0] - Xj.x;
+      float dy = Xi[1] - Xj.y;
+      float dz = Xi[2] - Xj.z;
       for (int j=0; j<10; j++) Mi[j] += Mj[j];
       Mi[4] += .5 * Mj[0] * dx * dx;
       Mi[5] += .5 * Mj[0] * dy * dy;
@@ -94,7 +94,7 @@ namespace {
     const float huge = 1e10f;
     fvec3 Xmin = +huge;
     fvec3 Xmax = -huge;
-    float4 center;
+    fvec4 center;
     float M[12];
     if (cell.isLeaf()) {
       const int begin = cell.body();
@@ -109,7 +109,7 @@ namespace {
       getMinMax(begin, end, cellXmin, cellXmax, Xmin, Xmax);
       M2M(begin, end, center, sourceCenter, Multipole, M); 
     }
-    sourceCenter[cellIdx] = center;
+    sourceCenter[cellIdx] = make_float4(center[0],center[1],center[2],center[3]);
     cellXmin[cellIdx] = make_float4(Xmin[0], Xmin[1], Xmin[2], 0.0f);
     cellXmax[cellIdx] = make_float4(Xmax[0], Xmax[1], Xmax[2], 0.0f);
     for (int i=0; i<3; i++) Multipole[3*cellIdx+i] = (float4){M[4*i+0],M[4*i+1],M[4*i+2],M[4*i+3]};
