@@ -19,8 +19,8 @@ namespace {
   __device__ CellData * sourceCells;
 
   static __device__ __forceinline__
-    int getOctant(const Box &box, const float4 &body) {
-    return ((box.X[0] <= body.x) << 0) + ((box.X[1] <= body.y) << 1) + ((box.X[2] <= body.z) << 2);
+    int getOctant(const Box &box, const fvec4 &body) {
+    return ((box.X[0] <= body[0]) << 0) + ((box.X[1] <= body[1]) << 1) + ((box.X[2] <= body[2]) << 2);
   }
 
   static __device__ __forceinline__
@@ -160,7 +160,7 @@ namespace {
 
     for (int i=bodyBegin; i<bodyEnd; i+=gridDim.x*blockDim.x) {
       const int bodyIdx = min(i+laneIdx, bodyEnd-1);
-      float4 pos = bodyPos[bodyIdx];
+      fvec4 pos = bodyPos[bodyIdx];
       int bodyOctant = getOctant(box, pos);
       int bodySubOctant = getOctant(childBox[bodyOctant], pos);
       if (i+laneIdx > bodyIdx)
@@ -189,7 +189,7 @@ namespace {
 	}
       }
       if (bodyIdx2 >= 0)
-        bodyPos2[bodyIdx2] = pos;                               // Assign value to sort buffer
+        bodyPos2[bodyIdx2] = make_float4(pos[0],pos[1],pos[2],pos[3]);// Assign value to sort buffer
 
       int remainder = 32;
 #pragma unroll
@@ -352,7 +352,7 @@ namespace {
     const int begin = blockIdx.x * blockDim.x + threadIdx.x;
     int octantSizeLane[8] = {0};
     for (int i=begin; i<numBodies; i+=gridDim.x*blockDim.x) {
-      const float4 pos = bodyPos[i];
+      const fvec4 pos = bodyPos[i];
       const int octant = getOctant(boxGlob, pos);
       octantSizeLane[0] += (octant == 0);
       octantSizeLane[1] += (octant == 1);
