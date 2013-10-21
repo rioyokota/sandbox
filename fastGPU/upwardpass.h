@@ -19,6 +19,23 @@ namespace {
   }
 
   static __device__ __forceinline__
+    fvec4 setCenter(const int begin, const int end, fvec4 * posGlob) {
+    fvec4 center;
+    for (int i=begin; i<end; i++) {
+      const fvec4 pos = posGlob[i];
+      center[0] += pos[3] * pos[0];
+      center[1] += pos[3] * pos[1];
+      center[2] += pos[3] * pos[2];
+      center[3] += pos[3];
+    }
+    const float invM = 1.0f / center[3];
+    center[0] *= invM;
+    center[1] *= invM;
+    center[2] *= invM;
+    return center;
+  }
+
+  static __device__ __forceinline__
     void getMinMax(const int begin, const int end,
 		   float4 * XminGlob, float4 * XmaxGlob,
 		   fvec3 & Xmin, fvec3 & Xmax) {
@@ -29,6 +46,20 @@ namespace {
       Xmax[0] = fmaxf(Xmax[0], XmaxGlob[i].x);
       Xmax[1] = fmaxf(Xmax[1], XmaxGlob[i].y);
       Xmax[2] = fmaxf(Xmax[2], XmaxGlob[i].z);
+    }
+  }
+
+  static __device__ __forceinline__
+    void getMinMax(const int begin, const int end,
+                   fvec4 * XminGlob, fvec4 * XmaxGlob,
+                   fvec3 & Xmin, fvec3 & Xmax) {
+    for (int i=begin; i<end; i++) {
+      Xmin[0] = fminf(Xmin[0], XminGlob[i][0]);
+      Xmin[1] = fminf(Xmin[1], XminGlob[i][1]);
+      Xmin[2] = fminf(Xmin[2], XminGlob[i][2]);
+      Xmax[0] = fmaxf(Xmax[0], XmaxGlob[i][0]);
+      Xmax[1] = fmaxf(Xmax[1], XmaxGlob[i][1]);
+      Xmax[2] = fmaxf(Xmax[2], XmaxGlob[i][2]);
     }
   }
 
@@ -60,7 +91,7 @@ namespace {
     void M2M(const int begin,
 	     const int end,
 	     const fvec4 Xi,
-	     float4 * sourceCenter,
+	     fvec4 * sourceCenter,
 	     fvec4 * Multipole,
 	     float * Mi) {
     for (int i=begin; i<end; i++) {
@@ -83,10 +114,10 @@ namespace {
     void upwardPass(const int level,
 		    int2 * levelRange,
 		    CellData * cells,
-		    float4 * sourceCenter,
+		    fvec4 * sourceCenter,
 		    float4 * bodyPos,
-		    float4 * cellXmin,
-		    float4 * cellXmax,
+		    fvec4 * cellXmin,
+		    fvec4 * cellXmax,
 		    fvec4 * Multipole) {
     const int cellIdx = blockIdx.x * blockDim.x + threadIdx.x + levelRange[level].x;
     if (cellIdx >= levelRange[level].y) return;
@@ -109,14 +140,14 @@ namespace {
       getMinMax(begin, end, cellXmin, cellXmax, Xmin, Xmax);
       M2M(begin, end, center, sourceCenter, Multipole, M); 
     }
-    sourceCenter[cellIdx] = make_float4(center[0],center[1],center[2],center[3]);
-    cellXmin[cellIdx] = make_float4(Xmin[0], Xmin[1], Xmin[2], 0.0f);
-    cellXmax[cellIdx] = make_float4(Xmax[0], Xmax[1], Xmax[2], 0.0f);
+    sourceCenter[cellIdx] = center;
+    cellXmin[cellIdx] = make_fvec4(Xmin[0], Xmin[1], Xmin[2], 0.0f);
+    cellXmax[cellIdx] = make_fvec4(Xmax[0], Xmax[1], Xmax[2], 0.0f);
     for (int i=0; i<3; i++) Multipole[3*cellIdx+i] = make_fvec4(M[4*i+0],M[4*i+1],M[4*i+2],M[4*i+3]);
   }
 
   static __global__ __launch_bounds__(NTHREAD)
-    void setMAC(const int numCells, const float invTheta, float4 * sourceCenter,
+    void setMAC(const int numCells, const float invTheta, fvec4 * sourceCenter,
 		fvec4 * cellXmin, fvec4 * cellXmax) {
     const int cellIdx = blockIdx.x * blockDim.x + threadIdx.x;
     if (cellIdx >= numCells) return;
@@ -130,7 +161,7 @@ namespace {
     const float  l = max(2.0f*max(R[0], max(R[1], R[2])), 1.0e-6f);
     const float MAC = l * invTheta + s;
     const float MAC2 = MAC * MAC;
-    sourceCenter[cellIdx].w = MAC2;
+    sourceCenter[cellIdx][3] = MAC2;
   }
 
   static __global__ __launch_bounds__(NTHREAD)
@@ -160,22 +191,24 @@ class Pass {
     int numCells = sourceCells.size();
     int NBLOCK = (numCells-1) / NTHREAD + 1;
     const double t0 = get_time();
-    cudaVec<float4> cellXmin(numCells);
-    cudaVec<float4> cellXmax(numCells);
+    cudaVec<fvec4> cellXmin(numCells);
+    cudaVec<fvec4> cellXmax(numCells);
     levelRange.d2h();
     for (int level=numLevels; level>=1; level--) {
       numCells = levelRange[level].y - levelRange[level].x;
       NBLOCK = (numCells - 1) / NTHREAD + 1;
-      upwardPass<<<NBLOCK,NTHREAD>>>(level,levelRange.d(),sourceCells.d(),sourceCenter.d(),
-				     bodyPos.d(),cellXmin.d(),cellXmax.d(),
+      upwardPass<<<NBLOCK,NTHREAD>>>(level,levelRange.d(),sourceCells.d(),
+				     reinterpret_cast<fvec4*>(sourceCenter.d()),
+				     bodyPos.d(),
+				     cellXmin.d(),cellXmax.d(),
 				     reinterpret_cast<fvec4*>(Multipole.d()));
       kernelSuccess("upwardPass");
     }
     numCells = sourceCells.size();
     NBLOCK = (numCells - 1) / NTHREAD + 1;
-    setMAC<<<NBLOCK,NTHREAD>>>(numCells, 1.0/theta, sourceCenter.d(),
-			       reinterpret_cast<fvec4*>(cellXmin.d()),
-			       reinterpret_cast<fvec4*>(cellXmax.d()));
+    setMAC<<<NBLOCK,NTHREAD>>>(numCells, 1.0/theta,
+			       reinterpret_cast<fvec4*>(sourceCenter.d()),
+			       cellXmin.d(),cellXmax.d());
     normalize<<<NBLOCK,NTHREAD>>>(numCells, reinterpret_cast<fvec4*>(Multipole.d()));
     const double dt = get_time() - t0;
     fprintf(stdout,"Upward pass          : %.7f s\n", dt);
