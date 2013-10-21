@@ -36,6 +36,15 @@ static fvec4 make_fvec4(float x, float y, float z, float w) {
   return data;
 }
 
+__host__ __device__
+static fvec3 make_fvec3(fvec4 v) {
+  fvec3 data;
+  data[0] = v[0];
+  data[1] = v[1];
+  data[2] = v[2];
+  return data;
+}
+
 static void kernelSuccess(const char kernel[] = "kernel") {
   cudaDeviceSynchronize();
   const cudaError_t err = cudaGetLastError();

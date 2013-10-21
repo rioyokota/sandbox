@@ -111,23 +111,21 @@ namespace {
   }
 
   static __global__ __launch_bounds__(NTHREAD)
-    void setMAC(const int numCells, const float invTheta, float4 * sourceCenter,
+    void setMAC(const int numCells, const float invTheta, fvec4 * sourceCenter,
 		fvec4 * cellXmin, fvec4 * cellXmax) {
     const int cellIdx = blockIdx.x * blockDim.x + threadIdx.x;
     if (cellIdx >= numCells) return;
-    const fvec4 Xmin = cellXmin[cellIdx];
-    const fvec4 Xmax = cellXmax[cellIdx];
-    const float4 Xi = sourceCenter[cellIdx];
-    const float3 X = {(Xmax[0]+Xmin[0])*0.5f, (Xmax[1]+Xmin[1])*0.5f, (Xmax[2]+Xmin[2])*0.5f};
-    const float3 R = {(Xmax[0]-Xmin[0])*0.5f, (Xmax[1]-Xmin[1])*0.5f, (Xmax[2]-Xmin[2])*0.5f};
-    const float dx = X.x - Xi.x;
-    const float dy = X.y - Xi.y;
-    const float dz = X.z - Xi.z;
-    const float  s = sqrt(dx*dx + dy*dy + dz*dz);
-    const float  l = max(2.0f*max(R.x, max(R.y, R.z)), 1.0e-6f);
+    const fvec3 Xmin = make_fvec3(cellXmin[cellIdx]);
+    const fvec3 Xmax = make_fvec3(cellXmax[cellIdx]);
+    const fvec3 Xi = make_fvec3(sourceCenter[cellIdx]);
+    const fvec3 X = (Xmax + Xmin) * 0.5f;
+    const fvec3 R = (Xmax - Xmin) * 0.5f;
+    const fvec3 dX = X - Xi;
+    const float  s = sqrt(norm(dX));
+    const float  l = max(2.0f*max(R[0], max(R[1], R[2])), 1.0e-6f);
     const float MAC = l * invTheta + s;
     const float MAC2 = MAC * MAC;
-    sourceCenter[cellIdx].w = MAC2;
+    sourceCenter[cellIdx][3] = MAC2;
   }
 
   static __global__ __launch_bounds__(NTHREAD)
@@ -170,7 +168,7 @@ class Pass {
       kernelSuccess("upwardPass");
     }
     int NBLOCK = (numCells - 1) / NTHREAD + 1;
-    setMAC<<<NBLOCK,NTHREAD>>>(numCells, 1.0/theta, sourceCenter.d(),
+    setMAC<<<NBLOCK,NTHREAD>>>(numCells, 1.0/theta, reinterpret_cast<fvec4*>(sourceCenter.d()),
 			       cellXmin.d(),cellXmax.d());
     normalize<<<NBLOCK,NTHREAD>>>(numCells, Multipole.d());
     const double dt = get_time() - t0;
