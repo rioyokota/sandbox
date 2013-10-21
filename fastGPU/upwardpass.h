@@ -39,20 +39,20 @@ namespace {
 	     const fvec4 center,
 	     float * M) {
     for (int i=begin; i<end; i++) {
-      float4 body = bodyPos[i];
-      float dx = center[0] - body.x;
-      float dy = center[1] - body.y;
-      float dz = center[2] - body.z;
-      M[0] += body.w;
-      M[1] += body.w * dx;
-      M[2] += body.w * dy;
-      M[3] += body.w * dz;
-      M[4] += .5 * body.w * dx * dx;
-      M[5] += .5 * body.w * dy * dy;
-      M[6] += .5 * body.w * dz * dz;
-      M[7] += body.w * dx * dy;
-      M[8] += body.w * dx * dz;
-      M[9] += body.w * dy * dz;
+      fvec4 body = bodyPos[i];
+      float dx = center[0] - body[0];
+      float dy = center[1] - body[1];
+      float dz = center[2] - body[2];
+      M[0] += body[3];
+      M[1] += body[3] * dx;
+      M[2] += body[3] * dy;
+      M[3] += body[3] * dz;
+      M[4] += .5 * body[3] * dx * dx;
+      M[5] += .5 * body[3] * dy * dy;
+      M[6] += .5 * body[3] * dz * dz;
+      M[7] += body[3] * dx * dy;
+      M[8] += body[3] * dx * dz;
+      M[9] += body[3] * dy * dz;
     }
   }
 
@@ -65,10 +65,10 @@ namespace {
 	     float * Mi) {
     for (int i=begin; i<end; i++) {
       float * Mj = (float*) &Multipole[3*i];
-      float4 Xj = sourceCenter[i];
-      float dx = Xi[0] - Xj.x;
-      float dy = Xi[1] - Xj.y;
-      float dz = Xi[2] - Xj.z;
+      fvec4 Xj = sourceCenter[i];
+      float dx = Xi[0] - Xj[0];
+      float dy = Xi[1] - Xj[1];
+      float dz = Xi[2] - Xj[2];
       for (int j=0; j<10; j++) Mi[j] += Mj[j];
       Mi[4] += .5 * Mj[0] * dx * dx;
       Mi[5] += .5 * Mj[0] * dy * dy;
@@ -120,11 +120,11 @@ namespace {
 		float4 * cellXmin, float4 * cellXmax) {
     const int cellIdx = blockIdx.x * blockDim.x + threadIdx.x;
     if (cellIdx >= numCells) return;
-    const float4 Xmin = cellXmin[cellIdx];
-    const float4 Xmax = cellXmax[cellIdx];
+    const fvec4 Xmin = cellXmin[cellIdx];
+    const fvec4 Xmax = cellXmax[cellIdx];
     const float4 Xi = sourceCenter[cellIdx];
-    const float3 X = {(Xmax.x+Xmin.x)*0.5f, (Xmax.y+Xmin.y)*0.5f, (Xmax.z+Xmin.z)*0.5f};
-    const float3 R = {(Xmax.x-Xmin.x)*0.5f, (Xmax.y-Xmin.y)*0.5f, (Xmax.z-Xmin.z)*0.5f};
+    const float3 X = {(Xmax[0]+Xmin[0])*0.5f, (Xmax[1]+Xmin[1])*0.5f, (Xmax[2]+Xmin[2])*0.5f};
+    const float3 R = {(Xmax[0]-Xmin[0])*0.5f, (Xmax[1]-Xmin[1])*0.5f, (Xmax[2]-Xmin[2])*0.5f};
     const float dx = X.x - Xi.x;
     const float dy = X.y - Xi.y;
     const float dz = X.z - Xi.z;
