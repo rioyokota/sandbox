@@ -21,14 +21,14 @@ namespace {
   static __device__ __forceinline__
     void getMinMax(const int begin, const int end,
 		   float4 * XminGlob, float4 * XmaxGlob,
-		   float3 & Xmin, float3 & Xmax) {
+		   fvec3 & Xmin, fvec3 & Xmax) {
     for (int i=begin; i<end; i++) {
-      Xmin.x = fminf(Xmin.x, XminGlob[i].x);
-      Xmin.y = fminf(Xmin.y, XminGlob[i].y);
-      Xmin.z = fminf(Xmin.z, XminGlob[i].z);
-      Xmax.x = fmaxf(Xmax.x, XmaxGlob[i].x);
-      Xmax.y = fmaxf(Xmax.y, XmaxGlob[i].y);
-      Xmax.z = fmaxf(Xmax.z, XmaxGlob[i].z);
+      Xmin[0] = fminf(Xmin[0], XminGlob[i].x);
+      Xmin[1] = fminf(Xmin[1], XminGlob[i].y);
+      Xmin[2] = fminf(Xmin[2], XminGlob[i].z);
+      Xmax[0] = fmaxf(Xmax[0], XmaxGlob[i].x);
+      Xmax[1] = fmaxf(Xmax[1], XmaxGlob[i].y);
+      Xmax[2] = fmaxf(Xmax[2], XmaxGlob[i].z);
     }
   }
 
@@ -92,8 +92,8 @@ namespace {
     if (cellIdx >= levelRange[level].y) return;
     const CellData cell = cells[cellIdx];
     const float huge = 1e10f;
-    float3 Xmin = {+huge, +huge, +huge};
-    float3 Xmax = {-huge, -huge, -huge};
+    fvec3 Xmin = +huge;
+    fvec3 Xmax = -huge;
     float4 center;
     float M[12];
     if (cell.isLeaf()) {
@@ -110,8 +110,8 @@ namespace {
       M2M(begin, end, center, sourceCenter, Multipole, M); 
     }
     sourceCenter[cellIdx] = center;
-    cellXmin[cellIdx] = make_float4(Xmin.x, Xmin.y, Xmin.z, 0.0f);
-    cellXmax[cellIdx] = make_float4(Xmax.x, Xmax.y, Xmax.z, 0.0f);
+    cellXmin[cellIdx] = make_float4(Xmin[0], Xmin[1], Xmin[2], 0.0f);
+    cellXmax[cellIdx] = make_float4(Xmax[0], Xmax[1], Xmax[2], 0.0f);
     for (int i=0; i<3; i++) Multipole[3*cellIdx+i] = (float4){M[4*i+0],M[4*i+1],M[4*i+2],M[4*i+3]};
   }
 
