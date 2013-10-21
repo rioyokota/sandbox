@@ -343,14 +343,13 @@ namespace {
 
   static __global__ void getRootOctantSize(const int numBodies,
 				           int * octantSize,
-				           const float4 box,
-				           const float4 *bodyPos) {
+				           const float4 * bodyPos) {
     const int laneIdx = threadIdx.x & (WARP_SIZE-1);
     const int begin = blockIdx.x * blockDim.x + threadIdx.x;
     int octantSizeLane[8] = {0};
     for (int i=begin; i<numBodies; i+=gridDim.x*blockDim.x) {
       const float4 pos = bodyPos[i];
-      const int octant = getOctant(box, pos);
+      const int octant = getOctant(domainGlob, pos);
       octantSizeLane[0] += (octant == 0);
       octantSizeLane[1] += (octant == 1);
       octantSizeLane[2] += (octant == 2);
@@ -391,11 +390,7 @@ namespace {
 
     int * octantSize = new int[8];
     for (int k=0; k<8; k++)
-      octantSize[k] = 0;
-    getRootOctantSize<<<NTHREAD, NTHREAD>>>(numBodies, octantSize, domainGlob, d_bodyPos);
-    assert(cudaGetLastError() == cudaSuccess);
-    cudaDeviceSynchronize();
-
+      octantSize[k] = octantSizePool[k];
     int * octantSizeScan = new int[8];
     int * subOctantSizeScan = new int[64];
     int * blockCounter = new int;
@@ -521,6 +516,7 @@ class Build {
     cudaDeviceSynchronize();
 
     t0 = get_time();
+    getRootOctantSize<<<NTHREAD, NTHREAD>>>(numBodies, octantSizePool.d(), bodyPos.d());
     CUDA_SAFE_CALL(cudaDeviceSetLimit(cudaLimitDevRuntimePendingLaunchCount, 16384));
     CUDA_SAFE_CALL(cudaDeviceSetSharedMemConfig(cudaSharedMemBankSizeEightByte));
     CUDA_SAFE_CALL(cudaFuncSetCacheConfig(&buildOctant<NCRIT,true>,  cudaFuncCachePreferShared));
