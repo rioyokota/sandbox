@@ -5,11 +5,11 @@ namespace {
     fvec4 setCenter(const int begin, const int end, float4 * posGlob) {
     fvec4 center;
     for (int i=begin; i<end; i++) {
-      const float4 pos = posGlob[i];
-      center[0] += pos.w * pos.x;
-      center[1] += pos.w * pos.y;
-      center[2] += pos.w * pos.z;
-      center[3] += pos.w;
+      const fvec4 pos = posGlob[i];
+      center[0] += pos[3] * pos[0];
+      center[1] += pos[3] * pos[1];
+      center[2] += pos[3] * pos[2];
+      center[3] += pos[3];
     }
     const float invM = 1.0f / center[3];
     center[0] *= invM;
@@ -61,7 +61,7 @@ namespace {
 	     const int end,
 	     const fvec4 Xi,
 	     float4 * sourceCenter,
-	     float4 * Multipole,
+	     fvec4 * Multipole,
 	     float * Mi) {
     for (int i=begin; i<end; i++) {
       float * Mj = (float*) &Multipole[3*i];
@@ -87,7 +87,7 @@ namespace {
 		    float4 * bodyPos,
 		    float4 * cellXmin,
 		    float4 * cellXmax,
-		    float4 * Multipole) {
+		    fvec4 * Multipole) {
     const int cellIdx = blockIdx.x * blockDim.x + threadIdx.x + levelRange[level].x;
     if (cellIdx >= levelRange[level].y) return;
     const CellData cell = cells[cellIdx];
@@ -112,7 +112,7 @@ namespace {
     sourceCenter[cellIdx] = make_float4(center[0],center[1],center[2],center[3]);
     cellXmin[cellIdx] = make_float4(Xmin[0], Xmin[1], Xmin[2], 0.0f);
     cellXmax[cellIdx] = make_float4(Xmax[0], Xmax[1], Xmax[2], 0.0f);
-    for (int i=0; i<3; i++) Multipole[3*cellIdx+i] = (float4){M[4*i+0],M[4*i+1],M[4*i+2],M[4*i+3]};
+    for (int i=0; i<3; i++) Multipole[3*cellIdx+i] = make_fvec4(M[4*i+0],M[4*i+1],M[4*i+2],M[4*i+3]);
   }
 
   static __global__ __launch_bounds__(NTHREAD)
@@ -134,18 +134,15 @@ namespace {
   }
 
   static __global__ __launch_bounds__(NTHREAD)
-    void normalize(const int numCells, float4 * Multipole) {
+    void normalize(const int numCells, fvec4 * Multipole) {
     const int cellIdx = blockIdx.x * blockDim.x + threadIdx.x;
     if (cellIdx >= numCells) return;
-    const float invM = 1.0 / Multipole[3*cellIdx].x;
-    Multipole[3*cellIdx].y *= invM;
-    Multipole[3*cellIdx].z *= invM;
-    Multipole[3*cellIdx].w *= invM;
+    const float invM = 1.0 / Multipole[3*cellIdx][0];
+    Multipole[3*cellIdx][1] *= invM;
+    Multipole[3*cellIdx][2] *= invM;
+    Multipole[3*cellIdx][3] *= invM;
     for (int i=1; i<3; i++) {
-      Multipole[3*cellIdx+i].x *= invM;
-      Multipole[3*cellIdx+i].y *= invM;
-      Multipole[3*cellIdx+i].z *= invM;
-      Multipole[3*cellIdx+i].w *= invM;
+      Multipole[3*cellIdx+i] *= invM;
     }
   }
 }
@@ -170,7 +167,8 @@ class Pass {
       numCells = levelRange[level].y - levelRange[level].x;
       NBLOCK = (numCells - 1) / NTHREAD + 1;
       upwardPass<<<NBLOCK,NTHREAD>>>(level,levelRange.d(),sourceCells.d(),sourceCenter.d(),
-				     bodyPos.d(),cellXmin.d(),cellXmax.d(),Multipole.d());
+				     bodyPos.d(),cellXmin.d(),cellXmax.d(),
+				     reinterpret_cast<fvec4*>(Multipole.d()));
       kernelSuccess("upwardPass");
     }
     numCells = sourceCells.size();
@@ -178,7 +176,7 @@ class Pass {
     setMAC<<<NBLOCK,NTHREAD>>>(numCells, 1.0/theta, sourceCenter.d(),
 			       reinterpret_cast<fvec4*>(cellXmin.d()),
 			       reinterpret_cast<fvec4*>(cellXmax.d()));
-    normalize<<<NBLOCK,NTHREAD>>>(numCells, Multipole.d());
+    normalize<<<NBLOCK,NTHREAD>>>(numCells, reinterpret_cast<fvec4*>(Multipole.d()));
     const double dt = get_time() - t0;
     fprintf(stdout,"Upward pass          : %.7f s\n", dt);
   }
