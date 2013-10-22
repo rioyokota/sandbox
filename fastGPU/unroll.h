@@ -93,19 +93,19 @@ template<typename Op, typename T, int N>
     __host__ __device__ __forceinline__
     static void loop(T * lhs, const T * rhs) {
       Op operation;
-      operation(lhs[N-1], rhs[N-1]);
       Unroll<Op,T,N-1>::loop(lhs, rhs);
+      operation(lhs[N-1], rhs[N-1]);
     }
     __host__ __device__ __forceinline__
     static void loop(T * lhs, const T rhs) {
       Op operation;
-      operation(lhs[N-1], rhs);
       Unroll<Op,T,N-1>::loop(lhs, rhs);
+      operation(lhs[N-1], rhs);
     }
     __host__ __device__ __forceinline__
     static const T reduce(const T * val) {
       Op operation;
-      return operation(const_cast<T*>(val)[N-1],Unroll<Op,T,N-1>::reduce(val));
+      return operation(const_cast<T*>(val)[N-1], Unroll<Op,T,N-1>::reduce(val));
     }
   };
 

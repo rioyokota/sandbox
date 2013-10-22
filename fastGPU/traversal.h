@@ -347,8 +347,7 @@ namespace {
       fvec3 pos_i[2];
       for (int i=0; i<2; i++) {
         const int bodyIdx = min(bodyBegin+i*WARP_SIZE+laneIdx, bodyEnd-1);
-	const fvec4 pos = bodyPos[bodyIdx];
-	pos_i[i] = make_fvec3(pos[0], pos[1], pos[2]);
+	pos_i[i] = make_fvec3(fvec4(bodyPos[bodyIdx]));
       }
       fvec3 Xmin = pos_i[0];
       fvec3 Xmax = Xmin;
@@ -427,7 +426,7 @@ namespace {
       }
     }
     const int targetIdx = blockIdx.x * blockDim.x + threadIdx.x;
-    bodyAcc[targetIdx] = make_fvec4(acc[0],acc[1],acc[2],acc[3]);
+    bodyAcc[targetIdx] = fvec4(acc[0],acc[1],acc[2],acc[3]);
   }
 }
 

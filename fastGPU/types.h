@@ -23,39 +23,11 @@ texture<float4, 1, cudaReadModeElementType> texMultipole;
 texture<float4, 1, cudaReadModeElementType> texBody;
 
 __host__ __device__
-static fvec3 make_fvec3(float x, float y, float z) {
-  fvec3 data;
-  data[0] = x;
-  data[1] = y;
-  data[2] = z;
-  return data;
-}
-
-__host__ __device__
-static fvec4 make_fvec4(float x, float y, float z, float w) {
-  fvec4 data;
-  data[0] = x;
-  data[1] = y;
-  data[2] = z;
-  data[3] = w;
-  return data;
-}
-
-__host__ __device__
 static fvec3 make_fvec3(fvec4 v) {
   fvec3 data;
   data[0] = v[0];
   data[1] = v[1];
   data[2] = v[2];
-  return data;
-}
-
-__host__ __device__
-static fvec3 make_fvec3(float4 v) {
-  fvec3 data;
-  data[0] = v.x;
-  data[1] = v.y;
-  data[2] = v.z;
   return data;
 }
 
