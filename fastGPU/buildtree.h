@@ -96,7 +96,7 @@ namespace {
 
   static __global__
     void getBounds(const int numBodies,
-		   float3 * bounds,
+		   Bounds * bounds,
 		   const float4 * bodyPos) {
     const int NBLOCK = NTHREAD;
     const int begin = blockIdx.x * blockDim.x + threadIdx.x;
@@ -110,8 +110,8 @@ namespace {
     Xmin = minBlock(Xmin);
     Xmax = maxBlock(Xmax);
     if (threadIdx.x == 0) {
-      bounds[blockIdx.x         ] = make_float3(Xmin[0], Xmin[1], Xmin[2]);
-      bounds[blockIdx.x + NBLOCK] = make_float3(Xmax[0], Xmax[1], Xmax[2]);
+      bounds[blockIdx.x].Xmin = Xmin;
+      bounds[blockIdx.x].Xmax = Xmax;
     }
     __shared__ bool lastBlock;
     __threadfence();
@@ -122,8 +122,8 @@ namespace {
     }
     __syncthreads();
     if (lastBlock) {
-      Xmin = bounds[threadIdx.x];
-      Xmax = bounds[threadIdx.x + NBLOCK];
+      Xmin = bounds[threadIdx.x].Xmin;
+      Xmax = bounds[threadIdx.x].Xmax;
       Xmin = minBlock(Xmin);
       Xmax = maxBlock(Xmax);
       __syncthreads();
@@ -512,7 +512,7 @@ class Build {
 	      cudaVec<CellData> & sourceCells) {
     const int numBodies = bodyPos.size();
     const int maxNode = numBodies / 10;
-    cudaVec<float3> bounds(2*NTHREAD);
+    cudaVec<Bounds> bounds(2*NTHREAD);
     cudaVec<int> octantSizePool(8*maxNode);
     cudaVec<int> octantSizeScanPool(8*maxNode);
     cudaVec<int> subOctantSizeScanPool(64*maxNode);
