@@ -53,15 +53,11 @@ namespace {
 		 int * values) {
     const int bodyIdx = blockIdx.x * blockDim.x + threadIdx.x;
     if (bodyIdx >= numBodies) return;
-    const float4 pos = bodyPos[bodyIdx];
+    const fvec3 pos = make_fvec3(bodyPos[bodyIdx]);
     const float diameter = 2 * box.R / (1 << NBITS);
-    const float3 Xmin = {box.X[0] - box.R,
-			 box.X[1] - box.R,
-			 box.X[2] - box.R};
-    const int ix = int((pos.x - Xmin.x) / diameter);
-    const int iy = int((pos.y - Xmin.y) / diameter);
-    const int iz = int((pos.z - Xmin.z) / diameter);
-    keys[bodyIdx] = getHilbert(make_int3(ix, iy, iz));
+    const fvec3 Xmin = box.X - box.R;
+    const fvec3 iX = (pos - Xmin) / diameter;
+    keys[bodyIdx] = getHilbert(make_int3(iX[0], iX[1], iX[2]));
     values[bodyIdx] = bodyIdx;
   }
 

@@ -253,7 +253,7 @@ class vec {
     return temp;
   }
   __host__ __device__ __forceinline__
-  friend T max(const vec &v) {                                  // Reduce maximum
+    friend T max(const vec &v) {                                // Reduce maximum
     T temp;
     for (int i=0; i<N; i++) temp = temp > v[i] ? temp : v[i];
     return temp;
