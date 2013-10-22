@@ -28,6 +28,7 @@ class vec {
     data[2] = v.z;
     data[3] = v.w;
   }
+  /*
   __host__ __device__ __forceinline__
   vec(const float x, const float y, const float z, const float w) {// Copy constructor (4 floats)
     data[0] = x;
@@ -35,6 +36,7 @@ class vec {
     data[2] = z;
     data[3] = w;
   }
+  */
   __host__ __device__ __forceinline__
   vec(const float x, const float y, const float z) {            // Copy constructor (3 floats)
     data[0] = x;
