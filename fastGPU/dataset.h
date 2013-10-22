@@ -6,7 +6,7 @@
 
 class Dataset {
  public:
-  std::vector<double4> pos;
+  std::vector<kvec4> pos;
  Dataset(unsigned long n,
 	 const char *filename = "plummer.dat") : pos(n) {
     std::ifstream file(filename);
@@ -20,20 +20,20 @@ class Dataset {
     }
     unsigned long i = 0;
     while (i < n) {
-      double X1 = drand48();
-      double X2 = drand48();
-      double X3 = drand48();
-      double R = 1.0 / sqrt( (pow(X1, -2.0 / 3.0) - 1.0) );
+      float X1 = drand48();
+      float X2 = drand48();
+      float X3 = drand48();
+      float R = 1.0 / sqrt( (pow(X1, -2.0 / 3.0) - 1.0) );
       if (R < 100.0) {
-	double Z = (1.0 - 2.0 * X2) * R;
-	double X = sqrt(R * R - Z * Z) * cos(2.0 * M_PI * X3);
-	double Y = sqrt(R * R - Z * Z) * sin(2.0 * M_PI * X3);
-	double conv = 3.0 * M_PI / 16.0;
+	float Z = (1.0 - 2.0 * X2) * R;
+	float X = sqrt(R * R - Z * Z) * cos(2.0 * M_PI * X3);
+	float Y = sqrt(R * R - Z * Z) * sin(2.0 * M_PI * X3);
+	float conv = 3.0 * M_PI / 16.0;
 	X *= conv; Y *= conv; Z *= conv;
-	pos[i].x = X;
-	pos[i].y = Y;
-	pos[i].z = Z;
-	pos[i].w = drand48() / n;
+	pos[i][0] = X;
+	pos[i][1] = Y;
+	pos[i][2] = Z;
+	pos[i][3] = drand48() / n;
 	ldiv_t tmp_i = ldiv(i, n/64);
 	if(tmp_i.rem == 0) {
 	  printf(".");
@@ -42,21 +42,21 @@ class Dataset {
 	i++;
       }
     }
-    double4 com = {0.0};
+    kvec4 com(0.0);
     for (i=0; i<n; i++) {
-      com.x += pos[i].w * pos[i].x;
-      com.y += pos[i].w * pos[i].y;
-      com.z += pos[i].w * pos[i].z;
-      com.w += pos[i].w;
+      com[0] += abs(pos[i][3]) * pos[i][0];
+      com[1] += abs(pos[i][3]) * pos[i][1];
+      com[2] += abs(pos[i][3]) * pos[i][2];
+      com[3] += abs(pos[i][3]);
     }
-    com.x /= com.w;
-    com.y /= com.w;
-    com.z /= com.w;
+    com[0] /= com[3];
+    com[1] /= com[3];
+    com[2] /= com[3];
 
     for(i=0; i<n; i++) {
-      pos[i].x -= com.x;
-      pos[i].y -= com.y;
-      pos[i].z -= com.z;
+      pos[i][0] -= com[0];
+      pos[i][1] -= com[1];
+      pos[i][2] -= com[2];
     }
     printf("\n");
     std::ofstream ofs(filename);

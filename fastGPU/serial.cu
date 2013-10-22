@@ -23,10 +23,10 @@ int main(int argc, char ** argv) {
   cudaVec<fvec4> bodyAcc(numBodies,true);
   cudaVec<fvec4> bodyAcc2(numBodies,true);
   for (int i=0; i<numBodies; i++) {
-    bodyPos[i][0] = data.pos[i].x;
-    bodyPos[i][1] = data.pos[i].y;
-    bodyPos[i][2] = data.pos[i].z;
-    bodyPos[i][3] = data.pos[i].w;
+    bodyPos[i][0] = data.pos[i][0];
+    bodyPos[i][1] = data.pos[i][1];
+    bodyPos[i][2] = data.pos[i][2];
+    bodyPos[i][3] = data.pos[i][3];
   }
   bodyPos.h2d();
   bodyAcc.h2d();
@@ -95,7 +95,7 @@ int main(int argc, char ** argv) {
   fprintf(stdout,"Cells                : %d\n",numSources);
   fprintf(stdout,"Tree depth           : %d\n",numLevels);
   fprintf(stdout,"--- Traversal stats --------------\n");
-  fprintf(stdout,"P2P mean list length : %g (max %g)\n", interactions[0], interactions[1]);
-  fprintf(stdout,"M2P mean list length : %g (max %g)\n", interactions[2], interactions[3]);
+  fprintf(stdout,"P2P mean list length : %d (max %d)\n", int(interactions[0]), int(interactions[1]));
+  fprintf(stdout,"M2P mean list length : %d (max %d)\n", int(interactions[2]), int(interactions[3]));
   return 0;
 }
