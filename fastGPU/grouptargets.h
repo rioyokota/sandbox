@@ -48,7 +48,7 @@ namespace {
   static __global__
     void getKeys(const int numBodies,
 		 const Box box,
-		 const float4 * bodyPos,
+		 const fvec4 * bodyPos,
 		 unsigned long long * keys,
 		 int * values) {
     const int bodyIdx = blockIdx.x * blockDim.x + threadIdx.x;
@@ -64,8 +64,8 @@ namespace {
   static __global__
     void permuteBodies(const int numBodies,
 		       const int * value,
-		       const float4 * bodyPos,
-		       float4 * bodyPos2) {
+		       const fvec4 * bodyPos,
+		       fvec4 * bodyPos2) {
     const int bodyIdx = blockDim.x * blockIdx.x + threadIdx.x;
     if (bodyIdx >= numBodies) return;
     bodyPos2[bodyIdx] = bodyPos[value[bodyIdx]];
@@ -118,8 +118,8 @@ namespace {
 
 class Group {
  public:
-  int targets(cudaVec<float4> & bodyPos,
-	      cudaVec<float4> & bodyPos2,
+  int targets(cudaVec<fvec4> & bodyPos,
+	      cudaVec<fvec4> & bodyPos2,
 	      Box box,
 	      cudaVec<int2> & targetRange,
 	      int levelSplit) {

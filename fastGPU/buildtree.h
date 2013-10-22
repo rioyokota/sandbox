@@ -97,7 +97,7 @@ namespace {
   static __global__
     void getBounds(const int numBodies,
 		   Bounds * bounds,
-		   const float4 * bodyPos) {
+		   const fvec4 * bodyPos) {
     const int NBLOCK = NTHREAD;
     const int begin = blockIdx.x * blockDim.x + threadIdx.x;
     fvec3 Xmin = make_fvec3(bodyPos[begin]);
@@ -368,7 +368,7 @@ namespace {
 
   static __global__ void getRootOctantSize(const int numBodies,
 				           int * octantSize,
-				           const float4 * bodyPos) {
+				           const fvec4 * bodyPos) {
     const int laneIdx = threadIdx.x & (WARP_SIZE-1);
     const int begin = blockIdx.x * blockDim.x + threadIdx.x;
     int octantSizeLane[8] = {0};
@@ -505,8 +505,8 @@ namespace {
 class Build {
  public:
   template<int NCRIT>
-    int3 tree(cudaVec<float4> & bodyPos,
-	      cudaVec<float4> & bodyPos2,
+    int3 tree(cudaVec<fvec4> & bodyPos,
+	      cudaVec<fvec4> & bodyPos2,
 	      Box & box,
 	      cudaVec<int2> & levelRange,
 	      cudaVec<CellData> & sourceCells) {
@@ -547,7 +547,8 @@ class Build {
     buildOctree<NCRIT><<<1,1>>>(numBodies, sourceCells.d(), octantSizePool.d(),
 				octantSizeScanPool.d(), subOctantSizeScanPool.d(),
 				blockCounterPool.d(), bodyRangePool.d(),
-				bodyPos.d(), bodyPos2.d());
+				reinterpret_cast<float4*>(bodyPos.d()),
+				reinterpret_cast<float4*>(bodyPos2.d()));
     kernelSuccess("buildOctree");
     dt = get_time() - t0;
     fprintf(stdout,"Grow tree            : %.7f s\n",  dt);

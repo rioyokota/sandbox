@@ -18,15 +18,15 @@ int main(int argc, char ** argv) {
   fprintf(stdout,"ncrit                : %d\n",ncrit);
   const Dataset data(numBodies);
 
-  cudaVec<float4> bodyPos(numBodies,true);
-  cudaVec<float4> bodyPos2(numBodies);
+  cudaVec<fvec4> bodyPos(numBodies,true);
+  cudaVec<fvec4> bodyPos2(numBodies);
   cudaVec<fvec4> bodyAcc(numBodies,true);
   cudaVec<fvec4> bodyAcc2(numBodies,true);
   for (int i=0; i<numBodies; i++) {
-    bodyPos[i].x = data.pos[i].x;
-    bodyPos[i].y = data.pos[i].y;
-    bodyPos[i].z = data.pos[i].z;
-    bodyPos[i].w = data.pos[i].w;
+    bodyPos[i][0] = data.pos[i].x;
+    bodyPos[i][1] = data.pos[i].y;
+    bodyPos[i][2] = data.pos[i].z;
+    bodyPos[i][3] = data.pos[i].w;
   }
   bodyPos.h2d();
   bodyAcc.h2d();
@@ -49,12 +49,12 @@ int main(int argc, char ** argv) {
   Pass pass;
   pass.upward(numLeafs, numLevels, theta, levelRange, bodyPos, sourceCells, sourceCenter, Multipole);
   Traversal traversal;
-  const float4 interactions = traversal.approx(numTargets, eps,
-					       bodyPos, bodyPos2, bodyAcc,
-					       targetRange, sourceCells, sourceCenter,
-					       Multipole, levelRange);
+  const fvec4 interactions = traversal.approx(numTargets, eps,
+					      bodyPos, bodyPos2, bodyAcc,
+					      targetRange, sourceCells, sourceCenter,
+					      Multipole, levelRange);
   double dt = get_time() - t0;
-  float flops = (interactions.x * 20 + interactions.z * 64) * numBodies / dt / 1e12;
+  float flops = (interactions[0] * 20 + interactions[2] * 64) * numBodies / dt / 1e12;
   fprintf(stdout,"--- Total runtime ----------------\n");
   fprintf(stdout,"Total FMM            : %.7f s (%.7f TFlops)\n",dt,flops);
   const int numTarget = min(512,numBodies); // Number of threads per block will be set to this value
@@ -95,7 +95,7 @@ int main(int argc, char ** argv) {
   fprintf(stdout,"Cells                : %d\n",numSources);
   fprintf(stdout,"Tree depth           : %d\n",numLevels);
   fprintf(stdout,"--- Traversal stats --------------\n");
-  fprintf(stdout,"P2P mean list length : %g (max %g)\n", interactions.x, interactions.y);
-  fprintf(stdout,"M2P mean list length : %g (max %g)\n", interactions.z, interactions.w);
+  fprintf(stdout,"P2P mean list length : %g (max %g)\n", interactions[0], interactions[1]);
+  fprintf(stdout,"M2P mean list length : %g (max %g)\n", interactions[2], interactions[3]);
   return 0;
 }

@@ -161,7 +161,7 @@ class Pass {
 	      const int numLevels,
 	      const float theta,
 	      cudaVec<int2> & levelRange,
-	      cudaVec<float4> & bodyPos,
+	      cudaVec<fvec4> & bodyPos,
 	      cudaVec<CellData> & sourceCells,
 	      cudaVec<fvec4> & sourceCenter,
 	      cudaVec<fvec4> & Multipole) {

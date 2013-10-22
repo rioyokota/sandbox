@@ -433,16 +433,16 @@ namespace {
 
 class Traversal {
  public:
-  float4 approx(const int numTargets,
-		const float eps,
-		cudaVec<float4> & bodyPos,
-		cudaVec<float4> & bodyPos2,
-		cudaVec<fvec4> & bodyAcc,
-		cudaVec<int2> & targetRange,
-		cudaVec<CellData> & sourceCells,
-		cudaVec<fvec4> & sourceCenter,
-		cudaVec<fvec4> & Multipole,
-		cudaVec<int2> & levelRange) {
+  fvec4 approx(const int numTargets,
+	       const float eps,
+	       cudaVec<fvec4> & bodyPos,
+	       cudaVec<fvec4> & bodyPos2,
+	       cudaVec<fvec4> & bodyAcc,
+	       cudaVec<int2> & targetRange,
+	       cudaVec<CellData> & sourceCells,
+	       cudaVec<fvec4> & sourceCenter,
+	       cudaVec<fvec4> & Multipole,
+	       cudaVec<int2> & levelRange) {
     const int NWARP = 1 << (NTHREAD2 - WARP_SIZE2);
     const int NBLOCK = (numTargets - 1) / NTHREAD + 1;
     const int poolSize = MEM_PER_WARP * NWARP * NBLOCK;
@@ -457,7 +457,7 @@ class Traversal {
     const double t0 = get_time();
     CUDA_SAFE_CALL(cudaFuncSetCacheConfig(&traverse, cudaFuncCachePreferL1));
     traverse<<<NBLOCK,NTHREAD>>>(numTargets, eps*eps, levelRange.d(),
-				 reinterpret_cast<fvec4*>(bodyPos2.d()), bodyAcc.d(),
+				 bodyPos2.d(), bodyAcc.d(),
 				 targetRange.d(), globalPool.d());
     kernelSuccess("traverse");
     const double dt = get_time() - t0;
@@ -468,12 +468,12 @@ class Traversal {
     CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&maxP2P, maxP2PGlob, sizeof(unsigned int)));
     CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&sumM2P, sumM2PGlob, sizeof(unsigned long long)));
     CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&maxM2P, maxM2PGlob, sizeof(unsigned int)));
-    float4 interactions;
-    interactions.x = sumP2P * 1.0 / numBodies;
-    interactions.y = maxP2P;
-    interactions.z = sumM2P * 1.0 / numBodies;
-    interactions.w = maxM2P;
-    float flops = (interactions.x * 20 + interactions.z * 64) * numBodies / dt / 1e12;
+    fvec4 interactions;
+    interactions[0] = sumP2P * 1.0 / numBodies;
+    interactions[1] = maxP2P;
+    interactions[2] = sumM2P * 1.0 / numBodies;
+    interactions[3] = maxM2P;
+    float flops = (interactions[0] * 20 + interactions[2] * 64) * numBodies / dt / 1e12;
     fprintf(stdout,"Traverse             : %.7f s (%.7f TFlops)\n",dt,flops);
 
     sourceCells.unbind(texCell);
@@ -486,7 +486,7 @@ class Traversal {
   void direct(const int numTarget,
 	      const int numBlock,
 	      const float eps,
-	      cudaVec<float4> & bodyPos2,
+	      cudaVec<fvec4> & bodyPos2,
 	      cudaVec<fvec4> & bodyAcc2) {
     const int numBodies = bodyPos2.size();
     bodyPos2.bind(texBody);
