@@ -3,6 +3,33 @@
 
 extern void sort(const int size, int * key, int * value);
 
+typedef vec<3, volatile float> fvec3v;
+
+__host__ __device__
+static fvec3v make_fvec3v(fvec3 v) {
+  fvec3v data;
+  data[0] = v[0];
+  data[1] = v[1];
+  data[2] = v[2];
+  return data;
+}
+
+__host__ __device__
+static fvec3 min(fvec3 data, fvec3v v) {
+  data[0] = min(data[0], v[0]);
+  data[1] = min(data[1], v[1]);
+  data[2] = min(data[2], v[2]);
+  return data;
+}
+
+__host__ __device__
+static fvec3 max(fvec3 data, fvec3v v) {
+  data[0] = max(data[0], v[0]);
+  data[1] = max(data[1], v[1]);
+  data[2] = max(data[2], v[2]);
+  return data;
+}
+
 namespace {
   __constant__ int maxNodesGlob;
   __device__ Box boxGlob;
@@ -35,33 +62,57 @@ namespace {
   }
 
   static __device__
-    float2 getMinMax(float2 range) {
-    __shared__ float sharedMin[NTHREAD];
-    __shared__ float sharedMax[NTHREAD];
-    sharedMin[threadIdx.x] = range.x;
-    sharedMax[threadIdx.x] = range.y;
+    fvec3 minBlock(fvec3 Xmin) {
+    __shared__ fvec3v sharedXmin[NTHREAD];
+    sharedXmin[threadIdx.x] = make_fvec3v(Xmin);
     __syncthreads();
 #pragma unroll
     for (int i=NTHREAD2-1; i>=6; i--) {
       const int offset = 1 << i;
       if (threadIdx.x < offset) {
-	sharedMin[threadIdx.x] = range.x = fminf(range.x, sharedMin[threadIdx.x + offset]);
-	sharedMax[threadIdx.x] = range.y = fmaxf(range.y, sharedMax[threadIdx.x + offset]);
+	Xmin = min(Xmin, sharedXmin[threadIdx.x + offset]);
+	sharedXmin[threadIdx.x] = make_fvec3v(Xmin);
       }
       __syncthreads();
     }
     if (threadIdx.x < WARP_SIZE) {
-      volatile float *warpMin = sharedMin;
-      volatile float *warpMax = sharedMax;
+      fvec3v * warpXmin = sharedXmin;
 #pragma unroll
       for (int i=5; i>=0; i--) {
 	const int offset = 1 << i;
-	warpMin[threadIdx.x] = range.x = fminf(range.x, warpMin[threadIdx.x + offset]);
-	warpMax[threadIdx.x] = range.y = fmaxf(range.y, warpMax[threadIdx.x + offset]);
+	Xmin = min(Xmin, warpXmin[threadIdx.x + offset]);
+	warpXmin[threadIdx.x] = make_fvec3v(Xmin);
       }
     }
     __syncthreads();
-    return range;
+    return Xmin;
+  }
+
+  static __device__
+    fvec3 maxBlock(fvec3 Xmax) {
+    __shared__ fvec3v sharedXmax[NTHREAD];
+    sharedXmax[threadIdx.x] = make_fvec3v(Xmax);
+    __syncthreads();
+#pragma unroll
+    for (int i=NTHREAD2-1; i>=6; i--) {
+      const int offset = 1 << i;
+      if (threadIdx.x < offset) {
+	Xmax = max(Xmax, sharedXmax[threadIdx.x + offset]);
+        sharedXmax[threadIdx.x] = make_fvec3v(Xmax);
+      }
+      __syncthreads();
+    }
+    if (threadIdx.x < WARP_SIZE) {
+      fvec3v * warpXmax = sharedXmax;
+#pragma unroll
+      for (int i=5; i>=0; i--) {
+        const int offset = 1 << i;
+	Xmax = max(Xmax, warpXmax[threadIdx.x + offset]);
+        warpXmax[threadIdx.x] = make_fvec3v(Xmax);
+      }
+    }
+    __syncthreads();
+    return Xmax;
   }
 
   static __global__
@@ -70,26 +121,20 @@ namespace {
 		   const float4 * bodyPos) {
     const int NBLOCK = NTHREAD;
     const int begin = blockIdx.x * blockDim.x + threadIdx.x;
-    float3 Xmin = {bodyPos[0].x, bodyPos[0].y, bodyPos[0].z};
-    float3 Xmax = Xmin;
+    fvec3 Xmin = make_fvec3(bodyPos[begin]);
+    fvec3 Xmax = Xmin;
     for (int i=begin; i<numBodies; i+=NBLOCK*NTHREAD) {
       if (i < numBodies) {
-	const float4 pos = bodyPos[i];
-	Xmin.x = fmin(Xmin.x, pos.x);
-	Xmin.y = fmin(Xmin.y, pos.y);
-	Xmin.z = fmin(Xmin.z, pos.z);
-	Xmax.x = fmax(Xmax.x, pos.x);
-	Xmax.y = fmax(Xmax.y, pos.y);
-	Xmax.z = fmax(Xmax.z, pos.z);
+	const fvec3 pos = make_fvec3(bodyPos[i]);
+	Xmin = min(Xmin, pos);
+	Xmax = max(Xmax, pos);
       }
     }
-    float2 range;
-    range = getMinMax(make_float2(Xmin.x, Xmax.x)); Xmin.x = range.x; Xmax.x = range.y;
-    range = getMinMax(make_float2(Xmin.y, Xmax.y)); Xmin.y = range.x; Xmax.y = range.y;
-    range = getMinMax(make_float2(Xmin.z, Xmax.z)); Xmin.z = range.x; Xmax.z = range.y;
+    Xmin = minBlock(Xmin);
+    Xmax = maxBlock(Xmax);
     if (threadIdx.x == 0) {
-      bounds[blockIdx.x         ] = Xmin;
-      bounds[blockIdx.x + NBLOCK] = Xmax;
+      bounds[blockIdx.x         ] = make_float3(Xmin[0], Xmin[1], Xmin[2]);
+      bounds[blockIdx.x + NBLOCK] = make_float3(Xmax[0], Xmax[1], Xmax[2]);
     }
     __shared__ bool lastBlock;
     __threadfence();
@@ -102,15 +147,14 @@ namespace {
     if (lastBlock) {
       Xmin = bounds[threadIdx.x];
       Xmax = bounds[threadIdx.x + NBLOCK];
-      range = getMinMax(make_float2(Xmin.x, Xmax.x)); Xmin.x = range.x; Xmax.x = range.y;
-      range = getMinMax(make_float2(Xmin.y, Xmax.y)); Xmin.y = range.x; Xmax.y = range.y;
-      range = getMinMax(make_float2(Xmin.z, Xmax.z)); Xmin.z = range.x; Xmax.z = range.y;
+      Xmin = minBlock(Xmin);
+      Xmax = maxBlock(Xmax);
       __syncthreads();
       if (threadIdx.x == 0) {
-	const float3 X = {(Xmax.x+Xmin.x)*0.5f, (Xmax.y+Xmin.y)*0.5f, (Xmax.z+Xmin.z)*0.5f};
-	const float3 R = {(Xmax.x-Xmin.x)*0.5f, (Xmax.y-Xmin.y)*0.5f, (Xmax.z-Xmin.z)*0.5f};
-	const float r = fmax(R.x, fmax(R.y, R.z)) * 1.1f;
-	const Box box = {make_fvec3(X.x, X.y, X.z), r};
+	const fvec3 X = (Xmax + Xmin) * 0.5f;
+	const fvec3 R = (Xmax - Xmin) * 0.5f;
+	const float r = max(R) * 1.1f;
+	const Box box = {X, r};
 	boxGlob = box;
 	counterGlob = 0;
       }
