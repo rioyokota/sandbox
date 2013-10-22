@@ -102,7 +102,7 @@ namespace {
       const int end = begin + cell.nbody();
       center = setCenter(begin, end);
       for (int i=begin; i<end; i++) {
-        fvec3 pos = make_fvec3(tex1Dfetch(texBody,i));
+        fvec3 pos(tex1Dfetch(texBody,i));
         Xmin = min(Xmin, pos);
         Xmax = max(Xmax, pos);
       }
@@ -120,7 +120,7 @@ namespace {
     sourceCenter[cellIdx] = center;
     cellXmin[cellIdx] = Xmin;
     cellXmax[cellIdx] = Xmax;
-    for (int i=0; i<3; i++) Multipole[3*cellIdx+i] = make_fvec4(M[4*i+0],M[4*i+1],M[4*i+2],M[4*i+3]);
+    for (int i=0; i<3; i++) Multipole[3*cellIdx+i] = fvec4(M[4*i+0],M[4*i+1],M[4*i+2],M[4*i+3]);
   }
 
   static __global__ __launch_bounds__(NTHREAD)
@@ -130,7 +130,7 @@ namespace {
     if (cellIdx >= numCells) return;
     const fvec3 Xmin = cellXmin[cellIdx];
     const fvec3 Xmax = cellXmax[cellIdx];
-    const fvec3 Xi = make_fvec3(sourceCenter[cellIdx]);
+    const fvec3 Xi(sourceCenter[cellIdx]);
     const fvec3 X = (Xmax + Xmin) * 0.5f;
     const fvec3 R = (Xmax - Xmin) * 0.5f;
     const fvec3 dX = X - Xi;
