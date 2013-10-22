@@ -163,8 +163,8 @@ class Pass {
 	      cudaVec<int2> & levelRange,
 	      cudaVec<float4> & bodyPos,
 	      cudaVec<CellData> & sourceCells,
-	      cudaVec<float4> & sourceCenter,
-	      cudaVec<float4> & Multipole) {
+	      cudaVec<fvec4> & sourceCenter,
+	      cudaVec<fvec4> & Multipole) {
     int numCells = sourceCells.size();
     int NBLOCK = (numCells-1) / NTHREAD + 1;
     bodyPos.bind(texBody);
@@ -176,17 +176,15 @@ class Pass {
       numCells = levelRange[level].y - levelRange[level].x;
       NBLOCK = (numCells - 1) / NTHREAD + 1;
       upwardPass<<<NBLOCK,NTHREAD>>>(level,levelRange.d(),sourceCells.d(),
-				     reinterpret_cast<fvec4*>(sourceCenter.d()),
-				     cellXmin.d(),cellXmax.d(),
-				     reinterpret_cast<fvec4*>(Multipole.d()));
+				     sourceCenter.d(),cellXmin.d(),cellXmax.d(),
+				     Multipole.d());
       kernelSuccess("upwardPass");
     }
     numCells = sourceCells.size();
     NBLOCK = (numCells - 1) / NTHREAD + 1;
     setMAC<<<NBLOCK,NTHREAD>>>(numCells, 1.0/theta,
-			       reinterpret_cast<fvec4*>(sourceCenter.d()),
-			       cellXmin.d(),cellXmax.d());
-    normalize<<<NBLOCK,NTHREAD>>>(numCells, reinterpret_cast<fvec4*>(Multipole.d()));
+			       sourceCenter.d(),cellXmin.d(),cellXmax.d());
+    normalize<<<NBLOCK,NTHREAD>>>(numCells, Multipole.d());
     const double dt = get_time() - t0;
     fprintf(stdout,"Upward pass          : %.7f s\n", dt);
     bodyPos.unbind(texBody);

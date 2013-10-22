@@ -440,8 +440,8 @@ class Traversal {
 		cudaVec<fvec4> & bodyAcc,
 		cudaVec<int2> & targetRange,
 		cudaVec<CellData> & sourceCells,
-		cudaVec<float4> & sourceCenter,
-		cudaVec<float4> & Multipole,
+		cudaVec<fvec4> & sourceCenter,
+		cudaVec<fvec4> & Multipole,
 		cudaVec<int2> & levelRange) {
     const int NWARP = 1 << (NTHREAD2 - WARP_SIZE2);
     const int NBLOCK = (numTargets - 1) / NTHREAD + 1;

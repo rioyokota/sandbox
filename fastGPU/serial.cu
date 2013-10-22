@@ -42,8 +42,8 @@ int main(int argc, char ** argv) {
   int numSources = counts.y;
   int numLeafs = counts.z;
   cudaVec<int2> targetRange(numBodies);
-  cudaVec<float4> sourceCenter(numSources);
-  cudaVec<float4> Multipole(3*numSources);
+  cudaVec<fvec4> sourceCenter(numSources);
+  cudaVec<fvec4> Multipole(3*numSources);
   Group group;
   int numTargets = group.targets(bodyPos, bodyPos2, box, targetRange, 5);
   Pass pass;
