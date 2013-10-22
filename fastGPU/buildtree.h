@@ -26,11 +26,10 @@ namespace {
   static __device__ __forceinline__
     Box getChild(const Box &box, const int octant) {
     const float R = 0.5f * box.R;
-    Box childBox;
-    childBox.X = make_fvec3(box.X[0] + R * (octant & 1 ? 1.0f : -1.0f),
-			    box.X[1] + R * (octant & 2 ? 1.0f : -1.0f),
-			    box.X[2] + R * (octant & 4 ? 1.0f : -1.0f));
-    childBox.R = R;
+    const fvec3 X(box.X[0] + R * (octant & 1 ? 1.0f : -1.0f),
+		  box.X[1] + R * (octant & 2 ? 1.0f : -1.0f),
+		  box.X[2] + R * (octant & 4 ? 1.0f : -1.0f));
+    Box childBox = {X, R};
     return childBox;
   }
 
@@ -167,7 +166,7 @@ namespace {
     const int childOctant = (packedOctant >> (3*blockIdx.y)) & 0x7;
     __shared__ int subOctantSizeLane[NWARP*8*8];
     __shared__ int subOctantSize[8*8];
-    Box box = {make_fvec3(box4.x,box4.y,box4.z),box4.w};
+    Box box = {fvec3(box4.x, box4.y, box4.z), box4.w};
     Box * childBox = (Box*)subOctantSize;
 
     for (int i=0; i<8*8*NWARP; i+=blockDim.x)
