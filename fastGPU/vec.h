@@ -4,7 +4,184 @@
 #define NEWTON 1
 //! Custom vector type for small vectors with template specialization for MIC, AVX, SSE intrinsics
 
-#if __CUDACC__
+#ifndef __CUDACC__
+template<int N, typename T>
+class vec {
+ private:
+  T data[N];
+ public:
+  vec(){}                                                       // Default constructor
+  vec(const T &v) {                                             // Copy constructor (scalar)
+    for (int i=0; i<N; i++) data[i] = v;
+  }
+  vec(const vec &v) {                                           // Copy constructor (vector)
+    for (int i=0; i<N; i++) data[i] = v[i];
+  }
+  ~vec(){}                                                      // Destructor
+  const vec &operator=(const T v) {                             // Scalar assignment
+    for (int i=0; i<N; i++) data[i] = v;
+    return *this;
+  }
+  const vec &operator+=(const T v) {                            // Scalar compound assignment (add)
+    for (int i=0; i<N; i++) data[i] += v;
+    return *this;
+  }
+  const vec &operator-=(const T v) {                            // Scalar compound assignment (subtract)
+    for (int i=0; i<N; i++) data[i] -= v;
+    return *this;
+  }
+  const vec &operator*=(const T v) {                            // Scalar compound assignment (multiply)
+    for (int i=0; i<N; i++) data[i] *= v;
+    return *this;
+  }
+  const vec &operator/=(const T v) {                            // Scalar compound assignment (divide)
+    for (int i=0; i<N; i++) data[i] /= v;
+    return *this;
+  }
+  const vec &operator>=(const T v) {                            // Scalar compound assignment (greater than)
+    for (int i=0; i<N; i++) data[i] >= v;
+    return *this;
+  }
+  const vec &operator<=(const T v) {                            // Scalar compound assignment (less than)
+    for (int i=0; i<N; i++) data[i] <= v;
+    return *this;
+  }
+  const vec &operator&=(const T v) {                            // Scalar compound assignment (bitwise and)
+    for (int i=0; i<N; i++) data[i] &= v;
+    return *this;
+  }
+  const vec &operator|=(const T v) {                            // Scalar compound assignment (bitwise or)
+    for (int i=0; i<N; i++) data[i] |= v;
+    return *this;
+  }
+  const vec &operator=(const vec &v) {                          // Vector assignment
+    for (int i=0; i<N; i++) data[i] = v[i];
+    return *this;
+  }
+  const vec &operator+=(const vec &v) {                         // Vector compound assignment (add)
+    for (int i=0; i<N; i++) data[i] += v[i];
+    return *this;
+  }
+  const vec &operator-=(const vec &v) {                         // Vector compound assignment (subtract)
+    for (int i=0; i<N; i++) data[i] -= v[i];
+    return *this;
+  }
+  const vec &operator*=(const vec &v) {                         // Vector compound assignment (multiply)
+    for (int i=0; i<N; i++) data[i] *= v[i];
+    return *this;
+  }
+  const vec &operator/=(const vec &v) {                         // Vector compound assignment (divide)
+    for (int i=0; i<N; i++) data[i] /= v[i];
+    return *this;
+  }
+  const vec &operator>=(const vec &v) {                         // Vector compound assignment (greater than)
+    for (int i=0; i<N; i++) data[i] >= v[i];
+    return *this;
+  }
+  const vec &operator<=(const vec &v) {                         // Vector compound assignment (less than)
+    for (int i=0; i<N; i++) data[i] <= v[i];
+    return *this;
+  }
+  const vec &operator&=(const vec &v) {                         // Vector compound assignment (bitwise and)
+    for (int i=0; i<N; i++) data[i] &= v[i];
+    return *this;
+  }
+  const vec &operator|=(const vec &v) {                         // Vector compound assignment (bitwise or)
+    for (int i=0; i<N; i++) data[i] |= v[i];
+    return *this;
+  }
+  vec operator+(const T v) const {                              // Scalar arithmetic (add)
+    return vec(*this) += v;
+  }
+  vec operator-(const T v) const {                              // Scalar arithmetic (subtract)
+    return vec(*this) -= v;
+  }
+  vec operator*(const T v) const {                              // Scalar arithmetic (multiply)
+    return vec(*this) *= v;
+  }
+  vec operator/(const T v) const {                              // Scalar arithmetic (divide)
+    return vec(*this) /= v;
+  }
+  vec operator>(const T v) const {                              // Scalar arithmetic (greater than)
+    return vec(*this) >= v;
+  }
+  vec operator<(const T v) const {                              // Scalar arithmetic (less than)
+    return vec(*this) <= v;
+  }
+  vec operator&(const T v) const {                              // Scalar arithmetic (bitwise and)
+    return vec(*this) &= v;
+  }
+  vec operator|(const T v) const {                              // Scalar arithmetic (bitwise or)
+    return vec(*this) |= v;
+  }
+  vec operator+(const vec &v) const {                           // Vector arithmetic (add)
+    return vec(*this) += v;
+  }
+  vec operator-(const vec &v) const {                           // Vector arithmetic (subtract)
+    return vec(*this) -= v;
+  }
+  vec operator*(const vec &v) const {                           // Vector arithmetic (multiply)
+    return vec(*this) *= v;
+  }
+  vec operator/(const vec &v) const {                           // Vector arithmetic (divide)
+    return vec(*this) /= v;
+  }
+  vec operator>(const vec &v) const {                           // Vector arithmetic (greater than)
+    return vec(*this) >= v;
+  }
+  vec operator<(const vec &v) const {                           // Vector arithmetic (less than)
+    return vec(*this) <= v;
+  }
+  vec operator&(const vec &v) const {                           // Vector arithmetic (bitwise and)
+    return vec(*this) &= v;
+  }
+  vec operator|(const vec &v) const {                           // Vector arithmetic (bitwise or)
+    return vec(*this) |= v;
+  }
+  vec operator-() const {                                       // Vector arithmetic (negation)
+    vec temp;
+    for (int i=0; i<N; i++) temp[i] = -data[i];
+    return temp;
+  }
+  T &operator[](int i) {                                        // Indexing (lvalue)
+    return data[i];
+  }
+  const T &operator[](int i) const {                            // Indexing (rvalue)
+    return data[i];
+  }
+  operator       T* ()       {return data;}                     // Type-casting (lvalue)
+  operator const T* () const {return data;}                     // Type-casting (rvalue)
+  friend std::ostream &operator<<(std::ostream &s, const vec &v) {// Component-wise output stream
+    for (int i=0; i<N; i++) s << v[i] << ' ';
+    return s;
+  }
+  friend T sum(const vec &v) {                                  // Sum vector
+    T temp = 0;
+    for (int i=0; i<N; i++) temp += v[i];
+    return temp;
+  }
+  friend T norm(const vec &v) {                                 // L2 norm squared
+    T temp = 0;
+    for (int i=0; i<N; i++) temp += v[i] * v[i];
+    return temp;
+  }
+  friend vec min(const vec &v, const vec &w) {                  // Element-wise minimum
+    vec temp;
+    for (int i=0; i<N; i++) temp[i] = v[i] < w[i] ? v[i] : w[i];
+    return temp;
+  }
+  friend vec max(const vec &v, const vec &w) {                  // Element-wise maximum
+    vec temp;
+    for (int i=0; i<N; i++) temp[i] = v[i] > w[i] ? v[i] : w[i];
+    return temp;
+  }
+  friend vec rsqrt(const vec &v) {                              // Reciprocal square root
+    vec temp;
+    for (int i=0; i<N; i++) temp[i] = 1. / std::sqrt(v[i]);
+    return temp;
+  }
+};
+#else
 #include "unroll.h"
 template<int N, typename T>
 class vec {
@@ -28,7 +205,6 @@ class vec {
     data[2] = v.z;
     data[3] = v.w;
   }
-  /*
   __host__ __device__ __forceinline__
   vec(const float x, const float y, const float z, const float w) {// Copy constructor (4 floats)
     data[0] = x;
@@ -36,7 +212,6 @@ class vec {
     data[2] = z;
     data[3] = w;
   }
-  */
   __host__ __device__ __forceinline__
   vec(const float x, const float y, const float z) {            // Copy constructor (3 floats)
     data[0] = x;
@@ -264,183 +439,6 @@ class vec {
   friend vec rsqrt(const vec &v) {                              // Reciprocal square root
     vec temp;
     Unroll<Ops::Rsqrt<T>,T,N>::loop(temp,v);
-    return temp;
-  }
-};
-#else
-template<int N, typename T>
-class vec {
- private:
-  T data[N];
- public:
-  vec(){}                                                       // Default constructor
-  vec(const T &v) {                                             // Copy constructor (scalar)
-    for (int i=0; i<N; i++) data[i] = v;
-  }
-  vec(const vec &v) {                                           // Copy constructor (vector)
-    for (int i=0; i<N; i++) data[i] = v[i];
-  }
-  ~vec(){}                                                      // Destructor
-  const vec &operator=(const T v) {                             // Scalar assignment
-    for (int i=0; i<N; i++) data[i] = v;
-    return *this;
-  }
-  const vec &operator+=(const T v) {                            // Scalar compound assignment (add)
-    for (int i=0; i<N; i++) data[i] += v;
-    return *this;
-  }
-  const vec &operator-=(const T v) {                            // Scalar compound assignment (subtract)
-    for (int i=0; i<N; i++) data[i] -= v;
-    return *this;
-  }
-  const vec &operator*=(const T v) {                            // Scalar compound assignment (multiply)
-    for (int i=0; i<N; i++) data[i] *= v;
-    return *this;
-  }
-  const vec &operator/=(const T v) {                            // Scalar compound assignment (divide)
-    for (int i=0; i<N; i++) data[i] /= v;
-    return *this;
-  }
-  const vec &operator>=(const T v) {                            // Scalar compound assignment (greater than)
-    for (int i=0; i<N; i++) data[i] >= v;
-    return *this;
-  }
-  const vec &operator<=(const T v) {                            // Scalar compound assignment (less than)
-    for (int i=0; i<N; i++) data[i] <= v;
-    return *this;
-  }
-  const vec &operator&=(const T v) {                            // Scalar compound assignment (bitwise and)
-    for (int i=0; i<N; i++) data[i] &= v;
-    return *this;
-  }
-  const vec &operator|=(const T v) {                            // Scalar compound assignment (bitwise or)
-    for (int i=0; i<N; i++) data[i] |= v;
-    return *this;
-  }
-  const vec &operator=(const vec &v) {                          // Vector assignment
-    for (int i=0; i<N; i++) data[i] = v[i];
-    return *this;
-  }
-  const vec &operator+=(const vec &v) {                         // Vector compound assignment (add)
-    for (int i=0; i<N; i++) data[i] += v[i];
-    return *this;
-  }
-  const vec &operator-=(const vec &v) {                         // Vector compound assignment (subtract)
-    for (int i=0; i<N; i++) data[i] -= v[i];
-    return *this;
-  }
-  const vec &operator*=(const vec &v) {                         // Vector compound assignment (multiply)
-    for (int i=0; i<N; i++) data[i] *= v[i];
-    return *this;
-  }
-  const vec &operator/=(const vec &v) {                         // Vector compound assignment (divide)
-    for (int i=0; i<N; i++) data[i] /= v[i];
-    return *this;
-  }
-  const vec &operator>=(const vec &v) {                         // Vector compound assignment (greater than)
-    for (int i=0; i<N; i++) data[i] >= v[i];
-    return *this;
-  }
-  const vec &operator<=(const vec &v) {                         // Vector compound assignment (less than)
-    for (int i=0; i<N; i++) data[i] <= v[i];
-    return *this;
-  }
-  const vec &operator&=(const vec &v) {                         // Vector compound assignment (bitwise and)
-    for (int i=0; i<N; i++) data[i] &= v[i];
-    return *this;
-  }
-  const vec &operator|=(const vec &v) {                         // Vector compound assignment (bitwise or)
-    for (int i=0; i<N; i++) data[i] |= v[i];
-    return *this;
-  }
-  vec operator+(const T v) const {                              // Scalar arithmetic (add)
-    return vec(*this) += v;
-  }
-  vec operator-(const T v) const {                              // Scalar arithmetic (subtract)
-    return vec(*this) -= v;
-  }
-  vec operator*(const T v) const {                              // Scalar arithmetic (multiply)
-    return vec(*this) *= v;
-  }
-  vec operator/(const T v) const {                              // Scalar arithmetic (divide)
-    return vec(*this) /= v;
-  }
-  vec operator>(const T v) const {                              // Scalar arithmetic (greater than)
-    return vec(*this) >= v;
-  }
-  vec operator<(const T v) const {                              // Scalar arithmetic (less than)
-    return vec(*this) <= v;
-  }
-  vec operator&(const T v) const {                              // Scalar arithmetic (bitwise and)
-    return vec(*this) &= v;
-  }
-  vec operator|(const T v) const {                              // Scalar arithmetic (bitwise or)
-    return vec(*this) |= v;
-  }
-  vec operator+(const vec &v) const {                           // Vector arithmetic (add)
-    return vec(*this) += v;
-  }
-  vec operator-(const vec &v) const {                           // Vector arithmetic (subtract)
-    return vec(*this) -= v;
-  }
-  vec operator*(const vec &v) const {                           // Vector arithmetic (multiply)
-    return vec(*this) *= v;
-  }
-  vec operator/(const vec &v) const {                           // Vector arithmetic (divide)
-    return vec(*this) /= v;
-  }
-  vec operator>(const vec &v) const {                           // Vector arithmetic (greater than)
-    return vec(*this) >= v;
-  }
-  vec operator<(const vec &v) const {                           // Vector arithmetic (less than)
-    return vec(*this) <= v;
-  }
-  vec operator&(const vec &v) const {                           // Vector arithmetic (bitwise and)
-    return vec(*this) &= v;
-  }
-  vec operator|(const vec &v) const {                           // Vector arithmetic (bitwise or)
-    return vec(*this) |= v;
-  }
-  vec operator-() const {                                       // Vector arithmetic (negation)
-    vec temp;
-    for (int i=0; i<N; i++) temp[i] = -data[i];
-    return temp;
-  }
-  T &operator[](int i) {                                        // Indexing (lvalue)
-    return data[i];
-  }
-  const T &operator[](int i) const {                            // Indexing (rvalue)
-    return data[i];
-  }
-  operator       T* ()       {return data;}                     // Type-casting (lvalue)
-  operator const T* () const {return data;}                     // Type-casting (rvalue)
-  friend std::ostream &operator<<(std::ostream &s, const vec &v) {// Component-wise output stream
-    for (int i=0; i<N; i++) s << v[i] << ' ';
-    return s;
-  }
-  friend T sum(const vec &v) {                                  // Sum vector
-    T temp = 0;
-    for (int i=0; i<N; i++) temp += v[i];
-    return temp;
-  }
-  friend T norm(const vec &v) {                                 // L2 norm squared
-    T temp = 0;
-    for (int i=0; i<N; i++) temp += v[i] * v[i];
-    return temp;
-  }
-  friend vec min(const vec &v, const vec &w) {                  // Element-wise minimum
-    vec temp;
-    for (int i=0; i<N; i++) temp[i] = v[i] < w[i] ? v[i] : w[i];
-    return temp;
-  }
-  friend vec max(const vec &v, const vec &w) {                  // Element-wise maximum
-    vec temp;
-    for (int i=0; i<N; i++) temp[i] = v[i] > w[i] ? v[i] : w[i];
-    return temp;
-  }
-  friend vec rsqrt(const vec &v) {                              // Reciprocal square root
-    vec temp;
-    for (int i=0; i<N; i++) temp[i] = 1. / std::sqrt(v[i]);
     return temp;
   }
 };
