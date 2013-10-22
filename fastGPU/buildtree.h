@@ -3,33 +3,6 @@
 
 extern void sort(const int size, int * key, int * value);
 
-typedef vec<3, volatile float> fvec3v;
-
-__host__ __device__
-static fvec3v make_fvec3v(fvec3 v) {
-  fvec3v data;
-  data[0] = v[0];
-  data[1] = v[1];
-  data[2] = v[2];
-  return data;
-}
-
-__host__ __device__
-static fvec3 min(fvec3 data, fvec3v v) {
-  data[0] = min(data[0], v[0]);
-  data[1] = min(data[1], v[1]);
-  data[2] = min(data[2], v[2]);
-  return data;
-}
-
-__host__ __device__
-static fvec3 max(fvec3 data, fvec3v v) {
-  data[0] = max(data[0], v[0]);
-  data[1] = max(data[1], v[1]);
-  data[2] = max(data[2], v[2]);
-  return data;
-}
-
 namespace {
   __constant__ int maxNodesGlob;
   __device__ Box boxGlob;
@@ -63,25 +36,28 @@ namespace {
 
   static __device__
     fvec3 minBlock(fvec3 Xmin) {
-    __shared__ fvec3v sharedXmin[NTHREAD];
-    sharedXmin[threadIdx.x] = make_fvec3v(Xmin);
+    const int laneIdx = threadIdx.x & (WARP_SIZE-1);
+    __shared__ fvec3 sharedXmin[NTHREAD];
+    sharedXmin[threadIdx.x] = Xmin;
     __syncthreads();
 #pragma unroll
-    for (int i=NTHREAD2-1; i>=6; i--) {
+    for (int i=NTHREAD2-1; i>=0; i--) {
       const int offset = 1 << i;
       if (threadIdx.x < offset) {
 	Xmin = min(Xmin, sharedXmin[threadIdx.x + offset]);
-	sharedXmin[threadIdx.x] = make_fvec3v(Xmin);
+	sharedXmin[threadIdx.x] = Xmin;
       }
       __syncthreads();
     }
     if (threadIdx.x < WARP_SIZE) {
-      fvec3v * warpXmin = sharedXmin;
 #pragma unroll
-      for (int i=5; i>=0; i--) {
+      for (int i=WARP_SIZE2; i>=0; i--) {
 	const int offset = 1 << i;
-	Xmin = min(Xmin, warpXmin[threadIdx.x + offset]);
-	warpXmin[threadIdx.x] = make_fvec3v(Xmin);
+	if (laneIdx < offset) {
+  	  Xmin[0] = min(Xmin[0], __shfl_xor(Xmin[0], offset));
+	  Xmin[1] = min(Xmin[1], __shfl_xor(Xmin[1], offset));
+	  Xmin[2] = min(Xmin[2], __shfl_xor(Xmin[2], offset));
+	}
       }
     }
     __syncthreads();
@@ -90,25 +66,28 @@ namespace {
 
   static __device__
     fvec3 maxBlock(fvec3 Xmax) {
-    __shared__ fvec3v sharedXmax[NTHREAD];
-    sharedXmax[threadIdx.x] = make_fvec3v(Xmax);
+    const int laneIdx = threadIdx.x & (WARP_SIZE-1);
+    __shared__ fvec3 sharedXmax[NTHREAD];
+    sharedXmax[threadIdx.x] = Xmax;
     __syncthreads();
 #pragma unroll
-    for (int i=NTHREAD2-1; i>=6; i--) {
+    for (int i=NTHREAD2-1; i>=0; i--) {
       const int offset = 1 << i;
       if (threadIdx.x < offset) {
 	Xmax = max(Xmax, sharedXmax[threadIdx.x + offset]);
-        sharedXmax[threadIdx.x] = make_fvec3v(Xmax);
+        sharedXmax[threadIdx.x] = Xmax;
       }
       __syncthreads();
     }
     if (threadIdx.x < WARP_SIZE) {
-      fvec3v * warpXmax = sharedXmax;
 #pragma unroll
-      for (int i=5; i>=0; i--) {
+      for (int i=WARP_SIZE2; i>=0; i--) {
         const int offset = 1 << i;
-	Xmax = max(Xmax, warpXmax[threadIdx.x + offset]);
-        warpXmax[threadIdx.x] = make_fvec3v(Xmax);
+	if (laneIdx < offset) {
+	  Xmax[0] = max(Xmax[0], __shfl_xor(Xmax[0], offset));
+	  Xmax[1] = max(Xmax[1], __shfl_xor(Xmax[1], offset));
+	  Xmax[2] = max(Xmax[2], __shfl_xor(Xmax[2], offset));
+	}
       }
     }
     __syncthreads();
@@ -124,11 +103,9 @@ namespace {
     fvec3 Xmin = make_fvec3(bodyPos[begin]);
     fvec3 Xmax = Xmin;
     for (int i=begin; i<numBodies; i+=NBLOCK*NTHREAD) {
-      if (i < numBodies) {
-	const fvec3 pos = make_fvec3(bodyPos[i]);
-	Xmin = min(Xmin, pos);
-	Xmax = max(Xmax, pos);
-      }
+      const fvec3 pos = make_fvec3(bodyPos[i]);
+      Xmin = min(Xmin, pos);
+      Xmax = max(Xmax, pos);
     }
     Xmin = minBlock(Xmin);
     Xmax = maxBlock(Xmax);
