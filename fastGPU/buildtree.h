@@ -37,60 +37,60 @@ namespace {
   static __device__
     fvec3 minBlock(fvec3 Xmin) {
     const int laneIdx = threadIdx.x & (WARP_SIZE-1);
-    __shared__ fvec3 sharedXmin[NTHREAD];
-    sharedXmin[threadIdx.x] = Xmin;
-    __syncthreads();
+    const int warpIdx = threadIdx.x >> WARP_SIZE2;
 #pragma unroll
-    for (int i=NTHREAD2-1; i>=0; i--) {
+    for (int i=0; i<WARP_SIZE2; i++) {
       const int offset = 1 << i;
-      if (threadIdx.x < offset) {
-	Xmin = min(Xmin, sharedXmin[threadIdx.x + offset]);
-	sharedXmin[threadIdx.x] = Xmin;
-      }
-      __syncthreads();
+      Xmin[0] = min(Xmin[0], __shfl_xor(Xmin[0], offset));
+      Xmin[1] = min(Xmin[1], __shfl_xor(Xmin[1], offset));
+      Xmin[2] = min(Xmin[2], __shfl_xor(Xmin[2], offset));
     }
-    if (threadIdx.x < WARP_SIZE) {
-#pragma unroll
-      for (int i=WARP_SIZE2; i>=0; i--) {
-	const int offset = 1 << i;
-	if (laneIdx < offset) {
-  	  Xmin[0] = min(Xmin[0], __shfl_xor(Xmin[0], offset));
-	  Xmin[1] = min(Xmin[1], __shfl_xor(Xmin[1], offset));
-	  Xmin[2] = min(Xmin[2], __shfl_xor(Xmin[2], offset));
-	}
-      }
-    }
+    const int NWARP2 = NTHREAD2 - WARP_SIZE2;
+    const int NWARP = 1 << NWARP2;
+    __shared__ float3 shared[NWARP];
+    fvec3 * sharedXmin = reinterpret_cast<fvec3*>(shared);
+    if (laneIdx == 0) sharedXmin[warpIdx] = Xmin;
     __syncthreads();
+    if (threadIdx.x < NWARP) {
+      Xmin = sharedXmin[threadIdx.x];
+#pragma unroll
+      for (int i=0; i<NWARP2; i++) {
+	const int offset = 1 << i;
+	Xmin[0] = min(Xmin[0], __shfl_xor(Xmin[0], offset));
+	Xmin[1] = min(Xmin[1], __shfl_xor(Xmin[1], offset));
+	Xmin[2] = min(Xmin[2], __shfl_xor(Xmin[2], offset));
+      }
+    }
     return Xmin;
   }
 
   static __device__
     fvec3 maxBlock(fvec3 Xmax) {
     const int laneIdx = threadIdx.x & (WARP_SIZE-1);
-    __shared__ fvec3 sharedXmax[NTHREAD];
-    sharedXmax[threadIdx.x] = Xmax;
-    __syncthreads();
+    const int warpIdx = threadIdx.x >> WARP_SIZE2;
 #pragma unroll
-    for (int i=NTHREAD2-1; i>=0; i--) {
+    for (int i=0; i<WARP_SIZE2; i++) {
       const int offset = 1 << i;
-      if (threadIdx.x < offset) {
-	Xmax = max(Xmax, sharedXmax[threadIdx.x + offset]);
-        sharedXmax[threadIdx.x] = Xmax;
-      }
-      __syncthreads();
+      Xmax[0] = max(Xmax[0], __shfl_xor(Xmax[0], offset));
+      Xmax[1] = max(Xmax[1], __shfl_xor(Xmax[1], offset));
+      Xmax[2] = max(Xmax[2], __shfl_xor(Xmax[2], offset));
     }
-    if (threadIdx.x < WARP_SIZE) {
-#pragma unroll
-      for (int i=WARP_SIZE2; i>=0; i--) {
-        const int offset = 1 << i;
-	if (laneIdx < offset) {
-	  Xmax[0] = max(Xmax[0], __shfl_xor(Xmax[0], offset));
-	  Xmax[1] = max(Xmax[1], __shfl_xor(Xmax[1], offset));
-	  Xmax[2] = max(Xmax[2], __shfl_xor(Xmax[2], offset));
-	}
-      }
-    }
+    const int NWARP2 = NTHREAD2 - WARP_SIZE2;
+    const int NWARP = 1 << NWARP2;
+    __shared__ float3 shared[NWARP];
+    fvec3 * sharedXmax = reinterpret_cast<fvec3*>(shared);
+    if (laneIdx == 0) sharedXmax[warpIdx] = Xmax;
     __syncthreads();
+    if (threadIdx.x < NWARP) {
+      Xmax = sharedXmax[threadIdx.x];
+#pragma unroll
+      for (int i=0; i<NWARP2; i++) {
+	const int offset = 1 << i;
+	Xmax[0] = max(Xmax[0], __shfl_xor(Xmax[0], offset));
+	Xmax[1] = max(Xmax[1], __shfl_xor(Xmax[1], offset));
+	Xmax[2] = max(Xmax[2], __shfl_xor(Xmax[2], offset));
+      }
+    }
     return Xmax;
   }
 
