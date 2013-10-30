@@ -6,7 +6,7 @@
 
 #ifndef __CUDACC__
 template<int N, typename T>
-class vec {
+  class vec {
  private:
   T data[N];
  public:
@@ -184,241 +184,241 @@ class vec {
 #else
 #include "unroll.h"
 template<int N, typename T>
-class vec {
+  class vec {
  private:
   T data[N];
  public:
   __host__ __device__ __forceinline__
-  vec(){}                                                       // Default constructor
+    vec(){}                                                       // Default constructor
   __host__ __device__ __forceinline__
-  vec(const T &v) {                                             // Copy constructor (scalar)
+    vec(const T &v) {                                             // Copy constructor (scalar)
     Unroll<Ops::Assign<T>,T,N>::loop(data,v);
   }
   __host__ __device__ __forceinline__
-  vec(const vec &v) {                                           // Copy constructor (vector)
+    vec(const vec &v) {                                           // Copy constructor (vector)
     Unroll<Ops::Assign<T>,T,N>::loop(data,v);
   }
   __host__ __device__ __forceinline__
-  vec(const float4 &v) {                                        // Copy constructor (float4)
+    vec(const float4 &v) {                                        // Copy constructor (float4)
     data[0] = v.x;
     data[1] = v.y;
     data[2] = v.z;
     data[3] = v.w;
   }
   __host__ __device__ __forceinline__
-  vec(const float x, const float y, const float z, const float w) {// Copy constructor (4 floats)
+    vec(const float x, const float y, const float z, const float w) {// Copy constructor (4 floats)
     data[0] = x;
     data[1] = y;
     data[2] = z;
     data[3] = w;
   }
   __host__ __device__ __forceinline__
-  vec(const float x, const float y, const float z) {            // Copy constructor (3 floats)
+    vec(const float x, const float y, const float z) {            // Copy constructor (3 floats)
     data[0] = x;
     data[1] = y;
     data[2] = z;
   }
   __host__ __device__ __forceinline__
-  ~vec(){}                                                      // Destructor
+    ~vec(){}                                                      // Destructor
   __host__ __device__ __forceinline__
-  const vec &operator=(const T v) {                             // Scalar assignment
+    const vec &operator=(const T v) {                             // Scalar assignment
     Unroll<Ops::Assign<T>,T,N>::loop(data,v);
     return *this;
   }
   __host__ __device__ __forceinline__
-  const vec &operator+=(const T v) {                            // Scalar compound assignment (add)
+    const vec &operator+=(const T v) {                            // Scalar compound assignment (add)
     Unroll<Ops::Add<T>,T,N>::loop(data,v);
     return *this;
   }
   __host__ __device__ __forceinline__
-  const vec &operator-=(const T v) {                            // Scalar compound assignment (subtract)
+    const vec &operator-=(const T v) {                            // Scalar compound assignment (subtract)
     Unroll<Ops::Sub<T>,T,N>::loop(data,v);
     return *this;
   }
   __host__ __device__ __forceinline__
-  const vec &operator*=(const T v) {                            // Scalar compound assignment (multiply)
+    const vec &operator*=(const T v) {                            // Scalar compound assignment (multiply)
     Unroll<Ops::Mul<T>,T,N>::loop(data,v);
     return *this;
   }
   __host__ __device__ __forceinline__
-  const vec &operator/=(const T v) {                            // Scalar compound assignment (divide)
+    const vec &operator/=(const T v) {                            // Scalar compound assignment (divide)
     Unroll<Ops::Div<T>,T,N>::loop(data,v);
     return *this;
   }
   __host__ __device__ __forceinline__
-  const vec &operator>=(const T v) {                            // Scalar compound assignment (greater than)
+    const vec &operator>=(const T v) {                            // Scalar compound assignment (greater than)
     Unroll<Ops::Gt<T>,T,N>::loop(data,v);
     return *this;
   }
   __host__ __device__ __forceinline__
-  const vec &operator<=(const T v) {                            // Scalar compound assignment (less than)
+    const vec &operator<=(const T v) {                            // Scalar compound assignment (less than)
     Unroll<Ops::Lt<T>,T,N>::loop(data,v);
     return *this;
   }
   __host__ __device__ __forceinline__
-  const vec &operator&=(const T v) {                            // Scalar compound assignment (bitwise and)
+    const vec &operator&=(const T v) {                            // Scalar compound assignment (bitwise and)
     Unroll<Ops::And<T>,T,N>::loop(data,v);
     return *this;
   }
   __host__ __device__ __forceinline__
-  const vec &operator|=(const T v) {                            // Scalar compound assignment (bitwise or)
+    const vec &operator|=(const T v) {                            // Scalar compound assignment (bitwise or)
     Unroll<Ops::Or<T>,T,N>::loop(data,v);
     return *this;
   }
   __host__ __device__ __forceinline__
-  const vec &operator=(const vec &v) {                          // Vector assignment
+    const vec &operator=(const vec &v) {                          // Vector assignment
     Unroll<Ops::Assign<T>,T,N>::loop(data,v);
     return *this;
   }
   __host__ __device__ __forceinline__
-  const vec &operator+=(const vec &v) {                         // Vector compound assignment (add)
+    const vec &operator+=(const vec &v) {                         // Vector compound assignment (add)
     Unroll<Ops::Add<T>,T,N>::loop(data,v);
     return *this;
   }
   __host__ __device__ __forceinline__
-  const vec &operator-=(const vec &v) {                         // Vector compound assignment (subtract)
+    const vec &operator-=(const vec &v) {                         // Vector compound assignment (subtract)
     Unroll<Ops::Sub<T>,T,N>::loop(data,v);
     return *this;
   }
   __host__ __device__ __forceinline__
-  const vec &operator*=(const vec &v) {                         // Vector compound assignment (multiply)
+    const vec &operator*=(const vec &v) {                         // Vector compound assignment (multiply)
     Unroll<Ops::Mul<T>,T,N>::loop(data,v);
     return *this;
   }
   __host__ __device__ __forceinline__
-  const vec &operator/=(const vec &v) {                         // Vector compound assignment (divide)
+    const vec &operator/=(const vec &v) {                         // Vector compound assignment (divide)
     Unroll<Ops::Div<T>,T,N>::loop(data,v);
     return *this;
   }
   __host__ __device__ __forceinline__
-  const vec &operator>=(const vec &v) {                         // Vector compound assignment (greater than)
+    const vec &operator>=(const vec &v) {                         // Vector compound assignment (greater than)
     Unroll<Ops::Gt<T>,T,N>::loop(data,v);
     return *this;
   }
   __host__ __device__ __forceinline__
-  const vec &operator<=(const vec &v) {                         // Vector compound assignment (less than)
+    const vec &operator<=(const vec &v) {                         // Vector compound assignment (less than)
     Unroll<Ops::Lt<T>,T,N>::loop(data,v);
     return *this;
   }
   __host__ __device__ __forceinline__
-  const vec &operator&=(const vec &v) {                         // Vector compound assignment (bitwise and)
+    const vec &operator&=(const vec &v) {                         // Vector compound assignment (bitwise and)
     Unroll<Ops::And<T>,T,N>::loop(data,v);
     return *this;
   }
   __host__ __device__ __forceinline__
-  const vec &operator|=(const vec &v) {                         // Vector compound assignment (bitwise or)
+    const vec &operator|=(const vec &v) {                         // Vector compound assignment (bitwise or)
     Unroll<Ops::Or<T>,T,N>::loop(data,v);
     return *this;
   }
   __host__ __device__ __forceinline__
-  vec operator+(const T v) const {                              // Scalar arithmetic (add)
+    vec operator+(const T v) const {                              // Scalar arithmetic (add)
     return vec(*this) += v;
   }
   __host__ __device__ __forceinline__
-  vec operator-(const T v) const {                              // Scalar arithmetic (subtract)
+    vec operator-(const T v) const {                              // Scalar arithmetic (subtract)
     return vec(*this) -= v;
   }
   __host__ __device__ __forceinline__
-  vec operator*(const T v) const {                              // Scalar arithmetic (multiply)
+    vec operator*(const T v) const {                              // Scalar arithmetic (multiply)
     return vec(*this) *= v;
   }
   __host__ __device__ __forceinline__
-  vec operator/(const T v) const {                              // Scalar arithmetic (divide)
+    vec operator/(const T v) const {                              // Scalar arithmetic (divide)
     return vec(*this) /= v;
   }
   __host__ __device__ __forceinline__
-  vec operator>(const T v) const {                              // Scalar arithmetic (greater than)
+    vec operator>(const T v) const {                              // Scalar arithmetic (greater than)
     return vec(*this) >= v;
   }
   __host__ __device__ __forceinline__
-  vec operator<(const T v) const {                              // Scalar arithmetic (less than)
+    vec operator<(const T v) const {                              // Scalar arithmetic (less than)
     return vec(*this) <= v;
   }
   __host__ __device__ __forceinline__
-  vec operator&(const T v) const {                              // Scalar arithmetic (bitwise and)
+    vec operator&(const T v) const {                              // Scalar arithmetic (bitwise and)
     return vec(*this) &= v;
   }
   __host__ __device__ __forceinline__
-  vec operator|(const T v) const {                              // Scalar arithmetic (bitwise or)
+    vec operator|(const T v) const {                              // Scalar arithmetic (bitwise or)
     return vec(*this) |= v;
   }
   __host__ __device__ __forceinline__
-  vec operator+(const vec &v) const {                           // Vector arithmetic (add)
+    vec operator+(const vec &v) const {                           // Vector arithmetic (add)
     return vec(*this) += v;
   }
   __host__ __device__ __forceinline__
-  vec operator-(const vec &v) const {                           // Vector arithmetic (subtract)
+    vec operator-(const vec &v) const {                           // Vector arithmetic (subtract)
     return vec(*this) -= v;
   }
   __host__ __device__ __forceinline__
-  vec operator*(const vec &v) const {                           // Vector arithmetic (multiply)
+    vec operator*(const vec &v) const {                           // Vector arithmetic (multiply)
     return vec(*this) *= v;
   }
   __host__ __device__ __forceinline__
-  vec operator/(const vec &v) const {                           // Vector arithmetic (divide)
+    vec operator/(const vec &v) const {                           // Vector arithmetic (divide)
     return vec(*this) /= v;
   }
   __host__ __device__ __forceinline__
-  vec operator>(const vec &v) const {                           // Vector arithmetic (greater than)
+    vec operator>(const vec &v) const {                           // Vector arithmetic (greater than)
     return vec(*this) >= v;
   }
   __host__ __device__ __forceinline__
-  vec operator<(const vec &v) const {                           // Vector arithmetic (less than)
+    vec operator<(const vec &v) const {                           // Vector arithmetic (less than)
     return vec(*this) <= v;
   }
   __host__ __device__ __forceinline__
-  vec operator&(const vec &v) const {                           // Vector arithmetic (bitwise and)
+    vec operator&(const vec &v) const {                           // Vector arithmetic (bitwise and)
     return vec(*this) &= v;
   }
   __host__ __device__ __forceinline__
-  vec operator|(const vec &v) const {                           // Vector arithmetic (bitwise or)
+    vec operator|(const vec &v) const {                           // Vector arithmetic (bitwise or)
     return vec(*this) |= v;
   }
   __host__ __device__ __forceinline__
-  vec operator-() const {                                       // Vector arithmetic (negation)
+    vec operator-() const {                                       // Vector arithmetic (negation)
     vec temp;
     Unroll<Ops::Negate<T>,T,N>::loop(temp,data);
     return temp;
   }
   __host__ __device__ __forceinline__
-  T &operator[](int i) {                                        // Indexing (lvalue)
+    T &operator[](int i) {                                        // Indexing (lvalue)
     return data[i];
   }
   __host__ __device__ __forceinline__
-  const T &operator[](int i) const {                            // Indexing (rvalue)
+    const T &operator[](int i) const {                            // Indexing (rvalue)
     return data[i];
   }
   __host__ __device__ __forceinline__
-  operator       T* ()       {return data;}                     // Type-casting (lvalue)
+    operator       T* ()       {return data;}                     // Type-casting (lvalue)
   __host__ __device__ __forceinline__
-  operator const T* () const {return data;}                     // Type-casting (rvalue)
+    operator const T* () const {return data;}                     // Type-casting (rvalue)
   __host__ __device__ __forceinline__
-  friend std::ostream &operator<<(std::ostream &s, const vec &v) {// Component-wise output stream
+    friend std::ostream &operator<<(std::ostream &s, const vec &v) {// Component-wise output stream
     for (int i=0; i<N; i++) s << v[i] << ' ';
     return s;
   }
   __host__ __device__ __forceinline__
-  friend T sum(const vec &v) {                                  // Sum vector
+    friend T sum(const vec &v) {                                  // Sum vector
     return Unroll<Ops::Add<T>,T,N>::reduce(v);
   }
   __host__ __device__ __forceinline__
-  friend T norm(const vec &v) {                                 // L2 norm squared
+    friend T norm(const vec &v) {                                 // L2 norm squared
     return sum(v * v);
   }
   __host__ __device__ __forceinline__
-  friend vec min(const vec &v, const vec &w) {                  // Element-wise minimum
+    friend vec min(const vec &v, const vec &w) {                  // Element-wise minimum
     vec temp;
     for (int i=0; i<N; i++) temp[i] = v[i] < w[i] ? v[i] : w[i];
     return temp;
   }
   __host__ __device__ __forceinline__
-  friend vec max(const vec &v, const vec &w) {                  // Element-wise maximum
+    friend vec max(const vec &v, const vec &w) {                  // Element-wise maximum
     vec temp;
     for (int i=0; i<N; i++) temp[i] = v[i] > w[i] ? v[i] : w[i];
     return temp;
   }
   __host__ __device__ __forceinline__
-  friend T min(const vec &v) {                                  // Reduce minimum
+    friend T min(const vec &v) {                                  // Reduce minimum
     T temp;
     for (int i=0; i<N; i++) temp = temp < v[i] ? temp : v[i];
     return temp;
@@ -430,13 +430,13 @@ class vec {
     return temp;
   }
   __device__ __forceinline__
-  friend vec abs(const vec &v) {                                // Absolute value
+    friend vec abs(const vec &v) {                                // Absolute value
     vec temp;
     Unroll<Ops::Abs<T>,T,N>::loop(temp,v);
     return temp;
   }
   __device__ __forceinline__
-  friend vec rsqrt(const vec &v) {                              // Reciprocal square root
+    friend vec rsqrt(const vec &v) {                              // Reciprocal square root
     vec temp;
     Unroll<Ops::Rsqrt<T>,T,N>::loop(temp,v);
     return temp;
@@ -553,9 +553,9 @@ class vec<16,float> {
 
 template<>
 class vec<8,double> {
-private:
+ private:
   __m512d data;
-public:
+ public:
   vec(){}                                                       // Default constructor
   vec(const double v) {                                         // Copy constructor scalar
     data = _mm512_set1_pd(v);

@@ -9,7 +9,8 @@ class Dataset {
   std::vector<kvec4> pos;
  Dataset(unsigned long n,
 	 const char *filename = "plummer.dat") : pos(n) {
-    std::fstream file(filename);
+    std::fstream file;
+    file.open(filename,std::ios::in);
     if (!file.fail()) {
       unsigned long ntmp;
       file.read((char *)&ntmp, sizeof(unsigned long));
@@ -18,6 +19,7 @@ class Dataset {
 	return;
       }
     }
+    file.close();
     unsigned long i = 0;
     while (i < n) {
       float X1 = drand48();
@@ -59,10 +61,9 @@ class Dataset {
       pos[i][2] -= com[2];
     }
     printf("\n");
-    if(!file.fail()){
-      unsigned long ntmp = n;
-      file.write((char *)&ntmp, sizeof(unsigned long));
-      file.write((char *)&pos[0], n*sizeof(double4));
-    }
+    file.open(filename,std::ios::out);
+    file.write((char *)&n, sizeof(unsigned long));
+    file.write((char *)&pos[0], n*sizeof(double4));
+    file.close();
   }
 };

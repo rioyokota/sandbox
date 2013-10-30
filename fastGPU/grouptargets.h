@@ -8,7 +8,7 @@ extern void scan(const int size, unsigned long long * key, int * value);
 namespace {
   __device__ unsigned int numTargetGlob= 0;
 
-  static __device__
+  __device__
     unsigned long long getHilbert(int3 iX) {
     const int octantMap[8] = {0, 1, 7, 6, 3, 2, 4, 5};
     int mask = 1 << (NBITS - 1);
@@ -45,7 +45,7 @@ namespace {
     return key;
   }
 
-  static __global__
+  __global__
     void getKeys(const int numBodies,
 		 const Box box,
 		 const fvec4 * bodyPos,
@@ -61,7 +61,7 @@ namespace {
     values[bodyIdx] = bodyIdx;
   }
 
-  static __global__
+  __global__
     void permuteBodies(const int numBodies,
 		       const int * value,
 		       const fvec4 * bodyPos,
@@ -71,7 +71,7 @@ namespace {
     bodyPos2[bodyIdx] = bodyPos[value[bodyIdx]];
   }
 
-  static __global__
+  __global__
     void maskKeys(const int numBodies,
 		  const unsigned long long mask,
 		  unsigned long long * keys,
@@ -96,7 +96,7 @@ namespace {
       bodyEnd[numBodies-1-bodyIdx] = 0;
   }
 
-  static __global__
+  __global__
     void getTargetRange(const int numBodies,
 			const int * bodyBeginGlob,
 			const int * bodyEndGlob,

@@ -18,12 +18,12 @@ namespace {
   __device__ int2 * bodyRangePool;
   __device__ CellData * sourceCells;
 
-  static __device__ __forceinline__
+  __device__ __forceinline__
     int getOctant(const Box &box, const fvec4 &body) {
     return ((box.X[0] <= body[0]) << 0) + ((box.X[1] <= body[1]) << 1) + ((box.X[2] <= body[2]) << 2);
   }
 
-  static __device__ __forceinline__
+  __device__ __forceinline__
     Box getChild(const Box &box, const int octant) {
     const float R = 0.5f * box.R;
     const fvec3 X(box.X[0] + R * (octant & 1 ? 1.0f : -1.0f),
@@ -33,7 +33,7 @@ namespace {
     return childBox;
   }
 
-  static __device__
+  __device__
     fvec3 minBlock(fvec3 Xmin) {
     const int laneIdx = threadIdx.x & (WARP_SIZE-1);
     const int warpIdx = threadIdx.x >> WARP_SIZE2;
@@ -63,7 +63,7 @@ namespace {
     return Xmin;
   }
 
-  static __device__
+  __device__
     fvec3 maxBlock(fvec3 Xmax) {
     const int laneIdx = threadIdx.x & (WARP_SIZE-1);
     const int warpIdx = threadIdx.x >> WARP_SIZE2;
@@ -93,7 +93,7 @@ namespace {
     return Xmax;
   }
 
-  static __global__
+  __global__
     void getBounds(const int numBodies,
 		   Bounds * bounds,
 		   const fvec4 * bodyPos) {
@@ -138,7 +138,7 @@ namespace {
   }
 
   template<int NCRIT, bool ISROOT>
-    static __global__ __launch_bounds__(NTHREAD, 8)
+    __global__ __launch_bounds__(NTHREAD, 8)
     void buildOctant(float4 box4,
 		     const int cellParentIndex,
 		     const int cellIndexBase,
@@ -365,9 +365,9 @@ namespace {
     }
   }
 
-  static __global__ void getRootOctantSize(const int numBodies,
-				           int * octantSize,
-				           const fvec4 * bodyPos) {
+  __global__ void getRootOctantSize(const int numBodies,
+				    int * octantSize,
+				    const fvec4 * bodyPos) {
     const int laneIdx = threadIdx.x & (WARP_SIZE-1);
     const int begin = blockIdx.x * blockDim.x + threadIdx.x;
     int octantSizeLane[8] = {0};
@@ -394,8 +394,7 @@ namespace {
     }
   }
 
-  template<int NCRIT>
-    static __global__
+  template<int NCRIT> __global__
     void buildOctree(const int numBodies,
 		     CellData * d_sourceCells,
 		     int * d_octantSizePool,
@@ -443,7 +442,7 @@ namespace {
   }
 
 
-  static __global__
+  __global__
     void getKeys(const int numCells,
 		 const CellData * sourceCells,
 		 CellData * sourceCells2,
@@ -457,7 +456,7 @@ namespace {
     sourceCells2[cellIdx] = cell;
   }
 
-  static __global__
+  __global__
     void getLevelRange(const int numCells,
 		       const int * levels,
 		       int2 * levelRange) {
@@ -472,7 +471,7 @@ namespace {
       levelRange[level].y = cellIdx+1;
   }
 
-  static __global__
+  __global__
     void getPermutation(const int numCells,
 			const int * value,
 			int * key) {
@@ -482,7 +481,7 @@ namespace {
     key[oldIdx] = newIdx;
   }
 
-  static __global__
+  __global__
     void permuteCells(const int numCells,
 		      const int * value,
 		      const int * key,

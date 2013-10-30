@@ -31,14 +31,14 @@ struct kahan {
     c = 0;
     return *this;
   }
-  __host__ __device__ __forceinline__
-  const kahan &operator+=(const T v) {                          // Scalar compound assignment (add)
-    T y = v - c;
-    T t = s + y;
-    c = (t - s) - y;
-    s = t;
-    return *this;
-  }
+    __host__ __device__ __forceinline__
+    const kahan &operator+=(const T v) {                          // Scalar compound assignment (add)
+      T y = v - c;
+      T t = s + y;
+      c = (t - s) - y;
+      s = t;
+      return *this;
+    }
   __host__ __device__ __forceinline__
   const kahan &operator-=(const T v) {                          // Scalar compound assignment (subtract)
     T y = - v - c;
@@ -89,18 +89,18 @@ struct kahan {
     c = v.c;
     return *this;
   }
-  __host__ __device__ __forceinline__
-  const kahan &operator+=(const kahan &v) {                     // Vector compound assignment (add)
-    T y = v.s - c;
-    T t = s + y;
-    c = (t - s) - y;
-    s = t;
-    y = v.c - c;
-    t = s + y;
-    c = (t - s) - y;
-    s = t;
-    return *this;
-  }
+    __host__ __device__ __forceinline__
+    const kahan &operator+=(const kahan &v) {                     // Vector compound assignment (add)
+      T y = v.s - c;
+      T t = s + y;
+      c = (t - s) - y;
+      s = t;
+      y = v.c - c;
+      t = s + y;
+      c = (t - s) - y;
+      s = t;
+      return *this;
+    }
   __host__ __device__ __forceinline__
   const kahan &operator-=(const kahan &v) {                     // Vector compound assignment (subtract)
     T y = - v.s - c;

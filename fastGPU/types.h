@@ -22,32 +22,6 @@ texture<float4, 1, cudaReadModeElementType> texCellCenter;
 texture<float4, 1, cudaReadModeElementType> texMultipole;
 texture<float4, 1, cudaReadModeElementType> texBody;
 
-__host__ __device__
-static fvec3 make_fvec3(fvec4 v) {
-  fvec3 data;
-  data[0] = v[0];
-  data[1] = v[1];
-  data[2] = v[2];
-  return data;
-}
-
-static void kernelSuccess(const char kernel[] = "kernel") {
-  cudaDeviceSynchronize();
-  const cudaError_t err = cudaGetLastError();
-  if (err != cudaSuccess) {
-    fprintf(stderr,"%s launch failed: %s\n", kernel, cudaGetErrorString(err));
-    exit(EXIT_FAILURE);
-  }
-}
-
-inline void cudaSafeCall(cudaError err, const char *file, const int line) {
-  if (err != cudaSuccess) {
-    fprintf(stderr, "Cuda error in file '%s' in line %i : %s.\n",
-            file, line, cudaGetErrorString(err) );
-    exit(EXIT_FAILURE);
-  }
-}
-
 //! Center and radius of bounding box
 struct Box {
   fvec3 X;                                                      //!< Box center
@@ -106,3 +80,33 @@ class CellData {
     data.y = child | (nchild()-1 << CHILD_SHIFT);
   }
 };
+
+namespace {
+  __host__ __device__
+    fvec3 make_fvec3(fvec4 v) {
+    fvec3 data;
+    data[0] = v[0];
+    data[1] = v[1];
+    data[2] = v[2];
+    return data;
+  }
+
+  __host__
+    void kernelSuccess(const char kernel[] = "kernel") {
+    cudaDeviceSynchronize();
+    const cudaError_t err = cudaGetLastError();
+    if (err != cudaSuccess) {
+      fprintf(stderr,"%s launch failed: %s\n", kernel, cudaGetErrorString(err));
+      exit(EXIT_FAILURE);
+    }
+  }
+
+  __host__ __forceinline__
+    void cudaSafeCall(cudaError err, const char *file, const int line) {
+    if (err != cudaSuccess) {
+      fprintf(stderr, "Cuda error in file '%s' in line %i : %s.\n",
+	      file, line, cudaGetErrorString(err) );
+      exit(EXIT_FAILURE);
+    }
+  }
+}

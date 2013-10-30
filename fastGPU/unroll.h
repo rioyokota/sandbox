@@ -111,20 +111,20 @@ template<typename Op, typename T, int N>
 
 template<typename Op, typename T>
   struct Unroll<Op,T,1> {
-    __host__ __device__ __forceinline__
+  __host__ __device__ __forceinline__
     static void loop(T * lhs, const T * rhs) {
-      Op operation;
-      operation(lhs[0], rhs[0]);
-    }
-    __host__ __device__ __forceinline__
+    Op operation;
+    operation(lhs[0], rhs[0]);
+  }
+  __host__ __device__ __forceinline__
     static void loop(T * lhs, const T rhs) {
-      Op operation;
-      operation(lhs[0], rhs);
-    }
-    __host__ __device__ __forceinline__
+    Op operation;
+    operation(lhs[0], rhs);
+  }
+  __host__ __device__ __forceinline__
     static const T reduce(const T * val) {
-      return val[0];
-    }
+    return val[0];
+  }
 };
 
 #endif
