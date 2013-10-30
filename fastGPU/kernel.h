@@ -166,7 +166,7 @@ namespace {
   fvec4 M2P(fvec4 acc,
 	    const fvec3 & pos_i,
 	    const fvec3 & pos_j,
-	    const float * __restrict__ M,
+	    const fvecP & __restrict__ M,
 	    float EPS2) {
     fvec3 dX = pos_i - pos_j;
     const float R2 = norm(dX) + EPS2;
@@ -198,9 +198,9 @@ namespace {
 #else
   __device__ __forceinline__
   fvec4 M2P(fvec4 acc,
-	    const fvec3 pos_i,
-	    const fvec3 pos_j,
-	    const float * __restrict__ M,
+	    const fvec3 & pos_i,
+	    const fvec3 & pos_j,
+	    const fvecP & __restrict__ M,
 	    float EPS2) {
     const float x = pos_i[0] - pos_j[0];
     const float y = pos_i[1] - pos_j[1];

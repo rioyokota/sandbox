@@ -50,7 +50,7 @@ namespace {
         M[4*i+3] = __shfl(M4[i][3], j);
       }
       for (int k=0; k<2; k++)
-	acc_i[k] = M2P(acc_i[k], pos_i[k], pos_j, M, EPS2);
+	acc_i[k] = M2P(acc_i[k], pos_i[k], pos_j, *(fvecP*)M, EPS2);
     }
   }
 
