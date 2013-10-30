@@ -27,7 +27,8 @@ namespace {
 
   template<int nx, int ny, int nz, int kx=nx, int ky=ny, int kz=nz>
   struct MultipoleSum {
-    static inline real_t kernel(const vecP &C, const vecP &M) {
+    static __host__ __device__ __forceinline__
+    float kernel(const fvecP &C, const fvecP &M) {
       return MultipoleSum<nx,ny,nz,kx,ky,kz-1>::kernel(C,M)
 	+ C[Index<nx-kx,ny-ky,nz-kz>::I]*M[Index<kx,ky,kz>::I];
     }
@@ -35,7 +36,8 @@ namespace {
 
   template<int nx, int ny, int nz, int kx, int ky>
   struct MultipoleSum<nx,ny,nz,kx,ky,0> {
-    static inline real_t kernel(const vecP &C, const vecP &M) {
+    static __host__ __device__ __forceinline__
+    float kernel(const fvecP &C, const fvecP &M) {
       return MultipoleSum<nx,ny,nz,kx,ky-1,nz>::kernel(C,M)
 	+ C[Index<nx-kx,ny-ky,nz>::I]*M[Index<kx,ky,0>::I];
     }
@@ -43,7 +45,8 @@ namespace {
 
   template<int nx, int ny, int nz, int kx>
   struct MultipoleSum<nx,ny,nz,kx,0,0> {
-    static inline real_t kernel(const vecP &C, const vecP &M) {
+    static __host__ __device__ __forceinline__
+    float kernel(const fvecP &C, const fvecP &M) {
       return MultipoleSum<nx,ny,nz,kx-1,ny,nz>::kernel(C,M)
 	+ C[Index<nx-kx,ny,nz>::I]*M[Index<kx,0,0>::I];
     }
@@ -51,7 +54,8 @@ namespace {
 
   template<int nx, int ny, int nz>
   struct MultipoleSum<nx,ny,nz,0,0,0> {
-    static inline real_t kernel(const vecP&, const vecP&) { return 0; }
+    static __host__ __device__ __forceinline__
+    float kernel(const fvecP&, const fvecP&) { return 0; }
   };
 
   template<int nx, int ny, int nz>
@@ -60,6 +64,11 @@ namespace {
     void power(fvecP &C, const fvec3 &dX) {
       Kernels<nx,ny+1,nz-1>::power(C,dX);
       C[Index<nx,ny,nz>::I] = C[Index<nx,ny,nz-1>::I] * dX[2] / nz;
+    }
+    static __host__ __device__ __forceinline__
+    void M2M(fvecP &MI, const fvecP &C, const fvecP &MJ) {
+      Kernels<nx,ny+1,nz-1>::M2M(MI,C,MJ);
+      MI[Index<nx,ny,nz>::I] += MultipoleSum<nx,ny,nz>::kernel(C,MJ);
     }
   };
 
@@ -70,6 +79,11 @@ namespace {
       Kernels<nx+1,0,ny-1>::power(C,dX);
       C[Index<nx,ny,0>::I] = C[Index<nx,ny-1,0>::I] * dX[1] / ny;
     }
+    static __host__ __device__ __forceinline__
+    void M2M(fvecP &MI, const fvecP &C, const fvecP &MJ) {
+      Kernels<nx+1,0,ny-1>::M2M(MI,C,MJ);
+      MI[Index<nx,ny,0>::I] += MultipoleSum<nx,ny,0>::kernel(C,MJ);
+    }
   };
 
   template<int nx>
@@ -79,12 +93,19 @@ namespace {
       Kernels<0,0,nx-1>::power(C,dX);
       C[Index<nx,0,0>::I] = C[Index<nx-1,0,0>::I] * dX[0] / nx;
     }
+    static __host__ __device__ __forceinline__
+    void M2M(fvecP &MI, const fvecP &C, const fvecP &MJ) {
+      Kernels<0,0,nx-1>::M2M(MI,C,MJ);
+      MI[Index<nx,0,0>::I] += MultipoleSum<nx,0,0>::kernel(C,MJ);
+    }
   };
 
   template<>
   struct Kernels<0,0,0> {
     static __host__ __device__ __forceinline__
     void power(fvecP&, const fvec3&) {}
+    static __host__ __device__ __forceinline__
+    void M2M(fvecP&, const fvecP&, const fvecP&) {}
   };
 
   __device__ __forceinline__
@@ -113,13 +134,11 @@ namespace {
       fvecP Mj = *(fvecP*)&Multipole[NVEC4*i];
       fvec4 Xj = sourceCenter[i];
       fvec3 dX = make_fvec3(Xi - Xj);
-      for (int j=0; j<NTERM; j++) Mi[j] += Mj[j];
-      Mi[4] += .5 * Mj[0] * dX[0] * dX[0];
-      Mi[5] += .5 * Mj[0] * dX[1] * dX[1];
-      Mi[6] += .5 * Mj[0] * dX[2] * dX[2];
-      Mi[7] += Mj[0] * dX[0] * dX[1];
-      Mi[8] += Mj[0] * dX[0] * dX[2];
-      Mi[9] += Mj[0] * dX[1] * dX[2];
+      fvecP C;
+      C[0] = 1;
+      Kernels<0,0,P-1>::power(C,dX);
+      for (int j=0; j<NTERM; j++) Mi[j] += C[j] * Mj[0];
+      Kernels<0,0,P-1>::M2M(Mi,C,Mj);
     }
   }
 
@@ -158,11 +177,11 @@ namespace {
     const float invR5 = 3 * invR2 * invR3;
     const float invR7 = 5 * invR2 * invR5;
     const float q11 = M[4];
-    const float q22 = M[5];
-    const float q33 = M[6];
-    const float q12 = 0.5f * M[7];
-    const float q13 = 0.5f * M[8];
-    const float q23 = 0.5f * M[9];
+    const float q12 = 0.5f * M[5];
+    const float q13 = 0.5f * M[6];
+    const float q22 = M[7];
+    const float q23 = 0.5f * M[8];
+    const float q33 = M[9];
     const float q = q11 + q22 + q33;
     fvec3 qR;
     qR[0] = q11 * dX[0] + q12 * dX[1] + q13 * dX[2];
@@ -219,10 +238,10 @@ namespace {
     C[18] = y * (t +     invR5);
     C[19] = z * (t + 3 * invR5);
     C[14] = x * y * z * invR7;
-    acc[0] -= C[0]+M[4]*C[4] +M[7]*C[5] +M[8]*C[6] +M[5]*C[7] +M[9]*C[8] +M[6]*C[9];
-    acc[1] += C[1]+M[4]*C[10]+M[7]*C[11]+M[8]*C[12]+M[5]*C[13]+M[9]*C[14]+M[6]*C[15];
-    acc[2] += C[2]+M[4]*C[11]+M[7]*C[13]+M[8]*C[14]+M[5]*C[16]+M[9]*C[17]+M[6]*C[18];
-    acc[3] += C[3]+M[4]*C[12]+M[7]*C[14]+M[8]*C[15]+M[5]*C[17]+M[9]*C[18]+M[6]*C[19];
+    acc[0] -= C[0]+M[4]*C[4] +M[5]*C[5] +M[6]*C[6] +M[7]*C[7] +M[8]*C[8] +M[9]*C[9];
+    acc[1] += C[1]+M[4]*C[10]+M[5]*C[11]+M[6]*C[12]+M[7]*C[13]+M[8]*C[14]+M[9]*C[15];
+    acc[2] += C[2]+M[4]*C[11]+M[5]*C[13]+M[6]*C[14]+M[7]*C[16]+M[8]*C[17]+M[9]*C[18];
+    acc[3] += C[3]+M[4]*C[12]+M[5]*C[14]+M[6]*C[15]+M[7]*C[17]+M[8]*C[18]+M[9]*C[19];
     return acc;
   }
 #endif
