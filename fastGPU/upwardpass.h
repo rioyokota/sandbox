@@ -51,7 +51,7 @@ namespace {
     fvec3 Xmin = +huge;
     fvec3 Xmax = -huge;
     fvec4 center;
-    float M[12];
+    float M[4*NVEC4];
     if (cell.isLeaf()) {
       const int begin = cell.body();
       const int end = begin + cell.nbody();
@@ -75,7 +75,7 @@ namespace {
     sourceCenter[cellIdx] = center;
     cellXmin[cellIdx] = Xmin;
     cellXmax[cellIdx] = Xmax;
-    for (int i=0; i<3; i++) Multipole[3*cellIdx+i] = fvec4(M[4*i+0],M[4*i+1],M[4*i+2],M[4*i+3]);
+    for (int i=0; i<NVEC4; i++) Multipole[NVEC4*cellIdx+i] = fvec4(M[4*i+0],M[4*i+1],M[4*i+2],M[4*i+3]);
   }
 
   __global__ __launch_bounds__(NTHREAD)
@@ -100,12 +100,12 @@ namespace {
     void normalize(const int numCells, fvec4 * Multipole) {
     const int cellIdx = blockIdx.x * blockDim.x + threadIdx.x;
     if (cellIdx >= numCells) return;
-    const float invM = 1.0 / Multipole[3*cellIdx][0];
-    Multipole[3*cellIdx][1] *= invM;
-    Multipole[3*cellIdx][2] *= invM;
-    Multipole[3*cellIdx][3] *= invM;
-    for (int i=1; i<3; i++) {
-      Multipole[3*cellIdx+i] *= invM;
+    const float invM = 1.0 / Multipole[NVEC4*cellIdx][0];
+    Multipole[NVEC4*cellIdx][1] *= invM;
+    Multipole[NVEC4*cellIdx][2] *= invM;
+    Multipole[NVEC4*cellIdx][3] *= invM;
+    for (int i=1; i<NVEC4; i++) {
+      Multipole[NVEC4*cellIdx+i] *= invM;
     }
   }
 }

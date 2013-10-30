@@ -30,20 +30,20 @@ namespace {
 		   const fvec3 pos_i[2],
 		   const int cellIdx,
 		   const float EPS2) {
-    fvec4 M4[3];
-    float M[12];
+    fvec4 M4[NVEC4];
+    float M[4*NVEC4];
     const fvec4 Xj = tex1Dfetch(texCellCenter, cellIdx);
     if (FULL || cellIdx >= 0) {
 #pragma unroll
-      for (int i=0; i<3; i++) M4[i] = tex1Dfetch(texMultipole, 3*cellIdx+i);
+      for (int i=0; i<NVEC4; i++) M4[i] = tex1Dfetch(texMultipole, NVEC4*cellIdx+i);
     } else {
 #pragma unroll
-      for (int i=0; i<3; i++) M4[i] = 0.0f;
+      for (int i=0; i<NVEC4; i++) M4[i] = 0.0f;
     }
     for (int j=0; j<WARP_SIZE; j++) {
       const fvec3 pos_j(__shfl(Xj[0],j), __shfl(Xj[1],j), __shfl(Xj[2],j));
 #pragma unroll
-      for (int i=0; i<3; i++) {
+      for (int i=0; i<NVEC4; i++) {
         M[4*i+0] = __shfl(M4[i][0], j);
         M[4*i+1] = __shfl(M4[i][1], j);
         M[4*i+2] = __shfl(M4[i][2], j);
