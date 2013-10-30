@@ -19,12 +19,12 @@ namespace {
   __device__ CellData * sourceCells;
 
   __device__ __forceinline__
-    int getOctant(const Box &box, const fvec4 &body) {
+  int getOctant(const Box &box, const fvec4 &body) {
     return ((box.X[0] <= body[0]) << 0) + ((box.X[1] <= body[1]) << 1) + ((box.X[2] <= body[2]) << 2);
   }
 
   __device__ __forceinline__
-    Box getChild(const Box &box, const int octant) {
+  Box getChild(const Box &box, const int octant) {
     const float R = 0.5f * box.R;
     const fvec3 X(box.X[0] + R * (octant & 1 ? 1.0f : -1.0f),
 		  box.X[1] + R * (octant & 2 ? 1.0f : -1.0f),
@@ -34,7 +34,7 @@ namespace {
   }
 
   __device__
-    fvec3 minBlock(fvec3 Xmin) {
+  fvec3 minBlock(fvec3 Xmin) {
     const int laneIdx = threadIdx.x & (WARP_SIZE-1);
     const int warpIdx = threadIdx.x >> WARP_SIZE2;
 #pragma unroll
@@ -64,7 +64,7 @@ namespace {
   }
 
   __device__
-    fvec3 maxBlock(fvec3 Xmax) {
+  fvec3 maxBlock(fvec3 Xmax) {
     const int laneIdx = threadIdx.x & (WARP_SIZE-1);
     const int warpIdx = threadIdx.x >> WARP_SIZE2;
 #pragma unroll
@@ -94,9 +94,9 @@ namespace {
   }
 
   __global__
-    void getBounds(const int numBodies,
-		   Bounds * bounds,
-		   const fvec4 * bodyPos) {
+  void getBounds(const int numBodies,
+		 Bounds * bounds,
+		 const fvec4 * bodyPos) {
     const int NBLOCK = NTHREAD;
     const int begin = blockIdx.x * blockDim.x + threadIdx.x;
     fvec3 Xmin = make_fvec3(bodyPos[begin]);
@@ -138,7 +138,7 @@ namespace {
   }
 
   template<int NCRIT, bool ISROOT>
-    __global__ __launch_bounds__(NTHREAD, 8)
+  __global__ __launch_bounds__(NTHREAD, 8)
     void buildOctant(float4 box4,
 		     const int cellParentIndex,
 		     const int cellIndexBase,
@@ -395,15 +395,15 @@ namespace {
   }
 
   template<int NCRIT> __global__
-    void buildOctree(const int numBodies,
-		     CellData * d_sourceCells,
-		     int * d_octantSizePool,
-		     int * d_octantSizeScanPool,
-		     int * d_subOctantSizeScanPool,
-		     int * d_blockCounterPool,
-		     int2 * d_bodyRangePool,
-		     float4 * d_bodyPos,
-		     float4 * d_bodyPos2) {
+  void buildOctree(const int numBodies,
+		   CellData * d_sourceCells,
+		   int * d_octantSizePool,
+		   int * d_octantSizeScanPool,
+		   int * d_subOctantSizeScanPool,
+		   int * d_blockCounterPool,
+		   int2 * d_bodyRangePool,
+		   float4 * d_bodyPos,
+		   float4 * d_bodyPos2) {
     sourceCells = d_sourceCells;
     octantSizePool = d_octantSizePool;
     octantSizeScanPool = d_octantSizeScanPool;
@@ -443,11 +443,11 @@ namespace {
 
 
   __global__
-    void getKeys(const int numCells,
-		 const CellData * sourceCells,
-		 CellData * sourceCells2,
-		 int * key,
-		 int * value) {
+  void getKeys(const int numCells,
+	       const CellData * sourceCells,
+	       CellData * sourceCells2,
+	       int * key,
+	       int * value) {
     const int cellIdx = blockIdx.x * blockDim.x + threadIdx.x;
     if (cellIdx >= numCells) return;
     const CellData cell = sourceCells[cellIdx];
@@ -457,9 +457,9 @@ namespace {
   }
 
   __global__
-    void getLevelRange(const int numCells,
-		       const int * levels,
-		       int2 * levelRange) {
+  void getLevelRange(const int numCells,
+		     const int * levels,
+		     int2 * levelRange) {
     const int cellIdx = blockIdx.x * blockDim.x + threadIdx.x;
     if (cellIdx >= numCells) return;
     const int nextCellIdx = min(cellIdx+1, numCells-1);
@@ -472,9 +472,9 @@ namespace {
   }
 
   __global__
-    void getPermutation(const int numCells,
-			const int * value,
-			int * key) {
+  void getPermutation(const int numCells,
+		      const int * value,
+		      int * key) {
     const int newIdx = blockIdx.x * blockDim.x + threadIdx.x;
     if (newIdx >= numCells) return;
     const int oldIdx = value[newIdx];
@@ -482,11 +482,11 @@ namespace {
   }
 
   __global__
-    void permuteCells(const int numCells,
-		      const int * value,
-		      const int * key,
-		      const CellData * sourceCells2,
-		      CellData * sourceCells) {
+  void permuteCells(const int numCells,
+		    const int * value,
+		    const int * key,
+		    const CellData * sourceCells2,
+		    CellData * sourceCells) {
     const int cellIdx = blockIdx.x * blockDim.x + threadIdx.x;
     if (cellIdx >= numCells) return;
     const int mapIdx = value[cellIdx];
@@ -501,13 +501,13 @@ namespace {
 }
 
 class Build {
- public:
+public:
   template<int NCRIT>
-    int3 tree(cudaVec<fvec4> & bodyPos,
-	      cudaVec<fvec4> & bodyPos2,
-	      Box & box,
-	      cudaVec<int2> & levelRange,
-	      cudaVec<CellData> & sourceCells) {
+  int3 tree(cudaVec<fvec4> & bodyPos,
+	    cudaVec<fvec4> & bodyPos2,
+	    Box & box,
+	    cudaVec<int2> & levelRange,
+	    cudaVec<CellData> & sourceCells) {
     const int numBodies = bodyPos.size();
     const int maxNode = numBodies / 10;
     cudaVec<Bounds> bounds(2*NTHREAD);

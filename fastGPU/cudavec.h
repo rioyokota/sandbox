@@ -2,7 +2,7 @@
 
 template<typename T>
 class cudaVec {
- private:
+private:
   bool PIN;
   int SIZE;
   T * HOST;
@@ -16,9 +16,9 @@ class cudaVec {
     }
   }
 
- public:
- cudaVec() : PIN(false), SIZE(0), HOST(NULL), DEVC(NULL) {}
- cudaVec(int size, bool pin=false) : PIN(pin), SIZE(size) {
+public:
+  cudaVec() : PIN(false), SIZE(0), HOST(NULL), DEVC(NULL) {}
+  cudaVec(int size, bool pin=false) : PIN(pin), SIZE(size) {
     if (PIN) CUDA_SAFE_CALL(cudaMallocHost(&HOST, SIZE*sizeof(T), cudaHostAllocMapped || cudaHostAllocWriteCombined));
     CUDA_SAFE_CALL(cudaMalloc(&DEVC, SIZE*sizeof(T)));
   }
@@ -67,7 +67,7 @@ class cudaVec {
   }
 
   template<typename S>
-    void bind(texture<S,1,cudaReadModeElementType> &tex) {
+  void bind(texture<S,1,cudaReadModeElementType> &tex) {
     tex.addressMode[0] = cudaAddressModeWrap;
     tex.addressMode[1] = cudaAddressModeWrap;
     tex.filterMode     = cudaFilterModePoint;
@@ -76,7 +76,7 @@ class cudaVec {
   }
 
   template<typename S>
-    void unbind(texture<S,1,cudaReadModeElementType> &tex) {
+  void unbind(texture<S,1,cudaReadModeElementType> &tex) {
     CUDA_SAFE_CALL(cudaUnbindTexture(tex));
   }
 

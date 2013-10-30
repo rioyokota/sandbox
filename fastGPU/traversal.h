@@ -8,16 +8,16 @@
 
 namespace {
   __device__ __forceinline__
-    int ringAddr(const int i) {
+  int ringAddr(const int i) {
     return i & (MEM_PER_WARP - 1);
   }
 
   __device__ __forceinline__
-    bool applyMAC(const fvec3 sourceCenter,
-		  const float MAC,
-		  const CellData sourceData,
-		  const fvec3 targetCenter,
-		  const fvec3 targetSize) {
+  bool applyMAC(const fvec3 sourceCenter,
+		const float MAC,
+		const CellData sourceData,
+		const fvec3 targetCenter,
+		const fvec3 targetSize) {
     fvec3 dX = abs(targetCenter - sourceCenter) - targetSize;
     dX += abs(dX);
     dX *= 0.5f;
@@ -26,10 +26,10 @@ namespace {
   }
 
   template<bool FULL> __device__
-    void approxAcc(fvec4 acc_i[2],
-		   const fvec3 pos_i[2],
-		   const int cellIdx,
-		   const float EPS2) {
+  void approxAcc(fvec4 acc_i[2],
+		 const fvec3 pos_i[2],
+		 const int cellIdx,
+		 const float EPS2) {
     fvec4 M4[NVEC4];
     float M[4*NVEC4];
     const fvec4 Xj = tex1Dfetch(texCellCenter, cellIdx);
@@ -55,14 +55,14 @@ namespace {
   }
 
   __device__
-    uint2 traverseWarp(fvec4 * acc_i,
-		       const fvec3 pos_i[2],
-		       const fvec3 targetCenter,
-		       const fvec3 targetSize,
-		       const float EPS2,
-		       const int2 rootRange,
-		       volatile int * tempQueue,
-		       int * cellQueue) {
+  uint2 traverseWarp(fvec4 * acc_i,
+		     const fvec3 pos_i[2],
+		     const fvec3 targetCenter,
+		     const fvec3 targetSize,
+		     const float EPS2,
+		     const int2 rootRange,
+		     volatile int * tempQueue,
+		     int * cellQueue) {
     const int laneIdx = threadIdx.x & (WARP_SIZE-1);
 
     uint2 counters = {0,0};
@@ -292,9 +292,9 @@ namespace {
   }
 
   __global__
-    void directKernel(const int numSource,
-		      const float EPS2,
-		      fvec4 * bodyAcc) {
+  void directKernel(const int numSource,
+		    const float EPS2,
+		    fvec4 * bodyAcc) {
     const int laneIdx = threadIdx.x & (WARP_SIZE-1);
     const int numChunk = (numSource - 1) / gridDim.x + 1;
     const int numWarpChunk = (numChunk - 1) / WARP_SIZE + 1;
@@ -327,7 +327,7 @@ namespace {
 }
 
 class Traversal {
- public:
+public:
   fvec4 approx(const int numTargets,
 	       const float eps,
 	       cudaVec<fvec4> & bodyPos,

@@ -2,27 +2,56 @@
 
 namespace {
   template<int nx, int ny, int nz>
-    struct Index {
-      static const int                I = Index<nx,ny+1,nz-1>::I + 1;
-      static const unsigned long long F = Index<nx,ny,nz-1>::F * nz;
-    };
+  struct Index {
+    static const int                I = Index<nx,ny+1,nz-1>::I + 1;
+    static const unsigned long long F = Index<nx,ny,nz-1>::F * nz;
+  };
 
   template<int nx, int ny>
-    struct Index<nx,ny,0> {
+  struct Index<nx,ny,0> {
     static const int                I = Index<nx+1,0,ny-1>::I + 1;
     static const unsigned long long F = Index<nx,ny-1,0>::F * ny;
   };
 
   template<int nx>
-    struct Index<nx,0,0> {
+  struct Index<nx,0,0> {
     static const int                I = Index<0,0,nx-1>::I + 1;
     static const unsigned long long F = Index<nx-1,0,0>::F * nx;
   };
 
   template<>
-    struct Index<0,0,0> {
+  struct Index<0,0,0> {
     static const int                I = 0;
     static const unsigned long long F = 1;
+  };
+
+  template<int nx, int ny, int nz, int kx=nx, int ky=ny, int kz=nz>
+  struct MultipoleSum {
+    static inline real_t kernel(const vecP &C, const vecP &M) {
+      return MultipoleSum<nx,ny,nz,kx,ky,kz-1>::kernel(C,M)
+	+ C[Index<nx-kx,ny-ky,nz-kz>::I]*M[Index<kx,ky,kz>::I];
+    }
+  };
+
+  template<int nx, int ny, int nz, int kx, int ky>
+  struct MultipoleSum<nx,ny,nz,kx,ky,0> {
+    static inline real_t kernel(const vecP &C, const vecP &M) {
+      return MultipoleSum<nx,ny,nz,kx,ky-1,nz>::kernel(C,M)
+	+ C[Index<nx-kx,ny-ky,nz>::I]*M[Index<kx,ky,0>::I];
+    }
+  };
+
+  template<int nx, int ny, int nz, int kx>
+  struct MultipoleSum<nx,ny,nz,kx,0,0> {
+    static inline real_t kernel(const vecP &C, const vecP &M) {
+      return MultipoleSum<nx,ny,nz,kx-1,ny,nz>::kernel(C,M)
+	+ C[Index<nx-kx,ny,nz>::I]*M[Index<kx,0,0>::I];
+    }
+  };
+
+  template<int nx, int ny, int nz>
+  struct MultipoleSum<nx,ny,nz,0,0,0> {
+    static inline real_t kernel(const vecP&, const vecP&) { return 0; }
   };
 
   template<int nx, int ny, int nz>
@@ -37,7 +66,7 @@ namespace {
   template<int nx, int ny>
   struct Kernels<nx,ny,0> {
     static __host__ __device__ __forceinline__
-      void power(fvecP &C, const fvec3 &dX) {
+    void power(fvecP &C, const fvec3 &dX) {
       Kernels<nx+1,0,ny-1>::power(C,dX);
       C[Index<nx,ny,0>::I] = C[Index<nx,ny-1,0>::I] * dX[1] / ny;
     }
@@ -46,7 +75,7 @@ namespace {
   template<int nx>
   struct Kernels<nx,0,0> {
     static __host__ __device__ __forceinline__
-      void power(fvecP &C, const fvec3 &dX) {
+    void power(fvecP &C, const fvec3 &dX) {
       Kernels<0,0,nx-1>::power(C,dX);
       C[Index<nx,0,0>::I] = C[Index<nx-1,0,0>::I] * dX[0] / nx;
     }
@@ -55,33 +84,33 @@ namespace {
   template<>
   struct Kernels<0,0,0> {
     static __host__ __device__ __forceinline__
-      void power(fvecP&, const fvec3&) {}
+    void power(fvecP&, const fvec3&) {}
   };
 
   __device__ __forceinline__
-    void P2M(const int begin,
-             const int end,
-             const fvec4 center,
-             float * Multipole) {
+  void P2M(const int begin,
+	   const int end,
+	   const fvec4 center,
+	   fvecP & Mi) {
     for (int i=begin; i<end; i++) {
       fvec4 body = tex1Dfetch(texBody,i);
       fvec3 dX = make_fvec3(center - body);
       fvecP M;
       M[0] = body[3];
       Kernels<0,0,P-1>::power(M,dX);
-      for (int i=0; i<NTERM; i++) Multipole[i] += M[i];
+      Mi += M;
     }
   }
 
   __device__ __forceinline__
-    void M2M(const int begin,
-             const int end,
-             const fvec4 Xi,
-             fvec4 * sourceCenter,
-             fvec4 * Multipole,
-             float * Mi) {
+  void M2M(const int begin,
+	   const int end,
+	   const fvec4 Xi,
+	   fvec4 * sourceCenter,
+	   fvec4 * Multipole,
+	   fvecP & Mi) {
     for (int i=begin; i<end; i++) {
-      float * Mj = (float*) &Multipole[NVEC4*i];
+      fvecP Mj = *(fvecP*)&Multipole[NVEC4*i];
       fvec4 Xj = sourceCenter[i];
       fvec3 dX = make_fvec3(Xi - Xj);
       for (int j=0; j<NTERM; j++) Mi[j] += Mj[j];
@@ -95,11 +124,11 @@ namespace {
   }
 
   __device__ __forceinline__
-    fvec4 P2P(fvec4 acc,
-              const fvec3 pos_i,
-              const fvec3 pos_j,
-              const float q_j,
-              const float EPS2) {
+  fvec4 P2P(fvec4 acc,
+	    const fvec3 pos_i,
+	    const fvec3 pos_j,
+	    const float q_j,
+	    const float EPS2) {
     fvec3 dX = pos_j - pos_i;
     const float R2 = norm(dX) + EPS2;
     const float invR = rsqrtf(R2);
@@ -115,11 +144,11 @@ namespace {
 
 #if 1
   __device__ __forceinline__
-    fvec4 M2P(fvec4 acc,
-              const fvec3 & pos_i,
-              const fvec3 & pos_j,
-              const float * __restrict__ M,
-              float EPS2) {
+  fvec4 M2P(fvec4 acc,
+	    const fvec3 & pos_i,
+	    const fvec3 & pos_j,
+	    const float * __restrict__ M,
+	    float EPS2) {
     fvec3 dX = pos_i - pos_j;
     const float R2 = norm(dX) + EPS2;
     const float invR = rsqrtf(R2);
@@ -149,11 +178,11 @@ namespace {
   }
 #else
   __device__ __forceinline__
-    fvec4 M2P(fvec4 acc,
-              const fvec3 pos_i,
-              const fvec3 pos_j,
-              const float * __restrict__ M,
-              float EPS2) {
+  fvec4 M2P(fvec4 acc,
+	    const fvec3 pos_i,
+	    const fvec3 pos_j,
+	    const float * __restrict__ M,
+	    float EPS2) {
     const float x = pos_i[0] - pos_j[0];
     const float y = pos_i[1] - pos_j[1];
     const float z = pos_i[2] - pos_j[2];

@@ -9,7 +9,7 @@ namespace {
   __device__ unsigned int numTargetGlob= 0;
 
   __device__
-    unsigned long long getHilbert(int3 iX) {
+  unsigned long long getHilbert(int3 iX) {
     const int octantMap[8] = {0, 1, 7, 6, 3, 2, 4, 5};
     int mask = 1 << (NBITS - 1);
     unsigned long long key = 0;
@@ -46,11 +46,11 @@ namespace {
   }
 
   __global__
-    void getKeys(const int numBodies,
-		 const Box box,
-		 const fvec4 * bodyPos,
-		 unsigned long long * keys,
-		 int * values) {
+  void getKeys(const int numBodies,
+	       const Box box,
+	       const fvec4 * bodyPos,
+	       unsigned long long * keys,
+	       int * values) {
     const int bodyIdx = blockIdx.x * blockDim.x + threadIdx.x;
     if (bodyIdx >= numBodies) return;
     const fvec3 pos = make_fvec3(bodyPos[bodyIdx]);
@@ -62,22 +62,22 @@ namespace {
   }
 
   __global__
-    void permuteBodies(const int numBodies,
-		       const int * value,
-		       const fvec4 * bodyPos,
-		       fvec4 * bodyPos2) {
+  void permuteBodies(const int numBodies,
+		     const int * value,
+		     const fvec4 * bodyPos,
+		     fvec4 * bodyPos2) {
     const int bodyIdx = blockDim.x * blockIdx.x + threadIdx.x;
     if (bodyIdx >= numBodies) return;
     bodyPos2[bodyIdx] = bodyPos[value[bodyIdx]];
   }
 
   __global__
-    void maskKeys(const int numBodies,
-		  const unsigned long long mask,
-		  unsigned long long * keys,
-		  unsigned long long * keys2,
-		  int * bodyBegin,
-		  int * bodyEnd) {
+  void maskKeys(const int numBodies,
+		const unsigned long long mask,
+		unsigned long long * keys,
+		unsigned long long * keys2,
+		int * bodyBegin,
+		int * bodyEnd) {
     const int bodyIdx = blockIdx.x * blockDim.x + threadIdx.x;
     if (bodyIdx >= numBodies) return;
     keys2[numBodies-bodyIdx-1] = keys[bodyIdx] & mask;
@@ -97,10 +97,10 @@ namespace {
   }
 
   __global__
-    void getTargetRange(const int numBodies,
-			const int * bodyBeginGlob,
-			const int * bodyEndGlob,
-			int2 * targetRange) {
+  void getTargetRange(const int numBodies,
+		      const int * bodyBeginGlob,
+		      const int * bodyEndGlob,
+		      int2 * targetRange) {
     const int groupSize = WARP_SIZE * 2;
     const int bodyIdx = blockDim.x * blockIdx.x + threadIdx.x;
     if (bodyIdx >= numBodies) return;
@@ -117,7 +117,7 @@ namespace {
 }
 
 class Group {
- public:
+public:
   int targets(cudaVec<fvec4> & bodyPos,
 	      cudaVec<fvec4> & bodyPos2,
 	      Box box,

@@ -2,7 +2,7 @@
 
 namespace {
   __device__ __forceinline__
-    void getMinMax(fvec3 & _Xmin, fvec3 & _Xmax, const fvec3 & pos) {
+  void getMinMax(fvec3 & _Xmin, fvec3 & _Xmax, const fvec3 & pos) {
     fvec3 Xmin = pos;
     fvec3 Xmax = Xmin;
 #pragma unroll
@@ -25,7 +25,7 @@ namespace {
   // Scan int
 
   __device__ __forceinline__
-    uint shflScan(uint partial, uint offset) {
+  uint shflScan(uint partial, uint offset) {
     uint result;
     asm("{.reg .u32 r0;"
 	".reg .pred p;"
@@ -37,7 +37,7 @@ namespace {
   }
 
   __device__ __forceinline__
-    uint inclusiveScanInt(const int value) {
+  uint inclusiveScanInt(const int value) {
     uint sum = value;
 #pragma unroll
     for (int i=0; i<WARP_SIZE2; ++i)
@@ -48,20 +48,20 @@ namespace {
   // Scan bool
 
   __device__ __forceinline__
-    int lanemask_lt() {
+  int lanemask_lt() {
     int mask;
     asm("mov.u32 %0, %lanemask_lt;" : "=r" (mask));
     return mask;
   }
 
   __device__ __forceinline__
-    int exclusiveScanBool(const bool p) {
+  int exclusiveScanBool(const bool p) {
     const uint b = __ballot(p);
     return __popc(b & lanemask_lt());
   }
 
   __device__ __forceinline__
-    int reduceBool(const bool p) {
+  int reduceBool(const bool p) {
     const uint b = __ballot(p);
     return __popc(b);
   }
@@ -69,14 +69,14 @@ namespace {
   // Segmented scan int
 
   __device__ __forceinline__
-    int lanemask_le() {
+  int lanemask_le() {
     int mask;
     asm("mov.u32 %0, %lanemask_le;" : "=r" (mask));
     return mask;
   }
 
   __device__ __forceinline__
-    int shflSegScan(int partial, uint offset, uint distance) {
+  int shflSegScan(int partial, uint offset, uint distance) {
     asm("{.reg .u32 r0;"
 	".reg .pred p;"
 	"shfl.up.b32 r0, %1, %2, 0;"
@@ -88,15 +88,15 @@ namespace {
   }
 
   template<const int SIZE2>
-    __device__ __forceinline__
-    int inclusiveSegscan(int value, const int distance) {
+  __device__ __forceinline__
+  int inclusiveSegscan(int value, const int distance) {
     for (int i=0; i<SIZE2; i++)
       value = shflSegScan(value, 1<<i, distance);
     return value;
   }
 
   __device__ __forceinline__
-    int inclusiveSegscanInt(const int packedValue, const int carryValue) {
+  int inclusiveSegscanInt(const int packedValue, const int carryValue) {
     const int flag = packedValue < 0;
     const int mask = -flag;
     const int value = (~mask & packedValue) + (mask & (-1-packedValue));
@@ -105,7 +105,7 @@ namespace {
     const int laneIdx = threadIdx.x & (WARP_SIZE - 1);
     const int distance = __clz(flags & lanemask_le()) + laneIdx - 31;
     const int val = inclusiveSegscan<WARP_SIZE2>(value, min(distance, laneIdx)) +
-      (carryValue & (-(laneIdx < dist_block)));
+				   (carryValue & (-(laneIdx < dist_block)));
     return val;
   }
 }

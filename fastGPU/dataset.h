@@ -5,10 +5,10 @@
 #include <fstream>
 
 class Dataset {
- public:
+public:
   std::vector<kvec4> pos;
- Dataset(unsigned long n,
-	 const char *filename = "plummer.dat") : pos(n) {
+  Dataset(unsigned long n,
+	  const char *filename = "plummer.dat") : pos(n) {
     std::fstream file;
     file.open(filename,std::ios::in);
     if (!file.fail()) {

@@ -3,7 +3,7 @@
 
 namespace {
   __device__ __forceinline__
-    fvec4 setCenter(const int begin, const int end) {
+  fvec4 setCenter(const int begin, const int end) {
     fvec4 center;
     for (int i=begin; i<end; i++) {
       const fvec4 pos = tex1Dfetch(texBody,i);
@@ -20,7 +20,7 @@ namespace {
   }
 
   __device__ __forceinline__
-    fvec4 setCenter(const int begin, const int end, fvec4 * posGlob) {
+  fvec4 setCenter(const int begin, const int end, fvec4 * posGlob) {
     fvec4 center;
     for (int i=begin; i<end; i++) {
       const fvec4 pos = posGlob[i];
@@ -61,7 +61,7 @@ namespace {
         Xmin = min(Xmin, pos);
         Xmax = max(Xmax, pos);
       }
-      P2M(begin, end, center, M);
+      P2M(begin, end, center, *(fvecP*)M);
     } else {
       const int begin = cell.child();
       const int end = begin + cell.nchild();
@@ -70,7 +70,7 @@ namespace {
 	Xmin = min(Xmin, cellXmin[i]);
 	Xmax = max(Xmax, cellXmax[i]);
       }
-      M2M(begin, end, center, sourceCenter, Multipole, M); 
+      M2M(begin, end, center, sourceCenter, Multipole, *(fvecP*)M); 
     }
     sourceCenter[cellIdx] = center;
     cellXmin[cellIdx] = Xmin;
@@ -111,7 +111,7 @@ namespace {
 }
 
 class Pass {
- public:
+public:
   void upward(const int numLeafs,
 	      const int numLevels,
 	      const float theta,
