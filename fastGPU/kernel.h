@@ -513,7 +513,7 @@ namespace {
     return acc;
   }
 
-#if 0
+#if 1
   __device__ __forceinline__
   fvec4 M2P(fvec4 acc,
 	    const fvec3 & pos_i,

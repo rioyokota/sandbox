@@ -13,7 +13,7 @@ int main(int argc, char ** argv) {
 
   fprintf(stdout,"--- FMM Parameters ---------------\n");
   fprintf(stdout,"numBodies            : %d\n",numBodies);
-  fprintf(stdout,"P                    : %d\n",3);
+  fprintf(stdout,"P                    : %d\n",P);
   fprintf(stdout,"theta                : %f\n",theta);
   fprintf(stdout,"ncrit                : %d\n",ncrit);
   const Dataset data(numBodies);
