@@ -153,27 +153,27 @@ namespace {
   template<int nx, int ny, int nz, int kx=0, int ky=0, int kz=P-1-nx-ny-nz>
     struct LocalSum {
       static __host__ __device__ __forceinline__
-      float kernel(const fvecP &M, const fvecP &L) {
-	return LocalSum<nx,ny,nz,kx,ky+1,kz-1>::kernel(M,L)
-	  + M[Index<kx,ky,kz>::I] * L[Index<nx+kx,ny+ky,nz+kz>::I];
+      float kernel(const fvecP &C, const fvecP &M) {
+	return LocalSum<nx,ny,nz,kx,ky+1,kz-1>::kernel(C,M)
+	  + M[Index<kx,ky,kz>::I] * C[Index<nx+kx,ny+ky,nz+kz>::I];
       }
     };
 
   template<int nx, int ny, int nz, int kx, int ky>
   struct LocalSum<nx,ny,nz,kx,ky,0> {
     static __host__ __device__ __forceinline__
-    float kernel(const fvecP &M, const fvecP &L) {
-      return LocalSum<nx,ny,nz,kx+1,0,ky-1>::kernel(M,L)
-	+ M[Index<kx,ky,0>::I] * L[Index<nx+kx,ny+ky,nz>::I];
+    float kernel(const fvecP &C, const fvecP &M) {
+      return LocalSum<nx,ny,nz,kx+1,0,ky-1>::kernel(C,M)
+	+ M[Index<kx,ky,0>::I] * C[Index<nx+kx,ny+ky,nz>::I];
     }
   };
 
   template<int nx, int ny, int nz, int kx>
   struct LocalSum<nx,ny,nz,kx,0,0> {
     static __host__ __device__ __forceinline__
-    float kernel(const fvecP &M, const fvecP &L) {
-      return LocalSum<nx,ny,nz,0,0,kx-1>::kernel(M,L)
-	+ M[Index<kx,0,0>::I] * L[Index<nx+kx,ny,nz>::I];
+    float kernel(const fvecP &C, const fvecP &M) {
+      return LocalSum<nx,ny,nz,0,0,kx-1>::kernel(C,M)
+	+ M[Index<kx,0,0>::I] * C[Index<nx+kx,ny,nz>::I];
     }
   };
 
@@ -513,16 +513,16 @@ namespace {
     return acc;
   }
 
-#if 1
   __device__ __forceinline__
   fvec4 M2P(fvec4 acc,
 	    const fvec3 & pos_i,
 	    const fvec3 & pos_j,
 	    const fvecP & __restrict__ M,
 	    float EPS2) {
-    fvec3 dX = pos_i - pos_j;
+    const fvec3 dX = pos_i - pos_j;
     const float R2 = norm(dX) + EPS2;
     const float invR = rsqrtf(R2);
+#if 1
     const float invR2 = -invR * invR;
     const float invR1 = M[0] * invR;
     const float invR3 = invR2 * invR1;
@@ -545,71 +545,16 @@ namespace {
     acc[1] += C * dX[0] + 2 * invR5 * qR[0];
     acc[2] += C * dX[1] + 2 * invR5 * qR[1];
     acc[3] += C * dX[2] + 2 * invR5 * qR[2];
-    return acc;
-  }
 #else
-  __device__ __forceinline__
-  fvec4 M2P(fvec4 acc,
-	    const fvec3 & pos_i,
-	    const fvec3 & pos_j,
-	    const fvecP & __restrict__ M,
-	    float EPS2) {
-    const fvec3 dX = pos_i - pos_j;
-    const float R2 = norm(dX) + EPS2;
-    const float invR = rsqrtf(R2);
     const float invR1 = M[0] * invR;
-#if 0
-    const float invR2 = invR * invR;
+    float invR2 = invR * invR;
     fvecP C;
-    C[0] = invR1;
-    Kernels<0,0,P-1>::derivative(C,dX,invR2);
-    Kernels<0,0,P-1>::scale(C);
-    //getCoef<P-1>(C,dX,invR2,invR1);
-#else
-    const float invR2 = -invR * invR;
-    float x = dX[0], y = dX[1], z = dX[2];
-    float C[20];
-    C[0] = invR1;
-    const float invR3 = invR2 * invR1;
-    C[1] = x * invR3;
-    C[2] = y * invR3;
-    C[3] = z * invR3;
-    const float invR5 = 3 * invR2 * invR3;
-    float t = x * invR5;
-    C[4] = x * t + invR3;
-    C[5] = y * t;
-    C[6] = z * t;
-    t = y * invR5;
-    C[7] = y * t + invR3;
-    C[8] = z * t;
-    C[9] = z * z * invR5 + invR3;
-    const float invR7 = 5 * invR2 * invR5;
-    t = x * x * invR7;
-    C[10] = x * (t + 3 * invR5);
-    C[11] = y * (t +     invR5);
-    C[12] = z * (t +     invR5);
-    t = y * y * invR7;
-    C[13] = x * (t +     invR5);
-    C[16] = y * (t + 3 * invR5);
-    C[17] = z * (t +     invR5);
-    t = z * z * invR7;
-    C[15] = x * (t +     invR5);
-    C[18] = y * (t +     invR5);
-    C[19] = z * (t + 3 * invR5);
-    C[14] = x * y * z * invR7;
-#endif
-#if 0
+    getCoef<P-1>(C,dX,invR2,invR1);
     acc[0] -= C[0];
     for (int i=1; i<NTERM; i++) acc[0] -= M[i] * C[i];
     for (int i=1; i<4; i++) acc[i] += C[i];
     Kernels<0,0,1>::M2P(acc,C,M);
-#else
-    acc[0] -= C[0]+M[4]*C[4] +M[5]*C[5] +M[6]*C[6] +M[7]*C[7] +M[8]*C[8] +M[9]*C[9];
-    acc[1] += C[1]+M[4]*C[10]+M[5]*C[11]+M[6]*C[12]+M[7]*C[13]+M[8]*C[14]+M[9]*C[15];
-    acc[2] += C[2]+M[4]*C[11]+M[5]*C[13]+M[6]*C[14]+M[7]*C[16]+M[8]*C[17]+M[9]*C[18];
-    acc[3] += C[3]+M[4]*C[12]+M[5]*C[14]+M[6]*C[15]+M[7]*C[17]+M[8]*C[18]+M[9]*C[19];
 #endif
     return acc;
   }
-#endif
 }
