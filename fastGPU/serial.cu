@@ -43,7 +43,7 @@ int main(int argc, char ** argv) {
   int numLeafs = counts.z;
   cudaVec<int2> targetRange(numBodies);
   cudaVec<fvec4> sourceCenter(numSources);
-  cudaVec<fvec4> Multipole(3*numSources);
+  cudaVec<fvec4> Multipole(NVEC4*numSources);
   Group group;
   int numTargets = group.targets(bodyPos, bodyPos2, box, targetRange, 5);
   Pass pass;
