@@ -1,6 +1,6 @@
 .SUFFIXES: .cu
 
-NVCC = nvcc -g -O3 -arch=sm_35 -rdc=true -ftz=true
+NVCC = nvcc -g -G -arch=sm_35 -rdc=true -ftz=true
 LFLAGS = -lcudadevrt
 
 SRC = thrust.cu serial.cu

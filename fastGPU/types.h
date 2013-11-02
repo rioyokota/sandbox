@@ -15,7 +15,7 @@
 
 const int P = 3;
 const int NTERM = P*(P+1)*(P+2)/6;
-const int NVEC4 = (NTERM - 1) / 4 + 1;
+const int NVEC4 = (NTERM-1)/4+1;
 typedef vec<3,float> fvec3;
 typedef vec<4,float> fvec4;
 typedef vec<NTERM,float> fvecP;
