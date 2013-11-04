@@ -140,8 +140,7 @@ public:
     setMAC<<<NBLOCK,NTHREAD>>>(numCells, 1.0/theta,
 			       sourceCenter.d(),cellXmin.d(),cellXmax.d());
     normalize<<<NBLOCK,NTHREAD>>>(numCells, Multipole.d());
-    const double dt = get_time() - t0;
-    fprintf(stdout,"Upward pass          : %.7f s\n", dt);
+    fprintf(stdout,"Upward pass          : %.7f s\n", get_time() - t0);
     bodyPos.unbind(texBody);
   }
 };

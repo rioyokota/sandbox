@@ -6,7 +6,8 @@
 #include "upwardpass.h"
 
 int main(int argc, char ** argv) {
-  const int numBodies = (1 << 24) - 1;
+  //const int numBodies = (1 << 24);
+  const int numBodies = 1 << 20;
   const float eps = 0.05;
   const float theta = 0.75;
   const int ncrit = 64;
@@ -62,7 +63,7 @@ int main(int argc, char ** argv) {
   t0 = get_time();
   traversal.direct(numTarget, numBlock, eps, bodyPos2, bodyAcc2);
   dt = get_time() - t0;
-  flops = 35.*numTarget*numBodies/dt/1e12;
+  flops = 35. * numTarget * numBodies / dt / 1e12;
   fprintf(stdout,"Total Direct         : %.7f s (%.7f TFlops)\n",dt,flops);
   bodyAcc.d2h();
   bodyAcc2.d2h();

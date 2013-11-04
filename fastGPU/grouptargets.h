@@ -148,8 +148,7 @@ public:
     scan(numBodies, key2.d(), bodyEnd.d());
     getTargetRange<<<NBLOCK,NTHREAD>>>(numBodies, bodyBegin.d(), bodyEnd.d(), targetRange.d());
     kernelSuccess("groupTargets");
-    const double dt = get_time() - t0;
-    fprintf(stdout,"Make groups          : %.7f s\n", dt);
+    fprintf(stdout,"Make groups          : %.7f s\n", get_time() - t0);
     int numTargets;
     CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&numTargets, numTargetGlob, sizeof(int)));
     return numTargets;

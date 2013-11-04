@@ -525,8 +525,7 @@ public:
     double t0 = get_time();
     getBounds<<<NTHREAD,NTHREAD>>>(numBodies, bounds.d(), bodyPos.d());
     kernelSuccess("getBounds");
-    double dt = get_time() - t0;
-    fprintf(stdout,"Get bounds           : %.7f s\n",  dt);
+    fprintf(stdout,"Get bounds           : %.7f s\n", get_time() - t0);
 
     CUDA_SAFE_CALL(cudaMemcpyToSymbol(maxNodesGlob, &maxNode, sizeof(int), 0, cudaMemcpyHostToDevice));
     octantSizePool.zeros();
@@ -548,8 +547,7 @@ public:
 				reinterpret_cast<float4*>(bodyPos.d()),
 				reinterpret_cast<float4*>(bodyPos2.d()));
     kernelSuccess("buildOctree");
-    dt = get_time() - t0;
-    fprintf(stdout,"Grow tree            : %.7f s\n",  dt);
+    fprintf(stdout,"Grow tree            : %.7f s\n", get_time() - t0);
     int numLevels, numCells, numLeafs;
     CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&box, boxGlob, sizeof(float4)));
     CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&numLevels, numLevelsGlob, sizeof(int)));
@@ -570,8 +568,7 @@ public:
     sourceCells.alloc(numCells);
     permuteCells<<<NBLOCK,NTHREAD>>>(numCells, value.d(), key.d(), sourceCells2.d(), sourceCells.d());
     kernelSuccess("permuteCells");
-    dt = get_time() - t0;
-    fprintf(stdout,"Link tree            : %.7f s\n", dt);
+    fprintf(stdout,"Link tree            : %.7f s\n", get_time() - t0);
     int3 counts = {numLevels, numCells, numLeafs};
     return counts;
   }
