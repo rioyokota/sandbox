@@ -59,6 +59,7 @@ namespace {
 		     const fvec3 pos_i[2],
 		     const fvec3 targetCenter,
 		     const fvec3 targetSize,
+		     const fvec3 Xperiodic,
 		     const float EPS2,
 		     const int2 rootRange,
 		     volatile int * tempQueue,
@@ -258,20 +259,38 @@ namespace {
       const fvec3 targetCenter = (Xmax+Xmin) * 0.5f;
       const fvec3 targetSize = (Xmax-Xmin) * 0.5f;
       fvec4 acc_i[2] = {0.0f, 0.0f};
-      const uint2 counters = traverseWarp(acc_i, pos_i, targetCenter, targetSize, EPS2,
-					  levelRange[1], tempQueue, cellQueue);
-      assert(!(counters.x == 0xFFFFFFFF && counters.y == 0xFFFFFFFF));
-
-      int maxP2P = counters.y;
+      fvec3 Xperiodic = 0.0f;
+      int numP2P = 0, numM2P = 0;
+      /*
+      for (int ix=-1; ix<=1; ix++) {
+	for (int iy=-1; iy<=1; iy++) {
+	  for (int iz=-1; iz<=1; iz++) {
+	    Xperiodic[0] = ix * cycle;
+	    Xperiodic[1] = iy * cycle;
+	    Xperiodic[2] = iz * cycle;
+      */
+	    const uint2 counters = traverseWarp(acc_i, pos_i, targetCenter, targetSize,
+						Xperiodic, EPS2,
+						levelRange[1], tempQueue, cellQueue);
+	    assert(!(counters.x == 0xFFFFFFFF && counters.y == 0xFFFFFFFF));
+	    numM2P += counters.x;
+	    numP2P += counters.y;
+	    /*
+	  }
+	}
+      }
+	    */
+      int maxP2P = numP2P;
       int sumP2P = 0;
-      int maxM2P = counters.x;
+      int maxM2P = numM2P;
       int sumM2P = 0;
       const int bodyIdx = bodyBegin + laneIdx;
-      for (int i=0; i<2; i++)
+      for (int i=0; i<2; i++) {
 	if (i*WARP_SIZE + bodyIdx < bodyEnd) {
-	  sumM2P += counters.x;
-	  sumP2P += counters.y;
+	  sumM2P += numM2P;
+	  sumP2P += numP2P;
 	}
+      }
 #pragma unroll
       for (int i=0; i<WARP_SIZE2; i++) {
 	maxP2P  = max(maxP2P, __shfl_xor(maxP2P, 1<<i));
@@ -285,9 +304,10 @@ namespace {
 	atomicMax(&maxM2PGlob,                     maxM2P);
 	atomicAdd(&sumM2PGlob, (unsigned long long)sumM2P);
       }
-      for (int i=0; i<2; i++)
+      for (int i=0; i<2; i++) {
 	if (bodyIdx + i * WARP_SIZE < bodyEnd)
 	  bodyAcc[i*WARP_SIZE + bodyIdx] = acc_i[i];
+      }
     }
   }
 

@@ -7,9 +7,9 @@
 #ifndef __CUDACC__
 template<int N, typename T>
 class vec {
-private:
+ private:
   T data[N];
-public:
+ public:
   vec(){}                                                       // Default constructor
   vec(const T &v) {                                             // Copy constructor (scalar)
     for (int i=0; i<N; i++) data[i] = v;
@@ -180,14 +180,20 @@ public:
     for (int i=0; i<N; i++) temp[i] = 1. / std::sqrt(v[i]);
     return temp;
   }
+  friend void wrap(vec &v, const T &w) {                        // Wrap around periodic boundary
+    for (int i=0; i<N; i++) {
+      if(v[i] < -w / 2) v[i] += w;
+      if(v[i] >  w / 2) v[i] -= w;
+    }
+  }
 };
 #else
 #include "unroll.h"
 template<int N, typename T>
 class vec {
-private:
+ private:
   T data[N];
-public:
+ public:
   __host__ __device__ __forceinline__
   vec(){}                                                       // Default constructor
   __host__ __device__ __forceinline__
@@ -424,7 +430,7 @@ public:
     return temp;
   }
   __host__ __device__ __forceinline__
-  friend T max(const vec &v) {                                // Reduce maximum
+    friend T max(const vec &v) {                                // Reduce maximum
     T temp;
     for (int i=0; i<N; i++) temp = temp > v[i] ? temp : v[i];
     return temp;
@@ -441,6 +447,13 @@ public:
     Unroll<Ops::Rsqrt<T>,T,N>::loop(temp,v);
     return temp;
   }
+  __host__ __device__ __forceinline__
+  friend void wrap(vec &v, const T &w) {                        // Wrap around periodic boundary
+    for (int i=0; i<N; i++) {
+      if(v[i] < -w / 2) v[i] += w;
+      if(v[i] >  w / 2) v[i] -= w;
+    }
+  }
 };
 #endif
 
@@ -448,9 +461,9 @@ public:
 #include <immintrin.h>
 template<>
 class vec<16,float> {
-private:
+ private:
   __m512 data;
-public:
+ public:
   vec(){}                                                       // Default constructor
   vec(const float v) {                                          // Copy constructor scalar
     data = _mm512_set1_ps(v);
@@ -662,9 +675,9 @@ public:
 #include <immintrin.h>
 template<>
 class vec<8,float> {
-private:
+ private:
   __m256 data;
-public:
+ public:
   vec(){}                                                       // Default constructor
   vec(const float v) {                                          // Copy constructor scalar
     data = _mm256_set1_ps(v);
@@ -773,9 +786,9 @@ public:
 
 template<>
 class vec<4,double> {
-private:
+ private:
   __m256d data;
-public:
+ public:
   vec(){}                                                       // Default constructor
   vec(const double v) {                                         // Copy constructor scalar
     data = _mm256_set1_pd(v);
@@ -887,9 +900,9 @@ public:
 #if __bgq__
 template<>
 class vec<4,double> {
-private:
+ private:
   vector4double data;
-public:
+ public:
   vec(){}                                                       // Default constructor
   vec(const double v) {                                         // Copy constructor scalar
     vector4double temp = {v};
@@ -1003,9 +1016,9 @@ public:
 
 template<>
 class vec<4,float> {
-private:
+ private:
   __m128 data;
-public:
+ public:
   vec(){}                                                       // Default constructor
   vec(const float v) {                                          // Copy constructor scalar
     data = _mm_set1_ps(v);
@@ -1109,9 +1122,9 @@ public:
 
 template<>
 class vec<2,double> {
-private:
+ private:
   __m128d data;
-public:
+ public:
   vec(){}                                                       // Default constructor
   vec(const double v) {                                         // Copy constructor scalar
     data = _mm_set1_pd(v);
@@ -1220,9 +1233,9 @@ public:
 
 template<>
 class vec<2,double> {
-private:
+ private:
   __m128d data;
-public:
+ public:
   vec(){}                                                       // Default constructor
   vec(const double v) {                                         // Copy constructor scalar
     data = _mm_set_pd(v,v);
