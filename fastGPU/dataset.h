@@ -21,17 +21,15 @@ public:
     }
     file.close();
     unsigned long i = 0;
+    const float scale = 3.0 * M_PI / 16.0;
     while (i < n) {
-      float X1 = drand48();
-      float X2 = drand48();
-      float X3 = drand48();
-      float R = 1.0 / sqrt( (pow(X1, -2.0 / 3.0) - 1.0) );
+      float R = 1.0 / sqrt( (pow(drand48(), -2.0 / 3.0) - 1.0) );
       if (R < 100.0) {
-	float Z = (1.0 - 2.0 * X2) * R;
-	float X = sqrt(R * R - Z * Z) * cos(2.0 * M_PI * X3);
-	float Y = sqrt(R * R - Z * Z) * sin(2.0 * M_PI * X3);
-	float conv = 3.0 * M_PI / 16.0;
-	X *= conv; Y *= conv; Z *= conv;
+	float Z = (1.0 - 2.0 * drand48()) * R;
+        float theta = 2.0 * M_PI * drand48();
+	float X = sqrt(R * R - Z * Z) * cos(theta);
+	float Y = sqrt(R * R - Z * Z) * sin(theta);
+	X *= scale; Y *= scale; Z *= scale;
 	pos[i][0] = X;
 	pos[i][1] = Y;
 	pos[i][2] = Z;
