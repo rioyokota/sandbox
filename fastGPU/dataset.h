@@ -21,6 +21,7 @@ public:
     }
     file.close();
     unsigned long i = 0;
+#if 0
     const float scale = 3.0 * M_PI / 16.0;
     while (i < n) {
       float R = 1.0 / sqrt( (pow(drand48(), -2.0 / 3.0) - 1.0) );
@@ -42,6 +43,14 @@ public:
 	i++;
       }
     }
+#else
+    for (i=0; i<n; i++) {
+      pos[i][0] = drand48();
+      pos[i][1] = drand48();
+      pos[i][2] = drand48();
+      pos[i][3] = drand48() / n;
+    }
+#endif
     kvec4 com(0.0);
     for (i=0; i<n; i++) {
       com[0] += abs(pos[i][3]) * pos[i][0];
