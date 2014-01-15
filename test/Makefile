@@ -23,6 +23,9 @@ radixbody: radixbody.o
 tree: tree.o
 	$(CXX) $?
 	./a.out
+fmm1d: fmm1d.o
+	$(CXX) $?
+	./a.out
 neighbor: neighbor.o
 	$(CXX) $?
 	./a.out
