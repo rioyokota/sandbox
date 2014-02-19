@@ -86,7 +86,7 @@ gpufmm: gpufmm.o thrust.o
 	$(NVCC) $?
 	./a.out
 openacc: openacc.c
-	pgcc -O3 -mp -acc -ta=nvidia $?
+	pgcc -fast -mp -acc -ta=nvidia $?
 	./a.out
 clean:
 	@make -C .. clean
