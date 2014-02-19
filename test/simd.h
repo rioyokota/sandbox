@@ -71,6 +71,9 @@ public:
     for (int i=0; i<8; i++) s << v[i] << ' ';
     return s;
   }
+  friend float sum(const fvec16 &v) {                            // Sum vector
+    return _mm512_reduce_add_ps(v.data);
+  }
   friend fvec16 rsqrt(const fvec16 &v) {                         // reciprocal square root
     return fvec16(_mm512_rsqrt23_ps(v.data));
   }

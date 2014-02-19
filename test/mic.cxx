@@ -40,16 +40,20 @@ int main() {
   std::cout << std::scientific << "N     : " << N << std::endl;
 
 // Host P2P
+  for (int it=0; it<2; it++) {
   double tic = get_time();
   P2P(targetHost,sourceHost,N,N,EPS2);
   double toc = get_time();
   std::cout << std::scientific << "SISD  : " << toc-tic << " s : " << OPS / (toc-tic) << " GFlops" << std::endl;
+  }
 
 // MIC P2P
-  tic = get_time();
+  for (int it=0; it<2; it++) {
+  double tic = get_time();
   P2Pmic(targetMIC,sourceHost,N,N,EPS2);
-  toc = get_time();
+  double toc = get_time();
   std::cout << std::scientific << "SIMD  : " << toc-tic << " s : " << OPS / (toc-tic) << " GFlops" << std::endl;
+  }
 
 // COMPARE RESULTS
   float pd = 0, pn = 0, fd = 0, fn = 0;
