@@ -27,7 +27,7 @@ double get_time() {
 
 int main() {
   const int numBodies = 10000000;
-  const int NCRIT = 10;
+  const int NCRIT = 1000;
   double tic, toc;
   tic = get_time();
   Bodies bodies(numBodies);
@@ -98,7 +98,7 @@ int main() {
   toc = get_time();
   std::cout << "set B: " << toc-tic << std::endl;
 
-#if 0
+#if 1
   real R0 = 0.5;
   vect X0 = 0.5;
   int Ncell = 0;

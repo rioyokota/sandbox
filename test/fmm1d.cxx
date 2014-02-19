@@ -14,8 +14,8 @@ double get_time() {
 }
 
 int main() {
-  const int nx = 32; // Number of target points
-  const int ny = 32; // Number of source points
+  const int nx = 40; // Number of target points
+  const int ny = 40; // Number of source points
   const int P = 4; // Order of multipole expansions
   const int pointsPerLeaf = 4; // Number of points per leaf cell
   const float eps = 1e-6; // Epsilon
@@ -49,7 +49,8 @@ int main() {
   xmin -= eps; // Give some leeway to avoid points on boundary
   xmax += eps;
   // Assign cell index to points
-  const int numLevels = log(nx/pointsPerLeaf) / log(2); // Depth of binary tree
+  const int n = std::max(nx,ny); // Larger of the two
+  const int numLevels = log(n/pointsPerLeaf) / M_LN2; // Depth of binary tree
   const int maxLevel = numLevels - 1; // Level starts from 0
   const int numLeafs = 1 << maxLevel; // Cells at the bottom of binary tree
   const int numCells = 2 * numLeafs; // Total number of cells in binary tree
