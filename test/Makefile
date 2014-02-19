@@ -1,8 +1,8 @@
 .SUFFIXES: .cxx .cu .o
 
-CXX = mpicxx -Wall -O3 -fopenmp -msse4a -ffast-math -funroll-loops -I/usr/include/vtk-5.8
+#CXX = mpicxx -Wall -O3 -fopenmp -msse4a -ffast-math -funroll-loops -I/usr/include/vtk-5.8
 #CXX = icc -gcc-name=gcc-4.6 -mavx -O3 -openmp -lstdc++
-#CXX = icpc -Wall -mmic -O3 -openmp
+CXX = icpc -Wall -mmic -O3 -openmp
 NVCC = nvcc -O3 -use_fast_math -arch=sm_30 -lcuda --ptxas-options=-v -Xcompiler "-Wall -fopenmp -ffast-math -funroll-loops"
 VFLAGS = -lvtkCharts -lvtkRendering -lvtkGraphics -lvtkFiltering -lvtkViews -lvtkCommon -lvtkWidgets -lvtkIO
 
@@ -51,6 +51,8 @@ avx: avx.o direct_sse.o direct_avx.o
 	$(CXX) $? -lpapi
 	./a.out
 mic: mic.o direct.o direct_mic.o
+	$(CXX) $?
+mic2: mic2.o
 	$(CXX) $?
 vec: vec.o
 	$(CXX) $?
