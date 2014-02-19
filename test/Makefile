@@ -51,7 +51,7 @@ avx: avx.o direct_sse.o direct_avx.o
 	$(CXX) $? -lpapi
 	./a.out
 mic: mic.o direct.o direct_mic.o
-	$(CXX) $?
+	$(CXX) $? -L/home/rio/.papi-mic/lib -lpapi -lpfm
 mic2: mic2.o
 	$(CXX) $?
 vec: vec.o

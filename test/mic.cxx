@@ -2,6 +2,7 @@
 #include <cstdlib>
 #include <iomanip>
 #include <iostream>
+#include <papi.h>
 #include <sys/time.h>
 
 struct float4 {
@@ -49,10 +50,21 @@ int main() {
 
 // MIC P2P
   for (int it=0; it<2; it++) {
-  double tic = get_time();
-  P2Pmic(targetMIC,sourceHost,N,N,EPS2);
-  double toc = get_time();
-  std::cout << std::scientific << "SIMD  : " << toc-tic << " s : " << OPS / (toc-tic) << " GFlops" << std::endl;
+    int Events[3] = { PAPI_L2_DCM, PAPI_L2_DCA, PAPI_TLB_DM };
+    int EventSet = PAPI_NULL;
+    PAPI_library_init(PAPI_VER_CURRENT);
+    PAPI_create_eventset(&EventSet);
+    PAPI_add_events(EventSet, Events, 3);
+    PAPI_start(EventSet);
+    double tic = get_time();
+    P2Pmic(targetMIC,sourceHost,N,N,EPS2);
+    double toc = get_time();
+    long long values[3];
+    PAPI_stop(EventSet,values);
+    std::cout << "L2 Miss: " << values[0]
+	      << " L2 Access: " << values[1]
+	      << " TLB Miss: " << values[2] << std::endl;
+    std::cout << std::scientific << "SIMD  : " << toc-tic << " s : " << OPS / (toc-tic) << " GFlops" << std::endl;
   }
 
 // COMPARE RESULTS
