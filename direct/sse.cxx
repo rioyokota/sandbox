@@ -13,7 +13,7 @@ struct float4 {
   float w;
 };
 
-const int N = 1 << 15;
+const int N = 1 << 16;
 const float OPS = 20. * N * N * 1e-9;
 const float EPS2 = 1e-6;
 
