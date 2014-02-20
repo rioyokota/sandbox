@@ -47,13 +47,6 @@ nitadori: nitadori.o
 matern: matern.o
 	$(CXX) $?
 	./a.out
-avx: avx.o direct_sse.o direct_avx.o
-	$(CXX) $? -lpapi
-	./a.out
-mic: mic.o direct.o direct_mic.o
-	$(CXX) $? -L/home/rio/.papi-mic/lib -lpapi -lpfm
-mic2: mic2.o
-	$(CXX) $?
 vec: vec.o
 	$(CXX) $?
 	./a.out
@@ -70,23 +63,14 @@ cpufmm: cpufmm.o
 cpufmm2d: cpufmm2d.o
 	$(CXX) $?
 	./a.out
-sse: sse.cu direct_sse.o direct_asm.o
-	$(NVCC) $? -lpapi
-	./a.out
 tau: tau.cxx
 	tau_cxx.sh tau.cxx
 	mpirun -np 8 ./a.out
-p2p: p2p.o
-	$(NVCC) $? -lpapi
-	./a.out
 gpufmm: gpufmm.o thrust.o
 	$(NVCC) $?
 	./a.out
 12steps: 12steps.o
 	$(NVCC) $?
-	./a.out
-openacc: openacc.c
-	pgcc -fast -mp -acc -ta=nvidia $?
 	./a.out
 clean:
 	@make -C .. clean
