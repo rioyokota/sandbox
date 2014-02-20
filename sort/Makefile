@@ -8,24 +8,23 @@ NVCC = nvcc -O3 -use_fast_math -arch=sm_35 -Xcompiler "-Wall -fopenmp -ffast-mat
 .cu.o   :
 	$(NVCC) -c $? -o $@
 
-device: device.o
-	$(CXX) $? -lcudart
+binary: binary.o
+	$(CXX) $? $(VFLAGS)
 	./a.out
-hello: hello.asm
-	nasm $? -f elf
-	ld -m elf_i386 -s hello.o
-	./a.out
-nitadori: nitadori.o
+neighbor: neighbor.o
 	$(CXX) $?
 	./a.out
-pthreads: pthreads.o
+radixbody: radixbody.o
 	$(CXX) $?
 	./a.out
-template: template.o
+radixsort: radixsort.o
 	$(CXX) $?
 	./a.out
-vtk: vtk.o
-	$(CXX) $? -lvtkCharts -lvtkRendering -lvtkGraphics -lvtkFiltering -lvtkViews -lvtkCommon -lvtkWidgets -lvtkIO
+sort: sort.o
+	$(CXX) $?
+	./a.out
+tree: tree.o
+	$(CXX) $?
 	./a.out
 clean:
 	@make -C .. clean

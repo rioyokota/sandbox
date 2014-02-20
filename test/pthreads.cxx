@@ -1,4 +1,5 @@
 #include <iostream>
+#include <unistd.h>
 
 pthread_mutex_t lock;
 int shared_data;

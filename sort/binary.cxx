@@ -5,7 +5,7 @@
 #include <iostream>
 #include <sys/time.h>
 #include <vector>
-#include "vtk.h"
+#include "types.h"
 
 typedef long bigint;
 typedef std::vector<int> Index;
@@ -97,14 +97,4 @@ int main() {
   }
   toc = get_time();
   std::cout << "set B: " << toc-tic << std::endl;
-
-#if 1
-  real R0 = 0.5;
-  vect X0 = 0.5;
-  int Ncell = 0;
-  vtkPlot vtk;
-  vtk.setDomain(R0,X0);
-  vtk.setGroupOfPoints(bodies,Ncell);
-  vtk.plot(Ncell);
-#endif
 }
