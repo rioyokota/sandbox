@@ -1,7 +1,6 @@
-#include <cmath>
-#include <cstdlib>
-#include <iomanip>
-#include <iostream>
+#include <math.h>
+#include <stdlib.h>
+#include <stdio.h>
 #include <papi.h>
 #include <sys/time.h>
 #include <xmmintrin.h>
@@ -9,14 +8,14 @@
 double get_time() {
   struct timeval tv;
   gettimeofday(&tv,NULL);
-  return double(tv.tv_sec+tv.tv_usec*1e-6);
+  return (double)(tv.tv_sec+tv.tv_usec*1e-6);
 }
 
 int main() {
 // Initialize
-  const int N = 1 << 16;
-  const float OPS = 20. * N * N * 1e-9;
-  const float EPS2 = 1e-6;
+  int N = 1 << 16;
+  float OPS = 20. * N * N * 1e-9;
+  float EPS2 = 1e-6;
   float * x = (float*) malloc(N * sizeof(float));
   float * y = (float*) malloc(N * sizeof(float));
   float * z = (float*) malloc(N * sizeof(float));
@@ -25,7 +24,7 @@ int main() {
   float * ax = (float*) malloc(N * sizeof(float));
   float * ay = (float*) malloc(N * sizeof(float));
   float * az = (float*) malloc(N * sizeof(float));
-  for( int i=0; i<N; i++ ) {
+  for (int i=0; i<N; i++) {
     x[i] = drand48();
     y[i] = drand48();
     z[i] = drand48();
@@ -38,13 +37,13 @@ int main() {
   PAPI_library_init(PAPI_VER_CURRENT);
   PAPI_create_eventset(&EventSet);
   PAPI_add_events(EventSet, Events, 3);
-  std::cout << std::scientific << "N      : " << N << std::endl;
+  printf("N      : %d\n",N);
 
 // SSE
   PAPI_start(EventSet);
   tic = get_time();
 #pragma omp parallel for
-  for( int i=0; i<N; i+=4 ) {
+  for (int i=0; i<N; i+=4) {
     __m128 pi = _mm_setzero_ps();
     __m128 axi = _mm_setzero_ps();
     __m128 ayi = _mm_setzero_ps();
@@ -52,14 +51,14 @@ int main() {
     __m128 xi = _mm_setr_ps(x[i],x[i+1],x[i+2],x[i+3]);
     __m128 yi = _mm_setr_ps(y[i],y[i+1],y[i+2],y[i+3]);
     __m128 zi = _mm_setr_ps(z[i],z[i+1],z[i+2],z[i+3]);
-    __m128 R2 = _mm_load1_ps(&EPS2);
-    __m128 x2 = _mm_load1_ps(&x[0]);
+    __m128 R2 = _mm_set1_ps(EPS2);
+    __m128 x2 = _mm_set1_ps(x[0]);
     x2 = _mm_sub_ps(x2, xi);
-    __m128 y2 = _mm_load1_ps(&y[0]);
+    __m128 y2 = _mm_set1_ps(y[0]);
     y2 = _mm_sub_ps(y2, yi);
-    __m128 z2 = _mm_load1_ps(&z[0]);
+    __m128 z2 = _mm_set1_ps(z[0]);
     z2 = _mm_sub_ps(z2, zi);
-    __m128 mj = _mm_load1_ps(&m[0]);
+    __m128 mj = _mm_set1_ps(m[0]);
     __m128 xj = x2;
     x2 = _mm_mul_ps(x2, x2);
     R2 = _mm_add_ps(R2, x2);
@@ -70,12 +69,12 @@ int main() {
     z2 = _mm_mul_ps(z2, z2);
     R2 = _mm_add_ps(R2, z2);
     __m128 invR;
-    x2 = _mm_load1_ps(&x[1]);
-    y2 = _mm_load1_ps(&y[1]);
-    z2 = _mm_load1_ps(&z[1]);
-    for( int j=0; j<N-2; j++ ) {
+    x2 = _mm_set1_ps(x[1]);
+    y2 = _mm_set1_ps(y[1]);
+    z2 = _mm_set1_ps(z[1]);
+    for (int j=0; j<N-2; j++) {
       invR = _mm_rsqrt_ps(R2);
-      R2 = _mm_load1_ps(&EPS2);
+      R2 = _mm_set1_ps(EPS2);
       x2 = _mm_sub_ps(x2, xi);
       y2 = _mm_sub_ps(y2, yi);
       z2 = _mm_sub_ps(z2, zi);
@@ -83,28 +82,28 @@ int main() {
       pi = _mm_add_ps(pi, mj);
       invR = _mm_mul_ps(invR, invR);
       invR = _mm_mul_ps(invR, mj);
-      mj = _mm_load1_ps(&m[j+1]);
+      mj = _mm_set1_ps(m[j+1]);
       xj = _mm_mul_ps(xj, invR);
       axi = _mm_add_ps(axi, xj);
       xj = x2;
       x2 = _mm_mul_ps(x2, x2);
       R2 = _mm_add_ps(R2, x2);
-      x2 = _mm_load1_ps(&x[j+2]);
+      x2 = _mm_set1_ps(x[j+2]);
       yj = _mm_mul_ps(yj, invR);
       ayi = _mm_add_ps(ayi, yj);
       yj = y2;
       y2 = _mm_mul_ps(y2, y2);
       R2 = _mm_add_ps(R2, y2);
-      y2 = _mm_load1_ps(&y[j+2]);
+      y2 = _mm_set1_ps(y[j+2]);
       zj = _mm_mul_ps(zj, invR);
       azi = _mm_add_ps(azi, zj);
       zj = z2;
       z2 = _mm_mul_ps(z2, z2);
       R2 = _mm_add_ps(R2, z2);
-      z2 = _mm_load1_ps(&z[j+2]);
+      z2 = _mm_set1_ps(z[j+2]);
     }
     invR = _mm_rsqrt_ps(R2);
-    R2 = _mm_load1_ps(&EPS2);
+    R2 = _mm_set1_ps(EPS2);
     x2 = _mm_sub_ps(x2, xi);
     y2 = _mm_sub_ps(y2, yi);
     z2 = _mm_sub_ps(z2, zi);
@@ -112,7 +111,7 @@ int main() {
     pi = _mm_add_ps(pi, mj);
     invR = _mm_mul_ps(invR, invR);
     invR = _mm_mul_ps(invR, mj);
-    mj = _mm_load1_ps(&m[N-1]);
+    mj = _mm_set1_ps(m[N-1]);
     xj = _mm_mul_ps(xj, invR);
     axi = _mm_add_ps(axi, xj);
     xj = x2;
@@ -139,19 +138,17 @@ int main() {
     ayi = _mm_add_ps(ayi, yj);
     zj = _mm_mul_ps(zj, invR);
     azi = _mm_add_ps(azi, zj);
-    for( int k=0; k<4; k++ ) {
-      p[i+k] = ((float*)&pi)[k];
-      ax[i+k] = ((float*)&axi)[k];
-      ay[i+k] = ((float*)&ayi)[k];
-      az[i+k] = ((float*)&azi)[k];
+    for (int j=0; j<4; j++) {
+      p[i+j] = ((float*)&pi)[j];
+      ax[i+j] = ((float*)&axi)[j];
+      ay[i+j] = ((float*)&ayi)[j];
+      az[i+j] = ((float*)&azi)[j];
     }
   }
   toc = get_time();
   PAPI_stop(EventSet,values);
-  std::cout << "L2 Miss: " << values[0]
-            << " L2 Access: " << values[1]
-            << " TLB Miss: " << values[2] << std::endl;
-  std::cout << std::scientific << "SSE    : " << toc-tic << " s : " << OPS / (toc-tic) << " GFlops" << std::endl;
+  printf("L2 Miss: %lld L2 Access: %lld TLB Miss: %lld\n",values[0],values[1],values[2]);
+  printf("SSE    : %e s : %lf GFlops\n",toc-tic, OPS/(toc-tic));
   for (int i=0; i<3; i++) values[i] = 0;
 
 // No SSE
@@ -188,12 +185,10 @@ int main() {
   }
   toc = get_time();
   PAPI_stop(EventSet,values);
-  std::cout << "L2 Miss: " << values[0]
-            << " L2 Access: " << values[1]
-            << " TLB Miss: " << values[2] << std::endl;
-  std::cout << std::scientific << "No SSE : " << toc-tic << " s : " << OPS / (toc-tic) << " GFlops" << std::endl;
-  std::cout << std::scientific << "P ERR  : " << sqrtf(pdiff/pnorm) << std::endl;
-  std::cout << std::scientific << "F ERR  : " << sqrtf(adiff/anorm) << std::endl;
+  printf("L2 Miss: %lld L2 Access: %lld TLB Miss: %lld\n",values[0],values[1],values[2]);
+  printf("No SSE : %e s : %lf GFlops\n",toc-tic, OPS/(toc-tic));
+  printf("P ERR  : %e\n",sqrt(pdiff/pnorm));
+  printf("A ERR  : %e\n",sqrt(adiff/anorm));
 
 // DEALLOCATE
   free(x);
