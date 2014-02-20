@@ -1,131 +1,176 @@
-#include <cmath>
-#include <cstdlib>
-#include <iomanip>
-#include <iostream>
+#include <math.h>
+#include <stdlib.h>
+#include <stdio.h>
 #include <papi.h>
 #include <sys/time.h>
+#include <xmmintrin.h>
 
-const int THREADS = 512;
-const int N = THREADS * 128;
-const float OPS = 20. * N * N * 1e-9;
-const float EPS2 = 1e-6;
+#define THREADS 512
 
 double get_time() {
   struct timeval tv;
   cudaThreadSynchronize();
   gettimeofday(&tv,NULL);
-  return double(tv.tv_sec+tv.tv_usec*1e-6);
+  return (double)(tv.tv_sec+tv.tv_usec*1e-6);
 }
 
-extern void P2Psse(float4 *target, float4 *source, int ni, int nj, float eps2);
-
-extern void P2Pasm(float4 *target, float4 *source, int ni, int nj, float eps2);
-
-__global__ void P2Pdevice(float4 *target, float4 *source) {
+__global__ void GPUkernel(int N, float * x, float * y, float * z, float * m,
+			  float * p, float * ax, float * ay, float * az, float eps2) {
   int i = blockIdx.x * THREADS + threadIdx.x;
-  float4 t = {0,0,0,0};
-  float4 si = source[i];
-  __shared__ float4 s[THREADS];
+  float pi = 0;
+  float axi = 0;
+  float ayi = 0;
+  float azi = 0;
+  float xi = x[i];
+  float yi = y[i];
+  float zi = z[i];
+  __shared__ float xj[THREADS], yj[THREADS], zj[THREADS], mj[THREADS];
   for ( int jb=0; jb<N/THREADS; jb++ ) {
     __syncthreads();
-    s[threadIdx.x] = source[jb*THREADS+threadIdx.x];
+    xj[threadIdx.x] = x[jb*THREADS+threadIdx.x];
+    yj[threadIdx.x] = y[jb*THREADS+threadIdx.x];
+    zj[threadIdx.x] = z[jb*THREADS+threadIdx.x];
+    mj[threadIdx.x] = m[jb*THREADS+threadIdx.x];
     __syncthreads();
     for( int j=0; j<THREADS; j++ ) {
-      float dx = s[j].x - si.x;
-      float dy = s[j].y - si.y;
-      float dz = s[j].z - si.z;
-      float R2 = dx * dx + dy * dy + dz * dz + EPS2;
+      float dx = xj[j] - xi;
+      float dy = yj[j] - yi;
+      float dz = zj[j] - zi;
+      float R2 = dx * dx + dy * dy + dz * dz + eps2;
       float invR = rsqrtf(R2);
-      t.w += s[j].w * invR;
-      float invR3 = invR * invR * invR * s[j].w;
-      t.x += dx * invR3;
-      t.y += dy * invR3;
-      t.z += dz * invR3;
+      pi += mj[j] * invR;
+      float invR3 = mj[j] * invR * invR * invR;
+      axi += dx * invR3;
+      ayi += dy * invR3;
+      azi += dz * invR3;
     }
   }
-  target[i] = t;
+  p[i] = pi;
+  ax[i] = axi;
+  ay[i] = ayi;
+  az[i] = azi;
 }
 
 int main() {
-// ALLOCATE
-  float4 *sourceHost = new float4 [N];
-  float4 *targetSSE = new float4 [N];
-  float4 *targetASM = new float4 [N];
-  float4 *targetGPU = new float4 [N];
-  for( int i=0; i<N; i++ ) {
-    sourceHost[i].x = drand48();
-    sourceHost[i].y = drand48();
-    sourceHost[i].z = drand48();
-    sourceHost[i].w = drand48() / N;
+// Initialize
+  int N = 1 << 16;
+  int i, j;
+  float OPS = 20. * N * N * 1e-9;
+  float EPS2 = 1e-6;
+  double tic, toc;
+  float * x = (float*) malloc(N * sizeof(float));
+  float * y = (float*) malloc(N * sizeof(float));
+  float * z = (float*) malloc(N * sizeof(float));
+  float * m = (float*) malloc(N * sizeof(float));
+  float * p = (float*) malloc(N * sizeof(float));
+  float * ax = (float*) malloc(N * sizeof(float));
+  float * ay = (float*) malloc(N * sizeof(float));
+  float * az = (float*) malloc(N * sizeof(float));
+  for (i=0; i<N; i++) {
+    x[i] = drand48();
+    y[i] = drand48();
+    z[i] = drand48();
+    m[i] = drand48() / N;
   }
-  float4 *sourceDevc, *targetDevc;
-  cudaMalloc((void**)&sourceDevc,N*sizeof(float4));
-  cudaMalloc((void**)&targetDevc,N*sizeof(float4));
-  std::cout << std::scientific << "N     : " << N << std::endl;
-
-// SSE P2P
-  int Events[3] = { PAPI_L2_DCM, PAPI_L2_DCA, PAPI_TLB_DM };
+  int Events[3] = {PAPI_L2_DCM, PAPI_L2_DCA, PAPI_TLB_DM};
   int EventSet = PAPI_NULL;
+  long long values[3] = {0, 0, 0};
   PAPI_library_init(PAPI_VER_CURRENT);
   PAPI_create_eventset(&EventSet);
   PAPI_add_events(EventSet, Events, 3);
-  PAPI_start(EventSet);
+  printf("N      : %d\n",N);
 
-  double tic = get_time();
-  P2Psse(targetSSE,sourceHost,N,N,EPS2);
-  double toc = get_time();
-
-  long long values[3];
-  PAPI_stop(EventSet,values);
-  std::cout << "L2 Miss: " << values[0]
-            << " L2 Access: " << values[1]
-            << " TLB Miss: " << values[2] << std::endl;
-
-  std::cout << std::scientific << "SSE   : " << toc-tic << " s : " << OPS / (toc-tic) << " GFlops" << std::endl;
-
-// ASM P2P
-  PAPI_start(EventSet);
-
+// CUDA
   tic = get_time();
-  P2Pasm(targetASM,sourceHost,N,N,EPS2);
+  float *x_d, *y_d, *z_d, *m_d, *p_d, *ax_d, *ay_d, *az_d;
+  cudaMalloc((void**)&x_d, N * sizeof(float));
+  cudaMalloc((void**)&y_d, N * sizeof(float));
+  cudaMalloc((void**)&z_d, N * sizeof(float));
+  cudaMalloc((void**)&m_d, N * sizeof(float));
+  cudaMalloc((void**)&p_d, N * sizeof(float));
+  cudaMalloc((void**)&ax_d, N * sizeof(float));
+  cudaMalloc((void**)&ay_d, N * sizeof(float));
+  cudaMalloc((void**)&az_d, N * sizeof(float));
   toc = get_time();
-
-  PAPI_stop(EventSet,values);
-  std::cout << "L2 Miss: " << values[0]
-            << " L2 Access: " << values[1]
-            << " TLB Miss: " << values[2] << std::endl;
-
-  std::cout << std::scientific << "ASM   : " << toc-tic << " s : " << OPS / (toc-tic) << " GFlops" << std::endl;
-
-// GPU P2P
-  cudaMemcpy(sourceDevc,sourceHost,N*sizeof(float4),cudaMemcpyHostToDevice);
+  //printf("malloc : %e s\n",toc-tic);
   tic = get_time();
-  P2Pdevice<<<N/THREADS,THREADS>>>(targetDevc,sourceDevc);
+  cudaMemcpy(x_d, x, N * sizeof(float), cudaMemcpyHostToDevice);
+  cudaMemcpy(y_d, y, N * sizeof(float), cudaMemcpyHostToDevice);
+  cudaMemcpy(z_d, z, N * sizeof(float), cudaMemcpyHostToDevice);
+  cudaMemcpy(m_d, m, N * sizeof(float), cudaMemcpyHostToDevice);
   toc = get_time();
-  cudaMemcpy(targetGPU,targetDevc,N*sizeof(float4),cudaMemcpyDeviceToHost);
-  std::cout << std::scientific << "GPU   : " << toc-tic << " s : " << OPS / (toc-tic) << " GFlops" << std::endl;
-  cudaDeviceReset();
+  //printf("memcpy : %e s\n",toc-tic);
+  PAPI_start(EventSet);
+  tic = get_time();
+  GPUkernel<<<N/THREADS,THREADS>>>(N, x_d, y_d, z_d, m_d, p_d, ax_d, ay_d, az_d, EPS2);
+  toc = get_time();
+  PAPI_stop(EventSet,values);
+  printf("L2 Miss: %lld L2 Access: %lld TLB Miss: %lld\n",values[0],values[1],values[2]);
+  printf("CUDA   : %e s : %lf GFlops\n",toc-tic, OPS/(toc-tic));
+  tic = get_time();
+  cudaMemcpy(p, p_d, N * sizeof(float), cudaMemcpyDeviceToHost);
+  cudaMemcpy(ax, ax_d, N * sizeof(float), cudaMemcpyDeviceToHost);
+  cudaMemcpy(ay, ay_d, N * sizeof(float), cudaMemcpyDeviceToHost);
+  cudaMemcpy(az, az_d, N * sizeof(float), cudaMemcpyDeviceToHost);
+  toc = get_time();
+  //printf("memcpy : %e s\n",toc-tic);
+  cudaFree(x_d);
+  cudaFree(y_d);
+  cudaFree(z_d);
+  cudaFree(m_d);
+  cudaFree(p_d);
+  cudaFree(ax_d);
+  cudaFree(ay_d);
+  cudaFree(az_d);
+  for (i=0; i<3; i++) values[i] = 0;
 
-// COMPARE RESULTS
-  float pd = 0, pn = 0, fd = 0, fn = 0;
-  for( int i=0; i<N; i++ ) {
-    targetSSE[i].w -= sourceHost[i].w / sqrtf(EPS2);
-    targetGPU[i].w -= sourceHost[i].w / sqrtf(EPS2);
-    pd += (targetSSE[i].w - targetGPU[i].w) * (targetSSE[i].w - targetGPU[i].w);
-    pn += targetSSE[i].w * targetSSE[i].w;
-    fd += (targetSSE[i].x - targetGPU[i].x) * (targetSSE[i].x - targetGPU[i].x)
-        + (targetSSE[i].y - targetGPU[i].y) * (targetSSE[i].y - targetGPU[i].y)
-        + (targetSSE[i].z - targetGPU[i].z) * (targetSSE[i].z - targetGPU[i].z);
-    fn += targetSSE[i].x * targetSSE[i].x + targetSSE[i].y * targetSSE[i].y + targetSSE[i].z * targetSSE[i].z;
+// No CUDA
+  float pdiff = 0, pnorm = 0, adiff = 0, anorm = 0;
+  PAPI_start(EventSet);
+  tic = get_time();
+#pragma omp parallel for private(j)
+  for (i=0; i<N; i++) {
+    float pi = 0;
+    float axi = 0;
+    float ayi = 0;
+    float azi = 0;
+    float xi = x[i];
+    float yi = y[i];
+    float zi = z[i];
+    for (j=0; j<N; j++) {
+      float dx = x[j] - xi;
+      float dy = y[j] - yi;
+      float dz = z[j] - zi;
+      float R2 = dx * dx + dy * dy + dz * dz + EPS2;
+      float invR = 1.0f / sqrtf(R2);
+      float invR3 = m[j] * invR * invR * invR;
+      pi += m[j] * invR;
+      axi += dx * invR3;
+      ayi += dy * invR3;
+      azi += dz * invR3;
+    }
+    pdiff += (p[i] - pi) * (p[i] - pi);
+    pnorm += pi * pi;
+    adiff += (ax[i] - axi) * (ax[i] - axi)
+      + (ay[i] - ayi) * (ay[i] - ayi)
+      + (az[i] - azi) * (az[i] - azi);
+    anorm += axi * axi + ayi * ayi + azi * azi;    
   }
-  std::cout << std::scientific << "P ERR : " << sqrtf(pd/pn) << std::endl;
-  std::cout << std::scientific << "F ERR : " << sqrtf(fd/fn) << std::endl;
+  toc = get_time();
+  PAPI_stop(EventSet,values);
+  printf("L2 Miss: %lld L2 Access: %lld TLB Miss: %lld\n",values[0],values[1],values[2]);
+  printf("No CUDA: %e s : %lf GFlops\n",toc-tic, OPS/(toc-tic));
+  printf("P ERR  : %e\n",sqrt(pdiff/pnorm));
+  printf("A ERR  : %e\n",sqrt(adiff/anorm));
 
 // DEALLOCATE
-  cudaFree(sourceDevc);
-  cudaFree(targetDevc);
-  delete[] sourceHost;
-  delete[] targetSSE;
-  delete[] targetASM;
-  delete[] targetGPU;
+  free(x);
+  free(y);
+  free(z);
+  free(m);
+  free(p);
+  free(ax);
+  free(ay);
+  free(az);
+  return 0;
 }
