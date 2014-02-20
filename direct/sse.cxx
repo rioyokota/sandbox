@@ -20,10 +20,10 @@ double get_time() {
 }
 
 int main() {
+// Initialize
   const int N = 1 << 16;
   const float OPS = 20. * N * N * 1e-9;
   const float EPS2 = 1e-6;
-// ALLOCATE
   float * x = (float*) malloc(N * sizeof(float));
   float * y = (float*) malloc(N * sizeof(float));
   float * z = (float*) malloc(N * sizeof(float));
@@ -34,61 +34,22 @@ int main() {
   float * az = (float*) malloc(N * sizeof(float));
   float4 *source = new float4 [N];
   float4 *target = new float4 [N];
-  float4 *targetSSE = new float4 [N];
   for( int i=0; i<N; i++ ) {
-    source[i].x = drand48();
-    source[i].y = drand48();
-    source[i].z = drand48();
-    source[i].w = drand48() / N;
+    x[i] = source[i].x = drand48();
+    y[i] = source[i].y = drand48();
+    z[i] = source[i].z = drand48();
+    m[i] = source[i].w = drand48() / N;
   }
-  std::cout << std::scientific << "N      : " << N << std::endl;
-
-// Host P2P
+  double tic, toc;
   int Events[3] = { PAPI_L2_DCM, PAPI_L2_DCA, PAPI_TLB_DM };
   int EventSet = PAPI_NULL;
+  long long values[3];
   PAPI_library_init(PAPI_VER_CURRENT);
   PAPI_create_eventset(&EventSet);
   PAPI_add_events(EventSet, Events, 3);
-  PAPI_start(EventSet);
+  std::cout << std::scientific << "N      : " << N << std::endl;
 
-  double tic = get_time();
-#pragma omp parallel for
-  for (int i=0; i<N; i++) {
-    float ax = 0;
-    float ay = 0;
-    float az = 0;
-    float phi = 0;
-    float xi = source[i].x;
-    float yi = source[i].y;
-    float zi = source[i].z;
-    for (int j=0; j<N; j++) {
-      float dx = source[j].x - xi;
-      float dy = source[j].y - yi;
-      float dz = source[j].z - zi;
-      float R2 = dx * dx + dy * dy + dz * dz + EPS2;
-      float invR = 1.0f / sqrtf(R2);
-      float invR3 = source[j].w * invR * invR * invR;
-      phi += source[j].w * invR;
-      ax += dx * invR3;
-      ay += dy * invR3;
-      az += dz * invR3;
-    }
-    target[i].w = phi;
-    target[i].x = ax;
-    target[i].y = ay;
-    target[i].z = az;
-  }
-  double toc = get_time();
-
-  long long values[3];
-  PAPI_stop(EventSet,values);
-  std::cout << "L2 Miss: " << values[0]
-            << " L2 Access: " << values[1]
-            << " TLB Miss: " << values[2] << std::endl;
-
-  std::cout << std::scientific << "No SSE : " << toc-tic << " s : " << OPS / (toc-tic) << " GFlops" << std::endl;
-
-// SSE P2P
+// SSE
   PAPI_start(EventSet);
   tic = get_time();
 #pragma omp parallel for
@@ -196,40 +157,63 @@ int main() {
     zj = _mm_mul_ps(zj, invR);            // zj = zj * invR
     az = _mm_add_ps(az, zj);              // az = az + zj
     for( int k=0; k<4; k++ ) {
-      targetSSE[i+k].x = ((float*)&ax)[k];   // target->x = ax
-      targetSSE[i+k].y = ((float*)&ay)[k];   // target->y = ay
-      targetSSE[i+k].z = ((float*)&az)[k];   // target->z = az
-      targetSSE[i+k].w = ((float*)&phi)[k];  // target->w = phi
+      target[i+k].x = ((float*)&ax)[k];   // target->x = ax
+      target[i+k].y = ((float*)&ay)[k];   // target->y = ay
+      target[i+k].z = ((float*)&az)[k];   // target->z = az
+      target[i+k].w = ((float*)&phi)[k];  // target->w = phi
     }
   }
   toc = get_time();
-
   PAPI_stop(EventSet,values);
   std::cout << "L2 Miss: " << values[0]
             << " L2 Access: " << values[1]
             << " TLB Miss: " << values[2] << std::endl;
-
   std::cout << std::scientific << "SSE    : " << toc-tic << " s : " << OPS / (toc-tic) << " GFlops" << std::endl;
 
-// COMPARE RESULTS
+// No SSE
   float pd = 0, pn = 0, fd = 0, fn = 0;
-  for( int i=0; i<N; i++ ) {
-    target[i].w -= source[i].w / sqrtf(EPS2);
-    targetSSE[i].w -= source[i].w / sqrtf(EPS2);
-    pd += (target[i].w - targetSSE[i].w) * (target[i].w - targetSSE[i].w);
-    pn += target[i].w * target[i].w;
-    fd += (target[i].x - targetSSE[i].x) * (target[i].x - targetSSE[i].x)
-        + (target[i].y - targetSSE[i].y) * (target[i].y - targetSSE[i].y)
-        + (target[i].z - targetSSE[i].z) * (target[i].z - targetSSE[i].z);
-    fn += target[i].x * target[i].x + target[i].y * target[i].y + target[i].z * target[i].z;
+  PAPI_start(EventSet);
+  tic = get_time();
+#pragma omp parallel for
+  for (int i=0; i<N; i++) {
+    float pi = 0;
+    float axi = 0;
+    float ayi = 0;
+    float azi = 0;
+    float xi = source[i].x;
+    float yi = source[i].y;
+    float zi = source[i].z;
+    for (int j=0; j<N; j++) {
+      float dx = source[j].x - xi;
+      float dy = source[j].y - yi;
+      float dz = source[j].z - zi;
+      float R2 = dx * dx + dy * dy + dz * dz + EPS2;
+      float invR = 1.0f / sqrtf(R2);
+      float invR3 = source[j].w * invR * invR * invR;
+      pi += source[j].w * invR;
+      axi += dx * invR3;
+      ayi += dy * invR3;
+      azi += dz * invR3;
+    }
+    pd += (target[i].w - pi) * (target[i].w - pi);
+    pn += pi * pi;
+    fd += (target[i].x - axi) * (target[i].x - axi)
+        + (target[i].y - ayi) * (target[i].y - ayi)
+        + (target[i].z - azi) * (target[i].z - azi);
+    fn += axi * axi + ayi * ayi + azi * azi;    
   }
+  toc = get_time();
+  PAPI_stop(EventSet,values);
+  std::cout << "L2 Miss: " << values[0]
+            << " L2 Access: " << values[1]
+            << " TLB Miss: " << values[2] << std::endl;
+  std::cout << std::scientific << "No SSE : " << toc-tic << " s : " << OPS / (toc-tic) << " GFlops" << std::endl;
   std::cout << std::scientific << "P ERR  : " << sqrtf(pd/pn) << std::endl;
   std::cout << std::scientific << "F ERR  : " << sqrtf(fd/fn) << std::endl;
 
 // DEALLOCATE
   delete[] source;
   delete[] target;
-  delete[] targetSSE;
   free(x);
   free(y);
   free(z);
