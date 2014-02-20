@@ -20,6 +20,15 @@ int main() {
   float OPS = 20. * N * N * 1e-9;
   float EPS2 = 1e-6;
   double tic, toc;
+  float x[N];
+  float y[N];
+  float z[N];
+  float m[N];
+  float p[N];
+  float ax[N];
+  float ay[N];
+  float az[N];
+  /*
   float * x = (float*) malloc(N * sizeof(float));
   float * y = (float*) malloc(N * sizeof(float));
   float * z = (float*) malloc(N * sizeof(float));
@@ -28,6 +37,7 @@ int main() {
   float * ax = (float*) malloc(N * sizeof(float));
   float * ay = (float*) malloc(N * sizeof(float));
   float * az = (float*) malloc(N * sizeof(float));
+  */
   for (i=0; i<N; i++) {
     x[i] = drand48();
     y[i] = drand48();
@@ -115,6 +125,7 @@ int main() {
   printf("A ERR  : %e\n",sqrt(adiff/anorm));
 
 // DEALLOCATE
+/*
   free(x);
   free(y);
   free(z);
@@ -123,5 +134,6 @@ int main() {
   free(ax);
   free(ay);
   free(az);
+*/
   return 0;
 }
