@@ -49,9 +49,9 @@ int main() {
     __m128 axi = _mm_setzero_ps();
     __m128 ayi = _mm_setzero_ps();
     __m128 azi = _mm_setzero_ps();
-    __m128 xi = _mm_setr_ps(x[i],x[i+1],x[i+2],x[i+3]);
-    __m128 yi = _mm_setr_ps(y[i],y[i+1],y[i+2],y[i+3]);
-    __m128 zi = _mm_setr_ps(z[i],z[i+1],z[i+2],z[i+3]);
+    __m128 xi = _mm_load_ps(x+i);
+    __m128 yi = _mm_load_ps(y+i);
+    __m128 zi = _mm_load_ps(z+i);
     __m128 R2 = _mm_set1_ps(EPS2);
     __m128 x2 = _mm_set1_ps(x[0]);
     x2 = _mm_sub_ps(x2, xi);
@@ -139,12 +139,10 @@ int main() {
     ayi = _mm_add_ps(ayi, yj);
     zj = _mm_mul_ps(zj, invR);
     azi = _mm_add_ps(azi, zj);
-    for (j=0; j<4; j++) {
-      p[i+j] = ((float*)&pi)[j];
-      ax[i+j] = ((float*)&axi)[j];
-      ay[i+j] = ((float*)&ayi)[j];
-      az[i+j] = ((float*)&azi)[j];
-    }
+    _mm_store_ps(p+i, pi);
+    _mm_store_ps(ax+i, axi);
+    _mm_store_ps(ay+i, ayi);
+    _mm_store_ps(az+i, azi);
   }
   toc = get_time();
   PAPI_stop(EventSet,values);
