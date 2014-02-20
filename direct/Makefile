@@ -1,4 +1,4 @@
-.SUFFIXES: .cxx .cu .o
+.SUFFIXES: .c .cu .o
 
 CC = gcc -Wall -fopenmp -O3 -ffast-math -funroll-loops
 CXX = g++ -Wall -fopenmp -O3 -ffast-math -funroll-loops
