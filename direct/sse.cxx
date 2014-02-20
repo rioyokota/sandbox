@@ -79,57 +79,49 @@ int main() {
     z2 = _mm_mul_ps(z2, z2);
     R2 = _mm_add_ps(R2, z2);
     __m128 invR;
-    x2 = _mm_load_ps(&source[1].x);
-    y2 = x2;
-    z2 = x2;
+    x2 = _mm_load1_ps(&x[1]);
+    y2 = _mm_load1_ps(&y[1]);
+    z2 = _mm_load1_ps(&z[1]);
     for( int j=0; j<N-2; j++ ) {
       invR = _mm_rsqrt_ps(R2);
       R2 = _mm_load1_ps(&EPS2);
-      x2 = _mm_shuffle_ps(x2, x2, 0x00);
       x2 = _mm_sub_ps(x2, xi);
-      y2 = _mm_shuffle_ps(y2, y2, 0x55);
       y2 = _mm_sub_ps(y2, yi);
-      z2 = _mm_shuffle_ps(z2, z2, 0xaa);
       z2 = _mm_sub_ps(z2, zi);
       mj = _mm_mul_ps(mj, invR);
       phi = _mm_add_ps(phi, mj);
       invR = _mm_mul_ps(invR, invR);
       invR = _mm_mul_ps(invR, mj);
-      mj = _mm_load_ps(&source[j+1].x);
-      mj = _mm_shuffle_ps(mj, mj, 0xff);
+      mj = _mm_load1_ps(&m[j+1]);
       xj = _mm_mul_ps(xj, invR);
       ax = _mm_add_ps(ax, xj);
       xj = x2;
       x2 = _mm_mul_ps(x2, x2);
       R2 = _mm_add_ps(R2, x2);
-      x2 = _mm_load_ps(&source[j+2].x);
+      x2 = _mm_load1_ps(&x[j+2]);
       yj = _mm_mul_ps(yj, invR);
       ay = _mm_add_ps(ay, yj);
       yj = y2;
       y2 = _mm_mul_ps(y2, y2);
       R2 = _mm_add_ps(R2, y2);
-      y2 = x2;
+      y2 = _mm_load1_ps(&y[j+2]);
       zj = _mm_mul_ps(zj, invR);
       az = _mm_add_ps(az, zj);
       zj = z2;
       z2 = _mm_mul_ps(z2, z2);
       R2 = _mm_add_ps(R2, z2);
-      z2 = x2;
+      z2 = _mm_load1_ps(&z[j+2]);
     }
     invR = _mm_rsqrt_ps(R2);
     R2 = _mm_load1_ps(&EPS2);
-    x2 = _mm_shuffle_ps(x2, x2, 0x00);
     x2 = _mm_sub_ps(x2, xi);
-    y2 = _mm_shuffle_ps(y2, y2, 0x55);
     y2 = _mm_sub_ps(y2, yi);
-    z2 = _mm_shuffle_ps(z2, z2, 0xaa);
     z2 = _mm_sub_ps(z2, zi);
     mj = _mm_mul_ps(mj, invR);
     phi = _mm_add_ps(phi, mj);
     invR = _mm_mul_ps(invR, invR);
     invR = _mm_mul_ps(invR, mj);
-    mj = _mm_load_ps(&source[N-1].x);
-    mj = _mm_shuffle_ps(mj, mj, 0xff);
+    mj = _mm_load1_ps(&m[N-1]);
     xj = _mm_mul_ps(xj, invR);
     ax = _mm_add_ps(ax, xj);
     xj = x2;
@@ -169,6 +161,7 @@ int main() {
             << " L2 Access: " << values[1]
             << " TLB Miss: " << values[2] << std::endl;
   std::cout << std::scientific << "SSE    : " << toc-tic << " s : " << OPS / (toc-tic) << " GFlops" << std::endl;
+  for (int i=0; i<3; i++) values[i] = 0;
 
 // No SSE
   float pd = 0, pn = 0, fd = 0, fn = 0;
