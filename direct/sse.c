@@ -154,7 +154,7 @@ int main() {
   float pdiff = 0, pnorm = 0, adiff = 0, anorm = 0;
   PAPI_start(EventSet);
   tic = get_time();
-#pragma omp parallel for private(j)
+#pragma omp parallel for private(j) reduction(+: pdiff, pnorm, adiff, anorm)
   for (i=0; i<N; i++) {
     float pi = 0;
     float axi = 0;
