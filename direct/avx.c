@@ -40,7 +40,7 @@ int main() {
   PAPI_add_events(EventSet, Events, 3);
   printf("N      : %d\n",N);
 
-// SSE
+// AVX
   PAPI_start(EventSet);
   tic = get_time();
 #pragma omp parallel for private(j)
@@ -149,10 +149,10 @@ int main() {
   toc = get_time();
   PAPI_stop(EventSet,values);
   printf("L2 Miss: %lld L2 Access: %lld TLB Miss: %lld\n",values[0],values[1],values[2]);
-  printf("SSE    : %e s : %lf GFlops\n",toc-tic, OPS/(toc-tic));
+  printf("AVX    : %e s : %lf GFlops\n",toc-tic, OPS/(toc-tic));
   for (i=0; i<3; i++) values[i] = 0;
 
-// No SSE
+// No AVX
   float pdiff = 0, pnorm = 0, adiff = 0, anorm = 0;
   PAPI_start(EventSet);
   tic = get_time();
@@ -187,7 +187,7 @@ int main() {
   toc = get_time();
   PAPI_stop(EventSet,values);
   printf("L2 Miss: %lld L2 Access: %lld TLB Miss: %lld\n",values[0],values[1],values[2]);
-  printf("No SSE : %e s : %lf GFlops\n",toc-tic, OPS/(toc-tic));
+  printf("No AVX : %e s : %lf GFlops\n",toc-tic, OPS/(toc-tic));
   printf("P ERR  : %e\n",sqrt(pdiff/pnorm));
   printf("A ERR  : %e\n",sqrt(adiff/anorm));
 

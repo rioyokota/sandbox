@@ -2,17 +2,18 @@
 
 CC = gcc -Wall -fopenmp -O3 -ffast-math -funroll-loops
 CXX = g++ -Wall -fopenmp -O3 -ffast-math -funroll-loops
-#CXX = icc -Wall -openmp -fast
+ICC = icc -Wall -openmp -O3 -fimf-domain-exclusion=15
 NVCC = nvcc -O3 -use_fast_math -arch=sm_30 -lcuda --ptxas-options=-v -Xcompiler "-Wall -fopenmp -ffast-math -funroll-loops"
 
 sse: sse.c
-	$(CC) $< -lpapi -lm
+	$(CC) $< -lpapi
 	./a.out
 avx: avx.c
-	$(CC) -mavx $< -lpapi -lm
+	$(CC) -mavx $< -lpapi
 	./a.out
-mic: mic.o direct.o direct_mic.o
-	$(CXX) $? -L/home/rio/.papi/mic/lib -lpapi -lpfm
+mic: mic.c
+	$(ICC) -mmic $< -L/home/rio/.papi/mic/lib -lpapi -lpfm
+	ssh mic0 LD_LIBRARY_PATH=~/.lib sandbox/direct/a.out
 mic2: mic2.o
 	$(CXX) $?
 cuda: cuda.cu direct_sse.o direct_asm.o
