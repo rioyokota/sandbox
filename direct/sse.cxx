@@ -23,35 +23,6 @@ double get_time() {
   return double(tv.tv_sec+tv.tv_usec*1e-6);
 }
 
-void P2P(float4 *target, float4 *source, int ni, int nj, float eps2) {
-#pragma omp parallel for
-  for (int i=0; i<ni; i++) {
-    float ax = 0;
-    float ay = 0;
-    float az = 0;
-    float phi = 0;
-    float xi = source[i].x;
-    float yi = source[i].y;
-    float zi = source[i].z;
-    for (int j=0; j<nj; j++) {
-      float dx = source[j].x - xi;
-      float dy = source[j].y - yi;
-      float dz = source[j].z - zi;
-      float R2 = dx * dx + dy * dy + dz * dz + eps2;
-      float invR = 1.0f / sqrtf(R2);
-      float invR3 = source[j].w * invR * invR * invR;
-      phi += source[j].w * invR;
-      ax += dx * invR3;
-      ay += dy * invR3;
-      az += dz * invR3;
-    }
-    target[i].w = phi;
-    target[i].x = ax;
-    target[i].y = ay;
-    target[i].z = az;
-  }
-}
-
 void P2Psse(float4 *target, float4 *source, int ni, int nj, float eps2) {
 #pragma omp parallel for
   for( int i=0; i<ni; i+=4 ) {
@@ -169,14 +140,14 @@ void P2Psse(float4 *target, float4 *source, int ni, int nj, float eps2) {
 
 int main() {
 // ALLOCATE
-  float4 *sourceHost = new float4 [N];
-  float4 *targetHost = new float4 [N];
+  float4 *source = new float4 [N];
+  float4 *target = new float4 [N];
   float4 *targetSSE = new float4 [N];
   for( int i=0; i<N; i++ ) {
-    sourceHost[i].x = drand48();
-    sourceHost[i].y = drand48();
-    sourceHost[i].z = drand48();
-    sourceHost[i].w = drand48() / N;
+    source[i].x = drand48();
+    source[i].y = drand48();
+    source[i].z = drand48();
+    source[i].w = drand48() / N;
   }
   std::cout << std::scientific << "N      : " << N << std::endl;
 
@@ -189,7 +160,32 @@ int main() {
   PAPI_start(EventSet);
 
   double tic = get_time();
-  P2P(targetHost,sourceHost,N,N,EPS2);
+#pragma omp parallel for
+  for (int i=0; i<N; i++) {
+    float ax = 0;
+    float ay = 0;
+    float az = 0;
+    float phi = 0;
+    float xi = source[i].x;
+    float yi = source[i].y;
+    float zi = source[i].z;
+    for (int j=0; j<N; j++) {
+      float dx = source[j].x - xi;
+      float dy = source[j].y - yi;
+      float dz = source[j].z - zi;
+      float R2 = dx * dx + dy * dy + dz * dz + EPS2;
+      float invR = 1.0f / sqrtf(R2);
+      float invR3 = source[j].w * invR * invR * invR;
+      phi += source[j].w * invR;
+      ax += dx * invR3;
+      ay += dy * invR3;
+      az += dz * invR3;
+    }
+    target[i].w = phi;
+    target[i].x = ax;
+    target[i].y = ay;
+    target[i].z = az;
+  }
   double toc = get_time();
 
   long long values[3];
@@ -204,7 +200,7 @@ int main() {
   PAPI_start(EventSet);
 
   tic = get_time();
-  P2Psse(targetSSE,sourceHost,N,N,EPS2);
+  P2Psse(targetSSE,source,N,N,EPS2);
   toc = get_time();
 
   PAPI_stop(EventSet,values);
@@ -217,20 +213,20 @@ int main() {
 // COMPARE RESULTS
   float pd = 0, pn = 0, fd = 0, fn = 0;
   for( int i=0; i<N; i++ ) {
-    targetHost[i].w -= sourceHost[i].w / sqrtf(EPS2);
-    targetSSE[i].w -= sourceHost[i].w / sqrtf(EPS2);
-    pd += (targetHost[i].w - targetSSE[i].w) * (targetHost[i].w - targetSSE[i].w);
-    pn += targetHost[i].w * targetHost[i].w;
-    fd += (targetHost[i].x - targetSSE[i].x) * (targetHost[i].x - targetSSE[i].x)
-        + (targetHost[i].y - targetSSE[i].y) * (targetHost[i].y - targetSSE[i].y)
-        + (targetHost[i].z - targetSSE[i].z) * (targetHost[i].z - targetSSE[i].z);
-    fn += targetHost[i].x * targetHost[i].x + targetHost[i].y * targetHost[i].y + targetHost[i].z * targetHost[i].z;
+    target[i].w -= source[i].w / sqrtf(EPS2);
+    targetSSE[i].w -= source[i].w / sqrtf(EPS2);
+    pd += (target[i].w - targetSSE[i].w) * (target[i].w - targetSSE[i].w);
+    pn += target[i].w * target[i].w;
+    fd += (target[i].x - targetSSE[i].x) * (target[i].x - targetSSE[i].x)
+        + (target[i].y - targetSSE[i].y) * (target[i].y - targetSSE[i].y)
+        + (target[i].z - targetSSE[i].z) * (target[i].z - targetSSE[i].z);
+    fn += target[i].x * target[i].x + target[i].y * target[i].y + target[i].z * target[i].z;
   }
   std::cout << std::scientific << "P ERR  : " << sqrtf(pd/pn) << std::endl;
   std::cout << std::scientific << "F ERR  : " << sqrtf(fd/fn) << std::endl;
 
 // DEALLOCATE
-  delete[] sourceHost;
-  delete[] targetHost;
+  delete[] source;
+  delete[] target;
   delete[] targetSSE;
 }
