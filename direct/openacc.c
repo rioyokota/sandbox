@@ -28,16 +28,6 @@ int main() {
   float ax[N];
   float ay[N];
   float az[N];
-  /*
-  float * x = (float*) malloc(N * sizeof(float));
-  float * y = (float*) malloc(N * sizeof(float));
-  float * z = (float*) malloc(N * sizeof(float));
-  float * m = (float*) malloc(N * sizeof(float));
-  float * p = (float*) malloc(N * sizeof(float));
-  float * ax = (float*) malloc(N * sizeof(float));
-  float * ay = (float*) malloc(N * sizeof(float));
-  float * az = (float*) malloc(N * sizeof(float));
-  */
   for (i=0; i<N; i++) {
     x[i] = drand48();
     y[i] = drand48();
@@ -123,17 +113,5 @@ int main() {
   printf("No ACC : %e s : %lf GFlops\n",toc-tic, OPS/(toc-tic));
   printf("P ERR  : %e\n",sqrt(pdiff/pnorm));
   printf("A ERR  : %e\n",sqrt(adiff/anorm));
-
-// DEALLOCATE
-/*
-  free(x);
-  free(y);
-  free(z);
-  free(m);
-  free(p);
-  free(ax);
-  free(ay);
-  free(az);
-*/
   return 0;
 }

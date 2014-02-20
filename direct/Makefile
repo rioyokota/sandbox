@@ -18,7 +18,7 @@ cuda: cuda.cu
 	$(NVCC) $< -lpapi
 	./a.out
 openacc: openacc.c
-	pgcc -fast -mp -acc -ta=nvidia $<
+	pgcc -fast -mp -acc -ta=nvidia $< -lpapi
 	./a.out
 clean:
 	@make -C .. clean
