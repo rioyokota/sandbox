@@ -6,13 +6,6 @@
 #include <sys/time.h>
 #include <xmmintrin.h>
 
-struct float4 {
-  float x;
-  float y;
-  float z;
-  float w;
-};
-
 double get_time() {
   struct timeval tv;
   gettimeofday(&tv,NULL);
@@ -32,13 +25,11 @@ int main() {
   float * ax = (float*) malloc(N * sizeof(float));
   float * ay = (float*) malloc(N * sizeof(float));
   float * az = (float*) malloc(N * sizeof(float));
-  float4 *source = new float4 [N];
-  float4 *target = new float4 [N];
   for( int i=0; i<N; i++ ) {
-    x[i] = source[i].x = drand48();
-    y[i] = source[i].y = drand48();
-    z[i] = source[i].z = drand48();
-    m[i] = source[i].w = drand48() / N;
+    x[i] = drand48();
+    y[i] = drand48();
+    z[i] = drand48();
+    m[i] = drand48() / N;
   }
   double tic, toc;
   int Events[3] = { PAPI_L2_DCM, PAPI_L2_DCA, PAPI_TLB_DM };
@@ -54,21 +45,21 @@ int main() {
   tic = get_time();
 #pragma omp parallel for
   for( int i=0; i<N; i+=4 ) {
-    __m128 ax = _mm_setzero_ps();
-    __m128 ay = _mm_setzero_ps();
-    __m128 az = _mm_setzero_ps();
-    __m128 phi = _mm_setzero_ps();
-    __m128 xi = _mm_setr_ps(source[i].x,source[i+1].x,source[i+2].x,source[i+3].x);
-    __m128 yi = _mm_setr_ps(source[i].y,source[i+1].y,source[i+2].y,source[i+3].y);
-    __m128 zi = _mm_setr_ps(source[i].z,source[i+1].z,source[i+2].z,source[i+3].z);
+    __m128 pi = _mm_setzero_ps();
+    __m128 axi = _mm_setzero_ps();
+    __m128 ayi = _mm_setzero_ps();
+    __m128 azi = _mm_setzero_ps();
+    __m128 xi = _mm_setr_ps(x[i],x[i+1],x[i+2],x[i+3]);
+    __m128 yi = _mm_setr_ps(y[i],y[i+1],y[i+2],y[i+3]);
+    __m128 zi = _mm_setr_ps(z[i],z[i+1],z[i+2],z[i+3]);
     __m128 R2 = _mm_load1_ps(&EPS2);
-    __m128 x2 = _mm_load1_ps(&source[0].x);
+    __m128 x2 = _mm_load1_ps(&x[0]);
     x2 = _mm_sub_ps(x2, xi);
-    __m128 y2 = _mm_load1_ps(&source[0].y);
+    __m128 y2 = _mm_load1_ps(&y[0]);
     y2 = _mm_sub_ps(y2, yi);
-    __m128 z2 = _mm_load1_ps(&source[0].z);
+    __m128 z2 = _mm_load1_ps(&z[0]);
     z2 = _mm_sub_ps(z2, zi);
-    __m128 mj = _mm_load1_ps(&source[0].w);
+    __m128 mj = _mm_load1_ps(&m[0]);
     __m128 xj = x2;
     x2 = _mm_mul_ps(x2, x2);
     R2 = _mm_add_ps(R2, x2);
@@ -89,24 +80,24 @@ int main() {
       y2 = _mm_sub_ps(y2, yi);
       z2 = _mm_sub_ps(z2, zi);
       mj = _mm_mul_ps(mj, invR);
-      phi = _mm_add_ps(phi, mj);
+      pi = _mm_add_ps(pi, mj);
       invR = _mm_mul_ps(invR, invR);
       invR = _mm_mul_ps(invR, mj);
       mj = _mm_load1_ps(&m[j+1]);
       xj = _mm_mul_ps(xj, invR);
-      ax = _mm_add_ps(ax, xj);
+      axi = _mm_add_ps(axi, xj);
       xj = x2;
       x2 = _mm_mul_ps(x2, x2);
       R2 = _mm_add_ps(R2, x2);
       x2 = _mm_load1_ps(&x[j+2]);
       yj = _mm_mul_ps(yj, invR);
-      ay = _mm_add_ps(ay, yj);
+      ayi = _mm_add_ps(ayi, yj);
       yj = y2;
       y2 = _mm_mul_ps(y2, y2);
       R2 = _mm_add_ps(R2, y2);
       y2 = _mm_load1_ps(&y[j+2]);
       zj = _mm_mul_ps(zj, invR);
-      az = _mm_add_ps(az, zj);
+      azi = _mm_add_ps(azi, zj);
       zj = z2;
       z2 = _mm_mul_ps(z2, z2);
       R2 = _mm_add_ps(R2, z2);
@@ -118,41 +109,41 @@ int main() {
     y2 = _mm_sub_ps(y2, yi);
     z2 = _mm_sub_ps(z2, zi);
     mj = _mm_mul_ps(mj, invR);
-    phi = _mm_add_ps(phi, mj);
+    pi = _mm_add_ps(pi, mj);
     invR = _mm_mul_ps(invR, invR);
     invR = _mm_mul_ps(invR, mj);
     mj = _mm_load1_ps(&m[N-1]);
     xj = _mm_mul_ps(xj, invR);
-    ax = _mm_add_ps(ax, xj);
+    axi = _mm_add_ps(axi, xj);
     xj = x2;
     x2 = _mm_mul_ps(x2, x2);
     R2 = _mm_add_ps(R2, x2);
     yj = _mm_mul_ps(yj, invR);
-    ay = _mm_add_ps(ay, yj);
+    ayi = _mm_add_ps(ayi, yj);
     yj = y2;
     y2 = _mm_mul_ps(y2, y2);
     R2 = _mm_add_ps(R2, y2);
     zj = _mm_mul_ps(zj, invR);
-    az = _mm_add_ps(az, zj);
+    azi = _mm_add_ps(azi, zj);
     zj = z2;
     z2 = _mm_mul_ps(z2, z2);
     R2 = _mm_add_ps(R2, z2);
     invR = _mm_rsqrt_ps(R2);
     mj = _mm_mul_ps(mj, invR);
-    phi = _mm_add_ps(phi, mj);
+    pi = _mm_add_ps(pi, mj);
     invR = _mm_mul_ps(invR, invR);
     invR = _mm_mul_ps(invR, mj);
     xj = _mm_mul_ps(xj, invR);
-    ax = _mm_add_ps(ax, xj);
+    axi = _mm_add_ps(axi, xj);
     yj = _mm_mul_ps(yj, invR);
-    ay = _mm_add_ps(ay, yj);
+    ayi = _mm_add_ps(ayi, yj);
     zj = _mm_mul_ps(zj, invR);
-    az = _mm_add_ps(az, zj);
+    azi = _mm_add_ps(azi, zj);
     for( int k=0; k<4; k++ ) {
-      target[i+k].x = ((float*)&ax)[k];
-      target[i+k].y = ((float*)&ay)[k];
-      target[i+k].z = ((float*)&az)[k];
-      target[i+k].w = ((float*)&phi)[k];
+      p[i+k] = ((float*)&pi)[k];
+      ax[i+k] = ((float*)&axi)[k];
+      ay[i+k] = ((float*)&ayi)[k];
+      az[i+k] = ((float*)&azi)[k];
     }
   }
   toc = get_time();
@@ -164,7 +155,7 @@ int main() {
   for (int i=0; i<3; i++) values[i] = 0;
 
 // No SSE
-  float pd = 0, pn = 0, fd = 0, fn = 0;
+  float pdiff = 0, pnorm = 0, adiff = 0, anorm = 0;
   PAPI_start(EventSet);
   tic = get_time();
 #pragma omp parallel for
@@ -173,27 +164,27 @@ int main() {
     float axi = 0;
     float ayi = 0;
     float azi = 0;
-    float xi = source[i].x;
-    float yi = source[i].y;
-    float zi = source[i].z;
+    float xi = x[i];
+    float yi = y[i];
+    float zi = z[i];
     for (int j=0; j<N; j++) {
-      float dx = source[j].x - xi;
-      float dy = source[j].y - yi;
-      float dz = source[j].z - zi;
+      float dx = x[j] - xi;
+      float dy = y[j] - yi;
+      float dz = z[j] - zi;
       float R2 = dx * dx + dy * dy + dz * dz + EPS2;
       float invR = 1.0f / sqrtf(R2);
-      float invR3 = source[j].w * invR * invR * invR;
-      pi += source[j].w * invR;
+      float invR3 = m[j] * invR * invR * invR;
+      pi += m[j] * invR;
       axi += dx * invR3;
       ayi += dy * invR3;
       azi += dz * invR3;
     }
-    pd += (target[i].w - pi) * (target[i].w - pi);
-    pn += pi * pi;
-    fd += (target[i].x - axi) * (target[i].x - axi)
-        + (target[i].y - ayi) * (target[i].y - ayi)
-        + (target[i].z - azi) * (target[i].z - azi);
-    fn += axi * axi + ayi * ayi + azi * azi;    
+    pdiff += (p[i] - pi) * (p[i] - pi);
+    pnorm += pi * pi;
+    adiff += (ax[i] - axi) * (ax[i] - axi)
+      + (ay[i] - ayi) * (ay[i] - ayi)
+      + (az[i] - azi) * (az[i] - azi);
+    anorm += axi * axi + ayi * ayi + azi * azi;    
   }
   toc = get_time();
   PAPI_stop(EventSet,values);
@@ -201,12 +192,10 @@ int main() {
             << " L2 Access: " << values[1]
             << " TLB Miss: " << values[2] << std::endl;
   std::cout << std::scientific << "No SSE : " << toc-tic << " s : " << OPS / (toc-tic) << " GFlops" << std::endl;
-  std::cout << std::scientific << "P ERR  : " << sqrtf(pd/pn) << std::endl;
-  std::cout << std::scientific << "F ERR  : " << sqrtf(fd/fn) << std::endl;
+  std::cout << std::scientific << "P ERR  : " << sqrtf(pdiff/pnorm) << std::endl;
+  std::cout << std::scientific << "F ERR  : " << sqrtf(adiff/anorm) << std::endl;
 
 // DEALLOCATE
-  delete[] source;
-  delete[] target;
   free(x);
   free(y);
   free(z);

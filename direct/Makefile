@@ -1,6 +1,6 @@
 .SUFFIXES: .cxx .cu .o
 
-CXX = mpicxx -Wall -O3 -fopenmp -mavx -ffast-math -funroll-loops -I/usr/include/vtk-5.8
+CXX = mpicxx -Wall -O3 -fopenmp -ffast-math -funroll-loops -I/usr/include/vtk-5.8
 #CXX = icc -gcc-name=gcc-4.6 -mavx -O3 -openmp -lstdc++
 #CXX = icpc -Wall -mavx -O3 -openmp
 NVCC = nvcc -O3 -use_fast_math -arch=sm_30 -lcuda --ptxas-options=-v -Xcompiler "-Wall -fopenmp -ffast-math -funroll-loops"
