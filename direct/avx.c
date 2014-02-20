@@ -14,18 +14,19 @@ double get_time() {
 int main() {
 // Initialize
   int N = 1 << 16;
+  int NALIGN = 32;
   int i, j;
   float OPS = 20. * N * N * 1e-9;
   float EPS2 = 1e-6;
   double tic, toc;
-  float * x = (float*) malloc(N * sizeof(float));
-  float * y = (float*) malloc(N * sizeof(float));
-  float * z = (float*) malloc(N * sizeof(float));
-  float * m = (float*) malloc(N * sizeof(float));
-  float * p = (float*) malloc(N * sizeof(float));
-  float * ax = (float*) malloc(N * sizeof(float));
-  float * ay = (float*) malloc(N * sizeof(float));
-  float * az = (float*) malloc(N * sizeof(float));
+  float * x = (float*) _mm_malloc(N * sizeof(float), NALIGN);
+  float * y = (float*) _mm_malloc(N * sizeof(float), NALIGN);
+  float * z = (float*) _mm_malloc(N * sizeof(float), NALIGN);
+  float * m = (float*) _mm_malloc(N * sizeof(float), NALIGN);
+  float * p = (float*) _mm_malloc(N * sizeof(float), NALIGN);
+  float * ax = (float*) _mm_malloc(N * sizeof(float), NALIGN);
+  float * ay = (float*) _mm_malloc(N * sizeof(float), NALIGN);
+  float * az = (float*) _mm_malloc(N * sizeof(float), NALIGN);
   for (i=0; i<N; i++) {
     x[i] = drand48();
     y[i] = drand48();
@@ -49,9 +50,9 @@ int main() {
     __m256 axi = _mm256_setzero_ps();
     __m256 ayi = _mm256_setzero_ps();
     __m256 azi = _mm256_setzero_ps();
-    __m256 xi = _mm256_setr_ps(x[i],x[i+1],x[i+2],x[i+3],x[i+4],x[i+5],x[i+6],x[i+7]);
-    __m256 yi = _mm256_setr_ps(y[i],y[i+1],y[i+2],y[i+3],y[i+4],y[i+5],y[i+6],y[i+7]);
-    __m256 zi = _mm256_setr_ps(z[i],z[i+1],z[i+2],z[i+3],z[i+4],z[i+5],z[i+6],z[i+7]);
+    __m256 xi = _mm256_load_ps(x+i);
+    __m256 yi = _mm256_load_ps(y+i);
+    __m256 zi = _mm256_load_ps(z+i);
     __m256 R2 = _mm256_set1_ps(EPS2);
     __m256 x2 = _mm256_set1_ps(x[0]);
     x2 = _mm256_sub_ps(x2, xi);
@@ -139,12 +140,10 @@ int main() {
     ayi = _mm256_add_ps(ayi, yj);
     zj = _mm256_mul_ps(zj, invR);
     azi = _mm256_add_ps(azi, zj);
-    for (j=0; j<8; j++) {
-      p[i+j] = ((float*)&pi)[j];
-      ax[i+j] = ((float*)&axi)[j];
-      ay[i+j] = ((float*)&ayi)[j];
-      az[i+j] = ((float*)&azi)[j];
-    }
+    _mm256_store_ps(p+i, pi);
+    _mm256_store_ps(ax+i, axi);
+    _mm256_store_ps(ay+i, ayi);
+    _mm256_store_ps(az+i, azi);
   }
   toc = get_time();
   PAPI_stop(EventSet,values);
@@ -192,13 +191,13 @@ int main() {
   printf("A ERR  : %e\n",sqrt(adiff/anorm));
 
 // DEALLOCATE
-  free(x);
-  free(y);
-  free(z);
-  free(m);
-  free(p);
-  free(ax);
-  free(ay);
-  free(az);
+  _mm_free(x);
+  _mm_free(y);
+  _mm_free(z);
+  _mm_free(m);
+  _mm_free(p);
+  _mm_free(ax);
+  _mm_free(ay);
+  _mm_free(az);
   return 0;
 }
