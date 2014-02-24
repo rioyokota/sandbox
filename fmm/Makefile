@@ -8,9 +8,6 @@ NVCC = nvcc -O3 -use_fast_math -arch=sm_35 -Xcompiler "-Wall -fopenmp -ffast-mat
 .cu.o   :
 	$(NVCC) -c $? -o $@
 
-12steps: 12steps.o
-	$(NVCC) $?
-	./a.out
 cpu1d: cpu1d.o
 	$(CXX) $?
 	./a.out
@@ -20,11 +17,11 @@ cpu2d: cpu2d.o
 cpu3d: cpu3d.o
 	$(CXX) $?
 	./a.out
-gpu3d: gpu3d.o thrust.o
-	$(NVCC) $?
-	./a.out
 matern: matern.o
 	$(CXX) $?
+	./a.out
+12steps: 12steps.o
+	$(NVCC) $?
 	./a.out
 clean:
 	@make -C .. clean
