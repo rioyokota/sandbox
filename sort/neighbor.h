@@ -5,7 +5,7 @@
 class Neighbor {
 private:
   static const int NUM_PER_CELL = 10;                            // Number of points per leaf cell
-  static const int OMP_NUM_THREADS = 12;                         // Number of OpenMP threads
+  static const int OMP_NUM_THREADS = 32;                         // Number of OpenMP threads
   const int N;                                                   // Number of points
   const int LEVEL;                                               // Number of tree levels
   double X0[3];                                                  // Center of domain
@@ -104,6 +104,8 @@ public:
     const int mask = stride - 1;
     int *ibuffer = new int [N];
     int *pbuffer = new int [N];
+#pragma omp parallel
+    assert(omp_get_num_threads() <= OMP_NUM_THREADS);
     int (*bucketPerThread)[stride] = new int [OMP_NUM_THREADS][stride]();
     int iMaxPerThread[OMP_NUM_THREADS] = {0};
 #pragma omp parallel for

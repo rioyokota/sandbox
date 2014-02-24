@@ -4,7 +4,7 @@
 #include <omp.h>
 #include <sys/time.h>
 
-#define OMP_NUM_THREADS 12
+#define OMP_NUM_THREADS 32
 
 double get_time() {
   struct timeval tv;
@@ -16,6 +16,8 @@ void radixsort(int *a, int *b, int *p, int *q, int n) {
   const int bitStride = 8;
   const int stride = 1 << bitStride;
   const int mask = stride - 1;
+#pragma omp parallel
+  assert(omp_get_num_threads() <= OMP_NUM_THREADS);
   int (*bucketPerThread)[stride] = new int [OMP_NUM_THREADS][stride]();
   int aMaxPerThread[OMP_NUM_THREADS] = {0};
 #pragma omp parallel for
