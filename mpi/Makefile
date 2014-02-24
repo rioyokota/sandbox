@@ -8,7 +8,7 @@ NVCC = nvcc -O3 -use_fast_math -arch=sm_35 -Xcompiler "-Wall -fopenmp -ffast-mat
 .cu.o   :
 	$(NVCC) -c $? -o $@
 
-mpi: mpi.o
+host: host.o
 	$(CXX) $?
 	mpirun -np 2 ./a.out
 tau: tau.cxx
