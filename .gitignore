@@ -1,5 +1,6 @@
 *.a
 *.dat
 *.o
+*.so
 *.out
 *.th_o
