@@ -30,6 +30,8 @@ int main(int argc, char **argv) {
       tic = get_time();
       MPI_Isend(send, N, MPI_FLOAT, recvRank, 0, MPI_COMM_WORLD, &sendReq);
       MPI_Irecv(recv, N, MPI_FLOAT, sendRank, 0, MPI_COMM_WORLD, &recvReq);
+      MPI_Wait(&sendReq, MPI_STATUS_IGNORE);
+      MPI_Wait(&recvReq, MPI_STATUS_IGNORE);
       toc = get_time();
       if (rank == 0) std::cout << "Send : " << toc-tic << std::endl;
     }
@@ -37,14 +39,12 @@ int main(int argc, char **argv) {
     {
       tic = get_time();
       for (int i=0; i<N; i++) {
-	recv[i] = i * M_PI;
+	recv[i] = exp(i * M_PI);
       }
       toc = get_time();
       if (rank == 0) std::cout << "Calc : " << toc-tic << std::endl; 
     }
   }
-  MPI_Wait(&sendReq, MPI_STATUS_IGNORE);
-  MPI_Wait(&recvReq, MPI_STATUS_IGNORE);
   double TOC = get_time();
   if (rank == 0) std::cout << "Total: " << TOC-TIC << std::endl;
   float sum = 0;
