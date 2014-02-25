@@ -5,8 +5,8 @@ CC = gcc -Wall -O3 -fopenmp -ffast-math -funroll-loops -shared -fPIC
 .c.so   :
 	$(CC) $? -o $@
 
-gemv: gemv.so
-	python gemv.py
+cg: cg.so
+	python cg.py
 clean:
 	@make -C .. clean
 commit:
