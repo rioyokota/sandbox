@@ -11,6 +11,9 @@ NVCC = nvcc -O3 -use_fast_math -arch=sm_35 -Xcompiler "-Wall -fopenmp -ffast-mat
 host: host.o
 	$(CXX) $?
 	mpirun -np 2 ./a.out
+isend: isend.o
+	$(CXX) $?
+	mpirun -np 4 ./a.out
 tau: tau.cxx
 	tau_cxx.sh tau.cxx
 	mpirun -np 8 ./a.out
