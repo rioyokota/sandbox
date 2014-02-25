@@ -10,7 +10,7 @@ def cg(A, b, x_init):
         a = float( np.dot(r0.T,r0) / np.dot(np.dot(p.T, A),p) )
         x = x + p*a
         r1 = r0 - np.dot(A*a, p)
-        #print np.linalg.norm(r1)
+        print np.linalg.norm(r1)
         if np.linalg.norm(r1) < 1.0e-10:
             return x
         b = float( np.dot(r1.T, r1) / np.dot(r0.T, r0) )
@@ -18,7 +18,7 @@ def cg(A, b, x_init):
         r0 = r1
     return x
 
-n = 4
+n = 10
 max_it = 10
 tol = 1e-6
 A = np.random.rand(n,n)

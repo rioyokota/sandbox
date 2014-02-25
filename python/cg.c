@@ -35,7 +35,8 @@ void solve(double * A, double * b, double * x, int n, int max_it, double tol) {
     double res = sqrt(r2);
     printf("%d %lf\n",it,res);
     if (res < tol) break;
-    for (i=0; i<n; i++) p[i] += r[i] + r2 / rr * p[i];
+    double beta = r2 / rr;
+    for (i=0; i<n; i++) p[i] = r[i] + beta * p[i];
     rr = r2;
   }
   free(r);
