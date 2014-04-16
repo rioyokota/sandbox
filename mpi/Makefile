@@ -14,6 +14,9 @@ host: host.o
 async: async.o
 	$(CXX) $?
 	mpirun -np 4 ./a.out
+split: split.o
+	$(CXX) $?
+	mpirun -np 7 ./a.out
 tau: tau.cxx
 	tau_cxx.sh tau.cxx
 	mpirun -np 8 ./a.out
