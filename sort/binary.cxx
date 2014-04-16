@@ -7,11 +7,9 @@
 #include <vector>
 #include "types.h"
 
-typedef long bigint;
 typedef std::vector<int> Index;
-typedef std::vector<int>::iterator I_iter;
 struct Position {
-  vect X;
+  vec3 X;
 };
 typedef std::vector<Position> Positions;
 typedef std::vector<Position>::iterator P_iter;
@@ -26,8 +24,8 @@ double get_time() {
 }
 
 int main() {
-  const int numBodies = 10000000;
-  const int NCRIT = 1000;
+  const int numBodies = 1000000;
+  const int mpisize = 1000;
   double tic, toc;
   tic = get_time();
   Bodies bodies(numBodies);
@@ -56,7 +54,13 @@ int main() {
   std::cout << "copy : " << toc-tic << std::endl;
 
   tic = get_time();
-  int level = numBodies >= NCRIT ? 1 + int(log(numBodies / NCRIT)/M_LN2) : 0;
+  int level = int(log(mpisize)/M_LN2) + 1;
+  level = 0;
+  int size = mpisize - 1;
+  while (size > 0) {
+    size >>= 1;
+    level++;
+  }
   index[0] = 0;
   index[1] = positions.size()/2;
   index[2] = positions.size();
@@ -92,7 +96,7 @@ int main() {
       bodies[b].X[0] = positions[b].X[0];
       bodies[b].X[1] = positions[b].X[1];
       bodies[b].X[2] = positions[b].X[2];
-      bodies[b].ICELL = i;
+      bodies[b].IBODY = i;
     }
   }
   toc = get_time();

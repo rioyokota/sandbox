@@ -1,117 +1,69 @@
 #ifndef types_h
 #define types_h
-#include <algorithm>
-#include <assert.h>
-#include <cmath>
 #include <complex>
-#include <cstdlib>
-#include <fstream>
-#include <iostream>
-#include <list>
-#include <map>
-#include <omp.h>
-#include <stack>
-#include <string>
-#include <utility>
+#include <stdint.h>
 #include <vector>
 #include "vec.h"
 
-typedef long                 bigint;                            // Big integer type
-typedef float                real;                              // Real number type on CPU
-typedef float                gpureal;                           // Real number type on GPU
-typedef std::complex<double> complex;                           // Complex number type
-
-#ifndef KERNEL
-int MPIRANK = 0;                                                // MPI comm rank
-int MPISIZE = 1;                                                // MPI comm size
-int DEVICE  = 0;                                                // GPU device ID
-int IMAGES;                                                     // Number of periodic image sublevels
-real THETA;                                                     // Box opening criteria
+// Basic type definitions
+#if FP64
+typedef double               real_t;                            //!< Floating point type is double precision
+const real_t EPS = 1e-16;                                       //!< Double precision epsilon
 #else
-extern int MPIRANK;                                             // MPI comm rank
-extern int MPISIZE;                                             // MPI comm size
-extern int DEVICE;                                              // GPU device ID
-extern int IMAGES;                                              // Number of periodic image sublevels
-extern real THETA;                                              // Box opening criteria
+typedef float                real_t;                            //!< Floating point type is single precision
+const real_t EPS = 1e-8;                                        //!< Single precision epsilon
 #endif
+typedef std::complex<real_t> complex_t;                         //!< Complex type
+typedef vec<3,real_t>        vec3;                              //!< Vector of 3 real_t types
+typedef vec<4,real_t>        vec4;                              //!< Vector of 4 real_t types
 
-const int  P       = 3;                                         // Order of expansions
-const int  NCRIT   = 80;                                        // Number of bodies per cell
-const int  MAXBODY = 200000;                                    // Maximum number of bodies per GPU kernel
-const int  MAXCELL = 10000000;                                  // Maximum number of bodies/coefs in cell per GPU kernel
-const real CLET    = 2;                                         // LET opening critetia
-const real EPS2    = 1e-6;                                      // Softening parameter
-const int  GPUS    = 3;                                         // Number of GPUs per node
-const int  THREADS = 64;                                        // Number of threads per thread-block
+// Multipole/local expansion coefficients
+const int P = 4;                                                //!< Order of expansions
+const int NTERM = P*(P+1)*(P+2)/6;                              //!< Number of Cartesian mutlipole/local terms
+typedef vec<NTERM,real_t> vecP;                                 //!< Multipole/local coefficient type for Cartesian
 
-const int MCOEF = P*(P+1)*(P+2)/6-3;
-const int LCOEF = (P+1)*(P+2)*(P+3)/6;
-const int NCOEF = P*(P+1)/2;
-typedef vec<3 ,real> vect;
-#if CART
-typedef vec<NCOEF,real> Mset;
-typedef vec<NCOEF,real> Lset;
-#elif SPHE
-typedef vec<NCOEF,complex> Mset;
-typedef vec<NCOEF,complex> Lset;
-#else
-typedef vec<MCOEF,real> Mset;
-typedef vec<LCOEF,real> Lset;
-#endif
-
-typedef std::vector<bigint>                    Bigints;         // Vector of big integer types
-typedef std::map<std::string,double>           Event;           // Map of event name to logged value
-typedef std::map<std::string,double>::iterator E_iter;          // Iterator for event name map
-
-struct JBody {                                                  // Source properties of a body (stuff to send)
-  int         IBODY;                                            // Initial body numbering for sorting back
-  int         IPROC;                                            // Initial process numbering for partitioning back
-  bigint      ICELL;                                            // Cell index
-  vect        X;                                                // Position
-  vec<1,real> SRC;                                              // Source values
+//! Center and radius of bounding box
+struct Box {
+  vec3   X;                                                     //!< Box center
+  real_t R;                                                     //!< Box radius
 };
-struct Body : JBody {                                           // All properties of a body
-  vec<4,real> TRG;                                              // Target values
-  bool operator<(const Body &rhs) const {                       // Overload operator for comparing body index
-    return this->IBODY < rhs.IBODY;                             // Comparison function for body index
-  }
-};
-typedef std::vector<Body>           Bodies;                     // Vector of bodies
-typedef std::vector<Body>::iterator B_iter;                     // Iterator for body vector
 
-struct Leaf {
-  int I;
-  vect X;
-  Leaf *NEXT;
+//! Min & max bounds of bounding box
+struct Bounds {
+  vec3 Xmin;                                                    //!< Minimum value of coordinates
+  vec3 Xmax;                                                    //!< Maximum value of coordinates
 };
-typedef std::vector<Leaf>           Leafs;                      // Vector of leafs
-typedef std::vector<Leaf>::iterator L_iter;                     // Iterator for leaf vector
 
-struct Node {
-  bool NOCHILD;
-  int  LEVEL;
-  int  NLEAF;
-  int  CHILD[8];
-  vect X;
-  Leaf *LEAF;
+//! Structure of aligned source for SIMD
+struct Source {
+  vec3   X;                                                     //!< Position
+  real_t SRC;                                                   //!< Scalar source values
+} __attribute__ ((aligned (16)));
+
+//! Structure of bodies
+struct Body : public Source {
+  int IBODY;                                                    //!< Initial body numbering for sorting back
+  int IRANK;                                                    //!< Initial rank numbering for partitioning back
+  vec4 TRG;                                                     //!< Scalar+vector3 target values
 };
-typedef std::vector<Node>           Nodes;
-typedef std::vector<Node>::iterator N_iter;
+typedef std::vector<Body>                 Bodies;               //!< Vector of bodies
+typedef Bodies::iterator                  B_iter;               //!< Iterator of body vector
 
+//! Structure of cells
 struct Cell {
-  unsigned ICELL;
-  unsigned NCHILD;
-  unsigned NCLEAF;
-  unsigned NDLEAF;
-  unsigned PARENT;
-  unsigned CHILD;
-  B_iter   LEAF;
-  vect X;
-  real R;
-  real RCRIT;
-  Mset M;
-  Lset L;
+  int       IPARENT;                                            //!< Index of parent cell
+  int       ICHILD;                                             //!< Index of first child cell
+  int       NCHILD;                                             //!< Number of child cells
+  int       IBODY;                                              //!< Index of first body
+  int       NBODY;                                              //!< Number of descendant bodies
+  B_iter    BODY;                                               //!< Iterator of first body
+  uint64_t  ICELL;                                              //!< Cell index
+  vec3      X;                                                  //!< Cell center
+  real_t    R;                                                  //!< Cell radius
+  vecP      M;                                                  //!< Multipole coefficients
+  vecP      L;                                                  //!< Local coefficients
 };
-typedef std::vector<Cell>           Cells;
-typedef std::vector<Cell>::iterator C_iter;
+typedef std::vector<Cell> Cells;                                //!< Vector of cells
+typedef Cells::iterator   C_iter;                               //!< Iterator of cell vector
+
 #endif
