@@ -81,7 +81,8 @@ int main(int argc, char **argv) {
     for (int ipart=0; ipart<numPartitions; ipart++) {
       int irank = rankMap[ipart];
       Bounds bounds = rankBounds[irank];
-      int direction = 0, length = 0;
+      int direction = 0;
+      real_t length = 0;
       for (int d=0; d<3; d++) {
 	if (length < (bounds.Xmax[d] - bounds.Xmin[d])) {
 	  direction = d;
@@ -169,8 +170,9 @@ int main(int argc, char **argv) {
 	}
 	if (level == numLevels-1) rankColor[irank] = rankDispl[irank];
 	rankKey[irank] = irank - rankDispl[irank];
-#if 0
-	if (mpirank==0) printf("%2d %2d %2d %7d %7d\n", irank, rankDispl[irank], rankDispl[irank]+rankCount[irank],
+#if 1
+	if (mpirank==0) printf("%2d %d %2d %2d %7d %7d\n", irank, direction, 
+			       rankDispl[irank], rankDispl[irank]+rankCount[irank],
 			       sendDispl[irank], sendDispl[irank]+sendCount[irank]);
 #endif
       }
@@ -188,8 +190,14 @@ int main(int argc, char **argv) {
     int bodyBegin = sendDispl[irank];
     int bodyEnd = bodyBegin + sendCount[irank];
     for (int b=bodyBegin; b<bodyEnd; b++, B++) {
-      B->IRANK = irank;
+      B->IBODY = irank;
     }
+  }
+  if (mpirank == 0) {
+    vtk3DPlot vtk;
+    vtk.setBounds(0.5, 0.5);
+    vtk.setGroupOfPoints(bodies);
+    vtk.plot();
   }
   MPI_Finalize();
 }

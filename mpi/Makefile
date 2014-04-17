@@ -15,7 +15,7 @@ split: split.o
 	$(CXX) $?
 	mpirun -np 7 ./a.out
 bisection: bisection.o
-	$(CXX) $?
+	$(CXX) $?  -lvtkCharts -lvtkRendering -lvtkGraphics -lvtkFiltering -lvtkViews -lvtkCommon -lvtkWidgets -lvtkIO
 	mpirun -np 43 ./a.out
 tau: tau.cxx
 	tau_cxx.sh tau.cxx
