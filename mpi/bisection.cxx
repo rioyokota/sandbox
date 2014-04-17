@@ -152,9 +152,6 @@ int main(int argc, char **argv) {
           }
 	  begin += scanHist[splitBin];
 	  end = begin + localHist[splitBin];
-	  if (mpirank==0) {
-	    printf("%d %d %d %d %d\n",level, ipart, binLevel, direction, end-begin);
-	  }
 	}
       }
       int rankBegin = rankDispl[irank];
@@ -164,18 +161,19 @@ int main(int argc, char **argv) {
 	if (irank - rankDispl[irank] < rankSplit) {
 	  rankCount[irank] = rankSplit;
 	  rankColor[irank] = rankColor[irank] * 2;
-	  rankBounds[irank].Xmax[direction] = xmax;
-	  sendCount[irank] = end;
+	  rankBounds[irank].Xmax[direction] = xmin;
+	  sendCount[irank] = begin;
 	} else {
 	  rankDispl[irank] += rankSplit;
 	  rankCount[irank] -= rankSplit;
 	  rankColor[irank] = rankColor[irank] * 2 + 1;
-	  rankBounds[irank].Xmin[direction] = xmax;
-	  sendCount[irank] -= end;
+	  rankBounds[irank].Xmin[direction] = xmin;
+	  sendDispl[irank] += begin;
+	  sendCount[irank] -= begin;
 	}
 	if (level == numLevels-1) rankColor[irank] = rankDispl[irank];
 	rankKey[irank] = irank - rankDispl[irank];
-	if (irank > 0) sendDispl[irank] = sendDispl[rankDispl[irank-1]] + sendCount[irank-1];
+	if (mpirank==0) printf("%d %d %d %d %d\n", irank, rankDispl[irank], rankCount[irank], sendDispl[irank], sendCount[irank]);
       }
     }
     int ipart = 0;

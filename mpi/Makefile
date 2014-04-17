@@ -16,7 +16,7 @@ split: split.o
 	mpirun -np 7 ./a.out
 bisection: bisection.o
 	$(CXX) $?
-	mpirun -np 4 ./a.out
+	mpirun -np 43 ./a.out
 tau: tau.cxx
 	tau_cxx.sh tau.cxx
 	mpirun -np 8 ./a.out
