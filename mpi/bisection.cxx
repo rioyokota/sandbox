@@ -3,6 +3,7 @@
 #include <cstdio>
 #include <sys/time.h>
 #include "types.h"
+#include "vtk.h"
 
 double get_time() {
   struct timeval tv;
