@@ -101,7 +101,7 @@ int main(int argc, char **argv) {
       real_t xmax = bounds.Xmax[direction];
       real_t xmin = bounds.Xmin[direction];
       real_t dx = (xmax - xmin) / numBins;
-      B_iter B0 = bodies.begin() + sendDispl[irank];
+      B_iter B = bodies.begin() + sendDispl[irank];
       if (globalSplit > 0) {
 	for (int binRefine=0; binRefine<3; binRefine++) {
 	  for (int ibin=0; ibin<numBins; ibin++) {
@@ -109,7 +109,7 @@ int main(int argc, char **argv) {
 	  }
 	  for (int b=bodyBegin; b<bodyEnd; b++) {
 	    assert(sendDispl[irank]+b < numBodies);
-	    real_t x = (B0+b)->X[direction];
+	    real_t x = B[b].X[direction];
 	    int ibin = (x - xmin + EPS) / (dx + EPS);
 	    assert(0 <= ibin);
 	    assert(ibin < numBins);
@@ -120,14 +120,14 @@ int main(int argc, char **argv) {
 	    scanHist[ibin] = scanHist[ibin-1] + localHist[ibin];
 	  }
 	  for (int b=bodyEnd-1; b>=bodyBegin; b--) {
-	    real_t x = (B0+b)->X[direction];
+	    real_t x = B[b].X[direction];
             int ibin = (x - xmin + EPS) / (dx + EPS);
 	    scanHist[ibin]--;
 	    int bnew = scanHist[ibin] + bodyBegin;
-	    buffer[bnew] = *(B0+b);
+	    buffer[bnew] = B[b];
 	  }
 	  for (int b=bodyBegin; b<bodyEnd; b++) {
-	    *(B0+b) = buffer[b];
+	    B[b] = buffer[b];
 	  }
 	  MPI_Allreduce(localHist, globalHist, numBins, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
 	  int splitBin = 0;
