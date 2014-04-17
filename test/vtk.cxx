@@ -2,9 +2,9 @@
 
 int main() {
   const int N = 10000;
-  real R0 = 0.5;
-  vect X0 = 0.5;
-  vect X;
+  real_t R0 = 0.5;
+  vec3 X0 = 0.5;
+  vec3 X;
   vtkPlot vtk;
   vtk.setDomain(R0,X0);
   vtk.setGroup(0,N);
