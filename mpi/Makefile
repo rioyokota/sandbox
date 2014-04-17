@@ -1,6 +1,6 @@
 .SUFFIXES: .cxx .o
 
-CXX = mpicxx -Wall -O3 -fopenmp -ffast-math -funroll-loops -I../include
+CXX = mpicxx -ggdb3 -Wall -O3 -fopenmp -ffast-math -funroll-loops -I../include
 
 .cxx.o	:
 	$(CXX) -c $? -o $@
@@ -16,7 +16,7 @@ split: split.o
 	mpirun -np 7 ./a.out
 bisection: bisection.o
 	$(CXX) $?
-	mpirun -np 43 ./a.out
+	mpirun -np 4 ./a.out
 tau: tau.cxx
 	tau_cxx.sh tau.cxx
 	mpirun -np 8 ./a.out
