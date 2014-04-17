@@ -1,12 +1,9 @@
-.SUFFIXES: .cxx .cu .o
+.SUFFIXES: .cxx .o
 
-CXX = mpicxx -Wall -O3 -fopenmp -ffast-math -funroll-loops
-NVCC = nvcc -O3 -use_fast_math -arch=sm_35 -Xcompiler "-Wall -fopenmp -ffast-math -funroll-loops"
+CXX = mpicxx -Wall -O3 -fopenmp -ffast-math -funroll-loops -I../include
 
 .cxx.o	:
 	$(CXX) -c $? -o $@
-.cu.o   :
-	$(NVCC) -c $? -o $@
 
 host: host.o
 	$(CXX) $?

@@ -1,12 +1,9 @@
-.SUFFIXES: .cxx .cu .o
+.SUFFIXES: .cxx .o
 
 CXX = mpicxx -ggdb3 -Wall -O3 -fopenmp -msse4a -ffast-math -funroll-loops -I../include
-NVCC = nvcc -O3 -use_fast_math -arch=sm_35 -Xcompiler "-Wall -fopenmp -ffast-math -funroll-loops"
 
 .cxx.o	:
 	$(CXX) -c $? -o $@
-.cu.o   :
-	$(NVCC) -c $? -o $@
 
 binary: binary.o
 	$(CXX) $? $(VFLAGS)
