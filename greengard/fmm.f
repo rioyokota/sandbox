@@ -26,7 +26,7 @@
       pi=4*atan(1.0d0)
       ifprint=0
 c     set fmm tolerance based on iprec flag.
-      if( iprec .eq. -2 ) epsfmm=.5d-0 
+      if( iprec .eq. -2 ) epsfmm=.5d-0
       if( iprec .eq. -1 ) epsfmm=.5d-1
       if( iprec .eq. 0 ) epsfmm=.5d-2
       if( iprec .eq. 1 ) epsfmm=.5d-3
@@ -86,10 +86,10 @@ c     based on FMM tolerance, compute expansion lengths nterms(i)
          call h3dterms(bsize(i),zk,epsfmm, nterms(i), ier)
          if (nterms(i).gt. nmax .and. i.ge. 2) nmax = nterms(i)
       enddo
-      nquad=2*nmax               
+      nquad=2*nmax
 c     ixnodes is pointer for quadrature nodes
 c     iwhts is pointer for quadrature weights
-      ixnodes = lused7 
+      ixnodes = lused7
       iwts = ixnodes + nquad
       lused7 = iwts + nquad
 c     Multipole and local expansions will be held in workspace
@@ -97,18 +97,18 @@ c     in locations pointed to by array iaddr(2,nboxes).
 
 c     iiaddr is pointer to iaddr array, itself contained in workspace.
 c     imptemp is pointer for single expansion (dimensioned by nmax)
-      iiaddr = lused7 
+      iiaddr = lused7
       imptemp = iiaddr + 2*nboxes
       lmptemp = (nmax+1)*(2*nmax+1)*2
       lused7 = imptemp + lmptemp
       allocate(w(lused7),stat=ier)
       call h3dreorder(nsource,source,ifcharge,charge,wlists(iisource),
-     1     w(isourcesort),w(ichargesort)) 
+     1     w(isourcesort),w(ichargesort))
       ifinit=1
       call legewhts(nquad,w(ixnodes),w(iwts),ifinit)
       call h3dmpalloc(wlists(iwlists),w(iiaddr),nboxes,lmptot,nterms)
       irmlexp = 1
-      lused7 = irmlexp + lmptot 
+      lused7 = irmlexp + lmptot
       allocate(wrmlexp(lused7),stat=ier)
       ifevalfar=1
       ifevalloc=1
@@ -191,10 +191,11 @@ c     ... set all multipole and local expansions to zero
       enddo
 
 c     ... step 1: P2M
+c$    t1=omp_get_wtime()
       do ilev=3,nlev+1
 c$OMP PARALLEL DO DEFAULT(SHARED)
 c$OMP$PRIVATE(ibox,box,center0,corners0,level,npts,nkids,radius)
-c$OMP$PRIVATE(lused,ier,i,j,ptemp,ftemp,cd) 
+c$OMP$PRIVATE(lused,ier,i,j,ptemp,ftemp,cd)
          do ibox=laddr(1,ilev),laddr(1,ilev)+laddr(2,ilev)-1
             call d3tgetb(ier,ibox,box,center0,corners0,wlists)
             call d3tnkids(box,nkids)
@@ -216,12 +217,15 @@ c$OMP$PRIVATE(lused,ier,i,j,ptemp,ftemp,cd)
          enddo
 c$OMP END PARALLEL DO
       enddo
+c$    t2=omp_get_wtime()
+      print*,'P2M    =',t2-t1
 
       ifprune_list2 = 0
       max_nodes = 10000
       allocate( xnodes2(max_nodes) )
       allocate( wts2(max_nodes) )
 c     ... step 2, M2M
+c$    t1=omp_get_wtime()
       do ilev=nlev,3,-1
          nquad2=nterms(ilev-1)*2.5
          nquad2=max(6,nquad2)
@@ -230,7 +234,7 @@ c     ... step 2, M2M
 c$OMP PARALLEL DO DEFAULT(SHARED)
 c$OMP$PRIVATE(ibox,box,center0,corners0,level0,level,npts,nkids,radius)
 c$OMP$PRIVATE(jbox,box1,center1,corners1,level1)
-c$OMP$PRIVATE(lused,ier,i,j,ptemp,ftemp,cd) 
+c$OMP$PRIVATE(lused,ier,i,j,ptemp,ftemp,cd)
          do ibox=laddr(1,ilev),laddr(1,ilev)+laddr(2,ilev)-1
             call d3tgetb(ier,ibox,box,center0,corners0,wlists)
             call d3tnkids(box,nkids)
@@ -260,6 +264,8 @@ c$OMP$PRIVATE(lused,ier,i,j,ptemp,ftemp,cd)
          enddo
 c$OMP END PARALLEL DO
       enddo
+c$    t2=omp_get_wtime()
+      print*,'M2M    =',t2-t1
 
 c     ... step 3, precompute rotation matrices
 c     (approximately 30kB of storage for ldm=10)
@@ -292,6 +298,7 @@ c     (approximately 40MB of storage for ldm=30)
          enddo
       enddo
 c     ... step 4, M2L
+c$    t1=omp_get_wtime()
       do 4300 ilev=3,nlev+1
          call h3dterms_list2(bsize(ilev-1),zk,epsfmm, itable, ier)
          nquad2=nterms(ilev-1)*1.2
@@ -302,7 +309,7 @@ c$OMP PARALLEL DO DEFAULT(SHARED)
 c$OMP$PRIVATE(ibox,box,center0,corners0,list,nlist)
 c$OMP$PRIVATE(jbox,box1,center1,corners1,level1,ifdirect2,radius)
 c$OMP$PRIVATE(lused,ier,i,j,ptemp,ftemp,cd,ilist,itype)
-c$OMP$PRIVATE(if_use_trunc,nterms_trunc,ii,jj,kk) 
+c$OMP$PRIVATE(if_use_trunc,nterms_trunc,ii,jj,kk)
 c$OMP$SCHEDULE(DYNAMIC)
          do 4200 ibox=laddr(1,ilev),laddr(1,ilev)+laddr(2,ilev)-1
             call d3tgetb(ier,ibox,box,center0,corners0,wlists)
@@ -311,7 +318,7 @@ c$OMP$SCHEDULE(DYNAMIC)
 c     ... retrieve list #2
                itype=2
                call d3tgetl(ier,ibox,itype,list,nlist,wlists)
-c     ... for all pairs in list #2, apply the translation operator 
+c     ... for all pairs in list #2, apply the translation operator
                do 4150 ilist=1,nlist
                   jbox=list(ilist)
                   call d3tgetb(ier,jbox,box1,center1,corners1,wlists)
@@ -358,9 +365,11 @@ c     ... if source is childless, evaluate directly (if cheaper)
             endif
  4200    continue
  4300 continue
-c     
+c$    t2=omp_get_wtime()
+      print*,'M2L    =',t2-t1
 
 c     ... step 5, L2L
+c$    t1=omp_get_wtime()
       do 5300 ilev=3,nlev
          nquad2=nterms(ilev-1)*2
          nquad2=max(6,nquad2)
@@ -369,7 +378,7 @@ c     ... step 5, L2L
 c$OMP PARALLEL DO DEFAULT(SHARED)
 c$OMP$PRIVATE(ibox,box,center0,corners0,level0,level,npts,nkids,radius)
 c$OMP$PRIVATE(jbox,box1,center1,corners1,level1)
-c$OMP$PRIVATE(lused,ier,i,j,ptemp,ftemp,cd) 
+c$OMP$PRIVATE(lused,ier,i,j,ptemp,ftemp,cd)
          do 5200 ibox=laddr(1,ilev),laddr(1,ilev)+laddr(2,ilev)-1
             call d3tgetb(ier,ibox,box,center0,corners0,wlists)
             call d3tnkids(box,nkids)
@@ -397,8 +406,11 @@ c     ... split local expansion of the parent box
  5200    continue
 c$OMP END PARALLEL DO
  5300 continue
+c$    t2=omp_get_wtime()
+      print*,'L2L    =',t2-t1
 
 c     ... step 6: L2P
+c$    t1=omp_get_wtime()
 c$OMP PARALLEL DO DEFAULT(SHARED)
 c$OMP$PRIVATE(ibox,box,center0,corners0,level,npts,nkids,ier)
       do ibox=1,nboxes
@@ -419,11 +431,14 @@ c$OMP$PRIVATE(ibox,box,center0,corners0,level,npts,nkids,ier)
          endif
       enddo
 c$OMP END PARALLEL DO
+c$    t2=omp_get_wtime()
+      print*,'L2P    =',t2-t1
 
 c     ... step 8: P2P
+c$    t1=omp_get_wtime()
 c$OMP PARALLEL DO DEFAULT(SHARED)
 c$OMP$PRIVATE(ibox,box,center0,corners0,nkids,list,nlist,npts)
-c$OMP$PRIVATE(jbox,box1,center1,corners1,ier,ilist,itype) 
+c$OMP$PRIVATE(jbox,box1,center1,corners1,ier,ilist,itype)
 c$OMP$SCHEDULE(DYNAMIC)
       do ibox=1,nboxes
          call d3tgetb(ier,ibox,box,center0,corners0,wlists)
@@ -447,5 +462,7 @@ c     ... prune all sourceless boxes
          endif
       enddo
 c$OMP END PARALLEL DO
+c$    t2=omp_get_wtime()
+      print*,'P2P    =',t2-t1
       return
       end
