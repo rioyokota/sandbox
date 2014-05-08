@@ -191,7 +191,6 @@ c     ... set all multipole and local expansions to zero
       enddo
 
 c     ... step 1: P2M
-c$    t1=omp_get_wtime()
       do ilev=3,nlev+1
 c$OMP PARALLEL DO DEFAULT(SHARED)
 c$OMP$PRIVATE(ibox,box,center0,corners0,level,npts,nkids,radius)
@@ -217,15 +216,12 @@ c$OMP$PRIVATE(lused,ier,i,j,ptemp,ftemp,cd)
          enddo
 c$OMP END PARALLEL DO
       enddo
-c$    t2=omp_get_wtime()
-      print*,'P2M    =',t2-t1
 
       ifprune_list2 = 0
       max_nodes = 10000
       allocate( xnodes2(max_nodes) )
       allocate( wts2(max_nodes) )
 c     ... step 2, M2M
-c$    t1=omp_get_wtime()
       do ilev=nlev,3,-1
          nquad2=nterms(ilev-1)*2.5
          nquad2=max(6,nquad2)
@@ -252,20 +248,17 @@ c$OMP$PRIVATE(lused,ier,i,j,ptemp,ftemp,cd)
                      if (jbox.eq.0) cycle
                      call d3tgetb(ier,jbox,box1,center1,corners1,wlists)
                      level1=box1(1)
-                     nq = max(nquad2,2*nterms(level0)+2)
-                     call M2M(zk,scale(level1),center1,
+                     call h3dmpmpquadu_add(zk,scale(level1),center1,
      1                    rmlexp(iaddr(1,jbox)),nterms(level1),
      1                    scale(level0),center0,rmlexp(iaddr(1,ibox)),
      1                    nterms(level0),nterms(level0),
-     1                    radius,xnodes2,wts2,nquad2,nq,ier)
+     1                    radius,xnodes2,wts2,nquad2,ier)
                   enddo
                endif
             endif
          enddo
 c$OMP END PARALLEL DO
       enddo
-c$    t2=omp_get_wtime()
-      print*,'M2M    =',t2-t1
 
 c     ... step 3, precompute rotation matrices
 c     (approximately 30kB of storage for ldm=10)
@@ -298,7 +291,6 @@ c     (approximately 40MB of storage for ldm=30)
          enddo
       enddo
 c     ... step 4, M2L
-c$    t1=omp_get_wtime()
       do 4300 ilev=3,nlev+1
          call h3dterms_list2(bsize(ilev-1),zk,epsfmm, itable, ier)
          nquad2=nterms(ilev-1)*1.2
@@ -365,11 +357,9 @@ c     ... if source is childless, evaluate directly (if cheaper)
             endif
  4200    continue
  4300 continue
-c$    t2=omp_get_wtime()
-      print*,'M2L    =',t2-t1
+c
 
 c     ... step 5, L2L
-c$    t1=omp_get_wtime()
       do 5300 ilev=3,nlev
          nquad2=nterms(ilev-1)*2
          nquad2=max(6,nquad2)
@@ -406,11 +396,8 @@ c     ... split local expansion of the parent box
  5200    continue
 c$OMP END PARALLEL DO
  5300 continue
-c$    t2=omp_get_wtime()
-      print*,'L2L    =',t2-t1
 
 c     ... step 6: L2P
-c$    t1=omp_get_wtime()
 c$OMP PARALLEL DO DEFAULT(SHARED)
 c$OMP$PRIVATE(ibox,box,center0,corners0,level,npts,nkids,ier)
       do ibox=1,nboxes
@@ -431,11 +418,8 @@ c$OMP$PRIVATE(ibox,box,center0,corners0,level,npts,nkids,ier)
          endif
       enddo
 c$OMP END PARALLEL DO
-c$    t2=omp_get_wtime()
-      print*,'L2P    =',t2-t1
 
 c     ... step 8: P2P
-c$    t1=omp_get_wtime()
 c$OMP PARALLEL DO DEFAULT(SHARED)
 c$OMP$PRIVATE(ibox,box,center0,corners0,nkids,list,nlist,npts)
 c$OMP$PRIVATE(jbox,box1,center1,corners1,ier,ilist,itype)
@@ -462,7 +446,5 @@ c     ... prune all sourceless boxes
          endif
       enddo
 c$OMP END PARALLEL DO
-c$    t2=omp_get_wtime()
-      print*,'P2P    =',t2-t1
       return
       end

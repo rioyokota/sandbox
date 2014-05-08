@@ -63,7 +63,13 @@ C***********************************************************************
      1     (ier,zk,rscale,source,charge,ns,center,
      1     nterms,nterms1,lwfjs,mpole,wlege,nlege)
 C***********************************************************************
+C
+C     Constructs multipole (h) expansion about CENTER due to NS sources 
+C     located at SOURCES(3,*).
+C
+c-----------------------------------------------------------------------
 C     INPUT:
+c
 C     zk              : Helmholtz parameter 
 C     scale           : the scaling factor.
 C     sources         : coordinates of sources
@@ -77,6 +83,7 @@ c     nlege  :    dimension parameter for wlege
 C
 c-----------------------------------------------------------------------
 C     OUTPUT:
+C
 c     ier             : error return code
 c     mpole           : coeffs of the h-expansion
 c-----------------------------------------------------------------------
@@ -140,96 +147,6 @@ c-----------------------------------------------------------------------
       do l = 0,nterms
          do m=-l,l
             mpole(l,m) = mpole(l,m)+mtemp(l,m)*i1*zk
-         enddo
-      enddo
-      return
-      end
-C***********************************************************************
-      subroutine M2M(wavek,sc1,x0y0z0,mpole,nterms,
-     1           sc2,xnynzn,mpolen,ldc,nterms2,
-     2           radius,xnodes,wts,nquad,nq,ier)
-C***********************************************************************
-C     INPUT:
-C           wavek  = Helmholtz parameter
-C           sc1     = scaling parameter for mpole expansion
-C           x0y0z0 = center of original multiple expansion
-C           mpole  = coefficients of original multiple expansion
-C           nterms = order of multipole expansion
-C           sc2     = scaling parameter for shifted expansion
-C           xnynzn = center of shifted expansion
-C           nterms2 = order of shifted expansion
-C           radius  = radius of sphere on which mpole expansion is computed
-C           xnodes  = Legendre nodes (precomputed)
-C           wts     = Legendre weights (precomputed)
-C           nquad   = number of quadrature nodes in theta direction
-C---------------------------------------------------------------------
-C     OUTPUT:
-C           mpolen = coefficients of shifted mpole expansion
-C           ier   = error return flag
-C***********************************************************************
-      implicit none
-      integer  nterms, lw, lused, ier, nq, nquad, nquse,ldc,nterms2
-      real *8 x0y0z0(3),xnynzn(3)
-      real *8 radius, rshift
-      real *8 xnodes(1),wts(1)
-      real *8 d,theta,ctheta,phi,sc1,sc2,rvec(3)
-      real *8 ynm(0:ldc,0:ldc)
-      real *8 ynmd(0:ldc,0:ldc)
-      complex *16 phitemp(nq,-ldc:ldc)
-      complex *16 phitemp2(nq,-ldc:ldc)
-      complex *16 fhs(0:nterms)
-      complex *16 fhder(0:nterms)
-      complex *16 mpole(0:nterms,-nterms:nterms)
-      complex *16 marray1(0:nterms,-nterms:nterms)
-      complex *16 mpolen(0:nterms2,-nterms2:nterms2)
-      complex *16 marray(0:ldc,-ldc:ldc)
-      complex *16 wavek
-      complex *16 ephi(-ldc-1:ldc+1),imag
-      integer  l,m,jnew,knew
-      data imag/(0.0d0,1.0d0)/
-      rvec(1) = xnynzn(1) - x0y0z0(1)
-      rvec(2) = xnynzn(2) - x0y0z0(2)
-      rvec(3) = xnynzn(3) - x0y0z0(3)
-      call cart2polar(rvec,d,theta,phi)
-      ephi(1) = exp(imag*phi)
-      ephi(0)=1.0d0
-      ephi(-1)=dconjg(ephi(1))
-      do l = 1,ldc
-         ephi(l+1) = ephi(l)*ephi(1)
-         ephi(-1-l) = dconjg(ephi(l+1))
-      enddo
-      do l=0,nterms
-         do m=-l,l
-            marray1(l,m)=mpole(l,m)*ephi(m)
-         enddo
-      enddo
-      do l=0,nterms2
-         do m=-l,l
-            mpolen(l,m)=0.0d0
-         enddo
-      enddo
-      if( nterms .ge. 30 ) then 
-      call rotviaprojf90(theta,nterms,nterms,nterms,marray1,nterms,
-     1        marray,ldc)
-      else
-      call rotviarecur3f90(theta,nterms,nterms,nterms,marray1,nterms,
-     1        marray,ldc)
-      endif
-      rshift = d
-      call h3dmpmpzshift_fast
-     $   (wavek,sc1,marray,ldc,nterms,sc2,mpolen,
-     1           nterms2,nterms2,radius,rshift,xnodes,wts,nquad,
-     2           ynm,phitemp,fhs,fhder,ier)
-      if( nterms2 .ge. 30 ) then
-      call rotviaprojf90(-theta,nterms2,nterms2,nterms2,mpolen,
-     1        nterms2,marray,ldc)
-      else
-      call rotviarecur3f90(-theta,nterms2,nterms2,nterms2,mpolen,
-     1        nterms2,marray,ldc)
-      endif
-      do l=0,nterms2
-         do m=-l,l
-            mpolen(l,m)=mpolen(l,m)+ephi(-m)*marray(l,m)
          enddo
       enddo
       return
