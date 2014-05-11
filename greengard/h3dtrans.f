@@ -128,60 +128,6 @@ C***********************************************************************
       subroutine h3dmpmpquadu_add(wavek,sc1,x0y0z0,mpole,nterms,
      1           sc2,xnynzn,mpolen,ldc,nterms2,
      2           radius,xnodes,wts,nquad,ier)
-C***********************************************************************
-C
-C     memory management wrapper for 
-C     subroutine h3dmpmpquad0 (below).
-C
-C     Usage:
-C
-C           Shift center of multipole expansion.
-C           This is a reasonably fast "point and shoot" version which
-C           first rotates the coordinate system, then shifts
-C           along the Z-axis, and then rotates back to the original
-C           coordinates.
-C
-C---------------------------------------------------------------------
-C     INPUT:
-C
-C           wavek  = Helmholtz parameter
-C           sc1     = scaling parameter for mpole expansion
-C           x0y0z0 = center of original multiple expansion
-C           mpole  = coefficients of original multiple expansion
-C           nterms = order of multipole expansion
-C           sc2     = scaling parameter for shifted expansion
-C           xnynzn = center of shifted expansion
-C           nterms2 = order of shifted expansion
-C           radius  = radius of sphere on which mpole expansion is
-C                     computed
-C           xnodes  = Legendre nodes (precomputed)
-C           wts     = Legendre weights (precomputed)
-C           nquad   = number of quadrature nodes in theta direction
-C
-C---------------------------------------------------------------------
-C     OUTPUT:
-C
-C           mpolen = coefficients of shifted mpole expansion
-C           ier   = error return flag
-C
-C                   CURRENTLY UNUSED.
-C
-C     Work arrays carved out of w.
-C
-C           marray   = work array used to hold various intermediate 
-c                      rotated expansions.
-C           dc       = work array contain the square roots of 
-C                      some binomial coefficients.
-C           rd1,rd2  = work arrays used to compute rotation matrices
-C                      about Y-axis recursively.
-C           ephi     = work array 
-C           ynm      = work array 
-C           phitemp  = work array 
-C           fhs      = work array 
-C           fhder    = work array 
-C
-C
-C***********************************************************************
       implicit real *8 (a-h,o-z)
       integer  nterms,ier,l,m,jnew,knew
       real *8 x0y0z0(3),xnynzn(3)
@@ -190,24 +136,12 @@ C***********************************************************************
       complex *16 mpole(0:nterms,-nterms:nterms)
       complex *16 mpolen(0:ldc,-ldc:ldc)
       complex *16 wavek,imag
-c
-c     local allocated workspace array
-c
-      complex *16, allocatable :: mptemp(:,:)
-c
       data imag/(0.0d0,1.0d0)/
-C
-      allocate( mptemp(0:nterms2,-nterms2:nterms2) )
 
       call h3dmpmpquadu(wavek,sc1,x0y0z0,mpole,nterms,
-     1           sc2,xnynzn,mptemp,nterms2,
+     1           sc2,xnynzn,mpolen,nterms2,
      2           radius,xnodes,wts,nquad,ier)
 
-      do l = 0,min(ldc,nterms2)
-         do m=-l,l
-            mpolen(l,m) = mpolen(l,m)+mptemp(l,m)
-         enddo
-      enddo
 c
       return
       end
@@ -285,11 +219,11 @@ C
       complex *16 mpolen(0:nterms2,-nterms2:nterms2)
       complex *16 marray(0:ldc,-ldc:ldc)
       complex *16 wavek
-c
       complex *16 ephi(-ldc-1:ldc+1),imag
-ccc      complex *16 ephi2(-ldc-1:ldc+1)
+      complex *16, allocatable :: mptemp(:,:)
       integer  l,m,jnew,knew
       data imag/(0.0d0,1.0d0)/
+      allocate( mptemp(0:nterms2,-nterms2:nterms2) )
 C
       rvec(1) = xnynzn(1) - x0y0z0(1)
       rvec(2) = xnynzn(2) - x0y0z0(2)
@@ -319,7 +253,7 @@ c
       enddo
       do l=0,nterms2
          do m=-l,l
-            mpolen(l,m)=0.0d0
+            mptemp(l,m)=0.0d0
          enddo
       enddo
 c
@@ -337,7 +271,7 @@ c      the Z-axis.
 c
       rshift = d
       call h3dmpmpzshift_fast
-     $   (wavek,sc1,marray,ldc,nterms,sc2,mpolen,
+     $   (wavek,sc1,marray,ldc,nterms,sc2,mptemp,
      1           nterms2,nterms2,radius,rshift,xnodes,wts,nquad,
      2           ynm,phitemp,fhs,fhder,ier)
 c
@@ -346,11 +280,11 @@ c     Reverse THETA rotation.
 c     I.e. rotation of -THETA radians about Yprime axis.
 c
       if( nterms2 .ge. 30 ) then
-      call rotviaprojf90(-theta,nterms2,nterms2,nterms2,mpolen,
+      call rotviaprojf90(-theta,nterms2,nterms2,nterms2,mptemp,
      1        nterms2,marray,ldc)
       else
-ccc      call rotviarecur3f90(-theta,nterms2,nterms,nterms2,mpolen,
-      call rotviarecur3f90(-theta,nterms2,nterms2,nterms2,mpolen,
+ccc      call rotviarecur3f90(-theta,nterms2,nterms,nterms2,mptemp,
+      call rotviarecur3f90(-theta,nterms2,nterms2,nterms2,mptemp,
      1        nterms2,marray,ldc)
       endif
 c
@@ -359,7 +293,12 @@ c----- rotate back PHI radians about the Z-axis in the above system.
 c
       do l=0,nterms2
          do m=-l,l
-            mpolen(l,m)=ephi(-m)*marray(l,m)
+            mptemp(l,m)=ephi(-m)*marray(l,m)
+         enddo
+      enddo
+      do l = 0,min(ldc,nterms2)
+         do m=-l,l
+            mpolen(l,m) = mpolen(l,m)+mptemp(l,m)
          enddo
       enddo
       return

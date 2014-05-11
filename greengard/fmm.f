@@ -193,9 +193,9 @@ c     ... set all multipole and local expansions to zero
 c     ... step 1: P2M
 c$    tic=omp_get_wtime()
       do ilev=3,nlev+1
-c$OMP PARALLEL DO DEFAULT(SHARED)
-c$OMP$PRIVATE(ibox,box,center0,corners0,level,npts,nkids,radius)
-c$OMP$PRIVATE(lused,ier,i,j,ptemp,ftemp,cd)
+c$omp parallel do default(shared)
+c$omp$private(ibox,box,center0,corners0,level,npts,nkids,radius)
+c$omp$private(lused,ier,i,j,ptemp,ftemp,cd)
          do ibox=laddr(1,ilev),laddr(1,ilev)+laddr(2,ilev)-1
             call d3tgetb(ier,ibox,box,center0,corners0,wlists)
             call d3tnkids(box,nkids)
@@ -215,7 +215,7 @@ c$OMP$PRIVATE(lused,ier,i,j,ptemp,ftemp,cd)
      1              rmlexp(iaddr(1,ibox)),wlege,nlege)
             endif
          enddo
-c$OMP END PARALLEL DO
+c$omp end parallel do
       enddo
 c$    toc=omp_get_wtime()
       print*,'P2M    =',toc-tic
@@ -231,10 +231,10 @@ c$    tic=omp_get_wtime()
          nquad2=max(6,nquad2)
          ifinit2=1
          call legewhts(nquad2,xnodes2,wts2,ifinit2)
-c$OMP PARALLEL DO DEFAULT(SHARED)
-c$OMP$PRIVATE(ibox,box,center0,corners0,level0,level,npts,nkids,radius)
-c$OMP$PRIVATE(jbox,box1,center1,corners1,level1)
-c$OMP$PRIVATE(lused,ier,i,j,ptemp,ftemp,cd)
+c$omp parallel do default(shared)
+c$omp$private(ibox,box,center0,corners0,level0,level,npts,nkids,radius)
+c$omp$private(jbox,box1,center1,corners1,level1)
+c$omp$private(lused,ier,i,j,ptemp,ftemp,cd)
          do ibox=laddr(1,ilev),laddr(1,ilev)+laddr(2,ilev)-1
             call d3tgetb(ier,ibox,box,center0,corners0,wlists)
             call d3tnkids(box,nkids)
@@ -261,7 +261,7 @@ c$OMP$PRIVATE(lused,ier,i,j,ptemp,ftemp,cd)
                endif
             endif
          enddo
-c$OMP END PARALLEL DO
+c$omp end parallel do
       enddo
 c$    toc=omp_get_wtime()
       print*,'M2M    =',toc-tic
@@ -305,12 +305,12 @@ c$    tic=omp_get_wtime()
          nquad2=max(6,nquad2)
          ifinit2=1
          call legewhts(nquad2,xnodes2,wts2,ifinit2)
-c$OMP PARALLEL DO DEFAULT(SHARED)
-c$OMP$PRIVATE(ibox,box,center0,corners0,list,nlist)
-c$OMP$PRIVATE(jbox,box1,center1,corners1,level1,ifdirect2,radius)
-c$OMP$PRIVATE(lused,ier,i,j,ptemp,ftemp,cd,ilist,itype)
-c$OMP$PRIVATE(if_use_trunc,nterms_trunc,ii,jj,kk)
-c$OMP$SCHEDULE(DYNAMIC)
+c$omp parallel do default(shared)
+c$omp$private(ibox,box,center0,corners0,list,nlist)
+c$omp$private(jbox,box1,center1,corners1,level1,ifdirect2,radius)
+c$omp$private(lused,ier,i,j,ptemp,ftemp,cd,ilist,itype)
+c$omp$private(if_use_trunc,nterms_trunc,ii,jj,kk)
+c$omp$schedule(dynamic)
          do 4200 ibox=laddr(1,ilev),laddr(1,ilev)+laddr(2,ilev)-1
             call d3tgetb(ier,ibox,box,center0,corners0,wlists)
             level0=box(1)
@@ -375,10 +375,10 @@ c$    tic=omp_get_wtime()
          nquad2=max(6,nquad2)
          ifinit2=1
          call legewhts(nquad2,xnodes2,wts2,ifinit2)
-c$OMP PARALLEL DO DEFAULT(SHARED)
-c$OMP$PRIVATE(ibox,box,center0,corners0,level0,level,npts,nkids,radius)
-c$OMP$PRIVATE(jbox,box1,center1,corners1,level1)
-c$OMP$PRIVATE(lused,ier,i,j,ptemp,ftemp,cd)
+c$omp parallel do default(shared)
+c$omp$private(ibox,box,center0,corners0,level0,level,npts,nkids,radius)
+c$omp$private(jbox,box1,center1,corners1,level1)
+c$omp$private(lused,ier,i,j,ptemp,ftemp,cd)
          do 5200 ibox=laddr(1,ilev),laddr(1,ilev)+laddr(2,ilev)-1
             call d3tgetb(ier,ibox,box,center0,corners0,wlists)
             call d3tnkids(box,nkids)
@@ -404,15 +404,15 @@ c     ... split local expansion of the parent box
                endif
             endif
  5200    continue
-c$OMP END PARALLEL DO
+c$omp end parallel do
  5300 continue
 c$    toc=omp_get_wtime()
       print*,'L2L    =',toc-tic
 
 c     ... step 6: L2P
 c$    tic=omp_get_wtime()
-c$OMP PARALLEL DO DEFAULT(SHARED)
-c$OMP$PRIVATE(ibox,box,center0,corners0,level,npts,nkids,ier)
+c$omp parallel do default(shared)
+c$omp$private(ibox,box,center0,corners0,level,npts,nkids,ier)
       do ibox=1,nboxes
          call d3tgetb(ier,ibox,box,center0,corners0,wlists)
          call d3tnkids(box,nkids)
@@ -430,16 +430,16 @@ c$OMP$PRIVATE(ibox,box,center0,corners0,level,npts,nkids,ier)
             endif
          endif
       enddo
-c$OMP END PARALLEL DO
+c$omp end parallel do
 c$    toc=omp_get_wtime()
       print*,'L2P    =',toc-tic
 
 c     ... step 8: P2P
 c$    tic=omp_get_wtime()
-c$OMP PARALLEL DO DEFAULT(SHARED)
-c$OMP$PRIVATE(ibox,box,center0,corners0,nkids,list,nlist,npts)
-c$OMP$PRIVATE(jbox,box1,center1,corners1,ier,ilist,itype)
-c$OMP$SCHEDULE(DYNAMIC)
+c$omp parallel do default(shared)
+c$omp$private(ibox,box,center0,corners0,nkids,list,nlist,npts)
+c$omp$private(jbox,box1,center1,corners1,ier,ilist,itype)
+c$omp$schedule(dynamic)
       do ibox=1,nboxes
          call d3tgetb(ier,ibox,box,center0,corners0,wlists)
          call d3tnkids(box,nkids)
@@ -461,7 +461,7 @@ c     ... prune all sourceless boxes
             enddo
          endif
       enddo
-c$OMP END PARALLEL DO
+c$omp end parallel do
 c$    toc=omp_get_wtime()
       print*,'P2P    =',toc-tic
       return
