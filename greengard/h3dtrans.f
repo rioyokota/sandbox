@@ -52,7 +52,7 @@ C
       implicit none
       integer  nterms, lw, lused, ier, nq, nquad, nquse,ldc,nterms2
       real *8 x0y0z0(3),xnynzn(3)
-      real *8 radius, rshift
+      real *8 radius, zshift
       real *8 xnodes(1),wts(1)
       real *8 d,theta,ctheta,phi,scale,scale2,rvec(3)
       real *8 ynm(0:ldc,0:ldc)
@@ -111,18 +111,29 @@ c
       call rotviarecur3f90(theta,nterms,nterms,nterms,marray1,nterms,
      1        marray,ldc)
       endif
-c
-c
 c----- shift the mpole expansion from X0Y0Z0 to XNYNZN along
 c      the Z-axis.
-c
-      rshift = d
-      call h3dmpmpzshift_fast
-     $   (wavek,scale,marray,ldc,nterms,scale2,mptemp,
-     1           nterms2,nterms2,radius,rshift,xnodes,wts,nquad,
-     2           ynm,phitemp,fhs,fhder,ier)
-c
-c
+      zshift = d
+C----- shift along z-axis by evaluating field on target sphere and
+C     projecting onto spherical harmonics and scaling by j_n(kR).
+C    OPTIMIZATION NOTES:
+C    Suppose you are shifting from a very small sphere to the center
+C    of a very large sphere (nterms2 >> nterms).
+C    Then, ALONG THE Z-AXIS, the number of azimuthal modes that
+C    need to be computed is only nterms (not nterms2). 
+C    Subroutines h3dmpevalspherenm, h3dprojlocnmsep allow for this.
+C    The final step of the point and shoot algorithm then distributes
+C    these nterms (azimuthal) modes to nterms2 (azimuthal) in the
+C    "laboratory frame".
+C    cost is (nterms^2 x nterms2) rather than (nterms x nterms2^2)
+      call h3dmpevalspherenm_fast(marray,wavek,scale,
+     1     zshift,radius,nterms,ldc,ynm,
+     1     phitemp,nquad,xnodes,fhs,fhder)
+      call h3dprojlocnmsep_fast
+     1     (nterms2,nterms2,nquad,nterms,xnodes,wts,
+     1     phitemp,mptemp,ynm)
+      call h3drescalemp(nterms2,nterms2,mptemp,radius,wavek,
+     1     scale2,fhs,fhder)
 c     Reverse THETA rotation.
 c     I.e. rotation of -THETA radians about Yprime axis.
 c
@@ -150,99 +161,6 @@ c
       enddo
       return
       end
-c
-c
-c
-c
-c***********************************************************************
-      subroutine h3dmpmpzshift_fast
-     $     (wavek,scale,mpole,lmp,nterms,scale2,mpolen,
-     1      lmpn,nterms2,radius,zshift,xnodes,wts,nquad,ynm,
-     2      phitemp,fhs,fhder,ier)
-c***********************************************************************
-c
-c     This subroutine converts a multipole expansion centered at the 
-c     origin to a multipole expansion centered at (0,0,zhift).
-c     The expansion is rescaled to that of the shifted expansion.
-c
-c INPUT:
-c
-c     wavek       : Helmholtz coefficient
-c     scale    : scale parameter for mpole
-c     mpole    : coefficients of original multipole exp.
-c     lmp      : leading dim of mpole (may be a work array)
-c     nterms   : number of terms in the orig. expansion
-c
-c     scale2   : scale parameter for new expansion (mpolen)
-c     lmpn     : leading dim of shifted (may be work array)
-c     nterms2  : number of terms in output expansion
-c     radius   : radius of sphere on which mpole is evaluated
-c                           in projeciton step
-c     zshift   : shifting distance along z-axis
-c                              (always assumed positive)
-C     xnodes   : Legendre nodes (precomputed)
-C     wts      : Legendre weights (precomputed)
-C     nquad    : number of quadrature nodes in theta direction
-c
-c OUTPUT:
-c
-c     mpolen  (complex *16)  : coefficients of shifted exp.
-c
-c***********************************************************************
-      implicit real *8 (a-h,o-z)
-      integer nterms,nterms2,nquad,ier,lmp,lmpn,ldc,iynm,lynm
-      real *8   zshift,scale,scale2,radius
-      real *8   xnodes(1),wts(1)
-      real *8   ynm(0:nterms,0:nterms)
-      complex *16 phitemp(nquad,-nterms:nterms)
-      complex *16 fhs(0:nterms)
-      complex *16 fhder(0:nterms)
-      complex *16 mpole(0:lmp,-lmp:lmp),wavek
-      complex *16 mpolen(0:lmpn,-lmpn:lmpn)
-c
-c     local allocated workspace arrays - no more passed workspace
-c
-      real *8, allocatable :: w(:)
-c
-      integer l,m,jnew,knew
-C
-C----- shift along z-axis by evaluating field on target sphere and
-C     projecting onto spherical harmonics and scaling by j_n(kR).
-C
-C    OPTIMIZATION NOTES:
-C
-C    Suppose you are shifting from a very small sphere to the center
-C    of a very large sphere (nterms2 >> nterms).
-C    Then, ALONG THE Z-AXIS, the number of azimuthal modes that
-C    need to be computed is only nterms (not nterms2). 
-C    Subroutines h3dmpevalspherenm, h3dprojlocnmsep allow for this.
-C    The final step of the point and shoot algorithm then distributes
-C    these nterms (azimuthal) modes to nterms2 (azimuthal) in the
-C    "laboratory frame".
-C
-C    cost is (nterms^2 x nterms2) rather than (nterms x nterms2^2)
-C
-
-        ldc = max(nterms,nterms2)
-        irat1=1
-        lrat1=(ldc+1)**2
-        irat2=irat1+lrat1
-        lrat2=(ldc+1)**2
-        lused=irat2+lrat2
-        allocate(w(lused))
-c
-ccc      call prinf(' allocated in shift fast *',lused,1)
-      call h3dmpevalspherenm_fast(mpole,wavek,scale,
-     1     zshift,radius,nterms,lmp,ynm,
-     2     phitemp,nquad,xnodes,fhs,fhder,w(irat1),w(irat2))
-      call h3dprojlocnmsep_fast
-     $   (nterms2,lmpn,nquad,nterms,xnodes,wts,
-     1     phitemp,mpolen,ynm,w(irat1),w(irat2))
-      call h3drescalemp(nterms2,lmpn,mpolen,radius,wavek,
-     1               scale2,fhs,fhder)
-      return
-      end
-C
 cc Copyright (C) 2009-2010: Leslie Greengard and Zydrunas Gimbutas
 cc Contact: greengard@cims.nyu.edu
 cc 
@@ -566,9 +484,9 @@ c
 c----- shift the local expansion from X0Y0Z0 to XNYNZN along
 c      the Z-axis.
 c
-      rshift = d
+      zshift = d
       call h3dmploczshiftstab_fast(wavek,marray,scale,ldc,nterms,local,
-     1      scale2,nterms2,nterms2,radius,rshift,xnodes,wts,nquad,
+     1      scale2,nterms2,nterms2,radius,zshift,xnodes,wts,nquad,
      2      ynm,ynmd,mp2,phitemp,phitempn,fhs,fhder,fjs,fjder,
      3      iscale,lwfjs,ier)
 
@@ -892,9 +810,9 @@ c
 c----- shift the local expansion from X0Y0Z0 to XNYNZN along
 c      the Z-axis.
 c
-      rshift = d
+      zshift = d
       call h3dmploczshiftstab_fast(wavek,marray,scale,ldc,nterms1,local,
-     1      scale2,nterms2,nterms2,radius,rshift,xnodes,wts,nquad,
+     1      scale2,nterms2,nterms2,radius,zshift,xnodes,wts,nquad,
      2      ynm,ynmd,mp2,phitemp,phitempn,fhs,fhder,fjs,fjder,
      3      iscale,lwfjs,ier)
 
@@ -1228,9 +1146,9 @@ c
 c----- shift the local expansion from X0Y0Z0 to XNYNZN along
 c      the Z-axis.
 c
-      rshift = d
+      zshift = d
       call h3dmploczshiftstab_fast(wavek,marray,scale,ldc,nterms1,local,
-     1      scale2,nterms2,nterms2,radius,rshift,xnodes,wts,nquad,
+     1      scale2,nterms2,nterms2,radius,zshift,xnodes,wts,nquad,
      2      ynm,ynmd,mp2,phitemp,phitempn,fhs,fhder,fjs,fjder,
      3      iscale,lwfjs,ier)
 
@@ -1673,11 +1591,11 @@ c
 c----- shift the local expansion from X0Y0Z0 to XNYNZN along
 c      the Z-axis.
 c
-      rshift = d
+      zshift = d
 ccc      t1 = second()
        call h3dlocloczshiftstab_fast
      $   (wavek,scale,marray,ldc,nterms,scale2,local,
-     1           nterms2,nterms2,radius,rshift,
+     1           nterms2,nterms2,radius,zshift,
      2           xnodes,wts,nquad,ynm,ynmd,mp2,
      3      phitemp,phitempn,fjs,fjder,iscale,lwfjs,ier) 
 ccc      t2 = second()
