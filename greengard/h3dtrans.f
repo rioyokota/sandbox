@@ -1,4 +1,4 @@
-      subroutine M2M(wavek,scale,x0y0z0,mpole,nterms,sc2,
+      subroutine M2M(wavek,scale,x0y0z0,mpole,nterms,scale2,
      1           xnynzn,mpolen,nterms2,ldc,
      2           radius,xnodes,wts,nquad,nq,ier)
 C***********************************************************************
@@ -21,7 +21,7 @@ C           mpole  = coefficients of original multiple expansion
 C           nterms = order of multipole expansion
 C           nterms2 = order of shifted expansion
 C           scale     = scaling parameter for mpole expansion
-C           sc2     = scaling parameter for shifted expansion
+C           scale2     = scaling parameter for shifted expansion
 C           radius  = radius of sphere on which shifted expansion is
 C                     computed
 C           xnodes  = Legendre nodes (precomputed)
@@ -54,7 +54,7 @@ C
       real *8 x0y0z0(3),xnynzn(3)
       real *8 radius, rshift
       real *8 xnodes(1),wts(1)
-      real *8 d,theta,ctheta,phi,scale,sc2,rvec(3)
+      real *8 d,theta,ctheta,phi,scale,scale2,rvec(3)
       real *8 ynm(0:ldc,0:ldc)
       real *8 ynmd(0:ldc,0:ldc)
       complex *16 phitemp(nq,-ldc:ldc)
@@ -118,7 +118,7 @@ c      the Z-axis.
 c
       rshift = d
       call h3dmpmpzshift_fast
-     $   (wavek,scale,marray,ldc,nterms,sc2,mptemp,
+     $   (wavek,scale,marray,ldc,nterms,scale2,mptemp,
      1           nterms2,nterms2,radius,rshift,xnodes,wts,nquad,
      2           ynm,phitemp,fhs,fhder,ier)
 c
@@ -266,7 +266,7 @@ c     multipole to local translation, f95 version using allocate
 c
 C***********************************************************************
       subroutine h3dmplocquadu(wavek,scale,x0y0z0,mpole,nterms,
-     1           sc2,xnynzn,local,nterms2,
+     1           scale2,xnynzn,local,nterms2,
      2           radius,xnodes,wts,nquad,ier)
 C***********************************************************************
 C
@@ -288,7 +288,7 @@ C           scale     = scaling parameter for mpole expansion
 C           x0y0z0 = center of original multiple expansion
 C           mpole  = coefficients of original multiple expansion
 C           nterms = order of multipole expansion
-C           sc2     = scaling parameter for local expansion
+C           scale2     = scaling parameter for local expansion
 C           xnynzn = center of shifted local expansion
 C           nterms2 = order of local expansion
 C           radius  = radius of sphere on which local expansion is
@@ -323,7 +323,7 @@ C
       integer nterms,ier,l,m,jnew,knew
       real *8 x0y0z0(3),xnynzn(3)
       real *8 xnodes(1),wts(1)
-      real *8 scale,sc2
+      real *8 scale,scale2
       complex *16 mpole(0:nterms,-nterms:nterms)
       complex *16 local(0:nterms2,-nterms2:nterms2)
       complex *16 imag,wavek
@@ -361,7 +361,7 @@ C
       lused = iiscale+ liscale
       allocate(w(lused))
 c
-      call h3dmplocquad0(wavek,scale,x0y0z0,mpole,nterms,sc2,xnynzn,
+      call h3dmplocquad0(wavek,scale,x0y0z0,mpole,nterms,scale2,xnynzn,
      1         local,nterms2,w(imarray),w(imarray1),ldc,
      2         w(iephi),radius,xnodes,wts,nquad,nq,
      3         w(iynm),w(iynmd),w(imp2),
@@ -373,7 +373,7 @@ c
 c
 C***********************************************************************
       subroutine h3dmplocquadu_add(wavek,scale,x0y0z0,mpole,nterms,
-     1           sc2,xnynzn,local,ldc,nterms2,
+     1           scale2,xnynzn,local,ldc,nterms2,
      2           radius,xnodes,wts,nquad,ier)
 C***********************************************************************
 C
@@ -395,7 +395,7 @@ C           scale     = scaling parameter for mpole expansion
 C           x0y0z0 = center of original multiple expansion
 C           mpole  = coefficients of original multiple expansion
 C           nterms = order of multipole expansion
-C           sc2     = scaling parameter for local expansion
+C           scale2     = scaling parameter for local expansion
 C           xnynzn = center of shifted local expansion
 C           nterms2 = order of local expansion
 C           radius  = radius of sphere on which local expansion is
@@ -430,7 +430,7 @@ C
       integer nterms,ier,l,m,jnew,knew
       real *8 x0y0z0(3),xnynzn(3)
       real *8 xnodes(1),wts(1)
-      real *8 scale,sc2
+      real *8 scale,scale2
       complex *16 mpole(0:nterms,-nterms:nterms)
       complex *16 local(0:ldc,-ldc:ldc)
       complex *16 imag,wavek
@@ -444,7 +444,7 @@ C
       allocate( mptemp(0:nterms2,-nterms2:nterms2) )
 
       call h3dmplocquadu(wavek,scale,x0y0z0,mpole,nterms,
-     1           sc2,xnynzn,mptemp,nterms2,
+     1           scale2,xnynzn,mptemp,nterms2,
      2           radius,xnodes,wts,nquad,ier)
 
       do l = 0,min(ldc,nterms2)
@@ -461,7 +461,7 @@ c
 c
 C***********************************************************************
       subroutine h3dmplocquad0(wavek,scale,x0y0z0,mpole,nterms,
-     1           sc2,xnynzn,local,nterms2,marray,marray1,ldc,ephi,
+     1           scale2,xnynzn,local,nterms2,marray,marray1,ldc,ephi,
      2           radius,xnodes,wts,nquad,nq,ynm,ynmd,mp2,
      3           phitemp,phitempn,fhs,fhder,fjs,fjder,iscale,lwfjs,ier)
 
@@ -485,7 +485,7 @@ C           mpole  = coefficients of original multiple expansion
 C           nterms = order of multipole expansion
 C           nterms2 = order of local expansion
 C           scale     = scaling parameter for mpole expansion
-C           sc2     = scaling parameter for local expansion
+C           scale2     = scaling parameter for local expansion
 C           radius  = radius of sphere on which local expansion is
 C                     computed
 C           xnodes  = Legendre nodes (precomputed)
@@ -505,7 +505,7 @@ C---------------------------------------------------------------------
       implicit real *8 (a-h,o-z)
       integer  nterms,ier,l,m,jnew,knew
       integer  iscale(0:lwfjs)
-      real *8 d,theta,ctheta,phi,scale,sc2
+      real *8 d,theta,ctheta,phi,scale,scale2
       real *8 x0y0z0(3),xnynzn(3)
       real *8 xnodes(1),wts(1),rvec(3)
       real *8 zshift
@@ -568,7 +568,7 @@ c      the Z-axis.
 c
       rshift = d
       call h3dmploczshiftstab_fast(wavek,marray,scale,ldc,nterms,local,
-     1      sc2,nterms2,nterms2,radius,rshift,xnodes,wts,nquad,
+     1      scale2,nterms2,nterms2,radius,rshift,xnodes,wts,nquad,
      2      ynm,ynmd,mp2,phitemp,phitempn,fhs,fhder,fjs,fjder,
      3      iscale,lwfjs,ier)
 
@@ -598,7 +598,7 @@ c
 c
 C***********************************************************************
       subroutine h3dmplocquadu_trunc(wavek,scale,x0y0z0,mpole,nterms,
-     1           nterms1,sc2,xnynzn,local,nterms2,
+     1           nterms1,scale2,xnynzn,local,nterms2,
      2           radius,xnodes,wts,nquad,ier)
 C***********************************************************************
 C
@@ -620,7 +620,7 @@ C           scale     = scaling parameter for mpole expansion
 C           x0y0z0 = center of original multiple expansion
 C           mpole  = coefficients of original multiple expansion
 C           nterms = order of multipole expansion
-C           sc2     = scaling parameter for local expansion
+C           scale2     = scaling parameter for local expansion
 C           xnynzn = center of shifted local expansion
 C           nterms2 = order of local expansion
 C           radius  = radius of sphere on which local expansion is
@@ -645,7 +645,7 @@ C
       integer nterms,ier,l,m,jnew,knew
       real *8 x0y0z0(3),xnynzn(3)
       real *8 xnodes(1),wts(1)
-      real *8 scale,sc2
+      real *8 scale,scale2
       complex *16 mpole(0:nterms,-nterms:nterms)
       complex *16 local(0:nterms2,-nterms2:nterms2)
       complex *16 imag,wavek
@@ -687,7 +687,7 @@ C
       allocate(w(lused))
 c
       call h3dmplocquad_trunc0(wavek,scale,x0y0z0,mpole,nterms,nterms1,
-     1         sc2,xnynzn,local,nterms2,w(imarray),w(imarray1),ldc,
+     1         scale2,xnynzn,local,nterms2,w(imarray),w(imarray1),ldc,
      2         w(iephi),radius,xnodes,wts,nquad,nq,
      3         w(iynm),w(iynmd),w(imp2),
      4         w(iphitemp),w(iphitempn),w(ifhs),w(ifhder),
@@ -698,7 +698,7 @@ c
 c
 C***********************************************************************
       subroutine h3dmplocquadu_add_trunc(wavek,scale,x0y0z0,mpole,
-     1     nterms,nterms1,sc2,xnynzn,local,ldc,nterms2,
+     1     nterms,nterms1,scale2,xnynzn,local,ldc,nterms2,
      1     radius,xnodes,wts,nquad,ier)
 C***********************************************************************
 C
@@ -720,7 +720,7 @@ C           scale     = scaling parameter for mpole expansion
 C           x0y0z0 = center of original multiple expansion
 C           mpole  = coefficients of original multiple expansion
 C           nterms = order of multipole expansion
-C           sc2     = scaling parameter for local expansion
+C           scale2     = scaling parameter for local expansion
 C           xnynzn = center of shifted local expansion
 C           nterms2 = order of local expansion
 C           radius  = radius of sphere on which local expansion is
@@ -745,7 +745,7 @@ C
       integer nterms,ier,l,m,jnew,knew
       real *8 x0y0z0(3),xnynzn(3)
       real *8 xnodes(1),wts(1)
-      real *8 scale,sc2
+      real *8 scale,scale2
       complex *16 mpole(0:nterms,-nterms:nterms)
       complex *16 local(0:ldc,-ldc:ldc)
       complex *16 imag,wavek
@@ -759,7 +759,7 @@ C
       allocate( mptemp(0:nterms2,-nterms2:nterms2) )
 
       call h3dmplocquadu_trunc(wavek,scale,x0y0z0,mpole,nterms,
-     1           nterms1,sc2,xnynzn,mptemp,nterms2,
+     1           nterms1,scale2,xnynzn,mptemp,nterms2,
      2           radius,xnodes,wts,nquad,ier)
 
       do l = 0,min(ldc,nterms2)
@@ -776,7 +776,7 @@ c
 c
 C***********************************************************************
       subroutine h3dmplocquad_trunc0(wavek,scale,x0y0z0,mpole,nterms,
-     1           nterms1,sc2,xnynzn,local,nterms2,marray,marray1,ldc,
+     1           nterms1,scale2,xnynzn,local,nterms2,marray,marray1,ldc,
      2           ephi,radius,xnodes,wts,nquad,nq,ynm,ynmd,mp2,
      4           phitemp,phitempn,fhs,fhder,fjs,fjder,iscale,lwfjs,ier)
 
@@ -800,7 +800,7 @@ C           mpole  = coefficients of original multiple expansion
 C           nterms = order of multipole expansion
 C           nterms2 = order of local expansion
 C           scale     = scaling parameter for mpole expansion
-C           sc2     = scaling parameter for local expansion
+C           scale2     = scaling parameter for local expansion
 C           radius  = radius of sphere on which local expansion is
 C                     computed
 C           xnodes  = Legendre nodes (precomputed)
@@ -831,7 +831,7 @@ C---------------------------------------------------------------------
       implicit real *8 (a-h,o-z)
       integer  nterms,ier,l,m,jnew,knew
       integer  iscale(0:lwfjs)
-      real *8 d,theta,ctheta,phi,scale,sc2
+      real *8 d,theta,ctheta,phi,scale,scale2
       real *8 x0y0z0(3),xnynzn(3)
       real *8 xnodes(1),wts(1),rvec(3)
       real *8 zshift
@@ -894,7 +894,7 @@ c      the Z-axis.
 c
       rshift = d
       call h3dmploczshiftstab_fast(wavek,marray,scale,ldc,nterms1,local,
-     1      sc2,nterms2,nterms2,radius,rshift,xnodes,wts,nquad,
+     1      scale2,nterms2,nterms2,radius,rshift,xnodes,wts,nquad,
      2      ynm,ynmd,mp2,phitemp,phitempn,fhs,fhder,fjs,fjder,
      3      iscale,lwfjs,ier)
 
@@ -924,7 +924,7 @@ c
 c
 C***********************************************************************
       subroutine h3dmplocquadu2_trunc(wavek,scale,x0y0z0,mpole,nterms,
-     1           nterms1,sc2,xnynzn,local,nterms2,
+     1           nterms1,scale2,xnynzn,local,nterms2,
      2           radius,xnodes,wts,nquad,ier,rotmatf,rotmatb,ldm)
 C***********************************************************************
 C
@@ -946,7 +946,7 @@ C           scale     = scaling parameter for mpole expansion
 C           x0y0z0 = center of original multiple expansion
 C           mpole  = coefficients of original multiple expansion
 C           nterms = order of multipole expansion
-C           sc2     = scaling parameter for local expansion
+C           scale2     = scaling parameter for local expansion
 C           xnynzn = center of shifted local expansion
 C           nterms2 = order of local expansion
 C           radius  = radius of sphere on which local expansion is
@@ -971,7 +971,7 @@ C
       integer nterms,ier,l,m,jnew,knew
       real *8 x0y0z0(3),xnynzn(3)
       real *8 xnodes(1),wts(1)
-      real *8 scale,sc2
+      real *8 scale,scale2
       complex *16 mpole(0:nterms,-nterms:nterms)
       complex *16 local(0:nterms2,-nterms2:nterms2)
       complex *16 imag,wavek
@@ -1015,7 +1015,7 @@ C
       allocate(w(lused))
 c
       call h3dmplocquad2_trunc0(wavek,scale,x0y0z0,mpole,nterms,nterms1,
-     1         sc2,xnynzn,local,nterms2,w(imarray),w(imarray1),ldc,
+     1         scale2,xnynzn,local,nterms2,w(imarray),w(imarray1),ldc,
      2         w(iephi),radius,xnodes,wts,nquad,nq,
      3         w(iynm),w(iynmd),w(imp2),
      4         w(iphitemp),w(iphitempn),w(ifhs),w(ifhder),
@@ -1027,7 +1027,7 @@ c
 c
 C***********************************************************************
       subroutine h3dmplocquadu2_add_trunc(wavek,scale,x0y0z0,mpole,
-     1     nterms,nterms1,sc2,xnynzn,local,ldc,nterms2,
+     1     nterms,nterms1,scale2,xnynzn,local,ldc,nterms2,
      1     radius,xnodes,wts,nquad,ier,rotmatf,rotmatb,ldm)
 C***********************************************************************
 C
@@ -1049,7 +1049,7 @@ C           scale     = scaling parameter for mpole expansion
 C           x0y0z0 = center of original multiple expansion
 C           mpole  = coefficients of original multiple expansion
 C           nterms = order of multipole expansion
-C           sc2     = scaling parameter for local expansion
+C           scale2     = scaling parameter for local expansion
 C           xnynzn = center of shifted local expansion
 C           nterms2 = order of local expansion
 C           radius  = radius of sphere on which local expansion is
@@ -1074,7 +1074,7 @@ C
       integer nterms,ier,l,m,jnew,knew
       real *8 x0y0z0(3),xnynzn(3)
       real *8 xnodes(1),wts(1)
-      real *8 scale,sc2
+      real *8 scale,scale2
       complex *16 mpole(0:nterms,-nterms:nterms)
       complex *16 local(0:ldc,-ldc:ldc)
       complex *16 imag,wavek
@@ -1090,7 +1090,7 @@ C
       allocate( mptemp(0:nterms2,-nterms2:nterms2) )
 
       call h3dmplocquadu2_trunc(wavek,scale,x0y0z0,mpole,nterms,
-     1           nterms1,sc2,xnynzn,mptemp,nterms2,
+     1           nterms1,scale2,xnynzn,mptemp,nterms2,
      2           radius,xnodes,wts,nquad,ier,rotmatf,rotmatb,ldm)
 
       do l = 0,min(ldc,nterms2)
@@ -1107,7 +1107,7 @@ c
 c
 C***********************************************************************
       subroutine h3dmplocquad2_trunc0(wavek,scale,x0y0z0,mpole,nterms,
-     1           nterms1,sc2,xnynzn,local,nterms2,marray,marray1,ldc,
+     1           nterms1,scale2,xnynzn,local,nterms2,marray,marray1,ldc,
      2           ephi,radius,xnodes,wts,nquad,nq,ynm,ynmd,mp2,
      4           phitemp,phitempn,fhs,fhder,fjs,fjder,iscale,lwfjs,ier,
      $     rotmatf,rotmatb,ldm)
@@ -1132,7 +1132,7 @@ C           mpole  = coefficients of original multiple expansion
 C           nterms = order of multipole expansion
 C           nterms2 = order of local expansion
 C           scale     = scaling parameter for mpole expansion
-C           sc2     = scaling parameter for local expansion
+C           scale2     = scaling parameter for local expansion
 C           radius  = radius of sphere on which local expansion is
 C                     computed
 C           xnodes  = Legendre nodes (precomputed)
@@ -1163,7 +1163,7 @@ C---------------------------------------------------------------------
       implicit real *8 (a-h,o-z)
       integer  nterms,ier,l,m,jnew,knew
       integer  iscale(0:lwfjs)
-      real *8 d,theta,ctheta,phi,scale,sc2
+      real *8 d,theta,ctheta,phi,scale,scale2
       real *8 x0y0z0(3),xnynzn(3)
       real *8 xnodes(1),wts(1),rvec(3)
       real *8 zshift
@@ -1230,7 +1230,7 @@ c      the Z-axis.
 c
       rshift = d
       call h3dmploczshiftstab_fast(wavek,marray,scale,ldc,nterms1,local,
-     1      sc2,nterms2,nterms2,radius,rshift,xnodes,wts,nquad,
+     1      scale2,nterms2,nterms2,radius,rshift,xnodes,wts,nquad,
      2      ynm,ynmd,mp2,phitemp,phitempn,fhs,fhder,fjs,fjder,
      3      iscale,lwfjs,ier)
 
@@ -1370,7 +1370,7 @@ c     Local to local shift routines, f95 version using allocate
 c
 C***********************************************************************
       subroutine h3dloclocquadu(wavek,scale,x0y0z0,locold,nterms,
-     1           sc2,xnynzn,local,nterms2,
+     1           scale2,xnynzn,local,nterms2,
      2           radius,xnodes,wts,nquad,ier)
 C***********************************************************************
 C
@@ -1392,7 +1392,7 @@ C           scale     = scaling parameter for locold expansion
 C           x0y0z0 = center of original expansion
 C           locold  = coefficients of original expansion
 C           nterms = order of original expansion
-C           sc2     = scaling parameter for local expansion
+C           scale2     = scaling parameter for local expansion
 C           xnynzn = center of shifted expansion
 C
 C           nterms2 = order of shifted expansion
@@ -1426,7 +1426,7 @@ C***********************************************************************
       integer nterms,ier,l,m,jnew,knew
       real *8 x0y0z0(3),xnynzn(3)
       real *8 xnodes(1),wts(1)
-      real *8 scale,sc2,d,theta,phi,ctheta
+      real *8 scale,scale2,d,theta,phi,ctheta
       complex *16 locold(0:nterms,-nterms:nterms)
       complex *16 local(0:nterms2,-nterms2:nterms2)
       complex *16 wavek,imag
@@ -1459,8 +1459,8 @@ C
       lused = ifjder+2*(lwfjs+1)
       allocate (w(lused))
 c
-      call h3dloclocquad0(wavek,scale,x0y0z0,locold,nterms,sc2,xnynzn,
-     1           local,nterms2,w(imarray),w(imarray1),ldc,
+      call h3dloclocquad0(wavek,scale,x0y0z0,locold,nterms,scale2,
+     1           xnynzn,local,nterms2,w(imarray),w(imarray1),ldc,
      2           w(iephi),radius,xnodes,wts,nquad,nq,
      3           w(iynm),w(iynmd),
      4           w(imp2),w(iphitemp),w(iphitempn),w(ifjs),
@@ -1471,7 +1471,7 @@ c
 c
 C***********************************************************************
       subroutine h3dloclocquadu_add(wavek,scale,x0y0z0,locold,nterms,
-     1           sc2,xnynzn,local,ldc,nterms2,
+     1           scale2,xnynzn,local,ldc,nterms2,
      2           radius,xnodes,wts,nquad,ier)
 C***********************************************************************
 C
@@ -1493,7 +1493,7 @@ C           scale     = scaling parameter for locold expansion
 C           x0y0z0 = center of original expansion
 C           locold  = coefficients of original expansion
 C           nterms = order of original expansion
-C           sc2     = scaling parameter for local expansion
+C           scale2     = scaling parameter for local expansion
 C           xnynzn = center of shifted expansion
 C
 C           nterms2 = order of shifted expansion
@@ -1527,7 +1527,7 @@ C***********************************************************************
       integer nterms,ier,l,m,jnew,knew
       real *8 x0y0z0(3),xnynzn(3)
       real *8 xnodes(1),wts(1)
-      real *8 scale,sc2,d,theta,phi,ctheta
+      real *8 scale,scale2,d,theta,phi,ctheta
       complex *16 locold(0:nterms,-nterms:nterms)
       complex *16 local(0:ldc,-ldc:ldc)
       complex *16 wavek,imag
@@ -1541,7 +1541,7 @@ C
       allocate( mptemp(0:nterms2,-nterms2:nterms2) )
 
       call h3dloclocquadu(wavek,scale,x0y0z0,locold,nterms,
-     1           sc2,xnynzn,mptemp,nterms2,
+     1           scale2,xnynzn,mptemp,nterms2,
      2           radius,xnodes,wts,nquad,ier)
 
       do l = 0,min(ldc,nterms2)
@@ -1557,7 +1557,7 @@ c
 c
 c
 C***********************************************************************
-      subroutine h3dloclocquad0(wavek,scale,x0y0z0,locold,nterms,sc2,
+      subroutine h3dloclocquad0(wavek,scale,x0y0z0,locold,nterms,scale2,
      1           xnynzn,local,nterms2,marray,marray1,ldc,ephi,
      2           radius,xnodes,wts,nquad,nq,ynm,ynmd,
      3           mp2,phitemp,phitempn,fjs,fjder,iscale,lwfjs,ier) 
@@ -1579,7 +1579,7 @@ C     scale     : scaling parameter for locold expansion
 C     x0y0z0  : center of original multiple expansion
 C     locold  : coefficients of original multiple expansion
 C     nterms  : order of original local expansion
-C     sc2     : scaling parameter for local expansion
+C     scale2     : scaling parameter for local expansion
 C     xnynzn  : center of shifted local expansion
 c
 C     nterms2 : order of new local expansion
@@ -1611,7 +1611,7 @@ C
       integer iscale(0:lwfjs)
       real *8 x0y0z0(3),xnynzn(3),rvec(3)
       real *8 xnodes(1),wts(1)
-      real *8 d,theta,ctheta,phi,scale,sc2
+      real *8 d,theta,ctheta,phi,scale,scale2
       real *8 ynm(0:ldc,0:ldc)
       real *8 ynmd(0:ldc,0:ldc)
       complex *16 phitemp(nq,-ldc:ldc)
@@ -1676,7 +1676,7 @@ c
       rshift = d
 ccc      t1 = second()
        call h3dlocloczshiftstab_fast
-     $   (wavek,scale,marray,ldc,nterms,sc2,local,
+     $   (wavek,scale,marray,ldc,nterms,scale2,local,
      1           nterms2,nterms2,radius,rshift,
      2           xnodes,wts,nquad,ynm,ynmd,mp2,
      3      phitemp,phitempn,fjs,fjder,iscale,lwfjs,ier) 
