@@ -1,48 +1,6 @@
-C***********************************************************************
       subroutine h3dmplocquadu_trunc(wavek,scale,x0y0z0,mpole,nterms,
      1           nterms1,scale2,xnynzn,local,nterms2,
      2           radius,xnodes,wts,nquad,ier)
-C***********************************************************************
-C
-C     Memory management wrapper for subroutine h3dmplocquad0 (below).
-C
-C     Usage:
-C
-C           Converts multipole expansion to a local expansion.
-C           This is a reasonably fast "point and shoot" version which
-C           first rotates the coordinate system, then shifts along
-C           the Z-axis, and then rotates back to the original
-C           coordinates.
-C
-C---------------------------------------------------------------------
-C     INPUT:
-C
-C           wavek  = Helmholtz parameter
-C           scale     = scaling parameter for mpole expansion
-C           x0y0z0 = center of original multiple expansion
-C           mpole  = coefficients of original multiple expansion
-C           nterms = order of multipole expansion
-C           scale2     = scaling parameter for local expansion
-C           xnynzn = center of shifted local expansion
-C           nterms2 = order of local expansion
-C           radius  = radius of sphere on which local expansion is
-C                     computed
-C           xnodes  = Legendre nodes (precomputed)
-C           wts     = Legendre weights (precomputed)
-C           nquad   = number of quadrature nodes in theta direction.
-C
-C---------------------------------------------------------------------
-C     OUTPUT:
-C
-C           local = coefficients of shifted local expansion
-C
-C           lused = amount of workspace w actually used.
-C           ier   = error return flag
-C
-C                       CURRENTLY UNUSED
-C
-C***********************************************************************
-C
       implicit real *8 (a-h,o-z)
       integer nterms,ier,l,m,jnew,knew
       real *8 x0y0z0(3),xnynzn(3)
@@ -51,98 +9,21 @@ C
       complex *16 mpole(0:nterms,-nterms:nterms)
       complex *16 local(0:nterms2,-nterms2:nterms2)
       complex *16 imag,wavek
-c
-c     local allocated workspace array
-c
-      real *8, allocatable :: w(:)
-c
-c
       data imag/(0.0d0,1.0d0)/
-C
       ier = 0
       ldc = max(nterms,nterms2)
       ldc = max(ldc,nterms1)
       nq = max(nquad,2*ldc+2)
-      imarray = 1
-      lmarray = 2*(ldc+1)*(2*ldc+1) + 3 
-      imarray1 = imarray+lmarray
-      lmarray1 = 2*(ldc+1)*(2*ldc+1) + 3 
-      iephi = imarray1+lmarray1
-      lephi = 2*(2*ldc+3) + 3 
-      iynm = iephi+lephi
-      lynm = (ldc+1)**2
-      iynmd = iynm+lynm
-      imp2 = iynmd+lynm
-      iphitemp = imp2+(ldc+1)*(2*ldc+1)*2
-      lphitemp = nq*(2*ldc+1)*2
-      iphitempn = iphitemp+lphitemp
-      ifhs = iphitempn+lphitemp
-      ifhder = ifhs+ 2*(nterms+1) + 3
-      ifjs = ifhder+ 2*(nterms+1) + 3
       lwfjs = nterms2+1000
-      lfjs = 2*(lwfjs+1) + 3
-      ifjder = ifjs+lfjs
-      lfjder = 2*(nterms2+1)+3
-      iiscale = ifjder+lfjder
-      liscale = (lwfjs+1)+3        
-      lused = iiscale+ liscale
-      allocate(w(lused))
-c
       call h3dmplocquad_trunc0(wavek,scale,x0y0z0,mpole,nterms,nterms1,
-     1         scale2,xnynzn,local,nterms2,w(imarray),w(imarray1),ldc,
-     2         w(iephi),radius,xnodes,wts,nquad,nq,
-     3         w(iynm),w(iynmd),w(imp2),
-     4         w(iphitemp),w(iphitempn),w(ifhs),w(ifhder),
-     5         w(ifjs),w(ifjder),w(iiscale),lwfjs,ier)
+     1     scale2,xnynzn,local,nterms2,ldc,
+     1     radius,xnodes,wts,nquad,nq,lwfjs,ier)
       return
       end
-c
-c
 C***********************************************************************
       subroutine h3dmplocquadu_add_trunc(wavek,scale,x0y0z0,mpole,
      1     nterms,nterms1,scale2,xnynzn,local,ldc,nterms2,
      1     radius,xnodes,wts,nquad,ier)
-C***********************************************************************
-C
-C     Memory management wrapper for subroutine h3dmplocquad0 (below).
-C
-C     Usage:
-C
-C           Converts multipole expansion to a local expansion.
-C           This is a reasonably fast "point and shoot" version which
-C           first rotates the coordinate system, then shifts along
-C           the Z-axis, and then rotates back to the original
-C           coordinates.
-C
-C---------------------------------------------------------------------
-C     INPUT:
-C
-C           wavek  = Helmholtz parameter
-C           scale     = scaling parameter for mpole expansion
-C           x0y0z0 = center of original multiple expansion
-C           mpole  = coefficients of original multiple expansion
-C           nterms = order of multipole expansion
-C           scale2     = scaling parameter for local expansion
-C           xnynzn = center of shifted local expansion
-C           nterms2 = order of local expansion
-C           radius  = radius of sphere on which local expansion is
-C                     computed
-C           xnodes  = Legendre nodes (precomputed)
-C           wts     = Legendre weights (precomputed)
-C           nquad   = number of quadrature nodes in theta direction.
-C
-C---------------------------------------------------------------------
-C     OUTPUT:
-C
-C           local = coefficients of shifted local expansion
-C
-C           lused = amount of workspace w actually used.
-C           ier   = error return flag
-C
-C                       CURRENTLY UNUSED
-C
-C***********************************************************************
-C
       implicit real *8 (a-h,o-z)
       integer nterms,ier,l,m,jnew,knew
       real *8 x0y0z0(3),xnynzn(3)
@@ -151,25 +32,18 @@ C
       complex *16 mpole(0:nterms,-nterms:nterms)
       complex *16 local(0:ldc,-ldc:ldc)
       complex *16 imag,wavek
-c
-c     local allocated workspace array
-c
       complex *16, allocatable :: mptemp(:,:)
-c
       data imag/(0.0d0,1.0d0)/
-C
       allocate( mptemp(0:nterms2,-nterms2:nterms2) )
-
       call h3dmplocquadu_trunc(wavek,scale,x0y0z0,mpole,nterms,
-     1           nterms1,scale2,xnynzn,mptemp,nterms2,
-     2           radius,xnodes,wts,nquad,ier)
+     1     nterms1,scale2,xnynzn,mptemp,nterms2,
+     1     radius,xnodes,wts,nquad,ier)
 
       do l = 0,min(ldc,nterms2)
          do m=-l,l
             local(l,m) = local(l,m)+mptemp(l,m)
          enddo
       enddo
-
       return
       end
 c
@@ -178,9 +52,8 @@ c
 c
 C***********************************************************************
       subroutine h3dmplocquad_trunc0(wavek,scale,x0y0z0,mpole,nterms,
-     1           nterms1,scale2,xnynzn,local,nterms2,marray,marray1,ldc,
-     2           ephi,radius,xnodes,wts,nquad,nq,ynm,ynmd,mp2,
-     4           phitemp,phitempn,fhs,fhder,fjs,fjder,iscale,lwfjs,ier)
+     1     nterms1,scale2,xnynzn,mptemp,nterms2,ldc,
+     1     radius,xnodes,wts,nquad,nq,lwfjs,ier)
 
 C***********************************************************************
 
@@ -249,29 +122,22 @@ C---------------------------------------------------------------------
       complex *16 mpole(0:nterms,-nterms:nterms)
       complex *16 marray1(0:nterms1,-nterms1:nterms1)
       complex *16 local(0:nterms2,-nterms2:nterms2)
+      complex *16 mptemp(0:nterms2,-nterms2:nterms2)
       complex *16 marray(0:ldc,-ldc:ldc)
       complex *16 wavek
       complex *16 ephi(-ldc-1:ldc+1),imag
       data imag/(0.0d0,1.0d0)/
-C
       rvec(1) = xnynzn(1) - x0y0z0(1)
       rvec(2) = xnynzn(2) - x0y0z0(2)
       rvec(3) = xnynzn(3) - x0y0z0(3)
       call cart2polar(rvec,d,theta,phi)
-c
       ephi(1) = exp(imag*phi)
       ephi(0)=1.0d0
       ephi(-1)=dconjg(ephi(1))
-c
-c     create array of powers e^(i*m*phi).
-c
       do l = 1,ldc
          ephi(l+1) = ephi(l)*ephi(1)
          ephi(-1-l) = dconjg(ephi(l+1))
       enddo
-c
-c     a rotation of THETA radians about the Yprime axis after PHI
-c     radians about the z-axis.
       do l=0,nterms1
          do mp=-l,l
             marray1(l,mp)  = mpole(l,mp)*ephi(mp)
@@ -279,10 +145,9 @@ c     radians about the z-axis.
       enddo
       do l=0,nterms2
          do m=-l,l
-            local(l,m)=0.0d0
+            mptemp(l,m)=0.0d0
          enddo
       enddo
-c
       if( nterms1 .ge. 30 ) then
       call rotviaprojf90(theta,nterms1,nterms1,nterms1,marray1,
      1     nterms1,marray,ldc)
@@ -290,33 +155,21 @@ c
       call rotviarecur3f90(theta,nterms1,nterms1,nterms1,marray1,
      1     nterms1,marray,ldc)
       endif
-c
-c----- shift the local expansion from X0Y0Z0 to XNYNZN along
-c      the Z-axis.
-c
       zshift = d
-      call h3dmploczshiftstab_fast(wavek,marray,scale,ldc,nterms1,local,
-     1      scale2,nterms2,nterms2,radius,zshift,xnodes,wts,nquad,
-     2      ynm,ynmd,mp2,phitemp,phitempn,fhs,fhder,fjs,fjder,
-     3      iscale,lwfjs,ier)
-
-c
-c     reverse THETA rotation. 
-c     I.e. rotation of -THETA radians about the Yprime axis.
-c
+      call h3dmploczshiftstab_fast(wavek,marray,scale,ldc,nterms1,
+     1     mptemp,scale2,nterms2,nterms2,radius,zshift,xnodes,wts,
+     1     nquad,ynm,ynmd,mp2,phitemp,phitempn,fhs,fhder,fjs,fjder,
+     1     iscale,lwfjs,ier)
       if( nterms2 .ge. 30 ) then
-      call rotviaprojf90(-theta,nterms2,nterms2,nterms2,local,
+      call rotviaprojf90(-theta,nterms2,nterms2,nterms2,mptemp,
      1     nterms2,marray,ldc)
       else
-      call rotviarecur3f90(-theta,nterms2,nterms2,nterms2,local,
+      call rotviarecur3f90(-theta,nterms2,nterms2,nterms2,mptemp,
      1     nterms2,marray,ldc)
       endif
-c
-c----- rotate back PHI radians about the Z-axis in the above system.
-c
       do l=0,nterms2
          do m=-l,l
-            local(l,m)=ephi(-m)*marray(l,m)
+            mptemp(l,m)=ephi(-m)*marray(l,m)
          enddo
       enddo
       return
