@@ -1,4 +1,4 @@
-        subroutine hfmm3dparttree(ier,iprec,zk,
+        subroutine hfmm3dparttree(ier,iprec,
      $     nsource,source,
      $     nbox,epsfmm,iisource,iwlists,lwlists,
      $     nboxes,laddr,nlev,center,size,
@@ -11,7 +11,6 @@
         dimension center0(3),corners0(3,8)
         integer box1(20)
         dimension center1(3),corners1(3,8)
-        complex *16 zk
         dimension w(1)
         ier=0
         done=1

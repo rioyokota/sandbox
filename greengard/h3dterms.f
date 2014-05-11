@@ -1,27 +1,27 @@
-      subroutine h3dterms(size, zk, eps, nterms, ier)
+      subroutine h3dterms(size, wavek, eps, nterms, ier)
       implicit real *8 (a-h,o-z)
 c     Determine number of terms in mpole expansions for box of size
-c     "size" with Helmholtz parameter zk.
+c     "size" with Helmholtz parameter wavek.
 c
 c     The method is based on examining the decay of h_n * j_n.
 c
 c     Maximum number of terms is 1000, which 
 c     works for boxes up to 160 wavelengths in size     
       integer iscale(0:2000)
-      complex *16  zk, z1, z2, z3, jfun(0:2000), ht0,
+      complex *16  wavek, z1, z2, z3, jfun(0:2000), ht0,
      1             ht1, ht2, fjder(0:1), ztmp,
      1             hfun(0:2000), fhder(0:1)
       ier = 0
-      z1 = (zk*size)*1.5d0
+      z1 = (wavek*size)*1.5d0
 c       the code will run out memory if frequency is too small 
 c       set frequency to something more reasonable, nterms is 
 c       approximately the same for all small frequencies
       ntmax = 1000
       ifder = 0
       rscale = 1.0d0
-      if (cdabs(zk*size) .lt. 1.0d0) rscale = cdabs(zk*size)
+      if (cdabs(wavek*size) .lt. 1.0d0) rscale = cdabs(wavek*size)
       call h3dall(ntmax,z1,rscale,hfun,ifder,fhder)
-      z2 = (zk*size) * dsqrt(3d0)/2.d0
+      z2 = (wavek*size) * dsqrt(3d0)/2.d0
       ier1 = 0
       call jfuns3d(ier1, ntmax, z2, rscale, jfun, ifder, fjder,
      1                 2000, iscale, ntop)
@@ -49,10 +49,10 @@ c       ... computational box is too big, set nterms to 1000
       end
 
 
-      subroutine h3dterms_list2(size, zk, eps, itable, ier)
+      subroutine h3dterms_list2(size, wavek, eps, itable, ier)
       implicit real *8 (a-h,o-z)
 c     Determine number of terms in mpole expansions for box of size
-c     "size" with Helmholtz parameter zk.
+c     "size" with Helmholtz parameter wavek.
 c
 c     The method is based on examining the decay of h_n * j_n.
 c
@@ -61,7 +61,7 @@ c
 c     Maximum number of terms is 1000, which 
 c     works for boxes up to 160 wavelengths in size     
       integer iscale(0:2000)
-      complex *16  zk, z1, z2, z3, jfun(0:2000), ht0,
+      complex *16  wavek, z1, z2, z3, jfun(0:2000), ht0,
      1             ht1, ht2, fjder(0:1), ztmp,
      1             hfun(0:2000), fhder(0:1)
       dimension nterms_table(2:3,0:3,0:3)
@@ -77,16 +77,16 @@ c     works for boxes up to 160 wavelengths in size
         if( dy .gt. 0 ) dy=dy-.5
         if( dz .gt. 0 ) dz=dz-.5
         rr=sqrt(dx*dx+dy*dy+dz*dz)
-        z1 = (zk*size)*rr
+        z1 = (wavek*size)*rr
 c       the code will run out memory if frequency is too small 
 c       set frequency to something more reasonable, nterms is 
 c       approximately the same for all small frequencies
       ntmax = 1000
       ifder = 0
       rscale = 1.0d0
-      if (cdabs(zk*size) .lt. 1.0d0) rscale = cdabs(zk*size)
+      if (cdabs(wavek*size) .lt. 1.0d0) rscale = cdabs(wavek*size)
       call h3dall(ntmax,z1,rscale,hfun,ifder,fhder)
-      z2 = (zk*size) * dsqrt(3d0)/2.d0
+      z2 = (wavek*size) * dsqrt(3d0)/2.d0
       ier1 = 0
       call jfuns3d(ier1, ntmax, z2, rscale, jfun, ifder, fjder,
      1                 2000, iscale, ntop)
@@ -142,38 +142,38 @@ c       build the rank table for all boxes in list 2
       return
       end
 
-      subroutine h3dterms_eval(itype, size, zk, eps, nterms, ier)
+      subroutine h3dterms_eval(itype, size, wavek, eps, nterms, ier)
       implicit real *8 (a-h,o-z)
 c     Determine number of terms in mpole expansions for box of size
-c     "size" with Helmholtz parameter zk.
+c     "size" with Helmholtz parameter wavek.
 c
 c     The method is based on examining the decay of h_n * j_n.
 c
 c     Maximum number of terms is 1000, which 
 c     works for boxes up to 160 wavelengths in size     
       integer iscale(0:2000)
-      complex *16  zk, z1, z2, z3, jfun(0:2000), ht0,
+      complex *16  wavek, z1, z2, z3, jfun(0:2000), ht0,
      1             ht1, ht2, fjder(0:1), ztmp,
      1             hfun(0:2000), fhder(0:1)
       ier = 0
-      z1 = (zk*size)*1.5d0
+      z1 = (wavek*size)*1.5d0
 c       the code will run out memory if frequency is too small 
 c       set frequency to something more reasonable, nterms is 
 c       approximately the same for all small frequencies
       ntmax = 1000
       ifder = 0
       rscale = 1.0d0
-      if (cdabs(zk*size) .lt. 1.0d0) rscale = cdabs(zk*size)
+      if (cdabs(wavek*size) .lt. 1.0d0) rscale = cdabs(wavek*size)
       call h3dall(ntmax,z1,rscale,hfun,ifder,fhder)
-        z2 = (zk*size) * dsqrt(3d0)/2.d0
+        z2 = (wavek*size) * dsqrt(3d0)/2.d0
 c       corners included
-        if( itype .eq. 1 ) z2 = (zk*size) * dsqrt(3d0)/2.d0
+        if( itype .eq. 1 ) z2 = (wavek*size) * dsqrt(3d0)/2.d0
 c       edges included, no corners
-        if( itype .eq. 2 ) z2 = (zk*size) * dsqrt(2d0)/2.d0
+        if( itype .eq. 2 ) z2 = (wavek*size) * dsqrt(2d0)/2.d0
 c       center only
-        if( itype .eq. 3 ) z2 = (zk*size) * 1.0d0/2.d0
+        if( itype .eq. 3 ) z2 = (wavek*size) * 1.0d0/2.d0
 c       center only, small interior sphere
-        if( itype .eq. 4 ) z2 = (zk*size) * 0.8d0/2.d0
+        if( itype .eq. 4 ) z2 = (wavek*size) * 0.8d0/2.d0
       ier1 = 0
       call jfuns3d(ier1, ntmax, z2, rscale, jfun, ifder, fjder,
      1                 2000, iscale, ntop)
@@ -238,7 +238,7 @@ c     hder    : the derivatives of the spherical Hankel functions
 c-----------------------------------------------------------------------
       implicit real *8 (a-h,o-z)
       complex *16 hvec(0:nterms),hder(0:nterms)
-      complex *16 zk2,z,zinv,ztmp,fhextra
+      complex *16 wavek2,z,zinv,ztmp,fhextra
       data thresh/1.0d-15/,done/1.0d0/
 c     If |z| < thresh, return zeros.
       if (abs(z).lt.thresh) then

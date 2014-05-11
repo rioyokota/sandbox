@@ -14,7 +14,7 @@
       return
       end
 c**********************************************************************
-      subroutine P2P(ibox,target,pot,fld,jbox,source,charge,zk) 
+      subroutine P2P(ibox,target,pot,fld,jbox,source,charge,wavek) 
 c**********************************************************************
 c     This subroutine calculates the potential POT and field FLD
 c     at the target point TARGET, due to a charge at 
@@ -28,7 +28,7 @@ c     INPUT:
 c     source    : location of the source 
 c     charge    : charge strength
 c     target    : location of the target
-c     zk        : helmholtz parameter
+c     wavek        : helmholtz parameter
 c---------------------------------------------------------------------
 c     OUTPUT:
 c     pot       : calculated potential
@@ -37,7 +37,7 @@ c---------------------------------------------------------------------
       implicit none
       integer i,j,ibox(20),jbox(20)
       real *8 dx,dy,dz,R2,R,target(3,1000000),source(3,1000000)
-      complex *16 i1,zk,coef1,coef2
+      complex *16 i1,wavek,coef1,coef2
       complex *16 charge(1000000),pot(1000000),fld(3,1000000)
       data i1/(0.0d0,1.0d0)/
       do i=ibox(14),ibox(14)+ibox(15)-1
@@ -48,8 +48,8 @@ c---------------------------------------------------------------------
             R2=dx*dx+dy*dy+dz*dz
             if(R2.eq.0) cycle
             R=sqrt(R2)
-            coef1=charge(j)*cdexp(i1*zk*R)/R
-            coef2=(1-i1*zk*R)*coef1/R2
+            coef1=charge(j)*cdexp(i1*wavek*R)/R
+            coef2=(1-i1*wavek*R)*coef1/R2
             pot(i)=pot(i)+coef1
             fld(1,i)=fld(1,i)+coef2*dx
             fld(2,i)=fld(2,i)+coef2*dy
@@ -60,7 +60,7 @@ c---------------------------------------------------------------------
       end
 C***********************************************************************
       subroutine P2M
-     1     (ier,zk,rscale,source,charge,ns,center,
+     1     (ier,wavek,rscale,source,charge,ns,center,
      1     nterms,nterms1,lwfjs,mpole,wlege,nlege)
 C***********************************************************************
 C
@@ -70,7 +70,7 @@ C
 c-----------------------------------------------------------------------
 C     INPUT:
 c
-C     zk              : Helmholtz parameter 
+C     wavek              : Helmholtz parameter 
 C     scale           : the scaling factor.
 C     sources         : coordinates of sources
 C     charge          : source strengths
@@ -95,7 +95,7 @@ c-----------------------------------------------------------------------
       real *8 center(3),source(3,ns),dX(3)
       real *8 pp(0:nterms,0:nterms)
       real *8 ppd(0:nterms,0:nterms)
-      complex *16 charge(ns),i1,zk,z,ztmp,ephi1,ephi1inv
+      complex *16 charge(ns),i1,wavek,z,ztmp,ephi1,ephi1inv
       complex *16 ephi(-nterms-1:nterms+1)
       complex *16 fjs(0:lwfjs),fjder(0:lwfjs)
       complex *16 mpole(0:nterms,-nterms:nterms)
@@ -127,7 +127,7 @@ c-----------------------------------------------------------------------
          enddo
          call ylgndrfw(nterms1,ctheta,pp,wlege,nlege)
          ifder=0
-         z=zk*r
+         z=wavek*r
          call jfuns3d(jer,nterms1,z,rscale,fjs,ifder,fjder,
      1	      lwfjs,iscale,ntop)
          do n = 0,nterms1
@@ -146,7 +146,7 @@ c-----------------------------------------------------------------------
       enddo
       do l = 0,nterms
          do m=-l,l
-            mpole(l,m) = mpole(l,m)+mtemp(l,m)*i1*zk
+            mpole(l,m) = mpole(l,m)+mtemp(l,m)*i1*wavek
          enddo
       enddo
       return

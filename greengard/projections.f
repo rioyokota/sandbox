@@ -1,10 +1,10 @@
 C***********************************************************************
       subroutine h3drescalemp(nterms,lmp,mpole,
-     1           radius,zk0,scale,fhs,fhder)
+     1           radius,wavek0,scale,fhs,fhder)
 C***********************************************************************
 C
 C     This subroutine rescales a spherical harmonic expansion
-C     on the surface by h_n(zk0 * radius), converting 
+C     on the surface by h_n(wavek0 * radius), converting 
 C     a surface function to the corresponding Hankel expansion
 C     in the exterior.
 C
@@ -14,14 +14,14 @@ C
 C           nterms = order of spherical harmonic expansion
 C           mpole = coefficients of s.h. expansion
 C           radius = sphere radius
-C           zk0 = Helmholtz parameter
+C           wavek0 = Helmholtz parameter
 C           scale = scale parameter for expansions
 C           w       = workspace of length lw
 C
 C---------------------------------------------------------------------
 C     OUTPUT:
 C
-C           mpole = rescaled by 1/h_n(zk0* radius) 
+C           mpole = rescaled by 1/h_n(wavek0* radius) 
 C           ier = error flag 
 C                 0 normal return
 C                 4 insufficient memory in w.
@@ -34,9 +34,9 @@ C---------------------------------------------------------------------
       complex *16 mpole(0:lmp,-lmp:lmp)
       complex *16 ephi,imag,emul,sum,zmul
       complex *16 fhs(0:nterms),fhder(0:nterms)
-      complex *16 zk0,z
+      complex *16 wavek0,z
       data imag/(0.0d0,1.0d0)/
-      z = zk0*radius
+      z = wavek0*radius
       ifder = 0
       call h3dall(nterms,z,scale,fhs,ifder,fhder)
       do l=0,nterms
@@ -49,7 +49,7 @@ C---------------------------------------------------------------------
       end
 C***********************************************************************
       subroutine h3drescalestab(nterms,lmp,local,localn,
-     1           radius,zk0,scale,fjs,fjder,iscale,lwfjs,ier)
+     1           radius,wavek0,scale,fjs,fjder,iscale,lwfjs,ier)
 C***********************************************************************
 C
 C     This subroutine takes as input the potential and its normal
@@ -58,16 +58,16 @@ C     j-expansion coefficients consist with the data (in a least
 C     squares sense). That is 
 C
 C           phi  = sum local(n,m) j_n Y_n^m  ->
-C           phin = sum local(n,m) zk0 *j_n' Y_n^m and
+C           phin = sum local(n,m) wavek0 *j_n' Y_n^m and
 C
 C           local(n,m) * j_n        = phi_n^m
-C           local(n,m) * j_n' *zk0  = phin_n^m
+C           local(n,m) * j_n' *wavek0  = phin_n^m
 C
 C     The 1x1 normal equations are:
 C
-C           local(n,m)* ( j_n**2 + (zk0* j_n')**2) = 
+C           local(n,m)* ( j_n**2 + (wavek0* j_n')**2) = 
 C                 
-C                          j_n * phi_n^m + zk0 * j_n' * phin_n^m.
+C                          j_n * phi_n^m + wavek0 * j_n' * phin_n^m.
 C                   
 C---------------------------------------------------------------------
 C     INPUT:
@@ -76,7 +76,7 @@ C           nterms = order of spherical harmonic expansion
 C           local = coefficients of s.h. expansion of phi
 C           localn = coefficients of s.h. expansion of dphi/dn
 C           radius = sphere radius
-C           zk0 = Helmholtz parameter
+C           wavek0 = Helmholtz parameter
 C           scale = scale parameter for expansions
 C           w       = workspace of length lw
 C
@@ -99,9 +99,9 @@ C---------------------------------------------------------------------
       complex *16 local(0:lmp,-lmp:lmp)
       complex *16 localn(0:lmp,-lmp:lmp)
       complex *16 ephi,imag,emul,sum,zmul
-      complex *16 zk0,z,zh,zhn
+      complex *16 wavek0,z,zh,zhn
       data imag/(0.0d0,1.0d0)/
-      z = zk0*radius
+      z = wavek0*radius
       ifder = 1
       call jfuns3d(ier1,nterms,z,scale,fjs,
      1             ifder,fjder,lwfjs,iscale,ntop)
@@ -112,7 +112,7 @@ C---------------------------------------------------------------------
       do l=0,nterms
          do m=-l,l
 	    zh = fjs(l)
-	    zhn = fjder(l)*zk0
+	    zhn = fjder(l)*wavek0
 	    zmul = zh*zh + zhn*zhn
 	    local(l,m) = (zh*local(l,m) + zhn*localn(l,m))/zmul
          enddo
@@ -120,7 +120,7 @@ C---------------------------------------------------------------------
       return
       end
 C***********************************************************************
-      subroutine h3dlocevalspherestab(local,zk,scale,zshift,radius,
+      subroutine h3dlocevalspherestab(local,wavek,scale,zshift,radius,
      1           nterms,nterms2,lmp,ynm,ynmd,phitemp,phitempn,
      2           nquad,xnodes,iscale,fjs,fjder,lwfjs,ier)
 C***********************************************************************
@@ -133,7 +133,7 @@ C---------------------------------------------------------------------
 C     INPUT:
 C
 C     local    : coefficients of original multipole exp.
-C     zk       : Helmholtz parameter
+C     wavek       : Helmholtz parameter
 C     scale    : scaling parameter
 C     zshift   : shift distance along z-axis.
 C     radius   : radius of sphere about (0,0,zshift)
@@ -164,7 +164,7 @@ C***********************************************************************
       complex *16 local(0:lmp,-lmp:lmp)
       complex *16 phitemp(nquad,-nterms2:nterms2)
       complex *16 phitempn(nquad,-nterms2:nterms2)
-      complex *16 imag,pot,fld(3), zk,z,uval,unval,ur,utheta
+      complex *16 imag,pot,fld(3), wavek,z,uval,unval,ur,utheta
       complex *16 ephi1,ephik,ephi,fjs(0:lwfjs),fjder(0:lwfjs),ztmp1
       complex *16 ut1,ut2,ut3
       data imag/(0.0d0,1.0d0)/
@@ -192,7 +192,7 @@ C      note that everything is scaled.
 	 sthetaj = dsqrt(1.0d0-cthetaj**2)
 	 rn = sthetaj*stheta + cthetaj*ctheta
 	 thetan = (cthetaj*stheta - sthetaj*ctheta)/rj
-	 z = zk*rj
+	 z = wavek*rj
 	 call ylgndr2s(nterms,cthetaj,ynm,ynmd)
 	 call jfuns3d(jer,nterms,z,scale,fjs,ifder,fjder,
      1        lwfjs,iscale,ntop)
@@ -201,7 +201,7 @@ C      note that everything is scaled.
 	    return
          endif
 	 do n = 0,nterms
-	    fjder(n) = fjder(n)*zk
+	    fjder(n) = fjder(n)*wavek
          enddo
 	 do n = 1,nterms
 	    do m = 1,n
@@ -232,9 +232,9 @@ C      note that everything is scaled.
       return
       end
 C***********************************************************************
-      subroutine h3dlocevalspherestab_fast(local,zk,scale,zshift,radius,
-     1           nterms,nterms2,lmp,ynm,ynmd,phitemp,phitempn,
-     2           nquad,xnodes,iscale,fjs,fjder,rat1,rat2,lwfjs,ier)
+      subroutine h3dlocevalspherestab_fast(local,wavek,scale,zshift,
+     1     radius,nterms,nterms2,lmp,ynm,ynmd,phitemp,phitempn,
+     1     nquad,xnodes,iscale,fjs,fjder,rat1,rat2,lwfjs,ier)
 C***********************************************************************
 C
 C     This subroutine evaluates a local expansion on a target
@@ -245,7 +245,7 @@ C---------------------------------------------------------------------
 C     INPUT:
 C
 C     local    : coefficients of original multipole exp.
-C     zk       : Helmholtz parameter
+C     wavek       : Helmholtz parameter
 C     scale    : scaling parameter
 C     zshift   : shift distance along z-axis.
 C     radius   : radius of sphere about (0,0,zshift)
@@ -276,7 +276,7 @@ C***********************************************************************
       complex *16 local(0:lmp,-lmp:lmp)
       complex *16 phitemp(nquad,-nterms2:nterms2)
       complex *16 phitempn(nquad,-nterms2:nterms2)
-      complex *16 imag,pot,fld(3), zk,z,uval,unval,ur,utheta
+      complex *16 imag,pot,fld(3), wavek,z,uval,unval,ur,utheta
       complex *16 ephi1,ephik,ephi,fjs(0:lwfjs),fjder(0:lwfjs),ztmp1
       complex *16 ut1,ut2,ut3
       real *8 rat1(0:nterms,0:nterms),rat2(0:nterms,0:nterms)
@@ -306,7 +306,7 @@ C      note that everything is scaled.
 	 sthetaj = dsqrt(1.0d0-cthetaj**2)
 	 rn = sthetaj*stheta + cthetaj*ctheta
 	 thetan = (cthetaj*stheta - sthetaj*ctheta)/rj
-	 z = zk*rj
+	 z = wavek*rj
 	 call ylgndr2sf(nterms,cthetaj,ynm,ynmd,rat1,rat2)
 	 call jfuns3d(jer,nterms,z,scale,fjs,ifder,fjder,
      1        lwfjs,iscale,ntop)
@@ -315,7 +315,7 @@ C      note that everything is scaled.
 	    return
          endif
 	 do n = 0,nterms
-	    fjder(n) = fjder(n)*zk
+	    fjder(n) = fjder(n)*wavek
          enddo
 	 do n = 1,nterms
 	    do m = 1,n
@@ -388,7 +388,7 @@ C---------------------------------------------------------------------
       integer l,m,jj,kk
       real *8 wts(1),xnodes(1)
       real *8 ynm(0:nterms,0:nterms)
-      complex *16 zk,phitemp(nquadn,-ntold:ntold)
+      complex *16 wavek,phitemp(nquadn,-ntold:ntold)
       complex *16 local(0:ldl,-ldl:ldl)
       complex *16 ephi,imag,emul,sum,zmul,emul1
       real *8 rat1(0:nterms,0:nterms),rat2(0:nterms,0:nterms)
@@ -416,7 +416,7 @@ c     get local exp
       return
       end
 C***********************************************************************
-      subroutine h3dmpevalspherenm_fast(mpole,zk,scale,zshift,radius,
+      subroutine h3dmpevalspherenm_fast(mpole,wavek,scale,zshift,radius,
      1           nterms,lmp,ynm,phitemp,nquad,xnodes,fhs,fhder,
      2           rat1,rat2)
 C***********************************************************************
@@ -429,7 +429,7 @@ C---------------------------------------------------------------------
 C     INPUT:
 C
 C     mpole    : coefficients of original multipole exp.
-C     zk       : Helmholtz parameter
+C     wavek       : Helmholtz parameter
 C     scale    : mpole scaling parameter
 C     zshift   : shift distance along z-axis.
 C     radius   : radius of sphere about (0,0,zshift)
@@ -456,7 +456,7 @@ C---------------------------------------------------------------------
       real *8 ynm(0:nterms,0:nterms)
       complex *16 mpole(0:lmp,-lmp:lmp)
       complex *16 phitemp(nquad,-nterms:nterms)
-      complex *16 imag,pot,fld(3), zk,z
+      complex *16 imag,pot,fld(3), wavek,z
       complex *16 ephi1,ephik,ephi,fhs(0:nterms),fhder(0:nterms)
       real *8 rat1(0:nterms,0:nterms),rat2(0:nterms,0:nterms)
       data imag/(0.0d0,1.0d0)/
@@ -480,7 +480,7 @@ C      note that everything is scaled.
          rj = (zshift+ radius*ctheta)**2 + (radius*stheta)**2
          rj = dsqrt(rj)
 	 cthetaj = (zshift+radius*ctheta)/rj
-	 z = zk*rj
+	 z = wavek*rj
 	 call ylgndrf(nterms,cthetaj,ynm,rat1,rat2)
 	 call h3dall(nterms,z,scale,fhs,ifder,fhder)
          do m=-nterms,nterms
@@ -494,7 +494,7 @@ C      note that everything is scaled.
       return
       end
 C***********************************************************************
-      subroutine h3dmpevalspherenmstab_fast(mpole,zk,scale,zshift,
+      subroutine h3dmpevalspherenmstab_fast(mpole,wavek,scale,zshift,
      1           radius,nterms,lmp,ynm,ynmd,phitemp,phitempn,
      2           nquad,xnodes,fhs,fhder,rat1,rat2)
 C***********************************************************************
@@ -507,7 +507,7 @@ C---------------------------------------------------------------------
 C     INPUT:
 C
 C     mpole    : coefficients of original multipole exp.
-C     zk       : Helmholtz parameter
+C     wavek       : Helmholtz parameter
 C     scale    : mpole scaling parameter
 C     zshift   : shift distance along z-axis.
 C     radius   : radius of sphere about (0,0,zshift)
@@ -536,7 +536,7 @@ C---------------------------------------------------------------------
       complex *16 mpole(0:lmp,-lmp:lmp)
       complex *16 phitemp(nquad,-nterms:nterms)
       complex *16 phitempn(nquad,-nterms:nterms)
-      complex *16 imag,pot,fld(3), zk,z,uval,unval,ur,utheta,ut1,ut2
+      complex *16 imag,pot,fld(3), wavek,z,uval,unval,ur,utheta,ut1,ut2
       complex *16 ut3,ephi1,ephik,ephi,fhs(0:nterms),fhder(0:nterms)
       complex *16 ztmp1
       real *8 rat1(0:nterms,0:nterms),rat2(0:nterms,0:nterms)
@@ -565,11 +565,11 @@ C      note that everything is scaled.
 	 sthetaj = dsqrt(1.0d0 - cthetaj**2)
 	 rn = sthetaj*stheta + cthetaj*ctheta
 	 thetan = (cthetaj*stheta - ctheta*sthetaj)/rj
-	 z = zk*rj
+	 z = wavek*rj
 	 call ylgndr2sf(nterms,cthetaj,ynm,ynmd,rat1,rat2)
 	 call h3dall(nterms,z,scale,fhs,ifder,fhder)
          do i = 0,nterms
-	    fhder(i) = fhder(i)*zk
+	    fhder(i) = fhder(i)*wavek
          enddo
          do n=1,nterms
 	    do m = 1,n
@@ -651,7 +651,7 @@ C---------------------------------------------------------------------
       integer l,m,jj,kk
       real *8 wts(1),xnodes(1)
       real *8 ynm(0:nterms,0:nterms)
-      complex *16 zk
+      complex *16 wavek
       complex *16 local(0:ldl,-ldl:ldl)
       complex *16 local2(0:ldl,-ldl:ldl)
       complex *16 phitemp(nquadn,-ntold:ntold)

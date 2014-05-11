@@ -1,4 +1,4 @@
-      subroutine fmm(ier,iprec,zk,nsource,source,
+      subroutine fmm(ier,iprec,wavek,nsource,source,
      $     ifcharge,charge,pot,fld)
       implicit real *8 (a-h,o-z)
       dimension source(3,nsource)
@@ -49,7 +49,7 @@ c     create oct-tree data structure
       ntot = 100*nsource+10000
       do ii = 1,10
          allocate (wlists(ntot))
-         call hfmm3dparttree(ier,iprec,zk,
+         call hfmm3dparttree(ier,iprec,
      1        nsource,source,
      1        nbox,epsfmm,iisource,iwlists,lwlists,
      1        nboxes,laddr,nlev,center,size,
@@ -61,7 +61,7 @@ c     create oct-tree data structure
       lused7=1
       do i = 0,nlev
          scale(i) = 1.0d0
-         boxsize = abs((size/2.0**i)*zk)
+         boxsize = abs((size/2.0**i)*wavek)
          if (boxsize .lt. 1) scale(i) = boxsize
       enddo
 c     isourcesort is pointer for sorted source coordinates
@@ -83,7 +83,7 @@ c     based on FMM tolerance, compute expansion lengths nterms(i)
       nmax = 0
       do i = 0,nlev
          bsize(i)=size/2.0d0**i
-         call h3dterms(bsize(i),zk,epsfmm, nterms(i), ier)
+         call h3dterms(bsize(i),wavek,epsfmm, nterms(i), ier)
          if (nterms(i).gt. nmax .and. i.ge. 2) nmax = nterms(i)
       enddo
       nquad=2*nmax
@@ -112,7 +112,7 @@ c     imptemp is pointer for single expansion (dimensioned by nmax)
       allocate(wrmlexp(lused7),stat=ier)
       ifevalfar=1
       ifevalloc=1
-      call hfmm3dparttargmain(ier,iprec,zk,
+      call hfmm3dparttargmain(ier,iprec,wavek,
      1     ifevalfar,ifevalloc,
      1     nsource,w(isourcesort),wlists(iisource),
      1     ifcharge,w(ichargesort),w(ipot),w(ifld),
@@ -126,7 +126,7 @@ c     imptemp is pointer for single expansion (dimensioned by nmax)
       return
       end
 
-      subroutine hfmm3dparttargmain(ier,iprec,zk,
+      subroutine hfmm3dparttargmain(ier,iprec,wavek,
      1     ifevalfar,ifevalloc,
      1     nsource,sourcesort,isource,
      1     ifcharge,chargesort,pot,fld,
@@ -135,7 +135,7 @@ c     imptemp is pointer for single expansion (dimensioned by nmax)
      1     wlists,lwlists)
       implicit real *8 (a-h,o-z)
       dimension sourcesort(3,1), isource(1)
-      complex *16 chargesort(1),zk
+      complex *16 chargesort(1),wavek
       complex *16 ima
       complex *16 pot(1)
       complex *16 fld(3,1)
@@ -178,7 +178,7 @@ c     ... initialize Legendre function evaluation routines
       call ylgndrfwini(nlege,wlege,lw7,lused7)
       do i=0,nlev
          do itype=1,4
-            call h3dterms_eval(itype,bsize(i),zk,epsfmm,
+            call h3dterms_eval(itype,bsize(i),wavek,epsfmm,
      1           nterms_eval(itype,i),ier)
          enddo
       enddo
@@ -209,7 +209,7 @@ c$omp$private(lused,ier,i,j,ptemp,ftemp,cd)
                radius = sqrt(radius)
                call h3dzero(rmlexp(iaddr(1,ibox)),nterms(level))
                if_use_trunc = 1
-               call P2M(ier,zk,scale(level),
+               call P2M(ier,wavek,scale(level),
      1              sourcesort(1,box(14)),chargesort(box(14)),box(15),
      1              center0,nterms(level),nterms_eval(1,level),lwfjs,
      1              rmlexp(iaddr(1,ibox)),wlege,nlege)
@@ -254,7 +254,7 @@ c$omp$private(lused,ier,i,j,ptemp,ftemp,cd)
                      level1=box1(1)
                      ldc = max(nterms(level1),nterms(level0))
                      nq = max(nquad2,2*ldc+2)
-                     call M2M(zk,scale(level1),center1,
+                     call M2M(wavek,scale(level1),center1,
      1                    rmlexp(iaddr(1,jbox)),nterms(level1),
      1                    scale(level0),center0,rmlexp(iaddr(1,ibox)),
      1                    nterms(level0),ldc,
@@ -302,7 +302,7 @@ c$    tic=omp_get_wtime()
 c     ... step 4, M2L
 c$    tic=omp_get_wtime()
       do 4300 ilev=3,nlev+1
-         call h3dterms_list2(bsize(ilev-1),zk,epsfmm, itable, ier)
+         call h3dterms_list2(bsize(ilev-1),wavek,epsfmm, itable, ier)
          nquad2=nterms(ilev-1)*1.2
          nquad2=max(6,nquad2)
          ifinit2=1
@@ -347,7 +347,8 @@ c     ... if source is childless, evaluate directly (if cheaper)
                      if( nterms(level1) .gt. ldm ) if_use_rotmatfb = 0
                      if( nterms_trunc   .gt. ldm ) if_use_rotmatfb = 0
                      if( if_use_rotmatfb .eq. 1 ) then
-                        call h3dmplocquadu2_add_trunc(zk,scale(level1),
+                        call h3dmplocquadu2_add_trunc(wavek,
+     1                       scale(level1),
      1                       center1,rmlexp(iaddr(1,jbox)),
      1                       nterms(level1),nterms_trunc,scale(level0),
      1                       center0,rmlexp(iaddr(2,ibox)),
@@ -355,7 +356,8 @@ c     ... if source is childless, evaluate directly (if cheaper)
      1                       wts2,nquad2,ier,rotmatf(1,-ii,-jj,-kk),
      1                       rotmatb(1,-ii,-jj,-kk),ldm)
                      else
-                        call h3dmplocquadu_add_trunc(zk,scale(level1),
+                        call h3dmplocquadu_add_trunc(wavek,
+     1                       scale(level1),
      1                       center1,rmlexp(iaddr(1,jbox)),
      1                       nterms(level1),nterms_trunc,scale(level0),
      1                       center0,rmlexp(iaddr(2,ibox)),
@@ -397,10 +399,11 @@ c     ... split local expansion of the parent box
                      radius = radius + (corners1(3,1) - center1(3))**2
                      radius = sqrt(radius)
                      level1=box1(1)
-                     call h3dloclocquadu_add(zk,scale(level0),center0,
+                     call h3dloclocquadu_add(wavek,scale(level0),
+     1                    center0,
      1                    rmlexp(iaddr(2,ibox)),nterms(level0),
      1                    scale(level1),center1,rmlexp(iaddr(2,jbox)),
-     $                    nterms(level1),nterms(level1),
+     1                    nterms(level1),nterms(level1),
      1                    radius,xnodes2,wts2,nquad2,ier)
  5100             continue
                endif
@@ -423,7 +426,7 @@ c$omp$private(ibox,box,center0,corners0,level,npts,nkids,ier)
             npts=box(15)
             lwfjs = nterms(level)+1000
             if (level .ge. 2) then
-               call L2P(zk,scale(level),center0,
+               call L2P(wavek,scale(level),center0,
      1              rmlexp(iaddr(2,ibox)),
      1              nterms(level),nterms_eval(1,level),lwfjs,
      1              sourcesort(1,box(14)),box(15),
@@ -448,7 +451,7 @@ c$omp$schedule(dynamic)
          if (nkids .eq. 0) then
 c     ... evaluate self interactions
             call P2P(box,sourcesort,pot,fld,
-     1           box,sourcesort,chargesort,zk)
+     1           box,sourcesort,chargesort,wavek)
 c     ... evaluate interactions with the nearest neighbours
             itype=1
             call d3tgetl(ier,ibox,itype,list,nlist,wlists)
@@ -459,7 +462,7 @@ c     ... for all pairs in list #1, evaluate the potentials and fields directly
 c     ... prune all sourceless boxes
                if( box1(15) .eq. 0 ) cycle
                call P2P(box,sourcesort,pot,fld,
-     1              box1,sourcesort,chargesort,zk)
+     1              box1,sourcesort,chargesort,wavek)
             enddo
          endif
       enddo

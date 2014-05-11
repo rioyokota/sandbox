@@ -156,7 +156,7 @@ c
 c
 c***********************************************************************
       subroutine h3dmpmpzshift_fast
-     $     (zk,scale,mpole,lmp,nterms,scale2,mpolen,
+     $     (wavek,scale,mpole,lmp,nterms,scale2,mpolen,
      1      lmpn,nterms2,radius,zshift,xnodes,wts,nquad,ynm,
      2      phitemp,fhs,fhder,ier)
 c***********************************************************************
@@ -167,7 +167,7 @@ c     The expansion is rescaled to that of the shifted expansion.
 c
 c INPUT:
 c
-c     zk       : Helmholtz coefficient
+c     wavek       : Helmholtz coefficient
 c     scale    : scale parameter for mpole
 c     mpole    : coefficients of original multipole exp.
 c     lmp      : leading dim of mpole (may be a work array)
@@ -197,7 +197,7 @@ c***********************************************************************
       complex *16 phitemp(nquad,-nterms:nterms)
       complex *16 fhs(0:nterms)
       complex *16 fhder(0:nterms)
-      complex *16 mpole(0:lmp,-lmp:lmp),zk
+      complex *16 mpole(0:lmp,-lmp:lmp),wavek
       complex *16 mpolen(0:lmpn,-lmpn:lmpn)
 c
 c     local allocated workspace arrays - no more passed workspace
@@ -232,13 +232,13 @@ C
         allocate(w(lused))
 c
 ccc      call prinf(' allocated in shift fast *',lused,1)
-      call h3dmpevalspherenm_fast(mpole,zk,scale,
+      call h3dmpevalspherenm_fast(mpole,wavek,scale,
      1     zshift,radius,nterms,lmp,ynm,
      2     phitemp,nquad,xnodes,fhs,fhder,w(irat1),w(irat2))
       call h3dprojlocnmsep_fast
      $   (nterms2,lmpn,nquad,nterms,xnodes,wts,
      1     phitemp,mpolen,ynm,w(irat1),w(irat2))
-      call h3drescalemp(nterms2,lmpn,mpolen,radius,zk,
+      call h3drescalemp(nterms2,lmpn,mpolen,radius,wavek,
      1               scale2,fhs,fhder)
       return
       end
@@ -1262,7 +1262,7 @@ c
 c
 c***********************************************************************
       subroutine h3dmploczshiftstab_fast
-     $     (zk,mpole,scale,lmp,nterms,local,
+     $     (wavek,mpole,scale,lmp,nterms,local,
      1      scale2,lmpn,nterms2,radius,zshift,xnodes,wts,nquad,
      2      ynm,ynmd,mp2,phitemp,phitempn,fhs,fhder,fjs,fjder,
      3      iscale,lwfjs,ier)
@@ -1275,7 +1275,7 @@ c
 C---------------------------------------------------------------------
 c     INPUT:
 c
-c     zk       : Helmholtz parameter
+c     wavek       : Helmholtz parameter
 c     mpole    : coefficients of original multipole exp.
 c     scale    : scale parameter for mpole
 c     lmp      : leading dim of mpole (may be a work array)
@@ -1315,7 +1315,7 @@ C---------------------------------------------------------------------
       complex *16 fhder(0:nterms)
       complex *16 fjs(0:lwfjs)
       complex *16 fjder(0:lwfjs)
-      complex *16 mpole(0:lmp,-lmp:lmp),zk
+      complex *16 mpole(0:lmp,-lmp:lmp),wavek
       complex *16 local(0:lmpn,-lmpn:lmpn)
 c
 c     local allocated workspace array
@@ -1334,13 +1334,13 @@ C
 C----- shift along z-axis by evaluating field on target sphere and
 C     projecting onto spherical harmonics and scaling by j_n(kR).
 C
-      call h3dmpevalspherenmstab_fast(mpole,zk,scale,zshift,radius,
+      call h3dmpevalspherenmstab_fast(mpole,wavek,scale,zshift,radius,
      2     nterms,lmp,ynm,ynmd,phitemp,phitempn,nquad,xnodes,
      3     fhs,fhder,w(irat1),w(irat2))
       call h3dprojlocsepstab_fast
      $   (nterms2,lmpn,nquad,nterms,xnodes,wts,
      1     phitemp,phitempn,local,mp2,ynm,w(irat1),w(irat2))
-      call h3drescalestab(nterms2,lmpn,local,mp2,radius,zk,scale2,
+      call h3drescalestab(nterms2,lmpn,local,mp2,radius,wavek,scale2,
      2     fjs,fjder,iscale,lwfjs,ier)
 
       return
@@ -1711,7 +1711,7 @@ c
 c
 c***********************************************************************
       subroutine h3dlocloczshiftstab_fast
-     $     (zk,scale,locold,lmp,nterms,scale2,
+     $     (wavek,scale,locold,lmp,nterms,scale2,
      1      local,lmpn,nterms2,radius,zshift,xnodes,wts,nquad,
      2      ynm,ynmd,mp2,
      3      phitemp,phitempn,fjs,fjder,iscale,lwfjs,ier) 
@@ -1723,7 +1723,7 @@ c     The expansion is rescaled to that of the local expansion.
 c
 c     INPUT:
 c
-c     zk       : Helmholtz parameter
+c     wavek       : Helmholtz parameter
 c     scale    : scaling parameter for locold
 c     locold   : coefficients of original multipole exp.
 c     lmp      : leading dim of locold (may be a work array)
@@ -1761,7 +1761,7 @@ ccc      complex *16 phitempn(nquad,-lmp:lmp)
       complex *16 mp2(0:lmp,-lmp:lmp)
       complex *16 fjs(0:lwfjs)
       complex *16 fjder(0:lwfjs)
-      complex *16 locold(0:lmp,-lmp:lmp),zk
+      complex *16 locold(0:lmp,-lmp:lmp),wavek
       complex *16 local(0:lmpn,-lmpn:lmpn)
 c
 c     local allocated workspace arrays - no more passed workspace
@@ -1792,7 +1792,7 @@ C
 C    cost is (nterms2^2 x nterms) rather than (nterms2 x nterms^2)
 C
 C
-      call h3dlocevalspherestab_fast(locold,zk,scale,
+      call h3dlocevalspherestab_fast(locold,wavek,scale,
      1      zshift,radius,nterms,nterms2,
      1     lmp,ynm,ynmd,phitemp,phitempn,nquad,xnodes,
      1     iscale,fjs,fjder,w(irat1),w(irat2),lwfjs,ier)
@@ -1800,7 +1800,7 @@ C
      $   (nterms2,lmpn,nquad,nterms2,xnodes,wts,
      1     phitemp,phitempn,local,mp2,ynm,w(irat1),w(irat2))
       call h3drescalestab(nterms2,lmpn,local,mp2,
-     1      radius,zk,scale2,fjs,fjder,iscale,lwfjs,ier)
+     1      radius,wavek,scale2,fjs,fjder,iscale,lwfjs,ier)
       return
       end
 C

@@ -8,11 +8,11 @@
         complex *16 pot2(1000000)
         complex *16 fld2(3,1000000)
         complex *16 ima
-        complex *16 zk
+        complex *16 wavek
         data ima/(0.0d0,1.0d0)/
         pi=4*atan(1.0d0)
         nsource= 100000
-        zk = 1.0d0 + ima*0.1d0
+        wavek = 1.0d0 + ima*0.1d0
         call random_number(source)
         print*,'nsource=',nsource
         iprec=4
@@ -23,7 +23,7 @@
         enddo
 c FMM
 c$      tic=omp_get_wtime()
-        call fmm(ier,iprec, zk,
+        call fmm(ier,iprec, wavek,
      1     nsource,source,ifcharge,charge,
      1     pot,fld)
 c$      toc=omp_get_wtime()
@@ -41,7 +41,7 @@ c Direct
         jbox(14) = 1
         jbox(15) = nsource
 c$      tic=omp_get_wtime()
-        call P2P(ibox,source,pot2,fld2,jbox,source,charge,zk)
+        call P2P(ibox,source,pot2,fld2,jbox,source,charge,wavek)
 c$      toc=omp_get_wtime()
         print*,'Direct =',toc-tic
         pdiff = 0
