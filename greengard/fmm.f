@@ -208,7 +208,6 @@ c$omp$private(lused,ier,i,j,ptemp,ftemp,cd)
                radius = radius + (corners0(3,1) - center0(3))**2
                radius = sqrt(radius)
                call h3dzero(rmlexp(iaddr(1,ibox)),nterms(level))
-               if_use_trunc = 1
                call P2M(ier,wavek,scale(level),
      1              sourcesort(1,box(14)),chargesort(box(14)),box(15),
      1              center0,nterms(level),nterms_eval(1,level),lwfjs,
@@ -311,7 +310,7 @@ c$omp parallel do default(shared)
 c$omp$private(ibox,box,center0,corners0,list,nlist)
 c$omp$private(jbox,box1,center1,corners1,level1,ifdirect2,radius)
 c$omp$private(lused,ier,i,j,ptemp,ftemp,cd,ilist,itype)
-c$omp$private(if_use_trunc,nterms_trunc,ii,jj,kk)
+c$omp$private(nterms_trunc,ii,jj,kk)
 c$omp$schedule(dynamic)
          do 4200 ibox=laddr(1,ilev),laddr(1,ilev)+laddr(2,ilev)-1
             call d3tgetb(ier,ibox,box,center0,corners0,wlists)
@@ -334,37 +333,19 @@ c     ... for all pairs in list #2, apply the translation operator
 c     ... convert multipole expansions for all boxes in list 2 in local exp
 c     ... if source is childless, evaluate directly (if cheaper)
                   level1=box1(1)
-                  ifdirect2 = 0
                   ii=box1(2)-box(2)
                   jj=box1(3)-box(3)
                   kk=box1(4)-box(4)
                   nterms_trunc=itable(ii,jj,kk)
                   nterms_trunc=min(nterms(level0),nterms_trunc)
                   nterms_trunc=min(nterms(level1),nterms_trunc)
-                  if (ifdirect2 .eq. 0) then
-                     if_use_rotmatfb = 1
-                     if( nterms(level0) .gt. ldm ) if_use_rotmatfb = 0
-                     if( nterms(level1) .gt. ldm ) if_use_rotmatfb = 0
-                     if( nterms_trunc   .gt. ldm ) if_use_rotmatfb = 0
-                     if( if_use_rotmatfb .eq. 1 ) then
-                        call h3dmplocquadu2_add_trunc(wavek,
-     1                       scale(level1),
-     1                       center1,rmlexp(iaddr(1,jbox)),
-     1                       nterms(level1),nterms_trunc,scale(level0),
-     1                       center0,rmlexp(iaddr(2,ibox)),
-     1                       nterms(level0),nterms_trunc,radius,xnodes2,
-     1                       wts2,nquad2,ier,rotmatf(1,-ii,-jj,-kk),
-     1                       rotmatb(1,-ii,-jj,-kk),ldm)
-                     else
-                        call h3dmplocquadu_add_trunc(wavek,
-     1                       scale(level1),
-     1                       center1,rmlexp(iaddr(1,jbox)),
-     1                       nterms(level1),nterms_trunc,scale(level0),
-     1                       center0,rmlexp(iaddr(2,ibox)),
-     1                       nterms(level0),nterms_trunc,
-     2                       radius,xnodes2,wts2,nquad2,ier)
-                     endif
-                  endif
+                  call h3dmplocquadu_add_trunc(wavek,
+     1                 scale(level1),
+     1                 center1,rmlexp(iaddr(1,jbox)),
+     1                 nterms(level1),nterms_trunc,scale(level0),
+     1                 center0,rmlexp(iaddr(2,ibox)),
+     1                 nterms(level0),nterms_trunc,
+     1                 radius,xnodes2,wts2,nquad2,ier)
  4150          continue
             endif
  4200    continue

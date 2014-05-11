@@ -209,15 +209,10 @@ C---------------------------------------------------------------------
       ephi(1) = exp(imag*phi)
       ephi(0)=1.0d0
       ephi(-1)=dconjg(ephi(1))
-c----- create array of powers e^(i*m*phi).
       do l = 1,ldc
          ephi(l+1) = ephi(l)*ephi(1)
          ephi(-1-l) = dconjg(ephi(l+1))
       enddo
-c----- a rotation of THETA radians about the Yprime axis after PHI
-c      radians about the z-axis.
-c      The PHI rotation is carried out on the fly by multiplying
-c      mpole and ephi inside the following loop.
       do l=0,nterms
          do m=-l,l
             marray1(l,m)=mpole(l,m)*ephi(m)
@@ -235,21 +230,7 @@ c      mpole and ephi inside the following loop.
       call rotviarecur3f90(theta,nterms,nterms,nterms,marray1,nterms,
      1        marray,ldc)
       endif
-c----- shift the mpole expansion from X0Y0Z0 to XNYNZN along
-c      the Z-axis.
       zshift = d
-C----- shift along z-axis by evaluating field on target sphere and
-C     projecting onto spherical harmonics and scaling by j_n(kR).
-C    OPTIMIZATION NOTES:
-C    Suppose you are shifting from a very small sphere to the center
-C    of a very large sphere (nterms2 >> nterms).
-C    Then, ALONG THE Z-AXIS, the number of azimuthal modes that
-C    need to be computed is only nterms (not nterms2).
-C    Subroutines h3dmpevalspherenm, h3dprojlocnmsep allow for this.
-C    The final step of the point and shoot algorithm then distributes
-C    these nterms (azimuthal) modes to nterms2 (azimuthal) in the
-C    "laboratory frame".
-C    cost is (nterms^2 x nterms2) rather than (nterms x nterms2^2)
       call h3dmpevalspherenm_fast(marray,wavek,scale,
      1     zshift,radius,nterms,ldc,ynm,
      1     phitemp,nquad,xnodes,fhs,fhder)
@@ -258,8 +239,6 @@ C    cost is (nterms^2 x nterms2) rather than (nterms x nterms2^2)
      1     phitemp,mptemp,ynm)
       call h3drescalemp(nterms2,nterms2,mptemp,radius,wavek,
      1     scale2,fhs,fhder)
-c     Reverse THETA rotation.
-c     I.e. rotation of -THETA radians about Yprime axis.
       if( nterms2 .ge. 30 ) then
       call rotviaprojf90(-theta,nterms2,nterms2,nterms2,mptemp,
      1        nterms2,marray,ldc)
@@ -267,7 +246,6 @@ c     I.e. rotation of -THETA radians about Yprime axis.
       call rotviarecur3f90(-theta,nterms2,nterms2,nterms2,mptemp,
      1        nterms2,marray,ldc)
       endif
-c----- rotate back PHI radians about the Z-axis in the above system.
       do l=0,nterms2
          do m=-l,l
             mptemp(l,m)=ephi(-m)*marray(l,m)
