@@ -342,7 +342,7 @@ c     ... if source is childless, evaluate directly (if cheaper)
                   call h3dmplocquadu_add_trunc(wavek,
      1                 scale(level1),
      1                 center1,rmlexp(iaddr(1,jbox)),
-     1                 nterms(level1),nterms_trunc,scale(level0),
+     1                 nterms(level1),scale(level0),
      1                 center0,rmlexp(iaddr(2,ibox)),
      1                 nterms(level0),nterms_trunc,
      1                 radius,xnodes2,wts2,nquad2,ier)

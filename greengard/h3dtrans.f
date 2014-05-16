@@ -1,5 +1,5 @@
       subroutine h3dmplocquadu_trunc(wavek,scale,x0y0z0,mpole,nterms,
-     1           nterms1,scale2,xnynzn,local,nterms_trunc,
+     1           scale2,xnynzn,local,nterms_trunc,
      2           radius,xnodes,wts,nquad,ier)
       implicit real *8 (a-h,o-z)
       integer nterms,ier,l,m,jnew,knew
@@ -11,18 +11,16 @@
       complex *16 imag,wavek
       data imag/(0.0d0,1.0d0)/
       ier = 0
-      ldc = max(nterms,nterms_trunc)
-      ldc = max(ldc,nterms1)
-      nq = max(nquad,2*ldc+2)
+      nq = max(nquad,2*nterms+2)
       lwfjs = nterms_trunc+1000
-      call h3dmplocquad_trunc0(wavek,scale,x0y0z0,mpole,nterms,nterms1,
-     1     scale2,xnynzn,local,nterms_trunc,ldc,
+      call h3dmplocquad_trunc0(wavek,scale,x0y0z0,mpole,nterms,
+     1     scale2,xnynzn,local,nterms_trunc,nterms,
      1     radius,xnodes,wts,nquad,nq,lwfjs,ier)
       return
       end
 C***********************************************************************
       subroutine h3dmplocquadu_add_trunc(wavek,scale,x0y0z0,mpole,
-     1     nterms,nterms1,scale2,xnynzn,local,ldc,nterms_trunc,
+     1     nterms,scale2,xnynzn,local,ldc,nterms_trunc,
      1     radius,xnodes,wts,nquad,ier)
       implicit real *8 (a-h,o-z)
       integer nterms,ier,l,m,jnew,knew
@@ -36,7 +34,7 @@ C***********************************************************************
       data imag/(0.0d0,1.0d0)/
       allocate( mptemp(0:nterms_trunc,-nterms_trunc:nterms_trunc) )
       call h3dmplocquadu_trunc(wavek,scale,x0y0z0,mpole,nterms,
-     1     nterms1,scale2,xnynzn,mptemp,nterms_trunc,
+     1     scale2,xnynzn,mptemp,nterms_trunc,
      1     radius,xnodes,wts,nquad,ier)
 
       do l = 0,min(ldc,nterms_trunc)
@@ -52,7 +50,7 @@ c
 c
 C***********************************************************************
       subroutine h3dmplocquad_trunc0(wavek,scale,x0y0z0,mpole,nterms,
-     1     nterms1,scale2,xnynzn,mptemp,nterms_trunc,ldc,
+     1     scale2,xnynzn,mptemp,nterms_trunc,ldc,
      1     radius,xnodes,wts,nquad,nq,lwfjs,ier)
 
 C***********************************************************************
@@ -120,7 +118,7 @@ C---------------------------------------------------------------------
       complex *16 fjs(0:lwfjs)
       complex *16 fjder(0:lwfjs)
       complex *16 mpole(0:nterms,-nterms:nterms)
-      complex *16 marray1(0:nterms1,-nterms1:nterms1)
+      complex *16 marray1(0:nterms_trunc,-nterms_trunc:nterms_trunc)
       complex *16 local(0:nterms_trunc,-nterms_trunc:nterms_trunc)
       complex *16 mptemp(0:nterms_trunc,-nterms_trunc:nterms_trunc)
       complex *16 marray(0:ldc,-ldc:ldc)
@@ -138,7 +136,7 @@ C---------------------------------------------------------------------
          ephi(l+1) = ephi(l)*ephi(1)
          ephi(-1-l) = dconjg(ephi(l+1))
       enddo
-      do l=0,nterms1
+      do l=0,nterms_trunc
          do mp=-l,l
             marray1(l,mp)  = mpole(l,mp)*ephi(mp)
          enddo
@@ -148,15 +146,15 @@ C---------------------------------------------------------------------
             mptemp(l,m)=0.0d0
          enddo
       enddo
-      if( nterms1 .ge. 30 ) then
-      call rotviaprojf90(theta,nterms1,nterms1,nterms1,marray1,
-     1     nterms1,marray,ldc)
+      if( nterms_trunc .ge. 30 ) then
+      call rotviaprojf90(theta,nterms_trunc,nterms_trunc,nterms_trunc,
+     1     marray1,nterms_trunc,marray,ldc)
       else
-      call rotviarecur3f90(theta,nterms1,nterms1,nterms1,marray1,
-     1     nterms1,marray,ldc)
+      call rotviarecur3f90(theta,nterms_trunc,nterms_trunc,nterms_trunc,
+     1     marray1,nterms_trunc,marray,ldc)
       endif
       zshift = d
-      call h3dmploczshiftstab_fast(wavek,marray,scale,ldc,nterms1,
+      call h3dmploczshiftstab_fast(wavek,marray,scale,ldc,nterms_trunc,
      1     mptemp,scale2,nterms_trunc,nterms_trunc,radius,zshift,xnodes,
      1     wts,nquad,ynm,ynmd,mp2,phitemp,phitempn,fhs,fhder,fjs,fjder,
      1     iscale,lwfjs,ier)
