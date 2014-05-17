@@ -1,15 +1,13 @@
       subroutine cart2polar(zat,r,theta,phi)
       implicit real *8 (a-h,o-z)
       real *8 zat(3)
-      complex *16 ephi,eye
-      data eye/(0.0d0,1.0d0)/
-      r= sqrt(zat(1)**2+zat(2)**2+zat(3)**2)
+      r = sqrt(zat(1)**2+zat(2)**2+zat(3)**2)
       proj = sqrt(zat(1)**2+zat(2)**2)
       theta = datan2(proj,zat(3))
       if( abs(zat(1)) .eq. 0 .and. abs(zat(2)) .eq. 0 ) then
-      phi = 0
+         phi = 0
       else
-      phi = datan2(zat(2),zat(1))
+         phi = datan2(zat(2),zat(1))
       endif
       return
       end
@@ -20,26 +18,25 @@ c     This subroutine calculates the potential POT and field FLD
 c     at the target point TARGET, due to a charge at
 c     SOURCE. The scaling is that required of the delta function
 c     response: i.e.,
-c
 c              	pot = exp(i*k*r)/r
 c		fld = -grad(pot)
 c---------------------------------------------------------------------
 c     INPUT:
-c     source    : location of the source
-c     charge    : charge strength
-c     target    : location of the target
-c     wavek        : helmholtz parameter
+c     source : location of the source
+c     charge : charge strength
+c     target : location of the target
+c     wavek  : helmholtz parameter
 c---------------------------------------------------------------------
 c     OUTPUT:
-c     pot       : calculated potential
-c     fld       : calculated gradient
+c     pot    : calculated potential
+c     fld    : calculated gradient
 c---------------------------------------------------------------------
       implicit none
       integer i,j,ibox(20),jbox(20)
       real *8 dx,dy,dz,R2,R,target(3,1000000),source(3,1000000)
-      complex *16 i1,wavek,coef1,coef2
+      complex *16 imag,wavek,coef1,coef2
       complex *16 charge(1000000),pot(1000000),fld(3,1000000)
-      data i1/(0.0d0,1.0d0)/
+      data imag/(0.0d0,1.0d0)/
       do i=ibox(14),ibox(14)+ibox(15)-1
          do j=jbox(14),jbox(14)+jbox(15)-1
             dx=target(1,i)-source(1,j)
@@ -48,8 +45,8 @@ c---------------------------------------------------------------------
             R2=dx*dx+dy*dy+dz*dz
             if(R2.eq.0) cycle
             R=sqrt(R2)
-            coef1=charge(j)*cdexp(i1*wavek*R)/R
-            coef2=(1-i1*wavek*R)*coef1/R2
+            coef1=charge(j)*cdexp(imag*wavek*R)/R
+            coef2=(1-imag*wavek*R)*coef1/R2
             pot(i)=pot(i)+coef1
             fld(1,i)=fld(1,i)+coef2*dx
             fld(2,i)=fld(2,i)+coef2*dy
@@ -63,29 +60,23 @@ c***********************************************************************
      1     (ier,wavek,rscale,source,charge,ns,center,
      1     nterms,nterms1,lwfjs,mpole,wlege,nlege)
 c***********************************************************************
-c
 c     Constructs multipole (h) expansion about CENTER due to NS sources
 c     located at SOURCES(3,*).
-c
 c-----------------------------------------------------------------------
 c     INPUT:
-c
-c     wavek              : Helmholtz parameter
-c     scale           : the scaling factor.
-c     sources         : coordinates of sources
-c     charge          : source strengths
-c     ns              : number of sources
-c     center          : epxansion center
-c     nterms          : order of multipole expansion
-c     nterms1         : order of truncated expansion
-c     wlege  :    precomputed array of scaling coeffs for Pnm
-c     nlege  :    dimension parameter for wlege
-c
+c     wavek   : Helmholtz parameter
+c     scale   : the scaling factor.
+c     sources : coordinates of sources
+c     charge  : source strengths
+c     ns      : number of sources
+c     center  : epxansion center
+c     nterms  : order of multipole expansion
+c     nterms1 : order of truncated expansion
+c     wlege   : precomputed array of scaling coeffs for Pnm
+c     nlege   : dimension parameter for wlege
 c-----------------------------------------------------------------------
 c     OUTPUT:
-c
-c     ier             : error return code
-c     mpole           : coeffs of the h-expansion
+c     mpole   : coeffs of the h-expansion
 c-----------------------------------------------------------------------
       implicit none
       integer i,j,m,l,n,ns,nterms,nterms1,nlege,ifder,lwfjs,jer,ntop,ier
@@ -483,28 +474,24 @@ c**********************************************************************
 c**********************************************************************
 c     This subroutine evaluates a j-expansion centered at CENTER
 c     at the target point TARGET.
-c
 c     pot =  sum sum  locexp(n,m) j_n(k r) Y_nm(theta,phi)
 c             n   m
 c---------------------------------------------------------------------
 c     INPUT:
-c     wavek      : the Helmholtz coefficient
-c     rscale     : scaling parameter used in forming expansion
-c     center     : coordinates of the expansion center
-c     locexp     : coeffs of the j-expansion
-c     nterms     : order of the h-expansion
-c     nterms1    : order of the truncated expansion
-c     target(3)   : target vector
-c     nt         : number of targets
-c     wlege  :    precomputed array of scaling coeffs for Pnm
-c     nlege  :    dimension parameter for wlege
+c     wavek   : the Helmholtz coefficient
+c     rscale  : scaling parameter used in forming expansion
+c     center  : coordinates of the expansion center
+c     locexp  : coeffs of the j-expansion
+c     nterms  : order of the h-expansion
+c     nterms1 : order of the truncated expansion
+c     target  : target vector
+c     nt      : number of targets
+c     wlege   : precomputed array of scaling coeffs for Pnm
+c     nlege   : dimension parameter for wlege
 c---------------------------------------------------------------------
 c     OUTPUT:
-c     ier        : error return code
-c     pot        : potential at target (if requested)
-c     fld(3)     : gradient at target (if requested)
-c     NOTE: Parameter lwfjs is set to nterms+1000
-c           Should be sufficient for any Helmholtz parameter
+c     pot     : potential at target (if requested)
+c     fld(3)  : gradient at target (if requested)
 c---------------------------------------------------------------------
       implicit none
       integer i,j,m,n,nt,ier,jer,nterms,nterms1,nlege,ntop,lwfjs
