@@ -341,7 +341,7 @@ c     ... if source is childless, evaluate directly (if cheaper)
                   nterms_trunc=min(nterms(level1),nterms_trunc)
                   nq = max(nquad2,2*nterms(level1)+2)
                   lwfjs = nterms_trunc+1000
-                  call h3dmplocquadu_add_trunc(wavek,
+                  call M2L(wavek,
      1                 scale(level1),
      1                 center1,rmlexp(iaddr(1,jbox)),
      1                 nterms(level1),scale(level0),
