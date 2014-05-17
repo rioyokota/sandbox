@@ -58,32 +58,32 @@ c---------------------------------------------------------------------
       enddo
       return
       end
-C***********************************************************************
+c***********************************************************************
       subroutine P2M
      1     (ier,wavek,rscale,source,charge,ns,center,
      1     nterms,nterms1,lwfjs,mpole,wlege,nlege)
-C***********************************************************************
-C
-C     Constructs multipole (h) expansion about CENTER due to NS sources
-C     located at SOURCES(3,*).
-C
-c-----------------------------------------------------------------------
-C     INPUT:
+c***********************************************************************
 c
-C     wavek              : Helmholtz parameter
-C     scale           : the scaling factor.
-C     sources         : coordinates of sources
-C     charge          : source strengths
-C     ns              : number of sources
-C     center          : epxansion center
-C     nterms          : order of multipole expansion
-C     nterms1         : order of truncated expansion
+c     Constructs multipole (h) expansion about CENTER due to NS sources
+c     located at SOURCES(3,*).
+c
+c-----------------------------------------------------------------------
+c     INPUT:
+c
+c     wavek              : Helmholtz parameter
+c     scale           : the scaling factor.
+c     sources         : coordinates of sources
+c     charge          : source strengths
+c     ns              : number of sources
+c     center          : epxansion center
+c     nterms          : order of multipole expansion
+c     nterms1         : order of truncated expansion
 c     wlege  :    precomputed array of scaling coeffs for Pnm
 c     nlege  :    dimension parameter for wlege
-C
+c
 c-----------------------------------------------------------------------
-C     OUTPUT:
-C
+c     OUTPUT:
+c
 c     ier             : error return code
 c     mpole           : coeffs of the h-expansion
 c-----------------------------------------------------------------------
@@ -151,35 +151,35 @@ c-----------------------------------------------------------------------
       enddo
       return
       end
-C***********************************************************************
+c***********************************************************************
       subroutine M2M(wavek,scale,x0y0z0,mpole,nterms,scale2,
      1           xnynzn,mpolen,nterms2,ldc,
      2           radius,xnodes,wts,nquad,nq,ier)
-C***********************************************************************
-C     Shift multipole expansion.
-C     This is a reasonably fast "point and shoot" version which
-C     first rotates the coordinate system, then doing the shifting
-C     along the Z-axis, and then rotating back to the original
-C     coordinates.
-C---------------------------------------------------------------------
-C     INPUT:
-C     wavek   : Helmholtz parameter
-C     x0y0z0  : center of original multiple expansion
-C     xnynzn  : center of shifted expansion
-C     mpole   : coefficients of original multiple expansion
-C     nterms  : order of multipole expansion
-C     nterms2 : order of shifted expansion
-C     scale   : scaling parameter for mpole expansion
-C     scale2  : scaling parameter for shifted expansion
-C     radius  : radius of sphere on which shifted expansion is computed
-C     xnodes  : Legendre nodes (precomputed)
-C     wts     : Legendre weights (precomputed)
-C     nquad   : number of quadrature nodes in theta
-C     nq      : used to allocate work arrays for both z-shift and rotations.
-C---------------------------------------------------------------------
-C     OUTPUT:
-C     mpolen  : coefficients of shifted expansion
-C---------------------------------------------------------------------
+c***********************************************************************
+c     Shift multipole expansion.
+c     This is a reasonably fast "point and shoot" version which
+c     first rotates the coordinate system, then doing the shifting
+c     along the Z-axis, and then rotating back to the original
+c     coordinates.
+c---------------------------------------------------------------------
+c     INPUT:
+c     wavek   : Helmholtz parameter
+c     x0y0z0  : center of original multiple expansion
+c     xnynzn  : center of shifted expansion
+c     mpole   : coefficients of original multiple expansion
+c     nterms  : order of multipole expansion
+c     nterms2 : order of shifted expansion
+c     scale   : scaling parameter for mpole expansion
+c     scale2  : scaling parameter for shifted expansion
+c     radius  : radius of sphere on which shifted expansion is computed
+c     xnodes  : Legendre nodes (precomputed)
+c     wts     : Legendre weights (precomputed)
+c     nquad   : number of quadrature nodes in theta
+c     nq      : used to allocate work arrays for both z-shift and rotations.
+c---------------------------------------------------------------------
+c     OUTPUT:
+c     mpolen  : coefficients of shifted expansion
+c---------------------------------------------------------------------
       implicit none
       integer  nterms, lw, lused, ier, nq, nquad, nquse,ldc,nterms2
       real *8 x0y0z0(3),xnynzn(3)
@@ -254,6 +254,113 @@ C---------------------------------------------------------------------
       do l = 0,min(ldc,nterms2)
          do m=-l,l
             mpolen(l,m) = mpolen(l,m)+mptemp(l,m)
+         enddo
+      enddo
+      return
+      end
+c***********************************************************************
+      subroutine M2L(wavek,scale,x0y0z0,mpole,
+     1     nterms,scale2,xnynzn,local,nterms2,nterms_trunc,
+     1     radius,xnodes,wts,nquad,nq,lwfjs,ier)
+c***********************************************************************
+c     Convert multipole expansion to a local expansion.
+c     This is a reasonably fast "point and shoot" version which
+c     first rotates the coordinate system, then doing the shifting
+c     along the Z-axis, and then rotating back to the original
+c     coordinates.
+c---------------------------------------------------------------------
+c     INPUT:
+c     wavek  : Helmholtz parameter
+c     x0y0z0 : center of original multiple expansion
+c     xnynzn : center of shifted local expansion
+c     mpole  : coefficients of original multiple expansion
+c     nterms : order of multipole expansion
+c     scale  : scaling parameter for mpole expansion
+c     scale2 : scaling parameter for local expansion
+c     radius : radius of sphere on which local expansion is computed
+c     xnodes : Legendre nodes (precomputed)
+c     wts    : Legendre weights (precomputed)
+c     nquad  : number of quadrature nodes used (really nquad**2)
+c---------------------------------------------------------------------
+c     OUTPUT:
+c     local : coefficients of shifted local expansion
+c---------------------------------------------------------------------
+      implicit real *8 (a-h,o-z)
+      integer  nterms,ier,l,m,jnew,knew
+      integer  iscale(0:lwfjs)
+      real *8 d,theta,ctheta,phi,scale,scale2
+      real *8 x0y0z0(3),xnynzn(3)
+      real *8 xnodes(1),wts(1),rvec(3)
+      real *8 zshift
+      real *8 ynm(0:nterms,0:nterms)
+      real *8 ynmd(0:nterms,0:nterms)
+      complex *16 phitemp(nq,-nterms:nterms)
+      complex *16 phitempn(nq,-nterms:nterms)
+      complex *16 mp2(0:nterms,-nterms:nterms)
+      complex *16 fhs(0:nterms)
+      complex *16 fhder(0:nterms)
+      complex *16 fjs(0:lwfjs)
+      complex *16 fjder(0:lwfjs)
+      complex *16 mpole(0:nterms,-nterms:nterms)
+      complex *16 marray1(0:nterms_trunc,-nterms_trunc:nterms_trunc)
+      complex *16 local(0:nterms2,-nterms2:nterms2)
+      complex *16 mptemp(0:nterms_trunc,-nterms_trunc:nterms_trunc)
+      complex *16 marray(0:nterms,-nterms:nterms)
+      complex *16 wavek
+      complex *16 ephi(-nterms-1:nterms+1),imag      
+      data imag/(0.0d0,1.0d0)/
+      rvec(1) = xnynzn(1) - x0y0z0(1)
+      rvec(2) = xnynzn(2) - x0y0z0(2)
+      rvec(3) = xnynzn(3) - x0y0z0(3)
+      call cart2polar(rvec,d,theta,phi)
+      ephi(1) = exp(imag*phi)
+      ephi(0)=1.0d0
+      ephi(-1)=dconjg(ephi(1))
+      do l = 1,nterms
+         ephi(l+1) = ephi(l)*ephi(1)
+         ephi(-1-l) = dconjg(ephi(l+1))
+      enddo
+      do l=0,nterms_trunc
+         do mp=-l,l
+            marray1(l,mp) = mpole(l,mp)*ephi(mp)
+         enddo
+      enddo
+      do l=0,nterms_trunc
+         do m=-l,l
+            mptemp(l,m)=0.0d0
+         enddo
+      enddo
+      if( nterms_trunc .ge. 30 ) then
+      call rotviaprojf90(theta,nterms_trunc,nterms_trunc,nterms_trunc,
+     1     marray1,nterms_trunc,marray,nterms)
+      else
+      call rotviarecur3f90(theta,nterms_trunc,nterms_trunc,nterms_trunc,
+     1     marray1,nterms_trunc,marray,nterms)
+      endif
+      zshift = d
+      call h3dmpevalspherenmstab_fast(marray,wavek,scale,zshift,radius,
+     2     nterms_trunc,nterms,ynm,ynmd,phitemp,phitempn,nquad,xnodes,
+     3     fhs,fhder)
+      call h3dprojlocsepstab_fast
+     $   (nterms_trunc,nterms_trunc,nquad,nterms_trunc,xnodes,wts,
+     1     phitemp,phitempn,mptemp,mp2,ynm)
+      call h3drescalestab(nterms_trunc,nterms_trunc,mptemp,mp2,
+     1     radius,wavek,scale2,fjs,fjder,iscale,lwfjs,ier)
+      if( nterms_trunc .ge. 30 ) then
+         call rotviaprojf90(-theta,nterms_trunc,nterms_trunc,
+     1        nterms_trunc,mptemp,nterms_trunc,marray,nterms)
+      else
+         call rotviarecur3f90(-theta,nterms_trunc,nterms_trunc,
+     1        nterms_trunc,mptemp,nterms_trunc,marray,nterms)
+      endif
+      do l=0,nterms_trunc
+         do m=-l,l
+            mptemp(l,m) = ephi(-m)*marray(l,m)
+         enddo
+      enddo
+      do l = 0,nterms_trunc
+         do m=-l,l
+            local(l,m) = local(l,m)+mptemp(l,m)
          enddo
       enddo
       return

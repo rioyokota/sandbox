@@ -495,7 +495,7 @@ C      note that everything is scaled.
 C***********************************************************************
       subroutine h3dmpevalspherenmstab_fast(mpole,wavek,scale,zshift,
      1           radius,nterms,lmp,ynm,ynmd,phitemp,phitempn,
-     2           nquad,xnodes,fhs,fhder,rat1,rat2)
+     2           nquad,xnodes,fhs,fhder)
 C***********************************************************************
 C
 C     This subroutine evaluates a multipole expansion on a target
@@ -601,7 +601,7 @@ C      note that everything is scaled.
 C***********************************************************************
       subroutine h3dprojlocsepstab_fast
      $          (nterms,ldl,nquadn,ntold,xnodes,wts,
-     1           phitemp,phitempn,local,local2,ynm,rat1,rat2)
+     1           phitemp,phitempn,local,local2,ynm)
 C***********************************************************************
 C
 C     compute spherical harmonic expansion on unit sphere
