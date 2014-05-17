@@ -339,13 +339,15 @@ c     ... if source is childless, evaluate directly (if cheaper)
                   nterms_trunc=itable(ii,jj,kk)
                   nterms_trunc=min(nterms(level0),nterms_trunc)
                   nterms_trunc=min(nterms(level1),nterms_trunc)
+                  nq = max(nquad2,2*nterms(level1)+2)
+                  lwfjs = nterms_trunc+1000
                   call h3dmplocquadu_add_trunc(wavek,
      1                 scale(level1),
      1                 center1,rmlexp(iaddr(1,jbox)),
      1                 nterms(level1),scale(level0),
      1                 center0,rmlexp(iaddr(2,ibox)),
      1                 nterms(level0),nterms_trunc,
-     1                 radius,xnodes2,wts2,nquad2,ier)
+     1                 radius,xnodes2,wts2,nquad2,nq,lwfjs,ier)
  4150          continue
             endif
  4200    continue

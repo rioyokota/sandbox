@@ -1,7 +1,7 @@
 C***********************************************************************
       subroutine h3dmplocquadu_add_trunc(wavek,scale,x0y0z0,mpole,
      1     nterms,scale2,xnynzn,local,nterms2,nterms_trunc,
-     1     radius,xnodes,wts,nquad,ier)
+     1     radius,xnodes,wts,nquad,nq,lwfjs,ier)
       implicit real *8 (a-h,o-z)
       integer nterms,ier,l,m,jnew,knew
       real *8 x0y0z0(3),xnynzn(3)
@@ -12,9 +12,6 @@ C***********************************************************************
       complex *16 mptemp(0:nterms_trunc,-nterms_trunc:nterms_trunc)
       complex *16 imag,wavek
       data imag/(0.0d0,1.0d0)/
-      ier = 0
-      nq = max(nquad,2*nterms+2)
-      lwfjs = nterms_trunc+1000
       call h3dmplocquad_trunc0(wavek,scale,x0y0z0,mpole,nterms,
      1     scale2,xnynzn,mptemp,nterms_trunc,
      1     radius,xnodes,wts,nquad,nq,lwfjs,ier)
