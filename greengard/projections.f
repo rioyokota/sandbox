@@ -234,7 +234,7 @@ C      note that everything is scaled.
 C***********************************************************************
       subroutine h3dlocevalspherestab_fast(local,wavek,scale,zshift,
      1     radius,nterms,nterms2,lmp,ynm,ynmd,phitemp,phitempn,
-     1     nquad,xnodes,iscale,fjs,fjder,rat1,rat2,lwfjs,ier)
+     1     nquad,xnodes,iscale,fjs,fjder,lwfjs,ier)
 C***********************************************************************
 C
 C     This subroutine evaluates a local expansion on a target

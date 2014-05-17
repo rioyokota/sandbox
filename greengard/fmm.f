@@ -382,12 +382,15 @@ c     ... split local expansion of the parent box
                      radius = radius + (corners1(3,1) - center1(3))**2
                      radius = sqrt(radius)
                      level1=box1(1)
-                     call h3dloclocquadu_add(wavek,scale(level0),
+                     ldc = max(nterms(level0),nterms(level1))
+                     nq = max(nquad,2*ldc+2)
+                     lwfjs = ldc+1000
+                     call L2L(wavek,scale(level0),
      1                    center0,
      1                    rmlexp(iaddr(2,ibox)),nterms(level0),
      1                    scale(level1),center1,rmlexp(iaddr(2,jbox)),
-     1                    nterms(level1),nterms(level1),
-     1                    radius,xnodes2,wts2,nquad2,ier)
+     1                    nterms(level1),ldc,
+     1                    radius,xnodes2,wts2,nquad2,nq,lwfjs,ier)
  5100             continue
                endif
             endif
