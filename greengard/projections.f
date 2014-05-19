@@ -1,6 +1,6 @@
 C***********************************************************************
       subroutine h3drescalemp(nterms,lmp,mpole,
-     1           radius,wavek0,scale,fhs,fhder)
+     1           radius,wavek0,scale)
 C***********************************************************************
 C
 C     This subroutine rescales a spherical harmonic expansion

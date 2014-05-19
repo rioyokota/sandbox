@@ -209,7 +209,7 @@ c---------------------------------------------------------------------
      1     (ntermsi,ntermsi,nquad,ntermsj,xnodes,wts,
      1     mptemp)
       call h3drescalemp(ntermsi,ntermsi,mptemp,radius,wavek,
-     1     scalei,fhs,fhder)
+     1     scalei)
       if( ntermsi .ge. 30 ) then
       call rotviaprojf90(-theta,ntermsi,mptemp,
      1        ntermsi,marray,ntermsj)
