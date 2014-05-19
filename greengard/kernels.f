@@ -1,18 +1,17 @@
-      subroutine cart2polar(zat,r,theta,phi)
-      implicit real *8 (a-h,o-z)
-      real *8 zat(3)
-      r = sqrt(zat(1)**2+zat(2)**2+zat(3)**2)
-      proj = sqrt(zat(1)**2+zat(2)**2)
-      theta = datan2(proj,zat(3))
-      if( abs(zat(1)) .eq. 0 .and. abs(zat(2)) .eq. 0 ) then
+      subroutine cart2polar(dX,r,theta,phi)
+      implicit none
+      real *8 dX(3),r,theta,phi
+      r = sqrt(dX(1)*dX(1)+dX(2)*dX(2)+dX(3)*dX(3))
+      theta = datan2(sqrt(dX(1)*dX(1)+dX(2)*dX(2)),dX(3))
+      if(abs(dX(1)).eq.0.and.abs(dX(2)).eq.0) then
          phi = 0
       else
-         phi = datan2(zat(2),zat(1))
+         phi = datan2(dX(2),dX(1))
       endif
       return
       end
 c**********************************************************************
-      subroutine P2P(ibox,target,pot,fld,jbox,source,charge,wavek)
+      subroutine P2P(ibox,Xi,pi,Fi,jbox,Xj,qj,wavek)
 c**********************************************************************
 c     This subroutine calculates the potential POT and field FLD
 c     at the target point TARGET, due to a charge at
@@ -22,42 +21,41 @@ c              	pot = exp(i*k*r)/r
 c		fld = -grad(pot)
 c---------------------------------------------------------------------
 c     INPUT:
-c     source : location of the source
-c     charge : charge strength
-c     target : location of the target
-c     wavek  : helmholtz parameter
+c     Xj    : location of the source
+c     qj    : charge strength
+c     Xi    : location of the target
+c     wavek : helmholtz parameter
 c---------------------------------------------------------------------
 c     OUTPUT:
-c     pot    : calculated potential
-c     fld    : calculated gradient
+c     pi   : calculated potential
+c     Fi   : calculated gradient
 c---------------------------------------------------------------------
       implicit none
       integer i,j,ibox(20),jbox(20)
-      real *8 dx,dy,dz,R2,R,target(3,1000000),source(3,1000000)
+      real *8 dX(3),R2,R,Xi(3,1000000),Xj(3,1000000)
       complex *16 imag,wavek,coef1,coef2
-      complex *16 charge(1000000),pot(1000000),fld(3,1000000)
+      complex *16 qj(1000000),pi(1000000),Fi(3,1000000)
       data imag/(0.0d0,1.0d0)/
       do i=ibox(14),ibox(14)+ibox(15)-1
          do j=jbox(14),jbox(14)+jbox(15)-1
-            dx=target(1,i)-source(1,j)
-            dy=target(2,i)-source(2,j)
-            dz=target(3,i)-source(3,j)
-            R2=dx*dx+dy*dy+dz*dz
+            dX(1)=Xi(1,i)-Xj(1,j)
+            dX(2)=Xi(2,i)-Xj(2,j)
+            dX(3)=Xi(3,i)-Xj(3,j)
+            R2=dX(1)*dX(1)+dX(2)*dX(2)+dX(3)*dX(3)
             if(R2.eq.0) cycle
             R=sqrt(R2)
-            coef1=charge(j)*cdexp(imag*wavek*R)/R
+            coef1=qj(j)*cdexp(imag*wavek*R)/R
             coef2=(1-imag*wavek*R)*coef1/R2
-            pot(i)=pot(i)+coef1
-            fld(1,i)=fld(1,i)+coef2*dx
-            fld(2,i)=fld(2,i)+coef2*dy
-            fld(3,i)=fld(3,i)+coef2*dz
+            pi(i)=pi(i)+coef1
+            Fi(1,i)=Fi(1,i)+coef2*dX(1)
+            Fi(2,i)=Fi(2,i)+coef2*dX(2)
+            Fi(3,i)=Fi(3,i)+coef2*dX(3)
          enddo
       enddo
       return
       end
 c***********************************************************************
-      subroutine P2M
-     1     (ier,wavek,rscale,source,charge,ns,center,
+      subroutine P2M(ier,wavek,rscale,source,charge,ns,center,
      1     nterms,nterms1,lwfjs,mpole,wlege,nlege)
 c***********************************************************************
 c     Constructs multipole (h) expansion about CENTER due to NS sources
@@ -470,7 +468,7 @@ c***********************************************************************
       end
 c**********************************************************************
       subroutine L2P(wavek,rscale,center,locexp,nterms,
-     1     nterms1,lwfjs,target,nt,pot,fld,wlege,nlege,ier)
+     1     nterms1,lwfjs,Xi,nt,pot,fld,wlege,nlege,ier)
 c**********************************************************************
 c     This subroutine evaluates a j-expansion centered at CENTER
 c     at the target point TARGET.
@@ -484,7 +482,7 @@ c     center  : coordinates of the expansion center
 c     locexp  : coeffs of the j-expansion
 c     nterms  : order of the h-expansion
 c     nterms1 : order of the truncated expansion
-c     target  : target vector
+c     Xi      : target vector
 c     nt      : number of targets
 c     wlege   : precomputed array of scaling coeffs for Pnm
 c     nlege   : dimension parameter for wlege
@@ -498,7 +496,7 @@ c---------------------------------------------------------------------
       integer iscale(0:lwfjs)
       real *8 r,rx,ry,rz,theta,thetax,thetay,thetaz,rscale
       real *8 phi,phix,phiy,phiz,ctheta,stheta,cphi,sphi,wlege
-      real *8 center(3),target(3,1),dX(3)
+      real *8 center(3),Xi(3,1),dX(3)
       real *8 pp(0:nterms,0:nterms)
       real *8 ppd(0:nterms,0:nterms)
       complex *16 wavek,pot(1),fld(3,1),ephi1,ephi1inv
@@ -511,9 +509,9 @@ c---------------------------------------------------------------------
       data eye/(0.0d0,1.0d0)/
       ier=0
       do i=1,nt
-         dX(1)=target(1,i)-center(1)
-         dX(2)=target(2,i)-center(2)
-         dX(3)=target(3,i)-center(3)
+         dX(1)=Xi(1,i)-center(1)
+         dX(2)=Xi(2,i)-center(2)
+         dX(3)=Xi(3,i)-center(3)
          call cart2polar(dX,r,theta,phi)
          ctheta = dcos(theta)
          stheta=sqrt(1-ctheta*ctheta)
