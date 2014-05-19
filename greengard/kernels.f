@@ -1,4 +1,4 @@
-      subroutine cart2polar(dX,r,theta,phi)
+      subroutine cart2sph(dX,r,theta,phi)
       implicit none
       real *8 dX(3),r,theta,phi
       r = sqrt(dX(1)*dX(1)+dX(2)*dX(2)+dX(3)*dX(3))
@@ -77,13 +77,12 @@ c     Mi     : coeffs of the h-expansion
 c-----------------------------------------------------------------------
       implicit none
       integer i,m,n,nj,nterms,ntrunc,Pmax,nbessel,ier
-      real *8 r,theta,phi,ctheta,stheta,cphi,sphi,Anm,scale,dtmp
+      real *8 r,theta,phi,ctheta,stheta,Anm,scale
       real *8 Xi(3),Xj(3,nj),dX(3)
-      real *8 pp(0:nterms,0:nterms)
-      real *8 ppd(0:nterms,0:nterms)
-      complex *16 qj(nj),imag,wavek,z,ztmp,ephi1,ephi1inv
+      real *8 Ynm(0:nterms,0:nterms)
+      complex *16 qj(nj),imag,wavek,z,ztmp
       complex *16 ephi(-nterms-1:nterms+1)
-      complex *16 fjs(0:nbessel),fjder(0:nbessel)
+      complex *16 jn(0:nbessel),jnd(0:nbessel)
       complex *16 Mi(0:nterms,-nterms:nterms)
       complex *16 mtemp(0:nterms,-nterms:nterms)
       data imag/(0.0d0,1.0d0)/
@@ -97,32 +96,28 @@ c-----------------------------------------------------------------------
          dX(1)=Xj(1,i)-Xi(1)
          dX(2)=Xj(2,i)-Xi(2)
          dX(3)=Xj(3,i)-Xi(3)
-         call cart2polar(dX,r,theta,phi)
+         call cart2sph(dX,r,theta,phi)
          ctheta=dcos(theta)
          stheta=dsin(theta)
-         cphi=dcos(phi)
-         sphi=dsin(phi)
-         ephi1=dcmplx(cphi,sphi)
          ephi(0)=1.0d0
-         ephi(1)=ephi1
-         ephi(-1)=dconjg(ephi1)
+         ephi(1)=exp(imag*phi)
+         ephi(-1)=dconjg(ephi(1))
          do n=2,nterms+1
-            ephi(n)=ephi(n-1)*ephi1
+            ephi(n)=ephi(n-1)*ephi(1)
             ephi(-n)=ephi(-n+1)*ephi(-1)
          enddo
-         call ylgndrfw(ntrunc,ctheta,pp,Anm,Pmax)
+         call ylgndrfw(ntrunc,ctheta,Ynm,Anm,Pmax)
          z=wavek*r
-         call jfuns3d(ier,ntrunc,z,scale,fjs,0,fjder,
+         call jfuns3d(ier,ntrunc,z,scale,jn,0,jnd,
      1	      nbessel)
          do n = 0,ntrunc
-            fjs(n) = fjs(n)*qj(i)
+            jn(n) = jn(n)*qj(i)
          enddo
-         mtemp(0,0)= mtemp(0,0)+fjs(0)
+         mtemp(0,0)= mtemp(0,0)+jn(0)
          do n=1,ntrunc
-            dtmp=pp(n,0)
-            mtemp(n,0)= mtemp(n,0)+dtmp*fjs(n)
+            mtemp(n,0)= mtemp(n,0)+Ynm(n,0)*jn(n)
             do m=1,n
-               ztmp=pp(n,m)*fjs(n)
+               ztmp=Ynm(n,m)*jn(n)
                mtemp(n, m)=mtemp(n, m)+ztmp*dconjg(ephi(m))
                mtemp(n,-m)=mtemp(n,-m)+ztmp*dconjg(ephi(-m))
             enddo
@@ -189,7 +184,7 @@ c---------------------------------------------------------------------
       rvec(1) = xnynzn(1) - x0y0z0(1)
       rvec(2) = xnynzn(2) - x0y0z0(2)
       rvec(3) = xnynzn(3) - x0y0z0(3)
-      call cart2polar(rvec,d,theta,phi)
+      call cart2sph(rvec,d,theta,phi)
       ephi(1) = exp(imag*phi)
       ephi(0)=1.0d0
       ephi(-1)=dconjg(ephi(1))
@@ -282,8 +277,8 @@ c---------------------------------------------------------------------
       complex *16 mp2(0:nterms,-nterms:nterms)
       complex *16 fhs(0:nterms)
       complex *16 fhder(0:nterms)
-      complex *16 fjs(0:nbessel)
-      complex *16 fjder(0:nbessel)
+      complex *16 jn(0:nbessel)
+      complex *16 jnd(0:nbessel)
       complex *16 mpole(0:nterms,-nterms:nterms)
       complex *16 marray1(0:nterms_trunc,-nterms_trunc:nterms_trunc)
       complex *16 local(0:nterms2,-nterms2:nterms2)
@@ -295,7 +290,7 @@ c---------------------------------------------------------------------
       rvec(1) = xnynzn(1) - x0y0z0(1)
       rvec(2) = xnynzn(2) - x0y0z0(2)
       rvec(3) = xnynzn(3) - x0y0z0(3)
-      call cart2polar(rvec,d,theta,phi)
+      call cart2sph(rvec,d,theta,phi)
       ephi(1) = exp(imag*phi)
       ephi(0)=1.0d0
       ephi(-1)=dconjg(ephi(1))
@@ -328,7 +323,7 @@ c---------------------------------------------------------------------
      $   (nterms_trunc,nterms_trunc,nquad,nterms_trunc,xnodes,wts,
      1     phitemp,phitempn,mptemp,mp2,ynm)
       call h3drescalestab(nterms_trunc,nterms_trunc,mptemp,mp2,
-     1     radius,wavek,scale2,fjs,fjder,nbessel,ier)
+     1     radius,wavek,scale2,jn,jnd,nbessel,ier)
       if( nterms_trunc .ge. 30 ) then
          call rotviaprojf90(-theta,nterms_trunc,nterms_trunc,
      1        nterms_trunc,mptemp,nterms_trunc,marray,nterms)
@@ -391,24 +386,23 @@ c***********************************************************************
       complex *16 phitemp(nq,-ldc:ldc)
       complex *16 phitempn(nq,-ldc:ldc)
       complex *16 mp2(0:ldc,-ldc:ldc)
-      complex *16 fjs(0:nbessel)
-      complex *16 fjder(0:nbessel)
+      complex *16 jn(0:nbessel)
+      complex *16 jnd(0:nbessel)
       complex *16 locold(0:nterms,-nterms:nterms)
       complex *16 local(0:nterms2,-nterms2:nterms2)
       complex *16 mptemp(0:nterms2,-nterms2:nterms2)
       complex *16 marray(0:ldc,-ldc:ldc)
       complex *16 marray1(0:nterms,-nterms:nterms)
-      complex *16 wavek,imag,ephi1
+      complex *16 wavek,imag
       complex *16 ephi(-ldc-1:ldc+1)
       data imag/(0.0d0,1.0d0)/
       rvec(1) = xnynzn(1) - x0y0z0(1)
       rvec(2) = xnynzn(2) - x0y0z0(2)
       rvec(3) = xnynzn(3) - x0y0z0(3)
-      call cart2polar(rvec,d,theta,phi)
-      ephi1 = exp(imag*phi)
+      call cart2sph(rvec,d,theta,phi)
       ephi(0)=1.0d0
-      ephi(1)=ephi1
-      ephi(-1)=dconjg(ephi1)
+      ephi(1)=exp(imag*phi)
+      ephi(-1)=dconjg(ephi(1))
       do l = 1,ldc
          ephi(l+1) = ephi(l)*ephi(1)
          ephi(-1-l) = dconjg(ephi(l+1))
@@ -434,12 +428,12 @@ c***********************************************************************
       call h3dlocevalspherestab_fast(marray,wavek,scale,
      1     zshift,radius,nterms,nterms2,
      1     ldc,ynm,ynmd,phitemp,phitempn,nquad,xnodes,
-     1     fjs,fjder,nbessel,ier)
+     1     jn,jnd,nbessel,ier)
       call h3dprojlocsepstab_fast
      1     (nterms2,nterms2,nquad,nterms2,xnodes,wts,
      1     phitemp,phitempn,mptemp,mp2,ynm)
       call h3drescalestab(nterms2,nterms2,mptemp,mp2,
-     1      radius,wavek,scale2,fjs,fjder,nbessel,ier)
+     1      radius,wavek,scale2,jn,jnd,nbessel,ier)
       if( nterms2 .ge. 30 ) then
       call rotviaprojf90(-theta,nterms2,nterms2,nterms2,mptemp,
      1      nterms2,marray,ldc)
@@ -489,32 +483,31 @@ c---------------------------------------------------------------------
       real *8 r,rx,ry,rz,theta,thetax,thetay,thetaz,scale
       real *8 phi,phix,phiy,phiz,ctheta,stheta,cphi,sphi,Anm
       real *8 center(3),Xi(3,1),dX(3)
-      real *8 pp(0:nterms,0:nterms)
-      real *8 ppd(0:nterms,0:nterms)
-      complex *16 wavek,pot(1),fld(3,1),ephi1,ephi1inv
+      real *8 Ynm(0:nterms,0:nterms)
+      real *8 Ynmd(0:nterms,0:nterms)
+      complex *16 wavek,pot(1),fld(3,1)
       complex *16 locexp(0:nterms,-nterms:nterms)
       complex *16 ephi(-nterms-1:nterms+1)
-      complex *16 fjsuse,fjs(0:nbessel),fjder(0:nbessel)
-      complex *16 eye,ur,utheta,uphi,ztmp,z
+      complex *16 jnuse,jn(0:nbessel),jnd(0:nbessel)
+      complex *16 imag,ur,utheta,uphi,ztmp,z
       complex *16 ztmp1,ztmp2,ztmp3,ztmpsum
       complex *16 ux,uy,uz
-      data eye/(0.0d0,1.0d0)/
+      data imag/(0.0d0,1.0d0)/
       ier=0
       do i=1,nt
          dX(1)=Xi(1,i)-center(1)
          dX(2)=Xi(2,i)-center(2)
          dX(3)=Xi(3,i)-center(3)
-         call cart2polar(dX,r,theta,phi)
+         call cart2sph(dX,r,theta,phi)
          ctheta = dcos(theta)
          stheta=sqrt(1-ctheta*ctheta)
-         cphi = dcos(phi)
-         sphi = dsin(phi)
-         ephi1 = dcmplx(cphi,sphi)
+         cphi=dcos(phi)
+         sphi=dsin(phi)
          ephi(0)=1.0d0
-         ephi(1)=ephi1
-         ephi(-1)=dconjg(ephi1)
+         ephi(1)=dcmplx(cphi,sphi)
+         ephi(-1)=dconjg(ephi(1))
          do j=2,nterms+1
-            ephi(j)=ephi(j-1)*ephi1
+            ephi(j)=ephi(j-1)*ephi(1)
             ephi(-j)=ephi(-j+1)*ephi(-1)
          enddo
          rx = stheta*cphi
@@ -526,33 +519,33 @@ c---------------------------------------------------------------------
          rz = ctheta
          thetaz = -stheta
          phiz = 0.0d0
-         call ylgndr2sfw(ntrunc,ctheta,pp,ppd,Anm,Pmax)
+         call ylgndr2sfw(ntrunc,ctheta,Ynm,Ynmd,Anm,Pmax)
          z=wavek*r
-         call jfuns3d(ier,ntrunc,z,scale,fjs,1,fjder,
+         call jfuns3d(ier,ntrunc,z,scale,jn,1,jnd,
      1	      nbessel)
-         pot(i)=pot(i)+locexp(0,0)*fjs(0)
+         pot(i)=pot(i)+locexp(0,0)*jn(0)
          do j=0,ntrunc
-            fjder(j)=fjder(j)*wavek
+            jnd(j)=jnd(j)*wavek
          enddo
-         ur = locexp(0,0)*fjder(0)
+         ur = locexp(0,0)*jnd(0)
          utheta = 0.0d0
          uphi = 0.0d0
          do n=1,ntrunc
-            pot(i)=pot(i)+locexp(n,0)*fjs(n)*pp(n,0)
-            ur = ur + fjder(n)*pp(n,0)*locexp(n,0)
-            fjsuse = fjs(n+1)*scale + fjs(n-1)/scale
-            fjsuse = wavek*fjsuse/(2*n+1.0d0)
-            utheta = utheta -locexp(n,0)*fjsuse*ppd(n,0)*stheta
+            pot(i)=pot(i)+locexp(n,0)*jn(n)*Ynm(n,0)
+            ur = ur + jnd(n)*Ynm(n,0)*locexp(n,0)
+            jnuse = jn(n+1)*scale + jn(n-1)/scale
+            jnuse = wavek*jnuse/(2*n+1.0d0)
+            utheta = utheta -locexp(n,0)*jnuse*Ynmd(n,0)*stheta
             do m=1,n
-               ztmp1=fjs(n)*pp(n,m)*stheta
+               ztmp1=jn(n)*Ynm(n,m)*stheta
                ztmp2 = locexp(n,m)*ephi(m)
                ztmp3 = locexp(n,-m)*ephi(-m)
                ztmpsum = ztmp2+ztmp3
                pot(i)=pot(i)+ztmp1*ztmpsum
-               ur = ur + fjder(n)*pp(n,m)*stheta*ztmpsum
-               utheta = utheta -ztmpsum*fjsuse*ppd(n,m)
-               ztmpsum = eye*m*(ztmp2 - ztmp3)
-               uphi = uphi + fjsuse*pp(n,m)*ztmpsum
+               ur = ur + jnd(n)*Ynm(n,m)*stheta*ztmpsum
+               utheta = utheta -ztmpsum*jnuse*Ynmd(n,m)
+               ztmpsum = imag*m*(ztmp2 - ztmp3)
+               uphi = uphi + jnuse*Ynm(n,m)*ztmpsum
             enddo
          enddo
          ux = ur*rx + utheta*thetax + uphi*phix

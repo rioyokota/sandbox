@@ -288,7 +288,7 @@ c$    tic=omp_get_wtime()
                   rvec(1) = i
                   rvec(2) = j
                   rvec(3) = k
-                  call cart2polar(rvec,d,theta,phi)
+                  call cart2sph(rvec,d,theta,phi)
                   thetas(i,j,k)=theta
                   call rotviarecur3p_init(ier,rotmatf(1,i,j,k),
      1                 ldm,+theta)
