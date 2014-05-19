@@ -49,7 +49,7 @@ C---------------------------------------------------------------------
       end
 C***********************************************************************
       subroutine h3drescalestab(nterms,lmp,local,localn,
-     1           radius,wavek0,scale,fjs,fjder,iscale,lwfjs,ier)
+     1           radius,wavek0,scale,fjs,fjder,iscale,nbessel,ier)
 C***********************************************************************
 C
 C     This subroutine takes as input the potential and its normal
@@ -87,14 +87,14 @@ C           local = computed as above.
 C           ier = error flag 
 C                 0 normal return
 C                 4 insufficient memory in w.
-C                 8 lwfjs insufficient in calling jfuns3d.
+C                 8 nbessel insufficient in calling jfuns3d.
 C
 C---------------------------------------------------------------------
       implicit real *8 (a-h,o-z)
       integer nterms,ier
       integer l,m,jj,kk
       integer lwfhs
-      complex *16 fjs(0:lwfjs)
+      complex *16 fjs(0:nbessel)
       complex *16 fjder(0:nterms)
       complex *16 local(0:lmp,-lmp:lmp)
       complex *16 localn(0:lmp,-lmp:lmp)
@@ -104,7 +104,7 @@ C---------------------------------------------------------------------
       z = wavek0*radius
       ifder = 1
       call jfuns3d(ier1,nterms,z,scale,fjs,
-     1             ifder,fjder,lwfjs,iscale,ntop)
+     1             ifder,fjder,nbessel,iscale,ntop)
       if (ier1.eq.8) then
          ier = 8
 	 return
@@ -122,7 +122,7 @@ C---------------------------------------------------------------------
 C***********************************************************************
       subroutine h3dlocevalspherestab(local,wavek,scale,zshift,radius,
      1           nterms,nterms2,lmp,ynm,ynmd,phitemp,phitempn,
-     2           nquad,xnodes,iscale,fjs,fjder,lwfjs,ier)
+     2           nquad,xnodes,iscale,fjs,fjder,nbessel,ier)
 C***********************************************************************
 C
 C     This subroutine evaluates a local expansion on a target
@@ -154,7 +154,7 @@ C     phitempn(i,j) : jth mode of phi at ith quad node.
 C
 C***********************************************************************
       implicit real *8 (a-h,o-z)
-      integer iscale(0:lwfjs)
+      integer iscale(0:nbessel)
       integer nterms
       integer l,m,jnew,knew
       real *8 zshift, targ(3), center(3)
@@ -165,7 +165,7 @@ C***********************************************************************
       complex *16 phitemp(nquad,-nterms2:nterms2)
       complex *16 phitempn(nquad,-nterms2:nterms2)
       complex *16 imag,pot,fld(3), wavek,z,uval,unval,ur,utheta
-      complex *16 ephi1,ephik,ephi,fjs(0:lwfjs),fjder(0:lwfjs),ztmp1
+      complex *16 ephi1,ephik,ephi,fjs(0:nbessel),fjder(0:nbessel),ztmp1
       complex *16 ut1,ut2,ut3
       data imag/(0.0d0,1.0d0)/
 C----- shift along z-axis.
@@ -195,7 +195,7 @@ C      note that everything is scaled.
 	 z = wavek*rj
 	 call ylgndr2s(nterms,cthetaj,ynm,ynmd)
 	 call jfuns3d(jer,nterms,z,scale,fjs,ifder,fjder,
-     1        lwfjs,iscale,ntop)
+     1        nbessel,iscale,ntop)
          if (jer.eq.8) then
             ier = 8
 	    return
@@ -234,7 +234,7 @@ C      note that everything is scaled.
 C***********************************************************************
       subroutine h3dlocevalspherestab_fast(local,wavek,scale,zshift,
      1     radius,nterms,nterms2,lmp,ynm,ynmd,phitemp,phitempn,
-     1     nquad,xnodes,iscale,fjs,fjder,lwfjs,ier)
+     1     nquad,xnodes,iscale,fjs,fjder,nbessel,ier)
 C***********************************************************************
 C
 C     This subroutine evaluates a local expansion on a target
@@ -266,7 +266,7 @@ C     phitempn(i,j) : jth mode of phi at ith quad node.
 C
 C***********************************************************************
       implicit real *8 (a-h,o-z)
-      integer iscale(0:lwfjs)
+      integer iscale(0:nbessel)
       integer nterms
       integer l,m,jnew,knew
       real *8 zshift, targ(3), center(3)
@@ -277,7 +277,7 @@ C***********************************************************************
       complex *16 phitemp(nquad,-nterms2:nterms2)
       complex *16 phitempn(nquad,-nterms2:nterms2)
       complex *16 imag,pot,fld(3), wavek,z,uval,unval,ur,utheta
-      complex *16 ephi1,ephik,ephi,fjs(0:lwfjs),fjder(0:lwfjs),ztmp1
+      complex *16 ephi1,ephik,ephi,fjs(0:nbessel),fjder(0:nbessel),ztmp1
       complex *16 ut1,ut2,ut3
       real *8 rat1(0:nterms,0:nterms),rat2(0:nterms,0:nterms)
       data imag/(0.0d0,1.0d0)/
@@ -309,7 +309,7 @@ C      note that everything is scaled.
 	 z = wavek*rj
 	 call ylgndr2sf(nterms,cthetaj,ynm,ynmd,rat1,rat2)
 	 call jfuns3d(jer,nterms,z,scale,fjs,ifder,fjder,
-     1        lwfjs,iscale,ntop)
+     1        nbessel,iscale,ntop)
          if (jer.eq.8) then
             ier = 8
 	    return

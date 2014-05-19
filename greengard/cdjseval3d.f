@@ -21,9 +21,9 @@ c     Computation of spherical Bessel functions via recurrence
 c
 c**********************************************************************
       subroutine jfuns3d(ier,nterms,z,scale,fjs,ifder,fjder,
-     1	      lwfjs,iscale,ntop)
+     1	      nbessel,iscale,ntop)
       implicit none
-      integer ier,nterms,ifder,lwfjs,ntop,i,ncntr
+      integer ier,nterms,ifder,nbessel,ntop,i,ncntr
       real *8 scale,d0,d1,dc1,dc2,dcoef,dd,done,tiny,zero
       real *8 scalinv,sctot,upbound,upbound2,upbound2inv
 c**********************************************************************
@@ -57,8 +57,8 @@ c    scale    (real *8) : scaling factor (discussed above)
 c    ifder  (integer): flag indicating whether to calculate "fjder"
 c		          0	NO
 c		          1	YES
-c    lwfjs  (integer): upper limit of input arrays 
-c                         fjs(0:lwfjs) and iscale(0:lwfjs)
+c    nbessel  (integer): upper limit of input arrays 
+c                         fjs(0:nbessel) and iscale(0:nbessel)
 c    iscale (integer): integer workspace used to keep track of 
 c                         internal scaling
 c
@@ -66,7 +66,7 @@ c OUTPUT:
 c
 c    ier    (integer): error return code 
 c                         ier=0 normal return;
-c                         ier=8 insufficient array dimension lwfjs
+c                         ier=8 insufficient array dimension nbessel
 c    fjs   (complex *16): array of scaled Bessel functions.
 c    fjder (complex *16): array of derivs of scaled Bessel functions.
 c    ntop  (integer) : highest index in arrays fjs that is nonzero
@@ -75,8 +75,8 @@ c       NOTE, that fjs and fjder arrays must be at least (nterms+2)
 c       complex *16 elements long.
 c
 c
-      integer iscale(0:lwfjs)
-      complex *16 wavek,fjs(0:lwfjs),fjder(0:*)
+      integer iscale(0:nbessel)
+      complex *16 wavek,fjs(0:nbessel),fjder(0:*)
       complex *16 z,zinv,com,fj0,fj1,zscale,ztmp
 c
       data upbound/1.0d+32/, upbound2/1.0d+40/, upbound2inv/1.0d-40/
@@ -111,7 +111,7 @@ c
       fjs(nterms)=done
       fjs(nterms-1)=zero
 c
-      do 1200 i=nterms,lwfjs
+      do 1200 i=nterms,nbessel
          dcoef=2*i+done
          ztmp=dcoef*zinv*fjs(i)-fjs(i-1)
          fjs(i+1)=ztmp

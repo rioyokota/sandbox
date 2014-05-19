@@ -200,7 +200,7 @@ c$omp$private(lused,ier,i,j,ptemp,ftemp,cd)
             call d3tgetb(ier,ibox,box,center0,corners0,wlists)
             call d3tnkids(box,nkids)
             level=box(1)
-            lwfjs = nterms(level)+1000
+            nbessel = nterms(level)+1000
             if( box(15) .eq. 0 ) cycle
             if (nkids .eq. 0 ) then
                radius = (corners0(1,1) - center0(1))**2
@@ -210,7 +210,7 @@ c$omp$private(lused,ier,i,j,ptemp,ftemp,cd)
                call h3dzero(rmlexp(iaddr(1,ibox)),nterms(level))
                call P2M(ier,wavek,scale(level),
      1              sourcesort(1,box(14)),chargesort(box(14)),box(15),
-     1              center0,nterms(level),nterms_eval(1,level),lwfjs,
+     1              center0,nterms(level),nterms_eval(1,level),nbessel,
      1              rmlexp(iaddr(1,ibox)),wlege,nlege)
             endif
          enddo
@@ -340,14 +340,14 @@ c     ... if source is childless, evaluate directly (if cheaper)
                   nterms_trunc=min(nterms(level0),nterms_trunc)
                   nterms_trunc=min(nterms(level1),nterms_trunc)
                   nq = max(nquad2,2*nterms(level1)+2)
-                  lwfjs = nterms_trunc+1000
+                  nbessel = nterms_trunc+1000
                   call M2L(wavek,
      1                 scale(level1),
      1                 center1,rmlexp(iaddr(1,jbox)),
      1                 nterms(level1),scale(level0),
      1                 center0,rmlexp(iaddr(2,ibox)),
      1                 nterms(level0),nterms_trunc,
-     1                 radius,xnodes2,wts2,nquad2,nq,lwfjs,ier)
+     1                 radius,xnodes2,wts2,nquad2,nq,nbessel,ier)
  4150          continue
             endif
  4200    continue
@@ -384,13 +384,13 @@ c     ... split local expansion of the parent box
                      level1=box1(1)
                      ldc = max(nterms(level0),nterms(level1))
                      nq = max(nquad,2*ldc+2)
-                     lwfjs = ldc+1000
+                     nbessel = ldc+1000
                      call L2L(wavek,scale(level0),
      1                    center0,
      1                    rmlexp(iaddr(2,ibox)),nterms(level0),
      1                    scale(level1),center1,rmlexp(iaddr(2,jbox)),
      1                    nterms(level1),ldc,
-     1                    radius,xnodes2,wts2,nquad2,nq,lwfjs,ier)
+     1                    radius,xnodes2,wts2,nquad2,nq,nbessel,ier)
  5100             continue
                endif
             endif
@@ -410,11 +410,11 @@ c$omp$private(ibox,box,center0,corners0,level,npts,nkids,ier)
          if (nkids .eq. 0) then
             level=box(1)
             npts=box(15)
-            lwfjs = nterms(level)+1000
+            nbessel = nterms(level)+1000
             if (level .ge. 2) then
                call L2P(wavek,scale(level),center0,
      1              rmlexp(iaddr(2,ibox)),
-     1              nterms(level),nterms_eval(1,level),lwfjs,
+     1              nterms(level),nterms_eval(1,level),nbessel,
      1              sourcesort(1,box(14)),box(15),
      1              pot(box(14)),fld(1,box(14)),
      1              wlege,nlege,ier)

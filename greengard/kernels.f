@@ -13,12 +13,11 @@
 c**********************************************************************
       subroutine P2P(ibox,Xi,pi,Fi,jbox,Xj,qj,wavek)
 c**********************************************************************
-c     This subroutine calculates the potential POT and field FLD
-c     at the target point TARGET, due to a charge at
-c     SOURCE. The scaling is that required of the delta function
-c     response: i.e.,
-c              	pot = exp(i*k*r)/r
-c		fld = -grad(pot)
+c     This subroutine calculates the potential and field
+c     at the target point Xi, due to a charge at Xj.
+c     The scaling is that required of the delta function response: i.e.,
+c              	pi = exp(i*k*r)/r
+c		Fi = -grad(pi)
 c---------------------------------------------------------------------
 c     INPUT:
 c     Xj    : location of the source
@@ -55,38 +54,38 @@ c---------------------------------------------------------------------
       return
       end
 c***********************************************************************
-      subroutine P2M(ier,wavek,rscale,source,charge,ns,center,
-     1     nterms,nterms1,lwfjs,mpole,wlege,nlege)
+      subroutine P2M(ier,wavek,scale,Xj,qj,nj,Xi,
+     1     nterms,ntrunc,nbessel,mpole,wlege,nlege)
 c***********************************************************************
-c     Constructs multipole (h) expansion about CENTER due to NS sources
-c     located at SOURCES(3,*).
+c     Constructs multipole expansion about Xi due to nj sources
+c     located at Xj.
 c-----------------------------------------------------------------------
 c     INPUT:
-c     wavek   : Helmholtz parameter
-c     rscale  : the scaling factor.
-c     sources : coordinates of sources
-c     charge  : source strengths
-c     ns      : number of sources
-c     center  : epxansion center
-c     nterms  : order of multipole expansion
-c     nterms1 : order of truncated expansion
-c     wlege   : precomputed array of scaling coeffs for Pnm
-c     nlege   : dimension parameter for wlege
+c     wavek  : Helmholtz parameter
+c     scale  : the scaling factor.
+c     Xj     : coordinates of sources
+c     qj     : source strengths
+c     nj     : number of sources
+c     Xi     : epxansion center
+c     nterms : order of multipole expansion
+c     ntrunc : order of truncated expansion
+c     wlege  : precomputed array of scaling coeffs for Pnm
+c     nlege  : dimension parameter for wlege
 c-----------------------------------------------------------------------
 c     OUTPUT:
-c     mpole   : coeffs of the h-expansion
+c     mpole  : coeffs of the h-expansion
 c-----------------------------------------------------------------------
       implicit none
-      integer i,j,m,l,n,ns,nterms,nterms1,nlege,ifder,lwfjs,jer,ntop,ier
-      integer iscale(0:lwfjs)
-      real *8 r,theta,phi,ctheta,stheta,cphi,sphi,wlege,rscale,dtmp
+      integer i,j,m,l,n,nj,nterms,ntrunc,nlege,ifder,nbessel,jer,ntop
+      integer iscale(0:nbessel),ier
+      real *8 r,theta,phi,ctheta,stheta,cphi,sphi,wlege,scale,dtmp
       real *8 thresh
-      real *8 center(3),source(3,ns),dX(3)
+      real *8 Xi(3),Xj(3,nj),dX(3)
       real *8 pp(0:nterms,0:nterms)
       real *8 ppd(0:nterms,0:nterms)
-      complex *16 charge(ns),i1,wavek,z,ztmp,ephi1,ephi1inv
+      complex *16 qj(nj),i1,wavek,z,ztmp,ephi1,ephi1inv
       complex *16 ephi(-nterms-1:nterms+1)
-      complex *16 fjs(0:lwfjs),fjder(0:lwfjs)
+      complex *16 fjs(0:nbessel),fjder(0:nbessel)
       complex *16 mpole(0:nterms,-nterms:nterms)
       complex *16 mtemp(0:nterms,-nterms:nterms)
       data i1/(0.0d0,1.0d0)/
@@ -97,10 +96,10 @@ c-----------------------------------------------------------------------
             mtemp(l,m) = 0
          enddo
       enddo
-      do i = 1, ns
-         dX(1)=source(1,i)-center(1)
-         dX(2)=source(2,i)-center(2)
-         dX(3)=source(3,i)-center(3)
+      do i = 1, nj
+         dX(1)=Xj(1,i)-Xi(1)
+         dX(2)=Xj(2,i)-Xi(2)
+         dX(3)=Xj(3,i)-Xi(3)
          call cart2polar(dX,r,theta,phi)
          ctheta=dcos(theta)
          stheta=dsin(theta)
@@ -114,16 +113,16 @@ c-----------------------------------------------------------------------
             ephi(j)=ephi(j-1)*ephi1
             ephi(-j)=ephi(-j+1)*ephi(-1)
          enddo
-         call ylgndrfw(nterms1,ctheta,pp,wlege,nlege)
+         call ylgndrfw(ntrunc,ctheta,pp,wlege,nlege)
          ifder=0
          z=wavek*r
-         call jfuns3d(jer,nterms1,z,rscale,fjs,ifder,fjder,
-     1	      lwfjs,iscale,ntop)
-         do n = 0,nterms1
-            fjs(n) = fjs(n)*charge(i)
+         call jfuns3d(jer,ntrunc,z,scale,fjs,ifder,fjder,
+     1	      nbessel,iscale,ntop)
+         do n = 0,ntrunc
+            fjs(n) = fjs(n)*qj(i)
          enddo
          mtemp(0,0)= mtemp(0,0) + fjs(0)
-         do n=1,nterms1
+         do n=1,ntrunc
             dtmp=pp(n,0)
             mtemp(n,0)= mtemp(n,0) + dtmp*fjs(n)
             do m=1,n
@@ -250,7 +249,7 @@ c---------------------------------------------------------------------
 c***********************************************************************
       subroutine M2L(wavek,scale,x0y0z0,mpole,
      1     nterms,scale2,xnynzn,local,nterms2,nterms_trunc,
-     1     radius,xnodes,wts,nquad,nq,lwfjs,ier)
+     1     radius,xnodes,wts,nquad,nq,nbessel,ier)
 c***********************************************************************
 c     Convert multipole expansion to a local expansion.
 c     This is a reasonably fast "point and shoot" version which
@@ -276,7 +275,7 @@ c     local : coefficients of shifted local expansion
 c---------------------------------------------------------------------
       implicit real *8 (a-h,o-z)
       integer  nterms,ier,l,m,jnew,knew
-      integer  iscale(0:lwfjs)
+      integer  iscale(0:nbessel)
       real *8 d,theta,ctheta,phi,scale,scale2
       real *8 x0y0z0(3),xnynzn(3)
       real *8 xnodes(1),wts(1),rvec(3)
@@ -288,8 +287,8 @@ c---------------------------------------------------------------------
       complex *16 mp2(0:nterms,-nterms:nterms)
       complex *16 fhs(0:nterms)
       complex *16 fhder(0:nterms)
-      complex *16 fjs(0:lwfjs)
-      complex *16 fjder(0:lwfjs)
+      complex *16 fjs(0:nbessel)
+      complex *16 fjder(0:nbessel)
       complex *16 mpole(0:nterms,-nterms:nterms)
       complex *16 marray1(0:nterms_trunc,-nterms_trunc:nterms_trunc)
       complex *16 local(0:nterms2,-nterms2:nterms2)
@@ -334,7 +333,7 @@ c---------------------------------------------------------------------
      $   (nterms_trunc,nterms_trunc,nquad,nterms_trunc,xnodes,wts,
      1     phitemp,phitempn,mptemp,mp2,ynm)
       call h3drescalestab(nterms_trunc,nterms_trunc,mptemp,mp2,
-     1     radius,wavek,scale2,fjs,fjder,iscale,lwfjs,ier)
+     1     radius,wavek,scale2,fjs,fjder,iscale,nbessel,ier)
       if( nterms_trunc .ge. 30 ) then
          call rotviaprojf90(-theta,nterms_trunc,nterms_trunc,
      1        nterms_trunc,mptemp,nterms_trunc,marray,nterms)
@@ -356,7 +355,7 @@ c---------------------------------------------------------------------
       end
       subroutine L2L(wavek,scale,x0y0z0,locold,nterms,
      1           scale2,xnynzn,local,nterms2,ldc,
-     2           radius,xnodes,wts,nquad,nq,lwfjs,ier)
+     2           radius,xnodes,wts,nquad,nq,nbessel,ier)
 c***********************************************************************
 c     Shifts center of a local expansion.
 c     This is a reasonably fast "point and shoot" version which
@@ -389,7 +388,7 @@ c     local   : coefficients of shifted local expansion
 c***********************************************************************
       implicit real *8 (a-h,o-z)
       integer nterms,ier,l,m,jnew,knew
-      integer iscale(0:lwfjs)
+      integer iscale(0:nbessel)
       real *8 x0y0z0(3),xnynzn(3),rvec(3)
       real *8 xnodes(1),wts(1)
       real *8 d,theta,ctheta,phi,scale,scale2
@@ -398,8 +397,8 @@ c***********************************************************************
       complex *16 phitemp(nq,-ldc:ldc)
       complex *16 phitempn(nq,-ldc:ldc)
       complex *16 mp2(0:ldc,-ldc:ldc)
-      complex *16 fjs(0:lwfjs)
-      complex *16 fjder(0:lwfjs)
+      complex *16 fjs(0:nbessel)
+      complex *16 fjder(0:nbessel)
       complex *16 locold(0:nterms,-nterms:nterms)
       complex *16 local(0:nterms2,-nterms2:nterms2)
       complex *16 mptemp(0:nterms2,-nterms2:nterms2)
@@ -441,12 +440,12 @@ c***********************************************************************
       call h3dlocevalspherestab_fast(marray,wavek,scale,
      1     zshift,radius,nterms,nterms2,
      1     ldc,ynm,ynmd,phitemp,phitempn,nquad,xnodes,
-     1     iscale,fjs,fjder,lwfjs,ier)
+     1     iscale,fjs,fjder,nbessel,ier)
       call h3dprojlocsepstab_fast
      1     (nterms2,nterms2,nquad,nterms2,xnodes,wts,
      1     phitemp,phitempn,mptemp,mp2,ynm)
       call h3drescalestab(nterms2,nterms2,mptemp,mp2,
-     1      radius,wavek,scale2,fjs,fjder,iscale,lwfjs,ier)
+     1      radius,wavek,scale2,fjs,fjder,iscale,nbessel,ier)
       if( nterms2 .ge. 30 ) then
       call rotviaprojf90(-theta,nterms2,nterms2,nterms2,mptemp,
      1      nterms2,marray,ldc)
@@ -467,8 +466,8 @@ c***********************************************************************
       return
       end
 c**********************************************************************
-      subroutine L2P(wavek,rscale,center,locexp,nterms,
-     1     nterms1,lwfjs,Xi,nt,pot,fld,wlege,nlege,ier)
+      subroutine L2P(wavek,scale,center,locexp,nterms,
+     1     ntrunc,nbessel,Xi,nt,pot,fld,wlege,nlege,ier)
 c**********************************************************************
 c     This subroutine evaluates a j-expansion centered at CENTER
 c     at the target point TARGET.
@@ -477,11 +476,11 @@ c             n   m
 c---------------------------------------------------------------------
 c     INPUT:
 c     wavek   : the Helmholtz coefficient
-c     rscale  : scaling parameter used in forming expansion
+c     scale   : scaling parameter used in forming expansion
 c     center  : coordinates of the expansion center
 c     locexp  : coeffs of the j-expansion
 c     nterms  : order of the h-expansion
-c     nterms1 : order of the truncated expansion
+c     ntrunc  : order of the truncated expansion
 c     Xi      : target vector
 c     nt      : number of targets
 c     wlege   : precomputed array of scaling coeffs for Pnm
@@ -492,9 +491,9 @@ c     pot     : potential at target (if requested)
 c     fld(3)  : gradient at target (if requested)
 c---------------------------------------------------------------------
       implicit none
-      integer i,j,m,n,nt,ier,jer,nterms,nterms1,nlege,ntop,lwfjs
-      integer iscale(0:lwfjs)
-      real *8 r,rx,ry,rz,theta,thetax,thetay,thetaz,rscale
+      integer i,j,m,n,nt,ier,jer,nterms,ntrunc,nlege,ntop,nbessel
+      integer iscale(0:nbessel)
+      real *8 r,rx,ry,rz,theta,thetax,thetay,thetaz,scale
       real *8 phi,phix,phiy,phiz,ctheta,stheta,cphi,sphi,wlege
       real *8 center(3),Xi(3,1),dX(3)
       real *8 pp(0:nterms,0:nterms)
@@ -502,7 +501,7 @@ c---------------------------------------------------------------------
       complex *16 wavek,pot(1),fld(3,1),ephi1,ephi1inv
       complex *16 locexp(0:nterms,-nterms:nterms)
       complex *16 ephi(-nterms-1:nterms+1)
-      complex *16 fjsuse,fjs(0:lwfjs),fjder(0:lwfjs)
+      complex *16 fjsuse,fjs(0:nbessel),fjder(0:nbessel)
       complex *16 eye,ur,utheta,uphi,ztmp,z
       complex *16 ztmp1,ztmp2,ztmp3,ztmpsum
       complex *16 ux,uy,uz
@@ -534,25 +533,25 @@ c---------------------------------------------------------------------
          rz = ctheta
          thetaz = -stheta
          phiz = 0.0d0
-         call ylgndr2sfw(nterms1,ctheta,pp,ppd,wlege,nlege)
+         call ylgndr2sfw(ntrunc,ctheta,pp,ppd,wlege,nlege)
          z=wavek*r
-         call jfuns3d(jer,nterms1,z,rscale,fjs,1,fjder,
-     1	      lwfjs,iscale,ntop)
+         call jfuns3d(jer,ntrunc,z,scale,fjs,1,fjder,
+     1	      nbessel,iscale,ntop)
          if (jer.ne.0) then
             ier=8
             return
          endif
          pot(i)=pot(i)+locexp(0,0)*fjs(0)
-         do j=0,nterms1
+         do j=0,ntrunc
             fjder(j)=fjder(j)*wavek
          enddo
          ur = locexp(0,0)*fjder(0)
          utheta = 0.0d0
          uphi = 0.0d0
-         do n=1,nterms1
+         do n=1,ntrunc
             pot(i)=pot(i)+locexp(n,0)*fjs(n)*pp(n,0)
             ur = ur + fjder(n)*pp(n,0)*locexp(n,0)
-            fjsuse = fjs(n+1)*rscale + fjs(n-1)/rscale
+            fjsuse = fjs(n+1)*scale + fjs(n-1)/scale
             fjsuse = wavek*fjsuse/(2*n+1.0d0)
             utheta = utheta -locexp(n,0)*fjsuse*ppd(n,0)*stheta
             do m=1,n
