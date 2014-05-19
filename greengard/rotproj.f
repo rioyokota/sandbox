@@ -26,8 +26,7 @@ c     next235_cproj = 2^p 3^q 5^r >= base  where p>=1, q>=0, r>=0
       end
 c***********************************************************************
       subroutine rotviaproj0(beta,nquad,nterms,m1,m2,mpole,lmp,
-     1           marray2,lmpn,cthetas,sthetas,cphis,sphis,ynm,ynmd,
-     1           rat1,rat2,uval,uder,ephis,wsave,avec,bvec)
+     1           marray2,lmpn)
 c***********************************************************************
 C
 c       INPUT:
@@ -44,20 +43,6 @@ c
 c       mpole:   coefficients of original multiple expansion
 c       lmp:     leading dimension of mpole
 c       lmpn:    leading dimension of output array marray2
-c       cthetas: workspace of dimension nquad
-c       sthetas: workspace of dimension nquad
-c       cphis:   workspace of dimension nquad
-c       sphis:   workspace of dimension nquad
-c       ynm:     workspace for spherical harmonics
-c       ynmd:    workspace for theta derivative of spherical harmonics
-c       rat1:    workspace of same dimension as ynm for precomputation
-c       rat2:    workspace of same dimension as ynm for precomputation
-c       uval:    workspace 
-c       uder:    workspace 
-c       ephis:   workspace for exp(i m phi)
-c       wsave:   workspace 
-c       avec:    workspace 
-c       bvec:    workspace 
 c
 c       OUTPUT:
 c
@@ -481,7 +466,7 @@ C***********************************************************************
       return
       end
 c***********************************************************************
-      subroutine rotviaprojf90(beta,nterms,m1,m2,mpole,lmp,
+      subroutine rotviaprojf90(beta,nterms,mpole,lmp,
      1           marray2,lmpn)
 c***********************************************************************
 c       Purpose:
@@ -519,38 +504,12 @@ c       marray2  coefficients of rotated expansion.
 c
 C---------------------------------------------------------------------
       implicit none
-      integer nquad,ier,m1,m2,nterms,lmp,lmpn, next235_cproj
-      integer ictheta,istheta,icphi,isphi,iynm,iynmd,irat1,irat2
-      integer iuval,iuder,iephi,iwsave,iavec,ibvec,lused
+      integer nquad,ier,nterms,lmp,lmpn,next235_cproj
       real *8 beta
-      real *8, allocatable :: w(:)
       complex *16 mpole(0:lmp,-lmp:lmp)
       complex *16 marray2(0:lmpn,-lmpn:lmpn)
-      complex *16, allocatable :: cw(:)
       nquad = next235_cproj((2*nterms+2)*1.0d0)
-      ictheta = 1
-      istheta = ictheta+nquad
-      icphi = istheta+nquad
-      isphi = icphi+nquad
-      iynm = isphi+nquad
-      iynmd = iynm + (nterms+1)**2
-      irat1 = iynmd + (nterms+1)**2
-      irat2 = irat1 + (nterms+1)**2
-      iwsave = irat2 + (nterms+1)**2
-      lused = iwsave + 4*nquad+20
-      allocate (w(lused), stat=ier)
-      iuval = 1
-      iuder = iuval + nquad*(nterms+1)
-      iephi = iuder + nquad*(nterms+1)
-      iavec = iephi + (2*nterms+1)
-      ibvec = iavec + 2*nquad
-      lused = ibvec + 2*nquad
-      allocate (cw(lused), stat=ier)
       call rotviaproj0(beta,nquad,nterms,nterms,nterms,mpole,lmp,
-     1           marray2,lmpn,w(ictheta),w(istheta),
-     1           w(icphi),w(isphi),w(iynm),w(iynmd),
-     1           w(irat1),w(irat2),cw(iuval),cw(iuder),
-     1           cw(iephi),w(iwsave),cw(iavec),cw(ibvec))
-      deallocate(w)
+     1           marray2,lmpn)
       return
       end

@@ -199,7 +199,7 @@ c---------------------------------------------------------------------
          enddo
       enddo
       if( ntermsj .ge. 30 ) then
-      call rotviaprojf90(theta,ntermsj,ntermsj,ntermsj,marray1,ntermsj,
+      call rotviaprojf90(theta,ntermsj,marray1,ntermsj,
      1        marray,ldc)
       else
       call rotviarecur3f90(theta,ntermsj,ntermsj,ntermsj,marray1,
@@ -215,7 +215,7 @@ c---------------------------------------------------------------------
       call h3drescalemp(ntermsi,ntermsi,mptemp,radius,wavek,
      1     scalei,fhs,fhder)
       if( ntermsi .ge. 30 ) then
-      call rotviaprojf90(-theta,ntermsi,ntermsi,ntermsi,mptemp,
+      call rotviaprojf90(-theta,ntermsi,mptemp,
      1        ntermsi,marray,ldc)
       else
       call rotviarecur3f90(-theta,ntermsi,ntermsi,ntermsi,mptemp,
@@ -305,7 +305,7 @@ c---------------------------------------------------------------------
          enddo
       enddo
       if( ntrunc .ge. 30 ) then
-      call rotviaprojf90(theta,ntrunc,ntrunc,ntrunc,
+      call rotviaprojf90(theta,ntrunc,
      1     marray1,ntrunc,marray,ntermsj)
       else
       call rotviarecur3f90(theta,ntrunc,ntrunc,ntrunc,
@@ -321,8 +321,8 @@ c---------------------------------------------------------------------
       call h3drescalestab(ntrunc,ntrunc,mptemp,mp2,
      1     radius,wavek,scalei,jn,jnd,nbessel,ier)
       if( ntrunc .ge. 30 ) then
-         call rotviaprojf90(-theta,ntrunc,ntrunc,
-     1        ntrunc,mptemp,ntrunc,marray,ntermsj)
+         call rotviaprojf90(-theta,ntrunc,
+     1        mptemp,ntrunc,marray,ntermsj)
       else
          call rotviarecur3f90(-theta,ntrunc,ntrunc,
      1        ntrunc,mptemp,ntrunc,marray,ntermsj)
@@ -414,7 +414,7 @@ c***********************************************************************
          enddo
       enddo
       if( ntermsi .ge. 30 ) then
-      call rotviaprojf90(theta,ntermsj,ntermsj,ntermsi,marray1,ntermsj,
+      call rotviaprojf90(theta,ntermsj,marray1,ntermsj,
      1      marray,ldc)
       else
       call rotviarecur3f90(theta,ntermsj,ntermsj,ntermsi,marray1,
@@ -431,7 +431,7 @@ c***********************************************************************
       call h3drescalestab(ntermsi,ntermsi,mptemp,mp2,
      1      radius,wavek,scalei,jn,jnd,nbessel,ier)
       if( ntermsi .ge. 30 ) then
-      call rotviaprojf90(-theta,ntermsi,ntermsi,ntermsi,mptemp,
+      call rotviaprojf90(-theta,ntermsi,mptemp,
      1      ntermsi,marray,ldc)
       else
       call rotviarecur3f90(-theta,ntermsi,ntermsi,ntermsi,mptemp,
