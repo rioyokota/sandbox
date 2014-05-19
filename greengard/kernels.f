@@ -55,7 +55,7 @@ c---------------------------------------------------------------------
       end
 c***********************************************************************
       subroutine P2M(ier,wavek,scale,Xj,qj,nj,Xi,
-     1     nterms,ntrunc,nbessel,mpole,wlege,nlege)
+     1     nterms,ntrunc,nbessel,Mi,Anm,Pmax)
 c***********************************************************************
 c     Constructs multipole expansion about Xi due to nj sources
 c     located at Xj.
@@ -69,16 +69,16 @@ c     nj     : number of sources
 c     Xi     : epxansion center
 c     nterms : order of multipole expansion
 c     ntrunc : order of truncated expansion
-c     wlege  : precomputed array of scaling coeffs for Pnm
-c     nlege  : dimension parameter for wlege
+c     Anm    : precomputed array of scaling coeffs for Pnm
+c     Pmax   : dimension parameter for Anm
 c-----------------------------------------------------------------------
 c     OUTPUT:
-c     mpole  : coeffs of the h-expansion
+c     Mi     : coeffs of the h-expansion
 c-----------------------------------------------------------------------
       implicit none
-      integer i,j,m,l,n,nj,nterms,ntrunc,nlege,ifder,nbessel,jer,ntop
+      integer i,j,m,l,n,nj,nterms,ntrunc,Pmax,ifder,nbessel,jer,ntop
       integer iscale(0:nbessel),ier
-      real *8 r,theta,phi,ctheta,stheta,cphi,sphi,wlege,scale,dtmp
+      real *8 r,theta,phi,ctheta,stheta,cphi,sphi,Anm,scale,dtmp
       real *8 thresh
       real *8 Xi(3),Xj(3,nj),dX(3)
       real *8 pp(0:nterms,0:nterms)
@@ -86,7 +86,7 @@ c-----------------------------------------------------------------------
       complex *16 qj(nj),i1,wavek,z,ztmp,ephi1,ephi1inv
       complex *16 ephi(-nterms-1:nterms+1)
       complex *16 fjs(0:nbessel),fjder(0:nbessel)
-      complex *16 mpole(0:nterms,-nterms:nterms)
+      complex *16 Mi(0:nterms,-nterms:nterms)
       complex *16 mtemp(0:nterms,-nterms:nterms)
       data i1/(0.0d0,1.0d0)/
       data thresh/1.0d-15/
@@ -113,7 +113,7 @@ c-----------------------------------------------------------------------
             ephi(j)=ephi(j-1)*ephi1
             ephi(-j)=ephi(-j+1)*ephi(-1)
          enddo
-         call ylgndrfw(ntrunc,ctheta,pp,wlege,nlege)
+         call ylgndrfw(ntrunc,ctheta,pp,Anm,Pmax)
          ifder=0
          z=wavek*r
          call jfuns3d(jer,ntrunc,z,scale,fjs,ifder,fjder,
@@ -134,7 +134,7 @@ c-----------------------------------------------------------------------
       enddo
       do l = 0,nterms
          do m=-l,l
-            mpole(l,m) = mpole(l,m)+mtemp(l,m)*i1*wavek
+            Mi(l,m) = Mi(l,m)+mtemp(l,m)*i1*wavek
          enddo
       enddo
       return
@@ -467,7 +467,7 @@ c***********************************************************************
       end
 c**********************************************************************
       subroutine L2P(wavek,scale,center,locexp,nterms,
-     1     ntrunc,nbessel,Xi,nt,pot,fld,wlege,nlege,ier)
+     1     ntrunc,nbessel,Xi,nt,pot,fld,Anm,Pmax,ier)
 c**********************************************************************
 c     This subroutine evaluates a j-expansion centered at CENTER
 c     at the target point TARGET.
@@ -475,26 +475,26 @@ c     pot =  sum sum  locexp(n,m) j_n(k r) Y_nm(theta,phi)
 c             n   m
 c---------------------------------------------------------------------
 c     INPUT:
-c     wavek   : the Helmholtz coefficient
-c     scale   : scaling parameter used in forming expansion
-c     center  : coordinates of the expansion center
-c     locexp  : coeffs of the j-expansion
-c     nterms  : order of the h-expansion
-c     ntrunc  : order of the truncated expansion
-c     Xi      : target vector
-c     nt      : number of targets
-c     wlege   : precomputed array of scaling coeffs for Pnm
-c     nlege   : dimension parameter for wlege
+c     wavek  : the Helmholtz coefficient
+c     scale  : scaling parameter used in forming expansion
+c     center : coordinates of the expansion center
+c     locexp : coeffs of the j-expansion
+c     nterms : order of the h-expansion
+c     ntrunc : order of the truncated expansion
+c     Xi     : target vector
+c     nt     : number of targets
+c     Anm    : precomputed array of scaling coeffs for Pnm
+c     Pmax   : dimension parameter for Anm
 c---------------------------------------------------------------------
 c     OUTPUT:
-c     pot     : potential at target (if requested)
-c     fld(3)  : gradient at target (if requested)
+c     pot    : potential at target (if requested)
+c     fld(3) : gradient at target (if requested)
 c---------------------------------------------------------------------
       implicit none
-      integer i,j,m,n,nt,ier,jer,nterms,ntrunc,nlege,ntop,nbessel
+      integer i,j,m,n,nt,ier,jer,nterms,ntrunc,Pmax,ntop,nbessel
       integer iscale(0:nbessel)
       real *8 r,rx,ry,rz,theta,thetax,thetay,thetaz,scale
-      real *8 phi,phix,phiy,phiz,ctheta,stheta,cphi,sphi,wlege
+      real *8 phi,phix,phiy,phiz,ctheta,stheta,cphi,sphi,Anm
       real *8 center(3),Xi(3,1),dX(3)
       real *8 pp(0:nterms,0:nterms)
       real *8 ppd(0:nterms,0:nterms)
@@ -533,7 +533,7 @@ c---------------------------------------------------------------------
          rz = ctheta
          thetaz = -stheta
          phiz = 0.0d0
-         call ylgndr2sfw(ntrunc,ctheta,pp,ppd,wlege,nlege)
+         call ylgndr2sfw(ntrunc,ctheta,pp,ppd,Anm,Pmax)
          z=wavek*r
          call jfuns3d(jer,ntrunc,z,scale,fjs,1,fjder,
      1	      nbessel,iscale,ntop)
