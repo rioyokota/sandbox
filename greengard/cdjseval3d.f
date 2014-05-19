@@ -21,7 +21,7 @@ c     Computation of spherical Bessel functions via recurrence
 c
 c**********************************************************************
       subroutine jfuns3d(ier,nterms,z,scale,fjs,ifder,fjder,
-     1	      nbessel,iscale,ntop)
+     1	      nbessel)
       implicit none
       integer ier,nterms,ifder,nbessel,ntop,i,ncntr
       real *8 scale,d0,d1,dc1,dc2,dcoef,dd,done,tiny,zero

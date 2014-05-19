@@ -76,27 +76,24 @@ c     OUTPUT:
 c     Mi     : coeffs of the h-expansion
 c-----------------------------------------------------------------------
       implicit none
-      integer i,j,m,l,n,nj,nterms,ntrunc,Pmax,ifder,nbessel,jer,ntop
-      integer iscale(0:nbessel),ier
+      integer i,m,n,nj,nterms,ntrunc,Pmax,nbessel,ier
       real *8 r,theta,phi,ctheta,stheta,cphi,sphi,Anm,scale,dtmp
-      real *8 thresh
       real *8 Xi(3),Xj(3,nj),dX(3)
       real *8 pp(0:nterms,0:nterms)
       real *8 ppd(0:nterms,0:nterms)
-      complex *16 qj(nj),i1,wavek,z,ztmp,ephi1,ephi1inv
+      complex *16 qj(nj),imag,wavek,z,ztmp,ephi1,ephi1inv
       complex *16 ephi(-nterms-1:nterms+1)
       complex *16 fjs(0:nbessel),fjder(0:nbessel)
       complex *16 Mi(0:nterms,-nterms:nterms)
       complex *16 mtemp(0:nterms,-nterms:nterms)
-      data i1/(0.0d0,1.0d0)/
-      data thresh/1.0d-15/
+      data imag/(0.0d0,1.0d0)/
       ier=0
-      do l = 0,nterms
-         do m=-l,l
-            mtemp(l,m) = 0
+      do n=0,nterms
+         do m=-n,n
+            mtemp(n,m) = 0
          enddo
       enddo
-      do i = 1, nj
+      do i=1,nj
          dX(1)=Xj(1,i)-Xi(1)
          dX(2)=Xj(2,i)-Xi(2)
          dX(3)=Xj(3,i)-Xi(3)
@@ -109,32 +106,31 @@ c-----------------------------------------------------------------------
          ephi(0)=1.0d0
          ephi(1)=ephi1
          ephi(-1)=dconjg(ephi1)
-         do j=2,nterms+1
-            ephi(j)=ephi(j-1)*ephi1
-            ephi(-j)=ephi(-j+1)*ephi(-1)
+         do n=2,nterms+1
+            ephi(n)=ephi(n-1)*ephi1
+            ephi(-n)=ephi(-n+1)*ephi(-1)
          enddo
          call ylgndrfw(ntrunc,ctheta,pp,Anm,Pmax)
-         ifder=0
          z=wavek*r
-         call jfuns3d(jer,ntrunc,z,scale,fjs,ifder,fjder,
-     1	      nbessel,iscale,ntop)
+         call jfuns3d(ier,ntrunc,z,scale,fjs,0,fjder,
+     1	      nbessel)
          do n = 0,ntrunc
             fjs(n) = fjs(n)*qj(i)
          enddo
-         mtemp(0,0)= mtemp(0,0) + fjs(0)
+         mtemp(0,0)= mtemp(0,0)+fjs(0)
          do n=1,ntrunc
             dtmp=pp(n,0)
-            mtemp(n,0)= mtemp(n,0) + dtmp*fjs(n)
+            mtemp(n,0)= mtemp(n,0)+dtmp*fjs(n)
             do m=1,n
                ztmp=pp(n,m)*fjs(n)
-               mtemp(n, m)= mtemp(n, m) + ztmp*dconjg(ephi(m))
-               mtemp(n,-m)= mtemp(n,-m) + ztmp*dconjg(ephi(-m))
+               mtemp(n, m)=mtemp(n, m)+ztmp*dconjg(ephi(m))
+               mtemp(n,-m)=mtemp(n,-m)+ztmp*dconjg(ephi(-m))
             enddo
          enddo
       enddo
-      do l = 0,nterms
-         do m=-l,l
-            Mi(l,m) = Mi(l,m)+mtemp(l,m)*i1*wavek
+      do n=0,nterms
+         do m=-n,n
+            Mi(n,m) = Mi(n,m)+mtemp(n,m)*imag*wavek
          enddo
       enddo
       return
@@ -274,8 +270,7 @@ c     OUTPUT:
 c     local : coefficients of shifted local expansion
 c---------------------------------------------------------------------
       implicit real *8 (a-h,o-z)
-      integer  nterms,ier,l,m,jnew,knew
-      integer  iscale(0:nbessel)
+      integer nterms,ier,l,m,jnew,knew
       real *8 d,theta,ctheta,phi,scale,scale2
       real *8 x0y0z0(3),xnynzn(3)
       real *8 xnodes(1),wts(1),rvec(3)
@@ -333,7 +328,7 @@ c---------------------------------------------------------------------
      $   (nterms_trunc,nterms_trunc,nquad,nterms_trunc,xnodes,wts,
      1     phitemp,phitempn,mptemp,mp2,ynm)
       call h3drescalestab(nterms_trunc,nterms_trunc,mptemp,mp2,
-     1     radius,wavek,scale2,fjs,fjder,iscale,nbessel,ier)
+     1     radius,wavek,scale2,fjs,fjder,nbessel,ier)
       if( nterms_trunc .ge. 30 ) then
          call rotviaprojf90(-theta,nterms_trunc,nterms_trunc,
      1        nterms_trunc,mptemp,nterms_trunc,marray,nterms)
@@ -388,7 +383,6 @@ c     local   : coefficients of shifted local expansion
 c***********************************************************************
       implicit real *8 (a-h,o-z)
       integer nterms,ier,l,m,jnew,knew
-      integer iscale(0:nbessel)
       real *8 x0y0z0(3),xnynzn(3),rvec(3)
       real *8 xnodes(1),wts(1)
       real *8 d,theta,ctheta,phi,scale,scale2
@@ -440,12 +434,12 @@ c***********************************************************************
       call h3dlocevalspherestab_fast(marray,wavek,scale,
      1     zshift,radius,nterms,nterms2,
      1     ldc,ynm,ynmd,phitemp,phitempn,nquad,xnodes,
-     1     iscale,fjs,fjder,nbessel,ier)
+     1     fjs,fjder,nbessel,ier)
       call h3dprojlocsepstab_fast
      1     (nterms2,nterms2,nquad,nterms2,xnodes,wts,
      1     phitemp,phitempn,mptemp,mp2,ynm)
       call h3drescalestab(nterms2,nterms2,mptemp,mp2,
-     1      radius,wavek,scale2,fjs,fjder,iscale,nbessel,ier)
+     1      radius,wavek,scale2,fjs,fjder,nbessel,ier)
       if( nterms2 .ge. 30 ) then
       call rotviaprojf90(-theta,nterms2,nterms2,nterms2,mptemp,
      1      nterms2,marray,ldc)
@@ -491,8 +485,7 @@ c     pot    : potential at target (if requested)
 c     fld(3) : gradient at target (if requested)
 c---------------------------------------------------------------------
       implicit none
-      integer i,j,m,n,nt,ier,jer,nterms,ntrunc,Pmax,ntop,nbessel
-      integer iscale(0:nbessel)
+      integer i,j,m,n,nt,ier,nterms,ntrunc,Pmax,nbessel
       real *8 r,rx,ry,rz,theta,thetax,thetay,thetaz,scale
       real *8 phi,phix,phiy,phiz,ctheta,stheta,cphi,sphi,Anm
       real *8 center(3),Xi(3,1),dX(3)
@@ -535,12 +528,8 @@ c---------------------------------------------------------------------
          phiz = 0.0d0
          call ylgndr2sfw(ntrunc,ctheta,pp,ppd,Anm,Pmax)
          z=wavek*r
-         call jfuns3d(jer,ntrunc,z,scale,fjs,1,fjder,
-     1	      nbessel,iscale,ntop)
-         if (jer.ne.0) then
-            ier=8
-            return
-         endif
+         call jfuns3d(ier,ntrunc,z,scale,fjs,1,fjder,
+     1	      nbessel)
          pot(i)=pot(i)+locexp(0,0)*fjs(0)
          do j=0,ntrunc
             fjder(j)=fjder(j)*wavek

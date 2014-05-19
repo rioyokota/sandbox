@@ -7,7 +7,6 @@ c     The method is based on examining the decay of h_n * j_n.
 c
 c     Maximum number of terms is 1000, which 
 c     works for boxes up to 160 wavelengths in size     
-      integer iscale(0:2000)
       complex *16  wavek, z1, z2, z3, jfun(0:2000), ht0,
      1             ht1, ht2, fjder(0:1), ztmp,
      1             hfun(0:2000), fhder(0:1)
@@ -23,8 +22,7 @@ c       approximately the same for all small frequencies
       call h3dall(ntmax,z1,rscale,hfun,ifder,fhder)
       z2 = (wavek*size) * dsqrt(3d0)/2.d0
       ier1 = 0
-      call jfuns3d(ier1, ntmax, z2, rscale, jfun, ifder, fjder,
-     1                 2000, iscale, ntop)
+      call jfuns3d(ier1,ntmax,z2,rscale,jfun,ifder,fjder,2000)
       if (ier1.eq.8) then 
         ier = 11 
         return
@@ -60,7 +58,6 @@ c     Build nterms table for all boxes in list 2
 c
 c     Maximum number of terms is 1000, which 
 c     works for boxes up to 160 wavelengths in size     
-      integer iscale(0:2000)
       complex *16  wavek, z1, z2, z3, jfun(0:2000), ht0,
      1             ht1, ht2, fjder(0:1), ztmp,
      1             hfun(0:2000), fhder(0:1)
@@ -88,8 +85,7 @@ c       approximately the same for all small frequencies
       call h3dall(ntmax,z1,rscale,hfun,ifder,fhder)
       z2 = (wavek*size) * dsqrt(3d0)/2.d0
       ier1 = 0
-      call jfuns3d(ier1, ntmax, z2, rscale, jfun, ifder, fjder,
-     1                 2000, iscale, ntop)
+      call jfuns3d(ier1,ntmax,z2,rscale,jfun,ifder,fjder,2000)
       if (ier1.eq.8) then 
         ier = 11 
         return
@@ -151,7 +147,6 @@ c     The method is based on examining the decay of h_n * j_n.
 c
 c     Maximum number of terms is 1000, which 
 c     works for boxes up to 160 wavelengths in size     
-      integer iscale(0:2000)
       complex *16  wavek, z1, z2, z3, jfun(0:2000), ht0,
      1             ht1, ht2, fjder(0:1), ztmp,
      1             hfun(0:2000), fhder(0:1)
@@ -175,8 +170,7 @@ c       center only
 c       center only, small interior sphere
         if( itype .eq. 4 ) z2 = (wavek*size) * 0.8d0/2.d0
       ier1 = 0
-      call jfuns3d(ier1, ntmax, z2, rscale, jfun, ifder, fjder,
-     1                 2000, iscale, ntop)
+      call jfuns3d(ier1,ntmax,z2,rscale,jfun,ifder,fjder,2000)
 c     set error flag if jfuns runs out of memory
       if (ier1.eq.8) then 
         ier = 11 

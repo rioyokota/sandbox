@@ -49,7 +49,7 @@ C---------------------------------------------------------------------
       end
 C***********************************************************************
       subroutine h3drescalestab(nterms,lmp,local,localn,
-     1           radius,wavek0,scale,fjs,fjder,iscale,nbessel,ier)
+     1           radius,wavek0,scale,fjs,fjder,nbessel,ier)
 C***********************************************************************
 C
 C     This subroutine takes as input the potential and its normal
@@ -104,7 +104,7 @@ C---------------------------------------------------------------------
       z = wavek0*radius
       ifder = 1
       call jfuns3d(ier1,nterms,z,scale,fjs,
-     1             ifder,fjder,nbessel,iscale,ntop)
+     1             ifder,fjder,nbessel)
       if (ier1.eq.8) then
          ier = 8
 	 return
@@ -122,7 +122,7 @@ C---------------------------------------------------------------------
 C***********************************************************************
       subroutine h3dlocevalspherestab(local,wavek,scale,zshift,radius,
      1           nterms,nterms2,lmp,ynm,ynmd,phitemp,phitempn,
-     2           nquad,xnodes,iscale,fjs,fjder,nbessel,ier)
+     2           nquad,xnodes,fjs,fjder,nbessel,ier)
 C***********************************************************************
 C
 C     This subroutine evaluates a local expansion on a target
@@ -154,7 +154,6 @@ C     phitempn(i,j) : jth mode of phi at ith quad node.
 C
 C***********************************************************************
       implicit real *8 (a-h,o-z)
-      integer iscale(0:nbessel)
       integer nterms
       integer l,m,jnew,knew
       real *8 zshift, targ(3), center(3)
@@ -194,8 +193,7 @@ C      note that everything is scaled.
 	 thetan = (cthetaj*stheta - sthetaj*ctheta)/rj
 	 z = wavek*rj
 	 call ylgndr2s(nterms,cthetaj,ynm,ynmd)
-	 call jfuns3d(jer,nterms,z,scale,fjs,ifder,fjder,
-     1        nbessel,iscale,ntop)
+	 call jfuns3d(jer,nterms,z,scale,fjs,ifder,fjder,nbessel)
          if (jer.eq.8) then
             ier = 8
 	    return
@@ -234,7 +232,7 @@ C      note that everything is scaled.
 C***********************************************************************
       subroutine h3dlocevalspherestab_fast(local,wavek,scale,zshift,
      1     radius,nterms,nterms2,lmp,ynm,ynmd,phitemp,phitempn,
-     1     nquad,xnodes,iscale,fjs,fjder,nbessel,ier)
+     1     nquad,xnodes,fjs,fjder,nbessel,ier)
 C***********************************************************************
 C
 C     This subroutine evaluates a local expansion on a target
@@ -266,7 +264,6 @@ C     phitempn(i,j) : jth mode of phi at ith quad node.
 C
 C***********************************************************************
       implicit real *8 (a-h,o-z)
-      integer iscale(0:nbessel)
       integer nterms
       integer l,m,jnew,knew
       real *8 zshift, targ(3), center(3)
@@ -308,8 +305,7 @@ C      note that everything is scaled.
 	 thetan = (cthetaj*stheta - sthetaj*ctheta)/rj
 	 z = wavek*rj
 	 call ylgndr2sf(nterms,cthetaj,ynm,ynmd,rat1,rat2)
-	 call jfuns3d(jer,nterms,z,scale,fjs,ifder,fjder,
-     1        nbessel,iscale,ntop)
+	 call jfuns3d(jer,nterms,z,scale,fjs,ifder,fjder,nbessel)
          if (jer.eq.8) then
             ier = 8
 	    return
