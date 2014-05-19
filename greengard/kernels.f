@@ -128,7 +128,7 @@ c-----------------------------------------------------------------------
       end
 c***********************************************************************
       subroutine M2M(wavek,scalej,Xj,Mj,ntermsj,
-     1     scalei,Xi,Mi,ntermsi,ldc,
+     1     scalei,Xi,Mi,ntermsi,
      2     radius,xnodes,wts,nquad,nq,ier)
 c***********************************************************************
 c     Shift multipole expansion.
@@ -156,23 +156,19 @@ c     OUTPUT:
 c     Mi  : coefficients of shifted expansion
 c---------------------------------------------------------------------
       implicit none
-      integer  ntermsj, lw, lused, ier, nq, nquad, nquse,ldc,ntermsi
+      integer ntermsj,lw,lused,ier,nq,nquad,nquse,ntermsi
       real *8 Xj(3),Xi(3)
       real *8 radius, zshift
       real *8 xnodes(1),wts(1)
       real *8 d,theta,ctheta,phi,scalej,scalei,rvec(3)
-      real *8 ynm(0:ldc,0:ldc)
-      real *8 ynmd(0:ldc,0:ldc)
-      complex *16 phitemp(nq,-ldc:ldc)
-      complex *16 phitemp2(nq,-ldc:ldc)
       complex *16 fhs(0:ntermsj)
       complex *16 fhder(0:ntermsj)
       complex *16 Mj(0:ntermsj,-ntermsj:ntermsj)
       complex *16 marray1(0:ntermsj,-ntermsj:ntermsj)
       complex *16 Mi(0:ntermsi,-ntermsi:ntermsi)
-      complex *16 marray(0:ldc,-ldc:ldc)
+      complex *16 marray(0:ntermsj,-ntermsj:ntermsj)
       complex *16 wavek
-      complex *16 ephi(-ldc-1:ldc+1),imag
+      complex *16 ephi(-ntermsj-1:ntermsj+1),imag
       complex *16, allocatable :: mptemp(:,:)
       integer  l,m,jnew,knew
       data imag/(0.0d0,1.0d0)/
@@ -184,7 +180,7 @@ c---------------------------------------------------------------------
       ephi(1) = exp(imag*phi)
       ephi(0)=1.0d0
       ephi(-1)=dconjg(ephi(1))
-      do l = 1,ldc
+      do l = 1,ntermsj
          ephi(l+1) = ephi(l)*ephi(1)
          ephi(-1-l) = dconjg(ephi(l+1))
       enddo
@@ -200,33 +196,33 @@ c---------------------------------------------------------------------
       enddo
       if( ntermsj .ge. 30 ) then
       call rotviaprojf90(theta,ntermsj,marray1,ntermsj,
-     1        marray,ldc)
+     1        marray,ntermsj)
       else
       call rotviarecur3f90(theta,ntermsj,ntermsj,ntermsj,marray1,
-     1        ntermsj,marray,ldc)
+     1        ntermsj,marray,ntermsj)
       endif
       zshift = d
       call h3dmpevalspherenm_fast(marray,wavek,scalej,
-     1     zshift,radius,ntermsj,ldc,ynm,
-     1     phitemp,nquad,xnodes,fhs,fhder)
+     1     zshift,radius,ntermsj,ntermsj,
+     1     nquad,xnodes,fhs,fhder)
       call h3dprojlocnmsep_fast
      1     (ntermsi,ntermsi,nquad,ntermsj,xnodes,wts,
-     1     phitemp,mptemp,ynm)
+     1     mptemp)
       call h3drescalemp(ntermsi,ntermsi,mptemp,radius,wavek,
      1     scalei,fhs,fhder)
       if( ntermsi .ge. 30 ) then
       call rotviaprojf90(-theta,ntermsi,mptemp,
-     1        ntermsi,marray,ldc)
+     1        ntermsi,marray,ntermsj)
       else
       call rotviarecur3f90(-theta,ntermsi,ntermsi,ntermsi,mptemp,
-     1        ntermsi,marray,ldc)
+     1        ntermsi,marray,ntermsj)
       endif
       do l=0,ntermsi
          do m=-l,l
             mptemp(l,m)=ephi(-m)*marray(l,m)
          enddo
       enddo
-      do l = 0,min(ldc,ntermsi)
+      do l = 0,min(ntermsj,ntermsi)
          do m=-l,l
             Mi(l,m) = Mi(l,m)+mptemp(l,m)
          enddo
