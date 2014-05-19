@@ -80,16 +80,16 @@ c-----------------------------------------------------------------------
       real *8 r,theta,phi,ctheta,stheta,Anm,scale
       real *8 Xi(3),Xj(3,nj),dX(3)
       real *8 Ynm(0:nterms,0:nterms)
-      complex *16 qj(nj),imag,wavek,z,ztmp
-      complex *16 ephi(-nterms-1:nterms+1)
+      complex *16 qj(nj),imag,wavek,z,Ynmjn
+      complex *16 ephi(ntrunc)
       complex *16 jn(0:nbessel),jnd(0:nbessel)
       complex *16 Mi(0:nterms,-nterms:nterms)
-      complex *16 mtemp(0:nterms,-nterms:nterms)
+      complex *16 Mnm(0:nterms,-nterms:nterms)
       data imag/(0.0d0,1.0d0)/
       ier=0
       do n=0,nterms
          do m=-n,n
-            mtemp(n,m) = 0
+            Mnm(n,m) = 0
          enddo
       enddo
       do i=1,nj
@@ -99,33 +99,29 @@ c-----------------------------------------------------------------------
          call cart2sph(dX,r,theta,phi)
          ctheta=dcos(theta)
          stheta=dsin(theta)
-         ephi(0)=1.0d0
          ephi(1)=exp(imag*phi)
-         ephi(-1)=dconjg(ephi(1))
-         do n=2,nterms+1
+         do n=2,ntrunc
             ephi(n)=ephi(n-1)*ephi(1)
-            ephi(-n)=ephi(-n+1)*ephi(-1)
          enddo
          call ylgndrfw(ntrunc,ctheta,Ynm,Anm,Pmax)
          z=wavek*r
-         call jfuns3d(ier,ntrunc,z,scale,jn,0,jnd,
-     1	      nbessel)
+         call jfuns3d(ier,ntrunc,z,scale,jn,0,jnd,nbessel)
          do n = 0,ntrunc
-            jn(n) = jn(n)*qj(i)
+            jn(n)=jn(n)*qj(i)
          enddo
-         mtemp(0,0)= mtemp(0,0)+jn(0)
+         Mnm(0,0)=Mnm(0,0)+jn(0)
          do n=1,ntrunc
-            mtemp(n,0)= mtemp(n,0)+Ynm(n,0)*jn(n)
+            Mnm(n,0)=Mnm(n,0)+Ynm(n,0)*jn(n)
             do m=1,n
-               ztmp=Ynm(n,m)*jn(n)
-               mtemp(n, m)=mtemp(n, m)+ztmp*dconjg(ephi(m))
-               mtemp(n,-m)=mtemp(n,-m)+ztmp*dconjg(ephi(-m))
+               Ynmjn=Ynm(n,m)*jn(n)
+               Mnm(n, m)=Mnm(n, m)+Ynmjn*dconjg(ephi(m))
+               Mnm(n,-m)=Mnm(n,-m)+Ynmjn*ephi(m)
             enddo
          enddo
       enddo
       do n=0,nterms
          do m=-n,n
-            Mi(n,m) = Mi(n,m)+mtemp(n,m)*imag*wavek
+            Mi(n,m)=Mi(n,m)+Mnm(n,m)*imag*wavek
          enddo
       enddo
       return
