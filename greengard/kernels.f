@@ -127,9 +127,9 @@ c-----------------------------------------------------------------------
       return
       end
 c***********************************************************************
-      subroutine M2M(wavek,scale,x0y0z0,mpole,nterms,scale2,
-     1           xnynzn,mpolen,nterms2,ldc,
-     2           radius,xnodes,wts,nquad,nq,ier)
+      subroutine M2M(wavek,scalej,Xj,Mj,ntermsj,
+     1     scalei,Xi,Mi,ntermsi,ldc,
+     2     radius,xnodes,wts,nquad,nq,ier)
 c***********************************************************************
 c     Shift multipole expansion.
 c     This is a reasonably fast "point and shoot" version which
@@ -139,13 +139,13 @@ c     coordinates.
 c---------------------------------------------------------------------
 c     INPUT:
 c     wavek   : Helmholtz parameter
-c     x0y0z0  : center of original multiple expansion
-c     xnynzn  : center of shifted expansion
-c     mpole   : coefficients of original multiple expansion
-c     nterms  : order of multipole expansion
-c     nterms2 : order of shifted expansion
-c     scale   : scaling parameter for mpole expansion
-c     scale2  : scaling parameter for shifted expansion
+c     Xj  : center of original multiple expansion
+c     Xi  : center of shifted expansion
+c     Mj   : coefficients of original multiple expansion
+c     ntermsj  : order of multipole expansion
+c     ntermsi : order of shifted expansion
+c     scalej   : scaling parameter for mpole expansion
+c     scalei  : scaling parameter for shifted expansion
 c     radius  : radius of sphere on which shifted expansion is computed
 c     xnodes  : Legendre nodes (precomputed)
 c     wts     : Legendre weights (precomputed)
@@ -153,33 +153,33 @@ c     nquad   : number of quadrature nodes in theta
 c     nq      : used to allocate work arrays for both z-shift and rotations.
 c---------------------------------------------------------------------
 c     OUTPUT:
-c     mpolen  : coefficients of shifted expansion
+c     Mi  : coefficients of shifted expansion
 c---------------------------------------------------------------------
       implicit none
-      integer  nterms, lw, lused, ier, nq, nquad, nquse,ldc,nterms2
-      real *8 x0y0z0(3),xnynzn(3)
+      integer  ntermsj, lw, lused, ier, nq, nquad, nquse,ldc,ntermsi
+      real *8 Xj(3),Xi(3)
       real *8 radius, zshift
       real *8 xnodes(1),wts(1)
-      real *8 d,theta,ctheta,phi,scale,scale2,rvec(3)
+      real *8 d,theta,ctheta,phi,scalej,scalei,rvec(3)
       real *8 ynm(0:ldc,0:ldc)
       real *8 ynmd(0:ldc,0:ldc)
       complex *16 phitemp(nq,-ldc:ldc)
       complex *16 phitemp2(nq,-ldc:ldc)
-      complex *16 fhs(0:nterms)
-      complex *16 fhder(0:nterms)
-      complex *16 mpole(0:nterms,-nterms:nterms)
-      complex *16 marray1(0:nterms,-nterms:nterms)
-      complex *16 mpolen(0:nterms2,-nterms2:nterms2)
+      complex *16 fhs(0:ntermsj)
+      complex *16 fhder(0:ntermsj)
+      complex *16 Mj(0:ntermsj,-ntermsj:ntermsj)
+      complex *16 marray1(0:ntermsj,-ntermsj:ntermsj)
+      complex *16 Mi(0:ntermsi,-ntermsi:ntermsi)
       complex *16 marray(0:ldc,-ldc:ldc)
       complex *16 wavek
       complex *16 ephi(-ldc-1:ldc+1),imag
       complex *16, allocatable :: mptemp(:,:)
       integer  l,m,jnew,knew
       data imag/(0.0d0,1.0d0)/
-      allocate( mptemp(0:nterms2,-nterms2:nterms2) )
-      rvec(1) = xnynzn(1) - x0y0z0(1)
-      rvec(2) = xnynzn(2) - x0y0z0(2)
-      rvec(3) = xnynzn(3) - x0y0z0(3)
+      allocate( mptemp(0:ntermsi,-ntermsi:ntermsi) )
+      rvec(1) = Xi(1) - Xj(1)
+      rvec(2) = Xi(2) - Xj(2)
+      rvec(3) = Xi(3) - Xj(3)
       call cart2sph(rvec,d,theta,phi)
       ephi(1) = exp(imag*phi)
       ephi(0)=1.0d0
@@ -188,54 +188,54 @@ c---------------------------------------------------------------------
          ephi(l+1) = ephi(l)*ephi(1)
          ephi(-1-l) = dconjg(ephi(l+1))
       enddo
-      do l=0,nterms
+      do l=0,ntermsj
          do m=-l,l
-            marray1(l,m)=mpole(l,m)*ephi(m)
+            marray1(l,m)=Mj(l,m)*ephi(m)
          enddo
       enddo
-      do l=0,nterms2
+      do l=0,ntermsi
          do m=-l,l
             mptemp(l,m)=0.0d0
          enddo
       enddo
-      if( nterms .ge. 30 ) then
-      call rotviaprojf90(theta,nterms,nterms,nterms,marray1,nterms,
+      if( ntermsj .ge. 30 ) then
+      call rotviaprojf90(theta,ntermsj,ntermsj,ntermsj,marray1,ntermsj,
      1        marray,ldc)
       else
-      call rotviarecur3f90(theta,nterms,nterms,nterms,marray1,nterms,
-     1        marray,ldc)
+      call rotviarecur3f90(theta,ntermsj,ntermsj,ntermsj,marray1,
+     1        ntermsj,marray,ldc)
       endif
       zshift = d
-      call h3dmpevalspherenm_fast(marray,wavek,scale,
-     1     zshift,radius,nterms,ldc,ynm,
+      call h3dmpevalspherenm_fast(marray,wavek,scalej,
+     1     zshift,radius,ntermsj,ldc,ynm,
      1     phitemp,nquad,xnodes,fhs,fhder)
       call h3dprojlocnmsep_fast
-     1     (nterms2,nterms2,nquad,nterms,xnodes,wts,
+     1     (ntermsi,ntermsi,nquad,ntermsj,xnodes,wts,
      1     phitemp,mptemp,ynm)
-      call h3drescalemp(nterms2,nterms2,mptemp,radius,wavek,
-     1     scale2,fhs,fhder)
-      if( nterms2 .ge. 30 ) then
-      call rotviaprojf90(-theta,nterms2,nterms2,nterms2,mptemp,
-     1        nterms2,marray,ldc)
+      call h3drescalemp(ntermsi,ntermsi,mptemp,radius,wavek,
+     1     scalei,fhs,fhder)
+      if( ntermsi .ge. 30 ) then
+      call rotviaprojf90(-theta,ntermsi,ntermsi,ntermsi,mptemp,
+     1        ntermsi,marray,ldc)
       else
-      call rotviarecur3f90(-theta,nterms2,nterms2,nterms2,mptemp,
-     1        nterms2,marray,ldc)
+      call rotviarecur3f90(-theta,ntermsi,ntermsi,ntermsi,mptemp,
+     1        ntermsi,marray,ldc)
       endif
-      do l=0,nterms2
+      do l=0,ntermsi
          do m=-l,l
             mptemp(l,m)=ephi(-m)*marray(l,m)
          enddo
       enddo
-      do l = 0,min(ldc,nterms2)
+      do l = 0,min(ldc,ntermsi)
          do m=-l,l
-            mpolen(l,m) = mpolen(l,m)+mptemp(l,m)
+            Mi(l,m) = Mi(l,m)+mptemp(l,m)
          enddo
       enddo
       return
       end
 c***********************************************************************
-      subroutine M2L(wavek,scale,x0y0z0,mpole,
-     1     nterms,scale2,xnynzn,local,nterms2,nterms_trunc,
+      subroutine M2L(wavek,scalej,Xj,Mj,
+     1     ntermsj,scalei,Xi,local,ntermsi,ntrunc,
      1     radius,xnodes,wts,nquad,nq,nbessel,ier)
 c***********************************************************************
 c     Convert multipole expansion to a local expansion.
@@ -246,12 +246,12 @@ c     coordinates.
 c---------------------------------------------------------------------
 c     INPUT:
 c     wavek  : Helmholtz parameter
-c     x0y0z0 : center of original multiple expansion
-c     xnynzn : center of shifted local expansion
-c     mpole  : coefficients of original multiple expansion
-c     nterms : order of multipole expansion
-c     scale  : scaling parameter for mpole expansion
-c     scale2 : scaling parameter for local expansion
+c     Xj : center of original multiple expansion
+c     Xi : center of shifted local expansion
+c     Mj  : coefficients of original multiple expansion
+c     ntermsj : order of multipole expansion
+c     scalej  : scaling parameter for mpole expansion
+c     scalei : scaling parameter for local expansion
 c     radius : radius of sphere on which local expansion is computed
 c     xnodes : Legendre nodes (precomputed)
 c     wts    : Legendre weights (precomputed)
@@ -261,86 +261,86 @@ c     OUTPUT:
 c     local : coefficients of shifted local expansion
 c---------------------------------------------------------------------
       implicit real *8 (a-h,o-z)
-      integer nterms,ier,l,m,jnew,knew
-      real *8 d,theta,ctheta,phi,scale,scale2
-      real *8 x0y0z0(3),xnynzn(3)
+      integer ntermsj,ier,l,m,jnew,knew
+      real *8 d,theta,ctheta,phi,scalej,scalei
+      real *8 Xj(3),Xi(3)
       real *8 xnodes(1),wts(1),rvec(3)
       real *8 zshift
-      real *8 ynm(0:nterms,0:nterms)
-      real *8 ynmd(0:nterms,0:nterms)
-      complex *16 phitemp(nq,-nterms:nterms)
-      complex *16 phitempn(nq,-nterms:nterms)
-      complex *16 mp2(0:nterms,-nterms:nterms)
-      complex *16 fhs(0:nterms)
-      complex *16 fhder(0:nterms)
+      real *8 ynm(0:ntermsj,0:ntermsj)
+      real *8 ynmd(0:ntermsj,0:ntermsj)
+      complex *16 phitemp(nq,-ntermsj:ntermsj)
+      complex *16 phitempn(nq,-ntermsj:ntermsj)
+      complex *16 mp2(0:ntermsj,-ntermsj:ntermsj)
+      complex *16 fhs(0:ntermsj)
+      complex *16 fhder(0:ntermsj)
       complex *16 jn(0:nbessel)
       complex *16 jnd(0:nbessel)
-      complex *16 mpole(0:nterms,-nterms:nterms)
-      complex *16 marray1(0:nterms_trunc,-nterms_trunc:nterms_trunc)
-      complex *16 local(0:nterms2,-nterms2:nterms2)
-      complex *16 mptemp(0:nterms_trunc,-nterms_trunc:nterms_trunc)
-      complex *16 marray(0:nterms,-nterms:nterms)
+      complex *16 Mj(0:ntermsj,-ntermsj:ntermsj)
+      complex *16 marray1(0:ntrunc,-ntrunc:ntrunc)
+      complex *16 local(0:ntermsi,-ntermsi:ntermsi)
+      complex *16 mptemp(0:ntrunc,-ntrunc:ntrunc)
+      complex *16 marray(0:ntermsj,-ntermsj:ntermsj)
       complex *16 wavek
-      complex *16 ephi(-nterms-1:nterms+1),imag      
+      complex *16 ephi(-ntermsj-1:ntermsj+1),imag      
       data imag/(0.0d0,1.0d0)/
-      rvec(1) = xnynzn(1) - x0y0z0(1)
-      rvec(2) = xnynzn(2) - x0y0z0(2)
-      rvec(3) = xnynzn(3) - x0y0z0(3)
+      rvec(1) = Xi(1) - Xj(1)
+      rvec(2) = Xi(2) - Xj(2)
+      rvec(3) = Xi(3) - Xj(3)
       call cart2sph(rvec,d,theta,phi)
       ephi(1) = exp(imag*phi)
       ephi(0)=1.0d0
       ephi(-1)=dconjg(ephi(1))
-      do l = 1,nterms
+      do l = 1,ntermsj
          ephi(l+1) = ephi(l)*ephi(1)
          ephi(-1-l) = dconjg(ephi(l+1))
       enddo
-      do l=0,nterms_trunc
+      do l=0,ntrunc
          do mp=-l,l
-            marray1(l,mp) = mpole(l,mp)*ephi(mp)
+            marray1(l,mp) = Mj(l,mp)*ephi(mp)
          enddo
       enddo
-      do l=0,nterms_trunc
+      do l=0,ntrunc
          do m=-l,l
             mptemp(l,m)=0.0d0
          enddo
       enddo
-      if( nterms_trunc .ge. 30 ) then
-      call rotviaprojf90(theta,nterms_trunc,nterms_trunc,nterms_trunc,
-     1     marray1,nterms_trunc,marray,nterms)
+      if( ntrunc .ge. 30 ) then
+      call rotviaprojf90(theta,ntrunc,ntrunc,ntrunc,
+     1     marray1,ntrunc,marray,ntermsj)
       else
-      call rotviarecur3f90(theta,nterms_trunc,nterms_trunc,nterms_trunc,
-     1     marray1,nterms_trunc,marray,nterms)
+      call rotviarecur3f90(theta,ntrunc,ntrunc,ntrunc,
+     1     marray1,ntrunc,marray,ntermsj)
       endif
       zshift = d
-      call h3dmpevalspherenmstab_fast(marray,wavek,scale,zshift,radius,
-     2     nterms_trunc,nterms,ynm,ynmd,phitemp,phitempn,nquad,xnodes,
+      call h3dmpevalspherenmstab_fast(marray,wavek,scalej,zshift,radius,
+     2     ntrunc,ntermsj,ynm,ynmd,phitemp,phitempn,nquad,xnodes,
      3     fhs,fhder)
       call h3dprojlocsepstab_fast
-     $   (nterms_trunc,nterms_trunc,nquad,nterms_trunc,xnodes,wts,
+     $   (ntrunc,ntrunc,nquad,ntrunc,xnodes,wts,
      1     phitemp,phitempn,mptemp,mp2,ynm)
-      call h3drescalestab(nterms_trunc,nterms_trunc,mptemp,mp2,
-     1     radius,wavek,scale2,jn,jnd,nbessel,ier)
-      if( nterms_trunc .ge. 30 ) then
-         call rotviaprojf90(-theta,nterms_trunc,nterms_trunc,
-     1        nterms_trunc,mptemp,nterms_trunc,marray,nterms)
+      call h3drescalestab(ntrunc,ntrunc,mptemp,mp2,
+     1     radius,wavek,scalei,jn,jnd,nbessel,ier)
+      if( ntrunc .ge. 30 ) then
+         call rotviaprojf90(-theta,ntrunc,ntrunc,
+     1        ntrunc,mptemp,ntrunc,marray,ntermsj)
       else
-         call rotviarecur3f90(-theta,nterms_trunc,nterms_trunc,
-     1        nterms_trunc,mptemp,nterms_trunc,marray,nterms)
+         call rotviarecur3f90(-theta,ntrunc,ntrunc,
+     1        ntrunc,mptemp,ntrunc,marray,ntermsj)
       endif
-      do l=0,nterms_trunc
+      do l=0,ntrunc
          do m=-l,l
             mptemp(l,m) = ephi(-m)*marray(l,m)
          enddo
       enddo
-      do l = 0,nterms_trunc
+      do l = 0,ntrunc
          do m=-l,l
             local(l,m) = local(l,m)+mptemp(l,m)
          enddo
       enddo
       return
       end
-      subroutine L2L(wavek,scale,x0y0z0,locold,nterms,
-     1           scale2,xnynzn,local,nterms2,ldc,
+      subroutine L2L(wavek,scalej,Xj,locold,ntermsj,
+     1           scalei,Xi,local,ntermsi,ldc,
      2           radius,xnodes,wts,nquad,nq,nbessel,ier)
 c***********************************************************************
 c     Shifts center of a local expansion.
@@ -351,13 +351,13 @@ c     coordinates.
 c---------------------------------------------------------------------
 c     INPUT:
 c     wavek   : Helmholtz parameter
-c     scale   : scaling parameter for locold expansion
-c     x0y0z0  : center of original multiple expansion
+c     scalej   : scaling parameter for locold expansion
+c     Xj  : center of original multiple expansion
 c     locold  : coefficients of original multiple expansion
-c     nterms  : order of original local expansion
-c     scale2  : scaling parameter for local expansion
-c     xnynzn  : center of shifted local expansion
-c     nterms2 : order of new local expansion
+c     ntermsj  : order of original local expansion
+c     scalei  : scaling parameter for local expansion
+c     Xi  : center of shifted local expansion
+c     ntermsi : order of new local expansion
 c     marray  : work array
 c     dc      : another work array
 c     ldc     : dimension parameter for marray and ldc
@@ -373,10 +373,10 @@ c     OUTPUT:
 c     local   : coefficients of shifted local expansion
 c***********************************************************************
       implicit real *8 (a-h,o-z)
-      integer nterms,ier,l,m,jnew,knew
-      real *8 x0y0z0(3),xnynzn(3),rvec(3)
+      integer ntermsj,ier,l,m,jnew,knew
+      real *8 Xj(3),Xi(3),rvec(3)
       real *8 xnodes(1),wts(1)
-      real *8 d,theta,ctheta,phi,scale,scale2
+      real *8 d,theta,ctheta,phi,scalej,scalei
       real *8 ynm(0:ldc,0:ldc)
       real *8 ynmd(0:ldc,0:ldc)
       complex *16 phitemp(nq,-ldc:ldc)
@@ -384,17 +384,17 @@ c***********************************************************************
       complex *16 mp2(0:ldc,-ldc:ldc)
       complex *16 jn(0:nbessel)
       complex *16 jnd(0:nbessel)
-      complex *16 locold(0:nterms,-nterms:nterms)
-      complex *16 local(0:nterms2,-nterms2:nterms2)
-      complex *16 mptemp(0:nterms2,-nterms2:nterms2)
+      complex *16 locold(0:ntermsj,-ntermsj:ntermsj)
+      complex *16 local(0:ntermsi,-ntermsi:ntermsi)
+      complex *16 mptemp(0:ntermsi,-ntermsi:ntermsi)
       complex *16 marray(0:ldc,-ldc:ldc)
-      complex *16 marray1(0:nterms,-nterms:nterms)
+      complex *16 marray1(0:ntermsj,-ntermsj:ntermsj)
       complex *16 wavek,imag
       complex *16 ephi(-ldc-1:ldc+1)
       data imag/(0.0d0,1.0d0)/
-      rvec(1) = xnynzn(1) - x0y0z0(1)
-      rvec(2) = xnynzn(2) - x0y0z0(2)
-      rvec(3) = xnynzn(3) - x0y0z0(3)
+      rvec(1) = Xi(1) - Xj(1)
+      rvec(2) = Xi(2) - Xj(2)
+      rvec(3) = Xi(3) - Xj(3)
       call cart2sph(rvec,d,theta,phi)
       ephi(0)=1.0d0
       ephi(1)=exp(imag*phi)
@@ -403,46 +403,46 @@ c***********************************************************************
          ephi(l+1) = ephi(l)*ephi(1)
          ephi(-1-l) = dconjg(ephi(l+1))
       enddo
-      do l=0,nterms
+      do l=0,ntermsj
          do mp=-l,l
             marray1(l,mp) = locold(l,mp)*ephi(mp)
          enddo
       enddo
-      do l=0,nterms2
+      do l=0,ntermsi
          do m=-l,l
             mptemp(l,m)=0.0d0
          enddo
       enddo
-      if( nterms2 .ge. 30 ) then
-      call rotviaprojf90(theta,nterms,nterms,nterms2,marray1,nterms,
+      if( ntermsi .ge. 30 ) then
+      call rotviaprojf90(theta,ntermsj,ntermsj,ntermsi,marray1,ntermsj,
      1      marray,ldc)
       else
-      call rotviarecur3f90(theta,nterms,nterms,nterms2,marray1,
-     1      nterms,marray,ldc)
+      call rotviarecur3f90(theta,ntermsj,ntermsj,ntermsi,marray1,
+     1      ntermsj,marray,ldc)
       endif
       zshift = d
-      call h3dlocevalspherestab_fast(marray,wavek,scale,
-     1     zshift,radius,nterms,nterms2,
+      call h3dlocevalspherestab_fast(marray,wavek,scalej,
+     1     zshift,radius,ntermsj,ntermsi,
      1     ldc,ynm,ynmd,phitemp,phitempn,nquad,xnodes,
      1     jn,jnd,nbessel,ier)
       call h3dprojlocsepstab_fast
-     1     (nterms2,nterms2,nquad,nterms2,xnodes,wts,
+     1     (ntermsi,ntermsi,nquad,ntermsi,xnodes,wts,
      1     phitemp,phitempn,mptemp,mp2,ynm)
-      call h3drescalestab(nterms2,nterms2,mptemp,mp2,
-     1      radius,wavek,scale2,jn,jnd,nbessel,ier)
-      if( nterms2 .ge. 30 ) then
-      call rotviaprojf90(-theta,nterms2,nterms2,nterms2,mptemp,
-     1      nterms2,marray,ldc)
+      call h3drescalestab(ntermsi,ntermsi,mptemp,mp2,
+     1      radius,wavek,scalei,jn,jnd,nbessel,ier)
+      if( ntermsi .ge. 30 ) then
+      call rotviaprojf90(-theta,ntermsi,ntermsi,ntermsi,mptemp,
+     1      ntermsi,marray,ldc)
       else
-      call rotviarecur3f90(-theta,nterms2,nterms2,nterms2,mptemp,
-     1      nterms2,marray,ldc)
+      call rotviarecur3f90(-theta,ntermsi,ntermsi,ntermsi,mptemp,
+     1      ntermsi,marray,ldc)
       endif
-      do l=0,nterms2
+      do l=0,ntermsi
          do m=-l,l
             mptemp(l,m)=ephi(-m)*marray(l,m)
          enddo
       enddo
-      do l = 0,min(ldc,nterms2)
+      do l = 0,min(ldc,ntermsi)
          do m=-l,l
             local(l,m) = local(l,m)+mptemp(l,m)
          enddo
@@ -450,7 +450,7 @@ c***********************************************************************
       return
       end
 c**********************************************************************
-      subroutine L2P(wavek,scale,center,locexp,nterms,
+      subroutine L2P(wavek,scalej,center,locexp,nterms,
      1     ntrunc,nbessel,Xi,nt,pot,fld,Anm,Pmax,ier)
 c**********************************************************************
 c     This subroutine evaluates a j-expansion centered at CENTER
@@ -460,7 +460,7 @@ c             n   m
 c---------------------------------------------------------------------
 c     INPUT:
 c     wavek  : the Helmholtz coefficient
-c     scale  : scaling parameter used in forming expansion
+c     scalej  : scaling parameter used in forming expansion
 c     center : coordinates of the expansion center
 c     locexp : coeffs of the j-expansion
 c     nterms : order of the h-expansion
@@ -476,7 +476,7 @@ c     fld(3) : gradient at target (if requested)
 c---------------------------------------------------------------------
       implicit none
       integer i,j,m,n,nt,ier,nterms,ntrunc,Pmax,nbessel
-      real *8 r,rx,ry,rz,theta,thetax,thetay,thetaz,scale
+      real *8 r,rx,ry,rz,theta,thetax,thetay,thetaz,scalej
       real *8 phi,phix,phiy,phiz,ctheta,stheta,cphi,sphi,Anm
       real *8 center(3),Xi(3,1),dX(3)
       real *8 Ynm(0:nterms,0:nterms)
@@ -517,7 +517,7 @@ c---------------------------------------------------------------------
          phiz = 0.0d0
          call ylgndr2sfw(ntrunc,ctheta,Ynm,Ynmd,Anm,Pmax)
          z=wavek*r
-         call jfuns3d(ier,ntrunc,z,scale,jn,1,jnd,
+         call jfuns3d(ier,ntrunc,z,scalej,jn,1,jnd,
      1	      nbessel)
          pot(i)=pot(i)+locexp(0,0)*jn(0)
          do j=0,ntrunc
@@ -529,7 +529,7 @@ c---------------------------------------------------------------------
          do n=1,ntrunc
             pot(i)=pot(i)+locexp(n,0)*jn(n)*Ynm(n,0)
             ur = ur + jnd(n)*Ynm(n,0)*locexp(n,0)
-            jnuse = jn(n+1)*scale + jn(n-1)/scale
+            jnuse = jn(n+1)*scalej + jn(n-1)/scalej
             jnuse = wavek*jnuse/(2*n+1.0d0)
             utheta = utheta -locexp(n,0)*jnuse*Ynmd(n,0)*stheta
             do m=1,n
