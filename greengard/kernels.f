@@ -65,7 +65,7 @@ c     located at SOURCES(3,*).
 c-----------------------------------------------------------------------
 c     INPUT:
 c     wavek   : Helmholtz parameter
-c     scale   : the scaling factor.
+c     rscale  : the scaling factor.
 c     sources : coordinates of sources
 c     charge  : source strengths
 c     ns      : number of sources
