@@ -309,61 +309,64 @@ C      note that everything is scaled.
       return
       end
 C***********************************************************************
-      subroutine h3dprojlocnmsep_fast
-     1     (nterms,nquadn,ntold,xnodes,wts,phitemp,local)
+      subroutine h3dmpevalspherenm_fast(Mrot,wavek,scalej,zshift,
+     1     radius,ntermsj,phitemp,nquad,xnodes)
+      implicit none
+      integer l,m,n,mabs,ntermsj,nquad
+      real *8 radius,scalej,zshift,ctheta,stheta
+      real *8 cthetaj,rj,xnodes(nquad)
+      real *8 ynm(0:ntermsj,0:ntermsj)
+      complex *16 Mrot(0:ntermsj,-ntermsj:ntermsj)
+      complex *16 phitemp(nquad,-ntermsj:ntermsj)
+      complex *16 imag,pot,fld(3),wavek,z
+      complex *16 fhs(0:ntermsj),fhder(0:ntermsj)
+      real *8 rat1(0:ntermsj,0:ntermsj),rat2(0:ntermsj,0:ntermsj)
+      data imag/(0.0d0,1.0d0)/
+      do l=1,nquad
+         do m=-ntermsj,ntermsj
+            phitemp(l,m) = 0.0d0
+         enddo
+      enddo
+      call ylgndrini(ntermsj,rat1,rat2)
+      do l=1,nquad
+	 ctheta=xnodes(l)
+	 stheta=dsqrt(1.0d0-ctheta**2)
+         rj=(zshift+radius*ctheta)**2+(radius*stheta)**2
+         rj=dsqrt(rj)
+	 cthetaj=(zshift+radius*ctheta)/rj
+	 z=wavek*rj
+	 call ylgndrf(ntermsj,cthetaj,ynm,rat1,rat2)
+	 call h3dall(ntermsj,z,scalej,fhs,0,fhder)
+         do m=-ntermsj,ntermsj
+	    mabs=abs(m)
+	    do n=mabs,ntermsj
+	       phitemp(l,m)=phitemp(l,m)+
+     1              Mrot(n,m)*fhs(n)*ynm(n,mabs)
+	    enddo
+	 enddo
+      enddo
+      return
+      end
 C***********************************************************************
-C
-C     compute spherical harmonic expansion on unit sphere
-C     of function tabulated at nquadn*nquadm grid points.
-C
-C---------------------------------------------------------------------
-C     INPUT:
-C
-C           nterms = order of spherical harmonic expansion
-C           nquadn = number of quadrature nodes in polar angle.
-C           ntold =  number of azimuthal (m) modes in phitemp
-C           xnodes = quad nodes in theta (nquadn of them)
-C           wts = quad weights in theta (nquadn of them)
-C           phitemp = tabulated function
-C                    phitemp(i,j) = jth mode in phi at ith quad node 
-C                                   in theta
-C           ynm     = workspace for assoc Legendre functions
-C
-C---------------------------------------------------------------------
-C     OUTPUT:
-C
-C           local = coefficients of s.h. expansion
-C
-C    NOTE:
-C
-C    yrecursion.f produces Ynm with a nonstandard scaling:
-C    (without the 1/sqrt(4*pi)). Thus the orthogonality relation
-C    is
-C             \int_S  Y_nm Y_n'm'*  dA = delta(n) delta(m) * 4*pi. 
-C
-C   This accounts for factor (1/2) = (2*pi) * 1/(4*pi) in zmul below.
-C
-C---------------------------------------------------------------------
-      implicit real *8 (a-h,o-z)
-      integer nterms,nquadn,nquadm,ier
+      subroutine h3dprojlocnmsep_fast(nterms,nquad,ntold,xnodes,wts,
+     1     phitemp,local)
+      implicit none
+      integer nterms,nquad,ntold
       integer l,m,jj,kk
-      real *8 wts(1),xnodes(1)
+      real *8 cthetaj,wts(1),xnodes(1)
       real *8 ynm(0:nterms,0:nterms)
-      complex *16 wavek,phitemp(nquadn,-ntold:ntold)
+      complex *16 wavek,phitemp(nquad,-ntold:ntold)
       complex *16 local(0:nterms,-nterms:nterms)
       complex *16 ephi,imag,emul,sum,zmul,emul1
       real *8 rat1(0:nterms,0:nterms),rat2(0:nterms,0:nterms)
       data imag/(0.0d0,1.0d0)/
-      pi = 4.0d0*datan(1.0d0)
-c     initialize local exp to zero
-      do l = 0,ldl
+      do l = 0,nterms
          do m = -l,l
 	    local(l,m) = 0.0d0
          enddo
       enddo
-c     get local exp
       call ylgndrini(nterms,rat1,rat2)
-      do jj=1,nquadn
+      do jj=1,nquad
 	 cthetaj = xnodes(jj)
 	 call ylgndrf(nterms,cthetaj,ynm,rat1,rat2)
          do m=-ntold,ntold
@@ -373,77 +376,6 @@ c     get local exp
      1   	       zmul*ynm(l,abs(m))
             enddo
          enddo
-      enddo
-      return
-      end
-C***********************************************************************
-      subroutine h3dmpevalspherenm_fast(mpole,wavek,scale,zshift,
-     1     radius,nterms,phitemp,nquad,xnodes)
-C***********************************************************************
-C
-C     This subroutine evaluates a multipole expansion on a target
-C     sphere at a distance (0,0,zshift) from the origin of radius 
-C     "radius".
-C
-C---------------------------------------------------------------------
-C     INPUT:
-C
-C     mpole    : coefficients of original multipole exp.
-C     wavek    : Helmholtz parameter
-C     scale    : mpole scaling parameter
-C     zshift   : shift distance along z-axis.
-C     radius   : radius of sphere about (0,0,zshift)
-C                              where phival is computed.
-C     nterms   : number of terms in the orig. expansion
-C     ynm      : storage for assoc Legendre functions
-C     phitemp  : storage for temporary array in O(p^3) scheme 
-C     nquad    : number of quadrature nodes in theta
-C     xnodes   : Legendre nodes x_j = cos theta_j.
-C
-C---------------------------------------------------------------------
-C     OUTPUT:
-C
-C     phival   : value of potential on tensor product
-C                              mesh on target sphere.
-C
-C---------------------------------------------------------------------
-      implicit none
-      integer nterms,nterms2
-      integer jj,l,m,n,jnew,knew,mabs,nquad
-      real *8 radius,scale,zshift,ctheta,stheta,targ(3),center(3)
-      real *8 cthetaj,rj,xnodes(nquad)
-      real *8 ynm(0:nterms,0:nterms)
-      complex *16 mpole(0:nterms,-nterms:nterms)
-      complex *16 phitemp(nquad,-nterms:nterms)
-      complex *16 imag,pot,fld(3),wavek,z
-      complex *16 fhs(0:nterms),fhder(0:nterms)
-      real *8 rat1(0:nterms,0:nterms),rat2(0:nterms,0:nterms)
-      data imag/(0.0d0,1.0d0)/
-      center(1) = 0.0d0
-      center(2) = 0.0d0
-      center(3) = 0.0d0
-      do jj=1,nquad
-      do m=-nterms,nterms
-         phitemp(jj,m) = 0.0d0
-      enddo
-      enddo
-      call ylgndrini(nterms,rat1,rat2)
-      do jj=1,nquad
-	 ctheta = xnodes(jj)
-	 stheta = dsqrt(1.0d0 - ctheta**2)
-         rj = (zshift+ radius*ctheta)**2 + (radius*stheta)**2
-         rj = dsqrt(rj)
-	 cthetaj = (zshift+radius*ctheta)/rj
-	 z = wavek*rj
-	 call ylgndrf(nterms,cthetaj,ynm,rat1,rat2)
-	 call h3dall(nterms,z,scale,fhs,0,fhder)
-         do m=-nterms,nterms
-	    mabs = abs(m)
-	    do n=mabs,nterms
-	       phitemp(jj,m) = phitemp(jj,m) +
-     1                mpole(n,m)*fhs(n)*ynm(n,mabs)
-	    enddo
-	 enddo
       enddo
       return
       end
