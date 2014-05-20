@@ -161,7 +161,7 @@ c---------------------------------------------------------------------
       real *8 Xj(3),Xi(3)
       real *8 radius, zshift
       real *8 xnodes(nquad),wts(nquad)
-      real *8 d,theta,ctheta,phi,scalej,scalei,dX(3)
+      real *8 r,theta,ctheta,phi,scalej,scalei,dX(3)
       complex *16 Mj(0:ntermsj,-ntermsj:ntermsj)
       complex *16 marray1(0:ntermsj,-ntermsj:ntermsj)
       complex *16 Mi(0:ntermsi,-ntermsi:ntermsi)
@@ -175,7 +175,7 @@ c---------------------------------------------------------------------
       dX(1) = Xi(1) - Xj(1)
       dX(2) = Xi(2) - Xj(2)
       dX(3) = Xi(3) - Xj(3)
-      call cart2sph(dX,d,theta,phi)
+      call cart2sph(dX,r,theta,phi)
       ephi(1) = exp(imag*phi)
       ephi(0)=1.0d0
       ephi(-1)=dconjg(ephi(1))
@@ -200,9 +200,8 @@ c---------------------------------------------------------------------
          call rotviarecur3f90(theta,ntermsj,marray1,
      1        ntermsj,marray,ntermsj)
       endif
-      zshift = d
       call h3dmpevalspherenm_fast(marray,wavek,scalej,
-     1     zshift,radius,ntermsj,phitemp,
+     1     r,radius,ntermsj,phitemp,
      1     nquad,xnodes)
       call h3dprojlocnmsep_fast
      1     (ntermsi,ntermsi,nquad,ntermsj,xnodes,wts,
@@ -257,10 +256,9 @@ c     local : coefficients of shifted local expansion
 c---------------------------------------------------------------------
       implicit real *8 (a-h,o-z)
       integer ntermsj,ier,l,m,jnew,knew
-      real *8 d,theta,ctheta,phi,scalej,scalei
+      real *8 r,theta,ctheta,phi,scalej,scalei
       real *8 Xj(3),Xi(3)
       real *8 xnodes(1),wts(1),dX(3)
-      real *8 zshift
       real *8 ynm(0:ntermsj,0:ntermsj)
       real *8 ynmd(0:ntermsj,0:ntermsj)
       complex *16 phitemp(nq,-ntermsj:ntermsj)
@@ -281,7 +279,7 @@ c---------------------------------------------------------------------
       dX(1) = Xi(1) - Xj(1)
       dX(2) = Xi(2) - Xj(2)
       dX(3) = Xi(3) - Xj(3)
-      call cart2sph(dX,d,theta,phi)
+      call cart2sph(dX,r,theta,phi)
       ephi(1) = exp(imag*phi)
       ephi(0)=1.0d0
       ephi(-1)=dconjg(ephi(1))
@@ -306,8 +304,7 @@ c---------------------------------------------------------------------
          call rotviarecur3f90(theta,ntrunc,
      1        marray1,ntrunc,marray,ntermsj)
       endif
-      zshift = d
-      call h3dmpevalspherenmstab_fast(marray,wavek,scalej,zshift,radius,
+      call h3dmpevalspherenmstab_fast(marray,wavek,scalej,r,radius,
      2     ntrunc,ntermsj,ynm,ynmd,phitemp,phitempn,nquad,xnodes,
      3     fhs,fhder)
       call h3dprojlocsepstab_fast
@@ -371,7 +368,7 @@ c***********************************************************************
       integer ntermsj,ier,l,m,jnew,knew
       real *8 Xj(3),Xi(3),dX(3)
       real *8 xnodes(1),wts(1)
-      real *8 d,theta,ctheta,phi,scalej,scalei
+      real *8 r,theta,ctheta,phi,scalej,scalei
       real *8 ynm(0:ldc,0:ldc)
       real *8 ynmd(0:ldc,0:ldc)
       complex *16 phitemp(nq,-ldc:ldc)
@@ -390,7 +387,7 @@ c***********************************************************************
       dX(1) = Xi(1) - Xj(1)
       dX(2) = Xi(2) - Xj(2)
       dX(3) = Xi(3) - Xj(3)
-      call cart2sph(dX,d,theta,phi)
+      call cart2sph(dX,r,theta,phi)
       ephi(0)=1.0d0
       ephi(1)=exp(imag*phi)
       ephi(-1)=dconjg(ephi(1))
@@ -415,9 +412,8 @@ c***********************************************************************
          call rotviarecur3f90(theta,ntermsj,marray1,
      1        ntermsj,marray,ldc)
       endif
-      zshift = d
       call h3dlocevalspherestab_fast(marray,wavek,scalej,
-     1     zshift,radius,ntermsj,ntermsi,
+     1     r,radius,ntermsj,ntermsi,
      1     ldc,ynm,ynmd,phitemp,phitempn,nquad,xnodes,
      1     jn,jnd,nbessel,ier)
       call h3dprojlocsepstab_fast
