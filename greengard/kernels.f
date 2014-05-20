@@ -186,13 +186,7 @@ c---------------------------------------------------------------------
             Mnm(l,m)=Mj(l,m)*ephi(m)
          enddo
       enddo
-      if( ntermsj .ge. 30 ) then
-         call rotviaprojf90(theta,ntermsj,Mnm,ntermsj,
-     1        Mrot,ntermsj)
-      else
-         call rotviarecur3f90(theta,ntermsj,Mnm,
-     1        ntermsj,Mrot,ntermsj)
-      endif
+      call rotate(theta,ntermsj,Mnm,ntermsj,Mrot,ntermsj)
       do l=0,ntermsi
          do m=-l,l
             Mnm(l,m)=0.0d0
@@ -205,13 +199,7 @@ c---------------------------------------------------------------------
      1     phitemp,Mnm)
       call h3drescalemp(ntermsi,Mnm,radius,wavek,
      1     scalei)
-      if( ntermsi .ge. 30 ) then
-         call rotviaprojf90(-theta,ntermsi,Mnm,
-     1        ntermsi,Mrot,ntermsj)
-      else
-         call rotviarecur3f90(-theta,ntermsi,Mnm,
-     1        ntermsi,Mrot,ntermsj)
-      endif
+      call rotate(-theta,ntermsi,Mnm,ntermsi,Mrot,ntermsj)
       do l=0,ntermsi
          do m=-l,l
             Mnm(l,m)=ephi(-m)*Mrot(l,m)
@@ -294,13 +282,7 @@ c---------------------------------------------------------------------
             mptemp(l,m)=0.0d0
          enddo
       enddo
-      if( ntrunc .ge. 30 ) then
-         call rotviaprojf90(theta,ntrunc,
-     1        marray1,ntrunc,marray,ntermsj)
-      else
-         call rotviarecur3f90(theta,ntrunc,
-     1        marray1,ntrunc,marray,ntermsj)
-      endif
+      call rotate(theta,ntrunc,marray1,ntrunc,marray,ntermsj)
       call h3dmpevalspherenmstab_fast(marray,wavek,scalej,r,radius,
      2     ntrunc,ntermsj,ynm,ynmd,phitemp,phitempn,nquad,xnodes,
      3     fhs,fhder)
@@ -309,13 +291,7 @@ c---------------------------------------------------------------------
      1     phitemp,phitempn,mptemp,mp2,ynm)
       call h3drescalestab(ntrunc,ntrunc,mptemp,mp2,
      1     radius,wavek,scalei,jn,jnd,nbessel,ier)
-      if( ntrunc .ge. 30 ) then
-         call rotviaprojf90(-theta,ntrunc,
-     1        mptemp,ntrunc,marray,ntermsj)
-      else
-         call rotviarecur3f90(-theta,ntrunc,
-     1        mptemp,ntrunc,marray,ntermsj)
-      endif
+      call rotate(-theta,ntrunc,mptemp,ntrunc,marray,ntermsj)
       do l=0,ntrunc
          do m=-l,l
             mptemp(l,m) = ephi(-m)*marray(l,m)
@@ -402,13 +378,7 @@ c***********************************************************************
             mptemp(l,m)=0.0d0
          enddo
       enddo
-      if( ntermsi .ge. 30 ) then
-         call rotviaprojf90(theta,ntermsj,marray1,ntermsj,
-     1        marray,ldc)
-      else
-         call rotviarecur3f90(theta,ntermsj,marray1,
-     1        ntermsj,marray,ldc)
-      endif
+      call rotate(theta,ntermsj,marray1,ntermsj,marray,ldc)
       call h3dlocevalspherestab_fast(marray,wavek,scalej,
      1     r,radius,ntermsj,ntermsi,
      1     ldc,ynm,ynmd,phitemp,phitempn,nquad,xnodes,
@@ -418,13 +388,7 @@ c***********************************************************************
      1     phitemp,phitempn,mptemp,mp2,ynm)
       call h3drescalestab(ntermsi,ntermsi,mptemp,mp2,
      1      radius,wavek,scalei,jn,jnd,nbessel,ier)
-      if( ntermsi .ge. 30 ) then
-         call rotviaprojf90(-theta,ntermsi,mptemp,
-     1        ntermsi,marray,ldc)
-      else
-         call rotviarecur3f90(-theta,ntermsi,mptemp,
-     1        ntermsi,marray,ldc)
-      endif
+      call rotate(-theta,ntermsi,mptemp,ntermsi,marray,ldc)
       do l=0,ntermsi
          do m=-l,l
             mptemp(l,m)=ephi(-m)*marray(l,m)

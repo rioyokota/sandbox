@@ -513,3 +513,17 @@ C---------------------------------------------------------------------
      1           marray2,lmpn)
       return
       end
+
+      subroutine rotate(theta,nterms,Mnm,lmp,Mrot,lmpn)
+      implicit none
+      integer nterms,lmp,lmpn
+      real *8 theta
+      complex *16 Mnm(0:lmp,-lmp:lmp)
+      complex *16 Mrot(0:lmpn,-lmpn:lmpn)
+      if( nterms .ge. 30 ) then
+         call rotviaprojf90(theta,nterms,Mnm,lmp,Mrot,lmpn)
+      else
+         call rotviarecur3f90(theta,nterms,Mnm,lmp,Mrot,lmpn)
+      endif
+      return
+      end
