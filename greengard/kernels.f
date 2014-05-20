@@ -129,7 +129,7 @@ c-----------------------------------------------------------------------
 c***********************************************************************
       subroutine M2M(wavek,scalej,Xj,Mj,ntermsj,
      1     scalei,Xi,Mi,ntermsi,
-     2     radius,xnodes,wts,nquad,nq,ier)
+     2     radius,xnodes,wts,nquad,ier)
 c***********************************************************************
 c     Shift multipole expansion.
 c     This is a reasonably fast "point and shoot" version which
@@ -139,12 +139,12 @@ c     coordinates.
 c---------------------------------------------------------------------
 c     INPUT:
 c     wavek   : Helmholtz parameter
-c     Xj  : center of original multiple expansion
-c     Xi  : center of shifted expansion
-c     Mj   : coefficients of original multiple expansion
-c     ntermsj  : order of multipole expansion
+c     Xj      : center of original multiple expansion
+c     Xi      : center of shifted expansion
+c     Mj      : coefficients of original multiple expansion
+c     ntermsj : order of multipole expansion
 c     ntermsi : order of shifted expansion
-c     scalej   : scaling parameter for mpole expansion
+c     scalej  : scaling parameter for mpole expansion
 c     scalei  : scaling parameter for shifted expansion
 c     radius  : radius of sphere on which shifted expansion is computed
 c     xnodes  : Legendre nodes (precomputed)
@@ -156,10 +156,10 @@ c     OUTPUT:
 c     Mi  : coefficients of shifted expansion
 c---------------------------------------------------------------------
       implicit none
-      integer ntermsj,lw,lused,ier,nq,nquad,nquse,ntermsi
+      integer ntermsj,ier,nquad,ntermsi
       real *8 Xj(3),Xi(3)
       real *8 radius, zshift
-      real *8 xnodes(1),wts(1)
+      real *8 xnodes(nquad),wts(nquad)
       real *8 d,theta,ctheta,phi,scalej,scalei,rvec(3)
       complex *16 fhs(0:ntermsj)
       complex *16 fhder(0:ntermsj)
@@ -167,6 +167,7 @@ c---------------------------------------------------------------------
       complex *16 marray1(0:ntermsj,-ntermsj:ntermsj)
       complex *16 Mi(0:ntermsi,-ntermsi:ntermsi)
       complex *16 marray(0:ntermsj,-ntermsj:ntermsj)
+      complex *16 phitemp(nquad,-ntermsj:ntermsj)
       complex *16 wavek
       complex *16 ephi(-ntermsj-1:ntermsj+1),imag
       complex *16, allocatable :: mptemp(:,:)
@@ -203,15 +204,15 @@ c---------------------------------------------------------------------
       endif
       zshift = d
       call h3dmpevalspherenm_fast(marray,wavek,scalej,
-     1     zshift,radius,ntermsj,ntermsj,
+     1     zshift,radius,ntermsj,ntermsj,phitemp,
      1     nquad,xnodes,fhs,fhder)
       call h3dprojlocnmsep_fast
      1     (ntermsi,ntermsi,nquad,ntermsj,xnodes,wts,
-     1     mptemp)
+     1     phitemp,mptemp)
       call h3drescalemp(ntermsi,ntermsi,mptemp,radius,wavek,
      1     scalei)
       if( ntermsi .ge. 30 ) then
-      call rotviaprojf90(-theta,ntermsi,mptemp,
+         call rotviaprojf90(-theta,ntermsi,mptemp,
      1        ntermsi,marray,ntermsj)
       else
          call rotviarecur3f90(-theta,ntermsi,mptemp,

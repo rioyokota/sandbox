@@ -257,7 +257,7 @@ c$omp$private(lused,ier,i,j,ptemp,ftemp,cd)
      1                    rmlexp(iaddr(1,jbox)),nterms(level1),
      1                    scale(level0),center0,rmlexp(iaddr(1,ibox)),
      1                    nterms(level0),
-     1                    radius,xnodes2,wts2,nquad2,nq,ier)
+     1                    radius,xnodes2,wts2,nquad2,ier)
                   enddo
                endif
             endif

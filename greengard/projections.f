@@ -343,7 +343,7 @@ C      note that everything is scaled.
       end
 C***********************************************************************
       subroutine h3dprojlocnmsep_fast
-     1     (nterms,ldl,nquadn,ntold,xnodes,wts,local)
+     1     (nterms,ldl,nquadn,ntold,xnodes,wts,phitemp,local)
 C***********************************************************************
 C
 C     compute spherical harmonic expansion on unit sphere
@@ -411,8 +411,8 @@ c     get local exp
       return
       end
 C***********************************************************************
-      subroutine h3dmpevalspherenm_fast(mpole,wavek,scale,zshift,radius,
-     1           nterms,lmp,nquad,xnodes,fhs,fhder)
+      subroutine h3dmpevalspherenm_fast(mpole,wavek,scale,zshift,
+     1     radius,nterms,nterms2,phitemp,nquad,xnodes,fhs,fhder)
 C***********************************************************************
 C
 C     This subroutine evaluates a multipole expansion on a target
@@ -429,7 +429,6 @@ C     zshift   : shift distance along z-axis.
 C     radius   : radius of sphere about (0,0,zshift)
 C                              where phival is computed.
 C     nterms   : number of terms in the orig. expansion
-C     lmp      : dimension param for mpole array
 C     ynm      : storage for assoc Legendre functions
 C     phitemp  : storage for temporary array in O(p^3) scheme 
 C     nquad    : number of quadrature nodes in theta
@@ -442,26 +441,21 @@ C     phival   : value of potential on tensor product
 C                              mesh on target sphere.
 C
 C---------------------------------------------------------------------
-      implicit real *8 (a-h,o-z)
-      integer nterms
-      integer l,m,jnew,knew
-      real *8 zshift, targ(3), center(3)
-      real *8 xnodes(1)
+      implicit none
+      integer nterms,nterms2
+      integer jj,l,m,n,jnew,knew,mabs,nquad
+      real *8 radius,scale,zshift,ctheta,stheta,targ(3),center(3)
+      real *8 cthetaj,rj,xnodes(nquad)
       real *8 ynm(0:nterms,0:nterms)
-      complex *16 mpole(0:lmp,-lmp:lmp)
+      complex *16 mpole(0:nterms,-nterms:nterms)
       complex *16 phitemp(nquad,-nterms:nterms)
-      complex *16 imag,pot,fld(3), wavek,z
-      complex *16 ephi1,ephik,ephi,fhs(0:nterms),fhder(0:nterms)
+      complex *16 imag,pot,fld(3),wavek,z
+      complex *16 fhs(0:nterms),fhder(0:nterms)
       real *8 rat1(0:nterms,0:nterms),rat2(0:nterms,0:nterms)
       data imag/(0.0d0,1.0d0)/
-C----- shift along z-axis.
-C      note that everything is scaled.
-      pi = 4.0d0*datan(1.0d0)
       center(1) = 0.0d0
       center(2) = 0.0d0
       center(3) = 0.0d0
-      iffld = 0
-      ifder = 0
       do jj=1,nquad
       do m=-nterms,nterms
          phitemp(jj,m) = 0.0d0
@@ -476,7 +470,7 @@ C      note that everything is scaled.
 	 cthetaj = (zshift+radius*ctheta)/rj
 	 z = wavek*rj
 	 call ylgndrf(nterms,cthetaj,ynm,rat1,rat2)
-	 call h3dall(nterms,z,scale,fhs,ifder,fhder)
+	 call h3dall(nterms,z,scale,fhs,0,fhder)
          do m=-nterms,nterms
 	    mabs = abs(m)
 	    do n=mabs,nterms
