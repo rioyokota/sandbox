@@ -195,10 +195,10 @@ c---------------------------------------------------------------------
          enddo
       enddo
       if( ntermsj .ge. 30 ) then
-      call rotviaprojf90(theta,ntermsj,marray1,ntermsj,
+         call rotviaprojf90(theta,ntermsj,marray1,ntermsj,
      1        marray,ntermsj)
       else
-      call rotviarecur3f90(theta,ntermsj,ntermsj,ntermsj,marray1,
+         call rotviarecur3f90(theta,ntermsj,marray1,
      1        ntermsj,marray,ntermsj)
       endif
       zshift = d
@@ -214,7 +214,7 @@ c---------------------------------------------------------------------
       call rotviaprojf90(-theta,ntermsi,mptemp,
      1        ntermsi,marray,ntermsj)
       else
-      call rotviarecur3f90(-theta,ntermsi,ntermsi,ntermsi,mptemp,
+         call rotviarecur3f90(-theta,ntermsi,mptemp,
      1        ntermsi,marray,ntermsj)
       endif
       do l=0,ntermsi
@@ -301,11 +301,11 @@ c---------------------------------------------------------------------
          enddo
       enddo
       if( ntrunc .ge. 30 ) then
-      call rotviaprojf90(theta,ntrunc,
-     1     marray1,ntrunc,marray,ntermsj)
+         call rotviaprojf90(theta,ntrunc,
+     1        marray1,ntrunc,marray,ntermsj)
       else
-      call rotviarecur3f90(theta,ntrunc,ntrunc,ntrunc,
-     1     marray1,ntrunc,marray,ntermsj)
+         call rotviarecur3f90(theta,ntrunc,
+     1        marray1,ntrunc,marray,ntermsj)
       endif
       zshift = d
       call h3dmpevalspherenmstab_fast(marray,wavek,scalej,zshift,radius,
@@ -320,8 +320,8 @@ c---------------------------------------------------------------------
          call rotviaprojf90(-theta,ntrunc,
      1        mptemp,ntrunc,marray,ntermsj)
       else
-         call rotviarecur3f90(-theta,ntrunc,ntrunc,
-     1        ntrunc,mptemp,ntrunc,marray,ntermsj)
+         call rotviarecur3f90(-theta,ntrunc,
+     1        mptemp,ntrunc,marray,ntermsj)
       endif
       do l=0,ntrunc
          do m=-l,l
@@ -410,11 +410,11 @@ c***********************************************************************
          enddo
       enddo
       if( ntermsi .ge. 30 ) then
-      call rotviaprojf90(theta,ntermsj,marray1,ntermsj,
-     1      marray,ldc)
+         call rotviaprojf90(theta,ntermsj,marray1,ntermsj,
+     1        marray,ldc)
       else
-      call rotviarecur3f90(theta,ntermsj,ntermsj,ntermsi,marray1,
-     1      ntermsj,marray,ldc)
+         call rotviarecur3f90(theta,ntermsj,marray1,
+     1        ntermsj,marray,ldc)
       endif
       zshift = d
       call h3dlocevalspherestab_fast(marray,wavek,scalej,
@@ -427,11 +427,11 @@ c***********************************************************************
       call h3drescalestab(ntermsi,ntermsi,mptemp,mp2,
      1      radius,wavek,scalei,jn,jnd,nbessel,ier)
       if( ntermsi .ge. 30 ) then
-      call rotviaprojf90(-theta,ntermsi,mptemp,
-     1      ntermsi,marray,ldc)
+         call rotviaprojf90(-theta,ntermsi,mptemp,
+     1        ntermsi,marray,ldc)
       else
-      call rotviarecur3f90(-theta,ntermsi,ntermsi,ntermsi,mptemp,
-     1      ntermsi,marray,ldc)
+         call rotviarecur3f90(-theta,ntermsi,mptemp,
+     1        ntermsi,marray,ldc)
       endif
       do l=0,ntermsi
          do m=-l,l
