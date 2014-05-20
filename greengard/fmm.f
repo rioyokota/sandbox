@@ -86,12 +86,6 @@ c     based on FMM tolerance, compute expansion lengths nterms(i)
          call h3dterms(bsize(i),wavek,epsfmm, nterms(i), ier)
          if (nterms(i).gt. nmax .and. i.ge. 2) nmax = nterms(i)
       enddo
-      nquad=2*nmax
-c     ixnodes is pointer for quadrature nodes
-c     iwhts is pointer for quadrature weights
-      ixnodes = lused7
-      iwts = ixnodes + nquad
-      lused7 = iwts + nquad
 c     Multipole and local expansions will be held in workspace
 c     in locations pointed to by array iaddr(2,nboxes).
 
@@ -105,7 +99,6 @@ c     imptemp is pointer for single expansion (dimensioned by nmax)
       call h3dreorder(nsource,source,ifcharge,charge,wlists(iisource),
      1     w(isourcesort),w(ichargesort))
       ifinit=1
-      call legewhts(nquad,w(ixnodes),w(iwts),ifinit)
       call h3dmpalloc(wlists(iwlists),w(iiaddr),nboxes,lmptot,nterms)
       irmlexp = 1
       lused7 = irmlexp + lmptot
@@ -220,10 +213,9 @@ c$    toc=omp_get_wtime()
 c     ... step 2, M2M
 c$    tic=omp_get_wtime()
       do ilev=nlev,3,-1
-         nquad2=nterms(ilev-1)*2.5
-         nquad2=max(6,nquad2)
-         ifinit2=1
-         call legewhts(nquad2,xnodes,wts,ifinit2)
+         nquad=nterms(ilev-1)*2.5
+         nquad=max(6,nquad)
+         call legewhts(nquad,xnodes,wts,1)
 c$omp parallel do default(shared)
 c$omp$private(ibox,box,center0,corners0,level0,level,npts,nkids,radius)
 c$omp$private(jbox,box1,center1,corners1,level1)
@@ -246,12 +238,12 @@ c$omp$private(lused,ier,i,j,ptemp,ftemp,cd)
                      call d3tgetb(ier,jbox,box1,center1,corners1,wlists)
                      level1=box1(1)
                      ldc = max(nterms(level1),nterms(level0))
-                     nq = max(nquad2,2*ldc+2)
+                     nq = max(nquad,2*ldc+2)
                      call M2M(wavek,scale(level1),center1,
      1                    rmlexp(iaddr(1,jbox)),nterms(level1),
      1                    scale(level0),center0,rmlexp(iaddr(1,ibox)),
      1                    nterms(level0),
-     1                    radius,xnodes,wts,nquad2,ier)
+     1                    radius,xnodes,wts,nquad,ier)
                   enddo
                endif
             endif
@@ -296,10 +288,9 @@ c     ... step 4, M2L
 c$    tic=omp_get_wtime()
       do 4300 ilev=3,nlev+1
          call h3dterms_list2(bsize(ilev-1),wavek,epsfmm, itable, ier)
-         nquad2=nterms(ilev-1)*1.2
-         nquad2=max(6,nquad2)
-         ifinit2=1
-         call legewhts(nquad2,xnodes,wts,ifinit2)
+         nquad=nterms(ilev-1)*1.2
+         nquad=max(6,nquad)
+         call legewhts(nquad,xnodes,wts,1)
 c$omp parallel do default(shared)
 c$omp$private(ibox,box,center0,corners0,list,nlist)
 c$omp$private(jbox,box1,center1,corners1,level1,ifdirect2,radius)
@@ -333,7 +324,7 @@ c     ... if source is childless, evaluate directly (if cheaper)
                   nterms_trunc=itable(ii,jj,kk)
                   nterms_trunc=min(nterms(level0),nterms_trunc)
                   nterms_trunc=min(nterms(level1),nterms_trunc)
-                  nq = max(nquad2,2*nterms(level1)+2)
+                  nq = max(nquad,2*nterms(level1)+2)
                   nbessel = nterms_trunc+1000
                   call M2L(wavek,
      1                 scale(level1),
@@ -341,7 +332,7 @@ c     ... if source is childless, evaluate directly (if cheaper)
      1                 nterms(level1),scale(level0),
      1                 center0,rmlexp(iaddr(2,ibox)),
      1                 nterms(level0),nterms_trunc,
-     1                 radius,xnodes,wts,nquad2,nq,nbessel,ier)
+     1                 radius,xnodes,wts,nquad,nq,nbessel,ier)
  4150          continue
             endif
  4200    continue
@@ -352,10 +343,9 @@ c$    toc=omp_get_wtime()
 c     ... step 5, L2L
 c$    tic=omp_get_wtime()
       do 5300 ilev=3,nlev
-         nquad2=nterms(ilev-1)*2
-         nquad2=max(6,nquad2)
-         ifinit2=1
-         call legewhts(nquad2,xnodes,wts,ifinit2)
+         nquad=nterms(ilev-1)*2
+         nquad=max(6,nquad)
+         call legewhts(nquad,xnodes,wts,1)
 c$omp parallel do default(shared)
 c$omp$private(ibox,box,center0,corners0,level0,level,npts,nkids,radius)
 c$omp$private(jbox,box1,center1,corners1,level1)
@@ -384,7 +374,7 @@ c     ... split local expansion of the parent box
      1                    rmlexp(iaddr(2,ibox)),nterms(level0),
      1                    scale(level1),center1,rmlexp(iaddr(2,jbox)),
      1                    nterms(level1),ldc,
-     1                    radius,xnodes,wts,nquad2,nq,nbessel,ier)
+     1                    radius,xnodes,wts,nquad,nq,nbessel,ier)
  5100             continue
                endif
             endif
