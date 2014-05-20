@@ -1,48 +1,15 @@
 C***********************************************************************
-      subroutine h3drescalemp(nterms,lmp,mpole,
-     1           radius,wavek0,scale)
-C***********************************************************************
-C
-C     This subroutine rescales a spherical harmonic expansion
-C     on the surface by h_n(wavek0 * radius), converting 
-C     a surface function to the corresponding Hankel expansion
-C     in the exterior.
-C
-C---------------------------------------------------------------------
-C     INPUT:
-C
-C           nterms = order of spherical harmonic expansion
-C           mpole = coefficients of s.h. expansion
-C           radius = sphere radius
-C           wavek0 = Helmholtz parameter
-C           scale = scale parameter for expansions
-C           w       = workspace of length lw
-C
-C---------------------------------------------------------------------
-C     OUTPUT:
-C
-C           mpole = rescaled by 1/h_n(wavek0* radius) 
-C           ier = error flag 
-C                 0 normal return
-C                 4 insufficient memory in w.
-C
-C---------------------------------------------------------------------
+      subroutine h3drescalemp(nterms,mpole,radius,wavek,scale)
       implicit real *8 (a-h,o-z)
-      integer nterms,ier
-      integer l,m,jj,kk
-      integer lwfhs
-      complex *16 mpole(0:lmp,-lmp:lmp)
-      complex *16 ephi,imag,emul,sum,zmul
+      complex *16 mpole(0:nterms,-nterms:nterms)
       complex *16 fhs(0:nterms),fhder(0:nterms)
-      complex *16 wavek0,z
+      complex *16 imag,wavek,z
       data imag/(0.0d0,1.0d0)/
-      z = wavek0*radius
-      ifder = 0
-      call h3dall(nterms,z,scale,fhs,ifder,fhder)
-      do l=0,nterms
-         do m=-l,l
-	    zmul = fhs(l)
-	    mpole(l,m) = mpole(l,m)/zmul
+      z = wavek*radius
+      call h3dall(nterms,z,scale,fhs,0,fhder)
+      do n=0,nterms
+         do m=-n,n
+	    mpole(n,m)=mpole(n,m)/fhs(n)
          enddo
       enddo
       return
@@ -343,7 +310,7 @@ C      note that everything is scaled.
       end
 C***********************************************************************
       subroutine h3dprojlocnmsep_fast
-     1     (nterms,ldl,nquadn,ntold,xnodes,wts,phitemp,local)
+     1     (nterms,nquadn,ntold,xnodes,wts,phitemp,local)
 C***********************************************************************
 C
 C     compute spherical harmonic expansion on unit sphere
@@ -353,7 +320,6 @@ C---------------------------------------------------------------------
 C     INPUT:
 C
 C           nterms = order of spherical harmonic expansion
-C           ldl = dimension param for local expansion
 C           nquadn = number of quadrature nodes in polar angle.
 C           ntold =  number of azimuthal (m) modes in phitemp
 C           xnodes = quad nodes in theta (nquadn of them)
@@ -384,7 +350,7 @@ C---------------------------------------------------------------------
       real *8 wts(1),xnodes(1)
       real *8 ynm(0:nterms,0:nterms)
       complex *16 wavek,phitemp(nquadn,-ntold:ntold)
-      complex *16 local(0:ldl,-ldl:ldl)
+      complex *16 local(0:nterms,-nterms:nterms)
       complex *16 ephi,imag,emul,sum,zmul,emul1
       real *8 rat1(0:nterms,0:nterms),rat2(0:nterms,0:nterms)
       data imag/(0.0d0,1.0d0)/

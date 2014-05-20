@@ -31,7 +31,7 @@ c     Fi   : calculated gradient
 c---------------------------------------------------------------------
       implicit none
       integer i,j,ibox(20),jbox(20)
-      real *8 dX(3),R2,R,Xi(3,1000000),Xj(3,1000000)
+      real *8 R2,R,Xi(3,1000000),Xj(3,1000000),dX(3)
       complex *16 imag,wavek,coef1,coef2
       complex *16 qj(1000000),pi(1000000),Fi(3,1000000)
       data imag/(0.0d0,1.0d0)/
@@ -158,20 +158,18 @@ c---------------------------------------------------------------------
       implicit none
       integer l,m,jnew,knew
       integer ntermsj,ier,nquad,ntermsi
-      real *8 Xj(3),Xi(3)
+      real *8 Xi(3),Xj(3),dX(3)
       real *8 radius, zshift
       real *8 xnodes(nquad),wts(nquad)
-      real *8 r,theta,ctheta,phi,scalej,scalei,dX(3)
-      complex *16 Mj(0:ntermsj,-ntermsj:ntermsj)
-      complex *16 marray1(0:ntermsj,-ntermsj:ntermsj)
+      real *8 r,theta,ctheta,phi,scalej,scalei
       complex *16 Mi(0:ntermsi,-ntermsi:ntermsi)
-      complex *16 marray(0:ntermsj,-ntermsj:ntermsj)
+      complex *16 Mj(0:ntermsj,-ntermsj:ntermsj)
+      complex *16 Mnm(0:ntermsj,-ntermsj:ntermsj)
+      complex *16 Mrot(0:ntermsj,-ntermsj:ntermsj)
       complex *16 phitemp(nquad,-ntermsj:ntermsj)
       complex *16 wavek
       complex *16 ephi(-ntermsj-1:ntermsj+1),imag
-      complex *16, allocatable :: mptemp(:,:)
       data imag/(0.0d0,1.0d0)/
-      allocate( mptemp(0:ntermsi,-ntermsi:ntermsi) )
       dX(1) = Xi(1) - Xj(1)
       dX(2) = Xi(2) - Xj(2)
       dX(3) = Xi(3) - Xj(3)
@@ -185,44 +183,43 @@ c---------------------------------------------------------------------
       enddo
       do l=0,ntermsj
          do m=-l,l
-            marray1(l,m)=Mj(l,m)*ephi(m)
-         enddo
-      enddo
-      do l=0,ntermsi
-         do m=-l,l
-            mptemp(l,m)=0.0d0
+            Mnm(l,m)=Mj(l,m)*ephi(m)
          enddo
       enddo
       if( ntermsj .ge. 30 ) then
-         call rotviaprojf90(theta,ntermsj,marray1,ntermsj,
-     1        marray,ntermsj)
+         call rotviaprojf90(theta,ntermsj,Mnm,ntermsj,
+     1        Mrot,ntermsj)
       else
-         call rotviarecur3f90(theta,ntermsj,marray1,
-     1        ntermsj,marray,ntermsj)
-      endif
-      call h3dmpevalspherenm_fast(marray,wavek,scalej,
-     1     r,radius,ntermsj,phitemp,
-     1     nquad,xnodes)
-      call h3dprojlocnmsep_fast
-     1     (ntermsi,ntermsi,nquad,ntermsj,xnodes,wts,
-     1     phitemp,mptemp)
-      call h3drescalemp(ntermsi,ntermsi,mptemp,radius,wavek,
-     1     scalei)
-      if( ntermsi .ge. 30 ) then
-         call rotviaprojf90(-theta,ntermsi,mptemp,
-     1        ntermsi,marray,ntermsj)
-      else
-         call rotviarecur3f90(-theta,ntermsi,mptemp,
-     1        ntermsi,marray,ntermsj)
+         call rotviarecur3f90(theta,ntermsj,Mnm,
+     1        ntermsj,Mrot,ntermsj)
       endif
       do l=0,ntermsi
          do m=-l,l
-            mptemp(l,m)=ephi(-m)*marray(l,m)
+            Mnm(l,m)=0.0d0
+         enddo
+      enddo
+      call h3dmpevalspherenm_fast(Mrot,wavek,scalej,
+     1     r,radius,ntermsj,phitemp,nquad,xnodes)
+      call h3dprojlocnmsep_fast
+     1     (ntermsi,nquad,ntermsj,xnodes,wts,
+     1     phitemp,Mnm)
+      call h3drescalemp(ntermsi,Mnm,radius,wavek,
+     1     scalei)
+      if( ntermsi .ge. 30 ) then
+         call rotviaprojf90(-theta,ntermsi,Mnm,
+     1        ntermsi,Mrot,ntermsj)
+      else
+         call rotviarecur3f90(-theta,ntermsi,Mnm,
+     1        ntermsi,Mrot,ntermsj)
+      endif
+      do l=0,ntermsi
+         do m=-l,l
+            Mnm(l,m)=ephi(-m)*Mrot(l,m)
          enddo
       enddo
       do l = 0,min(ntermsj,ntermsi)
          do m=-l,l
-            Mi(l,m) = Mi(l,m)+mptemp(l,m)
+            Mi(l,m) = Mi(l,m)+Mnm(l,m)
          enddo
       enddo
       return
