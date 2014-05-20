@@ -156,13 +156,12 @@ c     OUTPUT:
 c     Mi  : coefficients of shifted expansion
 c---------------------------------------------------------------------
       implicit none
+      integer l,m,jnew,knew
       integer ntermsj,ier,nquad,ntermsi
       real *8 Xj(3),Xi(3)
       real *8 radius, zshift
       real *8 xnodes(nquad),wts(nquad)
-      real *8 d,theta,ctheta,phi,scalej,scalei,rvec(3)
-      complex *16 fhs(0:ntermsj)
-      complex *16 fhder(0:ntermsj)
+      real *8 d,theta,ctheta,phi,scalej,scalei,dX(3)
       complex *16 Mj(0:ntermsj,-ntermsj:ntermsj)
       complex *16 marray1(0:ntermsj,-ntermsj:ntermsj)
       complex *16 Mi(0:ntermsi,-ntermsi:ntermsi)
@@ -171,13 +170,12 @@ c---------------------------------------------------------------------
       complex *16 wavek
       complex *16 ephi(-ntermsj-1:ntermsj+1),imag
       complex *16, allocatable :: mptemp(:,:)
-      integer  l,m,jnew,knew
       data imag/(0.0d0,1.0d0)/
       allocate( mptemp(0:ntermsi,-ntermsi:ntermsi) )
-      rvec(1) = Xi(1) - Xj(1)
-      rvec(2) = Xi(2) - Xj(2)
-      rvec(3) = Xi(3) - Xj(3)
-      call cart2sph(rvec,d,theta,phi)
+      dX(1) = Xi(1) - Xj(1)
+      dX(2) = Xi(2) - Xj(2)
+      dX(3) = Xi(3) - Xj(3)
+      call cart2sph(dX,d,theta,phi)
       ephi(1) = exp(imag*phi)
       ephi(0)=1.0d0
       ephi(-1)=dconjg(ephi(1))
@@ -204,8 +202,8 @@ c---------------------------------------------------------------------
       endif
       zshift = d
       call h3dmpevalspherenm_fast(marray,wavek,scalej,
-     1     zshift,radius,ntermsj,ntermsj,phitemp,
-     1     nquad,xnodes,fhs,fhder)
+     1     zshift,radius,ntermsj,phitemp,
+     1     nquad,xnodes)
       call h3dprojlocnmsep_fast
      1     (ntermsi,ntermsi,nquad,ntermsj,xnodes,wts,
      1     phitemp,mptemp)
@@ -261,7 +259,7 @@ c---------------------------------------------------------------------
       integer ntermsj,ier,l,m,jnew,knew
       real *8 d,theta,ctheta,phi,scalej,scalei
       real *8 Xj(3),Xi(3)
-      real *8 xnodes(1),wts(1),rvec(3)
+      real *8 xnodes(1),wts(1),dX(3)
       real *8 zshift
       real *8 ynm(0:ntermsj,0:ntermsj)
       real *8 ynmd(0:ntermsj,0:ntermsj)
@@ -280,10 +278,10 @@ c---------------------------------------------------------------------
       complex *16 wavek
       complex *16 ephi(-ntermsj-1:ntermsj+1),imag      
       data imag/(0.0d0,1.0d0)/
-      rvec(1) = Xi(1) - Xj(1)
-      rvec(2) = Xi(2) - Xj(2)
-      rvec(3) = Xi(3) - Xj(3)
-      call cart2sph(rvec,d,theta,phi)
+      dX(1) = Xi(1) - Xj(1)
+      dX(2) = Xi(2) - Xj(2)
+      dX(3) = Xi(3) - Xj(3)
+      call cart2sph(dX,d,theta,phi)
       ephi(1) = exp(imag*phi)
       ephi(0)=1.0d0
       ephi(-1)=dconjg(ephi(1))
@@ -371,7 +369,7 @@ c     local   : coefficients of shifted local expansion
 c***********************************************************************
       implicit real *8 (a-h,o-z)
       integer ntermsj,ier,l,m,jnew,knew
-      real *8 Xj(3),Xi(3),rvec(3)
+      real *8 Xj(3),Xi(3),dX(3)
       real *8 xnodes(1),wts(1)
       real *8 d,theta,ctheta,phi,scalej,scalei
       real *8 ynm(0:ldc,0:ldc)
@@ -389,10 +387,10 @@ c***********************************************************************
       complex *16 wavek,imag
       complex *16 ephi(-ldc-1:ldc+1)
       data imag/(0.0d0,1.0d0)/
-      rvec(1) = Xi(1) - Xj(1)
-      rvec(2) = Xi(2) - Xj(2)
-      rvec(3) = Xi(3) - Xj(3)
-      call cart2sph(rvec,d,theta,phi)
+      dX(1) = Xi(1) - Xj(1)
+      dX(2) = Xi(2) - Xj(2)
+      dX(3) = Xi(3) - Xj(3)
+      call cart2sph(dX,d,theta,phi)
       ephi(0)=1.0d0
       ephi(1)=exp(imag*phi)
       ephi(-1)=dconjg(ephi(1))

@@ -1,4 +1,4 @@
-FC=ifort -O3 -fopenmp
+FC=ifort -O3 -openmp -xHost -WB
 #FC=ifort -check -traceback
 MAKEFLAGS += --no-print-directory
 

@@ -412,7 +412,7 @@ c     get local exp
       end
 C***********************************************************************
       subroutine h3dmpevalspherenm_fast(mpole,wavek,scale,zshift,
-     1     radius,nterms,nterms2,phitemp,nquad,xnodes,fhs,fhder)
+     1     radius,nterms,phitemp,nquad,xnodes)
 C***********************************************************************
 C
 C     This subroutine evaluates a multipole expansion on a target
@@ -423,7 +423,7 @@ C---------------------------------------------------------------------
 C     INPUT:
 C
 C     mpole    : coefficients of original multipole exp.
-C     wavek       : Helmholtz parameter
+C     wavek    : Helmholtz parameter
 C     scale    : mpole scaling parameter
 C     zshift   : shift distance along z-axis.
 C     radius   : radius of sphere about (0,0,zshift)
