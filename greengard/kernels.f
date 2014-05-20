@@ -157,7 +157,8 @@ c     Mi  : coefficients of shifted expansion
 c---------------------------------------------------------------------
       implicit none
       integer l,m,n,mabs,ntermsi,ntermsj,nquad,ier
-      real *8 radius,zshift,r,theta,ctheta,cthetaj,rj,phi,scalej,scalei
+      real *8 radius,zshift,r,theta,phi,ctheta,stheta,cthetaj,rj
+      real *8 scalej,scalei
       real *8 Xi(3),Xj(3),dX(3)
       real *8 xnodes(nquad),wts(nquad)
       real *8 ynm(0:ntermsj,0:ntermsj)
@@ -193,10 +194,45 @@ c---------------------------------------------------------------------
             Mnm(l,m)=0.0d0
          enddo
       enddo
-      call h3dmpevalspherenm_fast(Mrot,wavek,scalej,
-     1     r,radius,ntermsj,phitemp,nquad,xnodes)
-      call h3dprojlocnmsep_fast(ntermsi,nquad,ntermsj,xnodes,wts,
-     1     phitemp,Mnm)
+      do l=1,nquad
+         do m=-ntermsj,ntermsj
+            phitemp(l,m) = 0.0d0
+         enddo
+      enddo
+      call ylgndrini(ntermsj,rat1,rat2)
+      do l=1,nquad
+         ctheta=xnodes(l)
+         stheta=dsqrt(1.0d0-ctheta**2)
+         rj=(r+radius*ctheta)**2+(radius*stheta)**2
+         rj=dsqrt(rj)
+         cthetaj=(r+radius*ctheta)/rj
+         z=wavek*rj
+         call ylgndrf(ntermsj,cthetaj,ynm,rat1,rat2)
+         call h3dall(ntermsj,z,scalej,fhs,0,fhder)
+         do m=-ntermsj,ntermsj
+            mabs=abs(m)
+            do n=mabs,ntermsj
+               phitemp(l,m)=phitemp(l,m)+
+     1              Mrot(n,m)*fhs(n)*ynm(n,mabs)
+            enddo
+         enddo
+      enddo
+      do l=0,ntermsi
+         do m=-l,l
+            Mnm(l,m)=0.0d0
+         enddo
+      enddo
+      call ylgndrini(ntermsi,rat1,rat2)
+      do l=1,nquad
+         call ylgndrf(ntermsi,xnodes(l),ynm,rat1,rat2)
+         do m=-ntermsj,ntermsj
+            mabs=abs(m)
+            z=phitemp(l,m)*wts(l)/2
+            do n=mabs,ntermsi
+               Mnm(n,m)=Mnm(n,m)+z*ynm(n,mabs)
+            enddo
+         enddo
+      enddo
       call h3drescalemp(ntermsi,Mnm,radius,wavek,
      1     scalei)
       call rotate(-theta,ntermsi,Mnm,ntermsj,Mrot)
