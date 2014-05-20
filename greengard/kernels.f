@@ -156,19 +156,20 @@ c     OUTPUT:
 c     Mi  : coefficients of shifted expansion
 c---------------------------------------------------------------------
       implicit none
-      integer l,m,jnew,knew
-      integer ntermsj,ier,nquad,ntermsi
+      integer l,m,n,mabs,ntermsi,ntermsj,nquad,ier
+      real *8 radius,zshift,r,theta,ctheta,cthetaj,rj,phi,scalej,scalei
       real *8 Xi(3),Xj(3),dX(3)
-      real *8 radius, zshift
       real *8 xnodes(nquad),wts(nquad)
-      real *8 r,theta,ctheta,phi,scalej,scalei
+      real *8 ynm(0:ntermsj,0:ntermsj)
       complex *16 Mi(0:ntermsi,-ntermsi:ntermsi)
       complex *16 Mj(0:ntermsj,-ntermsj:ntermsj)
       complex *16 Mnm(0:ntermsj,-ntermsj:ntermsj)
       complex *16 Mrot(0:ntermsj,-ntermsj:ntermsj)
       complex *16 phitemp(nquad,-ntermsj:ntermsj)
-      complex *16 wavek
-      complex *16 ephi(-ntermsj-1:ntermsj+1),imag
+      complex *16 fhs(0:ntermsj),fhder(0:ntermsj)
+      real *8 rat1(0:ntermsj,0:ntermsj),rat2(0:ntermsj,0:ntermsj)
+      complex *16 imag,wavek,z
+      complex *16 ephi(-ntermsj-1:ntermsj+1)
       data imag/(0.0d0,1.0d0)/
       dX(1) = Xi(1) - Xj(1)
       dX(2) = Xi(2) - Xj(2)

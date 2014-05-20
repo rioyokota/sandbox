@@ -318,7 +318,7 @@ C***********************************************************************
       real *8 ynm(0:ntermsj,0:ntermsj)
       complex *16 Mrot(0:ntermsj,-ntermsj:ntermsj)
       complex *16 phitemp(nquad,-ntermsj:ntermsj)
-      complex *16 imag,pot,fld(3),wavek,z
+      complex *16 imag,wavek,z
       complex *16 fhs(0:ntermsj),fhder(0:ntermsj)
       real *8 rat1(0:ntermsj,0:ntermsj),rat2(0:ntermsj,0:ntermsj)
       data imag/(0.0d0,1.0d0)/
@@ -348,32 +348,31 @@ C***********************************************************************
       return
       end
 C***********************************************************************
-      subroutine h3dprojlocnmsep_fast(nterms,nquad,ntold,xnodes,wts,
-     1     phitemp,local)
+      subroutine h3dprojlocnmsep_fast(ntermsi,nquad,ntermsj,xnodes,wts,
+     1     phitemp,Mnm)
       implicit none
-      integer nterms,nquad,ntold
-      integer l,m,jj,kk
-      real *8 cthetaj,wts(1),xnodes(1)
-      real *8 ynm(0:nterms,0:nterms)
-      complex *16 wavek,phitemp(nquad,-ntold:ntold)
-      complex *16 local(0:nterms,-nterms:nterms)
-      complex *16 ephi,imag,emul,sum,zmul,emul1
-      real *8 rat1(0:nterms,0:nterms),rat2(0:nterms,0:nterms)
+      integer ntermsi,nquad,ntermsj
+      integer l,m,n,mabs
+      real *8 xnodes(nquad),wts(nquad)
+      real *8 ynm(0:ntermsi,0:ntermsi)
+      complex *16 phitemp(nquad,-ntermsj:ntermsj)
+      complex *16 Mnm(0:ntermsi,-ntermsi:ntermsi)
+      complex *16 imag,zmul
+      real *8 rat1(0:ntermsi,0:ntermsi),rat2(0:ntermsi,0:ntermsi)
       data imag/(0.0d0,1.0d0)/
-      do l = 0,nterms
-         do m = -l,l
-	    local(l,m) = 0.0d0
+      do l=0,ntermsi
+         do m=-l,l
+	    Mnm(l,m)=0.0d0
          enddo
       enddo
-      call ylgndrini(nterms,rat1,rat2)
-      do jj=1,nquad
-	 cthetaj = xnodes(jj)
-	 call ylgndrf(nterms,cthetaj,ynm,rat1,rat2)
-         do m=-ntold,ntold
-	    zmul = phitemp(jj,m)*wts(jj)/2
-            do l=abs(m),nterms
-               local(l,m) = local(l,m) + 
-     1   	       zmul*ynm(l,abs(m))
+      call ylgndrini(ntermsi,rat1,rat2)
+      do l=1,nquad
+	 call ylgndrf(ntermsi,xnodes(l),ynm,rat1,rat2)
+         do m=-ntermsj,ntermsj
+            mabs=abs(m)
+	    zmul=phitemp(l,m)*wts(l)/2
+            do n=mabs,ntermsi
+               Mnm(n,m)=Mnm(n,m)+zmul*ynm(n,mabs)
             enddo
          enddo
       enddo
