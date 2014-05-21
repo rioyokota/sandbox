@@ -1,20 +1,4 @@
 C***********************************************************************
-      subroutine h3drescalemp(nterms,mpole,radius,wavek,scale)
-      implicit real *8 (a-h,o-z)
-      complex *16 mpole(0:nterms,-nterms:nterms)
-      complex *16 fhs(0:nterms),fhder(0:nterms)
-      complex *16 imag,wavek,z
-      data imag/(0.0d0,1.0d0)/
-      z = wavek*radius
-      call h3dall(nterms,z,scale,fhs,0,fhder)
-      do n=0,nterms
-         do m=-n,n
-	    mpole(n,m)=mpole(n,m)/fhs(n)
-         enddo
-      enddo
-      return
-      end
-C***********************************************************************
       subroutine h3drescalestab(nterms,lmp,local,localn,
      1           radius,wavek0,scale,fjs,fjder,nbessel,ier)
 C***********************************************************************

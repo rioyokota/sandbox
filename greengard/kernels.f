@@ -233,8 +233,13 @@ c---------------------------------------------------------------------
             enddo
          enddo
       enddo
-      call h3drescalemp(ntermsi,Mnm,radius,wavek,
-     1     scalei)
+      z = wavek*radius
+      call h3dall(ntermsi,z,scalei,fhs,0,fhder)
+      do n=0,ntermsi
+         do m=-n,n
+            Mnm(n,m)=Mnm(n,m)/fhs(n)
+         enddo
+      enddo
       call rotate(-theta,ntermsi,Mnm,ntermsj,Mrot)
       do l=0,ntermsi
          do m=-l,l
