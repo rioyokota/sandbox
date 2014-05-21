@@ -157,8 +157,8 @@ c     Mi  : coefficients of shifted expansion
 c---------------------------------------------------------------------
       implicit none
       integer l,m,n,mabs,ntermsi,ntermsj,nquad,ier
-      real *8 radius,zshift,r,theta,phi,ctheta,stheta,cthetaj,rj
-      real *8 scalej,scalei
+      real *8 radius,r,theta,phi,ctheta,stheta,cthetaj,rj
+      real *8 scalei,scalej
       real *8 Xi(3),Xj(3),dX(3)
       real *8 xnodes(nquad),wts(nquad)
       real *8 ynm(0:ntermsj,0:ntermsj)
@@ -179,19 +179,19 @@ c---------------------------------------------------------------------
       ephi(1) = exp(imag*phi)
       ephi(0)=1.0d0
       ephi(-1)=dconjg(ephi(1))
-      do l = 1,ntermsj
-         ephi(l+1) = ephi(l)*ephi(1)
-         ephi(-1-l) = dconjg(ephi(l+1))
+      do n=1,ntermsj
+         ephi(n+1) = ephi(n)*ephi(1)
+         ephi(-1-n) = dconjg(ephi(n+1))
       enddo
-      do l=0,ntermsj
-         do m=-l,l
-            Mnm(l,m)=Mj(l,m)*ephi(m)
+      do n=0,ntermsj
+         do m=-n,n
+            Mnm(n,m)=Mj(n,m)*ephi(m)
          enddo
       enddo
       call rotate(theta,ntermsj,Mnm,ntermsj,Mrot)
-      do l=0,ntermsi
-         do m=-l,l
-            Mnm(l,m)=0.0d0
+      do n=0,ntermsi
+         do m=-n,n
+            Mnm(n,m)=0.0d0
          enddo
       enddo
       do l=1,nquad
@@ -217,9 +217,9 @@ c---------------------------------------------------------------------
             enddo
          enddo
       enddo
-      do l=0,ntermsi
-         do m=-l,l
-            Mnm(l,m)=0.0d0
+      do n=0,ntermsi
+         do m=-n,n
+            Mnm(n,m)=0.0d0
          enddo
       enddo
       call ylgndrini(ntermsi,rat1,rat2)
@@ -241,14 +241,14 @@ c---------------------------------------------------------------------
          enddo
       enddo
       call rotate(-theta,ntermsi,Mnm,ntermsj,Mrot)
-      do l=0,ntermsi
-         do m=-l,l
-            Mnm(l,m)=ephi(-m)*Mrot(l,m)
+      do n=0,ntermsi
+         do m=-n,n
+            Mnm(n,m)=ephi(-m)*Mrot(n,m)
          enddo
       enddo
-      do l = 0,min(ntermsj,ntermsi)
-         do m=-l,l
-            Mi(l,m) = Mi(l,m)+Mnm(l,m)
+      do n = 0,min(ntermsj,ntermsi)
+         do m=-n,n
+            Mi(n,m) = Mi(n,m)+Mnm(n,m)
          enddo
       enddo
       return
