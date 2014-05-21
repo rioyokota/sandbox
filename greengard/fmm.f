@@ -237,8 +237,6 @@ c$omp$private(lused,ier,i,j,ptemp,ftemp,cd)
                      if (jbox.eq.0) cycle
                      call d3tgetb(ier,jbox,box1,center1,corners1,wlists)
                      level1=box1(1)
-                     ldc = max(nterms(level1),nterms(level0))
-                     nq = max(nquad,2*ldc+2)
                      call M2M(wavek,scale(level1),center1,
      1                    rmlexp(iaddr(1,jbox)),nterms(level1),
      1                    scale(level0),center0,rmlexp(iaddr(1,ibox)),
@@ -372,7 +370,7 @@ c     ... split local expansion of the parent box
      1                    center0,
      1                    rmlexp(iaddr(2,ibox)),nterms(level0),
      1                    scale(level1),center1,rmlexp(iaddr(2,jbox)),
-     1                    nterms(level1),ldc,
+     1                    nterms(level1),
      1                    radius,xnodes,wts,nquad,nq,nbessel,ier)
  5100             continue
                endif
