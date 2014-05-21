@@ -416,7 +416,7 @@ c---------------------------------------------------------------------
       end
       subroutine L2L(wavek,scalej,Xj,Lj,ntermsj,
      1           scalei,Xi,Li,ntermsi,
-     2           radius,xnodes,wts,nquad,nq,nbessel,ier)
+     2           radius,xnodes,wts,nquad,nbessel,ier)
 c***********************************************************************
 c     Shifts center of a local expansion.
 c     This is a reasonably fast "point and shoot" version which
@@ -446,66 +446,66 @@ c---------------------------------------------------------------------
 c     OUTPUT:
 c     Li      : coefficients of shifted local expansion
 c***********************************************************************
-      implicit real *8 (a-h,o-z)
-      integer ntermsj,ier,l,m
-      real *8 Xj(3),Xi(3),dX(3)
-      real *8 xnodes(1),wts(1)
-      real *8 r,theta,ctheta,phi,scalej,scalei
+      implicit none
+      integer n,m,ntermsi,ntermsj,nquad,nbessel,ier
+      real *8 radius,r,theta,phi,ctheta
+      real *8 scalej,scalei
+      real *8 Xi(3),Xj(3),dX(3)
+      real *8 xnodes(nquad),wts(nquad)
       real *8 ynm(0:ntermsi,0:ntermsi)
       real *8 ynmd(0:ntermsi,0:ntermsi)
-      complex *16 phitemp(nq,-ntermsi:ntermsi)
-      complex *16 phitempn(nq,-ntermsi:ntermsi)
-      complex *16 Lnmd(0:ntermsi,-ntermsi:ntermsi)
+      complex *16 phitemp(nquad,-ntermsi:ntermsi)
+      complex *16 phitempn(nquad,-ntermsi:ntermsi)
       complex *16 jn(0:nbessel)
       complex *16 jnd(0:nbessel)
       complex *16 Li(0:ntermsi,-ntermsi:ntermsi)
       complex *16 Lj(0:ntermsj,-ntermsj:ntermsj)
-      complex *16 mptemp(0:ntermsi,-ntermsi:ntermsi)
-      complex *16 marray(0:ntermsi,-ntermsi:ntermsi)
-      complex *16 marray1(0:ntermsj,-ntermsj:ntermsj)
-      complex *16 wavek,imag
+      complex *16 Lnm(0:ntermsi,-ntermsi:ntermsi)
+      complex *16 Lnmd(0:ntermsi,-ntermsi:ntermsi)
+      complex *16 Lrot(0:ntermsi,-ntermsi:ntermsi)
+      complex *16 imag,wavek
       complex *16 ephi(-ntermsi-1:ntermsi+1)
       data imag/(0.0d0,1.0d0)/
-      dX(1) = Xi(1) - Xj(1)
-      dX(2) = Xi(2) - Xj(2)
-      dX(3) = Xi(3) - Xj(3)
+      dX(1)=Xi(1)-Xj(1)
+      dX(2)=Xi(2)-Xj(2)
+      dX(3)=Xi(3)-Xj(3)
       call cart2sph(dX,r,theta,phi)
       ephi(0)=1.0d0
       ephi(1)=exp(imag*phi)
       ephi(-1)=dconjg(ephi(1))
-      do l = 1,ntermsi
-         ephi(l+1) = ephi(l)*ephi(1)
-         ephi(-1-l) = dconjg(ephi(l+1))
+      do n=1,ntermsi
+         ephi(n+1)=ephi(n)*ephi(1)
+         ephi(-1-n)=dconjg(ephi(n+1))
       enddo
-      do l=0,ntermsj
-         do mp=-l,l
-            marray1(l,mp) = Lj(l,mp)*ephi(mp)
+      do n=0,ntermsj
+         do m=-n,n
+            Lnm(n,m)=Lj(n,m)*ephi(m)
          enddo
       enddo
-      do l=0,ntermsi
-         do m=-l,l
-            mptemp(l,m)=0.0d0
+      call rotate(theta,ntermsj,Lnm,ntermsi,Lrot)
+      do n=0,ntermsi
+         do m=-n,n
+            Lnm(n,m)=0.0d0
          enddo
       enddo
-      call rotate(theta,ntermsj,marray1,ntermsi,marray)
-      call h3dlocevalspherestab_fast(marray,wavek,scalej,
+      call h3dlocevalspherestab_fast(Lrot,wavek,scalej,
      1     r,radius,ntermsj,ntermsi,
-     1     ntermsi,ynm,ynmd,phitemp,phitempn,nquad,xnodes,
+     1     ynm,ynmd,phitemp,phitempn,nquad,xnodes,
      1     jn,jnd,nbessel,ier)
       call h3dprojlocsepstab_fast
      1     (ntermsi,nquad,xnodes,wts,
-     1     phitemp,phitempn,mptemp,Lnmd,ynm)
-      call h3drescalestab(ntermsi,mptemp,Lnmd,
+     1     phitemp,phitempn,Lnm,Lnmd,ynm)
+      call h3drescalestab(ntermsi,Lnm,Lnmd,
      1      radius,wavek,scalei,jn,jnd,nbessel,ier)
-      call rotate(-theta,ntermsi,mptemp,ntermsi,marray)
-      do l=0,ntermsi
-         do m=-l,l
-            mptemp(l,m)=ephi(-m)*marray(l,m)
+      call rotate(-theta,ntermsi,Lnm,ntermsi,Lrot)
+      do n=0,ntermsi
+         do m=-n,n
+            Lnm(n,m)=ephi(-m)*Lrot(n,m)
          enddo
       enddo
-      do l = 0,ntermsi
-         do m=-l,l
-            Li(l,m) = Li(l,m)+mptemp(l,m)
+      do n=0,ntermsi
+         do m=-n,n
+            Li(n,m)=Li(n,m)+Lnm(n,m)
          enddo
       enddo
       return
