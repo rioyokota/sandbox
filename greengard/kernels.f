@@ -447,13 +447,13 @@ c     OUTPUT:
 c     Li      : coefficients of shifted local expansion
 c***********************************************************************
       implicit none
-      integer l,m,n,ntermsi,ntermsj,nquad,nbessel,ier
+      integer l,m,n,mabs,ntermsi,ntermsj,nquad,nbessel,ier
       real *8 radius,r,theta,phi,ctheta,stheta,cthetaj,sthetaj,thetan
       real *8 rj,rn,scalej,scalei
       real *8 Xi(3),Xj(3),dX(3)
       real *8 xnodes(nquad),wts(nquad)
       real *8 ynm(0:ntermsi,0:ntermsi),ynmd(0:ntermsi,0:ntermsi)
-      real *8 rat1(0:ntermsj,0:ntermsj),rat2(0:ntermsj,0:ntermsj)
+      real *8 rat1(0:ntermsi,0:ntermsi),rat2(0:ntermsi,0:ntermsi)
       complex *16 phitemp(nquad,-ntermsi:ntermsi)
       complex *16 phitempn(nquad,-ntermsi:ntermsi)
       complex *16 jn(0:nbessel)
@@ -463,7 +463,7 @@ c***********************************************************************
       complex *16 Lnm(0:ntermsi,-ntermsi:ntermsi)
       complex *16 Lnmd(0:ntermsi,-ntermsi:ntermsi)
       complex *16 Lrot(0:ntermsi,-ntermsi:ntermsi)
-      complex *16 imag,wavek,z,ut1,ut2,ut3
+      complex *16 imag,wavek,z,zh,zhn,ut1,ut2,ut3
       complex *16 ephi(-ntermsi-1:ntermsi+1)
       data imag/(0.0d0,1.0d0)/
       dX(1)=Xi(1)-Xj(1)
@@ -488,15 +488,84 @@ c***********************************************************************
             Lnm(n,m)=0.0d0
          enddo
       enddo
-      call h3dlocevalspherestab_fast(Lrot,wavek,scalej,
-     1     r,radius,ntermsj,ntermsi,
-     1     ynm,ynmd,phitemp,phitempn,nquad,xnodes,
-     1     jn,jnd,nbessel,ier)
-      call h3dprojlocsepstab_fast
-     1     (ntermsi,nquad,xnodes,wts,
-     1     phitemp,phitempn,Lnm,Lnmd,ynm)
-      call h3drescalestab(ntermsi,Lnm,Lnmd,
-     1      radius,wavek,scalei,jn,jnd,nbessel,ier)
+      ier=0
+      do l=1,nquad
+         do m=-ntermsi,ntermsi
+            phitemp(l,m)=0.0d0
+            phitempn(l,m)=0.0d0
+         enddo
+      enddo
+      call ylgndrini(ntermsj,rat1,rat2)
+      do l=1,nquad
+         ctheta=xnodes(l)
+         stheta=dsqrt(1.0d0-ctheta**2)
+         rj=(r+radius*ctheta)**2+(radius*stheta)**2
+         rj=dsqrt(rj)
+         cthetaj=(r+radius*ctheta)/rj
+         sthetaj=dsqrt(1.0d0-cthetaj**2)
+         rn=sthetaj*stheta+cthetaj*ctheta
+         thetan=(cthetaj*stheta-sthetaj*ctheta)/rj
+         z=wavek*rj
+         call ylgndr2sf(ntermsj,cthetaj,ynm,ynmd,rat1,rat2)
+         call jfuns3d(ier,ntermsj,z,scalej,jn,1,jnd,nbessel)
+         do n=0,ntermsj
+            jnd(n)=jnd(n)*wavek
+         enddo
+         do n=1,ntermsj
+            do m=1,n
+               ynm(n,m)=ynm(n,m)*sthetaj
+            enddo
+         enddo
+         phitemp(l,0)=Lrot(0,0)*jn(0)
+         phitempn(l,0)=Lrot(0,0)*jnd(0)*rn
+         do n=1,ntermsj
+            phitemp(l,0)=phitemp(l,0)+Lrot(n,0)*jn(n)*ynm(n,0)
+            ut1=jnd(n)*rn
+            ut2=jn(n)*thetan
+            ut3=ut1*ynm(n,0)-ut2*ynmd(n,0)*sthetaj
+            phitempn(l,0)=phitempn(l,0)+ut3*Lrot(n,0)
+            do m=1,min(n,ntermsi)
+               z=jn(n)*ynm(n,m)
+               phitemp(l,m)=phitemp(l,m)+Lrot(n,m)*z
+               phitemp(l,-m)=phitemp(l,-m)+Lrot(n,-m)*z
+               ut3=ut1*ynm(n,m)-ut2*ynmd(n,m)
+               phitempn(l,m)=phitempn(l,m)+ut3*Lrot(n,m)
+               phitempn(l,-m)=phitempn(l,-m)+ut3*Lrot(n,-m)
+            enddo
+         enddo
+      enddo
+      do n=0,ntermsi
+         do m=-n,n
+            Lnm(n,m)=0.0d0
+            Lnmd(n,m)=0.0d0
+         enddo
+      enddo
+      call ylgndrini(ntermsi,rat1,rat2)
+      do l=1,nquad
+         cthetaj=xnodes(l)
+         call ylgndrf(ntermsi,cthetaj,ynm,rat1,rat2)
+         do m=-ntermsi,ntermsi
+            mabs=abs(m)
+            z=phitemp(l,m)*wts(l)/2.0d0
+            do n=mabs,ntermsi
+               Lnm(n,m)=Lnm(n,m)+z*ynm(n,mabs)
+            enddo
+            z=phitempn(l,m)*wts(l)/2.0d0
+            do n=mabs,ntermsi
+               Lnmd(n,m)=Lnmd(n,m)+z*ynm(n,mabs)
+            enddo
+         enddo
+      enddo
+      z = wavek*radius
+      call jfuns3d(ier,ntermsi,z,scalei,jn,1,jnd,nbessel)
+      do n=0,ntermsi
+         do m=-n,n
+            zh=jn(n)
+            zhn=jnd(n)*wavek
+            z=zh*zh+zhn*zhn
+            Lnm(n,m)=(zh*Lnm(n,m)+zhn*Lnmd(n,m))/z
+         enddo
+      enddo
       call rotate(-theta,ntermsi,Lnm,ntermsi,Lrot)
       do n=0,ntermsi
          do m=-n,n
