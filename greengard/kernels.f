@@ -580,61 +580,58 @@ c***********************************************************************
       return
       end
 c**********************************************************************
-      subroutine L2P(wavek,scalej,center,locexp,nterms,
-     1     ntrunc,nbessel,Xi,nt,pot,fld,Anm,Pmax,ier)
+      subroutine L2P(wavek,scalej,Xj,Lj,nterms,
+     1     ntrunc,nbessel,Xi,ni,pi,Fi,Anm,Pmax,ier)
 c**********************************************************************
 c     This subroutine evaluates a j-expansion centered at CENTER
 c     at the target point TARGET.
-c     pot =  sum sum  locexp(n,m) j_n(k r) Y_nm(theta,phi)
+c     pi =  sum sum  Lj(n,m) j_n(k r) Y_nm(theta,phi)
 c             n   m
 c---------------------------------------------------------------------
 c     INPUT:
 c     wavek  : the Helmholtz coefficient
-c     scalej  : scaling parameter used in forming expansion
-c     center : coordinates of the expansion center
-c     locexp : coeffs of the j-expansion
+c     scalej : scaling parameter used in forming expansion
+c     Xj     : coordinates of the expansion center
+c     Lj     : coeffs of the j-expansion
 c     nterms : order of the h-expansion
 c     ntrunc : order of the truncated expansion
 c     Xi     : target vector
-c     nt     : number of targets
+c     ni     : number of targets
 c     Anm    : precomputed array of scaling coeffs for Pnm
 c     Pmax   : dimension parameter for Anm
 c---------------------------------------------------------------------
 c     OUTPUT:
-c     pot    : potential at target (if requested)
-c     fld(3) : gradient at target (if requested)
+c     pi     : potential at target (if requested)
+c     Fi     : gradient at target (if requested)
 c---------------------------------------------------------------------
       implicit none
-      integer i,j,m,n,nt,ier,nterms,ntrunc,Pmax,nbessel
+      integer i,j,m,n,ni,ier,nterms,ntrunc,Pmax,nbessel
       real *8 r,rx,ry,rz,theta,thetax,thetay,thetaz,scalej
       real *8 phi,phix,phiy,phiz,ctheta,stheta,cphi,sphi,Anm
-      real *8 center(3),Xi(3,1),dX(3)
+      real *8 Xj(3),Xi(3,1),dX(3)
       real *8 Ynm(0:nterms,0:nterms)
       real *8 Ynmd(0:nterms,0:nterms)
-      complex *16 wavek,pot(1),fld(3,1)
-      complex *16 locexp(0:nterms,-nterms:nterms)
-      complex *16 ephi(-nterms-1:nterms+1)
+      complex *16 wavek,pi(1),Fi(3,1)
+      complex *16 Lj(0:nterms,-nterms:nterms)
+      complex *16 ephi(nterms)
       complex *16 jnuse,jn(0:nbessel),jnd(0:nbessel)
       complex *16 imag,ur,utheta,uphi,ztmp,z
       complex *16 ztmp1,ztmp2,ztmp3,ztmpsum
       complex *16 ux,uy,uz
       data imag/(0.0d0,1.0d0)/
       ier=0
-      do i=1,nt
-         dX(1)=Xi(1,i)-center(1)
-         dX(2)=Xi(2,i)-center(2)
-         dX(3)=Xi(3,i)-center(3)
+      do i=1,ni
+         dX(1)=Xi(1,i)-Xj(1)
+         dX(2)=Xi(2,i)-Xj(2)
+         dX(3)=Xi(3,i)-Xj(3)
          call cart2sph(dX,r,theta,phi)
-         ctheta = dcos(theta)
+         ctheta=dcos(theta)
          stheta=sqrt(1-ctheta*ctheta)
          cphi=dcos(phi)
          sphi=dsin(phi)
-         ephi(0)=1.0d0
          ephi(1)=dcmplx(cphi,sphi)
-         ephi(-1)=dconjg(ephi(1))
          do j=2,nterms+1
             ephi(j)=ephi(j-1)*ephi(1)
-            ephi(-j)=ephi(-j+1)*ephi(-1)
          enddo
          rx = stheta*cphi
          thetax = ctheta*cphi
@@ -647,39 +644,38 @@ c---------------------------------------------------------------------
          phiz = 0.0d0
          call ylgndr2sfw(ntrunc,ctheta,Ynm,Ynmd,Anm,Pmax)
          z=wavek*r
-         call jfuns3d(ier,ntrunc,z,scalej,jn,1,jnd,
-     1	      nbessel)
-         pot(i)=pot(i)+locexp(0,0)*jn(0)
+         call jfuns3d(ier,ntrunc,z,scalej,jn,1,jnd,nbessel)
+         pi(i)=pi(i)+Lj(0,0)*jn(0)
          do j=0,ntrunc
             jnd(j)=jnd(j)*wavek
          enddo
-         ur = locexp(0,0)*jnd(0)
-         utheta = 0.0d0
-         uphi = 0.0d0
+         ur=Lj(0,0)*jnd(0)
+         utheta=0.0d0
+         uphi=0.0d0
          do n=1,ntrunc
-            pot(i)=pot(i)+locexp(n,0)*jn(n)*Ynm(n,0)
-            ur = ur + jnd(n)*Ynm(n,0)*locexp(n,0)
-            jnuse = jn(n+1)*scalej + jn(n-1)/scalej
-            jnuse = wavek*jnuse/(2*n+1.0d0)
-            utheta = utheta -locexp(n,0)*jnuse*Ynmd(n,0)*stheta
+            pi(i)=pi(i)+Lj(n,0)*jn(n)*Ynm(n,0)
+            ur=ur+jnd(n)*Ynm(n,0)*Lj(n,0)
+            jnuse=jn(n+1)*scalej+jn(n-1)/scalej
+            jnuse=wavek*jnuse/(2*n+1.0d0)
+            utheta=utheta-Lj(n,0)*jnuse*Ynmd(n,0)*stheta
             do m=1,n
                ztmp1=jn(n)*Ynm(n,m)*stheta
-               ztmp2 = locexp(n,m)*ephi(m)
-               ztmp3 = locexp(n,-m)*ephi(-m)
-               ztmpsum = ztmp2+ztmp3
-               pot(i)=pot(i)+ztmp1*ztmpsum
-               ur = ur + jnd(n)*Ynm(n,m)*stheta*ztmpsum
-               utheta = utheta -ztmpsum*jnuse*Ynmd(n,m)
-               ztmpsum = imag*m*(ztmp2 - ztmp3)
-               uphi = uphi + jnuse*Ynm(n,m)*ztmpsum
+               ztmp2=Lj(n,m)*ephi(m)
+               ztmp3=Lj(n,-m)*dconjg(ephi(m))
+               ztmpsum=ztmp2+ztmp3
+               pi(i)=pi(i)+ztmp1*ztmpsum
+               ur=ur+jnd(n)*Ynm(n,m)*stheta*ztmpsum
+               utheta=utheta-ztmpsum*jnuse*Ynmd(n,m)
+               ztmpsum=imag*m*(ztmp2-ztmp3)
+               uphi=uphi+jnuse*Ynm(n,m)*ztmpsum
             enddo
          enddo
-         ux = ur*rx + utheta*thetax + uphi*phix
-         uy = ur*ry + utheta*thetay + uphi*phiy
-         uz = ur*rz + utheta*thetaz + uphi*phiz
-         fld(1,i) = fld(1,i)-ux
-         fld(2,i) = fld(2,i)-uy
-         fld(3,i) = fld(3,i)-uz
+         ux=ur*rx+utheta*thetax+uphi*phix
+         uy=ur*ry+utheta*thetay+uphi*phiy
+         uz=ur*rz+utheta*thetaz+uphi*phiz
+         Fi(1,i)=Fi(1,i)-ux
+         Fi(2,i)=Fi(2,i)-uy
+         Fi(3,i)=Fi(3,i)-uz
       enddo
       return
       end
