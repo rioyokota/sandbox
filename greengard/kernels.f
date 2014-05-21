@@ -290,7 +290,6 @@ c---------------------------------------------------------------------
       real *8 rat1(0:ntrunc,0:ntrunc),rat2(0:ntrunc,0:ntrunc)
       complex *16 phitemp(nquad,-ntrunc:ntrunc)
       complex *16 phitempn(nquad,-ntrunc:ntrunc)
-      complex *16 Lnmd(0:ntermsj,-ntermsj:ntermsj)
       complex *16 fhs(0:ntrunc),fhder(0:ntrunc)
       complex *16 jn(0:nbessel),jnd(0:nbessel)
       complex *16 Mj(0:ntermsj,-ntermsj:ntermsj)
@@ -298,6 +297,7 @@ c---------------------------------------------------------------------
       complex *16 Mrot(0:ntermsj,-ntermsj:ntermsj)
       complex *16 Li(0:ntermsi,-ntermsi:ntermsi)
       complex *16 Lnm(0:ntrunc,-ntrunc:ntrunc)
+      complex *16 Lnmd(0:ntrunc,-ntrunc:ntrunc)
       complex *16 Lrot(0:ntermsj,-ntermsj:ntermsj)
       complex *16 imag,wavek,z,ut1,ut2,ut3
       complex *16 ephi(-ntermsj-1:ntermsj+1)
@@ -369,8 +369,7 @@ c---------------------------------------------------------------------
             enddo
          enddo
       enddo
-      call h3dprojlocsepstab_fast
-     $   (ntrunc,ntrunc,nquad,ntrunc,xnodes,wts,
+      call h3dprojlocsepstab_fast(ntrunc,nquad,xnodes,wts,
      1     phitemp,phitempn,Lnm,Lnmd,ynm)
       call h3drescalestab(ntrunc,ntrunc,Lnm,Lnmd,
      1     radius,wavek,scalei,jn,jnd,nbessel,ier)
@@ -467,7 +466,7 @@ c***********************************************************************
      1     ldc,ynm,ynmd,phitemp,phitempn,nquad,xnodes,
      1     jn,jnd,nbessel,ier)
       call h3dprojlocsepstab_fast
-     1     (ntermsi,ntermsi,nquad,ntermsi,xnodes,wts,
+     1     (ntermsi,nquad,xnodes,wts,
      1     phitemp,phitempn,mptemp,Lnmd,ynm)
       call h3drescalestab(ntermsi,ntermsi,mptemp,Lnmd,
      1      radius,wavek,scalei,jn,jnd,nbessel,ier)
