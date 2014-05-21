@@ -447,13 +447,13 @@ c     OUTPUT:
 c     Li      : coefficients of shifted local expansion
 c***********************************************************************
       implicit none
-      integer n,m,ntermsi,ntermsj,nquad,nbessel,ier
-      real *8 radius,r,theta,phi,ctheta
-      real *8 scalej,scalei
+      integer l,m,n,ntermsi,ntermsj,nquad,nbessel,ier
+      real *8 radius,r,theta,phi,ctheta,stheta,cthetaj,sthetaj,thetan
+      real *8 rj,rn,scalej,scalei
       real *8 Xi(3),Xj(3),dX(3)
       real *8 xnodes(nquad),wts(nquad)
-      real *8 ynm(0:ntermsi,0:ntermsi)
-      real *8 ynmd(0:ntermsi,0:ntermsi)
+      real *8 ynm(0:ntermsi,0:ntermsi),ynmd(0:ntermsi,0:ntermsi)
+      real *8 rat1(0:ntermsj,0:ntermsj),rat2(0:ntermsj,0:ntermsj)
       complex *16 phitemp(nquad,-ntermsi:ntermsi)
       complex *16 phitempn(nquad,-ntermsi:ntermsi)
       complex *16 jn(0:nbessel)
@@ -463,7 +463,7 @@ c***********************************************************************
       complex *16 Lnm(0:ntermsi,-ntermsi:ntermsi)
       complex *16 Lnmd(0:ntermsi,-ntermsi:ntermsi)
       complex *16 Lrot(0:ntermsi,-ntermsi:ntermsi)
-      complex *16 imag,wavek
+      complex *16 imag,wavek,z,ut1,ut2,ut3
       complex *16 ephi(-ntermsi-1:ntermsi+1)
       data imag/(0.0d0,1.0d0)/
       dX(1)=Xi(1)-Xj(1)

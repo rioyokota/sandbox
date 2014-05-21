@@ -98,71 +98,63 @@ C***********************************************************************
       subroutine h3dlocevalspherestab_fast(Lrot,wavek,scalej,r,
      1     radius,ntermsj,ntermsi,ynm,ynmd,phitemp,phitempn,
      1     nquad,xnodes,jn,jnd,nbessel,ier)
-      implicit real *8 (a-h,o-z)
-      integer ntermsj
-      integer l,m
-      real *8 r
-      real *8 xnodes(1)
-      real *8 ynm(0:ntermsj,0:ntermsj)
-      real *8 ynmd(0:ntermsj,0:ntermsj)
+      implicit none
+      integer l,m,n,ntermsj,ntermsi,nquad,nbessel,ier
+      real *8 radius,r,ctheta,stheta,cthetaj,sthetaj,thetan,rj,rn
+      real *8 scalej,scalei
+      real *8 xnodes(nquad)
+      real *8 ynm(0:ntermsi,0:ntermsi)
+      real *8 ynmd(0:ntermsi,0:ntermsi)
       complex *16 Lrot(0:ntermsi,-ntermsi:ntermsi)
       complex *16 phitemp(nquad,-ntermsi:ntermsi)
       complex *16 phitempn(nquad,-ntermsi:ntermsi)
-      complex *16 imag,pot,fld(3), wavek,z,uval,unval,ur,utheta
-      complex *16 ephi1,ephik,ephi,jn(0:nbessel),jnd(0:nbessel),ztmp1
-      complex *16 ut1,ut2,ut3
+      complex *16 jn(0:nbessel),jnd(0:nbessel)
+      complex *16 imag,wavek,z,ut1,ut2,ut3
       real *8 rat1(0:ntermsj,0:ntermsj),rat2(0:ntermsj,0:ntermsj)
       data imag/(0.0d0,1.0d0)/
-      ier = 0
-      do jj=1,nquad
-      do m=-ntermsi,ntermsi
-         phitemp(jj,m) = 0.0d0
-         phitempn(jj,m) = 0.0d0
-      enddo
+      ier=0
+      do l=1,nquad
+         do m=-ntermsi,ntermsi
+            phitemp(l,m)=0.0d0
+            phitempn(l,m)=0.0d0
+         enddo
       enddo
       call ylgndrini(ntermsj,rat1,rat2)
-      do jj=1,nquad
-	 ctheta = xnodes(jj)
-	 stheta = dsqrt(1.0d0 - ctheta**2)
-         rj = (r+ radius*ctheta)**2 + (radius*stheta)**2
-         rj = dsqrt(rj)
-	 cthetaj = (r+radius*ctheta)/rj
-	 sthetaj = dsqrt(1.0d0-cthetaj**2)
-	 rn = sthetaj*stheta + cthetaj*ctheta
-	 thetan = (cthetaj*stheta - sthetaj*ctheta)/rj
-	 z = wavek*rj
+      do l=1,nquad
+	 ctheta=xnodes(l)
+	 stheta=dsqrt(1.0d0-ctheta**2)
+         rj=(r+radius*ctheta)**2+(radius*stheta)**2
+         rj=dsqrt(rj)
+	 cthetaj=(r+radius*ctheta)/rj
+	 sthetaj=dsqrt(1.0d0-cthetaj**2)
+	 rn=sthetaj*stheta+cthetaj*ctheta
+	 thetan=(cthetaj*stheta-sthetaj*ctheta)/rj
+	 z=wavek*rj
 	 call ylgndr2sf(ntermsj,cthetaj,ynm,ynmd,rat1,rat2)
-	 call jfuns3d(jer,ntermsj,z,scalej,jn,1,jnd,nbessel)
-         if (jer.eq.8) then
-            ier = 8
-	    return
-         endif
-	 do n = 0,ntermsj
-	    jnd(n) = jnd(n)*wavek
+	 call jfuns3d(ier,ntermsj,z,scalej,jn,1,jnd,nbessel)
+	 do n=0,ntermsj
+	    jnd(n)=jnd(n)*wavek
          enddo
-	 do n = 1,ntermsj
-	    do m = 1,n
-	       ynm(n,m) = ynm(n,m)*sthetaj
+	 do n=1,ntermsj
+	    do m=1,n
+	       ynm(n,m)=ynm(n,m)*sthetaj
             enddo
          enddo
-	 phitemp(jj,0) = Lrot(0,0)*jn(0)
-	 phitempn(jj,0) = Lrot(0,0)*jnd(0)*rn
+	 phitemp(l,0)=Lrot(0,0)*jn(0)
+	 phitempn(l,0)=Lrot(0,0)*jnd(0)*rn
          do n=1,ntermsj
-	    phitemp(jj,0) = phitemp(jj,0) +
-     1                Lrot(n,0)*jn(n)*ynm(n,0)
-	    ut1 = jnd(n)*rn
-	    ut2 = jn(n)*thetan
-	    ut3 = ut1*ynm(n,0)-ut2*ynmd(n,0)*sthetaj
-	    phitempn(jj,0) = phitempn(jj,0)+ut3*Lrot(n,0)
+	    phitemp(l,0)=phitemp(l,0)+Lrot(n,0)*jn(n)*ynm(n,0)
+	    ut1=jnd(n)*rn
+	    ut2=jn(n)*thetan
+	    ut3=ut1*ynm(n,0)-ut2*ynmd(n,0)*sthetaj
+	    phitempn(l,0)=phitempn(l,0)+ut3*Lrot(n,0)
 	    do m=1,min(n,ntermsi)
-	       ztmp1 = jn(n)*ynm(n,m)
-	       phitemp(jj,m) = phitemp(jj,m) +
-     1                Lrot(n,m)*ztmp1
-	       phitemp(jj,-m) = phitemp(jj,-m) +
-     1                Lrot(n,-m)*ztmp1
-	       ut3 = ut1*ynm(n,m)-ut2*ynmd(n,m)
-	       phitempn(jj,m) = phitempn(jj,m)+ut3*Lrot(n,m)
-	       phitempn(jj,-m) = phitempn(jj,-m)+ut3*Lrot(n,-m)
+	       z=jn(n)*ynm(n,m)
+	       phitemp(l,m)=phitemp(l,m)+Lrot(n,m)*z
+	       phitemp(l,-m)=phitemp(l,-m)+Lrot(n,-m)*z
+	       ut3=ut1*ynm(n,m)-ut2*ynmd(n,m)
+	       phitempn(l,m)=phitempn(l,m)+ut3*Lrot(n,m)
+	       phitempn(l,-m)=phitempn(l,-m)+ut3*Lrot(n,-m)
 	    enddo
 	 enddo
       enddo
