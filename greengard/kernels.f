@@ -172,9 +172,9 @@ c---------------------------------------------------------------------
       complex *16 imag,wavek,z
       complex *16 ephi(-ntermsj-1:ntermsj+1)
       data imag/(0.0d0,1.0d0)/
-      dX(1) = Xi(1) - Xj(1)
-      dX(2) = Xi(2) - Xj(2)
-      dX(3) = Xi(3) - Xj(3)
+      dX(1)=Xi(1)-Xj(1)
+      dX(2)=Xi(2)-Xj(2)
+      dX(3)=Xi(3)-Xj(3)
       call cart2sph(dX,r,theta,phi)
       ephi(1) = exp(imag*phi)
       ephi(0)=1.0d0
@@ -255,7 +255,7 @@ c---------------------------------------------------------------------
       end
 c***********************************************************************
       subroutine M2L(wavek,scalej,Xj,Mj,
-     1     ntermsj,scalei,Xi,local,ntermsi,ntrunc,
+     1     ntermsj,scalei,Xi,Li,ntermsi,ntrunc,
      1     radius,xnodes,wts,nquad,nq,nbessel,ier)
 c***********************************************************************
 c     Convert multipole expansion to a local expansion.
@@ -278,7 +278,7 @@ c     wts    : Legendre weights (precomputed)
 c     nquad  : number of quadrature nodes used (really nquad**2)
 c---------------------------------------------------------------------
 c     OUTPUT:
-c     local : coefficients of shifted local expansion
+c     Li : coefficients of shifted local expansion
 c---------------------------------------------------------------------
       implicit real *8 (a-h,o-z)
       integer ntermsj,ier,l,m,jnew,knew
@@ -295,52 +295,53 @@ c---------------------------------------------------------------------
       complex *16 jn(0:nbessel)
       complex *16 jnd(0:nbessel)
       complex *16 Mj(0:ntermsj,-ntermsj:ntermsj)
-      complex *16 marray1(0:ntrunc,-ntrunc:ntrunc)
-      complex *16 local(0:ntermsi,-ntermsi:ntermsi)
-      complex *16 mptemp(0:ntrunc,-ntrunc:ntrunc)
-      complex *16 marray(0:ntermsj,-ntermsj:ntermsj)
-      complex *16 wavek
-      complex *16 ephi(-ntermsj-1:ntermsj+1),imag      
+      complex *16 Mnm(0:ntrunc,-ntrunc:ntrunc)
+      complex *16 Mrot(0:ntermsj,-ntermsj:ntermsj)
+      complex *16 Li(0:ntermsi,-ntermsi:ntermsi)
+      complex *16 Lnm(0:ntrunc,-ntrunc:ntrunc)
+      complex *16 Lrot(0:ntermsj,-ntermsj:ntermsj)
+      complex *16 imag,wavek
+      complex *16 ephi(-ntermsj-1:ntermsj+1)
       data imag/(0.0d0,1.0d0)/
-      dX(1) = Xi(1) - Xj(1)
-      dX(2) = Xi(2) - Xj(2)
-      dX(3) = Xi(3) - Xj(3)
+      dX(1)=Xi(1)-Xj(1)
+      dX(2)=Xi(2)-Xj(2)
+      dX(3)=Xi(3)-Xj(3)
       call cart2sph(dX,r,theta,phi)
-      ephi(1) = exp(imag*phi)
       ephi(0)=1.0d0
+      ephi(1)=exp(imag*phi)
       ephi(-1)=dconjg(ephi(1))
-      do l = 1,ntermsj
-         ephi(l+1) = ephi(l)*ephi(1)
-         ephi(-1-l) = dconjg(ephi(l+1))
+      do n=1,ntermsj
+         ephi(n+1)=ephi(n)*ephi(1)
+         ephi(-1-n)=dconjg(ephi(n+1))
       enddo
-      do l=0,ntrunc
-         do mp=-l,l
-            marray1(l,mp) = Mj(l,mp)*ephi(mp)
+      do n=0,ntrunc
+         do m=-n,n
+            Mnm(n,m) = Mj(n,m)*ephi(m)
          enddo
       enddo
-      do l=0,ntrunc
-         do m=-l,l
-            mptemp(l,m)=0.0d0
+      do n=0,ntrunc
+         do m=-n,n
+            Lnm(n,m)=0.0d0
          enddo
       enddo
-      call rotate(theta,ntrunc,marray1,ntermsj,marray)
-      call h3dmpevalspherenmstab_fast(marray,wavek,scalej,r,radius,
+      call rotate(theta,ntrunc,Mnm,ntermsj,Mrot)
+      call h3dmpevalspherenmstab_fast(Mrot,wavek,scalej,r,radius,
      2     ntrunc,ntermsj,ynm,ynmd,phitemp,phitempn,nquad,xnodes,
      3     fhs,fhder)
       call h3dprojlocsepstab_fast
      $   (ntrunc,ntrunc,nquad,ntrunc,xnodes,wts,
-     1     phitemp,phitempn,mptemp,mp2,ynm)
-      call h3drescalestab(ntrunc,ntrunc,mptemp,mp2,
+     1     phitemp,phitempn,Lnm,mp2,ynm)
+      call h3drescalestab(ntrunc,ntrunc,Lnm,mp2,
      1     radius,wavek,scalei,jn,jnd,nbessel,ier)
-      call rotate(-theta,ntrunc,mptemp,ntermsj,marray)
+      call rotate(-theta,ntrunc,Lnm,ntermsj,Lrot)
       do l=0,ntrunc
          do m=-l,l
-            mptemp(l,m) = ephi(-m)*marray(l,m)
+            Lnm(l,m) = ephi(-m)*Lrot(l,m)
          enddo
       enddo
       do l = 0,ntrunc
          do m=-l,l
-            local(l,m) = local(l,m)+mptemp(l,m)
+            Li(l,m) = Li(l,m)+Lnm(l,m)
          enddo
       enddo
       return
