@@ -256,7 +256,7 @@ c---------------------------------------------------------------------
 c***********************************************************************
       subroutine M2L(wavek,scalej,Xj,Mj,
      1     ntermsj,scalei,Xi,Li,ntermsi,ntrunc,
-     1     radius,xnodes,wts,nquad,nq,nbessel,ier)
+     1     radius,xnodes,wts,nquad,nbessel,ier)
 c***********************************************************************
 c     Convert multipole expansion to a local expansion.
 c     This is a reasonably fast "point and shoot" version which
@@ -265,42 +265,41 @@ c     along the Z-axis, and then rotating back to the original
 c     coordinates.
 c---------------------------------------------------------------------
 c     INPUT:
-c     wavek  : Helmholtz parameter
-c     Xj : center of original multiple expansion
-c     Xi : center of shifted local expansion
-c     Mj  : coefficients of original multiple expansion
+c     wavek   : Helmholtz parameter
+c     Xj      : center of original multiple expansion
+c     Xi      : center of shifted local expansion
+c     Mj      : coefficients of original multiple expansion
 c     ntermsj : order of multipole expansion
 c     scalej  : scaling parameter for mpole expansion
-c     scalei : scaling parameter for local expansion
-c     radius : radius of sphere on which local expansion is computed
-c     xnodes : Legendre nodes (precomputed)
-c     wts    : Legendre weights (precomputed)
-c     nquad  : number of quadrature nodes used (really nquad**2)
+c     scalei  : scaling parameter for local expansion
+c     radius  : radius of sphere on which local expansion is computed
+c     xnodes  : Legendre nodes (precomputed)
+c     wts     : Legendre weights (precomputed)
+c     nquad   : number of quadrature nodes used (really nquad**2)
 c---------------------------------------------------------------------
 c     OUTPUT:
-c     Li : coefficients of shifted local expansion
+c     Li      : coefficients of shifted local expansion
 c---------------------------------------------------------------------
-      implicit real *8 (a-h,o-z)
-      integer ntermsj,ier,l,m,jnew,knew
-      real *8 r,theta,ctheta,phi,scalej,scalei
-      real *8 Xj(3),Xi(3)
-      real *8 xnodes(1),wts(1),dX(3)
-      real *8 ynm(0:ntermsj,0:ntermsj)
-      real *8 ynmd(0:ntermsj,0:ntermsj)
-      complex *16 phitemp(nq,-ntermsj:ntermsj)
-      complex *16 phitempn(nq,-ntermsj:ntermsj)
-      complex *16 mp2(0:ntermsj,-ntermsj:ntermsj)
-      complex *16 fhs(0:ntermsj)
-      complex *16 fhder(0:ntermsj)
-      complex *16 jn(0:nbessel)
-      complex *16 jnd(0:nbessel)
+      implicit none
+      integer l,m,n,ntermsi,ntermsj,ntrunc,nquad,nq,nbessel,ier
+      real *8 radius,r,theta,phi,ctheta,stheta,cthetaj,sthetaj,thetan
+      real *8 rj,rn,scalej,scalei
+      real *8 Xi(3),Xj(3),dX(3)
+      real *8 xnodes(nquad),wts(nquad)
+      real *8 ynm(0:ntrunc,0:ntrunc),ynmd(0:ntrunc,0:ntrunc)
+      real *8 rat1(0:ntrunc,0:ntrunc),rat2(0:ntrunc,0:ntrunc)
+      complex *16 phitemp(nquad,-ntrunc:ntrunc)
+      complex *16 phitempn(nquad,-ntrunc:ntrunc)
+      complex *16 Lnmd(0:ntermsj,-ntermsj:ntermsj)
+      complex *16 fhs(0:ntrunc),fhder(0:ntrunc)
+      complex *16 jn(0:nbessel),jnd(0:nbessel)
       complex *16 Mj(0:ntermsj,-ntermsj:ntermsj)
       complex *16 Mnm(0:ntrunc,-ntrunc:ntrunc)
       complex *16 Mrot(0:ntermsj,-ntermsj:ntermsj)
       complex *16 Li(0:ntermsi,-ntermsi:ntermsi)
       complex *16 Lnm(0:ntrunc,-ntrunc:ntrunc)
       complex *16 Lrot(0:ntermsj,-ntermsj:ntermsj)
-      complex *16 imag,wavek
+      complex *16 imag,wavek,z,ut1,ut2,ut3
       complex *16 ephi(-ntermsj-1:ntermsj+1)
       data imag/(0.0d0,1.0d0)/
       dX(1)=Xi(1)-Xj(1)
@@ -316,7 +315,7 @@ c---------------------------------------------------------------------
       enddo
       do n=0,ntrunc
          do m=-n,n
-            Mnm(n,m) = Mj(n,m)*ephi(m)
+            Mnm(n,m)=Mj(n,m)*ephi(m)
          enddo
       enddo
       do n=0,ntrunc
@@ -325,23 +324,65 @@ c---------------------------------------------------------------------
          enddo
       enddo
       call rotate(theta,ntrunc,Mnm,ntermsj,Mrot)
-      call h3dmpevalspherenmstab_fast(Mrot,wavek,scalej,r,radius,
-     2     ntrunc,ntermsj,ynm,ynmd,phitemp,phitempn,nquad,xnodes,
-     3     fhs,fhder)
-      call h3dprojlocsepstab_fast
-     $   (ntrunc,ntrunc,nquad,ntrunc,xnodes,wts,
-     1     phitemp,phitempn,Lnm,mp2,ynm)
-      call h3drescalestab(ntrunc,ntrunc,Lnm,mp2,
-     1     radius,wavek,scalei,jn,jnd,nbessel,ier)
-      call rotate(-theta,ntrunc,Lnm,ntermsj,Lrot)
-      do l=0,ntrunc
-         do m=-l,l
-            Lnm(l,m) = ephi(-m)*Lrot(l,m)
+      do l=1,nquad
+         do m=-ntrunc,ntrunc
+            phitemp(l,m) = 0.0d0
+            phitempn(l,m) = 0.0d0
          enddo
       enddo
-      do l = 0,ntrunc
-         do m=-l,l
-            Li(l,m) = Li(l,m)+Lnm(l,m)
+      call ylgndrini(ntrunc,rat1,rat2)
+      do l=1,nquad
+         ctheta=xnodes(l)
+         stheta=dsqrt(1.0d0-ctheta**2)
+         rj=(r+radius*ctheta)**2+(radius*stheta)**2
+         rj=dsqrt(rj)
+         cthetaj=(r+radius*ctheta)/rj
+         sthetaj=dsqrt(1.0d0-cthetaj**2)
+         rn=sthetaj*stheta+cthetaj*ctheta
+         thetan=(cthetaj*stheta-ctheta*sthetaj)/rj
+         z=wavek*rj
+         call ylgndr2sf(ntrunc,cthetaj,ynm,ynmd,rat1,rat2)
+         call h3dall(ntrunc,z,scalej,fhs,1,fhder)
+         do n=0,ntrunc
+            fhder(n) = fhder(n)*wavek
+         enddo
+         do n=1,ntrunc
+            do m=1,n
+               ynm(n,m)=ynm(n,m)*sthetaj
+            enddo
+         enddo
+         phitemp(l,0)=Mrot(0,0)*fhs(0)
+         phitempn(l,0)=Mrot(0,0)*fhder(0)*rn
+         do n=1,ntrunc
+            phitemp(l,0)=phitemp(l,0)+Mrot(n,0)*fhs(n)*ynm(n,0)
+            ut1=fhder(n)*rn
+            ut2=fhs(n)*thetan
+            ut3=ut1*ynm(n,0)-ut2*ynmd(n,0)*sthetaj
+            phitempn(l,0)=phitempn(l,0)+ut3*Mrot(n,0)
+            do m=1,n
+               z=fhs(n)*ynm(n,m)
+               phitemp(l,m)=phitemp(l,m)+Mrot(n,m)*z
+               phitemp(l,-m)=phitemp(l,-m)+Mrot(n,-m)*z
+               ut3=ut1*ynm(n,m)-ut2*ynmd(n,m)
+               phitempn(l,m)=phitempn(l,m)+ut3*Mrot(n,m)
+               phitempn(l,-m)=phitempn(l,-m)+ut3*Mrot(n,-m)
+            enddo
+         enddo
+      enddo
+      call h3dprojlocsepstab_fast
+     $   (ntrunc,ntrunc,nquad,ntrunc,xnodes,wts,
+     1     phitemp,phitempn,Lnm,Lnmd,ynm)
+      call h3drescalestab(ntrunc,ntrunc,Lnm,Lnmd,
+     1     radius,wavek,scalei,jn,jnd,nbessel,ier)
+      call rotate(-theta,ntrunc,Lnm,ntermsj,Lrot)
+      do n=0,ntrunc
+         do m=-n,n
+            Lnm(n,m)=ephi(-m)*Lrot(n,m)
+         enddo
+      enddo
+      do n=0,ntrunc
+         do m=-n,n
+            Li(n,m)=Li(n,m)+Lnm(n,m)
          enddo
       enddo
       return
@@ -380,7 +421,7 @@ c     OUTPUT:
 c     local   : coefficients of shifted local expansion
 c***********************************************************************
       implicit real *8 (a-h,o-z)
-      integer ntermsj,ier,l,m,jnew,knew
+      integer ntermsj,ier,l,m
       real *8 Xj(3),Xi(3),dX(3)
       real *8 xnodes(1),wts(1)
       real *8 r,theta,ctheta,phi,scalej,scalei
@@ -388,7 +429,7 @@ c***********************************************************************
       real *8 ynmd(0:ldc,0:ldc)
       complex *16 phitemp(nq,-ldc:ldc)
       complex *16 phitempn(nq,-ldc:ldc)
-      complex *16 mp2(0:ldc,-ldc:ldc)
+      complex *16 Lnmd(0:ldc,-ldc:ldc)
       complex *16 jn(0:nbessel)
       complex *16 jnd(0:nbessel)
       complex *16 locold(0:ntermsj,-ntermsj:ntermsj)
@@ -427,8 +468,8 @@ c***********************************************************************
      1     jn,jnd,nbessel,ier)
       call h3dprojlocsepstab_fast
      1     (ntermsi,ntermsi,nquad,ntermsi,xnodes,wts,
-     1     phitemp,phitempn,mptemp,mp2,ynm)
-      call h3drescalestab(ntermsi,ntermsi,mptemp,mp2,
+     1     phitemp,phitempn,mptemp,Lnmd,ynm)
+      call h3drescalestab(ntermsi,ntermsi,mptemp,Lnmd,
      1      radius,wavek,scalei,jn,jnd,nbessel,ier)
       call rotate(-theta,ntermsi,mptemp,ldc,marray)
       do l=0,ntermsi

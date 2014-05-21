@@ -175,7 +175,7 @@ C***********************************************************************
       return
       end
 C***********************************************************************
-      subroutine h3dmpevalspherenmstab_fast(marray,wavek,scalej,r,
+      subroutine h3dmpevalspherenmstab_fast(Mrot,wavek,scalej,r,
      1           radius,ntrunc,ntermsj,ynm,ynmd,phitemp,phitempn,
      2           nquad,xnodes,fhs,fhder)
       implicit none
@@ -183,14 +183,13 @@ C***********************************************************************
       real *8 radius,r,ctheta,stheta,cthetaj,sthetaj,thetan,rj,rn
       real *8 scalei,scalej
       real *8 xnodes(nquad)
-      real *8 ynm(0:ntrunc,0:ntrunc)
-      real *8 ynmd(0:ntrunc,0:ntrunc)
-      complex *16 marray(0:ntermsj,-ntermsj:ntermsj)
+      real *8 ynm(0:ntrunc,0:ntrunc),ynmd(0:ntrunc,0:ntrunc)
+      real *8 rat1(0:ntrunc,0:ntrunc),rat2(0:ntrunc,0:ntrunc)
+      complex *16 Mrot(0:ntermsj,-ntermsj:ntermsj)
       complex *16 phitemp(nquad,-ntrunc:ntrunc)
       complex *16 phitempn(nquad,-ntrunc:ntrunc)
       complex *16 imag,wavek,z,ut1,ut2,ut3
       complex *16 fhs(0:ntrunc),fhder(0:ntrunc)
-      real *8 rat1(0:ntrunc,0:ntrunc),rat2(0:ntrunc,0:ntrunc)
       data imag/(0.0d0,1.0d0)/
       do l=1,nquad
          do m=-ntrunc,ntrunc
@@ -219,21 +218,21 @@ C***********************************************************************
   	       ynm(n,m)=ynm(n,m)*sthetaj
             enddo
          enddo
-	 phitemp(l,0)=marray(0,0)*fhs(0)
-	 phitempn(l,0)=marray(0,0)*fhder(0)*rn
+	 phitemp(l,0)=Mrot(0,0)*fhs(0)
+	 phitempn(l,0)=Mrot(0,0)*fhder(0)*rn
 	 do n=1,ntrunc
-	    phitemp(l,0)=phitemp(l,0)+marray(n,0)*fhs(n)*ynm(n,0)
+	    phitemp(l,0)=phitemp(l,0)+Mrot(n,0)*fhs(n)*ynm(n,0)
 	    ut1=fhder(n)*rn
 	    ut2=fhs(n)*thetan
 	    ut3=ut1*ynm(n,0)-ut2*ynmd(n,0)*sthetaj
-	    phitempn(l,0)=phitempn(l,0)+ut3*marray(n,0)
+	    phitempn(l,0)=phitempn(l,0)+ut3*Mrot(n,0)
             do m=1,n
 	       z=fhs(n)*ynm(n,m)
-	       phitemp(l,m)=phitemp(l,m)+marray(n,m)*z
-	       phitemp(l,-m)=phitemp(l,-m)+marray(n,-m)*z
+	       phitemp(l,m)=phitemp(l,m)+Mrot(n,m)*z
+	       phitemp(l,-m)=phitemp(l,-m)+Mrot(n,-m)*z
 	       ut3=ut1*ynm(n,m)-ut2*ynmd(n,m)
-	       phitempn(l,m)=phitempn(l,m)+ut3*marray(n,m)
-	       phitempn(l,-m)=phitempn(l,-m)+ut3*marray(n,-m)
+	       phitempn(l,m)=phitempn(l,m)+ut3*Mrot(n,m)
+	       phitempn(l,-m)=phitempn(l,-m)+ut3*Mrot(n,-m)
 	    enddo
 	 enddo
       enddo

@@ -324,7 +324,6 @@ c     ... if source is childless, evaluate directly (if cheaper)
                   nterms_trunc=itable(ii,jj,kk)
                   nterms_trunc=min(nterms(level0),nterms_trunc)
                   nterms_trunc=min(nterms(level1),nterms_trunc)
-                  nq = max(nquad,2*nterms(level1)+2)
                   nbessel = nterms_trunc+1000
                   call M2L(wavek,
      1                 scale(level1),
@@ -332,7 +331,7 @@ c     ... if source is childless, evaluate directly (if cheaper)
      1                 nterms(level1),scale(level0),
      1                 center0,rmlexp(iaddr(2,ibox)),
      1                 nterms(level0),nterms_trunc,
-     1                 radius,xnodes,wts,nquad,nq,nbessel,ier)
+     1                 radius,xnodes,wts,nquad,nbessel,ier)
  4150          continue
             endif
  4200    continue
