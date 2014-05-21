@@ -1,29 +1,23 @@
 C***********************************************************************
-      subroutine h3drescalestab(nterms,lmp,local,localn,
-     1           radius,wavek0,scale,fjs,fjder,nbessel,ier)
-      implicit real *8 (a-h,o-z)
-      integer nterms,ier
-      integer l,m,jj,kk
-      integer lwfhs
-      complex *16 fjs(0:nbessel)
-      complex *16 fjder(0:nterms)
-      complex *16 local(0:lmp,-lmp:lmp)
-      complex *16 localn(0:lmp,-lmp:lmp)
-      complex *16 ephi,imag,emul,sum,zmul
-      complex *16 wavek0,z,zh,zhn
+      subroutine h3drescalestab(ntrunc,Lnm,Lnmd,
+     1           radius,wavek,scalei,jn,jnd,nbessel,ier)
+      implicit none
+      integer n,m,ntrunc,nbessel,ier
+      real *8 radius,scalei
+      complex *16 jn(0:nbessel)
+      complex *16 jnd(0:ntrunc)
+      complex *16 Lnm(0:ntrunc,-ntrunc:ntrunc)
+      complex *16 Lnmd(0:ntrunc,-ntrunc:ntrunc)
+      complex *16 imag,wavek,z,zh,zhn
       data imag/(0.0d0,1.0d0)/
-      z = wavek0*radius
-      call jfuns3d(ier1,nterms,z,scale,fjs,1,fjder,nbessel)
-      if (ier1.eq.8) then
-         ier = 8
-	 return
-      endif
-      do l=0,nterms
-         do m=-l,l
-	    zh = fjs(l)
-	    zhn = fjder(l)*wavek0
-	    zmul = zh*zh + zhn*zhn
-	    local(l,m) = (zh*local(l,m) + zhn*localn(l,m))/zmul
+      z = wavek*radius
+      call jfuns3d(ier,ntrunc,z,scalei,jn,1,jnd,nbessel)
+      do n=0,ntrunc
+         do m=-n,n
+	    zh=jn(n)
+	    zhn=jnd(n)*wavek
+	    z=zh*zh+zhn*zhn
+	    Lnm(n,m)=(zh*Lnm(n,m)+zhn*Lnmd(n,m))/z
          enddo
       enddo
       return

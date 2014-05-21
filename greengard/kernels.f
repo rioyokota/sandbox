@@ -281,7 +281,7 @@ c     OUTPUT:
 c     Li      : coefficients of shifted local expansion
 c---------------------------------------------------------------------
       implicit none
-      integer l,m,n,ntermsi,ntermsj,ntrunc,nquad,nq,nbessel,ier
+      integer l,m,n,mabs,ntermsi,ntermsj,ntrunc,nquad,nq,nbessel,ier
       real *8 radius,r,theta,phi,ctheta,stheta,cthetaj,sthetaj,thetan
       real *8 rj,rn,scalej,scalei
       real *8 Xi(3),Xj(3),dX(3)
@@ -299,7 +299,7 @@ c---------------------------------------------------------------------
       complex *16 Lnm(0:ntrunc,-ntrunc:ntrunc)
       complex *16 Lnmd(0:ntrunc,-ntrunc:ntrunc)
       complex *16 Lrot(0:ntermsj,-ntermsj:ntermsj)
-      complex *16 imag,wavek,z,ut1,ut2,ut3
+      complex *16 imag,wavek,z,zh,zhn,ut1,ut2,ut3
       complex *16 ephi(-ntermsj-1:ntermsj+1)
       data imag/(0.0d0,1.0d0)/
       dX(1)=Xi(1)-Xj(1)
@@ -369,10 +369,38 @@ c---------------------------------------------------------------------
             enddo
          enddo
       enddo
-      call h3dprojlocsepstab_fast(ntrunc,nquad,xnodes,wts,
-     1     phitemp,phitempn,Lnm,Lnmd,ynm)
-      call h3drescalestab(ntrunc,ntrunc,Lnm,Lnmd,
-     1     radius,wavek,scalei,jn,jnd,nbessel,ier)
+      do n=0,ntrunc
+         do m=-n,n
+            Lnm(n,m)=0.0d0
+            Lnmd(n,m)=0.0d0
+         enddo
+      enddo
+      call ylgndrini(ntrunc,rat1,rat2)
+      do l=1,nquad
+         cthetaj=xnodes(l)
+         call ylgndrf(ntrunc,cthetaj,ynm,rat1,rat2)
+         do m=-ntrunc,ntrunc
+            mabs=abs(m)
+            z=phitemp(l,m)*wts(l)/2.0d0
+            do n=mabs,ntrunc
+               Lnm(n,m)=Lnm(n,m)+z*ynm(n,mabs)
+            enddo
+            z=phitempn(l,m)*wts(l)/2.0d0
+            do n=mabs,ntrunc
+               Lnmd(n,m)=Lnmd(n,m)+z*ynm(n,mabs)
+            enddo
+         enddo
+      enddo
+      z = wavek*radius
+      call jfuns3d(ier,ntrunc,z,scalei,jn,1,jnd,nbessel)
+      do n=0,ntrunc
+         do m=-n,n
+            zh=jn(n)
+            zhn=jnd(n)*wavek
+            z=zh*zh+zhn*zhn
+            Lnm(n,m)=(zh*Lnm(n,m)+zhn*Lnmd(n,m))/z
+         enddo
+      enddo
       call rotate(-theta,ntrunc,Lnm,ntermsj,Lrot)
       do n=0,ntrunc
          do m=-n,n
@@ -468,7 +496,7 @@ c***********************************************************************
       call h3dprojlocsepstab_fast
      1     (ntermsi,nquad,xnodes,wts,
      1     phitemp,phitempn,mptemp,Lnmd,ynm)
-      call h3drescalestab(ntermsi,ntermsi,mptemp,Lnmd,
+      call h3drescalestab(ntermsi,mptemp,Lnmd,
      1      radius,wavek,scalei,jn,jnd,nbessel,ier)
       call rotate(-theta,ntermsi,mptemp,ldc,marray)
       do l=0,ntermsi
