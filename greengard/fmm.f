@@ -1,11 +1,13 @@
       subroutine fmm(ier,iprec,wavek,nsource,source,
-     $     ifcharge,charge,pot,fld)
+     $     ifcharge,charge,pi,Fi)
       implicit real *8 (a-h,o-z)
       dimension source(3,nsource)
       complex *16 charge(nsource)
       complex *16 ima
-      complex *16 pot(nsource)
-      complex *16 fld(3,nsource)
+      complex *16 pi(nsource)
+      complex *16 Fi(3,nsource)
+      complex *16 pid(nsource)
+      complex *16 Fid(3,nsource)
       dimension timeinfo(10)
       dimension laddr(2,200)
       dimension bsize(0:200)
@@ -105,20 +107,20 @@ c     imptemp is pointer for single expansion (dimensioned by nmax)
       allocate(wrmlexp(lused7),stat=ier)
       ifevalfar=1
       ifevalloc=1
-      call hfmm3dparttargmain(ier,iprec,wavek,
+      call evaluate(ier,iprec,wavek,
      1     ifevalfar,ifevalloc,
      1     nsource,w(isourcesort),wlists(iisource),
      1     ifcharge,w(ichargesort),w(ipot),w(ifld),
      1     epsfmm,w(iiaddr),wrmlexp(irmlexp),w(imptemp),lmptemp,
      1     nboxes,laddr,nlev,scale,bsize,nterms,
      1     wlists(iwlists),lwlists)
-      call h3dpsort(nsource,wlists(iisource),w(ipot),pot)
-      call h3dfsort(nsource,wlists(iisource),w(ifld),fld)
+      call h3dpsort(nsource,wlists(iisource),w(ipot),pi)
+      call h3dfsort(nsource,wlists(iisource),w(ifld),Fi)
 
       return
       end
 
-      subroutine hfmm3dparttargmain(ier,iprec,wavek,
+      subroutine evaluate(ier,iprec,wavek,
      1     ifevalfar,ifevalloc,
      1     nsource,sourcesort,isource,
      1     ifcharge,chargesort,pot,fld,
@@ -126,7 +128,7 @@ c     imptemp is pointer for single expansion (dimensioned by nmax)
      1     nboxes,laddr,nlev,scale,bsize,nterms,
      1     wlists,lwlists)
       implicit real *8 (a-h,o-z)
-      dimension sourcesort(3,1), isource(1)
+      dimension sourcesort(3,1),isource(1)
       complex *16 chargesort(1),wavek
       complex *16 ima
       complex *16 pot(1)
