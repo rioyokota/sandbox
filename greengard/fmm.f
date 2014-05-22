@@ -51,10 +51,9 @@ c     set criterion for box subdivision (number of sources per box)
 c     create oct-tree data structure
       ntot = 2*numBodies+10000
       allocate (wlists(ntot))
-      call hfmm3dparttree(ier,numBodies,Xj,
-     1     nbox,epsfmm,lwlists,
-     1     nboxes,laddr,nlev,center,size,
-     1     wlists,ntot)
+      call d3tstrcr(ier,Xj,numBodies,nbox,
+     1     nboxes,wlists(1),laddr,nlev,center,size,
+     1     wlists(numBodies),ntot,lwlists)
       allocate(iaddr(nboxes))
       do i = 0,nlev
          scale(i) = 1.0d0

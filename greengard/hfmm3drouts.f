@@ -1,23 +1,3 @@
-        subroutine hfmm3dparttree(ier,
-     $     nsource,source,
-     $     nbox,epsfmm,lwlists,
-     $     nboxes,laddr,nlev,center,size,
-     $     w,lw)
-        implicit real *8 (a-h,o-z)
-        dimension source(3,1)
-        dimension center(3)
-        dimension laddr(2,200)
-        integer box(20)
-        dimension center0(3),corners0(3,8)
-        integer box1(20)
-        dimension center1(3),corners1(3,8)
-        dimension w(1)
-        call d3tstrcr(ier,source,nsource,nbox,
-     $     nboxes,w(1),laddr,nlev,center,size,
-     $     w(nsource),lw,lwlists)
-        return
-        end
-
         subroutine h3dpsort(n,isource,psort,pot)
         implicit real *8 (a-h,o-z)
         dimension isource(1)
