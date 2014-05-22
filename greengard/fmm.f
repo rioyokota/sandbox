@@ -1,13 +1,13 @@
-      subroutine fmm(ier,iprec,wavek,nsource,source,
-     $     ifcharge,charge,pi,Fi)
+      subroutine fmm(ier,iprec,wavek,numBodies,Xj,
+     $     qj,pi,Fi)
       implicit real *8 (a-h,o-z)
-      dimension source(3,nsource)
-      complex *16 charge(nsource)
+      dimension Xj(3,numBodies)
+      complex *16 qj(numBodies)
       complex *16 ima
-      complex *16 pi(nsource)
-      complex *16 Fi(3,nsource)
-      complex *16 pid(nsource)
-      complex *16 Fid(3,nsource)
+      complex *16 pi(numBodies)
+      complex *16 Fi(3,numBodies)
+      complex *16 pid(numBodies)
+      complex *16 Fid(3,numBodies)
       dimension timeinfo(10)
       dimension laddr(2,200)
       dimension bsize(0:200)
@@ -47,13 +47,13 @@ c     set criterion for box subdivision (number of sources per box)
       if( iprec .eq. 3 ) nbox=800
       if( iprec .eq. 4 ) nbox=1200
       if( iprec .eq. 5 ) nbox=1400
-      if( iprec .eq. 6 ) nbox=nsource
+      if( iprec .eq. 6 ) nbox=numBodies
 c     create oct-tree data structure
-      ntot = 100*nsource+10000
+      ntot = 100*numBodies+10000
       do ii = 1,10
          allocate (wlists(ntot))
          call hfmm3dparttree(ier,iprec,
-     1        nsource,source,
+     1        numBodies,Xj,
      1        nbox,epsfmm,iisource,iwlists,lwlists,
      1        nboxes,laddr,nlev,center,size,
      1        wlists,ntot,lused7)
@@ -71,16 +71,16 @@ c     create oct-tree data structure
 c     isourcesort is pointer for sorted source coordinates
 c     ichargesort is pointer for sorted charge densities
       isourcesort = lused7 + 5
-      lsourcesort = 3*nsource
+      lsourcesort = 3*numBodies
       ichargesort = isourcesort+lsourcesort
-      lchargesort = 2*nsource
+      lchargesort = 2*numBodies
       lused7 = ichargesort+lchargesort
 c     ... allocate the potential and field arrays
       ipot = lused7
-      lpot = 2*nsource
+      lpot = 2*numBodies
       lused7=lused7+lpot
       ifld = lused7
-      lfld = 2*(3*nsource)
+      lfld = 2*(3*numBodies)
       lused7=lused7+lfld
       ifldtarg = lused7
 c     based on FMM tolerance, compute expansion lengths nterms(i)
@@ -100,7 +100,7 @@ c     imptemp is pointer for single expansion (dimensioned by nmax)
       lmptemp = (nmax+1)*(2*nmax+1)*2
       lused7 = imptemp + lmptemp
       allocate(w(lused7),stat=ier)
-      call h3dreorder(nsource,source,ifcharge,charge,wlists(iisource),
+      call h3dreorder(numBodies,Xj,1,qj,wlists(iisource),
      1     w(isourcesort),w(ichargesort))
       ifinit=1
       call h3dmpalloc(wlists(iwlists),iaddr,nboxes,lmptot,nterms)
@@ -111,20 +111,20 @@ c     imptemp is pointer for single expansion (dimensioned by nmax)
       ifevalloc=1
       call evaluate(ier,iprec,wavek,
      1     ifevalfar,ifevalloc,
-     1     nsource,w(isourcesort),wlists(iisource),
-     1     ifcharge,w(ichargesort),pid,Fid,
+     1     numBodies,w(isourcesort),wlists(iisource),
+     1     1,w(ichargesort),pid,Fid,
      1     epsfmm,iaddr,wrmlexp(irmlexp),
      1     nboxes,laddr,nlev,scale,bsize,nterms,
      1     wlists(iwlists),lwlists)
-      call h3dpsort(nsource,wlists(iisource),pid,pi)
-      call h3dfsort(nsource,wlists(iisource),Fid,Fi)
+      call h3dpsort(numBodies,wlists(iisource),pid,pi)
+      call h3dfsort(numBodies,wlists(iisource),Fid,Fi)
 
       return
       end
 
       subroutine evaluate(ier,iprec,wavek,
      1     ifevalfar,ifevalloc,
-     1     nsource,sourcesort,isource,
+     1     numBodies,sourcesort,isource,
      1     ifcharge,chargesort,pot,fld,
      1     epsfmm,iaddr,rmlexp,
      1     nboxes,laddr,nlev,scale,bsize,nterms,
@@ -159,7 +159,7 @@ c     imptemp is pointer for single expansion (dimensioned by nmax)
       real *8 rvec(3)
       data ima/(0.0d0,1.0d0)/
 c     ... set the potential and field to zero
-      do i=1,nsource
+      do i=1,numBodies
          pot(i)=0
          fld(1,i)=0
          fld(2,i)=0

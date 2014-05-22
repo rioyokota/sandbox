@@ -17,14 +17,13 @@
         print*,'nsource=',nsource
         iprec=4
         print*,'iprec  =',iprec
-        ifcharge=1
         do i=1,nsource
            charge(i)=source(1,i)+ima*source(2,i)
         enddo
 c FMM
 c$      tic=omp_get_wtime()
         call fmm(ier,iprec, wavek,
-     1     nsource,source,ifcharge,charge,
+     1     nsource,source,charge,
      1     pot,fld)
 c$      toc=omp_get_wtime()
         print*,'FMM    =',toc-tic
