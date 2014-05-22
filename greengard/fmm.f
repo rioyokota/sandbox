@@ -18,6 +18,7 @@
       dimension center(3)
       dimension center0(3),corners0(3,8)
       dimension center1(3),corners1(3,8)
+      integer, allocatable :: iaddr(:)
       real *8, allocatable :: w(:)
       real *8, allocatable :: wlists(:)
       real *8, allocatable :: wrmlexp(:)
@@ -60,6 +61,7 @@ c     create oct-tree data structure
          deallocate(wlists)
          ntot = ntot*1.5
       enddo
+      allocate(iaddr(2*nboxes))
       lused7=1
       do i = 0,nlev
          scale(i) = 1.0d0
@@ -101,7 +103,7 @@ c     imptemp is pointer for single expansion (dimensioned by nmax)
       call h3dreorder(nsource,source,ifcharge,charge,wlists(iisource),
      1     w(isourcesort),w(ichargesort))
       ifinit=1
-      call h3dmpalloc(wlists(iwlists),w(iiaddr),nboxes,lmptot,nterms)
+      call h3dmpalloc(wlists(iwlists),iaddr,nboxes,lmptot,nterms)
       irmlexp = 1
       lused7 = irmlexp + lmptot
       allocate(wrmlexp(lused7),stat=ier)
@@ -110,12 +112,12 @@ c     imptemp is pointer for single expansion (dimensioned by nmax)
       call evaluate(ier,iprec,wavek,
      1     ifevalfar,ifevalloc,
      1     nsource,w(isourcesort),wlists(iisource),
-     1     ifcharge,w(ichargesort),w(ipot),w(ifld),
-     1     epsfmm,w(iiaddr),wrmlexp(irmlexp),w(imptemp),lmptemp,
+     1     ifcharge,w(ichargesort),pid,Fid,
+     1     epsfmm,iaddr,wrmlexp(irmlexp),
      1     nboxes,laddr,nlev,scale,bsize,nterms,
      1     wlists(iwlists),lwlists)
-      call h3dpsort(nsource,wlists(iisource),w(ipot),pi)
-      call h3dfsort(nsource,wlists(iisource),w(ifld),Fi)
+      call h3dpsort(nsource,wlists(iisource),pid,pi)
+      call h3dfsort(nsource,wlists(iisource),Fid,Fi)
 
       return
       end
@@ -124,7 +126,7 @@ c     imptemp is pointer for single expansion (dimensioned by nmax)
      1     ifevalfar,ifevalloc,
      1     nsource,sourcesort,isource,
      1     ifcharge,chargesort,pot,fld,
-     1     epsfmm,iaddr,rmlexp,mptemp,lmptemp,
+     1     epsfmm,iaddr,rmlexp,
      1     nboxes,laddr,nlev,scale,bsize,nterms,
      1     wlists,lwlists)
       implicit real *8 (a-h,o-z)
@@ -136,7 +138,6 @@ c     imptemp is pointer for single expansion (dimensioned by nmax)
       dimension wlists(1)
       dimension iaddr(2,nboxes)
       real *8 rmlexp(1),xnodes(10000),wts(10000)
-      complex *16 mptemp(lmptemp)
       dimension center(3)
       dimension laddr(2,200)
       dimension scale(0:200)
