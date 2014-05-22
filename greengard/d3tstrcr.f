@@ -67,7 +67,6 @@ c         entry and subsequent calls to the entries d3tgetb, d3tgetl,
 c         d3tlinfo, of this  subroutine 
         ier=0
 c
-        ninire=2
 c
         iptr=1
         lptr=500
@@ -79,7 +78,7 @@ c
         lboxes=lw-liwork-5
         maxboxes=lboxes/20-1
 
-c	 initialize the sorting index 
+c     initialize the sorting index 
 c
         do i=1,n
            iz(i)=i
@@ -107,10 +106,10 @@ c       construct the centers and the corners for all boxes
 c       in the oct-tree
 c
         icenters=iboxes+lboxes
-        lcenters=(nboxes*3+2)*ninire
+        lcenters=(nboxes*3+2)*2
 c
         icorners=icenters+lcenters
-        lcorners=(nboxes*24+2)*ninire
+        lcorners=(nboxes*24+2)*2
 c
         iwlists=icorners+lcorners
         lwlists=lw-iwlists-6

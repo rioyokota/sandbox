@@ -27,7 +27,6 @@
       complex *16 ptemp,ftemp(3)
       data ima/(0.0d0,1.0d0)/
       ier=0
-      ifprint=0
 c     set fmm tolerance based on iprec flag.
       if( iprec .eq. -2 ) epsfmm=.5d-0
       if( iprec .eq. -1 ) epsfmm=.5d-1
