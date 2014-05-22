@@ -2,7 +2,9 @@
      $     qj,pi,Fi)
       implicit real *8 (a-h,o-z)
       dimension Xj(3,numBodies)
+      dimension Xjd(3,numBodies)
       complex *16 qj(numBodies)
+      complex *16 qjd(2*numBodies)
       complex *16 ima
       complex *16 pi(numBodies)
       complex *16 Fi(3,numBodies)
@@ -19,9 +21,9 @@
       dimension center0(3),corners0(3,8)
       dimension center1(3),corners1(3,8)
       integer, allocatable :: iaddr(:)
-      real *8, allocatable :: w(:)
       real *8, allocatable :: wlists(:)
-      real *8, allocatable :: wrmlexp(:)
+      real *8, allocatable :: Multipole(:)
+      real *8, allocatable :: Local(:)
       complex *16 ptemp,ftemp(3)
       data ima/(0.0d0,1.0d0)/
       ier=0
@@ -68,15 +70,6 @@ c     create oct-tree data structure
          boxsize = abs((size/2.0**i)*wavek)
          if (boxsize .lt. 1) scale(i) = boxsize
       enddo
-c     isourcesort is pointer for sorted source coordinates
-c     ichargesort is pointer for sorted charge densities
-      isourcesort = lused7 + 5
-      lsourcesort = 3*numBodies
-      ichargesort = isourcesort+lsourcesort
-      lchargesort = 2*numBodies
-      lused7 = ichargesort+lchargesort
-      allocate(w(lused7),stat=ier)
-c     based on FMM tolerance, compute expansion lengths nterms(i)
       nmax = 0
       do i = 0,nlev
          bsize(i)=size/2.0d0**i
@@ -84,19 +77,18 @@ c     based on FMM tolerance, compute expansion lengths nterms(i)
          if (nterms(i).gt. nmax .and. i.ge. 2) nmax = nterms(i)
       enddo
       call h3dreorder(numBodies,Xj,1,qj,wlists(iisource),
-     1     w(isourcesort),w(ichargesort))
+     1     Xjd,qjd)
       ifinit=1
       call h3dmpalloc(wlists(iwlists),iaddr,nboxes,lmptot,nterms)
-      irmlexp = 1
-      lused7 = irmlexp + lmptot
-      allocate(wrmlexp(lused7),stat=ier)
+      allocate(Multipole(lmptot),stat=ier)
+      allocate(Local(lmptot),stat=ier)
       ifevalfar=1
       ifevalloc=1
       call evaluate(ier,iprec,wavek,
      1     ifevalfar,ifevalloc,
-     1     numBodies,w(isourcesort),wlists(iisource),
-     1     1,w(ichargesort),pid,Fid,
-     1     epsfmm,iaddr,wrmlexp(irmlexp),
+     1     numBodies,Xjd,wlists(iisource),
+     1     1,qjd,pid,Fid,
+     1     epsfmm,iaddr,Multipole,Local,
      1     nboxes,laddr,nlev,scale,bsize,nterms,
      1     wlists(iwlists),lwlists)
       call h3dpsort(numBodies,wlists(iisource),pid,pi)
@@ -109,7 +101,7 @@ c     based on FMM tolerance, compute expansion lengths nterms(i)
      1     ifevalfar,ifevalloc,
      1     numBodies,sourcesort,isource,
      1     ifcharge,chargesort,pot,fld,
-     1     epsfmm,iaddr,rmlexp,
+     1     epsfmm,iaddr,Multipole,Local,
      1     nboxes,laddr,nlev,scale,bsize,nterms,
      1     wlists,lwlists)
       implicit real *8 (a-h,o-z)
@@ -120,7 +112,7 @@ c     based on FMM tolerance, compute expansion lengths nterms(i)
       complex *16 fld(3,1)
       dimension wlists(1)
       dimension iaddr(2,nboxes)
-      real *8 rmlexp(1),xnodes(10000),wts(10000)
+      real *8 Multipole(1),Local(1),xnodes(10000),wts(10000)
       dimension center(3)
       dimension laddr(2,200)
       dimension scale(0:200)
@@ -162,8 +154,8 @@ c     ... set all multipole and local expansions to zero
       do ibox = 1,nboxes
          call d3tgetb(ier,ibox,box,center0,corners0,wlists)
          level=box(1)
-         call h3dzero(rmlexp(iaddr(1,ibox)),nterms(level))
-         call h3dzero(rmlexp(iaddr(2,ibox)),nterms(level))
+         call h3dzero(Multipole(iaddr(1,ibox)),nterms(level))
+         call h3dzero(Local(iaddr(2,ibox)),nterms(level))
       enddo
 
 c     ... step 1: P2M
@@ -183,11 +175,11 @@ c$omp$private(lused,ier,i,j,ptemp,ftemp,cd)
                radius = radius + (corners0(2,1) - center0(2))**2
                radius = radius + (corners0(3,1) - center0(3))**2
                radius = sqrt(radius)
-               call h3dzero(rmlexp(iaddr(1,ibox)),nterms(level))
+               call h3dzero(Multipole(iaddr(1,ibox)),nterms(level))
                call P2M(ier,wavek,scale(level),
      1              sourcesort(1,box(14)),chargesort(box(14)),box(15),
      1              center0,nterms(level),nterms_eval(1,level),nbessel,
-     1              rmlexp(iaddr(1,ibox)),Anm,Pmax)
+     1              Multipole(iaddr(1,ibox)),Anm,Pmax)
             endif
          enddo
 c$omp end parallel do
@@ -217,15 +209,16 @@ c$omp$private(lused,ier,i,j,ptemp,ftemp,cd)
                   radius = radius + (corners0(2,1) - center0(2))**2
                   radius = radius + (corners0(3,1) - center0(3))**2
                   radius = sqrt(radius)
-                  call h3dzero(rmlexp(iaddr(1,ibox)),nterms(level0))
+                  call h3dzero(Multipole(iaddr(1,ibox)),nterms(level0))
                   do i = 1,8
                      jbox = box(5+i)
                      if (jbox.eq.0) cycle
                      call d3tgetb(ier,jbox,box1,center1,corners1,wlists)
                      level1=box1(1)
                      call M2M(wavek,scale(level1),center1,
-     1                    rmlexp(iaddr(1,jbox)),nterms(level1),
-     1                    scale(level0),center0,rmlexp(iaddr(1,ibox)),
+     1                    Multipole(iaddr(1,jbox)),nterms(level1),
+     1                    scale(level0),center0,
+     1                    Multipole(iaddr(1,ibox)),
      1                    nterms(level0),
      1                    radius,xnodes,wts,nquad,ier)
                   enddo
@@ -311,9 +304,9 @@ c     ... if source is childless, evaluate directly (if cheaper)
                   nbessel = nterms_trunc+1000
                   call M2L(wavek,
      1                 scale(level1),
-     1                 center1,rmlexp(iaddr(1,jbox)),
+     1                 center1,Multipole(iaddr(1,jbox)),
      1                 nterms(level1),scale(level0),
-     1                 center0,rmlexp(iaddr(2,ibox)),
+     1                 center0,Local(iaddr(2,ibox)),
      1                 nterms(level0),nterms_trunc,
      1                 radius,xnodes,wts,nquad,nbessel,ier)
  4150          continue
@@ -352,8 +345,8 @@ c     ... split local expansion of the parent box
                      nbessel = nquad+1000
                      call L2L(wavek,scale(level0),
      1                    center0,
-     1                    rmlexp(iaddr(2,ibox)),nterms(level0),
-     1                    scale(level1),center1,rmlexp(iaddr(2,jbox)),
+     1                    Local(iaddr(2,ibox)),nterms(level0),
+     1                    scale(level1),center1,Local(iaddr(2,jbox)),
      1                    nterms(level1),
      1                    radius,xnodes,wts,nquad,nbessel,ier)
  5100             continue
@@ -378,7 +371,7 @@ c$omp$private(ibox,box,center0,corners0,level,npts,nkids,ier)
             nbessel = nterms(level)+1000
             if (level .ge. 2) then
                call L2P(wavek,scale(level),center0,
-     1              rmlexp(iaddr(2,ibox)),
+     1              Local(iaddr(2,ibox)),
      1              nterms(level),nterms_eval(1,level),nbessel,
      1              sourcesort(1,box(14)),box(15),
      1              pot(box(14)),fld(1,box(14)),
