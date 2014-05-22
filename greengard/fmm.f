@@ -49,18 +49,12 @@ c     set criterion for box subdivision (number of sources per box)
       if( iprec .eq. 5 ) nbox=1400
       if( iprec .eq. 6 ) nbox=numBodies
 c     create oct-tree data structure
-      ntot = 100*numBodies+10000
-      do ii = 1,10
-         allocate (wlists(ntot))
-         call hfmm3dparttree(ier,iprec,
-     1        numBodies,Xj,
-     1        nbox,epsfmm,iwlists,lwlists,
-     1        nboxes,laddr,nlev,center,size,
-     1        wlists,ntot)
-         if (ier.eq.0) exit
-         deallocate(wlists)
-         ntot = ntot*1.5
-      enddo
+      ntot = 2*numBodies+10000
+      allocate (wlists(ntot))
+      call hfmm3dparttree(ier,numBodies,Xj,
+     1     nbox,epsfmm,lwlists,
+     1     nboxes,laddr,nlev,center,size,
+     1     wlists,ntot)
       allocate(iaddr(nboxes))
       do i = 0,nlev
          scale(i) = 1.0d0
@@ -76,7 +70,7 @@ c     create oct-tree data structure
       call h3dreorder(numBodies,Xj,1,qj,wlists(1),
      1     Xjd,qjd)
       ifinit=1
-      call h3dmpalloc(wlists(iwlists),iaddr,nboxes,lmptot,nterms)
+      call h3dmpalloc(wlists(numBodies),iaddr,nboxes,lmptot,nterms)
       allocate(Multipole(lmptot),stat=ier)
       allocate(Local(lmptot),stat=ier)
       call evaluate(ier,iprec,wavek,
@@ -84,7 +78,7 @@ c     create oct-tree data structure
      1     1,qjd,pid,Fid,
      1     epsfmm,iaddr,Multipole,Local,
      1     nboxes,laddr,nlev,scale,bsize,nterms,
-     1     wlists(iwlists),lwlists)
+     1     wlists(numBodies),lwlists)
       call h3dpsort(numBodies,wlists(1),pid,pi)
       call h3dfsort(numBodies,wlists(1),Fid,Fi)
 
