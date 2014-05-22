@@ -1,8 +1,8 @@
         subroutine hfmm3dparttree(ier,iprec,
      $     nsource,source,
-     $     nbox,epsfmm,iisource,iwlists,lwlists,
+     $     nbox,epsfmm,iwlists,lwlists,
      $     nboxes,laddr,nlev,center,size,
-     $     w,lw,lused7)
+     $     w,lw)
         implicit real *8 (a-h,o-z)
         dimension source(3,1)
         dimension center(3)
@@ -15,17 +15,10 @@
         ier=0
         done=1
         pi=4*atan(done)
-        lused7=0
-        iisource=1
-        lused7=lused7+nsource
-        if (lused7 .ge. lw) ier=128
-        if( ier .ne. 0 ) return
-        if (lused7 .ge. lw) ier=128
-        if( ier .ne. 0 ) return
-        iwlists=iisource+lused7+10
+        iwlists=nsource+11
 c       ... construct the adaptive FMM oct-tree structure
         call d3tstrcr(ier,source,nsource,nbox,
-     $     nboxes,w(iisource),laddr,nlev,center,size,
+     $     nboxes,w(1),laddr,nlev,center,size,
      $     w(iwlists),lw-lused7,lused)
         if( ier .ne. 0 ) return
         lwlists=lused

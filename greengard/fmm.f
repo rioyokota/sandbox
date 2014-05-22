@@ -27,8 +27,6 @@
       complex *16 ptemp,ftemp(3)
       data ima/(0.0d0,1.0d0)/
       ier=0
-      lused7 = 0
-      pi=4*atan(1.0d0)
       ifprint=0
 c     set fmm tolerance based on iprec flag.
       if( iprec .eq. -2 ) epsfmm=.5d-0
@@ -56,15 +54,14 @@ c     create oct-tree data structure
          allocate (wlists(ntot))
          call hfmm3dparttree(ier,iprec,
      1        numBodies,Xj,
-     1        nbox,epsfmm,iisource,iwlists,lwlists,
+     1        nbox,epsfmm,iwlists,lwlists,
      1        nboxes,laddr,nlev,center,size,
-     1        wlists,ntot,lused7)
+     1        wlists,ntot)
          if (ier.eq.0) exit
          deallocate(wlists)
          ntot = ntot*1.5
       enddo
       allocate(iaddr(nboxes))
-      lused7=1
       do i = 0,nlev
          scale(i) = 1.0d0
          boxsize = abs((size/2.0**i)*wavek)
@@ -76,29 +73,25 @@ c     create oct-tree data structure
          call h3dterms(bsize(i),wavek,epsfmm, nterms(i), ier)
          if (nterms(i).gt. nmax .and. i.ge. 2) nmax = nterms(i)
       enddo
-      call h3dreorder(numBodies,Xj,1,qj,wlists(iisource),
+      call h3dreorder(numBodies,Xj,1,qj,wlists(1),
      1     Xjd,qjd)
       ifinit=1
       call h3dmpalloc(wlists(iwlists),iaddr,nboxes,lmptot,nterms)
       allocate(Multipole(lmptot),stat=ier)
       allocate(Local(lmptot),stat=ier)
-      ifevalfar=1
-      ifevalloc=1
       call evaluate(ier,iprec,wavek,
-     1     ifevalfar,ifevalloc,
-     1     numBodies,Xjd,wlists(iisource),
+     1     numBodies,Xjd,wlists(1),
      1     1,qjd,pid,Fid,
      1     epsfmm,iaddr,Multipole,Local,
      1     nboxes,laddr,nlev,scale,bsize,nterms,
      1     wlists(iwlists),lwlists)
-      call h3dpsort(numBodies,wlists(iisource),pid,pi)
-      call h3dfsort(numBodies,wlists(iisource),Fid,Fi)
+      call h3dpsort(numBodies,wlists(1),pid,pi)
+      call h3dfsort(numBodies,wlists(1),Fid,Fi)
 
       return
       end
 
       subroutine evaluate(ier,iprec,wavek,
-     1     ifevalfar,ifevalloc,
      1     numBodies,sourcesort,isource,
      1     ifcharge,chargesort,pot,fld,
      1     epsfmm,iaddr,Multipole,Local,

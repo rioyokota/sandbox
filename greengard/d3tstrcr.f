@@ -134,7 +134,6 @@ c
         w(4)=icenters
         w(5)=iwlists
         w(6)=lused777
-c
         w(7)=n
         w(8)=nbox
         w(9)=nlev
