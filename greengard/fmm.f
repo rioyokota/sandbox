@@ -75,14 +75,7 @@ c     ichargesort is pointer for sorted charge densities
       ichargesort = isourcesort+lsourcesort
       lchargesort = 2*numBodies
       lused7 = ichargesort+lchargesort
-c     ... allocate the potential and field arrays
-      ipot = lused7
-      lpot = 2*numBodies
-      lused7=lused7+lpot
-      ifld = lused7
-      lfld = 2*(3*numBodies)
-      lused7=lused7+lfld
-      ifldtarg = lused7
+      allocate(w(lused7),stat=ier)
 c     based on FMM tolerance, compute expansion lengths nterms(i)
       nmax = 0
       do i = 0,nlev
@@ -90,16 +83,6 @@ c     based on FMM tolerance, compute expansion lengths nterms(i)
          call h3dterms(bsize(i),wavek,epsfmm, nterms(i), ier)
          if (nterms(i).gt. nmax .and. i.ge. 2) nmax = nterms(i)
       enddo
-c     Multipole and local expansions will be held in workspace
-c     in locations pointed to by array iaddr(2,nboxes).
-
-c     iiaddr is pointer to iaddr array, itself contained in workspace.
-c     imptemp is pointer for single expansion (dimensioned by nmax)
-      iiaddr = lused7
-      imptemp = iiaddr + 2*nboxes
-      lmptemp = (nmax+1)*(2*nmax+1)*2
-      lused7 = imptemp + lmptemp
-      allocate(w(lused7),stat=ier)
       call h3dreorder(numBodies,Xj,1,qj,wlists(iisource),
      1     w(isourcesort),w(ichargesort))
       ifinit=1
