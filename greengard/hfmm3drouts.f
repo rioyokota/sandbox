@@ -86,18 +86,14 @@ c       ... construct the adaptive FMM oct-tree structure
         implicit real *8 (a-h,o-z)
         integer box(20)
         dimension nterms(0:200)
-        dimension iaddr(2,nboxes)
+        dimension iaddr(nboxes)
         dimension center0(3),corners0(3,8)
         dimension wlists(1)
         iptr=1
         do ibox=1,nboxes
         call d3tgetb(ier,ibox,box,center0,corners0,wlists)
         level=box(1)
-c       ... first, allocate memory for the multipole expansion
-        iaddr(1,ibox)=iptr
-        iptr=iptr+(nterms(level)+1)*(2*nterms(level)+1)*2
-c       ... then, allocate memory for the local expansion
-        iaddr(2,ibox)=iptr
+        iaddr(ibox)=iptr
         iptr=iptr+(nterms(level)+1)*(2*nterms(level)+1)*2
         enddo
         lmptot = iptr

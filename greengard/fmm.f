@@ -63,7 +63,7 @@ c     create oct-tree data structure
          deallocate(wlists)
          ntot = ntot*1.5
       enddo
-      allocate(iaddr(2*nboxes))
+      allocate(iaddr(nboxes))
       lused7=1
       do i = 0,nlev
          scale(i) = 1.0d0
@@ -111,7 +111,7 @@ c     create oct-tree data structure
       complex *16 pot(1)
       complex *16 fld(3,1)
       dimension wlists(1)
-      dimension iaddr(2,nboxes)
+      dimension iaddr(nboxes)
       real *8 Multipole(1),Local(1),xnodes(10000),wts(10000)
       dimension center(3)
       dimension laddr(2,200)
@@ -154,8 +154,8 @@ c     ... set all multipole and local expansions to zero
       do ibox = 1,nboxes
          call d3tgetb(ier,ibox,box,center0,corners0,wlists)
          level=box(1)
-         call h3dzero(Multipole(iaddr(1,ibox)),nterms(level))
-         call h3dzero(Local(iaddr(2,ibox)),nterms(level))
+         call h3dzero(Multipole(iaddr(ibox)),nterms(level))
+         call h3dzero(Local(iaddr(ibox)),nterms(level))
       enddo
 
 c     ... step 1: P2M
@@ -175,11 +175,11 @@ c$omp$private(lused,ier,i,j,ptemp,ftemp,cd)
                radius = radius + (corners0(2,1) - center0(2))**2
                radius = radius + (corners0(3,1) - center0(3))**2
                radius = sqrt(radius)
-               call h3dzero(Multipole(iaddr(1,ibox)),nterms(level))
+               call h3dzero(Multipole(iaddr(ibox)),nterms(level))
                call P2M(ier,wavek,scale(level),
      1              sourcesort(1,box(14)),chargesort(box(14)),box(15),
      1              center0,nterms(level),nterms_eval(1,level),nbessel,
-     1              Multipole(iaddr(1,ibox)),Anm,Pmax)
+     1              Multipole(iaddr(ibox)),Anm,Pmax)
             endif
          enddo
 c$omp end parallel do
@@ -209,16 +209,16 @@ c$omp$private(lused,ier,i,j,ptemp,ftemp,cd)
                   radius = radius + (corners0(2,1) - center0(2))**2
                   radius = radius + (corners0(3,1) - center0(3))**2
                   radius = sqrt(radius)
-                  call h3dzero(Multipole(iaddr(1,ibox)),nterms(level0))
+                  call h3dzero(Multipole(iaddr(ibox)),nterms(level0))
                   do i = 1,8
                      jbox = box(5+i)
                      if (jbox.eq.0) cycle
                      call d3tgetb(ier,jbox,box1,center1,corners1,wlists)
                      level1=box1(1)
                      call M2M(wavek,scale(level1),center1,
-     1                    Multipole(iaddr(1,jbox)),nterms(level1),
+     1                    Multipole(iaddr(jbox)),nterms(level1),
      1                    scale(level0),center0,
-     1                    Multipole(iaddr(1,ibox)),
+     1                    Multipole(iaddr(ibox)),
      1                    nterms(level0),
      1                    radius,xnodes,wts,nquad,ier)
                   enddo
@@ -304,9 +304,9 @@ c     ... if source is childless, evaluate directly (if cheaper)
                   nbessel = nterms_trunc+1000
                   call M2L(wavek,
      1                 scale(level1),
-     1                 center1,Multipole(iaddr(1,jbox)),
+     1                 center1,Multipole(iaddr(jbox)),
      1                 nterms(level1),scale(level0),
-     1                 center0,Local(iaddr(2,ibox)),
+     1                 center0,Local(iaddr(ibox)),
      1                 nterms(level0),nterms_trunc,
      1                 radius,xnodes,wts,nquad,nbessel,ier)
  4150          continue
@@ -345,8 +345,8 @@ c     ... split local expansion of the parent box
                      nbessel = nquad+1000
                      call L2L(wavek,scale(level0),
      1                    center0,
-     1                    Local(iaddr(2,ibox)),nterms(level0),
-     1                    scale(level1),center1,Local(iaddr(2,jbox)),
+     1                    Local(iaddr(ibox)),nterms(level0),
+     1                    scale(level1),center1,Local(iaddr(jbox)),
      1                    nterms(level1),
      1                    radius,xnodes,wts,nquad,nbessel,ier)
  5100             continue
@@ -371,7 +371,7 @@ c$omp$private(ibox,box,center0,corners0,level,npts,nkids,ier)
             nbessel = nterms(level)+1000
             if (level .ge. 2) then
                call L2P(wavek,scale(level),center0,
-     1              Local(iaddr(2,ibox)),
+     1              Local(iaddr(ibox)),
      1              nterms(level),nterms_eval(1,level),nbessel,
      1              sourcesort(1,box(14)),box(15),
      1              pot(box(14)),fld(1,box(14)),
