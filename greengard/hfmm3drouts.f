@@ -1,27 +1,5 @@
-        subroutine h3dpsort(n,isource,psort,pot)
-        implicit real *8 (a-h,o-z)
-        dimension isource(1)
-        complex *16 pot(1),psort(1)
-        do i=1,n
-           pot(isource(i))=psort(i)
-        enddo
-        return
-        end
-
-        subroutine h3dfsort(n,isource,fldsort,fld)
-        implicit real *8 (a-h,o-z)
-        dimension isource(1)
-        complex *16 fld(3,1),fldsort(3,1)
-        do i=1,n
-           fld(1,isource(i))=fldsort(1,i)
-           fld(2,isource(i))=fldsort(2,i)
-           fld(3,isource(i))=fldsort(3,i)
-        enddo
-        return
-        end
-
         subroutine h3dreorder(nsource,source,
-     $     ifcharge,charge,isource,sourcesort,chargesort) 
+     1     ifcharge,charge,isource,sourcesort,chargesort) 
         implicit real *8 (a-h,o-z)
         dimension source(3,1),sourcesort(3,1),isource(1)
         complex *16 charge(1),chargesort(1)
@@ -38,9 +16,9 @@
         implicit real *8 (a-h,o-z)
         complex *16 mpole(0:nterms,-nterms:nterms)
         do n=0,nterms
-        do m=-n,n
-        mpole(n,m)=0
-        enddo
+           do m=-n,n
+              mpole(n,m)=0
+           enddo
         enddo
         return
         end

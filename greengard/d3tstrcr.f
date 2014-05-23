@@ -66,16 +66,10 @@ c         this array should not be altered between the call to this
 c         entry and subsequent calls to the entries d3tgetb, d3tgetl,
 c         d3tlinfo, of this  subroutine 
         ier=0
-c
-c
-        iptr=1
-        lptr=500
-c
-        iiwork=iptr+lptr
-        liwork=n+4
+        iiwork=501
 c     
-        iboxes=iiwork+liwork
-        lboxes=lw-liwork-5
+        iboxes=iiwork+n+4
+        lboxes=lw-9
         maxboxes=lboxes/20-1
 
 c     initialize the sorting index 

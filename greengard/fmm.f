@@ -5,27 +5,23 @@
       dimension Xjd(3,numBodies)
       complex *16 qj(numBodies)
       complex *16 qjd(2*numBodies)
-      complex *16 ima
+      complex *16 imag
       complex *16 pi(numBodies)
       complex *16 Fi(3,numBodies)
       complex *16 pid(numBodies)
       complex *16 Fid(3,numBodies)
-      dimension timeinfo(10)
       dimension laddr(2,200)
       dimension bsize(0:200)
       dimension nterms(0:200)
-      integer box(20)
-      integer box1(20)
       dimension scale(0:200)
       dimension center(3)
-      dimension center0(3),corners0(3,8)
-      dimension center1(3),corners1(3,8)
       integer, allocatable :: iaddr(:)
+      integer, allocatable :: isource(:)
       real *8, allocatable :: wlists(:)
       real *8, allocatable :: Multipole(:)
       real *8, allocatable :: Local(:)
       complex *16 ptemp,ftemp(3)
-      data ima/(0.0d0,1.0d0)/
+      data imag/(0.0d0,1.0d0)/
       ier=0
 c     set fmm tolerance based on iprec flag.
       if( iprec .eq. -2 ) epsfmm=.5d-0
@@ -49,10 +45,11 @@ c     set criterion for box subdivision (number of sources per box)
       if( iprec .eq. 6 ) nbox=numBodies
 c     create oct-tree data structure
       ntot = 2*numBodies+10000
+      allocate (isource(numBodies))
       allocate (wlists(ntot))
       call d3tstrcr(ier,Xj,numBodies,nbox,
-     1     nboxes,wlists(1),laddr,nlev,center,size,
-     1     wlists(numBodies),ntot,lwlists)
+     1     nboxes,isource,laddr,nlev,center,size,
+     1     wlists,ntot,lwlists)
       allocate(iaddr(nboxes))
       do i = 0,nlev
          scale(i) = 1.0d0
@@ -65,21 +62,21 @@ c     create oct-tree data structure
          call h3dterms(bsize(i),wavek,epsfmm, nterms(i), ier)
          if (nterms(i).gt. nmax .and. i.ge. 2) nmax = nterms(i)
       enddo
-      call h3dreorder(numBodies,Xj,1,qj,wlists(1),
-     1     Xjd,qjd)
+      call h3dreorder(numBodies,Xj,1,qj,isource,Xjd,qjd)
       ifinit=1
-      call h3dmpalloc(wlists(numBodies),iaddr,nboxes,lmptot,nterms)
+      call h3dmpalloc(wlists,iaddr,nboxes,lmptot,nterms)
       allocate(Multipole(lmptot),stat=ier)
       allocate(Local(lmptot),stat=ier)
-      call evaluate(ier,iprec,wavek,
-     1     numBodies,Xjd,wlists(1),
-     1     1,qjd,pid,Fid,
-     1     epsfmm,iaddr,Multipole,Local,
+      call evaluate(ier,iprec,wavek,numBodies,Xjd,isource,
+     1     1,qjd,pid,Fid,epsfmm,iaddr,Multipole,Local,
      1     nboxes,laddr,nlev,scale,bsize,nterms,
-     1     wlists(numBodies),lwlists)
-      call h3dpsort(numBodies,wlists(1),pid,pi)
-      call h3dfsort(numBodies,wlists(1),Fid,Fi)
-
+     1     wlists,lwlists)
+      do i=1,numBodies
+         pi(isource(i))=pid(i)
+         Fi(1,isource(i))=Fid(1,i)
+         Fi(2,isource(i))=Fid(2,i)
+         Fi(3,isource(i))=Fid(3,i)
+      enddo
       return
       end
 
@@ -92,7 +89,7 @@ c     create oct-tree data structure
       implicit real *8 (a-h,o-z)
       dimension sourcesort(3,1),isource(1)
       complex *16 chargesort(1),wavek
-      complex *16 ima
+      complex *16 imag
       complex *16 pot(1)
       complex *16 fld(3,1)
       dimension wlists(1)
@@ -117,7 +114,7 @@ c     create oct-tree data structure
       real *8, allocatable :: rotmatb(:,:,:,:)
       real *8, allocatable :: thetas(:,:,:)
       real *8 rvec(3)
-      data ima/(0.0d0,1.0d0)/
+      data imag/(0.0d0,1.0d0)/
 c     ... set the potential and field to zero
       do i=1,numBodies
          pot(i)=0
@@ -160,7 +157,6 @@ c$omp$private(lused,ier,i,j,ptemp,ftemp,cd)
                radius = radius + (corners0(2,1) - center0(2))**2
                radius = radius + (corners0(3,1) - center0(3))**2
                radius = sqrt(radius)
-               call h3dzero(Multipole(iaddr(ibox)),nterms(level))
                call P2M(ier,wavek,scale(level),
      1              sourcesort(1,box(14)),chargesort(box(14)),box(15),
      1              center0,nterms(level),nterms_eval(1,level),nbessel,
@@ -194,7 +190,6 @@ c$omp$private(lused,ier,i,j,ptemp,ftemp,cd)
                   radius = radius + (corners0(2,1) - center0(2))**2
                   radius = radius + (corners0(3,1) - center0(3))**2
                   radius = sqrt(radius)
-                  call h3dzero(Multipole(iaddr(ibox)),nterms(level0))
                   do i = 1,8
                      jbox = box(5+i)
                      if (jbox.eq.0) cycle
@@ -216,8 +211,6 @@ c$    toc=omp_get_wtime()
       print*,'M2M    =',toc-tic
 
 c     ... step 3, precompute rotation matrices
-c     (approximately 30kB of storage for ldm=10)
-c     (approximately 40MB of storage for ldm=30)
 c$    tic=omp_get_wtime()
       ldm = 1
       do i=2,nlev
