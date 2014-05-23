@@ -1,12 +1,12 @@
         subroutine d3tstrcr(ier,z,n,nbox,
      1    nboxes,iz,laddr,nlev,center,size,
-     $    w,lw,lused777)
+     1    wlists,lwlists,lused777)
         implicit real *8 (a-h,o-z)
-        integer iz(*),w(*),laddr(2,*)
+        integer iz(*),wlists(*),laddr(2,*)
         real *8 z(3,*),center(3),corners(3,8)
 c        this subroutine constructs the logical structure for the 
 c        fully adaptive FMM in three dimensions and stores it in the
-c        array w in the form of a link-list. after that, the user 
+c        array wlists in the form of a link-list. after that, the user 
 c        can obtain the information about various boxes and lists 
 c        in it by calling the entries d3tgetb, d3tgetl, d3tlinfo
 c        of this subroutine (see).
@@ -42,7 +42,7 @@ c
 c  z - the user-specified points in the space
 c  n - the number of elements in array z
 c  nbox - the maximum number of points in a box on the finest level
-c  lw - the amount of memory in the array w (in integer elements)
+c  lwlists - the amount of memory in the array wlists (in integer elements)
 c
 c                            output parameters:
 c
@@ -67,77 +67,59 @@ c         entry and subsequent calls to the entries d3tgetb, d3tgetl,
 c         d3tlinfo, of this  subroutine 
         ier=0
         iiwork=501
-c     
         iboxes=iiwork+n+4
-        lboxes=lw-9
+        lboxes=lwlists-n-9
         maxboxes=lboxes/20-1
-
 c     initialize the sorting index 
-c
         do i=1,n
            iz(i)=i
 	enddo
-
         ifempty=0
         minlevel=0
         maxlevel=100
-        call d3tallbem(ier,z,n,nbox,w(iboxes),maxboxes,
-     1    nboxes,iz,laddr,nlev,center,size,w(iiwork),
+        call d3tallbem(ier,z,n,nbox,wlists(iboxes),maxboxes,
+     1    nboxes,iz,laddr,nlev,center,size,wlists(iiwork),
      $     ifempty,minlevel,maxlevel)
-c       compress the array w
+c     compress the array wlists
         nn=nboxes*20
-        do 1200 i=1,nn
-        w(iiwork+i-1)=w(iboxes+i-1)
- 1200 continue
+        do i=1,nn
+           wlists(iiwork+i-1)=wlists(iboxes+i-1)
+        enddo
         iboxes=iiwork
- 1300 continue
         lboxes=nboxes*20+20
-c
-c       ... align array for real *16 storage
+c     align array for real *16 storage
         lboxes=lboxes+4-mod(lboxes,4)
-c
-c       construct the centers and the corners for all boxes
-c       in the oct-tree
-c
+c     construct the centers and the corners for all boxes in the oct-tree
         icenters=iboxes+lboxes
         lcenters=(nboxes*3+2)*2
-c
         icorners=icenters+lcenters
         lcorners=(nboxes*24+2)*2
-c
         iwlists=icorners+lcorners
-        lwlists=lw-iwlists-6
-c
-        call d3tcentc(center,size,w(iboxes),nboxes,
-     1      w(icenters),w(icorners) )
-c
-c       now, construct all lists for all boxes
-c
-        
-        call d3tlsts(ier,w(iboxes),nboxes,w(icorners),
-     1        w(iwlists),lwlists,lused)
-c
+        lwlists=lwlists-iwlists-6
+        call d3tcentc(center,size,wlists(iboxes),nboxes,
+     1      wlists(icenters),wlists(icorners) )
+c     now, construct all lists for all boxes
+        call d3tlsts(ier,wlists(iboxes),nboxes,wlists(icorners),
+     1        wlists(iwlists),lwlists,lused)
         lused777=lused+iwlists
-c
-c       store all pointers
-c
-        w(1)=nboxes
-        w(2)=iboxes
-        w(3)=icorners
-        w(4)=icenters
-        w(5)=iwlists
-        w(6)=lused777
-        w(7)=n
-        w(8)=nbox
-        w(9)=nlev
-        w(10)=ier
-        w(11)=0
-        w(12)=ifempty
-        w(13)=minlevel
-        w(14)=maxlevel
+c     store all pointers
+        wlists(1)=nboxes
+        wlists(2)=iboxes
+        wlists(3)=icorners
+        wlists(4)=icenters
+        wlists(5)=iwlists
+        wlists(6)=lused777
+        wlists(7)=n
+        wlists(8)=nbox
+        wlists(9)=nlev
+        wlists(10)=ier
+        wlists(11)=0
+        wlists(12)=ifempty
+        wlists(13)=minlevel
+        wlists(14)=maxlevel
         do i=1,200
-        w(100+2*i-2)=laddr(1,i)
-        w(100+2*i-1)=laddr(2,i)
+           wlists(100+2*i-2)=laddr(1,i)
+           wlists(100+2*i-1)=laddr(2,i)
         enddo
         return
         end
@@ -147,7 +129,7 @@ c
         integer box(20)
         nkids=0
         do ikid=1,8
-        if( box(5+ikid) .ne. 0 ) nkids=nkids+1
+           if( box(5+ikid) .ne. 0 ) nkids=nkids+1
         enddo
         return
         end
