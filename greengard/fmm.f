@@ -34,20 +34,20 @@ c     set fmm tolerance based on iprec flag.
       if( iprec .eq. 5 ) epsfmm=.5d-15
       if( iprec .eq. 6 ) epsfmm=0
 c     set criterion for box subdivision (number of sources per box)
-      if( iprec .eq. -2 ) nbox=40
-      if( iprec .eq. -1 ) nbox=50
-      if( iprec .eq. 0 ) nbox=80
-      if( iprec .eq. 1 ) nbox=160
-      if( iprec .eq. 2 ) nbox=400
-      if( iprec .eq. 3 ) nbox=800
-      if( iprec .eq. 4 ) nbox=1200
-      if( iprec .eq. 5 ) nbox=1400
-      if( iprec .eq. 6 ) nbox=numBodies
+      if( iprec .eq. -2 ) ncrit=40
+      if( iprec .eq. -1 ) ncrit=50
+      if( iprec .eq. 0 ) ncrit=80
+      if( iprec .eq. 1 ) ncrit=160
+      if( iprec .eq. 2 ) ncrit=400
+      if( iprec .eq. 3 ) ncrit=800
+      if( iprec .eq. 4 ) ncrit=1200
+      if( iprec .eq. 5 ) ncrit=1400
+      if( iprec .eq. 6 ) ncrit=numBodies
 c     create oct-tree data structure
       ntot = 2*numBodies+10000
       allocate (isource(numBodies))
       allocate (wlists(ntot))
-      call d3tstrcr(ier,Xj,numBodies,nbox,
+      call d3tstrcr(ier,Xj,numBodies,ncrit,
      1     nboxes,isource,laddr,nlev,center,size,
      1     wlists,ntot,lwlists)
       allocate(iaddr(nboxes))

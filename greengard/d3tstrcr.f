@@ -1,4 +1,4 @@
-        subroutine d3tstrcr(ier,z,n,nbox,
+        subroutine d3tstrcr(ier,z,n,ncrit,
      1    nboxes,iz,laddr,nlev,center,size,
      1    wlists,lwlists,lused777)
         implicit real *8 (a-h,o-z)
@@ -41,7 +41,7 @@ c                            input parameters:
 c
 c  z - the user-specified points in the space
 c  n - the number of elements in array z
-c  nbox - the maximum number of points in a box on the finest level
+c  ncrit - the maximum number of points in a box on the finest level
 c  lwlists - the amount of memory in the array wlists (in integer elements)
 c
 c                            output parameters:
@@ -77,7 +77,7 @@ c     initialize the sorting index
         ifempty=0
         minlevel=0
         maxlevel=100
-        call d3tallbem(ier,z,n,nbox,wlists(iboxes),maxboxes,
+        call d3tallbem(ier,z,n,ncrit,wlists(iboxes),maxboxes,
      1    nboxes,iz,laddr,nlev,center,size,wlists(iiwork),
      $     ifempty,minlevel,maxlevel)
 c     compress the array wlists
@@ -110,7 +110,7 @@ c     store all pointers
         wlists(5)=iwlists
         wlists(6)=lused777
         wlists(7)=n
-        wlists(8)=nbox
+        wlists(8)=ncrit
         wlists(9)=nlev
         wlists(10)=ier
         wlists(11)=0
@@ -791,7 +791,7 @@ c
 c
 c
 c
-        subroutine d3tallbem(ier,z,n,nbox,boxes,maxboxes,
+        subroutine d3tallbem(ier,z,n,ncrit,boxes,maxboxes,
      1    nboxes,iz,laddr,nlev,center0,size,iwork,
      1    ifempty,minlevel,maxlevel)
         implicit real *8 (a-h,o-z)
@@ -812,9 +812,9 @@ c  z - the set of points in the space
 c  n - the number of elements in z
 c
 
-c  nbox - the maximum number of points permitted in a box on 
+c  ncrit - the maximum number of points permitted in a box on 
 c        the finest level. in other words, a box will be further
-c        subdivided if it contains more than nbox points.
+c        subdivided if it contains more than ncrit points.
 c  maxboxes - the maximum total number of boxes the subroutine 
 c        is permitted to create. if the points z are such that 
 c        more boxes are needed, the error return code ier is
@@ -952,7 +952,7 @@ c
  1200 continue
 c
 c       recursively (one level after another) subdivide all 
-c       boxes till none are left with more than nbox particles
+c       boxes till none are left with more than ncrit particles
         maxson=maxboxes
         maxlev=198
         if( maxlevel .lt. maxlev ) maxlev=maxlevel
@@ -968,10 +968,10 @@ c       subdivide the box number idad (if needed)
         numpdad=boxes(15,idad)
         numtdad=boxes(17,idad)
 c       ... refine on both sources and targets
-        if(numpdad .le. nbox .and. numtdad .le. nbox .and.
+        if(numpdad .le. ncrit .and. numtdad .le. ncrit .and.
      $     level .ge. minlevel ) goto 2000
 c       ... not a leaf node on sources or targets
-        if( numpdad .gt. nbox .or. numtdad .gt. nbox ) then
+        if( numpdad .gt. ncrit .or. numtdad .gt. ncrit ) then
         if( boxes(18,idad) .eq. 1 ) boxes(18,idad)=2
         if( boxes(19,idad) .eq. 1 ) boxes(19,idad)=2
         endif
