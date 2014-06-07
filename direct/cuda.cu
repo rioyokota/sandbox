@@ -32,6 +32,7 @@ __global__ void GPUkernel(int N, float * x, float * y, float * z, float * m,
     zj[threadIdx.x] = z[jb*THREADS+threadIdx.x];
     mj[threadIdx.x] = m[jb*THREADS+threadIdx.x];
     __syncthreads();
+#pragma unroll
     for( int j=0; j<THREADS; j++ ) {
       float dx = xj[j] - xi;
       float dy = yj[j] - yi;
