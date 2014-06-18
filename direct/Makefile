@@ -14,6 +14,9 @@ avx: avx.c
 mic: mic.c
 	$(ICC) -mmic $< -L/home/rio/.papi/mic/lib -lpapi -lpfm
 	ssh mic0 LD_LIBRARY_PATH=~/.lib sandbox/direct/a.out
+mic2: mic2.c
+	$(ICC) -mmic $< -L/home/rio/.papi/mic/lib -lpapi -lpfm
+	ssh mic1 LD_LIBRARY_PATH=~/.lib sandbox/direct/a.out
 cuda: cuda.cu
 	$(NVCC) $< -lpapi
 	./a.out
