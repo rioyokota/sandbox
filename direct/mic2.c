@@ -44,6 +44,7 @@ int main() {
       for (it=0; it<NT; it++) {
 #pragma omp single
       tic = get_time();
+#if 0
 #pragma omp for
       for (i=0; i<N; i+=16) {
 	__m512 pi = _mm512_setzero_ps();
@@ -79,6 +80,43 @@ int main() {
 	_mm512_store_ps(ay+i, ayi);
 	_mm512_store_ps(az+i, azi);
       }
+#else
+#pragma omp for
+      for (i=0; i<N; i++) {
+	__m512 pi = _mm512_setzero_ps();
+	__m512 axi = _mm512_setzero_ps();
+	__m512 ayi = _mm512_setzero_ps();
+	__m512 azi = _mm512_setzero_ps();
+	__m512 xi = _mm512_set1_ps(x[i]);
+	__m512 yi = _mm512_set1_ps(y[i]);
+	__m512 zi = _mm512_set1_ps(z[i]);
+	for (j=0; j<N; j+=16) {
+	  __m512 xj = _mm512_load_ps(x+j);
+	  xj = _mm512_sub_ps(xj, xi);
+	  __m512 yj = _mm512_load_ps(y+j);
+	  yj = _mm512_sub_ps(yj, yi);
+	  __m512 zj = _mm512_load_ps(z+j);
+	  zj = _mm512_sub_ps(zj, zi);
+	  __m512 R2 = _mm512_set1_ps(EPS2);
+	  R2 = _mm512_fmadd_ps(xj, xj, R2);
+	  R2 = _mm512_fmadd_ps(yj, yj, R2);
+	  R2 = _mm512_fmadd_ps(zj, zj, R2);
+	  __m512 mj = _mm512_load_ps(m+j);
+	  __m512 invR = _mm512_rsqrt23_ps(R2);
+	  mj = _mm512_mul_ps(mj, invR);
+	  pi = _mm512_add_ps(pi, mj);
+	  invR = _mm512_mul_ps(invR, invR);
+	  invR = _mm512_mul_ps(invR, mj);
+	  axi = _mm512_fmadd_ps(xj, invR, axi);
+	  ayi = _mm512_fmadd_ps(yj, invR, ayi);
+	  azi = _mm512_fmadd_ps(zj, invR, azi);
+	}
+	p[i] = _mm512_reduce_add_ps(pi);
+	ax[i] = _mm512_reduce_add_ps(axi);
+	ay[i] = _mm512_reduce_add_ps(ayi);
+	az[i] = _mm512_reduce_add_ps(azi);
+      }
+#endif
 #pragma omp single
       {
 	toc = get_time();

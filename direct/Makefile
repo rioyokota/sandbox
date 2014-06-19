@@ -16,7 +16,7 @@ mic: mic.c
 	ssh mic1 LD_LIBRARY_PATH=~/.lib sandbox/direct/a.out
 mic2: mic2.c
 	$(ICC) -mmic $<
-	ssh mic1 LD_LIBRARY_PATH=~/.lib KMP_AFFINITY=scatter sandbox/direct/a.out
+	ssh mic1 LD_LIBRARY_PATH=~/.lib KMP_AFFINITY=compact sandbox/direct/a.out
 cuda: cuda.cu
 	$(NVCC) $< -lpapi
 	./a.out
