@@ -13,7 +13,7 @@ double get_time() {
 
 int main() {
   // Initialize
-  int N = 1 << 16;
+  int N = 1 << 18;
   int NALIGN = 64;
   int i, j;
   float OPS = 20. * N * N * 1e-9;
@@ -43,7 +43,6 @@ int main() {
   PAPI_add_events(EventSet, Events, 3);
   printf("N      : %d\n",N);
 
-  // MIC
   float pdiff = 0, pnorm = 0, adiff = 0, anorm = 0;
 #pragma omp parallel private(j) reduction(+: pdiff, pnorm, adiff, anorm)
   {
@@ -52,7 +51,7 @@ int main() {
       PAPI_start(EventSet);
       tic = get_time();
     }
-#if 1
+    // i vectorized
 #pragma omp for
     for (i=0; i<N; i+=16) {
       __m512 pi = _mm512_setzero_ps();
@@ -88,7 +87,18 @@ int main() {
       _mm512_store_ps(ay+i, ayi);
       _mm512_store_ps(az+i, azi);
     }
-#else
+#pragma omp single
+    {
+      toc = get_time();
+      PAPI_stop(EventSet,values);
+      printf("L2 Miss: %lld L2 Access: %lld TLB Miss: %lld\n",values[0],values[1],values[2]);
+      printf("I vect : %e s : %lf GFlops\n",toc-tic, OPS/(toc-tic));
+      for (i=0; i<3; i++) values[i] = 0;
+
+      // j vectorized
+      PAPI_start(EventSet);
+      tic = get_time();
+    }
 #pragma omp for
     for (i=0; i<N; i++) {
       __m512 pi = _mm512_setzero_ps();
@@ -124,16 +134,15 @@ int main() {
       ay[i] = _mm512_reduce_add_ps(ayi);
       az[i] = _mm512_reduce_add_ps(azi);
     }
-#endif
 #pragma omp single
     {
       toc = get_time();
       PAPI_stop(EventSet,values);
       printf("L2 Miss: %lld L2 Access: %lld TLB Miss: %lld\n",values[0],values[1],values[2]);
-      printf("MIC    : %e s : %lf GFlops\n",toc-tic, OPS/(toc-tic));
+      printf("J vect : %e s : %lf GFlops\n",toc-tic, OPS/(toc-tic));
       for (i=0; i<3; i++) values[i] = 0;
 
-      // No MIC
+      // w/o intrinsics
       PAPI_start(EventSet);
       tic = get_time();
     }
@@ -169,7 +178,7 @@ int main() {
   toc = get_time();
   PAPI_stop(EventSet,values);
   printf("L2 Miss: %lld L2 Access: %lld TLB Miss: %lld\n",values[0],values[1],values[2]);
-  printf("No MIC : %e s : %lf GFlops\n",toc-tic, OPS/(toc-tic));
+  printf("No intr: %e s : %lf GFlops\n",toc-tic, OPS/(toc-tic));
   printf("P ERR  : %e\n",sqrt(pdiff/pnorm));
   printf("A ERR  : %e\n",sqrt(adiff/anorm));
 
