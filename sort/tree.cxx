@@ -46,7 +46,7 @@ double get_time() {
 inline void getIndex(Bodies &bodies, int level) {
   float d = 1.0 / (1 << level);
 #pragma omp parallel for
-  for( uint b=0; b<bodies.size(); b++ ) {
+  for( int b=0; b<int(bodies.size()); b++ ) {
     B_iter B=bodies.begin()+b;
     int ix = B->X[0] / d;
     int iy = B->X[1] / d;
@@ -69,55 +69,50 @@ void radixSort(Bodies &bodies, int **index) {
   const int bitStride = 8;
   const int stride = 1 << bitStride;
   const int mask = stride - 1;
-  int numThreads;
-  int maxKey = 0;
-  int (*bucketPerThread)[stride];
-  int * maxKeyPerThread;
-#pragma omp parallel
-  {
-    numThreads = omp_get_num_threads();
-    for( int b=0; b<n; b++ ) {
-      int i = bodies[b].ICELL;
-      index[0][b] = i;
-      index[2][b] = b;
-      index[4][b] = i;
-      if( i > maxKeyPerThread[omp_get_thread_num()] )
-	maxKeyPerThread[omp_get_thread_num()] = i;
-    }
-    int aMax = 0;
-    for( int i=0; i<OMP_NUM_THREADS; i++ )
-      if( maxKeyPerThread[i] > aMax ) aMax = maxKeyPerThread[i];
-    while( aMax > 0 ) {
-      int bucket[stride] = {0};
-      for( int t=0; t<OMP_NUM_THREADS; t++ )
-	for( int i=0; i<stride; i++ )
-	  bucketPerThread[t][i] = 0;
+  int (*bucket2D)[stride] = new int [OMP_NUM_THREADS][stride]();
+  int aMaxPerThread[OMP_NUM_THREADS] = {0};
 #pragma omp parallel for num_threads(OMP_NUM_THREADS)
-      for( int i=0; i<n; i++ )
-	bucketPerThread[omp_get_thread_num()][index[0][i] & mask]++;
-      for( int t=0; t<OMP_NUM_THREADS; t++ )
-	for( int i=0; i<stride; i++ )
-	  bucket[i] += bucketPerThread[t][i];
-      for( int i=1; i<stride; i++ )
-	bucket[i] += bucket[i-1];
-      for( int i=n-1; i>=0; i-- )
-	index[3][i] = --bucket[index[0][i] & mask];
-#pragma omp parallel for num_threads(OMP_NUM_THREADS)
-      for( int i=0; i<n; i++ )
-	index[1][index[3][i]] = index[2][i];
-#pragma omp parallel for num_threads(OMP_NUM_THREADS)
-      for( int i=0; i<n; i++ )
-	index[2][i] = index[1][i];
-#pragma omp parallel for num_threads(OMP_NUM_THREADS)
-      for( int i=0; i<n; i++ )
-	index[1][index[3][i]] = index[0][i];
-#pragma omp parallel for num_threads(OMP_NUM_THREADS)
-      for( int i=0; i<n; i++ )
-	index[0][i] = index[1][i] >> bitStride;
-      aMax >>= bitStride;
-    }
+  for( int b=0; b<n; b++ ) {
+    int i = bodies[b].ICELL;
+    index[0][b] = i;
+    index[2][b] = b;
+    index[4][b] = i;
+    if( i > aMaxPerThread[omp_get_thread_num()] )
+      aMaxPerThread[omp_get_thread_num()] = i;
   }
-  delete[] bucketPerThread;
+  int aMax = 0;
+  for( int i=0; i<OMP_NUM_THREADS; i++ )
+    if( aMaxPerThread[i] > aMax ) aMax = aMaxPerThread[i];
+  while( aMax > 0 ) {
+    int bucket[stride] = {0};
+    for( int t=0; t<OMP_NUM_THREADS; t++ )
+      for( int i=0; i<stride; i++ )
+        bucket2D[t][i] = 0;
+#pragma omp parallel for num_threads(OMP_NUM_THREADS)
+    for( int i=0; i<n; i++ )
+      bucket2D[omp_get_thread_num()][index[0][i] & mask]++;
+    for( int t=0; t<OMP_NUM_THREADS; t++ )
+      for( int i=0; i<stride; i++ )
+        bucket[i] += bucket2D[t][i];
+    for( int i=1; i<stride; i++ )
+      bucket[i] += bucket[i-1];
+    for( int i=n-1; i>=0; i-- )
+      index[3][i] = --bucket[index[0][i] & mask];
+#pragma omp parallel for num_threads(OMP_NUM_THREADS)
+    for( int i=0; i<n; i++ )
+      index[1][index[3][i]] = index[2][i];
+#pragma omp parallel for num_threads(OMP_NUM_THREADS)
+    for( int i=0; i<n; i++ )
+      index[2][i] = index[1][i];
+#pragma omp parallel for num_threads(OMP_NUM_THREADS)
+    for( int i=0; i<n; i++ )
+      index[1][index[3][i]] = index[0][i];
+#pragma omp parallel for num_threads(OMP_NUM_THREADS)
+    for( int i=0; i<n; i++ )
+      index[0][i] = index[1][i] >> bitStride;
+    aMax >>= bitStride;
+  }
+  delete[] bucket2D;
 }
 
 void permute(Bodies &bodies, int ** index) {
