@@ -7,15 +7,13 @@
 
 #define OMP_NUM_THREADS 64
 
-typedef long bigint;
-
 struct Body {
-//  int    IBODY;
-//  int    IPROC;
-  bigint ICELL;
-  float  X[3];
-//  float  SRC[1];
-//  float  TRG[4];
+//  int IBODY;
+//  int IRANK;
+  unsigned long long ICELL;
+  float X[3];
+//  float SRC;
+//  float TRG[4];
   bool operator<(const Body &rhs) const {
     return this->ICELL < rhs.ICELL;
   }
