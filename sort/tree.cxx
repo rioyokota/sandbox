@@ -123,7 +123,7 @@ void permute(Bodies &bodies, int ** index) {
     bodies[b] = buffer[index[2][b]];
 }
 
-void bodies2twigs(Bodies &bodies, Cells &cells, int level) {
+void bodies2leafs(Bodies &bodies, Cells &cells, int level) {
   int I = -1;
   C_iter C;
   cells.reserve(1 << (3 * level));
@@ -153,7 +153,7 @@ void bodies2twigs(Bodies &bodies, Cells &cells, int level) {
   }
 }
 
-void twigs2cells(Bodies &bodies, Cells &cells, int level) {
+void leafs2cells(Bodies &bodies, Cells &cells, int level) {
   int begin = 0, end = cells.size();
   float d = 1.0 / (1 << level);
   for( int l=1; l!=level; ++l ) {
@@ -226,12 +226,12 @@ int main() {
   std::cout << "perm : " << toc-tic << std::endl;
 
   tic = get_time();
-  bodies2twigs(bodies,cells,level);
+  bodies2leafs(bodies,cells,level);
   toc = get_time();
-  std::cout << "twig : " << toc-tic << std::endl;
+  std::cout << "leaf : " << toc-tic << std::endl;
 
   tic = get_time();
-  twigs2cells(bodies,cells,level);
+  leafs2cells(bodies,cells,level);
   toc = get_time();
   std::cout << "cell : " << toc-tic << std::endl;
 }
