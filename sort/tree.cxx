@@ -5,7 +5,7 @@
 #include <sys/time.h>
 #include <vector>
 
-#define OMP_NUM_THREADS 12
+#define OMP_NUM_THREADS 64
 
 typedef long bigint;
 
@@ -114,11 +114,15 @@ void radixSort(Bodies &bodies, int **index) {
       index[0][i] = index[1][i] >> bitStride;
     aMax >>= bitStride;
   }
+  delete[] bucket2D;
+}
+
+void permute(Bodies &bodies, int ** index) {
+  const int n = bodies.size();
   Bodies buffer = bodies;
 #pragma omp parallel for num_threads(OMP_NUM_THREADS)
   for( int b=0; b<n; b++ )
     bodies[b] = buffer[index[2][b]];
-  delete[] bucket2D;
 }
 
 void bodies2twigs(Bodies &bodies, Cells &cells, int level) {
@@ -217,6 +221,11 @@ int main() {
   radixSort(bodies,index);
   toc = get_time();
   std::cout << "sort : " << toc-tic << std::endl;
+
+  tic = get_time();
+  permute(bodies,index);
+  toc = get_time();
+  std::cout << "perm : " << toc-tic << std::endl;
 
   tic = get_time();
   bodies2twigs(bodies,cells,level);
