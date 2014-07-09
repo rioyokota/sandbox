@@ -1,14 +1,16 @@
 #include <algorithm>
+#include <cassert>
 #include <cstdlib>
 #include <iostream>
 #include <omp.h>
+#include <stdint.h>
 #include <sys/time.h>
 #include <vector>
 
 struct Body {
 //  int IBODY;
 //  int IRANK;
-  unsigned long long ICELL;
+  uint64_t ICELL;
   float X[3];
 //  float SRC;
 //  float TRG[4];
@@ -20,11 +22,10 @@ typedef std::vector<Body> Bodies;
 typedef std::vector<Body>::iterator B_iter;
 
 struct Cell {
-  unsigned NCHILD;
-  unsigned NCLEAF;
-  unsigned NDLEAF;
-  unsigned PARENT;
-  unsigned CHILD;
+  int IPARENT;
+  int ICHILD;
+  int NCHILD;
+  int NBODY;
   B_iter   LEAF;
   float    X[3];
   float    R;
@@ -41,7 +42,7 @@ double get_time() {
   return double(tv.tv_sec+tv.tv_usec*1e-6);
 }
 
-inline void getKey(Bodies &bodies, int * key, int level) {
+inline void getKey(Bodies &bodies, uint64_t * key, uint64_t * keyCopy, int level) {
   float d = 1.0 / (1 << level);
 #pragma omp parallel for
   for (int b=0; b<int(bodies.size()); b++) {
@@ -59,27 +60,27 @@ inline void getKey(Bodies &bodies, int * key, int level) {
       iz >>= 1;
     }
     key[b] = id;
+    keyCopy[b] = id;
     B->ICELL = id;
   }
 }
 
-void radixSort(int * key, int * value, int size) {
+void radixSort(uint64_t * key, int * value, uint64_t * buffer, int * permutation, int size) {
   const int bitStride = 8;
   const int stride = 1 << bitStride;
   const int mask = stride - 1;
   int numThreads;
-  int maxKey = 0;
   int (*bucketPerThread)[stride];
-  int * maxKeyPerThread;
-  int * buffer = new int [size];
-  int * permutation = new int [size];
+  uint64_t maxKey = 0;
+  uint64_t * maxKeyPerThread;
 #pragma omp parallel
   {
     numThreads = omp_get_num_threads();
 #pragma omp single
     {
+      std::cout << "thrd : " << numThreads << std::endl;
       bucketPerThread = new int [numThreads][stride]();
-      maxKeyPerThread = new int [numThreads];
+      maxKeyPerThread = new uint64_t [numThreads];
       for (int i=0; i<numThreads; i++)
 	maxKeyPerThread[i] = 0;
     }
@@ -127,24 +128,26 @@ void radixSort(int * key, int * value, int size) {
   }
   delete[] bucketPerThread;
   delete[] maxKeyPerThread;
-  delete[] buffer;
-  delete[] permutation;
 }
 
-void permute(Bodies & bodies, int * index) {
+void permute(Bodies & bodies, uint64_t * keyCopy, uint64_t * key, int * index) {
   const int n = bodies.size();
   Bodies buffer = bodies;
 #pragma omp parallel for
-  for( int b=0; b<n; b++ )
+  for (int b=0; b<n; b++) {
+    key[b] = keyCopy[index[b]];
     bodies[b] = buffer[index[b]];
+  }
 }
 
-void bodies2leafs(Bodies & bodies, Cells & cells, int level) {
+void bodies2leafs(Bodies & bodies, Cells & cells, uint64_t * key, int level) {
   int I = -1;
   C_iter C;
   cells.reserve(1 << (3 * level));
   float d = 1.0 / (1 << level);
-  for( B_iter B=bodies.begin(); B!=bodies.end(); ++B ) {
+  int b = 0;
+  for (B_iter B=bodies.begin(); B!=bodies.end(); B++, b++) {
+    assert(key[b] == B->ICELL);
     int IC = B->ICELL;
     int ix = B->X[0] / d;
     int iy = B->X[1] / d;
@@ -152,9 +155,8 @@ void bodies2leafs(Bodies & bodies, Cells & cells, int level) {
     if( IC != I ) {
       Cell cell;
       cell.NCHILD = 0;
-      cell.NCLEAF = 0;
-      cell.NDLEAF = 0;
-      cell.CHILD  = 0;
+      cell.NBODY = 0;
+      cell.ICHILD = 0;
       cell.LEAF   = B;
       cell.X[0]   = d * (ix + .5);
       cell.X[1]   = d * (iy + .5);
@@ -164,31 +166,29 @@ void bodies2leafs(Bodies & bodies, Cells & cells, int level) {
       C = cells.end()-1;
       I = IC;
     }
-    C->NCLEAF++;
-    C->NDLEAF++;
+    C->NBODY++;
   }
 }
 
 void leafs2cells(Bodies & bodies, Cells & cells, int level) {
   int begin = 0, end = cells.size();
   float d = 1.0 / (1 << level);
-  for( int l=1; l!=level; ++l ) {
+  for (int l=1; l!=level; l++) {
     int div = (1 << (3 * l));
     d *= 2;
     int I = -1;
     int p = end - 1;
-    for( int c=begin; c!=end; ++c ) {
+    for (int c=begin; c!=end; c++) {
       B_iter B = cells[c].LEAF;
       int IC = B->ICELL / div;
       int ix = B->X[0] / d;
       int iy = B->X[1] / d;
       int iz = B->X[2] / d;
-      if( IC != I ) {
+      if (IC != I) {
         Cell cell;
         cell.NCHILD = 0;
-        cell.NCLEAF = 0;
-        cell.NDLEAF = 0;
-        cell.CHILD  = c - begin;
+        cell.NBODY = 0;
+        cell.ICHILD  = c - begin;
         cell.LEAF   = cells[c].LEAF;
         cell.X[0]   = d * (ix + .5);
         cell.X[1]   = d * (iy + .5);
@@ -199,8 +199,8 @@ void leafs2cells(Bodies & bodies, Cells & cells, int level) {
         I = IC;
       }
       cells[p].NCHILD++;
-      cells[p].NDLEAF += cells[c].NDLEAF;
-      cells[c].PARENT = p;
+      cells[p].NBODY += cells[c].NBODY;
+      cells[c].IPARENT = p;
     }
     begin = end;
     end = cells.size();
@@ -210,8 +210,11 @@ void leafs2cells(Bodies & bodies, Cells & cells, int level) {
 int main() {
   const int numBodies = 10000000;
   const int level = 7;
-  int * key = new int [numBodies];
+  uint64_t * key = new uint64_t [numBodies];
+  uint64_t * keyCopy = new uint64_t [numBodies];
+  uint64_t * buffer = new uint64_t [numBodies];
   int * index = new int [numBodies];
+  int * permutation = new int [numBodies];
   double tic, toc;
   tic = get_time();
   Bodies bodies(numBodies);
@@ -229,27 +232,33 @@ int main() {
   std::cout << "rand : " << toc-tic << std::endl;
 
   tic = get_time();
-  getKey(bodies, key, level);
+  getKey(bodies, key, keyCopy, level);
   toc = get_time();
   std::cout << "mort : " << toc-tic << std::endl;
 
   tic = get_time();
-  radixSort(key, index, numBodies);
+  radixSort(key, index, buffer, permutation, numBodies);
   toc = get_time();
   std::cout << "sort : " << toc-tic << std::endl;
 
   tic = get_time();
-  permute(bodies, index);
+  permute(bodies, keyCopy, key, index);
   toc = get_time();
   std::cout << "perm : " << toc-tic << std::endl;
 
   tic = get_time();
-  bodies2leafs(bodies,cells,level);
+  bodies2leafs(bodies, cells, key, level);
   toc = get_time();
   std::cout << "leaf : " << toc-tic << std::endl;
 
   tic = get_time();
-  leafs2cells(bodies,cells,level);
+  leafs2cells(bodies, cells, level);
   toc = get_time();
   std::cout << "cell : " << toc-tic << std::endl;
+
+  delete[] key;
+  delete[] keyCopy;
+  delete[] buffer;
+  delete[] index;
+  delete[] permutation;
 }
