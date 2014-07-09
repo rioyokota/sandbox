@@ -194,8 +194,8 @@ void leafs2cells(Bodies &bodies, Cells &cells, int level) {
 int main() {
   const int numBodies = 10000000;
   const int level = 7;
-  int **index = new int* [5];
-  for( int i=0; i<5; i++ ) index[i] = new int [numBodies];
+  int **index2 = new int* [5];
+  for( int i=0; i<5; i++ ) index2[i] = new int [numBodies];
   double tic, toc;
   tic = get_time();
   Bodies bodies(numBodies);
@@ -216,12 +216,12 @@ int main() {
   std::cout << "mort : " << toc-tic << std::endl;
 
   tic = get_time();
-  radixSort(bodies,index);
+  radixSort(bodies,index2);
   toc = get_time();
   std::cout << "sort : " << toc-tic << std::endl;
 
   tic = get_time();
-  permute(bodies,index);
+  permute(bodies,index2);
   toc = get_time();
   std::cout << "perm : " << toc-tic << std::endl;
 
