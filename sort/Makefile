@@ -20,7 +20,7 @@ sort: sort.o
 	./a.out
 tree: tree.o
 	$(CXX) $?
-	./a.out
+	OMP_NUM_THREADS=16 ./a.out
 clean:
 	@make -C .. clean
 commit:

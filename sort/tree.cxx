@@ -8,12 +8,13 @@
 #include <vector>
 
 struct Body {
-//  int IBODY;
-//  int IRANK;
+  //int IBODY;
+  //int IRANK;
+  //float WEIGHT;
   uint64_t ICELL;
   float X[3];
-//  float SRC;
-//  float TRG[4];
+  //float SRC;
+  //float TRG[4];
   bool operator<(const Body &rhs) const {
     return this->ICELL < rhs.ICELL;
   }
@@ -22,16 +23,18 @@ typedef std::vector<Body> Bodies;
 typedef std::vector<Body>::iterator B_iter;
 
 struct Cell {
-  int IPARENT;
-  int ICHILD;
-  int NCHILD;
-  int NBODY;
-  B_iter   LEAF;
+  int      IPARENT;
+  int      ICHILD;
+  int      NCHILD;
+  int      IBODY;
+  int      NBODY;
+  B_iter   BODY;
+  uint64_t ICELL;
+  float    WEIGHT;
   float    X[3];
   float    R;
-  float    RCRIT;
-//  float    M[55];
-//  float    L[55];
+  //float    M[20];
+  //float    L[20];
 };
 typedef std::vector<Cell> Cells;
 typedef std::vector<Cell>::iterator C_iter;
@@ -151,7 +154,7 @@ void bodies2leafs(Bodies & bodies, Cells & cells, int level) {
       cell.NCHILD = 0;
       cell.NBODY = 0;
       cell.ICHILD = 0;
-      cell.LEAF   = B;
+      cell.BODY   = B;
       cell.X[0]   = d * (ix + .5);
       cell.X[1]   = d * (iy + .5);
       cell.X[2]   = d * (iz + .5);
@@ -173,7 +176,7 @@ void leafs2cells(Bodies & bodies, Cells & cells, int level) {
     int I = -1;
     int p = end - 1;
     for (int c=begin; c!=end; c++) {
-      B_iter B = cells[c].LEAF;
+      B_iter B = cells[c].BODY;
       int IC = B->ICELL / div;
       int ix = B->X[0] / d;
       int iy = B->X[1] / d;
@@ -183,7 +186,7 @@ void leafs2cells(Bodies & bodies, Cells & cells, int level) {
         cell.NCHILD = 0;
         cell.NBODY = 0;
         cell.ICHILD  = c - begin;
-        cell.LEAF   = cells[c].LEAF;
+        cell.BODY   = cells[c].BODY;
         cell.X[0]   = d * (ix + .5);
         cell.X[1]   = d * (iy + .5);
         cell.X[2]   = d * (iz + .5);
