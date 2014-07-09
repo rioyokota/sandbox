@@ -5,7 +5,7 @@
 #include <sys/time.h>
 #include <vector>
 
-#define OMP_NUM_THREADS 64
+#define OMP_NUM_THREADS 32
 
 struct Body {
 //  int IBODY;
