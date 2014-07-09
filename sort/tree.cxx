@@ -42,7 +42,7 @@ double get_time() {
   return double(tv.tv_sec+tv.tv_usec*1e-6);
 }
 
-inline void getKey(Bodies &bodies, uint64_t * key, uint64_t * keyCopy, int level) {
+inline void getKey(Bodies &bodies, uint64_t * key, int level) {
   float d = 1.0 / (1 << level);
 #pragma omp parallel for
   for (int b=0; b<int(bodies.size()); b++) {
@@ -60,7 +60,6 @@ inline void getKey(Bodies &bodies, uint64_t * key, uint64_t * keyCopy, int level
       iz >>= 1;
     }
     key[b] = id;
-    keyCopy[b] = id;
     B->ICELL = id;
   }
 }
@@ -78,7 +77,6 @@ void radixSort(uint64_t * key, int * value, uint64_t * buffer, int * permutation
     numThreads = omp_get_num_threads();
 #pragma omp single
     {
-      std::cout << "thrd : " << numThreads << std::endl;
       bucketPerThread = new int [numThreads][stride]();
       maxKeyPerThread = new uint64_t [numThreads];
       for (int i=0; i<numThreads; i++)
@@ -130,24 +128,20 @@ void radixSort(uint64_t * key, int * value, uint64_t * buffer, int * permutation
   delete[] maxKeyPerThread;
 }
 
-void permute(Bodies & bodies, uint64_t * keyCopy, uint64_t * key, int * index) {
+void permute(Bodies & bodies, int * index) {
   const int n = bodies.size();
   Bodies buffer = bodies;
 #pragma omp parallel for
-  for (int b=0; b<n; b++) {
-    key[b] = keyCopy[index[b]];
+  for (int b=0; b<n; b++)
     bodies[b] = buffer[index[b]];
-  }
 }
 
-void bodies2leafs(Bodies & bodies, Cells & cells, uint64_t * key, int level) {
+void bodies2leafs(Bodies & bodies, Cells & cells, int level) {
   int I = -1;
   C_iter C;
   cells.reserve(1 << (3 * level));
   float d = 1.0 / (1 << level);
-  int b = 0;
-  for (B_iter B=bodies.begin(); B!=bodies.end(); B++, b++) {
-    assert(key[b] == B->ICELL);
+  for (B_iter B=bodies.begin(); B!=bodies.end(); B++) {
     int IC = B->ICELL;
     int ix = B->X[0] / d;
     int iy = B->X[1] / d;
@@ -211,7 +205,6 @@ int main() {
   const int numBodies = 10000000;
   const int level = 7;
   uint64_t * key = new uint64_t [numBodies];
-  uint64_t * keyCopy = new uint64_t [numBodies];
   uint64_t * buffer = new uint64_t [numBodies];
   int * index = new int [numBodies];
   int * permutation = new int [numBodies];
@@ -232,7 +225,7 @@ int main() {
   std::cout << "rand : " << toc-tic << std::endl;
 
   tic = get_time();
-  getKey(bodies, key, keyCopy, level);
+  getKey(bodies, key, level);
   toc = get_time();
   std::cout << "mort : " << toc-tic << std::endl;
 
@@ -242,12 +235,12 @@ int main() {
   std::cout << "sort : " << toc-tic << std::endl;
 
   tic = get_time();
-  permute(bodies, keyCopy, key, index);
+  permute(bodies, index);
   toc = get_time();
   std::cout << "perm : " << toc-tic << std::endl;
 
   tic = get_time();
-  bodies2leafs(bodies, cells, key, level);
+  bodies2leafs(bodies, cells, level);
   toc = get_time();
   std::cout << "leaf : " << toc-tic << std::endl;
 
@@ -257,7 +250,6 @@ int main() {
   std::cout << "cell : " << toc-tic << std::endl;
 
   delete[] key;
-  delete[] keyCopy;
   delete[] buffer;
   delete[] index;
   delete[] permutation;
