@@ -19,7 +19,7 @@ struct Body {
   float TRG[4];
 };
 
-void radixSort(int *key, int *value, int size) {
+void radixSort(int * key, int * value, int size) {
   const int bitStride = 8;
   const int stride = 1 << bitStride;
   const int mask = stride - 1;

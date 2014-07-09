@@ -5,8 +5,6 @@
 #include <sys/time.h>
 #include <vector>
 
-#define OMP_NUM_THREADS 32
-
 struct Body {
 //  int IBODY;
 //  int IRANK;
@@ -136,12 +134,12 @@ void radixSort(int * key, int * value, int size) {
 void permute(Bodies & bodies, int * index) {
   const int n = bodies.size();
   Bodies buffer = bodies;
-#pragma omp parallel for num_threads(OMP_NUM_THREADS)
+#pragma omp parallel for
   for( int b=0; b<n; b++ )
     bodies[b] = buffer[index[b]];
 }
 
-void bodies2leafs(Bodies &bodies, Cells &cells, int level) {
+void bodies2leafs(Bodies & bodies, Cells & cells, int level) {
   int I = -1;
   C_iter C;
   cells.reserve(1 << (3 * level));
@@ -171,7 +169,7 @@ void bodies2leafs(Bodies &bodies, Cells &cells, int level) {
   }
 }
 
-void leafs2cells(Bodies &bodies, Cells &cells, int level) {
+void leafs2cells(Bodies & bodies, Cells & cells, int level) {
   int begin = 0, end = cells.size();
   float d = 1.0 / (1 << level);
   for( int l=1; l!=level; ++l ) {
@@ -214,8 +212,6 @@ int main() {
   const int level = 7;
   int * key = new int [numBodies];
   int * index = new int [numBodies];
-  int **index2 = new int* [5];
-  for( int i=0; i<5; i++ ) index2[i] = new int [numBodies];
   double tic, toc;
   tic = get_time();
   Bodies bodies(numBodies);
