@@ -40,42 +40,42 @@ void radixSort(int *key, int *value, int size) {
 	maxKeyPerThread[i] = 0;
     }
 #pragma omp for
-    for( int i=0; i<size; i++ )
-      if( key[i] > maxKeyPerThread[omp_get_thread_num()] )
+    for (int i=0; i<size; i++)
+      if (key[i] > maxKeyPerThread[omp_get_thread_num()])
         maxKeyPerThread[omp_get_thread_num()] = key[i];
 #pragma omp single
-    for( int i=0; i<numThreads; i++ )
-      if( maxKeyPerThread[i] > maxKey ) maxKey = maxKeyPerThread[i];
-    while( maxKey > 0 ) {
+    for (int i=0; i<numThreads; i++)
+      if (maxKeyPerThread[i] > maxKey) maxKey = maxKeyPerThread[i];
+    while (maxKey > 0) {
       int bucket[stride] = {0};
 #pragma omp single
-      for( int t=0; t<numThreads; t++ )
-        for( int i=0; i<stride; i++ )
+      for (int t=0; t<numThreads; t++)
+        for (int i=0; i<stride; i++)
           bucketPerThread[t][i] = 0;
 #pragma omp for
-      for( int i=0; i<size; i++ )
+      for (int i=0; i<size; i++)
         bucketPerThread[omp_get_thread_num()][key[i] & mask]++;
 #pragma omp single
       {
-	for( int t=0; t<numThreads; t++ )
-	  for( int i=0; i<stride; i++ )
+	for (int t=0; t<numThreads; t++)
+	  for (int i=0; i<stride; i++)
 	    bucket[i] += bucketPerThread[t][i];
-	for( int i=1; i<stride; i++ )
+	for (int i=1; i<stride; i++)
 	  bucket[i] += bucket[i-1];
-	for( int i=size-1; i>=0; i-- )
+	for (int i=size-1; i>=0; i--)
 	  permutation[i] = --bucket[key[i] & mask];
       }
 #pragma omp for
-      for( int i=0; i<size; i++ )
+      for (int i=0; i<size; i++)
         buffer[permutation[i]] = value[i];
 #pragma omp for
-      for( int i=0; i<size; i++ )
+      for (int i=0; i<size; i++)
         value[i] = buffer[i];
 #pragma omp for
-      for( int i=0; i<size; i++ )
+      for (int i=0; i<size; i++)
         buffer[permutation[i]] = key[i];
 #pragma omp for
-      for( int i=0; i<size; i++ )
+      for (int i=0; i<size; i++)
         key[i] = buffer[i] >> bitStride;
 #pragma omp single
       maxKey >>= bitStride;
@@ -91,11 +91,11 @@ void radixSort(int *key, int *value, int size) {
 int main()
 {
   const int N = 10000000;
-  Body *bodies = new Body [N];
-  Body *buffer = new Body [N];
-  int *key = new int [N];
-  int *index = new int [N];
-  for( int i=0; i<N; i++ ) {
+  Body * bodies = new Body [N];
+  Body * buffer = new Body [N];
+  int * key = new int [N];
+  int * index = new int [N];
+  for (int i=0; i<N; i++) {
     bodies[i].ISORT = N / 10. * drand48();
     buffer[i] = bodies[i];
     key[i] = bodies[i].ISORT;
@@ -108,12 +108,12 @@ int main()
   printf("Sort    : %lf s\n",toc-tic);
   tic = get_time();
 #pragma omp parallel for
-  for( int i=0; i<N; i++ ) {
+  for (int i=0; i<N; i++) {
     bodies[i] = buffer[index[i]];
   }
   toc = get_time();
   printf("Permute : %lf s\n",toc-tic);
-  for( int i=1; i<N; i++ )
+  for (int i=1; i<N; i++)
     assert( bodies[i].ISORT >= bodies[i-1].ISORT );
   delete[] bodies;
   delete[] buffer;
