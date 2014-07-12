@@ -12,8 +12,8 @@ double get_time() {
 
 int main() {
   // Initialize
-  int N = 1 << 18;
-  int NT = 32;
+  int N = 1 << 16;
+  int NT = 2;
   int NALIGN = 64;
   int it, i, j;
   float OPS = 20. * N * N * 1e-9;
@@ -35,15 +35,15 @@ int main() {
     m[i] = drand48() / N;
     p[i] = ax[i] = ay[i] = az[i] = 0;
   }
-  printf("N      : %d\n",N);
+  printf("N        : %d\n",N);
 
-  float flop1[NT], flop2[NT], flop3[NT];
+  float flop1[NT], flop2[NT], flop3[NT], flop4[NT];
 #pragma omp parallel private(it, j)
     {
       for (it=0; it<NT; it++) {
 #pragma omp single
       tic = get_time();
-  // I vectorized
+  // I vectorized intrinsics
 #pragma omp for
       for (i=0; i<N; i+=16) {
 	__m512 pi = _mm512_setzero_ps();
@@ -84,7 +84,7 @@ int main() {
         toc = get_time();
         flop1[it] = OPS/(toc-tic);
 
-        // J vectorized
+        // J vectorized intrinsics
         tic = get_time();
       }
 #pragma omp for
@@ -127,9 +127,10 @@ int main() {
 	toc = get_time();
 	flop2[it] = OPS/(toc-tic);
 
-	// w/o intrinsics
+	// I vectorized pragma
 	tic = get_time();
       }
+#pragma simd
 #pragma omp for
       for (i=0; i<N; i++) {
 	float pi = 0;
@@ -160,28 +161,67 @@ int main() {
       {
 	toc = get_time();
 	flop3[it] = OPS/(toc-tic);
+
+	// J vectorized pragma
+	tic = get_time();
+      }
+#pragma omp for
+      for (i=0; i<N; i++) {
+	float pi = 0;
+	float axi = 0;
+	float ayi = 0;
+	float azi = 0;
+	float xi = x[i];
+	float yi = y[i];
+	float zi = z[i];
+#pragma simd
+	for (j=0; j<N; j++) {
+	  float dx = x[j] - xi;
+	  float dy = y[j] - yi;
+	  float dz = z[j] - zi;
+	  float R2 = dx * dx + dy * dy + dz * dz + EPS2;
+	  float invR = 1.0f / sqrtf(R2);
+	  float invR3 = m[j] * invR * invR * invR;
+	  pi += m[j] * invR;
+	  axi += dx * invR3;
+	  ayi += dy * invR3;
+	  azi += dz * invR3;
+	}
+	p[i] = pi;
+	ax[i] = axi;
+	ay[i] = ayi;
+	az[i] = azi;
+      }
+#pragma omp single
+      {
+	toc = get_time();
+	flop4[it] = OPS/(toc-tic);
       }
     }
   }
 
-  float fave1 = 0, fave2 = 0, fave3 = 0;
+    float fave1 = 0, fave2 = 0, fave3 = 0, fave4 = 0;
   for (it=1; it<NT; it++) {
     fave1 += flop1[it];
     fave2 += flop2[it];
     fave3 += flop3[it];
+    fave4 += flop4[it];
   }
   fave1 /= NT - 1;
   fave2 /= NT - 1;
   fave3 /= NT - 1;
-  float fstd1 = 0, fstd2 = 0, fstd3 = 0;
+  fave4 /= NT - 1;
+  float fstd1 = 0, fstd2 = 0, fstd3 = 0, fstd4 = 0;
   for (it=1; it<NT; it++) {
     fstd1 += (flop1[it] - fave1) * (flop1[it] - fave1);
     fstd2 += (flop2[it] - fave2) * (flop2[it] - fave2);
     fstd3 += (flop3[it] - fave3) * (flop3[it] - fave3);
+    fstd4 += (flop4[it] - fave4) * (flop4[it] - fave4);
   }
-  printf("I vect : %f +- %f GFlops\n", fave1, sqrtf(fstd1/(NT-1)));
-  printf("J vect : %f +- %f GFlops\n", fave2, sqrtf(fstd2/(NT-1)));
-  printf("No intr: %f +- %f GFlops\n", fave3, sqrtf(fstd3/(NT-1)));
+  printf("I intrin : %f +- %f GFlops\n", fave1, sqrtf(fstd1/(NT-1)));
+  printf("J intrin : %f +- %f GFlops\n", fave2, sqrtf(fstd2/(NT-1)));
+  printf("I pragma : %f +- %f GFlops\n", fave3, sqrtf(fstd3/(NT-1)));
+  printf("J pragma : %f +- %f GFlops\n", fave4, sqrtf(fstd4/(NT-1)));
 
   // DEALLOCATE
   _mm_free(x);
