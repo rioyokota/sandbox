@@ -1,6 +1,7 @@
 .SUFFIXES: .cxx .o
 
-CXX = mpicxx -ggdb3 -Wall -O3 -fopenmp -msse4a -ffast-math -funroll-loops -I../include
+#CXX = mpicxx -ggdb3 -Wall -O3 -fopenmp -msse4a -ffast-math -funroll-loops -I../include
+CXX = icpc -Wall -xHOST -O3 -openmp -funroll-loops -finline-functions -ansi-alias -I../include
 
 .cxx.o	:
 	$(CXX) -c $? -o $@
@@ -11,9 +12,6 @@ binary: binary.o
 neighbor: neighbor.o
 	$(CXX) $?
 	./a.out
-radixbody: radixbody.o
-	$(CXX) $?
-	./a.out
 radixsort: radixsort.o
 	$(CXX) $?
 	./a.out
@@ -22,7 +20,7 @@ sort: sort.o
 	./a.out
 tree: tree.o
 	$(CXX) $?
-	./a.out
+	OMP_NUM_THREADS=16 ./a.out
 clean:
 	@make -C .. clean
 commit:

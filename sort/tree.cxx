@@ -1,21 +1,20 @@
 #include <algorithm>
+#include <cassert>
 #include <cstdlib>
 #include <iostream>
 #include <omp.h>
+#include <stdint.h>
 #include <sys/time.h>
 #include <vector>
 
-#define OMP_NUM_THREADS 12
-
-typedef long bigint;
-
 struct Body {
-//  int    IBODY;
-//  int    IPROC;
-  bigint ICELL;
-  float  X[3];
-//  float  SRC[1];
-//  float  TRG[4];
+  //int IBODY;
+  //int IRANK;
+  //float WEIGHT;
+  uint64_t ICELL;
+  float X[3];
+  //float SRC;
+  //float TRG[4];
   bool operator<(const Body &rhs) const {
     return this->ICELL < rhs.ICELL;
   }
@@ -24,17 +23,18 @@ typedef std::vector<Body> Bodies;
 typedef std::vector<Body>::iterator B_iter;
 
 struct Cell {
-  unsigned NCHILD;
-  unsigned NCLEAF;
-  unsigned NDLEAF;
-  unsigned PARENT;
-  unsigned CHILD;
-  B_iter   LEAF;
+  int      IPARENT;
+  int      ICHILD;
+  int      NCHILD;
+  int      IBODY;
+  int      NBODY;
+  B_iter   BODY;
+  uint64_t ICELL;
+  float    WEIGHT;
   float    X[3];
   float    R;
-  float    RCRIT;
-//  float    M[55];
-//  float    L[55];
+  //float    M[20];
+  //float    L[20];
 };
 typedef std::vector<Cell> Cells;
 typedef std::vector<Cell>::iterator C_iter;
@@ -45,10 +45,10 @@ double get_time() {
   return double(tv.tv_sec+tv.tv_usec*1e-6);
 }
 
-inline void getIndex(Bodies &bodies, int level) {
+inline void getKey(Bodies &bodies, uint64_t * key, int level) {
   float d = 1.0 / (1 << level);
 #pragma omp parallel for
-  for( uint b=0; b<bodies.size(); b++ ) {
+  for (int b=0; b<int(bodies.size()); b++) {
     B_iter B=bodies.begin()+b;
     int ix = B->X[0] / d;
     int iy = B->X[1] / d;
@@ -62,71 +62,89 @@ inline void getIndex(Bodies &bodies, int level) {
       iy >>= 1;
       iz >>= 1;
     }
+    key[b] = id;
     B->ICELL = id;
   }
 }
 
-void radixSort(Bodies &bodies, int **index) {
-  const int n = bodies.size();
+void radixSort(uint64_t * key, int * value, uint64_t * buffer, int * permutation, int size) {
   const int bitStride = 8;
   const int stride = 1 << bitStride;
   const int mask = stride - 1;
-  int (*bucket2D)[stride] = new int [OMP_NUM_THREADS][stride]();
-  int aMaxPerThread[OMP_NUM_THREADS] = {0};
-#pragma omp parallel for num_threads(OMP_NUM_THREADS)
-  for( int b=0; b<n; b++ ) {
-    int i = bodies[b].ICELL;
-    index[0][b] = i;
-    index[2][b] = b;
-    index[4][b] = i;
-    if( i > aMaxPerThread[omp_get_thread_num()] )
-      aMaxPerThread[omp_get_thread_num()] = i;
+  int numThreads;
+  int (*bucketPerThread)[stride];
+  uint64_t maxKey = 0;
+  uint64_t * maxKeyPerThread;
+#pragma omp parallel
+  {
+    numThreads = omp_get_num_threads();
+#pragma omp single
+    {
+      bucketPerThread = new int [numThreads][stride]();
+      maxKeyPerThread = new uint64_t [numThreads];
+      for (int i=0; i<numThreads; i++)
+	maxKeyPerThread[i] = 0;
+    }
+#pragma omp for
+    for (int i=0; i<size; i++)
+      if (key[i] > maxKeyPerThread[omp_get_thread_num()])
+        maxKeyPerThread[omp_get_thread_num()] = key[i];
+#pragma omp single
+    for (int i=0; i<numThreads; i++)
+      if (maxKeyPerThread[i] > maxKey) maxKey = maxKeyPerThread[i];
+    while (maxKey > 0) {
+      int bucket[stride] = {0};
+#pragma omp single
+      for (int t=0; t<numThreads; t++)
+        for (int i=0; i<stride; i++)
+          bucketPerThread[t][i] = 0;
+#pragma omp for
+      for (int i=0; i<size; i++)
+        bucketPerThread[omp_get_thread_num()][key[i] & mask]++;
+#pragma omp single
+      {
+	for (int t=0; t<numThreads; t++)
+	  for (int i=0; i<stride; i++)
+	    bucket[i] += bucketPerThread[t][i];
+	for (int i=1; i<stride; i++)
+	  bucket[i] += bucket[i-1];
+	for (int i=size-1; i>=0; i--)
+	  permutation[i] = --bucket[key[i] & mask];
+      }
+#pragma omp for
+      for (int i=0; i<size; i++)
+        buffer[permutation[i]] = value[i];
+#pragma omp for
+      for (int i=0; i<size; i++)
+        value[i] = buffer[i];
+#pragma omp for
+      for (int i=0; i<size; i++)
+        buffer[permutation[i]] = key[i];
+#pragma omp for
+      for (int i=0; i<size; i++)
+        key[i] = buffer[i] >> bitStride;
+#pragma omp single
+      maxKey >>= bitStride;
+    }
   }
-  int aMax = 0;
-  for( int i=0; i<OMP_NUM_THREADS; i++ )
-    if( aMaxPerThread[i] > aMax ) aMax = aMaxPerThread[i];
-  while( aMax > 0 ) {
-    int bucket[stride] = {0};
-    for( int t=0; t<OMP_NUM_THREADS; t++ )
-      for( int i=0; i<stride; i++ )
-        bucket2D[t][i] = 0;
-#pragma omp parallel for num_threads(OMP_NUM_THREADS)
-    for( int i=0; i<n; i++ )
-      bucket2D[omp_get_thread_num()][index[0][i] & mask]++;
-    for( int t=0; t<OMP_NUM_THREADS; t++ )
-      for( int i=0; i<stride; i++ )
-        bucket[i] += bucket2D[t][i];
-    for( int i=1; i<stride; i++ )
-      bucket[i] += bucket[i-1];
-    for( int i=n-1; i>=0; i-- )
-      index[3][i] = --bucket[index[0][i] & mask];
-#pragma omp parallel for num_threads(OMP_NUM_THREADS)
-    for( int i=0; i<n; i++ )
-      index[1][index[3][i]] = index[2][i];
-#pragma omp parallel for num_threads(OMP_NUM_THREADS)
-    for( int i=0; i<n; i++ )
-      index[2][i] = index[1][i];
-#pragma omp parallel for num_threads(OMP_NUM_THREADS)
-    for( int i=0; i<n; i++ )
-      index[1][index[3][i]] = index[0][i];
-#pragma omp parallel for num_threads(OMP_NUM_THREADS)
-    for( int i=0; i<n; i++ )
-      index[0][i] = index[1][i] >> bitStride;
-    aMax >>= bitStride;
-  }
-  Bodies buffer = bodies;
-#pragma omp parallel for num_threads(OMP_NUM_THREADS)
-  for( int b=0; b<n; b++ )
-    bodies[b] = buffer[index[2][b]];
-  delete[] bucket2D;
+  delete[] bucketPerThread;
+  delete[] maxKeyPerThread;
 }
 
-void bodies2twigs(Bodies &bodies, Cells &cells, int level) {
+void permute(Bodies & bodies, int * index) {
+  const int n = bodies.size();
+  Bodies buffer = bodies;
+#pragma omp parallel for
+  for (int b=0; b<n; b++)
+    bodies[b] = buffer[index[b]];
+}
+
+void bodies2leafs(Bodies & bodies, Cells & cells, int level) {
   int I = -1;
   C_iter C;
   cells.reserve(1 << (3 * level));
   float d = 1.0 / (1 << level);
-  for( B_iter B=bodies.begin(); B!=bodies.end(); ++B ) {
+  for (B_iter B=bodies.begin(); B!=bodies.end(); B++) {
     int IC = B->ICELL;
     int ix = B->X[0] / d;
     int iy = B->X[1] / d;
@@ -134,10 +152,9 @@ void bodies2twigs(Bodies &bodies, Cells &cells, int level) {
     if( IC != I ) {
       Cell cell;
       cell.NCHILD = 0;
-      cell.NCLEAF = 0;
-      cell.NDLEAF = 0;
-      cell.CHILD  = 0;
-      cell.LEAF   = B;
+      cell.NBODY = 0;
+      cell.ICHILD = 0;
+      cell.BODY   = B;
       cell.X[0]   = d * (ix + .5);
       cell.X[1]   = d * (iy + .5);
       cell.X[2]   = d * (iz + .5);
@@ -146,32 +163,30 @@ void bodies2twigs(Bodies &bodies, Cells &cells, int level) {
       C = cells.end()-1;
       I = IC;
     }
-    C->NCLEAF++;
-    C->NDLEAF++;
+    C->NBODY++;
   }
 }
 
-void twigs2cells(Bodies &bodies, Cells &cells, int level) {
+void leafs2cells(Bodies & bodies, Cells & cells, int level) {
   int begin = 0, end = cells.size();
   float d = 1.0 / (1 << level);
-  for( int l=1; l!=level; ++l ) {
+  for (int l=1; l!=level; l++) {
     int div = (1 << (3 * l));
     d *= 2;
     int I = -1;
     int p = end - 1;
-    for( int c=begin; c!=end; ++c ) {
-      B_iter B = cells[c].LEAF;
+    for (int c=begin; c!=end; c++) {
+      B_iter B = cells[c].BODY;
       int IC = B->ICELL / div;
       int ix = B->X[0] / d;
       int iy = B->X[1] / d;
       int iz = B->X[2] / d;
-      if( IC != I ) {
+      if (IC != I) {
         Cell cell;
         cell.NCHILD = 0;
-        cell.NCLEAF = 0;
-        cell.NDLEAF = 0;
-        cell.CHILD  = c - begin;
-        cell.LEAF   = cells[c].LEAF;
+        cell.NBODY = 0;
+        cell.ICHILD  = c - begin;
+        cell.BODY   = cells[c].BODY;
         cell.X[0]   = d * (ix + .5);
         cell.X[1]   = d * (iy + .5);
         cell.X[2]   = d * (iz + .5);
@@ -181,8 +196,8 @@ void twigs2cells(Bodies &bodies, Cells &cells, int level) {
         I = IC;
       }
       cells[p].NCHILD++;
-      cells[p].NDLEAF += cells[c].NDLEAF;
-      cells[c].PARENT = p;
+      cells[p].NBODY += cells[c].NBODY;
+      cells[c].IPARENT = p;
     }
     begin = end;
     end = cells.size();
@@ -192,8 +207,10 @@ void twigs2cells(Bodies &bodies, Cells &cells, int level) {
 int main() {
   const int numBodies = 10000000;
   const int level = 7;
-  int **index = new int* [5];
-  for( int i=0; i<5; i++ ) index[i] = new int [numBodies];
+  uint64_t * key = new uint64_t [numBodies];
+  uint64_t * buffer = new uint64_t [numBodies];
+  int * index = new int [numBodies];
+  int * permutation = new int [numBodies];
   double tic, toc;
   tic = get_time();
   Bodies bodies(numBodies);
@@ -202,29 +219,41 @@ int main() {
   std::cout << "init : " << toc-tic << std::endl;
 
   tic = get_time();
-  for( B_iter B=bodies.begin(); B!=bodies.end(); ++B ) {
-    for( int d=0; d!=3; ++d ) B->X[d] = drand48();
+  int b = 0;
+  for (B_iter B=bodies.begin(); B!=bodies.end(); B++, b++) {
+    for (int d=0; d!=3; d++) B->X[d] = drand48();
+    index[b] = b;
   }
   toc = get_time();
   std::cout << "rand : " << toc-tic << std::endl;
 
   tic = get_time();
-  getIndex(bodies,level);
+  getKey(bodies, key, level);
   toc = get_time();
   std::cout << "mort : " << toc-tic << std::endl;
 
   tic = get_time();
-  radixSort(bodies,index);
+  radixSort(key, index, buffer, permutation, numBodies);
   toc = get_time();
   std::cout << "sort : " << toc-tic << std::endl;
 
   tic = get_time();
-  bodies2twigs(bodies,cells,level);
+  permute(bodies, index);
   toc = get_time();
-  std::cout << "twig : " << toc-tic << std::endl;
+  std::cout << "perm : " << toc-tic << std::endl;
 
   tic = get_time();
-  twigs2cells(bodies,cells,level);
+  bodies2leafs(bodies, cells, level);
+  toc = get_time();
+  std::cout << "leaf : " << toc-tic << std::endl;
+
+  tic = get_time();
+  leafs2cells(bodies, cells, level);
   toc = get_time();
   std::cout << "cell : " << toc-tic << std::endl;
+
+  delete[] key;
+  delete[] buffer;
+  delete[] index;
+  delete[] permutation;
 }
