@@ -1,12 +1,18 @@
-.SUFFIXES: .cxx .o
+.SUFFIXES: .cxx .f90 .o
 
 CXX = mpicxx -ggdb3 -Wall -O3 -fopenmp -ffast-math -funroll-loops -I../include
+FC = mpif90 -ggdb3 -Wall -O3 -fopenmp -ffast-math -funroll-loops -I../include
 
 .cxx.o	:
 	$(CXX) -c $? -o $@
+.f90.o	:
+	$(FC) -c $? -o $@
 
 host: host.o
 	$(CXX) $?
+	mpirun -np 2 ./a.out
+hostf: hostf.o
+	$(FC) $?
 	mpirun -np 2 ./a.out
 async: async.o
 	$(CXX) $?
