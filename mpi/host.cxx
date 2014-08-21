@@ -4,11 +4,11 @@
 
 int main(int argc, char **argv) {
   char hostname[256];                                           // Define hostname
-  int size,rank;                                                // Define MPI size and rank
+  int size,rank,len;                                            // Define MPI size and rank
   MPI_Init(&argc,&argv);                                        // Initialize MPI communicator
   MPI_Comm_size(MPI_COMM_WORLD,&size);                          // Get number of MPI processes
   MPI_Comm_rank(MPI_COMM_WORLD,&rank);                          // Get rank of current MPI process
-  gethostname(hostname,sizeof(hostname));                       // Get hostname
+  MPI_Get_processor_name(hostname,&len);                        // Get hostname
   for( int irank=0; irank!=size; ++irank ) {                    // Loop over MPI ranks
     MPI_Barrier(MPI_COMM_WORLD);                                //  Synchronize processes
     if( rank == irank ) {                                       //  If loop counter matches MPI rank
