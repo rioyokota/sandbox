@@ -54,7 +54,7 @@ c---------------------------------------------------------------------
       return
       end
 c***********************************************************************
-      subroutine P2M(ier,wavek,scale,Xj,qj,nj,Xi,
+      subroutine P2M(wavek,scale,Xj,qj,nj,Xi,
      1     nterms,ntrunc,nbessel,Mi,Anm,Pmax)
 c***********************************************************************
 c     Constructs multipole expansion about Xi due to nj sources
@@ -76,17 +76,17 @@ c     OUTPUT:
 c     Mi     : coeffs of the h-expansion
 c-----------------------------------------------------------------------
       implicit none
-      integer i,m,n,nj,nterms,ntrunc,Pmax,nbessel,ier
-      real *8 r,theta,phi,ctheta,stheta,Anm,scale
+      integer i,m,n,nj,nterms,ntrunc,Pmax,nbessel
+      real *8 r,theta,phi,ctheta,stheta,scale
       real *8 Xi(3),Xj(3,nj),dX(3)
       real *8 Ynm(0:nterms,0:nterms)
+      real *8 Anm(0:Pmax,0:Pmax)
       complex *16 qj(nj),imag,wavek,z,Ynmjn
       complex *16 ephi(ntrunc)
       complex *16 jn(0:nbessel),jnd(0:nbessel)
       complex *16 Mi(0:nterms,-nterms:nterms)
       complex *16 Mnm(0:nterms,-nterms:nterms)
       data imag/(0.0d0,1.0d0)/
-      ier=0
       do n=0,nterms
          do m=-n,n
             Mnm(n,m) = 0
@@ -105,7 +105,7 @@ c-----------------------------------------------------------------------
          enddo
          call ylgndrfw(ntrunc,ctheta,Ynm,Anm,Pmax)
          z=wavek*r
-         call jfuns3d(ier,ntrunc,z,scale,jn,0,jnd,nbessel)
+         call jfuns3d(ntrunc,z,scale,jn,0,jnd,nbessel)
          do n = 0,ntrunc
             jn(n)=jn(n)*qj(i)
          enddo
@@ -129,7 +129,7 @@ c-----------------------------------------------------------------------
 c***********************************************************************
       subroutine M2M(wavek,scalej,Xj,Mj,ntermsj,
      1     scalei,Xi,Mi,ntermsi,
-     2     radius,xnodes,wts,nquad,ier)
+     2     radius,xnodes,wts,nquad,Anm,Pmax)
 c***********************************************************************
 c     Shift multipole expansion.
 c     This is a reasonably fast "point and shoot" version which
@@ -156,12 +156,13 @@ c     OUTPUT:
 c     Mi  : coefficients of shifted expansion
 c---------------------------------------------------------------------
       implicit none
-      integer l,m,n,mabs,ntermsi,ntermsj,nquad,ier
+      integer l,m,n,mabs,ntermsi,ntermsj,nquad,Pmax
       real *8 radius,r,theta,phi,ctheta,stheta,cthetaj,rj
       real *8 scalei,scalej
       real *8 Xi(3),Xj(3),dX(3)
       real *8 xnodes(nquad),wts(nquad)
       real *8 ynm(0:ntermsj,0:ntermsj)
+      real *8 Anm(0:Pmax,0:Pmax)
       complex *16 Mi(0:ntermsi,-ntermsi:ntermsi)
       complex *16 Mj(0:ntermsj,-ntermsj:ntermsj)
       complex *16 Mnm(0:ntermsj,-ntermsj:ntermsj)
@@ -256,7 +257,7 @@ c---------------------------------------------------------------------
 c***********************************************************************
       subroutine M2L(wavek,scalej,Xj,Mj,
      1     ntermsj,scalei,Xi,Li,ntermsi,ntrunc,
-     1     radius,xnodes,wts,nquad,nbessel,ier)
+     1     radius,xnodes,wts,nquad,nbessel,Anm,Pmax)
 c***********************************************************************
 c     Convert multipole expansion to a local expansion.
 c     This is a reasonably fast "point and shoot" version which
@@ -281,12 +282,13 @@ c     OUTPUT:
 c     Li      : coefficients of shifted local expansion
 c---------------------------------------------------------------------
       implicit none
-      integer l,m,n,mabs,ntermsi,ntermsj,ntrunc,nquad,nq,nbessel,ier
+      integer l,m,n,mabs,ntermsi,ntermsj,ntrunc,nquad,nq,nbessel,Pmax
       real *8 radius,r,theta,phi,ctheta,stheta,cthetaj,sthetaj,thetan
       real *8 rj,rn,scalej,scalei
       real *8 Xi(3),Xj(3),dX(3)
       real *8 xnodes(nquad),wts(nquad)
       real *8 ynm(0:ntrunc,0:ntrunc),ynmd(0:ntrunc,0:ntrunc)
+      real *8 Anm(0:Pmax,0:Pmax)
       real *8 rat1(0:ntrunc,0:ntrunc),rat2(0:ntrunc,0:ntrunc)
       complex *16 phitemp(nquad,-ntrunc:ntrunc)
       complex *16 phitempn(nquad,-ntrunc:ntrunc)
@@ -392,7 +394,7 @@ c---------------------------------------------------------------------
          enddo
       enddo
       z = wavek*radius
-      call jfuns3d(ier,ntrunc,z,scalei,jn,1,jnd,nbessel)
+      call jfuns3d(ntrunc,z,scalei,jn,1,jnd,nbessel)
       do n=0,ntrunc
          do m=-n,n
             zh=jn(n)
@@ -416,7 +418,7 @@ c---------------------------------------------------------------------
       end
       subroutine L2L(wavek,scalej,Xj,Lj,ntermsj,
      1           scalei,Xi,Li,ntermsi,
-     2           radius,xnodes,wts,nquad,nbessel,ier)
+     2           radius,xnodes,wts,nquad,nbessel,Anm,Pmax)
 c***********************************************************************
 c     Shifts center of a local expansion.
 c     This is a reasonably fast "point and shoot" version which
@@ -447,12 +449,13 @@ c     OUTPUT:
 c     Li      : coefficients of shifted local expansion
 c***********************************************************************
       implicit none
-      integer l,m,n,mabs,ntermsi,ntermsj,nquad,nbessel,ier
+      integer l,m,n,mabs,ntermsi,ntermsj,nquad,nbessel,Pmax
       real *8 radius,r,theta,phi,ctheta,stheta,cthetaj,sthetaj,thetan
       real *8 rj,rn,scalej,scalei
       real *8 Xi(3),Xj(3),dX(3)
       real *8 xnodes(nquad),wts(nquad)
       real *8 ynm(0:ntermsi,0:ntermsi),ynmd(0:ntermsi,0:ntermsi)
+      real *8 Anm(0:Pmax,0:Pmax)
       real *8 rat1(0:ntermsi,0:ntermsi),rat2(0:ntermsi,0:ntermsi)
       complex *16 phitemp(nquad,-ntermsi:ntermsi)
       complex *16 phitempn(nquad,-ntermsi:ntermsi)
@@ -488,7 +491,6 @@ c***********************************************************************
             Lnm(n,m)=0.0d0
          enddo
       enddo
-      ier=0
       do l=1,nquad
          do m=-ntermsi,ntermsi
             phitemp(l,m)=0.0d0
@@ -507,7 +509,7 @@ c***********************************************************************
          thetan=(cthetaj*stheta-sthetaj*ctheta)/rj
          z=wavek*rj
          call ylgndr2sf(ntermsj,cthetaj,ynm,ynmd,rat1,rat2)
-         call jfuns3d(ier,ntermsj,z,scalej,jn,1,jnd,nbessel)
+         call jfuns3d(ntermsj,z,scalej,jn,1,jnd,nbessel)
          do n=0,ntermsj
             jnd(n)=jnd(n)*wavek
          enddo
@@ -557,7 +559,7 @@ c***********************************************************************
          enddo
       enddo
       z = wavek*radius
-      call jfuns3d(ier,ntermsi,z,scalei,jn,1,jnd,nbessel)
+      call jfuns3d(ntermsi,z,scalei,jn,1,jnd,nbessel)
       do n=0,ntermsi
          do m=-n,n
             zh=jn(n)
@@ -581,7 +583,7 @@ c***********************************************************************
       end
 c**********************************************************************
       subroutine L2P(wavek,scalej,Xj,Lj,nterms,
-     1     ntrunc,nbessel,Xi,ni,pi,Fi,Anm,Pmax,ier)
+     1     ntrunc,nbessel,Xi,ni,pi,Fi,Anm,Pmax)
 c**********************************************************************
 c     This subroutine evaluates a j-expansion centered at CENTER
 c     at the target point TARGET.
@@ -605,12 +607,13 @@ c     pi     : potential at target (if requested)
 c     Fi     : gradient at target (if requested)
 c---------------------------------------------------------------------
       implicit none
-      integer i,j,m,n,ni,ier,nterms,ntrunc,Pmax,nbessel
+      integer i,j,m,n,ni,nterms,ntrunc,Pmax,nbessel
       real *8 r,rx,ry,rz,theta,thetax,thetay,thetaz,scalej
-      real *8 phi,phix,phiy,phiz,ctheta,stheta,cphi,sphi,Anm
+      real *8 phi,phix,phiy,phiz,ctheta,stheta,cphi,sphi
       real *8 Xj(3),Xi(3,1),dX(3)
       real *8 Ynm(0:nterms,0:nterms)
       real *8 Ynmd(0:nterms,0:nterms)
+      real *8 Anm(0:Pmax,0:Pmax)
       complex *16 wavek,pi(1),Fi(3,1)
       complex *16 Lj(0:nterms,-nterms:nterms)
       complex *16 ephi(nterms)
@@ -619,7 +622,6 @@ c---------------------------------------------------------------------
       complex *16 ztmp1,ztmp2,ztmp3,ztmpsum
       complex *16 ux,uy,uz
       data imag/(0.0d0,1.0d0)/
-      ier=0
       do i=1,ni
          dX(1)=Xi(1,i)-Xj(1)
          dX(2)=Xi(2,i)-Xj(2)
@@ -644,7 +646,7 @@ c---------------------------------------------------------------------
          phiz = 0.0d0
          call ylgndr2sfw(ntrunc,ctheta,Ynm,Ynmd,Anm,Pmax)
          z=wavek*r
-         call jfuns3d(ier,ntrunc,z,scalej,jn,1,jnd,nbessel)
+         call jfuns3d(ntrunc,z,scalej,jn,1,jnd,nbessel)
          pi(i)=pi(i)+Lj(0,0)*jn(0)
          do j=0,ntrunc
             jnd(j)=jnd(j)*wavek

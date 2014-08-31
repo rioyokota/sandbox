@@ -12,7 +12,7 @@ SRC = main.f fmm.f kernels.f hfmm3drouts.f \
      legeexps.f rotate.f
 
 all: $(SRC:.f=.o)
-	@$(FC) $?
+	$(FC) $?
 	./a.out
 
 clean:

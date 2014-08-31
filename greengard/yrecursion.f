@@ -1,74 +1,3 @@
-      subroutine ylgndr(nmax, x, y)
-      implicit none
-c     Ynm(x) = sqrt(2n+1)  sqrt( (n-m)!/ (n+m)! ) Pnm(x)
-      integer nmax, m, n
-      real *8 x, y(0:nmax,0:nmax), u
-      u=-sqrt((1-x)*(1+x))
-      y(0,0)=1
-      do m=0, nmax
-	 if (m.gt.0)  y(m,m)=y(m-1,m-1)*u*sqrt((2*m-1.0d0)/(2*m))
-	 if (m.lt.nmax)  y(m+1,m)=x*y(m,m)*sqrt(2*m+1.0d0)
-	 do n=m+2, nmax
-	    y(n,m)=((2*n-1)*x*y(n-1,m) - 
-     1               sqrt((n+m-1.0d0)*(n-m-1.0d0))*y(n-2,m))
-     2               /sqrt((n-m+0.0d0)*(n+m))
-         enddo
-      enddo
-      do n=0, nmax
-	 do m=0, n
-	    y(n,m)=y(n,m)*sqrt(2*n+1.0d0)
-         enddo
-      enddo
-      return
-      end
-
-      subroutine ylgndr2s(nmax, x, y, d)
-      implicit none
-c      Ynm(x) = sqrt(2n+1)  sqrt( (n-m)!/ (n+m)! ) Pnm(x)
-c      d Ynm(x) / dx = sqrt(2n+1)  sqrt( (n-m)!/ (n+m)! ) d Pnm(x) / dx
-      integer nmax, m, n
-      real *8 x, y(0:nmax,0:nmax), d(0:nmax,0:nmax), u
-      u=-sqrt((1-x)*(1+x))
-      y(0,0)=1
-      d(0,0)=0
-c       ... first, evaluate standard Legendre polynomials
-      m=0
-      if (m.lt.nmax)  y(m+1,m)=x*y(m,m)*sqrt(2*m+1.0d0)
-      if (m.lt.nmax)  d(m+1,m)=(x*d(m,m)+y(m,m))*sqrt(2*m+1.0d0)
-      do n=m+2, nmax
-        y(n,m)=((2*n-1)*x*y(n-1,m) - 
-     1               sqrt((n+m-1.0d0)*(n-m-1.0d0))*y(n-2,m))
-     2               /sqrt((n-m+0.0d0)*(n+m))
-        d(n,m)=((2*n-1)*(x*d(n-1,m)+y(n-1,m)) - 
-     1               sqrt((n+m-1.0d0)*(n-m-1.0d0))*d(n-2,m))
-     2               /sqrt((n-m+0.0d0)*(n+m))
-      enddo
-c       ... then, evaluate scaled associated Legendre functions
-      do m=1, nmax
-	 if (m.eq.1)  y(m,m)=y(m-1,m-1)*(-1)*sqrt((2*m-1.0d0)/(2*m))
-	 if (m.gt.1)  y(m,m)=y(m-1,m-1)*u*sqrt((2*m-1.0d0)/(2*m))
-	 if (m.gt.0)  d(m,m)=y(m,m)*(-m)*x
-	 if (m.lt.nmax)  y(m+1,m)=x*y(m,m)*sqrt(2*m+1.0d0)
-	 if (m.lt.nmax)  
-     $      d(m+1,m)=(x*d(m,m)+(1-x**2)*y(m,m))*sqrt(2*m+1.0d0)
-	 do n=m+2, nmax
-	    y(n,m)=((2*n-1)*x*y(n-1,m) - 
-     1               sqrt((n+m-1.0d0)*(n-m-1.0d0))*y(n-2,m))
-     2               /sqrt((n-m+0.0d0)*(n+m))
-	    d(n,m)=((2*n-1)*(x*d(n-1,m)+(1-x**2)*y(n-1,m)) - 
-     1               sqrt((n+m-1.0d0)*(n-m-1.0d0))*d(n-2,m))
-     2               /sqrt((n-m+0.0d0)*(n+m))
-         enddo
-      enddo
-      do n=0, nmax
-	 do m=0, n
-	    y(n,m)=y(n,m)*sqrt(2*n+1.0d0)
-	    d(n,m)=d(n,m)*sqrt(2*n+1.0d0)
-         enddo
-      enddo
-      return
-      end
-
       subroutine ylgndrini(nmax, rat1, rat2)
       implicit none
 c     Precompute the recurrence coefficients for the fast
@@ -174,13 +103,9 @@ c     evaluation of normalized Legendre functions and their derivatives
 c      Ynm(x) = sqrt(2n+1)  sqrt( (n-m)!/ (n+m)! ) Pnm(x)
       integer nterms,nmax,irat1,irat2
       real *8 x, y(0:nterms,0:nterms), w(*)
-      if( nterms .le. nmax ) then
-        irat1=1
-        irat2=1+(nmax+1)**2
-        call ylgndrfw0(nterms, x, y, w(irat1), w(irat2), nmax)
-      else
-        call ylgndr(nterms, x, y)
-      endif
+      irat1=1
+      irat2=1+(nmax+1)**2
+      call ylgndrfw0(nterms, x, y, w(irat1), w(irat2), nmax)
       return
       end
 
@@ -190,13 +115,9 @@ c      Ynm(x) = sqrt(2n+1)  sqrt( (n-m)!/ (n+m)! ) Pnm(x)
 c      d Ynm(x) / dx = sqrt(2n+1)  sqrt( (n-m)!/ (n+m)! ) d Pnm(x) / dx
       integer nterms,nmax,irat1,irat2
       real *8 x, y(0:nterms,0:nterms), d(0:nterms,0:nterms), w(*)
-      if( nterms .le. nmax ) then
-        irat1=1
-        irat2=1+(nmax+1)**2
-        call ylgndr2sfw0(nterms, x, y, d, w(irat1), w(irat2), nmax)
-      else
-        call ylgndr2s(nterms, x, y, d)
-      endif
+      irat1=1
+      irat2=1+(nmax+1)**2
+      call ylgndr2sfw0(nterms, x, y, d, w(irat1), w(irat2), nmax)
       return
       end
 

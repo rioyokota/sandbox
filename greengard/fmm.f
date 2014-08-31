@@ -157,7 +157,7 @@ c$omp$private(lused,ier,i,j,ptemp,ftemp,cd)
                radius = radius + (corners0(2,1) - center0(2))**2
                radius = radius + (corners0(3,1) - center0(3))**2
                radius = sqrt(radius)
-               call P2M(ier,wavek,scale(level),
+               call P2M(wavek,scale(level),
      1              sourcesort(1,box(14)),chargesort(box(14)),box(15),
      1              center0,nterms(level),nterms_eval(1,level),nbessel,
      1              Multipole(iaddr(ibox)),Anm,Pmax)
@@ -200,7 +200,7 @@ c$omp$private(lused,ier,i,j,ptemp,ftemp,cd)
      1                    scale(level0),center0,
      1                    Multipole(iaddr(ibox)),
      1                    nterms(level0),
-     1                    radius,xnodes,wts,nquad,ier)
+     1                    radius,xnodes,wts,nquad,Anm,Pmax)
                   enddo
                endif
             endif
@@ -257,7 +257,8 @@ c     ... if source is childless, evaluate directly (if cheaper)
      1                 nterms(level1),scale(level0),
      1                 center0,Local(iaddr(ibox)),
      1                 nterms(level0),nterms_trunc,
-     1                 radius,xnodes,wts,nquad,nbessel,ier)
+     1                 radius,xnodes,wts,nquad,nbessel,
+     1                 Anm,Pmax)
  4150          continue
             endif
  4200    continue
@@ -297,7 +298,8 @@ c     ... split local expansion of the parent box
      1                    Local(iaddr(ibox)),nterms(level0),
      1                    scale(level1),center1,Local(iaddr(jbox)),
      1                    nterms(level1),
-     1                    radius,xnodes,wts,nquad,nbessel,ier)
+     1                    radius,xnodes,wts,nquad,nbessel,
+     1                    Anm,Pmax)
  5100             continue
                endif
             endif
@@ -324,7 +326,7 @@ c$omp$private(ibox,box,center0,corners0,level,npts,nkids,ier)
      1              nterms(level),nterms_eval(1,level),nbessel,
      1              sourcesort(1,box(14)),box(15),
      1              pot(box(14)),fld(1,box(14)),
-     1              Anm,Pmax,ier)
+     1              Anm,Pmax)
             endif
          endif
       enddo

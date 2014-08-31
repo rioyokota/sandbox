@@ -21,12 +21,7 @@ c       approximately the same for all small frequencies
       if (cdabs(wavek*size) .lt. 1.0d0) rscale = cdabs(wavek*size)
       call h3dall(ntmax,z1,rscale,hfun,ifder,fhder)
       z2 = (wavek*size) * dsqrt(3d0)/2.d0
-      ier1 = 0
-      call jfuns3d(ier1,ntmax,z2,rscale,jfun,ifder,fjder,2000)
-      if (ier1.eq.8) then 
-        ier = 11 
-        return
-      endif        
+      call jfuns3d(ntmax,z2,rscale,jfun,ifder,fjder,2000)
       xtemp1 = cdabs(jfun(0)*hfun(0))
       xtemp2 = cdabs(jfun(1)*hfun(1))
       xtemp0 = xtemp1+xtemp2
@@ -84,12 +79,7 @@ c       approximately the same for all small frequencies
       if (cdabs(wavek*size) .lt. 1.0d0) rscale = cdabs(wavek*size)
       call h3dall(ntmax,z1,rscale,hfun,ifder,fhder)
       z2 = (wavek*size) * dsqrt(3d0)/2.d0
-      ier1 = 0
-      call jfuns3d(ier1,ntmax,z2,rscale,jfun,ifder,fjder,2000)
-      if (ier1.eq.8) then 
-        ier = 11 
-        return
-      endif        
+      call jfuns3d(ntmax,z2,rscale,jfun,ifder,fjder,2000)
       xtemp1 = cdabs(jfun(0)*hfun(0))
       xtemp2 = cdabs(jfun(1)*hfun(1))
       xtemp0 = xtemp1+xtemp2
@@ -169,13 +159,7 @@ c       center only
         if( itype .eq. 3 ) z2 = (wavek*size) * 1.0d0/2.d0
 c       center only, small interior sphere
         if( itype .eq. 4 ) z2 = (wavek*size) * 0.8d0/2.d0
-      ier1 = 0
-      call jfuns3d(ier1,ntmax,z2,rscale,jfun,ifder,fjder,2000)
-c     set error flag if jfuns runs out of memory
-      if (ier1.eq.8) then 
-        ier = 11 
-        return
-      endif        
+      call jfuns3d(ntmax,z2,rscale,jfun,ifder,fjder,2000)
       xtemp1 = cdabs(jfun(0)*hfun(0))
       xtemp2 = cdabs(jfun(1)*hfun(1))
       xtemp0 = xtemp1+xtemp2

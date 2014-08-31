@@ -20,10 +20,9 @@ c
 c     Computation of spherical Bessel functions via recurrence
 c
 c**********************************************************************
-      subroutine jfuns3d(ier,nterms,z,scale,fjs,ifder,fjder,
-     1	      nbessel)
+      subroutine jfuns3d(nterms,z,scale,fjs,ifder,fjder,nbessel)
       implicit none
-      integer ier,nterms,ifder,nbessel,ntop,i,ncntr
+      integer nterms,ifder,nbessel,ntop,i,ncntr
       real *8 scale,d0,d1,dc1,dc2,dcoef,dd,done,tiny,zero
       real *8 scalinv,sctot,upbound,upbound2,upbound2inv
 c**********************************************************************
@@ -64,9 +63,6 @@ c                         internal scaling
 c
 c OUTPUT:
 c
-c    ier    (integer): error return code 
-c                         ier=0 normal return;
-c                         ier=8 insufficient array dimension nbessel
 c    fjs   (complex *16): array of scaled Bessel functions.
 c    fjder (complex *16): array of derivs of scaled Bessel functions.
 c    ntop  (integer) : highest index in arrays fjs that is nonzero
@@ -83,8 +79,6 @@ c
       data tiny/1.0d-200/,done/1.0d0/,zero/0.0d0/
 c
 c ... Initializing ...
-c
-      ier=0
 c
 c       set to asymptotic values if argument is sufficiently small
 c
@@ -124,8 +118,8 @@ c
  1200 continue
  1300 continue
       if (ntop.eq.0) then
-         ier=8
-         return
+         print*,"Error: insufficient array dimension nbessel"
+         stop
       endif
 c
 c ... Step 2: Recursion back down to generate the unscaled jfuns:
