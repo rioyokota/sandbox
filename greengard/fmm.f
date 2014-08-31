@@ -210,36 +210,7 @@ c$omp end parallel do
 c$    toc=omp_get_wtime()
       print*,'M2M    =',toc-tic
 
-c     ... step 3, precompute rotation matrices
-c$    tic=omp_get_wtime()
-      ldm = 1
-      do i=2,nlev
-         if( nterms(i) .gt. ldm) ldm = nterms(i)
-      enddo
-      if( ldm .gt. 10 ) ldm = 10
-      allocate(rotmatf((ldm+1)*(ldm+1)*(2*ldm+1),-3:3,-3:3,-3:3))
-      allocate(rotmatb((ldm+1)*(ldm+1)*(2*ldm+1),-3:3,-3:3,-3:3))
-      allocate(thetas(-3:3,-3:3,-3:3))
-      nstor = (ldm+1)*(ldm+1)*(2*ldm+1)*7*7*7  * 2
-      thetas(0,0,0)=0
-      do i=-3,3
-         do j=-3,3
-            do k=-3,3
-               if( abs(i).gt.0 .or. abs(j).gt.0 .or. abs(k).gt.0 ) then
-                  rvec(1) = i
-                  rvec(2) = j
-                  rvec(3) = k
-                  call cart2sph(rvec,d,theta,phi)
-                  thetas(i,j,k)=theta
-                  call rotviarecur3p_init(ier,rotmatf(1,i,j,k),
-     1                 ldm,+theta)
-                  call rotviarecur3p_init(ier,rotmatb(1,i,j,k),
-     1                 ldm,-theta)
-               endif
-            enddo
-         enddo
-      enddo
-c     ... step 4, M2L
+c     ... step 3, M2L
 c$    tic=omp_get_wtime()
       do 4300 ilev=3,nlev+1
          call h3dterms_list2(bsize(ilev-1),wavek,epsfmm, itable, ier)
@@ -294,7 +265,7 @@ c     ... if source is childless, evaluate directly (if cheaper)
 c$    toc=omp_get_wtime()
       print*,'M2L    =',toc-tic
 
-c     ... step 5, L2L
+c     ... step 4, L2L
 c$    tic=omp_get_wtime()
       do 5300 ilev=3,nlev
          nquad=nterms(ilev-1)*2
@@ -336,7 +307,7 @@ c$omp end parallel do
 c$    toc=omp_get_wtime()
       print*,'L2L    =',toc-tic
 
-c     ... step 6: L2P
+c     ... step 5: L2P
 c$    tic=omp_get_wtime()
 c$omp parallel do default(shared)
 c$omp$private(ibox,box,center0,corners0,level,npts,nkids,ier)
@@ -361,7 +332,7 @@ c$omp end parallel do
 c$    toc=omp_get_wtime()
       print*,'L2P    =',toc-tic
 
-c     ... step 7: P2P
+c     ... step 6: P2P
 c$    tic=omp_get_wtime()
 c$omp parallel do default(shared)
 c$omp$private(ibox,box,center0,corners0,nkids,list,nlist,npts)
