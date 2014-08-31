@@ -9,7 +9,7 @@ MAKEFLAGS += --no-print-directory
 
 SRC = main.f fmm.f kernels.f hfmm3drouts.f \
      h3dterms.f cdjseval3d.f d3tstrcr.f yrecursion.f\
-     legeexps.f rotviarecur3.f
+     legeexps.f rotate.f
 
 all: $(SRC:.f=.o)
 	@$(FC) $?
