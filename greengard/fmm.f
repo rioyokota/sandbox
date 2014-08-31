@@ -361,7 +361,7 @@ c$omp end parallel do
 c$    toc=omp_get_wtime()
       print*,'L2P    =',toc-tic
 
-c     ... step 8: P2P
+c     ... step 7: P2P
 c$    tic=omp_get_wtime()
 c$omp parallel do default(shared)
 c$omp$private(ibox,box,center0,corners0,nkids,list,nlist,npts)

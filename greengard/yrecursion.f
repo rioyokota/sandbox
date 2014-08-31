@@ -243,67 +243,6 @@ c       ... then, evaluate scaled associated Legendre functions
       return
       end
 
-      subroutine ylgndru2sf(nmax, x, y, d, rat1, rat2)
-      implicit none
-c      Ynm(x) =  sqrt( (n-m)!/ (n+m)! ) Pnm(x)
-c      d Ynm(x) / dx =  sqrt( (n-m)!/ (n+m)! ) d Pnm(x) / dx
-      integer nmax, n, m
-      real *8 x, y(0:nmax,0:nmax), d(0:nmax,0:nmax), u, u2
-      real *8 rat1(0:nmax,0:nmax), rat2(0:nmax,0:nmax)
-      u=-sqrt((1-x)*(1+x))
-      u2 = (1-x)*(1+x)
-      y(0,0)=1
-      d(0,0)=0
-c       ... first, evaluate standard Legendre polynomials
-      m=0
-      if (m.lt.nmax)  y(m+1,m)=x*y(m,m)*rat1(m+1,m)
-      if (m.lt.nmax)  d(m+1,m)=(x*d(m,m)+y(m,m))*rat1(m+1,m)
-      do n=m+2, nmax
-        y(n,m)=rat1(n,m)*x*y(n-1,m)-rat2(n,m)*y(n-2,m)
-        d(n,m)=rat1(n,m)*(x*d(n-1,m)+y(n-1,m))-rat2(n,m)*d(n-2,m)
-      enddo
-c       ... then, evaluate scaled associated Legendre functions
-      do m=1, nmax
-	 if (m.eq.1)  y(m,m)=y(m-1,m-1)*(-1)*rat1(m,m)
-	 if (m.gt.1)  y(m,m)=y(m-1,m-1)*u*rat1(m,m)
-	 if (m.gt.0)  d(m,m)=y(m,m)*(-m)*x
-	 if (m.lt.nmax)  y(m+1,m)=x*y(m,m)*rat1(m+1,m)
-	 if (m.lt.nmax)  
-     $      d(m+1,m)=(x*d(m,m)+u2*y(m,m))*rat1(m+1,m)
-	 do n=m+2, nmax
-	    y(n,m)=rat1(n,m)*x*y(n-1,m)-rat2(n,m)*y(n-2,m)
-	    d(n,m)=rat1(n,m)*(x*d(n-1,m)+u2*y(n-1,m))-
-     $         rat2(n,m)*d(n-2,m)
-         enddo
-      enddo
-      return
-      end
-
-
-        subroutine ylgndr2pm_opt(nterms,y,d)
-        implicit none
-        integer nterms,n,m
-        real *8 y(0:nterms,0:nterms)
-        real *8 d(0:nterms,0:nterms)
-        do n=0,nterms,2
-           do m=0,n,2
-              d(n,m)=-d(n,m)
-           enddo       
-           do m=1,n,2
-              y(n,m)=-y(n,m)
-           enddo       
-        enddo
-        do n=1,nterms,2
-           do m=0,n,2
-              y(n,m)=-y(n,m)
-           enddo       
-           do m=1,n,2
-              d(n,m)=-d(n,m)
-           enddo       
-        enddo
-        return
-        end
-
       subroutine ylgndrfwini(nmax, w, lw, lused)
       implicit none
 c     Precompute the recurrence coefficients for the fast

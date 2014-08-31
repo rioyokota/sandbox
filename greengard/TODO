@@ -1,4 +1,10 @@
-use implicit none
-remove goto
-remove ier
+Clean yrecursion.f and kernel.f first
+- Remove redundant storage of M/L expansion coefs
+Deal with the tree structure later
+Remove uncalled functions
+Remove memory pool variables
+Change function/variable names to be more descriptive
+Use implicit none
+Remove goto
+Remove ier
 ibox -> Ci
