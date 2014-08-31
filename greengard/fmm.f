@@ -1,6 +1,18 @@
+      subroutine initCoefs(C, nterms)
+        implicit real *8 (a-h,o-z)
+        complex *16 C(0:nterms,-nterms:nterms)
+        do n=0,nterms
+           do m=-n,n
+              C(n,m)=0
+           enddo
+        enddo
+        return
+        end
+
       subroutine fmm(ier,iprec,wavek,numBodies,Xj,
      $     qj,pi,Fi)
       implicit real *8 (a-h,o-z)
+      integer box(20)
       dimension Xj(3,numBodies)
       dimension Xjd(3,numBodies)
       complex *16 qj(numBodies)
@@ -15,6 +27,8 @@
       dimension nterms(0:200)
       dimension scale(0:200)
       dimension center(3)
+      dimension center0(3)
+      dimension corners0(3,8)
       integer, allocatable :: iaddr(:)
       integer, allocatable :: isource(:)
       real *8, allocatable :: wlists(:)
@@ -69,7 +83,15 @@ c     create oct-tree data structure
          qjd(i) = qj(isource(i))
       enddo
       ifinit=1
-      call h3dmpalloc(wlists,iaddr,nboxes,lmptot,nterms)
+      iptr=1
+      do ibox=1,nboxes
+         call d3tgetb(ier,ibox,box,center0,corners0,wlists)
+         level=box(1)
+         iaddr(ibox)=iptr
+         iptr=iptr+(nterms(level)+1)*(2*nterms(level)+1)*2
+      enddo
+      lmptot = iptr
+c      call h3dmpalloc(wlists,iaddr,nboxes,lmptot,nterms)
       allocate(Multipole(lmptot),stat=ier)
       allocate(Local(lmptot),stat=ier)
       call evaluate(ier,iprec,wavek,numBodies,Xjd,isource,
@@ -141,8 +163,8 @@ c     ... initialize Legendre function evaluation routines
 c     ... set all multipole and local expansions to zero
       do ibox = 1,nboxes
          call d3tgetb(ier,ibox,box,center0,corners0,wlists)
-         call h3dzero(Multipole(iaddr(ibox)),nterms(level))
-         call h3dzero(Local(iaddr(ibox)),nterms(level))
+         call initCoefs(Multipole(iaddr(ibox)),nterms(level))
+         call initCoefs(Local(iaddr(ibox)),nterms(level))
       enddo
 
 c     ... step 1: P2M
