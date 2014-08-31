@@ -1,17 +1,3 @@
-        subroutine h3dreorder(nsource,source,
-     1     ifcharge,charge,isource,sourcesort,chargesort) 
-        implicit real *8 (a-h,o-z)
-        dimension source(3,1),sourcesort(3,1),isource(1)
-        complex *16 charge(1),chargesort(1)
-        do i = 1,nsource
-           sourcesort(1,i) = source(1,isource(i))
-           sourcesort(2,i) = source(2,isource(i))
-           sourcesort(3,i) = source(3,isource(i))
-           chargesort(i) = charge(isource(i))
-        enddo
-        return
-        end
-
         subroutine h3dzero(mpole,nterms)
         implicit real *8 (a-h,o-z)
         complex *16 mpole(0:nterms,-nterms:nterms)

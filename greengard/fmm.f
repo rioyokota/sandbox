@@ -62,7 +62,12 @@ c     create oct-tree data structure
          call h3dterms(bsize(i),wavek,epsfmm, nterms(i), ier)
          if (nterms(i).gt. nmax .and. i.ge. 2) nmax = nterms(i)
       enddo
-      call h3dreorder(numBodies,Xj,1,qj,isource,Xjd,qjd)
+      do i = 1,numBodies
+         Xjd(1,i) = Xj(1,isource(i))
+         Xjd(2,i) = Xj(2,isource(i))
+         Xjd(3,i) = Xj(3,isource(i))
+         qjd(i) = qj(isource(i))
+      enddo
       ifinit=1
       call h3dmpalloc(wlists,iaddr,nboxes,lmptot,nterms)
       allocate(Multipole(lmptot),stat=ier)
@@ -136,7 +141,6 @@ c     ... initialize Legendre function evaluation routines
 c     ... set all multipole and local expansions to zero
       do ibox = 1,nboxes
          call d3tgetb(ier,ibox,box,center0,corners0,wlists)
-         level=box(1)
          call h3dzero(Multipole(iaddr(ibox)),nterms(level))
          call h3dzero(Local(iaddr(ibox)),nterms(level))
       enddo
