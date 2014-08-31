@@ -1,3 +1,12 @@
+      subroutine rotate(theta,ntermsj,Mnm,ntermsi,Mrot)
+      implicit none
+      integer ntermsj,ntermsi
+      real *8 theta
+      complex *16 Mnm(0:ntermsj,-ntermsj:ntermsj)
+      complex *16 Mrot(0:ntermsi,-ntermsi:ntermsi)
+      call rotviarecur3f90(theta,ntermsj,Mnm,Mrot,ntermsi)
+      return
+      end
 C*****************************************************************
         subroutine rotviarecur3s(nterms,mpole,ld1,marray,
      1                         ld2,rd1,rd2,sqc,theta,ldc)
@@ -140,8 +149,7 @@ c        For 0<mprime<=j (2nd index) case, use formula (2).
       return
       end
 C*****************************************************************
-        subroutine rotviarecur3f90(theta,nterms,mpole,ld1,
-     1     marray,ld2)
+      subroutine rotviarecur3f90(theta,ntermsj,Mnm,Mrot,ntermsi)
 C*****************************************************************
 c
 c       Purpose:
@@ -150,7 +158,7 @@ c	Fast, recursive method for applying rotation matrix about
 c	the y-axis determined by angle theta.
 c       The rotation matrices for each order (first index) are computed
 c       from the lowest to the highest. As each one is generated, it
-c       is applied to the input expansion "mpole" and overwritten.
+c       is applied to the input expansion "Mnm" and overwritten.
 c
 c       As a result, it is sufficient to use two arrays rd1 and rd2 for
 c       the two term recurrence, rather than storing them for all orders
@@ -165,30 +173,28 @@ c
 C---------------------------------------------------------------------
 c       INPUT:
 c
-c       theta:  the rotation angle about the y-axis.
-c       nterms: order of multipole expansion
-c
-c       m1    :  max m index for first expansion  
-c       m2    :  max m index for second expansion 
-C       mpole :  coefficients of original multiple expansion
-C       ld1   :  leading dim for mpole (must exceed nterms)
-C       ld2   :  leading dim for marray (must exceed nterms)
+c       theta   : the rotation angle about the y-axis.
+C       ntermsi : leading dim for Mrot (must exceed ntermsj)
+c       ntermsj : order of multipole expansion
+c       m1      : max m index for first expansion  
+c       m2      : max m index for second expansion 
+C       Mnm     : coefficients of original multiple expansion
 c
 C---------------------------------------------------------------------
 c       OUTPUT:
 c
-c       marray   coefficients of rotated expansion.
+c       Mrot   coefficients of rotated expansion.
 c       lused    amount of workspace used.
 c
 C---------------------------------------------------------------------
 	implicit none
-        integer ld1,ld2,nterms,m1,m2
+        integer ntermsi,ntermsj,m1,m2
         integer ldc,ird1,lrd,ird2,isqc,lused,ier
         real *8 theta
         real *8, allocatable :: w(:)
-	complex *16 mpole(0:ld1,-ld1:ld1)
-	complex *16 marray(0:ld2,-ld2:ld2)
-        ldc = nterms
+	complex *16 Mnm(0:ntermsj,-ntermsj:ntermsj)
+	complex *16 Mrot(0:ntermsi,-ntermsi:ntermsi)
+        ldc = ntermsj
         ird1 = 1
         lrd  = (ldc+1)*(2*ldc+1) + 3
         ird2 = ird1 + lrd
@@ -196,8 +202,8 @@ C---------------------------------------------------------------------
         lused = isqc + 2*(2*ldc+1) 
         allocate (w(lused), stat=ier)
         if( ier.ne.0 ) return
-        call rotviarecur3s(nterms,mpole,ld1,marray,
-     1                    ld2,w(ird1),w(ird2),w(isqc),theta,ldc)
+        call rotviarecur3s(ntermsj,Mnm,ntermsj,Mrot,
+     1                    ntermsi,w(ird1),w(ird2),w(isqc),theta,ldc)
         return
         end
 C*****************************************************************
