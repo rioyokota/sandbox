@@ -200,7 +200,6 @@ c---------------------------------------------------------------------
             phitemp(l,m) = 0.0d0
          enddo
       enddo
-      call ylgndrini(ntermsj,rat1,rat2)
       do l=1,nquad
          ctheta=xnodes(l)
          stheta=dsqrt(1.0d0-ctheta**2)
@@ -208,7 +207,7 @@ c---------------------------------------------------------------------
          rj=dsqrt(rj)
          cthetaj=(r+radius*ctheta)/rj
          z=wavek*rj
-         call ylgndrf(ntermsj,cthetaj,ynm,rat1,rat2)
+         call ylgndrfw(ntermsj,cthetaj,ynm,Anm,Pmax)
          call h3dall(ntermsj,z,scalej,fhs,0,fhder)
          do m=-ntermsj,ntermsj
             mabs=abs(m)
@@ -223,9 +222,8 @@ c---------------------------------------------------------------------
             Mnm(n,m)=0.0d0
          enddo
       enddo
-      call ylgndrini(ntermsi,rat1,rat2)
       do l=1,nquad
-         call ylgndrf(ntermsi,xnodes(l),ynm,rat1,rat2)
+         call ylgndrfw(ntermsi,xnodes(l),ynm,Anm,Pmax)
          do m=-ntermsj,ntermsj
             mabs=abs(m)
             z=phitemp(l,m)*wts(l)/2
@@ -332,7 +330,6 @@ c---------------------------------------------------------------------
             phitempn(l,m) = 0.0d0
          enddo
       enddo
-      call ylgndrini(ntrunc,rat1,rat2)
       do l=1,nquad
          ctheta=xnodes(l)
          stheta=dsqrt(1.0d0-ctheta**2)
@@ -343,7 +340,7 @@ c---------------------------------------------------------------------
          rn=sthetaj*stheta+cthetaj*ctheta
          thetan=(cthetaj*stheta-ctheta*sthetaj)/rj
          z=wavek*rj
-         call ylgndr2sf(ntrunc,cthetaj,ynm,ynmd,rat1,rat2)
+         call ylgndr2sfw(ntrunc,cthetaj,ynm,ynmd,Anm,Pmax)
          call h3dall(ntrunc,z,scalej,fhs,1,fhder)
          do n=0,ntrunc
             fhder(n) = fhder(n)*wavek
@@ -377,10 +374,9 @@ c---------------------------------------------------------------------
             Lnmd(n,m)=0.0d0
          enddo
       enddo
-      call ylgndrini(ntrunc,rat1,rat2)
       do l=1,nquad
          cthetaj=xnodes(l)
-         call ylgndrf(ntrunc,cthetaj,ynm,rat1,rat2)
+         call ylgndrfw(ntrunc,cthetaj,ynm,Anm,Pmax)
          do m=-ntrunc,ntrunc
             mabs=abs(m)
             z=phitemp(l,m)*wts(l)/2.0d0
@@ -497,7 +493,6 @@ c***********************************************************************
             phitempn(l,m)=0.0d0
          enddo
       enddo
-      call ylgndrini(ntermsj,rat1,rat2)
       do l=1,nquad
          ctheta=xnodes(l)
          stheta=dsqrt(1.0d0-ctheta**2)
@@ -508,7 +503,7 @@ c***********************************************************************
          rn=sthetaj*stheta+cthetaj*ctheta
          thetan=(cthetaj*stheta-sthetaj*ctheta)/rj
          z=wavek*rj
-         call ylgndr2sf(ntermsj,cthetaj,ynm,ynmd,rat1,rat2)
+         call ylgndr2sfw(ntermsj,cthetaj,ynm,ynmd,Anm,Pmax)
          call jfuns3d(ntermsj,z,scalej,jn,1,jnd,nbessel)
          do n=0,ntermsj
             jnd(n)=jnd(n)*wavek
@@ -542,10 +537,9 @@ c***********************************************************************
             Lnmd(n,m)=0.0d0
          enddo
       enddo
-      call ylgndrini(ntermsi,rat1,rat2)
       do l=1,nquad
          cthetaj=xnodes(l)
-         call ylgndrf(ntermsi,cthetaj,ynm,rat1,rat2)
+         call ylgndrfw(ntermsi,cthetaj,ynm,Anm,Pmax)
          do m=-ntermsi,ntermsi
             mabs=abs(m)
             z=phitemp(l,m)*wts(l)/2.0d0
