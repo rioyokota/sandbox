@@ -1,14 +1,3 @@
-      subroutine initCoefs(C, nterms)
-        implicit real *8 (a-h,o-z)
-        complex *16 C(0:nterms,-nterms:nterms)
-        do n=0,nterms
-           do m=-n,n
-              C(n,m)=0
-           enddo
-        enddo
-        return
-        end
-
       subroutine fmm(ier,iprec,wavek,numBodies,Xj,
      $     qj,pi,Fi)
       implicit real *8 (a-h,o-z)

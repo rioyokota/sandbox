@@ -11,6 +11,18 @@
       return
       end
 
+      subroutine initCoefs(C, nterms)
+      implicit none
+      integer nterms, m, n
+      complex *16 C(0:nterms,-nterms:nterms)
+      do n=0,nterms
+         do m=-n,n
+            C(n,m)=0
+         enddo
+      enddo
+      return
+      end
+
       subroutine getAnm(Pmax, Anm1, Anm2)
       implicit none
       integer Pmax, m, n
@@ -284,17 +296,16 @@ c ... Step 1: recursion up to find ntop, starting from nterms
       zinv=done/z
       fjs(nterms)=done
       fjs(nterms-1)=zero
-      do 1200 i=nterms,nbessel
+      do i=nterms,nbessel
          dcoef=2*i+done
          ztmp=dcoef*zinv*fjs(i)-fjs(i-1)
          fjs(i+1)=ztmp
          dd = dreal(ztmp)**2 + dimag(ztmp)**2
          if (dd .gt. upbound2) then
             ntop=i+1
-            goto 1300
+            exit
          endif
- 1200 continue
- 1300 continue
+      enddo
       if (ntop.eq.0) then
          print*,"Error: insufficient array dimension nbessel"
          stop
@@ -308,7 +319,7 @@ c	      in array iscale.
       enddo
       fjs(ntop)=zero
       fjs(ntop-1)=done
-      do 2200 i=ntop-1,1,-1
+      do i=ntop-1,1,-1
 	 dcoef=2*i+done
          ztmp=dcoef*zinv*fjs(i)-fjs(i+1)
          fjs(i-1)=ztmp
@@ -318,7 +329,7 @@ c	      in array iscale.
             fjs(i-1) = fjs(i-1)*UPBOUND2inv
             iscale(i) = 1
          endif
- 2200 continue
+      enddo
 c ...  Step 3: go back up to the top and make sure that all
 c              Bessel functions are scaled by the same factor
 c              (i.e. the net total of times rescaling was invoked
@@ -377,53 +388,51 @@ c     w  : the weights of the n-point gaussian quadrature
 c---------------------------------------------------------------------
       implicit real *8 (a-h,o-z)
       dimension ts(1),whts(1),ws2(1000),rats(1000)
-      eps=1.0d-14
+      data eps/1.0d-14/
       ZERO=0
       DONE=1
       pi=datan(done)*4
       h=pi/(2*n) 
-      do 1200 i=1,n
+      do i=1,n
          t=(2*i-1)*h
          ts(n-i+1)=dcos(t)
- 1200 CONTINUE
+      enddo
 c     use newton to find all roots of the legendre polynomial
       ts(n/2+1)=0
-      do 2000 i=1,n/2
+      do i=1,n/2
          xk=ts(i)
          ifout=0
          deltold=1
-         do 1400 k=1,10
+         do k=1,10
             call polynomial(xk,n,pol,der,sum)
             delta=-pol/der
             xk=xk+delta
             if(abs(delta) .lt. eps) ifout=ifout+1
-            if(ifout .eq. 3) goto 1600
- 1400    continue
- 1600    continue
+            if(ifout .eq. 3) cycle
+         enddo
          ts(i)=xk
          ts(n-i+1)=-xk
- 2000 continue
+      enddo
 c     construct the weights via the orthogonality relation
       if(ifwhts .eq. 0) return
-      do 2400 i=1,(n+1)/2
+      do i=1,(n+1)/2
          call polynomial(ts(i),n,pol,der,sum)
          whts(i)=1/sum
          whts(n-i+1)=whts(i)
- 2400 continue
+      enddo
       return
       end
 
       subroutine polynomial(x,n,pol,der,sum)
       implicit real *8 (a-h,o-z)
-      done=1
       sum=0 
       pkm1=1
       pk=x
       sum=sum+pkm1**2 /2
-      sum=sum+pk**2 *(1+done/2)
+      sum=sum+pk**2 * 1.5
       pk=1
       pkp1=x
-      if(n .ge. 2) goto 1200
+      if(n .lt. 2) then
       sum=0 
       pol=1
       der=0
@@ -431,16 +440,16 @@ c     construct the weights via the orthogonality relation
       if(n .eq. 0) return
       pol=x
       der=1
-      sum=sum+pol**2*(1+done/2)
+      sum=sum+pol**2*1.5
       return
- 1200 continue
+      endif
 c     n is greater than 1. conduct recursion
-      do 2000 k=1,n-1
+      do k=1,n-1
          pkm1=pk
          pk=pkp1
          pkp1=( (2*k+1)*x*pk-k*pkm1 )/(k+1)
-         sum=sum+pkp1**2*(k+1+done/2)
- 2000 continue
+         sum=sum+pkp1**2*(k+1.5)
+      enddo
 c     calculate the derivative
       pol=pkp1
       der=n*(x*pkp1-pk)/(x**2-1)
