@@ -1,11 +1,11 @@
 Clean yrecursion.f and kernel.f first
 - Remove redundant storage of M/L expansion coefs
-- Use Anm, Remove Pmax
 Deal with the tree structure later
 Remove uncalled functions
 Remove memory pool variables
 Change function/variable names to be more descriptive
 Use implicit none
 Remove goto
+Remove continue
 Remove ier
 ibox -> Ci

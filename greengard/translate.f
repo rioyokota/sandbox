@@ -229,3 +229,220 @@ c     For 0<mprime<=j (2nd index) case, use formula (2).
       enddo
       return
       end
+c**********************************************************************
+      subroutine bessel(nterms,z,scale,fjs,ifder,fjder,nbessel)
+      implicit none
+      integer nterms,ifder,nbessel,ntop,i,ncntr
+      real *8 scale,d0,d1,dc1,dc2,dcoef,dd,done,tiny,zero
+      real *8 scalinv,sctot,upbound,upbound2,upbound2inv
+c**********************************************************************
+c       This subroutine evaluates the first NTERMS spherical Bessel
+c       functions and if required, their derivatives.
+c       It incorporates a scaling parameter SCALE so that
+c
+c               fjs_n(z)=j_n(z)/SCALE^n
+c               fjder_n(z)=\frac{\partial fjs_n(z)}{\partial z}
+c---------------------------------------------------------------------
+c     INPUT:
+c     nterms  : order of expansion of output array fjs
+c     z       : argument of the spherical Bessel functions
+c     scale   : scaling factor (discussed above)
+c     ifder   : flag indicating whether to calculate "fjder"
+c     nbessel : upper limit of input arrays
+c     fjs(0:nbessel) and iscale(0:nbessel)
+c     iscale  : integer workspace used to keep track of
+c     internal scaling
+c---------------------------------------------------------------------
+c     OUTPUT:
+c     fjs     : array of scaled Bessel functions.
+c     fjder   : array of derivs of scaled Bessel functions.
+c     ntop    : highest index in arrays fjs that is nonzero
+c     NOTE, that fjs and fjder arrays must be at least (nterms+2)
+c     complex *16 elements long.
+c---------------------------------------------------------------------
+      integer iscale(0:nbessel)
+      complex *16 wavek,fjs(0:nbessel),fjder(0:*)
+      complex *16 z,zinv,com,fj0,fj1,zscale,ztmp
+      data upbound/1.0d+32/, upbound2/1.0d+40/, upbound2inv/1.0d-40/
+      data tiny/1.0d-200/,done/1.0d0/,zero/0.0d0/
+c       set to asymptotic values if argument is sufficiently small
+      if (abs(z).lt.tiny) then
+         fjs(0) = done
+         do i = 1, nterms
+            fjs(i) = zero
+	 enddo
+	 if (ifder.eq.1) then
+	    do i=0,nterms
+	       fjder(i)=zero
+	    enddo
+	    fjder(1)=done/(3*scale)
+	 endif
+         return
+      endif
+c ... Step 1: recursion up to find ntop, starting from nterms
+      ntop=0
+      zinv=done/z
+      fjs(nterms)=done
+      fjs(nterms-1)=zero
+      do 1200 i=nterms,nbessel
+         dcoef=2*i+done
+         ztmp=dcoef*zinv*fjs(i)-fjs(i-1)
+         fjs(i+1)=ztmp
+         dd = dreal(ztmp)**2 + dimag(ztmp)**2
+         if (dd .gt. upbound2) then
+            ntop=i+1
+            goto 1300
+         endif
+ 1200 continue
+ 1300 continue
+      if (ntop.eq.0) then
+         print*,"Error: insufficient array dimension nbessel"
+         stop
+      endif
+c ... Step 2: Recursion back down to generate the unscaled jfuns:
+c             if magnitude exceeds UPBOUND2, rescale and continue the
+c	      recursion (saving the order at which rescaling occurred
+c	      in array iscale.
+      do i=0,ntop
+         iscale(i)=0
+      enddo
+      fjs(ntop)=zero
+      fjs(ntop-1)=done
+      do 2200 i=ntop-1,1,-1
+	 dcoef=2*i+done
+         ztmp=dcoef*zinv*fjs(i)-fjs(i+1)
+         fjs(i-1)=ztmp
+         dd = dreal(ztmp)**2 + dimag(ztmp)**2
+         if (dd.gt.UPBOUND2) then
+            fjs(i) = fjs(i)*UPBOUND2inv
+            fjs(i-1) = fjs(i-1)*UPBOUND2inv
+            iscale(i) = 1
+         endif
+ 2200 continue
+c ...  Step 3: go back up to the top and make sure that all
+c              Bessel functions are scaled by the same factor
+c              (i.e. the net total of times rescaling was invoked
+c              on the way down in the previous loop).
+c              At the same time, add scaling to fjs array.
+      ncntr=0
+      scalinv=done/scale
+      sctot = 1.0d0
+      do i=1,ntop
+         sctot = sctot*scalinv
+         if(iscale(i-1).eq.1) sctot=sctot*UPBOUND2inv
+         fjs(i)=fjs(i)*sctot
+      enddo
+c ... Determine the normalization parameter:
+      fj0=sin(z)*zinv
+      fj1=fj0*zinv-cos(z)*zinv
+      d0=abs(fj0)
+      d1=abs(fj1)
+      if (d1 .gt. d0) then
+         zscale=fj1/(fjs(1)*scale)
+      else
+         zscale=fj0/fjs(0)
+      endif
+c ... Scale the jfuns by zscale:
+      ztmp=zscale
+      do i=0,nterms
+         fjs(i)=fjs(i)*ztmp
+      enddo
+c ... Finally, calculate the derivatives if desired:
+      if (ifder.eq.1) then
+         fjs(nterms+1)=fjs(nterms+1)*ztmp
+         fjder(0)=-fjs(1)*scale
+         do i=1,nterms
+            dc1=i/(2*i+done)
+            dc2=done-dc1
+            dc1=dc1*scalinv
+            dc2=dc2*scale
+            fjder(i)=dc1*fjs(i-1)-dc2*fjs(i+1)
+         enddo
+      endif
+      return
+      end
+c**********************************************************************
+      subroutine legendre(n,ts,whts,ifwhts)
+c**********************************************************************
+c     This subroutine constructs the nodes and the
+c     weights of the n-point gaussian quadrature on 
+c     the interval [-1,1]
+c---------------------------------------------------------------------
+c     INPUT:
+c     n  : the number of nodes in the quadrature
+c---------------------------------------------------------------------
+c     OUTPUT:
+c     ts : the nodes of the n-point gaussian quadrature
+c     w  : the weights of the n-point gaussian quadrature
+c---------------------------------------------------------------------
+      implicit real *8 (a-h,o-z)
+      dimension ts(1),whts(1),ws2(1000),rats(1000)
+      eps=1.0d-14
+      ZERO=0
+      DONE=1
+      pi=datan(done)*4
+      h=pi/(2*n) 
+      do 1200 i=1,n
+         t=(2*i-1)*h
+         ts(n-i+1)=dcos(t)
+ 1200 CONTINUE
+c     use newton to find all roots of the legendre polynomial
+      ts(n/2+1)=0
+      do 2000 i=1,n/2
+         xk=ts(i)
+         ifout=0
+         deltold=1
+         do 1400 k=1,10
+            call polynomial(xk,n,pol,der,sum)
+            delta=-pol/der
+            xk=xk+delta
+            if(abs(delta) .lt. eps) ifout=ifout+1
+            if(ifout .eq. 3) goto 1600
+ 1400    continue
+ 1600    continue
+         ts(i)=xk
+         ts(n-i+1)=-xk
+ 2000 continue
+c     construct the weights via the orthogonality relation
+      if(ifwhts .eq. 0) return
+      do 2400 i=1,(n+1)/2
+         call polynomial(ts(i),n,pol,der,sum)
+         whts(i)=1/sum
+         whts(n-i+1)=whts(i)
+ 2400 continue
+      return
+      end
+
+      subroutine polynomial(x,n,pol,der,sum)
+      implicit real *8 (a-h,o-z)
+      done=1
+      sum=0 
+      pkm1=1
+      pk=x
+      sum=sum+pkm1**2 /2
+      sum=sum+pk**2 *(1+done/2)
+      pk=1
+      pkp1=x
+      if(n .ge. 2) goto 1200
+      sum=0 
+      pol=1
+      der=0
+      sum=sum+pol**2 /2
+      if(n .eq. 0) return
+      pol=x
+      der=1
+      sum=sum+pol**2*(1+done/2)
+      return
+ 1200 continue
+c     n is greater than 1. conduct recursion
+      do 2000 k=1,n-1
+         pkm1=pk
+         pk=pkp1
+         pkp1=( (2*k+1)*x*pk-k*pkm1 )/(k+1)
+         sum=sum+pkp1**2*(k+1+done/2)
+ 2000 continue
+c     calculate the derivative
+      pol=pkp1
+      der=n*(x*pkp1-pk)/(x**2-1)
+      return
+      end

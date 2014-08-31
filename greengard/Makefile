@@ -7,7 +7,7 @@ MAKEFLAGS += --no-print-directory
 
 .SUFFIXES: .o .f
 
-SRC = main.f fmm.f kernels.f translate.f h3dterms.f bessel.f d3tstrcr.f legeexps.f
+SRC = main.f fmm.f kernels.f translate.f h3dterms.f tree.f
 
 all: $(SRC:.f=.o)
 	$(FC) $?

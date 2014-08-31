@@ -201,7 +201,7 @@ c$    tic=omp_get_wtime()
       do ilev=nlev,3,-1
          nquad=nterms(ilev-1)*2.5
          nquad=max(6,nquad)
-         call legewhts(nquad,xnodes,wts,1)
+         call legendre(nquad,xnodes,wts,1)
 c$omp parallel do default(shared)
 c$omp$private(ibox,box,center0,corners0,level0,level,npts,nkids,radius)
 c$omp$private(jbox,box1,center1,corners1,level1)
@@ -243,7 +243,7 @@ c$    tic=omp_get_wtime()
          call h3dterms_list2(bsize(ilev-1),wavek,epsfmm, itable, ier)
          nquad=nterms(ilev-1)*1.2
          nquad=max(6,nquad)
-         call legewhts(nquad,xnodes,wts,1)
+         call legendre(nquad,xnodes,wts,1)
 c$omp parallel do default(shared)
 c$omp$private(ibox,box,center0,corners0,list,nlist)
 c$omp$private(jbox,box1,center1,corners1,level1,ifdirect2,radius)
@@ -298,7 +298,7 @@ c$    tic=omp_get_wtime()
       do 5300 ilev=3,nlev
          nquad=nterms(ilev-1)*2
          nquad=max(6,nquad)
-         call legewhts(nquad,xnodes,wts,1)
+         call legendre(nquad,xnodes,wts,1)
 c$omp parallel do default(shared)
 c$omp$private(ibox,box,center0,corners0,level0,level,npts,nkids,radius)
 c$omp$private(jbox,box1,center1,corners1,level1)
