@@ -126,7 +126,7 @@ c     ... set the potential and field to zero
 c     ... initialize Legendre function evaluation routines
       Pmax=200
       lw7=100 000
-      call ylgndrini(Pmax,Anm1,Anm2)
+      call getAnm(Pmax,Anm1,Anm2)
       do i=0,nlev
          do itype=1,4
             call h3dterms_eval(itype,bsize(i),wavek,epsfmm,

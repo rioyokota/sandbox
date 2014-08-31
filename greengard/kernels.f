@@ -10,6 +10,89 @@
       endif
       return
       end
+
+      subroutine getAnm(Pmax, Anm1, Anm2)
+      implicit none
+      integer Pmax, m, n
+      real *8 Anm1(0:Pmax,0:Pmax), Anm2(0:Pmax,0:Pmax)
+      Anm1(0,0) = 1
+      Anm2(0,0) = 1
+      do m=0, Pmax
+	 if (m.gt.0) Anm1(m,m) = sqrt((2 * m - 1.0d0) / (2 * m))
+	 if (m.lt.Pmax) Anm1(m+1,m) = sqrt(2 * m + 1.0d0)
+	 do n=m+2, Pmax
+	    Anm1(n,m) = (2*n-1)
+            Anm2(n,m) = sqrt((n + m - 1.0d0) * (n - m - 1.0d0))
+	    Anm1(n,m) = Anm1(n,m) / sqrt(dble(n - m) * (n + m))
+	    Anm2(n,m) = Anm2(n,m) / sqrt(dble(n - m) * (n + m))
+         enddo
+      enddo
+      return
+      end
+
+      subroutine getYnm(nterms, x, Ynm, Anm1, Anm2, Pmax)
+c     Ynm(x) = sqrt(2n+1)  sqrt( (n-m)!/ (n+m)! ) Pnm(x)
+      implicit none
+      integer nterms, Pmax, m, n
+      real *8 x, y, Ynm(0:nterms,0:nterms)
+      real *8 Anm1(0:Pmax,0:Pmax), Anm2(0:Pmax,0:Pmax)
+      y = -sqrt((1 - x) * (1 + x))
+      Ynm(0,0) = 1
+      do m=0, nterms
+	 if (m.gt.0) Ynm(m,m) = Ynm(m-1,m-1) * y * Anm1(m,m)
+	 if (m.lt.nterms) Ynm(m+1,m) = x * Ynm(m,m) * Anm1(m+1,m)
+	 do n=m+2, nterms
+	    Ynm(n,m) = Anm1(n,m) * x * Ynm(n-1,m) - Anm2(n,m) * Ynm(n-2,m)
+         enddo
+      enddo
+      do n=0, nterms
+	 do m=0, n
+	    Ynm(n,m) = Ynm(n,m) * sqrt(2*n+1.0d0)
+         enddo
+      enddo
+      return
+      end
+
+      subroutine getYnmd(nterms, x, Ynm, Ynmd, Anm1, Anm2, Pmax)
+c     Ynm(x) = sqrt(2n+1)  sqrt( (n-m)!/ (n+m)! ) Pnm(x)
+c     d Ynm(x) / dx = sqrt(2n+1)  sqrt( (n-m)!/ (n+m)! ) d Pnm(x) / dx
+      implicit none
+      integer nterms, Pmax, m, n
+      real *8 x, y, y2, Ynm(0:nterms,0:nterms), Ynmd(0:nterms,0:nterms)
+      real *8 Anm1(0:Pmax,0:Pmax), Anm2(0:Pmax,0:Pmax)
+      y = -sqrt((1 - x) * (1 + x))
+      y2 = (1 - x) * (1 + x)
+      Ynm(0,0) = 1
+      Ynmd(0,0) = 0
+      Ynm(1,0) = x * Ynm(0,0) * Anm1(1,0)
+      Ynmd(1,0) = (x * Ynmd(0,0) + Ynm(0,0)) * Anm1(1,0)
+      do n=2, nterms
+         Ynm(n,0) = Anm1(n,0) * x * Ynm(n-1,0) - Anm2(n,0) * Ynm(n-2,0)
+         Ynmd(n,0) = Anm1(n,0) * (x * Ynmd(n-1,0)
+     $        + Ynm(n-1,0)) - Anm2(n,0) * Ynmd(n-2,0)
+      enddo
+      do m=1, nterms
+	 if (m.eq.1) Ynm(m,m) = -Ynm(m-1,m-1) * Anm1(m,m)
+	 if (m.gt.1) Ynm(m,m) = Ynm(m-1,m-1) * y * Anm1(m,m)
+	 if (m.gt.0) Ynmd(m,m) = -Ynm(m,m) * m * x
+	 if (m.lt.nterms) Ynm(m+1,m) = x * Ynm(m,m) * Anm1(m+1,m)
+	 if (m.lt.nterms) Ynmd(m+1,m) = (x * Ynmd(m,m)
+     $        + y2 * Ynm(m,m)) * Anm1(m+1,m)
+	 do n=m+2, nterms
+	    Ynm(n,m) = Anm1(n,m) * x * Ynm(n-1,m) - Anm2(n,m) * Ynm(n-2,m)
+	    Ynmd(n,m) = Anm1(n,m) * (x * Ynmd(n-1,m) + y2 * Ynm(n-1,m))-
+     $           Anm2(n,m) * Ynmd(n-2,m)
+         enddo
+      enddo
+      do n=0, nterms
+	 do m=0, n
+	    Ynm(n,m) = Ynm(n,m) * sqrt(2*n+1.0d0)
+	    Ynmd(n,m) = Ynmd(n,m) * sqrt(2*n+1.0d0)
+         enddo
+      enddo
+      return
+      end
+
 c**********************************************************************
       subroutine P2P(ibox,Xi,pi,Fi,jbox,Xj,qj,wavek)
 c**********************************************************************
@@ -104,7 +187,7 @@ c-----------------------------------------------------------------------
          do n=2,ntrunc
             ephi(n)=ephi(n-1)*ephi(1)
          enddo
-         call ylgndrfw0(ntrunc,ctheta,Ynm,Anm1,Anm2,Pmax)
+         call getYnm(ntrunc,ctheta,Ynm,Anm1,Anm2,Pmax)
          z=wavek*r
          call jfuns3d(ntrunc,z,scale,jn,0,jnd,nbessel)
          do n = 0,ntrunc
@@ -209,7 +292,7 @@ c---------------------------------------------------------------------
          rj=dsqrt(rj)
          cthetaj=(r+radius*ctheta)/rj
          z=wavek*rj
-         call ylgndrfw0(ntermsj,cthetaj,ynm,Anm1,Anm2,Pmax)
+         call getYnm(ntermsj,cthetaj,ynm,Anm1,Anm2,Pmax)
          call h3dall(ntermsj,z,scalej,fhs,0,fhder)
          do m=-ntermsj,ntermsj
             mabs=abs(m)
@@ -225,7 +308,7 @@ c---------------------------------------------------------------------
          enddo
       enddo
       do l=1,nquad
-         call ylgndrfw0(ntermsi,xnodes(l),ynm,Anm1,Anm2,Pmax)
+         call getYnm(ntermsi,xnodes(l),ynm,Anm1,Anm2,Pmax)
          do m=-ntermsj,ntermsj
             mabs=abs(m)
             z=phitemp(l,m)*wts(l)/2
@@ -343,7 +426,7 @@ c---------------------------------------------------------------------
          rn=sthetaj*stheta+cthetaj*ctheta
          thetan=(cthetaj*stheta-ctheta*sthetaj)/rj
          z=wavek*rj
-         call ylgndr2sfw0(ntrunc,cthetaj,ynm,ynmd,Anm1,Anm2,Pmax)
+         call getYnmd(ntrunc,cthetaj,ynm,ynmd,Anm1,Anm2,Pmax)
          call h3dall(ntrunc,z,scalej,fhs,1,fhder)
          do n=0,ntrunc
             fhder(n) = fhder(n)*wavek
@@ -379,7 +462,7 @@ c---------------------------------------------------------------------
       enddo
       do l=1,nquad
          cthetaj=xnodes(l)
-         call ylgndrfw0(ntrunc,cthetaj,ynm,Anm1,Anm2,Pmax)
+         call getYnm(ntrunc,cthetaj,ynm,Anm1,Anm2,Pmax)
          do m=-ntrunc,ntrunc
             mabs=abs(m)
             z=phitemp(l,m)*wts(l)/2.0d0
@@ -507,7 +590,7 @@ c***********************************************************************
          rn=sthetaj*stheta+cthetaj*ctheta
          thetan=(cthetaj*stheta-sthetaj*ctheta)/rj
          z=wavek*rj
-         call ylgndr2sfw0(ntermsj,cthetaj,ynm,ynmd,Anm1,Anm2,Pmax)
+         call getYnmd(ntermsj,cthetaj,ynm,ynmd,Anm1,Anm2,Pmax)
          call jfuns3d(ntermsj,z,scalej,jn,1,jnd,nbessel)
          do n=0,ntermsj
             jnd(n)=jnd(n)*wavek
@@ -543,7 +626,7 @@ c***********************************************************************
       enddo
       do l=1,nquad
          cthetaj=xnodes(l)
-         call ylgndrfw0(ntermsi,cthetaj,ynm,Anm1,Anm2,Pmax)
+         call getYnm(ntermsi,cthetaj,ynm,Anm1,Anm2,Pmax)
          do m=-ntermsi,ntermsi
             mabs=abs(m)
             z=phitemp(l,m)*wts(l)/2.0d0
@@ -643,7 +726,7 @@ c---------------------------------------------------------------------
          rz = ctheta
          thetaz = -stheta
          phiz = 0.0d0
-         call ylgndr2sfw0(ntrunc,ctheta,Ynm,Ynmd,Anm1,Anm2,Pmax)
+         call getYnmd(ntrunc,ctheta,Ynm,Ynmd,Anm1,Anm2,Pmax)
          z=wavek*r
          call jfuns3d(ntrunc,z,scalej,jn,1,jnd,nbessel)
          pi(i)=pi(i)+Lj(0,0)*jn(0)
