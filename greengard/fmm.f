@@ -107,7 +107,8 @@ c     create oct-tree data structure
       integer box1(20)
       dimension center1(3),corners1(3,8)
       dimension itable(-3:3,-3:3,-3:3)
-      dimension Anm(100 000)
+      dimension Anm1(0:200,0:200)
+      dimension Anm2(0:200,0:200)
       dimension nterms_eval(4,0:200)
       complex *16 pottarg(1),fldtarg(3,1)
       real *8, allocatable :: rotmatf(:,:,:,:)
@@ -125,7 +126,7 @@ c     ... set the potential and field to zero
 c     ... initialize Legendre function evaluation routines
       Pmax=200
       lw7=100 000
-      call ylgndrfwini(Pmax,Anm,lw7,lused7)
+      call ylgndrini(Pmax,Anm1,Anm2)
       do i=0,nlev
          do itype=1,4
             call h3dterms_eval(itype,bsize(i),wavek,epsfmm,
@@ -160,7 +161,7 @@ c$omp$private(lused,ier,i,j,ptemp,ftemp,cd)
                call P2M(wavek,scale(level),
      1              sourcesort(1,box(14)),chargesort(box(14)),box(15),
      1              center0,nterms(level),nterms_eval(1,level),nbessel,
-     1              Multipole(iaddr(ibox)),Anm,Pmax)
+     1              Multipole(iaddr(ibox)),Anm1,Anm2,Pmax)
             endif
          enddo
 c$omp end parallel do
@@ -200,7 +201,7 @@ c$omp$private(lused,ier,i,j,ptemp,ftemp,cd)
      1                    scale(level0),center0,
      1                    Multipole(iaddr(ibox)),
      1                    nterms(level0),
-     1                    radius,xnodes,wts,nquad,Anm,Pmax)
+     1                    radius,xnodes,wts,nquad,Anm1,Anm2,Pmax)
                   enddo
                endif
             endif
@@ -258,7 +259,7 @@ c     ... if source is childless, evaluate directly (if cheaper)
      1                 center0,Local(iaddr(ibox)),
      1                 nterms(level0),nterms_trunc,
      1                 radius,xnodes,wts,nquad,nbessel,
-     1                 Anm,Pmax)
+     1                 Anm1,Anm2,Pmax)
  4150          continue
             endif
  4200    continue
@@ -299,7 +300,7 @@ c     ... split local expansion of the parent box
      1                    scale(level1),center1,Local(iaddr(jbox)),
      1                    nterms(level1),
      1                    radius,xnodes,wts,nquad,nbessel,
-     1                    Anm,Pmax)
+     1                    Anm1,Anm2,Pmax)
  5100             continue
                endif
             endif
@@ -326,7 +327,7 @@ c$omp$private(ibox,box,center0,corners0,level,npts,nkids,ier)
      1              nterms(level),nterms_eval(1,level),nbessel,
      1              sourcesort(1,box(14)),box(15),
      1              pot(box(14)),fld(1,box(14)),
-     1              Anm,Pmax)
+     1              Anm1,Anm2,Pmax)
             endif
          endif
       enddo

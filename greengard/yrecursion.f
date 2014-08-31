@@ -19,43 +19,6 @@ c     evaluation of normalized Legendre functions and their derivatives
       return
       end
 
-      subroutine ylgndrfwini(nmax, w, lw, lused)
-      implicit none
-c     Precompute the recurrence coefficients for the fast
-c     evaluation of normalized Legendre functions and their derivatives
-      integer nmax,irat1,irat2,lw,lused
-      real *8 w(*)
-      irat1=1
-      irat2=1+(nmax+1)**2
-      lused=2*(nmax+1)**2
-      if( lused .gt. lw ) return
-      call ylgndrini(nmax, w(irat1), w(irat2))
-      return
-      end
-
-      subroutine ylgndrfw(nterms, x, y, w, nmax)
-      implicit none
-c      Ynm(x) = sqrt(2n+1)  sqrt( (n-m)!/ (n+m)! ) Pnm(x)
-      integer nterms,nmax,irat1,irat2
-      real *8 x, y(0:nterms,0:nterms), w(*)
-      irat1=1
-      irat2=1+(nmax+1)**2
-      call ylgndrfw0(nterms, x, y, w(irat1), w(irat2), nmax)
-      return
-      end
-
-      subroutine ylgndr2sfw(nterms, x, y, d, w, nmax)
-      implicit none
-c      Ynm(x) = sqrt(2n+1)  sqrt( (n-m)!/ (n+m)! ) Pnm(x)
-c      d Ynm(x) / dx = sqrt(2n+1)  sqrt( (n-m)!/ (n+m)! ) d Pnm(x) / dx
-      integer nterms,nmax,irat1,irat2
-      real *8 x, y(0:nterms,0:nterms), d(0:nterms,0:nterms), w(*)
-      irat1=1
-      irat2=1+(nmax+1)**2
-      call ylgndr2sfw0(nterms, x, y, d, w(irat1), w(irat2), nmax)
-      return
-      end
-
       subroutine ylgndrfw0(nterms, x, y, rat1, rat2, nmax)
       implicit none
 c      Ynm(x) = sqrt(2n+1)  sqrt( (n-m)!/ (n+m)! ) Pnm(x)
