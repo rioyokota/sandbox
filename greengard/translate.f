@@ -92,7 +92,7 @@ c     d Ynm(x) / dx = sqrt(2n+1)  sqrt( (n-m)!/ (n+m)! ) d Pnm(x) / dx
          if (m.lt.nterms) Ynmd(m+1,m) = (x * Ynmd(m,m)
      $        + y2 * Ynm(m,m)) * Anm1(m+1,m)
          do n=m+2, nterms
-            Ynm(n,m) = Anm1(n,m) * x * Ynm(n-1,m) 
+            Ynm(n,m) = Anm1(n,m) * x * Ynm(n-1,m)
      $           - Anm2(n,m) * Ynm(n-2,m)
             Ynmd(n,m) = Anm1(n,m) * (x * Ynmd(n-1,m) + y2 * Ynm(n-1,m))
      $           - Anm2(n,m) * Ynmd(n-2,m)
@@ -115,13 +115,13 @@ c     the y-axis determined by angle theta.
 c     The rotation matrices for each order (first index) are computed
 c     from the lowest to the highest. As each one is generated, it
 c     is applied to the input expansion "Mnm" and overwritten.
-c     
+c
 c     As a result, it is sufficient to use two arrays rd1 and rd2 for
 c     the two term recurrence, rather than storing them for all orders
 c     as in the original code. There is some loss in speed
 c     if the rotation operator is to be used multiple times, but the
 c     memory savings is often more critical.
-c     
+c
 c     Use symmetry properties of rotation matrices
 c---------------------------------------------------------------------
 c     INPUT:
@@ -241,6 +241,72 @@ c     For 0<mprime<=j (2nd index) case, use formula (2).
       enddo
       return
       end
+
+c**********************************************************************
+      subroutine hankel(nterms,z,scale,hvec,ifder,hder)
+c**********************************************************************
+c     This subroutine computes scaled versions of the spherical Hankel
+c     functions h_n of orders 0 to nterms.
+c               hvec(n)= h_n(z)*scale^(n)
+c     The parameter SCALE is useful when |z| < 1, in which case
+c     it damps out the rapid growth of h_n as n increases. In such
+c     cases, we recommend setting
+c               scale = |z|
+c     or something close. If |z| > 1, set scale = 1.
+c     If the flag IFDER is set to one, it also computes the
+c     derivatives of h_n.
+c               hder(n)= h_n'(z)*scale^(n)
+c     NOTE: If |z| < 1.0d-15, the subroutine returns zero.
+c-----------------------------------------------------------------------
+c     INPUT:
+c     nterms  : highest order of the Hankel functions to be computed.
+c     z       : argument of the Hankel functions.
+c     scale   : scaling parameter discussed above
+c     ifder   : flag indcating whether derivatives should be computed.
+c               ifder = 1   ==> compute
+c               ifder = 0   ==> do not compute
+c-----------------------------------------------------------------------
+c     OUTPUT:
+c     hvec    : the vector of spherical Hankel functions
+c     hder    : the derivatives of the spherical Hankel functions
+c-----------------------------------------------------------------------
+      implicit real *8 (a-h,o-z)
+      complex *16 hvec(0:nterms),hder(0:nterms)
+      complex *16 eye,cd,wavek2,z,zinv,ztmp,fhextra
+      data eye/(0.0d0,1.0d0)/,thresh/1.0d-15/,done/1.0d0/
+c     If |z| < thresh, return zeros.
+      if (abs(z).lt.thresh) then
+         do i=0,nterms
+            hvec(i)=0
+            hder(i)=0
+         enddo
+         return
+      endif
+c     Otherwise, get h_0 and h_1 analytically and the rest via recursion.
+      cd = eye * z
+      hvec(0) = exp(cd) / cd
+      hvec(1) = hvec(0) * (done / z - eye) * scale
+c     hvec(n+1)=scale*(2n+1)/z * hvec(n) -(scale**2) hvec(n-1)
+      scal2=scale*scale
+      zinv=scale/z
+      do i=1,nterms-1
+         dtmp=(2*i+done)
+         ztmp=zinv*dtmp
+         hvec(i+1)=ztmp*hvec(i)-scal2*hvec(i-1)
+      enddo
+c     hder(n)=scale* hvec(n-1) - (n+1)/z * hvec(n)
+      if (ifder.eq.1) then
+         hder(0)=-hvec(1)/scale
+         zinv=1.0d0/z
+         do i=1,nterms
+            dtmp=(i+done)
+            ztmp=zinv*dtmp
+            hder(i)=scale*hvec(i-1)-ztmp*hvec(i)
+         enddo
+      endif
+      return
+      end
+
 c**********************************************************************
       subroutine bessel(nterms,z,scale,fjs,ifder,fjder,nbessel)
       implicit none
@@ -372,11 +438,12 @@ c ... Finally, calculate the derivatives if desired:
       endif
       return
       end
+
 c**********************************************************************
       subroutine legendre(n,ts,whts,ifwhts)
 c**********************************************************************
 c     This subroutine constructs the nodes and the
-c     weights of the n-point gaussian quadrature on 
+c     weights of the n-point gaussian quadrature on
 c     the interval [-1,1]
 c---------------------------------------------------------------------
 c     INPUT:
@@ -392,7 +459,7 @@ c---------------------------------------------------------------------
       ZERO=0
       DONE=1
       pi=datan(done)*4
-      h=pi/(2*n) 
+      h=pi/(2*n)
       do i=1,n
          t=(2*i-1)*h
          ts(n-i+1)=dcos(t)
@@ -425,7 +492,7 @@ c     construct the weights via the orthogonality relation
 
       subroutine polynomial(x,n,pol,der,sum)
       implicit real *8 (a-h,o-z)
-      sum=0 
+      sum=0
       pkm1=1
       pk=x
       sum=sum+pkm1**2 /2
@@ -433,7 +500,7 @@ c     construct the weights via the orthogonality relation
       pk=1
       pkp1=x
       if(n .lt. 2) then
-      sum=0 
+      sum=0
       pol=1
       der=0
       sum=sum+pol**2 /2
@@ -453,5 +520,105 @@ c     n is greater than 1. conduct recursion
 c     calculate the derivative
       pol=pkp1
       der=n*(x*pkp1-pk)/(x**2-1)
+      return
+      end
+
+      subroutine getNumTermsList(size, wavek, eps, itable, ier)
+      implicit real *8 (a-h,o-z)
+      complex *16  wavek, z1, z2, z3, jfun(0:2000), ht0,
+     1     ht1, ht2, fjder(0:1), ztmp,
+     1     hfun(0:2000), fhder(0:1)
+      dimension nterms_table(2:3,0:3,0:3)
+      dimension itable(-3:3,-3:3,-3:3)
+      ier = 0
+      do ii=2,3
+         do jj=0,3
+            do kk=0,3
+               dx=ii
+               dy=jj
+               dz=kk
+               if( dx .gt. 0 ) dx=dx-.5
+               if( dy .gt. 0 ) dy=dy-.5
+               if( dz .gt. 0 ) dz=dz-.5
+               rr=sqrt(dx*dx+dy*dy+dz*dz)
+               call getNumTerms(1, rr, size, wavek, eps, nterms, ier)
+               nterms_table(ii,jj,kk)=nterms
+            enddo
+         enddo
+      enddo
+c     build the rank table for all boxes in list 2
+      do i=-3,3
+         do j=-3,3
+            do k=-3,3
+               itable(i,j,k)=0
+            enddo
+         enddo
+      enddo
+      do k=-3,3
+         do i=-3,3
+            do j=-3,3
+               if( abs(i) .gt. 1 ) then
+                  itable(i,j,k)=nterms_table(abs(i),abs(j),abs(k))
+                         else if( abs(j) .gt. 1) then
+                  itable(i,j,k)=nterms_table(abs(j),abs(i),abs(k))
+                         endif
+               if( abs(i) .le. 1 .and. abs(j) .le. 1) then
+                  if( abs(k) .gt. 1 ) then
+                     if( abs(i) .ge. abs(j) ) then
+                        itable(i,j,k)=nterms_table(abs(k),abs(i),abs(j))
+                     else
+                        itable(i,j,k)=nterms_table(abs(k),abs(j),abs(i))
+                     endif
+                  endif
+                         endif
+            enddo
+         enddo
+      enddo
+      return
+      end
+
+      subroutine getNumTerms(itype, rr, size, wavek, eps, nterms, ier)
+      implicit real *8 (a-h,o-z)
+c     Maximum number of terms is 1000, which
+c     works for boxes up to 160 wavelengths in size
+      complex *16  wavek, z1, z2, z3, jfun(0:2000), ht0,
+     1     ht1, ht2, fjder(0:1), ztmp,
+     1     hfun(0:2000), fhder(0:1)
+      ier = 0
+      z1 = (wavek*size)*rr
+c     the code will run out memory if frequency is too small
+c     set frequency to something more reasonable, nterms is
+c     approximately the same for all small frequencies
+      ntmax = 1000
+      ifder = 0
+      rscale = 1.0d0
+      if (cdabs(wavek*size) .lt. 1.0d0) rscale = cdabs(wavek*size)
+      call hankel(ntmax,z1,rscale,hfun,ifder,fhder)
+      z2 = (wavek*size) * dsqrt(3d0)/2.d0
+c     corners included
+      if( itype .eq. 1 ) z2 = (wavek*size) * dsqrt(3d0)/2.d0
+c     edges included, no corners
+      if( itype .eq. 2 ) z2 = (wavek*size) * dsqrt(2d0)/2.d0
+c     center only
+      if( itype .eq. 3 ) z2 = (wavek*size) * 1.0d0/2.d0
+c     center only, small interior sphere
+      if( itype .eq. 4 ) z2 = (wavek*size) * 0.8d0/2.d0
+      call bessel(ntmax,z2,rscale,jfun,ifder,fjder,2000)
+      xtemp1 = cdabs(jfun(0)*hfun(0))
+      xtemp2 = cdabs(jfun(1)*hfun(1))
+      xtemp0 = xtemp1+xtemp2
+      nterms = 1
+      do j = 2, ntmax
+         xtemp1 = cdabs(jfun(j)*hfun(j))
+         xtemp2 = cdabs(jfun(j-1)*hfun(j-1))
+         xtemp = xtemp1+xtemp2
+         if(xtemp .lt. eps*xtemp0)then
+            nterms = j + 1
+            return
+         endif
+      enddo
+c     ... computational box is too big, set nterms to 1000
+      ier = 13
+      nterms=1000
       return
       end
