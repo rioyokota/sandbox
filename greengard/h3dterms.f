@@ -1,47 +1,3 @@
-      subroutine h3dterms(size, wavek, eps, nterms, ier)
-      implicit real *8 (a-h,o-z)
-c     Determine number of terms in mpole expansions for box of size
-c     "size" with Helmholtz parameter wavek.
-c
-c     The method is based on examining the decay of h_n * j_n.
-c
-c     Maximum number of terms is 1000, which 
-c     works for boxes up to 160 wavelengths in size     
-      complex *16  wavek, z1, z2, z3, jfun(0:2000), ht0,
-     1             ht1, ht2, fjder(0:1), ztmp,
-     1             hfun(0:2000), fhder(0:1)
-      ier = 0
-      z1 = (wavek*size)*1.5d0
-c       the code will run out memory if frequency is too small 
-c       set frequency to something more reasonable, nterms is 
-c       approximately the same for all small frequencies
-      ntmax = 1000
-      ifder = 0
-      rscale = 1.0d0
-      if (cdabs(wavek*size) .lt. 1.0d0) rscale = cdabs(wavek*size)
-      call h3dall(ntmax,z1,rscale,hfun,ifder,fhder)
-      z2 = (wavek*size) * dsqrt(3d0)/2.d0
-      call bessel(ntmax,z2,rscale,jfun,ifder,fjder,2000)
-      xtemp1 = cdabs(jfun(0)*hfun(0))
-      xtemp2 = cdabs(jfun(1)*hfun(1))
-      xtemp0 = xtemp1+xtemp2
-      nterms = 1
-      do j = 2, ntmax
-        xtemp1 = cdabs(jfun(j)*hfun(j))
-        xtemp2 = cdabs(jfun(j-1)*hfun(j-1))
-        xtemp = xtemp1+xtemp2
-        if(xtemp .lt. eps*xtemp0)then
-          nterms = j + 1
-          return
-        endif
-      enddo
-c       ... computational box is too big, set nterms to 1000
-        ier = 13
-        nterms=1000
-      return
-      end
-
-
       subroutine h3dterms_list2(size, wavek, eps, itable, ier)
       implicit real *8 (a-h,o-z)
 c     Determine number of terms in mpole expansions for box of size
@@ -69,34 +25,7 @@ c     works for boxes up to 160 wavelengths in size
         if( dy .gt. 0 ) dy=dy-.5
         if( dz .gt. 0 ) dz=dz-.5
         rr=sqrt(dx*dx+dy*dy+dz*dz)
-        z1 = (wavek*size)*rr
-c       the code will run out memory if frequency is too small 
-c       set frequency to something more reasonable, nterms is 
-c       approximately the same for all small frequencies
-      ntmax = 1000
-      ifder = 0
-      rscale = 1.0d0
-      if (cdabs(wavek*size) .lt. 1.0d0) rscale = cdabs(wavek*size)
-      call h3dall(ntmax,z1,rscale,hfun,ifder,fhder)
-      z2 = (wavek*size) * dsqrt(3d0)/2.d0
-      call bessel(ntmax,z2,rscale,jfun,ifder,fjder,2000)
-      xtemp1 = cdabs(jfun(0)*hfun(0))
-      xtemp2 = cdabs(jfun(1)*hfun(1))
-      xtemp0 = xtemp1+xtemp2
-      nterms = 1
-      do j = 2, ntmax
-        xtemp1 = cdabs(jfun(j)*hfun(j))
-        xtemp2 = cdabs(jfun(j-1)*hfun(j-1))
-        xtemp = xtemp1+xtemp2
-        if(xtemp .lt. eps*xtemp0)then
-          nterms = j + 1
-          goto 1600
-        endif
-      enddo
-c       ... computational box is too big, set nterms to 1000
-        ier = 13
-        nterms=1000
- 1600   continue
+        call h3dterms_eval(1, rr, size, wavek, eps, nterms, ier)
         nterms_table(ii,jj,kk)=nterms
  1800   continue
 c       build the rank table for all boxes in list 2
@@ -128,7 +57,7 @@ c       build the rank table for all boxes in list 2
       return
       end
 
-      subroutine h3dterms_eval(itype, size, wavek, eps, nterms, ier)
+      subroutine h3dterms_eval(itype, rr, size, wavek, eps, nterms, ier)
       implicit real *8 (a-h,o-z)
 c     Determine number of terms in mpole expansions for box of size
 c     "size" with Helmholtz parameter wavek.
@@ -141,7 +70,7 @@ c     works for boxes up to 160 wavelengths in size
      1             ht1, ht2, fjder(0:1), ztmp,
      1             hfun(0:2000), fhder(0:1)
       ier = 0
-      z1 = (wavek*size)*1.5d0
+      z1 = (wavek*size)*rr
 c       the code will run out memory if frequency is too small 
 c       set frequency to something more reasonable, nterms is 
 c       approximately the same for all small frequencies

@@ -62,7 +62,7 @@ c     create oct-tree data structure
       nmax = 0
       do i = 0,nlev
          bsize(i)=size/2.0d0**i
-         call h3dterms(bsize(i),wavek,epsfmm, nterms(i), ier)
+         call h3dterms_eval(1,1.5d0,bsize(i),wavek,epsfmm,nterms(i),ier)
          if (nterms(i).gt. nmax .and. i.ge. 2) nmax = nterms(i)
       enddo
       do i = 1,numBodies
@@ -145,7 +145,7 @@ c     ... initialize Legendre function evaluation routines
       call getAnm(Pmax,Anm1,Anm2)
       do i=0,nlev
          do itype=1,4
-            call h3dterms_eval(itype,bsize(i),wavek,epsfmm,
+            call h3dterms_eval(itype,1.5d0,bsize(i),wavek,epsfmm,
      1           nterms_eval(itype,i),ier)
          enddo
       enddo
