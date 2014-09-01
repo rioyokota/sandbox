@@ -1,8 +1,6 @@
-Clean yrecursion.f and kernel.f first
+- Match variable names between kernel.f and translate.f
 - Remove redundant storage of M/L expansion coefs
-Deal with the tree structure later
-Remove uncalled functions
-Remove memory pool variables
+- Remove memory pool variables
 Change function/variable names to be more descriptive
 Use implicit none
 Remove goto

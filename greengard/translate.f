@@ -29,10 +29,10 @@
       real *8 Anm1(0:Pmax,0:Pmax), Anm2(0:Pmax,0:Pmax)
       Anm1(0,0) = 1
       Anm2(0,0) = 1
-      do m=0, Pmax
+      do m=0,Pmax
          if (m.gt.0) Anm1(m,m) = sqrt((2 * m - 1.0d0) / (2 * m))
          if (m.lt.Pmax) Anm1(m+1,m) = sqrt(2 * m + 1.0d0)
-         do n=m+2, Pmax
+         do n = m+2, Pmax
             Anm1(n,m) = (2*n-1)
             Anm2(n,m) = sqrt((n + m - 1.0d0) * (n - m - 1.0d0))
             Anm1(n,m) = Anm1(n,m) / sqrt(dble(n - m) * (n + m))
@@ -50,16 +50,16 @@ c     Ynm(x) = sqrt(2n+1)  sqrt( (n-m)!/ (n+m)! ) Pnm(x)
       real *8 Anm1(0:Pmax,0:Pmax), Anm2(0:Pmax,0:Pmax)
       y = -sqrt((1 - x) * (1 + x))
       Ynm(0,0) = 1
-      do m=0, nterms
+      do m=0,nterms
          if (m.gt.0) Ynm(m,m) = Ynm(m-1,m-1) * y * Anm1(m,m)
          if (m.lt.nterms) Ynm(m+1,m) = x * Ynm(m,m) * Anm1(m+1,m)
-         do n=m+2, nterms
+         do n=m+2,nterms
             Ynm(n,m) = Anm1(n,m) * x * Ynm(n-1,m)
      $           - Anm2(n,m) * Ynm(n-2,m)
          enddo
       enddo
-      do n=0, nterms
-         do m=0, n
+      do n=0,nterms
+         do m=0,n
             Ynm(n,m) = Ynm(n,m) * sqrt(2*n+1.0d0)
          enddo
       enddo
@@ -79,27 +79,27 @@ c     d Ynm(x) / dx = sqrt(2n+1)  sqrt( (n-m)!/ (n+m)! ) d Pnm(x) / dx
       Ynmd(0,0) = 0
       Ynm(1,0) = x * Ynm(0,0) * Anm1(1,0)
       Ynmd(1,0) = (x * Ynmd(0,0) + Ynm(0,0)) * Anm1(1,0)
-      do n=2, nterms
+      do n=2,nterms
          Ynm(n,0) = Anm1(n,0) * x * Ynm(n-1,0) - Anm2(n,0) * Ynm(n-2,0)
          Ynmd(n,0) = Anm1(n,0) * (x * Ynmd(n-1,0)
      $        + Ynm(n-1,0)) - Anm2(n,0) * Ynmd(n-2,0)
       enddo
-      do m=1, nterms
+      do m=1,nterms
          if (m.eq.1) Ynm(m,m) = -Ynm(m-1,m-1) * Anm1(m,m)
          if (m.gt.1) Ynm(m,m) = Ynm(m-1,m-1) * y * Anm1(m,m)
          if (m.gt.0) Ynmd(m,m) = -Ynm(m,m) * m * x
          if (m.lt.nterms) Ynm(m+1,m) = x * Ynm(m,m) * Anm1(m+1,m)
          if (m.lt.nterms) Ynmd(m+1,m) = (x * Ynmd(m,m)
      $        + y2 * Ynm(m,m)) * Anm1(m+1,m)
-         do n=m+2, nterms
+         do n=m+2,nterms
             Ynm(n,m) = Anm1(n,m) * x * Ynm(n-1,m)
      $           - Anm2(n,m) * Ynm(n-2,m)
             Ynmd(n,m) = Anm1(n,m) * (x * Ynmd(n-1,m) + y2 * Ynm(n-1,m))
      $           - Anm2(n,m) * Ynmd(n-2,m)
          enddo
       enddo
-      do n=0, nterms
-         do m=0, n
+      do n=0,nterms
+         do m=0,n
             Ynm(n,m) = Ynm(n,m) * sqrt(2*n+1.0d0)
             Ynmd(n,m) = Ynmd(n,m) * sqrt(2*n+1.0d0)
          enddo
@@ -139,7 +139,7 @@ c---------------------------------------------------------------------
       integer ntermsi,ntermsj
       integer ij,im,imp,m,mp
       real *8 theta
-      real *8 ww,done,ctheta,stheta,hsthta,cthtap,cthtan,d
+      real *8 ww,ctheta,stheta,hsthta,cthtap,cthtan,d
       real *8 precis,scale
       real *8 rd1(0:ntermsj,-ntermsj:ntermsj)
       real *8 rd2(0:ntermsj,-ntermsj:ntermsj)
@@ -148,15 +148,14 @@ c---------------------------------------------------------------------
       complex *16 Mrot(0:ntermsi,-ntermsi:ntermsi)
       data precis/1.0d-20/
       ww=1/sqrt(2.0d0)
-      do m = 0, 2*ntermsj
+      do m = 0,2*ntermsj
          sqc(m,1) = dsqrt(m+0.0d0)
       enddo
       sqc(0,2) = 0.0d0
       if( ntermsj .gt. 0 ) sqc(1,2) = 0.0d0
-      do m = 2, 2*ntermsj
+      do m=2,2*ntermsj
          sqc(m,2) = dsqrt((m+0.0d0)*(m-1)/2.0d0)
       enddo
-      done=1
       ctheta=dcos(theta)
       if (dabs(ctheta).le.precis) ctheta=0.0d0
       stheta=dsin(-theta)
@@ -165,8 +164,8 @@ c---------------------------------------------------------------------
       cthtap=+2.0d0*ww*dcos(theta/2.0d0)**2
       cthtan=-2.0d0*ww*dsin(theta/2.0d0)**2
 c     Compute the (0,0,0) term.
-      rd1(0,0)=done
-      Mrot(0,0)=Mnm(0,0)*rd1(0,0)
+      rd1(0,0) = 1.0d0
+      Mrot(0,0) = Mnm(0,0) * rd1(0,0)
 c     Loop over first index ij=1,ntermsj, constructing
 c     rotation matrices recursively.
       do ij=1,ntermsj
@@ -247,15 +246,15 @@ c**********************************************************************
 c**********************************************************************
 c     This subroutine computes scaled versions of the spherical Hankel
 c     functions h_n of orders 0 to nterms.
-c               hvec(n)= h_n(z)*scale^(n)
+c     hvec(n)= h_n(z)*scale^(n)
 c     The parameter SCALE is useful when |z| < 1, in which case
 c     it damps out the rapid growth of h_n as n increases. In such
 c     cases, we recommend setting
-c               scale = |z|
+c     scale = |z|
 c     or something close. If |z| > 1, set scale = 1.
 c     If the flag IFDER is set to one, it also computes the
 c     derivatives of h_n.
-c               hder(n)= h_n'(z)*scale^(n)
+c     hder(n)= h_n'(z)*scale^(n)
 c     NOTE: If |z| < 1.0d-15, the subroutine returns zero.
 c-----------------------------------------------------------------------
 c     INPUT:
@@ -273,7 +272,7 @@ c-----------------------------------------------------------------------
       implicit real *8 (a-h,o-z)
       complex *16 hvec(0:nterms),hder(0:nterms)
       complex *16 eye,cd,wavek2,z,zinv,ztmp,fhextra
-      data eye/(0.0d0,1.0d0)/,thresh/1.0d-15/,done/1.0d0/
+      data eye/(0.0d0,1.0d0)/,thresh/1.0d-15/
 c     If |z| < thresh, return zeros.
       if (abs(z).lt.thresh) then
          do i=0,nterms
@@ -285,12 +284,12 @@ c     If |z| < thresh, return zeros.
 c     Otherwise, get h_0 and h_1 analytically and the rest via recursion.
       cd = eye * z
       hvec(0) = exp(cd) / cd
-      hvec(1) = hvec(0) * (done / z - eye) * scale
+      hvec(1) = hvec(0) * (1.0d0 / z - eye) * scale
 c     hvec(n+1)=scale*(2n+1)/z * hvec(n) -(scale**2) hvec(n-1)
       scal2=scale*scale
       zinv=scale/z
       do i=1,nterms-1
-         dtmp=(2*i+done)
+         dtmp=(2*i+1.0d0)
          ztmp=zinv*dtmp
          hvec(i+1)=ztmp*hvec(i)-scal2*hvec(i-1)
       enddo
@@ -299,7 +298,7 @@ c     hder(n)=scale* hvec(n-1) - (n+1)/z * hvec(n)
          hder(0)=-hvec(1)/scale
          zinv=1.0d0/z
          do i=1,nterms
-            dtmp=(i+done)
+            dtmp=(i+1.0d0)
             ztmp=zinv*dtmp
             hder(i)=scale*hvec(i-1)-ztmp*hvec(i)
          enddo
@@ -311,15 +310,14 @@ c**********************************************************************
       subroutine bessel(nterms,z,scale,fjs,ifder,fjder,nbessel)
       implicit none
       integer nterms,ifder,nbessel,ntop,i,ncntr
-      real *8 scale,d0,d1,dc1,dc2,dcoef,dd,done,tiny,zero
+      real *8 scale,d0,d1,dc1,dc2,dcoef,dd
       real *8 scalinv,sctot,upbound,upbound2,upbound2inv
 c**********************************************************************
-c       This subroutine evaluates the first NTERMS spherical Bessel
-c       functions and if required, their derivatives.
-c       It incorporates a scaling parameter SCALE so that
-c
-c               fjs_n(z)=j_n(z)/SCALE^n
-c               fjder_n(z)=\frac{\partial fjs_n(z)}{\partial z}
+c     This subroutine evaluates the first NTERMS spherical Bessel
+c     functions and if required, their derivatives.
+c     It incorporates a scaling parameter SCALE so that
+c     fjs_n(z)=j_n(z)/SCALE^n
+c     fjder_n(z)=\frac{\partial fjs_n(z)}{\partial z}
 c---------------------------------------------------------------------
 c     INPUT:
 c     nterms  : order of expansion of output array fjs
@@ -342,28 +340,27 @@ c---------------------------------------------------------------------
       complex *16 wavek,fjs(0:nbessel),fjder(0:*)
       complex *16 z,zinv,com,fj0,fj1,zscale,ztmp
       data upbound/1.0d+32/, upbound2/1.0d+40/, upbound2inv/1.0d-40/
-      data tiny/1.0d-200/,done/1.0d0/,zero/0.0d0/
 c       set to asymptotic values if argument is sufficiently small
-      if (abs(z).lt.tiny) then
-         fjs(0) = done
+      if (abs(z).lt.1.0d-20) then
+         fjs(0) = 1.0d0
          do i = 1, nterms
-            fjs(i) = zero
+            fjs(i) = 0.0d0
 	 enddo
 	 if (ifder.eq.1) then
 	    do i=0,nterms
-	       fjder(i)=zero
+	       fjder(i) = 0.0d0
 	    enddo
-	    fjder(1)=done/(3*scale)
+	    fjder(1)=1.0d0 / (3*scale)
 	 endif
          return
       endif
 c ... Step 1: recursion up to find ntop, starting from nterms
       ntop=0
-      zinv=done/z
-      fjs(nterms)=done
-      fjs(nterms-1)=zero
+      zinv=1.0d0 / z
+      fjs(nterms) = 1.0d0
+      fjs(nterms-1) = 0.0d0
       do i=nterms,nbessel
-         dcoef=2*i+done
+         dcoef = 2 * i + 1.0d0
          ztmp=dcoef*zinv*fjs(i)-fjs(i-1)
          fjs(i+1)=ztmp
          dd = dreal(ztmp)**2 + dimag(ztmp)**2
@@ -383,10 +380,10 @@ c	      in array iscale.
       do i=0,ntop
          iscale(i)=0
       enddo
-      fjs(ntop)=zero
-      fjs(ntop-1)=done
+      fjs(ntop) = 0.0d0
+      fjs(ntop-1) = 1.0d0
       do i=ntop-1,1,-1
-	 dcoef=2*i+done
+	 dcoef = 2 * i + 1.0d0
          ztmp=dcoef*zinv*fjs(i)-fjs(i+1)
          fjs(i-1)=ztmp
          dd = dreal(ztmp)**2 + dimag(ztmp)**2
@@ -401,8 +398,8 @@ c              Bessel functions are scaled by the same factor
 c              (i.e. the net total of times rescaling was invoked
 c              on the way down in the previous loop).
 c              At the same time, add scaling to fjs array.
-      ncntr=0
-      scalinv=done/scale
+      ncntr = 0
+      scalinv = 1.0d0 / scale
       sctot = 1.0d0
       do i=1,ntop
          sctot = sctot*scalinv
@@ -429,8 +426,8 @@ c ... Finally, calculate the derivatives if desired:
          fjs(nterms+1)=fjs(nterms+1)*ztmp
          fjder(0)=-fjs(1)*scale
          do i=1,nterms
-            dc1=i/(2*i+done)
-            dc2=done-dc1
+            dc1 = i / (2 * i + 1.0d0)
+            dc2 = 1.0d0 - dc1
             dc1=dc1*scalinv
             dc2=dc2*scale
             fjder(i)=dc1*fjs(i-1)-dc2*fjs(i+1)
@@ -456,9 +453,7 @@ c---------------------------------------------------------------------
       implicit real *8 (a-h,o-z)
       dimension ts(1),whts(1),ws2(1000),rats(1000)
       data eps/1.0d-14/
-      ZERO=0
-      DONE=1
-      pi=datan(done)*4
+      pi=datan(1.0d0)*4
       h=pi/(2*n)
       do i=1,n
          t=(2*i-1)*h
@@ -499,12 +494,12 @@ c     construct the weights via the orthogonality relation
       sum=sum+pk**2 * 1.5
       pk=1
       pkp1=x
-      if(n .lt. 2) then
+      if(n.lt.2) then
       sum=0
       pol=1
       der=0
       sum=sum+pol**2 /2
-      if(n .eq. 0) return
+      if(n.eq.0) return
       pol=x
       der=1
       sum=sum+pol**2*1.5
@@ -537,9 +532,9 @@ c     calculate the derivative
                dx=ii
                dy=jj
                dz=kk
-               if( dx .gt. 0 ) dx=dx-.5
-               if( dy .gt. 0 ) dy=dy-.5
-               if( dz .gt. 0 ) dz=dz-.5
+               if(dx.gt.0) dx=dx-.5
+               if(dy.gt.0) dy=dy-.5
+               if(dz.gt.0) dz=dz-.5
                rr=sqrt(dx*dx+dy*dy+dz*dz)
                call getNumTerms(1, rr, size, wavek, eps, nterms, ier)
                nterms_table(ii,jj,kk)=nterms
@@ -557,20 +552,20 @@ c     build the rank table for all boxes in list 2
       do k=-3,3
          do i=-3,3
             do j=-3,3
-               if( abs(i) .gt. 1 ) then
+               if(abs(i).gt.1) then
                   itable(i,j,k)=nterms_table(abs(i),abs(j),abs(k))
-                         else if( abs(j) .gt. 1) then
+               else if(abs(j).gt.1) then
                   itable(i,j,k)=nterms_table(abs(j),abs(i),abs(k))
-                         endif
-               if( abs(i) .le. 1 .and. abs(j) .le. 1) then
-                  if( abs(k) .gt. 1 ) then
-                     if( abs(i) .ge. abs(j) ) then
+               endif
+               if(abs(i).le.1.and.abs(j).le.1) then
+                  if(abs(k).gt.1) then
+                     if(abs(i).ge.abs(j)) then
                         itable(i,j,k)=nterms_table(abs(k),abs(i),abs(j))
                      else
                         itable(i,j,k)=nterms_table(abs(k),abs(j),abs(i))
                      endif
                   endif
-                         endif
+               endif
             enddo
          enddo
       enddo
@@ -592,33 +587,33 @@ c     approximately the same for all small frequencies
       ntmax = 1000
       ifder = 0
       rscale = 1.0d0
-      if (cdabs(wavek*size) .lt. 1.0d0) rscale = cdabs(wavek*size)
+      if(cdabs(wavek*size).lt.1.0d0) rscale = cdabs(wavek*size)
       call hankel(ntmax,z1,rscale,hfun,ifder,fhder)
       z2 = (wavek*size) * dsqrt(3d0)/2.d0
 c     corners included
-      if( itype .eq. 1 ) z2 = (wavek*size) * dsqrt(3d0)/2.d0
+      if(itype.eq.1) z2 = (wavek*size) * dsqrt(3d0)/2.d0
 c     edges included, no corners
-      if( itype .eq. 2 ) z2 = (wavek*size) * dsqrt(2d0)/2.d0
+      if(itype.eq.2) z2 = (wavek*size) * dsqrt(2d0)/2.d0
 c     center only
-      if( itype .eq. 3 ) z2 = (wavek*size) * 1.0d0/2.d0
+      if(itype.eq.3) z2 = (wavek*size) * 1.0d0/2.d0
 c     center only, small interior sphere
-      if( itype .eq. 4 ) z2 = (wavek*size) * 0.8d0/2.d0
+      if(itype.eq.4) z2 = (wavek*size) * 0.8d0/2.d0
       call bessel(ntmax,z2,rscale,jfun,ifder,fjder,2000)
       xtemp1 = cdabs(jfun(0)*hfun(0))
       xtemp2 = cdabs(jfun(1)*hfun(1))
       xtemp0 = xtemp1+xtemp2
       nterms = 1
-      do j = 2, ntmax
+      do j=2,ntmax
          xtemp1 = cdabs(jfun(j)*hfun(j))
          xtemp2 = cdabs(jfun(j-1)*hfun(j-1))
          xtemp = xtemp1+xtemp2
-         if(xtemp .lt. eps*xtemp0)then
+         if(xtemp.lt.eps*xtemp0)then
             nterms = j + 1
             return
          endif
       enddo
 c     ... computational box is too big, set nterms to 1000
       ier = 13
-      nterms=1000
+      nterms = 1000
       return
       end
