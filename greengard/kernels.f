@@ -94,7 +94,7 @@ c-----------------------------------------------------------------------
          enddo
          call get_Ynm(ntrunc,ctheta,Ynm,Anm1,Anm2,Pmax)
          z=wavek*r
-         call bessel(ntrunc,z,scale,jn,0,jnd,nbessel)
+         call get_jn(ntrunc,z,scale,jn,0,jnd,nbessel)
          do n = 0,ntrunc
             jn(n)=jn(n)*qj(i)
          enddo
@@ -381,7 +381,7 @@ c---------------------------------------------------------------------
          enddo
       enddo
       z = wavek*radius
-      call bessel(ntrunc,z,scalei,jn,1,jnd,nbessel)
+      call get_jn(ntrunc,z,scalei,jn,1,jnd,nbessel)
       do n=0,ntrunc
          do m=-n,n
             zh=jn(n)
@@ -496,7 +496,7 @@ c***********************************************************************
          thetan=(cthetaj*stheta-sthetaj*ctheta)/rj
          z=wavek*rj
          call get_Ynmd(ntermsj,cthetaj,ynm,ynmd,Anm1,Anm2,Pmax)
-         call bessel(ntermsj,z,scalej,jn,1,jnd,nbessel)
+         call get_jn(ntermsj,z,scalej,jn,1,jnd,nbessel)
          do n=0,ntermsj
             jnd(n)=jnd(n)*wavek
          enddo
@@ -545,7 +545,7 @@ c***********************************************************************
          enddo
       enddo
       z = wavek*radius
-      call bessel(ntermsi,z,scalei,jn,1,jnd,nbessel)
+      call get_jn(ntermsi,z,scalei,jn,1,jnd,nbessel)
       do n=0,ntermsi
          do m=-n,n
             zh=jn(n)
@@ -633,7 +633,7 @@ c---------------------------------------------------------------------
          phiz = 0.0d0
          call get_Ynmd(ntrunc,ctheta,Ynm,Ynmd,Anm1,Anm2,Pmax)
          z=wavek*r
-         call bessel(ntrunc,z,scalej,jn,1,jnd,nbessel)
+         call get_jn(ntrunc,z,scalej,jn,1,jnd,nbessel)
          pi(i)=pi(i)+Lj(0,0)*jn(0)
          do j=0,ntrunc
             jnd(j)=jnd(j)*wavek

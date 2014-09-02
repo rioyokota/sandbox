@@ -264,13 +264,15 @@ c     hn(n) = h_n(z)*scale^(n)
       return
       end
 
-      subroutine get_hnd(nterms,z,scale,hn,hnd)
+      subroutine get_hnd(nterms, z, scale, hn, hnd)
 c     hn(n) = h_n(z)*scale^(n)
 c     hnd(n) = \frac{\partial hn(z)}{\partial z}
-      implicit real *8 (a-h,o-z)
+      implicit none
+      integer nterms, i
+      real *8 eps, scale, scale2
       complex *16 hn(0:nterms),hnd(0:nterms)
-      complex *16 eye,wavek2,z,zi,zinv,ztmp,fhextra
-      data eye/(0.0d0,1.0d0)/,eps/1.0d-15/
+      complex *16 eye, z, zi, zinv, ztmp
+      data eye/(0.0d0,1.0d0)/, eps/1.0d-15/
       if (abs(z).lt.eps) then
          do i=0,nterms
             hn(i)=0
@@ -279,26 +281,20 @@ c     hnd(n) = \frac{\partial hn(z)}{\partial z}
          return
       endif
       zi = eye * z
+      zinv = 1.0 / z
       hn(0) = exp(zi) / zi
-      hn(1) = hn(0) * (1.0d0 / z - eye) * scale
-      scal2=scale*scale
-      zinv=scale/z
-      do i=1,nterms-1
-         dtmp=(2*i+1.0d0)
-         ztmp=zinv*dtmp
-         hn(i+1)=ztmp*hn(i)-scal2*hn(i-1)
-      enddo
-      hnd(0)=-hn(1)/scale
-      zinv=1.0d0/z
-      do i=1,nterms
-         dtmp=(i+1.0d0)
-         ztmp=zinv*dtmp
-         hnd(i)=scale*hn(i-1)-ztmp*hn(i)
+      hn(1) = hn(0) * (zinv - eye) * scale
+      hnd(0) = -hn(1) / scale
+      hnd(1) = -zinv * 2 * hn(1) + scale * hn(0)
+      do i=2,nterms
+         hn(i) = (zinv * (2 * i - 1.0d0) * hn(i-1) - scale * hn(i-2))
+     $        * scale
+         hnd(i) = -zinv * (i + 1.0d0) * hn(i) + scale * hn(i-1)
       enddo
       return
       end
 
-      subroutine bessel(nterms,z,scale,fjs,ifder,fjder,nbessel)
+      subroutine get_jn(nterms,z,scale,jn,ifder,jnd,nbessel)
 c     fjs_n(z)=j_n(z)/scale^n
 c     fjder_n(z)=\frac{\partial fjs_n(z)}{\partial z}
       implicit none
@@ -306,33 +302,33 @@ c     fjder_n(z)=\frac{\partial fjs_n(z)}{\partial z}
       real *8 scale,d0,d1,dc1,dc2,dcoef,dd
       real *8 scalinv,sctot,eps,upbound,upbound2,upbound2inv
       integer iscale(0:nbessel)
-      complex *16 wavek,fjs(0:nbessel),fjder(0:*)
+      complex *16 wavek,jn(0:nbessel),jnd(0:*)
       complex *16 z,zinv,com,fj0,fj1,zscale,ztmp
       data eps/1.0d-15/,upbound/1.0d+32/,upbound2/1.0d+40/
       data upbound2inv/1.0d-40/
 c       set to asymptotic values if argument is sufficiently small
       if (abs(z).lt.eps) then
-         fjs(0) = 1.0d0
+         jn(0) = 1.0d0
          do i = 1, nterms
-            fjs(i) = 0.0d0
+            jn(i) = 0.0d0
 	 enddo
 	 if (ifder.eq.1) then
 	    do i=0,nterms
-	       fjder(i) = 0.0d0
+	       jnd(i) = 0.0d0
 	    enddo
-	    fjder(1)=1.0d0 / (3*scale)
+	    jnd(1)=1.0d0 / (3*scale)
 	 endif
          return
       endif
 c ... Step 1: recursion up to find ntop, starting from nterms
       ntop=0
       zinv=1.0d0 / z
-      fjs(nterms) = 1.0d0
-      fjs(nterms-1) = 0.0d0
+      jn(nterms) = 1.0d0
+      jn(nterms-1) = 0.0d0
       do i=nterms,nbessel
          dcoef = 2 * i + 1.0d0
-         ztmp=dcoef*zinv*fjs(i)-fjs(i-1)
-         fjs(i+1)=ztmp
+         ztmp=dcoef*zinv*jn(i)-jn(i-1)
+         jn(i+1)=ztmp
          dd = dreal(ztmp)**2 + dimag(ztmp)**2
          if (dd .gt. upbound2) then
             ntop=i+1
@@ -350,16 +346,16 @@ c	      in array iscale.
       do i=0,ntop
          iscale(i)=0
       enddo
-      fjs(ntop) = 0.0d0
-      fjs(ntop-1) = 1.0d0
+      jn(ntop) = 0.0d0
+      jn(ntop-1) = 1.0d0
       do i=ntop-1,1,-1
 	 dcoef = 2 * i + 1.0d0
-         ztmp=dcoef*zinv*fjs(i)-fjs(i+1)
-         fjs(i-1)=ztmp
+         ztmp=dcoef*zinv*jn(i)-jn(i+1)
+         jn(i-1)=ztmp
          dd = dreal(ztmp)**2 + dimag(ztmp)**2
          if (dd.gt.UPBOUND2) then
-            fjs(i) = fjs(i)*UPBOUND2inv
-            fjs(i-1) = fjs(i-1)*UPBOUND2inv
+            jn(i) = jn(i)*UPBOUND2inv
+            jn(i-1) = jn(i-1)*UPBOUND2inv
             iscale(i) = 1
          endif
       enddo
@@ -367,14 +363,14 @@ c ...  Step 3: go back up to the top and make sure that all
 c              Bessel functions are scaled by the same factor
 c              (i.e. the net total of times rescaling was invoked
 c              on the way down in the previous loop).
-c              At the same time, add scaling to fjs array.
+c              At the same time, add scaling to jn array.
       ncntr = 0
       scalinv = 1.0d0 / scale
       sctot = 1.0d0
       do i=1,ntop
          sctot = sctot*scalinv
          if(iscale(i-1).eq.1) sctot=sctot*UPBOUND2inv
-         fjs(i)=fjs(i)*sctot
+         jn(i)=jn(i)*sctot
       enddo
 c ... Determine the normalization parameter:
       fj0=sin(z)*zinv
@@ -382,25 +378,25 @@ c ... Determine the normalization parameter:
       d0=abs(fj0)
       d1=abs(fj1)
       if (d1 .gt. d0) then
-         zscale=fj1/(fjs(1)*scale)
+         zscale=fj1/(jn(1)*scale)
       else
-         zscale=fj0/fjs(0)
+         zscale=fj0/jn(0)
       endif
 c ... Scale the jfuns by zscale:
       ztmp=zscale
       do i=0,nterms
-         fjs(i)=fjs(i)*ztmp
+         jn(i)=jn(i)*ztmp
       enddo
 c ... Finally, calculate the derivatives if desired:
       if (ifder.eq.1) then
-         fjs(nterms+1)=fjs(nterms+1)*ztmp
-         fjder(0)=-fjs(1)*scale
+         jn(nterms+1)=jn(nterms+1)*ztmp
+         jnd(0)=-jn(1)*scale
          do i=1,nterms
             dc1 = i / (2 * i + 1.0d0)
             dc2 = 1.0d0 - dc1
             dc1=dc1*scalinv
             dc2=dc2*scale
-            fjder(i)=dc1*fjs(i-1)-dc2*fjs(i+1)
+            jnd(i)=dc1*jn(i-1)-dc2*jn(i+1)
          enddo
       endif
       return
@@ -491,7 +487,7 @@ c     calculate the derivative
       subroutine getNumTermsList(size, wavek, eps, itable, ier)
       implicit real *8 (a-h,o-z)
       complex *16  wavek, z1, z2, z3, jfun(0:2000), ht0,
-     1     ht1, ht2, fjder(0:1), ztmp,
+     1     ht1, ht2, jnd(0:1), ztmp,
      1     hfun(0:2000), fhder(0:1)
       dimension nterms_table(2:3,0:3,0:3)
       dimension itable(-3:3,-3:3,-3:3)
@@ -546,8 +542,8 @@ c     build the rank table for all boxes in list 2
       implicit real *8 (a-h,o-z)
 c     Maximum number of terms is 1000, which
 c     works for boxes up to 160 wavelengths in size
-      complex *16  wavek, z1, z2, z3, jfun(0:2000), ht0,
-     1     ht1, ht2, fjder(0:1), ztmp,
+      complex *16  wavek, z1, z2, z3, jn(0:2000), ht0,
+     1     ht1, ht2, jnd(0:1), ztmp,
      1     hfun(0:2000)
       ier = 0
       z1 = (wavek*size)*rr
@@ -567,14 +563,14 @@ c     center only
       if(itype.eq.3) z2 = (wavek*size) * 1.0d0/2.d0
 c     center only, small interior sphere
       if(itype.eq.4) z2 = (wavek*size) * 0.8d0/2.d0
-      call bessel(ntmax,z2,rscale,jfun,0,fjder,2000)
-      xtemp1 = cdabs(jfun(0)*hfun(0))
-      xtemp2 = cdabs(jfun(1)*hfun(1))
+      call get_jn(ntmax,z2,rscale,jn,0,jnd,2000)
+      xtemp1 = cdabs(jn(0)*hfun(0))
+      xtemp2 = cdabs(jn(1)*hfun(1))
       xtemp0 = xtemp1+xtemp2
       nterms = 1
       do j=2,ntmax
-         xtemp1 = cdabs(jfun(j)*hfun(j))
-         xtemp2 = cdabs(jfun(j-1)*hfun(j-1))
+         xtemp1 = cdabs(jn(j)*hfun(j))
+         xtemp2 = cdabs(jn(j-1)*hfun(j-1))
          xtemp = xtemp1+xtemp2
          if(xtemp.lt.eps*xtemp0)then
             nterms = j + 1
