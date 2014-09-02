@@ -42,71 +42,6 @@
       return
       end
 
-      subroutine getYnm(nterms, x, Ynm, Anm1, Anm2, Pmax)
-c     Ynm(x) = sqrt(2n+1)  sqrt( (n-m)!/ (n+m)! ) Pnm(x)
-      implicit none
-      integer nterms, Pmax, m, n
-      real *8 x, y, Ynm(0:nterms,0:nterms)
-      real *8 Anm1(0:Pmax,0:Pmax), Anm2(0:Pmax,0:Pmax)
-      y = -sqrt((1 - x) * (1 + x))
-      Ynm(0,0) = 1
-      do m=0,nterms
-         if (m.gt.0) Ynm(m,m) = Ynm(m-1,m-1) * y * Anm1(m,m)
-         if (m.lt.nterms) Ynm(m+1,m) = x * Ynm(m,m) * Anm1(m+1,m)
-         do n=m+2,nterms
-            Ynm(n,m) = Anm1(n,m) * x * Ynm(n-1,m)
-     $           - Anm2(n,m) * Ynm(n-2,m)
-         enddo
-      enddo
-      do n=0,nterms
-         do m=0,n
-            Ynm(n,m) = Ynm(n,m) * sqrt(2*n+1.0d0)
-         enddo
-      enddo
-      return
-      end
-
-      subroutine getYnmd(nterms, x, Ynm, Ynmd, Anm1, Anm2, Pmax)
-c     Ynm(x) = sqrt(2n+1)  sqrt( (n-m)!/ (n+m)! ) Pnm(x)
-c     d Ynm(x) / dx = sqrt(2n+1)  sqrt( (n-m)!/ (n+m)! ) d Pnm(x) / dx
-      implicit none
-      integer nterms, Pmax, m, n
-      real *8 x, y, y2, Ynm(0:nterms,0:nterms), Ynmd(0:nterms,0:nterms)
-      real *8 Anm1(0:Pmax,0:Pmax), Anm2(0:Pmax,0:Pmax)
-      y = -sqrt((1 - x) * (1 + x))
-      y2 = (1 - x) * (1 + x)
-      Ynm(0,0) = 1
-      Ynmd(0,0) = 0
-      Ynm(1,0) = x * Ynm(0,0) * Anm1(1,0)
-      Ynmd(1,0) = (x * Ynmd(0,0) + Ynm(0,0)) * Anm1(1,0)
-      do n=2,nterms
-         Ynm(n,0) = Anm1(n,0) * x * Ynm(n-1,0) - Anm2(n,0) * Ynm(n-2,0)
-         Ynmd(n,0) = Anm1(n,0) * (x * Ynmd(n-1,0)
-     $        + Ynm(n-1,0)) - Anm2(n,0) * Ynmd(n-2,0)
-      enddo
-      do m=1,nterms
-         if (m.eq.1) Ynm(m,m) = -Ynm(m-1,m-1) * Anm1(m,m)
-         if (m.gt.1) Ynm(m,m) = Ynm(m-1,m-1) * y * Anm1(m,m)
-         if (m.gt.0) Ynmd(m,m) = -Ynm(m,m) * m * x
-         if (m.lt.nterms) Ynm(m+1,m) = x * Ynm(m,m) * Anm1(m+1,m)
-         if (m.lt.nterms) Ynmd(m+1,m) = (x * Ynmd(m,m) + y2 * Ynm(m,m))
-     $        * Anm1(m+1,m)
-         do n=m+2,nterms
-            Ynm(n,m) = Anm1(n,m) * x * Ynm(n-1,m)
-     $           - Anm2(n,m) * Ynm(n-2,m)
-            Ynmd(n,m) = Anm1(n,m) * (x * Ynmd(n-1,m) + y2 * Ynm(n-1,m))
-     $           - Anm2(n,m) * Ynmd(n-2,m)
-         enddo
-      enddo
-      do n=0,nterms
-         do m=0,n
-            Ynm(n,m) = Ynm(n,m) * sqrt(2*n+1.0d0)
-            Ynmd(n,m) = Ynmd(n,m) * sqrt(2*n+1.0d0)
-         enddo
-      enddo
-      return
-      end
-
 c*****************************************************************
       subroutine rotate(theta,ntermsj,Mnm,ntermsi,Mrot)
 c*****************************************************************
@@ -239,15 +174,73 @@ c     For 0<mprime<=j (2nd index) case, use formula (2).
       return
       end
 
-c**********************************************************************
-      subroutine hankel(nterms,z,scale,hn,hnd,ifder)
-c**********************************************************************
+      subroutine get_Ynm(nterms, x, Ynm, Anm1, Anm2, Pmax)
+c     Ynm(x) = sqrt(2n+1)  sqrt( (n-m)!/ (n+m)! ) Pnm(x)
+      implicit none
+      integer nterms, Pmax, m, n
+      real *8 x, y, Ynm(0:nterms,0:nterms)
+      real *8 Anm1(0:Pmax,0:Pmax), Anm2(0:Pmax,0:Pmax)
+      y = -sqrt((1 - x) * (1 + x))
+      Ynm(0,0) = 1
+      do m=0,nterms
+         if (m.gt.0) Ynm(m,m) = Ynm(m-1,m-1) * y * Anm1(m,m)
+         if (m.lt.nterms) Ynm(m+1,m) = x * Ynm(m,m) * Anm1(m+1,m)
+         do n=m+2,nterms
+            Ynm(n,m) = Anm1(n,m) * x * Ynm(n-1,m)
+     $           - Anm2(n,m) * Ynm(n-2,m)
+         enddo
+      enddo
+      do n=0,nterms
+         do m=0,n
+            Ynm(n,m) = Ynm(n,m) * sqrt(2*n+1.0d0)
+         enddo
+      enddo
+      return
+      end
+
+      subroutine get_Ynmd(nterms, x, Ynm, Ynmd, Anm1, Anm2, Pmax)
+c     Ynm(x) = sqrt(2n+1)  sqrt( (n-m)!/ (n+m)! ) Pnm(x)
+c     d Ynm(x) / dx = sqrt(2n+1)  sqrt( (n-m)!/ (n+m)! ) d Pnm(x) / dx
+      implicit none
+      integer nterms, Pmax, m, n
+      real *8 x, y, y2, Ynm(0:nterms,0:nterms), Ynmd(0:nterms,0:nterms)
+      real *8 Anm1(0:Pmax,0:Pmax), Anm2(0:Pmax,0:Pmax)
+      y = -sqrt((1 - x) * (1 + x))
+      y2 = (1 - x) * (1 + x)
+      Ynm(0,0) = 1
+      Ynmd(0,0) = 0
+      Ynm(1,0) = x * Ynm(0,0) * Anm1(1,0)
+      Ynmd(1,0) = (x * Ynmd(0,0) + Ynm(0,0)) * Anm1(1,0)
+      do n=2,nterms
+         Ynm(n,0) = Anm1(n,0) * x * Ynm(n-1,0) - Anm2(n,0) * Ynm(n-2,0)
+         Ynmd(n,0) = Anm1(n,0) * (x * Ynmd(n-1,0)
+     $        + Ynm(n-1,0)) - Anm2(n,0) * Ynmd(n-2,0)
+      enddo
+      do m=1,nterms
+         if (m.eq.1) Ynm(m,m) = -Ynm(m-1,m-1) * Anm1(m,m)
+         if (m.gt.1) Ynm(m,m) = Ynm(m-1,m-1) * y * Anm1(m,m)
+         if (m.gt.0) Ynmd(m,m) = -Ynm(m,m) * m * x
+         if (m.lt.nterms) Ynm(m+1,m) = x * Ynm(m,m) * Anm1(m+1,m)
+         if (m.lt.nterms) Ynmd(m+1,m) = (x * Ynmd(m,m) + y2 * Ynm(m,m))
+     $        * Anm1(m+1,m)
+         do n=m+2,nterms
+            Ynm(n,m) = Anm1(n,m) * x * Ynm(n-1,m)
+     $           - Anm2(n,m) * Ynm(n-2,m)
+            Ynmd(n,m) = Anm1(n,m) * (x * Ynmd(n-1,m) + y2 * Ynm(n-1,m))
+     $           - Anm2(n,m) * Ynmd(n-2,m)
+         enddo
+      enddo
+      do n=0,nterms
+         do m=0,n
+            Ynm(n,m) = Ynm(n,m) * sqrt(2*n+1.0d0)
+            Ynmd(n,m) = Ynmd(n,m) * sqrt(2*n+1.0d0)
+         enddo
+      enddo
+      return
+      end
+
+      subroutine get_hn(nterms,z,scale,hn,hnd)
 c     hn(n) = h_n(z)*scale^(n)
-c     hnd(n) = h_n'(z)*scale^(n)
-c     |z| < 1 : scale = |z|
-c     |z| > 1 : scale = 1.
-c     |z| < eps : return zero.
-c-----------------------------------------------------------------------
       implicit real *8 (a-h,o-z)
       complex *16 hn(0:nterms),hnd(0:nterms)
       complex *16 eye,cd,wavek2,z,zinv,ztmp,fhextra
@@ -269,44 +262,46 @@ c-----------------------------------------------------------------------
          ztmp=zinv*dtmp
          hn(i+1)=ztmp*hn(i)-scal2*hn(i-1)
       enddo
-      if (ifder.eq.1) then
-         hnd(0)=-hn(1)/scale
-         zinv=1.0d0/z
-         do i=1,nterms
-            dtmp=(i+1.0d0)
-            ztmp=zinv*dtmp
-            hnd(i)=scale*hn(i-1)-ztmp*hn(i)
-         enddo
-      endif
       return
       end
 
-c**********************************************************************
+      subroutine get_hnd(nterms,z,scale,hn,hnd)
+c     hn(n) = h_n(z)*scale^(n)
+c     hnd(n) = h_n'(z)*scale^(n)
+      implicit real *8 (a-h,o-z)
+      complex *16 hn(0:nterms),hnd(0:nterms)
+      complex *16 eye,cd,wavek2,z,zinv,ztmp,fhextra
+      data eye/(0.0d0,1.0d0)/,eps/1.0d-15/
+      if (abs(z).lt.eps) then
+         do i=0,nterms
+            hn(i)=0
+            hnd(i)=0
+         enddo
+         return
+      endif
+      cd = eye * z
+      hn(0) = exp(cd) / cd
+      hn(1) = hn(0) * (1.0d0 / z - eye) * scale
+      scal2=scale*scale
+      zinv=scale/z
+      do i=1,nterms-1
+         dtmp=(2*i+1.0d0)
+         ztmp=zinv*dtmp
+         hn(i+1)=ztmp*hn(i)-scal2*hn(i-1)
+      enddo
+      hnd(0)=-hn(1)/scale
+      zinv=1.0d0/z
+      do i=1,nterms
+         dtmp=(i+1.0d0)
+         ztmp=zinv*dtmp
+         hnd(i)=scale*hn(i-1)-ztmp*hn(i)
+      enddo
+      return
+      end
+
       subroutine bessel(nterms,z,scale,fjs,ifder,fjder,nbessel)
-c**********************************************************************
-c     This subroutine evaluates the first NTERMS spherical Bessel
-c     functions and if required, their derivatives.
-c     It incorporates a scaling parameter SCALE so that
-c          fjs_n(z)=j_n(z)/SCALE^n
-c          fjder_n(z)=\frac{\partial fjs_n(z)}{\partial z}
-c---------------------------------------------------------------------
-c     INPUT:
-c     nterms  : order of expansion of output array fjs
-c     z       : argument of the spherical Bessel functions
-c     scale   : scaling factor (discussed above)
-c     ifder   : flag indicating whether to calculate "fjder"
-c     nbessel : upper limit of input arrays
-c     fjs(0:nbessel) and iscale(0:nbessel)
-c     iscale  : integer workspace used to keep track of
-c     internal scaling
-c---------------------------------------------------------------------
-c     OUTPUT:
-c     fjs     : array of scaled Bessel functions.
-c     fjder   : array of derivs of scaled Bessel functions.
-c     ntop    : highest index in arrays fjs that is nonzero
-c     NOTE, that fjs and fjder arrays must be at least (nterms+2)
-c     complex *16 elements long.
-c---------------------------------------------------------------------
+c     fjs_n(z)=j_n(z)/SCALE^n
+c     fjder_n(z)=\frac{\partial fjs_n(z)}{\partial z}
       implicit none
       integer nterms,ifder,nbessel,ntop,i,ncntr
       real *8 scale,d0,d1,dc1,dc2,dcoef,dd
@@ -563,7 +558,7 @@ c     approximately the same for all small frequencies
       ntmax = 1000
       rscale = 1.0d0
       if(cdabs(wavek*size).lt.1.0d0) rscale = cdabs(wavek*size)
-      call hankel(ntmax,z1,rscale,hfun,fhder,0)
+      call get_hn(ntmax,z1,rscale,hfun,fhder)
       z2 = (wavek*size) * dsqrt(3d0)/2.d0
 c     corners included
       if(itype.eq.1) z2 = (wavek*size) * dsqrt(3d0)/2.d0

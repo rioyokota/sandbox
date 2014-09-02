@@ -92,7 +92,7 @@ c-----------------------------------------------------------------------
          do n=2,ntrunc
             ephi(n)=ephi(n-1)*ephi(1)
          enddo
-         call getYnm(ntrunc,ctheta,Ynm,Anm1,Anm2,Pmax)
+         call get_Ynm(ntrunc,ctheta,Ynm,Anm1,Anm2,Pmax)
          z=wavek*r
          call bessel(ntrunc,z,scale,jn,0,jnd,nbessel)
          do n = 0,ntrunc
@@ -197,8 +197,8 @@ c---------------------------------------------------------------------
          rj=dsqrt(rj)
          cthetaj=(r+radius*ctheta)/rj
          z=wavek*rj
-         call getYnm(ntermsj,cthetaj,ynm,Anm1,Anm2,Pmax)
-         call hankel(ntermsj,z,scalej,fhs,fhder,0)
+         call get_Ynm(ntermsj,cthetaj,ynm,Anm1,Anm2,Pmax)
+         call get_hn(ntermsj,z,scalej,fhs,fhder)
          do m=-ntermsj,ntermsj
             mabs=abs(m)
             do n=mabs,ntermsj
@@ -213,7 +213,7 @@ c---------------------------------------------------------------------
          enddo
       enddo
       do l=1,nquad
-         call getYnm(ntermsi,xnodes(l),ynm,Anm1,Anm2,Pmax)
+         call get_Ynm(ntermsi,xnodes(l),ynm,Anm1,Anm2,Pmax)
          do m=-ntermsj,ntermsj
             mabs=abs(m)
             z=phitemp(l,m)*wts(l)/2
@@ -223,7 +223,7 @@ c---------------------------------------------------------------------
          enddo
       enddo
       z = wavek*radius
-      call hankel(ntermsi,z,scalei,fhs,fhder,0)
+      call get_hn(ntermsi,z,scalei,fhs,fhder)
       do n=0,ntermsi
          do m=-n,n
             Mnm(n,m)=Mnm(n,m)/fhs(n)
@@ -331,8 +331,8 @@ c---------------------------------------------------------------------
          rn=sthetaj*stheta+cthetaj*ctheta
          thetan=(cthetaj*stheta-ctheta*sthetaj)/rj
          z=wavek*rj
-         call getYnmd(ntrunc,cthetaj,ynm,ynmd,Anm1,Anm2,Pmax)
-         call hankel(ntrunc,z,scalej,fhs,fhder,1)
+         call get_Ynmd(ntrunc,cthetaj,ynm,ynmd,Anm1,Anm2,Pmax)
+         call get_hnd(ntrunc,z,scalej,fhs,fhder)
          do n=0,ntrunc
             fhder(n) = fhder(n)*wavek
          enddo
@@ -367,7 +367,7 @@ c---------------------------------------------------------------------
       enddo
       do l=1,nquad
          cthetaj=xnodes(l)
-         call getYnm(ntrunc,cthetaj,ynm,Anm1,Anm2,Pmax)
+         call get_Ynm(ntrunc,cthetaj,ynm,Anm1,Anm2,Pmax)
          do m=-ntrunc,ntrunc
             mabs=abs(m)
             z=phitemp(l,m)*wts(l)/2.0d0
@@ -495,7 +495,7 @@ c***********************************************************************
          rn=sthetaj*stheta+cthetaj*ctheta
          thetan=(cthetaj*stheta-sthetaj*ctheta)/rj
          z=wavek*rj
-         call getYnmd(ntermsj,cthetaj,ynm,ynmd,Anm1,Anm2,Pmax)
+         call get_Ynmd(ntermsj,cthetaj,ynm,ynmd,Anm1,Anm2,Pmax)
          call bessel(ntermsj,z,scalej,jn,1,jnd,nbessel)
          do n=0,ntermsj
             jnd(n)=jnd(n)*wavek
@@ -531,7 +531,7 @@ c***********************************************************************
       enddo
       do l=1,nquad
          cthetaj=xnodes(l)
-         call getYnm(ntermsi,cthetaj,ynm,Anm1,Anm2,Pmax)
+         call get_Ynm(ntermsi,cthetaj,ynm,Anm1,Anm2,Pmax)
          do m=-ntermsi,ntermsi
             mabs=abs(m)
             z=phitemp(l,m)*wts(l)/2.0d0
@@ -631,7 +631,7 @@ c---------------------------------------------------------------------
          rz = ctheta
          thetaz = -stheta
          phiz = 0.0d0
-         call getYnmd(ntrunc,ctheta,Ynm,Ynmd,Anm1,Anm2,Pmax)
+         call get_Ynmd(ntrunc,ctheta,Ynm,Ynmd,Anm1,Anm2,Pmax)
          z=wavek*r
          call bessel(ntrunc,z,scalej,jn,1,jnd,nbessel)
          pi(i)=pi(i)+Lj(0,0)*jn(0)
