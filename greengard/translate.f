@@ -1,12 +1,12 @@
-      subroutine cart2sph(dX,r,theta,phi)
+      subroutine cart2sph(dX, r, theta, phi)
       implicit none
-      real *8 dX(3),r,theta,phi
-      r = sqrt(dX(1)*dX(1)+dX(2)*dX(2)+dX(3)*dX(3))
-      theta = datan2(sqrt(dX(1)*dX(1)+dX(2)*dX(2)),dX(3))
+      real *8 r, theta, phi, dX(3)
+      r = sqrt(dX(1) * dX(1) + dX(2) * dX(2) + dX(3) * dX(3))
+      theta = datan2(sqrt(dX(1) * dX(1) + dX(2) * dX(2)), dX(3))
       if(abs(dX(1)).eq.0.and.abs(dX(2)).eq.0) then
          phi = 0
       else
-         phi = datan2(dX(2),dX(1))
+         phi = datan2(dX(2), dX(1))
       endif
       return
       end
@@ -17,7 +17,7 @@
       complex *16 C(0:nterms,-nterms:nterms)
       do n=0,nterms
          do m=-n,n
-            C(n,m)=0
+            C(n,m) = 0
          enddo
       enddo
       return
@@ -89,8 +89,8 @@ c     d Ynm(x) / dx = sqrt(2n+1)  sqrt( (n-m)!/ (n+m)! ) d Pnm(x) / dx
          if (m.gt.1) Ynm(m,m) = Ynm(m-1,m-1) * y * Anm1(m,m)
          if (m.gt.0) Ynmd(m,m) = -Ynm(m,m) * m * x
          if (m.lt.nterms) Ynm(m+1,m) = x * Ynm(m,m) * Anm1(m+1,m)
-         if (m.lt.nterms) Ynmd(m+1,m) = (x * Ynmd(m,m)
-     $        + y2 * Ynm(m,m)) * Anm1(m+1,m)
+         if (m.lt.nterms) Ynmd(m+1,m) = (x * Ynmd(m,m) + y2 * Ynm(m,m))
+     $        * Anm1(m+1,m)
          do n=m+2,nterms
             Ynm(n,m) = Anm1(n,m) * x * Ynm(n-1,m)
      $           - Anm2(n,m) * Ynm(n-2,m)
@@ -127,9 +127,9 @@ c---------------------------------------------------------------------
 c     INPUT:
 c     ntermsj : dimension parameter for d - the rotation matrix.
 c     Mnm     : coefficients of original multiple expansion
-c     rd1     : work space
-c     rd2     : work space
-c     sqc:    : square roots of the binomial coefficients.
+c     Rnm1    : rotation matrix 1
+c     Rnm2    : rotation matrix 2
+c     sqrtCnm : square roots of the binomial coefficients.
 c     theta   : the rotate angle about the y-axis.
 c---------------------------------------------------------------------
 c     OUTPUT:
@@ -137,104 +137,102 @@ c     Mrot    : coefficients of rotated expansion.
 c---------------------------------------------------------------------
       implicit none
       integer ntermsi,ntermsj
-      integer ij,im,imp,m,mp
-      real *8 theta
-      real *8 ww,ctheta,stheta,hsthta,cthtap,cthtan,d
-      real *8 precis,scale
-      real *8 rd1(0:ntermsj,-ntermsj:ntermsj)
-      real *8 rd2(0:ntermsj,-ntermsj:ntermsj)
-      real *8 sqc(0:2*ntermsj,2)
+      integer n,m,mp
+      real *8 theta,ctheta,stheta,hsthta,cthtap,cthtan,d
+      real *8 eps,scale
+      real *8 Rnm1(0:ntermsj,-ntermsj:ntermsj)
+      real *8 Rnm2(0:ntermsj,-ntermsj:ntermsj)
+      real *8 sqrtCnm(0:2*ntermsj,2)
       complex *16 Mnm(0:ntermsj,-ntermsj:ntermsj)
       complex *16 Mrot(0:ntermsi,-ntermsi:ntermsi)
-      data precis/1.0d-20/
-      ww=1/sqrt(2.0d0)
-      do m = 0,2*ntermsj
-         sqc(m,1) = dsqrt(m+0.0d0)
+      data eps/1.0d-15/
+      do m=0,2*ntermsj
+         sqrtCnm(m,1) = dsqrt(m+0.0d0)
       enddo
-      sqc(0,2) = 0.0d0
-      if( ntermsj .gt. 0 ) sqc(1,2) = 0.0d0
+      sqrtCnm(0,2) = 0.0d0
+      if(ntermsj.gt.0) sqrtCnm(1,2) = 0.0d0
       do m=2,2*ntermsj
-         sqc(m,2) = dsqrt((m+0.0d0)*(m-1)/2.0d0)
+         sqrtCnm(m,2) = dsqrt((m+0.0d0)*(m-1)/2.0d0)
       enddo
-      ctheta=dcos(theta)
-      if (dabs(ctheta).le.precis) ctheta=0.0d0
-      stheta=dsin(-theta)
-      if (dabs(stheta).le.precis) stheta=0.0d0
-      hsthta=ww*stheta
-      cthtap=+2.0d0*ww*dcos(theta/2.0d0)**2
-      cthtan=-2.0d0*ww*dsin(theta/2.0d0)**2
+      ctheta = dcos(theta)
+      if(dabs(ctheta).le.eps) ctheta = 0.0d0
+      stheta = dsin(-theta)
+      if(dabs(stheta).le.eps) stheta = 0.0d0
+      hsthta = stheta / sqrt(2.0d0)
+      cthtap = sqrt(2.0d0) * dcos(theta / 2.0d0) ** 2
+      cthtan =-sqrt(2.0d0) * dsin(theta / 2.0d0) ** 2
 c     Compute the (0,0,0) term.
-      rd1(0,0) = 1.0d0
-      Mrot(0,0) = Mnm(0,0) * rd1(0,0)
-c     Loop over first index ij=1,ntermsj, constructing
+      Rnm1(0,0) = 1.0d0
+      Mrot(0,0) = Mnm(0,0) * Rnm1(0,0)
+c     Loop over first index n=1,ntermsj, constructing
 c     rotation matrices recursively.
-      do ij=1,ntermsj
+      do n=1,ntermsj
 c     For mprime=0, use formula (1).
-         do im=-ij,-1
-            rd2(0,im)=-sqc(ij-im,2)*rd1(0,im+1)
-            if (im.gt.(1-ij)) then
-               rd2(0,im)=rd2(0,im)+sqc(ij+im,2)*rd1(0,im-1)
+         do m=-n,-1
+            Rnm2(0,m)=-sqrtCnm(n-m,2)*Rnm1(0,m+1)
+            if (m.gt.(1-n)) then
+               Rnm2(0,m)=Rnm2(0,m)+sqrtCnm(n+m,2)*Rnm1(0,m-1)
             endif
-            rd2(0,im)=rd2(0,im)*hsthta
-            if (im.gt.-ij) then
-               rd2(0,im)=rd2(0,im)+
-     1              rd1(0,im)*ctheta*sqc(ij+im,1)*sqc(ij-im,1)
+            Rnm2(0,m)=Rnm2(0,m)*hsthta
+            if (m.gt.-n) then
+               Rnm2(0,m)=Rnm2(0,m)+
+     1              Rnm1(0,m)*ctheta*sqrtCnm(n+m,1)*sqrtCnm(n-m,1)
             endif
-            rd2(0,im)=rd2(0,im)/ij
+            Rnm2(0,m)=Rnm2(0,m)/n
          enddo
-         rd2(0,0)=rd1(0,0)*ctheta
-         if (ij.gt.1) then
-            rd2(0,0)=rd2(0,0)+hsthta*sqc(ij,2)*(2*rd1(0,-1))/ij
+         Rnm2(0,0)=Rnm1(0,0)*ctheta
+         if (n.gt.1) then
+            Rnm2(0,0)=Rnm2(0,0)+hsthta*sqrtCnm(n,2)*(2*Rnm1(0,-1))/n
          endif
-         do im=1,ij
-            rd2(0,im)=rd2(0,-im)
-            if( mod(im,2) .eq. 0 ) then
-               rd2(im,0)=+rd2(0,im)
+         do m=1,n
+            Rnm2(0,m)=Rnm2(0,-m)
+            if(mod(m,2).eq.0) then
+               Rnm2(m,0)=+Rnm2(0,m)
             else
-               rd2(im,0)=-rd2(0,im)
+               Rnm2(m,0)=-Rnm2(0,m)
             endif
          enddo
 c     For 0<mprime<=j (2nd index) case, use formula (2).
-         do imp=1,ij
-            scale=(ww/sqc(ij+imp,2))
-            do im=imp,ij
-               rd2(imp,+im)=rd1(imp-1,+im-1)*(cthtap*sqc(ij+im,2))
-               rd2(imp,-im)=rd1(imp-1,-im+1)*(cthtan*sqc(ij+im,2))
-               if (im.lt.(ij-1)) then
-                  rd2(imp,+im)=rd2(imp,+im)-rd1(imp-1,+im+1)*
-     $                 (cthtan*sqc(ij-im,2))
-                  rd2(imp,-im)=rd2(imp,-im)-rd1(imp-1,-im-1)*
-     $                 (cthtap*sqc(ij-im,2))
+         do mp=1,n
+            scale = 1 / (sqrt(2.0d0) * sqrtCnm(n+mp,2))
+            do m=mp,n
+               Rnm2(mp,+m)=Rnm1(mp-1,+m-1)*(cthtap*sqrtCnm(n+m,2))
+               Rnm2(mp,-m)=Rnm1(mp-1,-m+1)*(cthtan*sqrtCnm(n+m,2))
+               if (m.lt.(n-1)) then
+                  Rnm2(mp,+m)=Rnm2(mp,+m)-Rnm1(mp-1,+m+1)*
+     $                 (cthtan*sqrtCnm(n-m,2))
+                  Rnm2(mp,-m)=Rnm2(mp,-m)-Rnm1(mp-1,-m-1)*
+     $                 (cthtap*sqrtCnm(n-m,2))
                endif
-               if (im.lt.ij) then
-                  d=(stheta*sqc(ij+im,1)*sqc(ij-im,1))
-                  rd2(imp,+im)=rd2(imp,+im)+rd1(imp-1,+im)*d
-                  rd2(imp,-im)=rd2(imp,-im)+rd1(imp-1,-im)*d
+               if (m.lt.n) then
+                  d=(stheta*sqrtCnm(n+m,1)*sqrtCnm(n-m,1))
+                  Rnm2(mp,+m)=Rnm2(mp,+m)+Rnm1(mp-1,+m)*d
+                  Rnm2(mp,-m)=Rnm2(mp,-m)+Rnm1(mp-1,-m)*d
                endif
-               rd2(imp,+im)=rd2(imp,+im)*scale
-               rd2(imp,-im)=rd2(imp,-im)*scale
-               if (im.gt.imp) then
-                  if( mod(imp+im,2) .eq. 0 ) then
-                     rd2(im,+imp)=+rd2(imp,+im)
-                     rd2(im,-imp)=+rd2(imp,-im)
+               Rnm2(mp,+m)=Rnm2(mp,+m)*scale
+               Rnm2(mp,-m)=Rnm2(mp,-m)*scale
+               if (m.gt.mp) then
+                  if(mod(mp+m,2).eq.0) then
+                     Rnm2(m,+mp)=+Rnm2(mp,+m)
+                     Rnm2(m,-mp)=+Rnm2(mp,-m)
                   else
-                     rd2(im,+imp)=-rd2(imp,+im)
-                     rd2(im,-imp)=-rd2(imp,-im)
+                     Rnm2(m,+mp)=-Rnm2(mp,+m)
+                     Rnm2(m,-mp)=-Rnm2(mp,-m)
                   endif
                endif
             enddo
          enddo
-         do m=-ij,ij
-            Mrot(ij,m)=Mnm(ij,0)*rd2(0,m)
-            do mp=1,ij
-               Mrot(ij,m)=Mrot(ij,m)+
-     1              Mnm(ij,mp)*rd2(mp,m)+
-     1              Mnm(ij,-mp)*rd2(mp,-m)
+         do m=-n,n
+            Mrot(n,m)=Mnm(n,0)*Rnm2(0,m)
+            do mp=1,n
+               Mrot(n,m)=Mrot(n,m)+
+     1              Mnm(n,mp)*Rnm2(mp,m)+
+     1              Mnm(n,-mp)*Rnm2(mp,-m)
             enddo
          enddo
-         do m=-ij,ij
-            do mp=0,ij
-               rd1(mp,m) = rd2(mp,m)
+         do m=-n,n
+            do mp=0,n
+               Rnm1(mp,m) = Rnm2(mp,m)
             enddo
          enddo
       enddo
@@ -242,65 +240,42 @@ c     For 0<mprime<=j (2nd index) case, use formula (2).
       end
 
 c**********************************************************************
-      subroutine hankel(nterms,z,scale,hvec,ifder,hder)
+      subroutine hankel(nterms,z,scale,hn,hnd,ifder)
 c**********************************************************************
-c     This subroutine computes scaled versions of the spherical Hankel
-c     functions h_n of orders 0 to nterms.
-c     hvec(n)= h_n(z)*scale^(n)
-c     The parameter SCALE is useful when |z| < 1, in which case
-c     it damps out the rapid growth of h_n as n increases. In such
-c     cases, we recommend setting
-c     scale = |z|
-c     or something close. If |z| > 1, set scale = 1.
-c     If the flag IFDER is set to one, it also computes the
-c     derivatives of h_n.
-c     hder(n)= h_n'(z)*scale^(n)
-c     NOTE: If |z| < 1.0d-15, the subroutine returns zero.
-c-----------------------------------------------------------------------
-c     INPUT:
-c     nterms  : highest order of the Hankel functions to be computed.
-c     z       : argument of the Hankel functions.
-c     scale   : scaling parameter discussed above
-c     ifder   : flag indcating whether derivatives should be computed.
-c               ifder = 1   ==> compute
-c               ifder = 0   ==> do not compute
-c-----------------------------------------------------------------------
-c     OUTPUT:
-c     hvec    : the vector of spherical Hankel functions
-c     hder    : the derivatives of the spherical Hankel functions
+c     hn(n) = h_n(z)*scale^(n)
+c     hnd(n) = h_n'(z)*scale^(n)
+c     |z| < 1 : scale = |z|
+c     |z| > 1 : scale = 1.
+c     |z| < eps : return zero.
 c-----------------------------------------------------------------------
       implicit real *8 (a-h,o-z)
-      complex *16 hvec(0:nterms),hder(0:nterms)
+      complex *16 hn(0:nterms),hnd(0:nterms)
       complex *16 eye,cd,wavek2,z,zinv,ztmp,fhextra
-      data eye/(0.0d0,1.0d0)/,thresh/1.0d-15/
-c     If |z| < thresh, return zeros.
-      if (abs(z).lt.thresh) then
+      data eye/(0.0d0,1.0d0)/,eps/1.0d-15/
+      if (abs(z).lt.eps) then
          do i=0,nterms
-            hvec(i)=0
-            hder(i)=0
+            hn(i)=0
+            hnd(i)=0
          enddo
          return
       endif
-c     Otherwise, get h_0 and h_1 analytically and the rest via recursion.
       cd = eye * z
-      hvec(0) = exp(cd) / cd
-      hvec(1) = hvec(0) * (1.0d0 / z - eye) * scale
-c     hvec(n+1)=scale*(2n+1)/z * hvec(n) -(scale**2) hvec(n-1)
+      hn(0) = exp(cd) / cd
+      hn(1) = hn(0) * (1.0d0 / z - eye) * scale
       scal2=scale*scale
       zinv=scale/z
       do i=1,nterms-1
          dtmp=(2*i+1.0d0)
          ztmp=zinv*dtmp
-         hvec(i+1)=ztmp*hvec(i)-scal2*hvec(i-1)
+         hn(i+1)=ztmp*hn(i)-scal2*hn(i-1)
       enddo
-c     hder(n)=scale* hvec(n-1) - (n+1)/z * hvec(n)
       if (ifder.eq.1) then
-         hder(0)=-hvec(1)/scale
+         hnd(0)=-hn(1)/scale
          zinv=1.0d0/z
          do i=1,nterms
             dtmp=(i+1.0d0)
             ztmp=zinv*dtmp
-            hder(i)=scale*hvec(i-1)-ztmp*hvec(i)
+            hnd(i)=scale*hn(i-1)-ztmp*hn(i)
          enddo
       endif
       return
@@ -308,16 +283,12 @@ c     hder(n)=scale* hvec(n-1) - (n+1)/z * hvec(n)
 
 c**********************************************************************
       subroutine bessel(nterms,z,scale,fjs,ifder,fjder,nbessel)
-      implicit none
-      integer nterms,ifder,nbessel,ntop,i,ncntr
-      real *8 scale,d0,d1,dc1,dc2,dcoef,dd
-      real *8 scalinv,sctot,upbound,upbound2,upbound2inv
 c**********************************************************************
 c     This subroutine evaluates the first NTERMS spherical Bessel
 c     functions and if required, their derivatives.
 c     It incorporates a scaling parameter SCALE so that
-c     fjs_n(z)=j_n(z)/SCALE^n
-c     fjder_n(z)=\frac{\partial fjs_n(z)}{\partial z}
+c          fjs_n(z)=j_n(z)/SCALE^n
+c          fjder_n(z)=\frac{\partial fjs_n(z)}{\partial z}
 c---------------------------------------------------------------------
 c     INPUT:
 c     nterms  : order of expansion of output array fjs
@@ -336,12 +307,17 @@ c     ntop    : highest index in arrays fjs that is nonzero
 c     NOTE, that fjs and fjder arrays must be at least (nterms+2)
 c     complex *16 elements long.
 c---------------------------------------------------------------------
+      implicit none
+      integer nterms,ifder,nbessel,ntop,i,ncntr
+      real *8 scale,d0,d1,dc1,dc2,dcoef,dd
+      real *8 scalinv,sctot,eps,upbound,upbound2,upbound2inv
       integer iscale(0:nbessel)
       complex *16 wavek,fjs(0:nbessel),fjder(0:*)
       complex *16 z,zinv,com,fj0,fj1,zscale,ztmp
-      data upbound/1.0d+32/, upbound2/1.0d+40/, upbound2inv/1.0d-40/
+      data eps/1.0d-15/,upbound/1.0d+32/,upbound2/1.0d+40/
+      data upbound2inv/1.0d-40/
 c       set to asymptotic values if argument is sufficiently small
-      if (abs(z).lt.1.0d-20) then
+      if (abs(z).lt.eps) then
          fjs(0) = 1.0d0
          do i = 1, nterms
             fjs(i) = 0.0d0
@@ -585,10 +561,9 @@ c     the code will run out memory if frequency is too small
 c     set frequency to something more reasonable, nterms is
 c     approximately the same for all small frequencies
       ntmax = 1000
-      ifder = 0
       rscale = 1.0d0
       if(cdabs(wavek*size).lt.1.0d0) rscale = cdabs(wavek*size)
-      call hankel(ntmax,z1,rscale,hfun,ifder,fhder)
+      call hankel(ntmax,z1,rscale,hfun,fhder,0)
       z2 = (wavek*size) * dsqrt(3d0)/2.d0
 c     corners included
       if(itype.eq.1) z2 = (wavek*size) * dsqrt(3d0)/2.d0
@@ -598,7 +573,7 @@ c     center only
       if(itype.eq.3) z2 = (wavek*size) * 1.0d0/2.d0
 c     center only, small interior sphere
       if(itype.eq.4) z2 = (wavek*size) * 0.8d0/2.d0
-      call bessel(ntmax,z2,rscale,jfun,ifder,fjder,2000)
+      call bessel(ntmax,z2,rscale,jfun,0,fjder,2000)
       xtemp1 = cdabs(jfun(0)*hfun(0))
       xtemp2 = cdabs(jfun(1)*hfun(1))
       xtemp0 = xtemp1+xtemp2

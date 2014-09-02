@@ -198,7 +198,7 @@ c---------------------------------------------------------------------
          cthetaj=(r+radius*ctheta)/rj
          z=wavek*rj
          call getYnm(ntermsj,cthetaj,ynm,Anm1,Anm2,Pmax)
-         call hankel(ntermsj,z,scalej,fhs,0,fhder)
+         call hankel(ntermsj,z,scalej,fhs,fhder,0)
          do m=-ntermsj,ntermsj
             mabs=abs(m)
             do n=mabs,ntermsj
@@ -223,7 +223,7 @@ c---------------------------------------------------------------------
          enddo
       enddo
       z = wavek*radius
-      call hankel(ntermsi,z,scalei,fhs,0,fhder)
+      call hankel(ntermsi,z,scalei,fhs,fhder,0)
       do n=0,ntermsi
          do m=-n,n
             Mnm(n,m)=Mnm(n,m)/fhs(n)
@@ -332,7 +332,7 @@ c---------------------------------------------------------------------
          thetan=(cthetaj*stheta-ctheta*sthetaj)/rj
          z=wavek*rj
          call getYnmd(ntrunc,cthetaj,ynm,ynmd,Anm1,Anm2,Pmax)
-         call hankel(ntrunc,z,scalej,fhs,1,fhder)
+         call hankel(ntrunc,z,scalej,fhs,fhder,1)
          do n=0,ntrunc
             fhder(n) = fhder(n)*wavek
          enddo

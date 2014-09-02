@@ -1,4 +1,7 @@
 - Match variable names between kernel.f and translate.f
+- Rename to get_Ynm, get_jn, get_hn
+- get_Ynm add ifder flag
+- get_Ynm remove if statements
 - Remove redundant storage of M/L expansion coefs
 - Remove memory pool variables
 Change function/variable names to be more descriptive
