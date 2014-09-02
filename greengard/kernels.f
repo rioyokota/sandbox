@@ -198,7 +198,7 @@ c---------------------------------------------------------------------
          cthetaj=(r+radius*ctheta)/rj
          z=wavek*rj
          call get_Ynm(ntermsj,cthetaj,ynm,Anm1,Anm2,Pmax)
-         call get_hn(ntermsj,z,scalej,fhs,fhder)
+         call get_hn(ntermsj,z,scalej,fhs)
          do m=-ntermsj,ntermsj
             mabs=abs(m)
             do n=mabs,ntermsj
@@ -223,7 +223,7 @@ c---------------------------------------------------------------------
          enddo
       enddo
       z = wavek*radius
-      call get_hn(ntermsi,z,scalei,fhs,fhder)
+      call get_hn(ntermsi,z,scalei,fhs)
       do n=0,ntermsi
          do m=-n,n
             Mnm(n,m)=Mnm(n,m)/fhs(n)

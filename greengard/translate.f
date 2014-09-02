@@ -239,38 +239,37 @@ c     d Ynm(x) / dx = sqrt(2n+1)  sqrt( (n-m)!/ (n+m)! ) d Pnm(x) / dx
       return
       end
 
-      subroutine get_hn(nterms,z,scale,hn,hnd)
+      subroutine get_hn(nterms, z, scale, hn)
 c     hn(n) = h_n(z)*scale^(n)
-      implicit real *8 (a-h,o-z)
-      complex *16 hn(0:nterms),hnd(0:nterms)
-      complex *16 eye,cd,wavek2,z,zinv,ztmp,fhextra
-      data eye/(0.0d0,1.0d0)/,eps/1.0d-15/
+      implicit none
+      integer nterms, i
+      real *8 eps, scale, scale2
+      complex *16 hn(0:nterms)
+      complex *16 eye, z, zi, zinv
+      data eye/(0.0d0,1.0d0)/, eps/1.0d-15/
       if (abs(z).lt.eps) then
          do i=0,nterms
-            hn(i)=0
-            hnd(i)=0
+            hn(i) = 0
          enddo
          return
       endif
-      cd = eye * z
-      hn(0) = exp(cd) / cd
-      hn(1) = hn(0) * (1.0d0 / z - eye) * scale
-      scal2=scale*scale
-      zinv=scale/z
-      do i=1,nterms-1
-         dtmp=(2*i+1.0d0)
-         ztmp=zinv*dtmp
-         hn(i+1)=ztmp*hn(i)-scal2*hn(i-1)
+      zi = eye * z
+      zinv = scale / z
+      hn(0) = exp(zi) / zi
+      hn(1) = hn(0) * (zinv - eye * scale)
+      scale2 = scale * scale
+      do i=2,nterms
+         hn(i) = zinv * (2 * i - 1.0d0) * hn(i-1) - scale2 * hn(i-2)
       enddo
       return
       end
 
       subroutine get_hnd(nterms,z,scale,hn,hnd)
 c     hn(n) = h_n(z)*scale^(n)
-c     hnd(n) = h_n'(z)*scale^(n)
+c     hnd(n) = \frac{\partial hn(z)}{\partial z}
       implicit real *8 (a-h,o-z)
       complex *16 hn(0:nterms),hnd(0:nterms)
-      complex *16 eye,cd,wavek2,z,zinv,ztmp,fhextra
+      complex *16 eye,wavek2,z,zi,zinv,ztmp,fhextra
       data eye/(0.0d0,1.0d0)/,eps/1.0d-15/
       if (abs(z).lt.eps) then
          do i=0,nterms
@@ -279,8 +278,8 @@ c     hnd(n) = h_n'(z)*scale^(n)
          enddo
          return
       endif
-      cd = eye * z
-      hn(0) = exp(cd) / cd
+      zi = eye * z
+      hn(0) = exp(zi) / zi
       hn(1) = hn(0) * (1.0d0 / z - eye) * scale
       scal2=scale*scale
       zinv=scale/z
@@ -300,7 +299,7 @@ c     hnd(n) = h_n'(z)*scale^(n)
       end
 
       subroutine bessel(nterms,z,scale,fjs,ifder,fjder,nbessel)
-c     fjs_n(z)=j_n(z)/SCALE^n
+c     fjs_n(z)=j_n(z)/scale^n
 c     fjder_n(z)=\frac{\partial fjs_n(z)}{\partial z}
       implicit none
       integer nterms,ifder,nbessel,ntop,i,ncntr
@@ -549,7 +548,7 @@ c     Maximum number of terms is 1000, which
 c     works for boxes up to 160 wavelengths in size
       complex *16  wavek, z1, z2, z3, jfun(0:2000), ht0,
      1     ht1, ht2, fjder(0:1), ztmp,
-     1     hfun(0:2000), fhder(0:1)
+     1     hfun(0:2000)
       ier = 0
       z1 = (wavek*size)*rr
 c     the code will run out memory if frequency is too small
@@ -558,7 +557,7 @@ c     approximately the same for all small frequencies
       ntmax = 1000
       rscale = 1.0d0
       if(cdabs(wavek*size).lt.1.0d0) rscale = cdabs(wavek*size)
-      call get_hn(ntmax,z1,rscale,hfun,fhder)
+      call get_hn(ntmax,z1,rscale,hfun)
       z2 = (wavek*size) * dsqrt(3d0)/2.d0
 c     corners included
       if(itype.eq.1) z2 = (wavek*size) * dsqrt(3d0)/2.d0
