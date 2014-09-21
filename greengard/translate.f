@@ -96,13 +96,9 @@ c---------------------------------------------------------------------
       hsthta = stheta / sqrt(2.0d0)
       cthtap = sqrt(2.0d0) * dcos(theta / 2.0d0) ** 2
       cthtan =-sqrt(2.0d0) * dsin(theta / 2.0d0) ** 2
-c     Compute the (0,0,0) term.
       Rnm1(0,0) = 1.0d0
       Mrot(0,0) = Mnm(0,0) * Rnm1(0,0)
-c     Loop over first index n=1,ntermsj, constructing
-c     rotation matrices recursively.
       do n=1,ntermsj
-c     For mprime=0, use formula (1).
          do m=-n,-1
             Rnm2(0,m)=-sqrtCnm(n-m,2)*Rnm1(0,m+1)
             if (m.gt.(1-n)) then
@@ -127,7 +123,6 @@ c     For mprime=0, use formula (1).
                Rnm2(m,0)=-Rnm2(0,m)
             endif
          enddo
-c     For 0<mprime<=j (2nd index) case, use formula (2).
          do mp=1,n
             scale = 1 / (sqrt(2.0d0) * sqrtCnm(n+mp,2))
             do m=mp,n
@@ -295,42 +290,41 @@ c     hnd(n) = \frac{\partial hn(z)}{\partial z}
       end
 
       subroutine get_jn(nterms,z,scale,jn,ifder,jnd,nbessel)
-c     fjs_n(z)=j_n(z)/scale^n
-c     fjder_n(z)=\frac{\partial fjs_n(z)}{\partial z}
+c     jn(z)=j_n(z)/scale^n
+c     jnd(z)=\frac{\partial jn(z)}{\partial z}
       implicit none
       integer nterms,ifder,nbessel,ntop,i,ncntr
-      real *8 scale,d0,d1,dc1,dc2,dcoef,dd
-      real *8 scalinv,sctot,eps,upbound,upbound2,upbound2inv
+      real *8 scale,dc1,dc2,dcoef,dd
+      real *8 scalinv,sctot,eps
       integer iscale(0:nbessel)
-      complex *16 wavek,jn(0:nbessel),jnd(0:*)
+      complex *16 wavek,jn(0:nbessel),jnd(0:nbessel)
       complex *16 z,zinv,com,fj0,fj1,zscale,ztmp
-      data eps/1.0d-15/,upbound/1.0d+32/,upbound2/1.0d+40/
-      data upbound2inv/1.0d-40/
-c       set to asymptotic values if argument is sufficiently small
+      data eps/1.0d-15/
+c     set to asymptotic values if argument is sufficiently small
       if (abs(z).lt.eps) then
          jn(0) = 1.0d0
-         do i = 1, nterms
+         do i=1,nterms
             jn(i) = 0.0d0
 	 enddo
 	 if (ifder.eq.1) then
 	    do i=0,nterms
 	       jnd(i) = 0.0d0
 	    enddo
-	    jnd(1)=1.0d0 / (3*scale)
+	    jnd(1) = 1.0d0 / (3 * scale)
 	 endif
          return
       endif
 c ... Step 1: recursion up to find ntop, starting from nterms
-      ntop=0
-      zinv=1.0d0 / z
+      ntop = 0
+      zinv = 1.0d0 / z
       jn(nterms) = 1.0d0
       jn(nterms-1) = 0.0d0
       do i=nterms,nbessel
          dcoef = 2 * i + 1.0d0
-         ztmp=dcoef*zinv*jn(i)-jn(i-1)
-         jn(i+1)=ztmp
+         ztmp = dcoef * zinv * jn(i) - jn(i-1)
+         jn(i+1) = ztmp
          dd = dreal(ztmp)**2 + dimag(ztmp)**2
-         if (dd .gt. upbound2) then
+         if (dd .gt. 1/eps) then
             ntop=i+1
             exit
          endif
@@ -340,7 +334,7 @@ c ... Step 1: recursion up to find ntop, starting from nterms
          stop
       endif
 c ... Step 2: Recursion back down to generate the unscaled jfuns:
-c             if magnitude exceeds UPBOUND2, rescale and continue the
+c             if magnitude exceeds 1/eps, rescale and continue the
 c	      recursion (saving the order at which rescaling occurred
 c	      in array iscale.
       do i=0,ntop
@@ -353,9 +347,9 @@ c	      in array iscale.
          ztmp=dcoef*zinv*jn(i)-jn(i+1)
          jn(i-1)=ztmp
          dd = dreal(ztmp)**2 + dimag(ztmp)**2
-         if (dd.gt.UPBOUND2) then
-            jn(i) = jn(i)*UPBOUND2inv
-            jn(i-1) = jn(i-1)*UPBOUND2inv
+         if (dd.gt.1/eps) then
+            jn(i) = jn(i)*eps
+            jn(i-1) = jn(i-1)*eps
             iscale(i) = 1
          endif
       enddo
@@ -369,15 +363,13 @@ c              At the same time, add scaling to jn array.
       sctot = 1.0d0
       do i=1,ntop
          sctot = sctot*scalinv
-         if(iscale(i-1).eq.1) sctot=sctot*UPBOUND2inv
+         if(iscale(i-1).eq.1) sctot=sctot*eps
          jn(i)=jn(i)*sctot
       enddo
 c ... Determine the normalization parameter:
       fj0=sin(z)*zinv
       fj1=fj0*zinv-cos(z)*zinv
-      d0=abs(fj0)
-      d1=abs(fj1)
-      if (d1 .gt. d0) then
+      if (abs(fj1) .gt. abs(fj0)) then
          zscale=fj1/(jn(1)*scale)
       else
          zscale=fj0/jn(0)
@@ -540,16 +532,16 @@ c     build the rank table for all boxes in list 2
 
       subroutine getNumTerms(itype, rr, size, wavek, eps, nterms, ier)
       implicit real *8 (a-h,o-z)
-c     Maximum number of terms is 1000, which
-c     works for boxes up to 160 wavelengths in size
       complex *16  wavek, z1, z2, z3, jn(0:2000), ht0,
-     1     ht1, ht2, jnd(0:1), ztmp,
-     1     hfun(0:2000)
+     $     ht1, ht2, jnd(0:1), ztmp,
+     $     hfun(0:2000)
       ier = 0
       z1 = (wavek*size)*rr
-c     the code will run out memory if frequency is too small
+c     The code will run out memory if frequency is too small
 c     set frequency to something more reasonable, nterms is
 c     approximately the same for all small frequencies
+c     Maximum number of terms is 1000, which
+c     works for boxes up to 160 wavelengths in size
       ntmax = 1000
       rscale = 1.0d0
       if(cdabs(wavek*size).lt.1.0d0) rscale = cdabs(wavek*size)
