@@ -294,11 +294,11 @@ c     jn(z)=j_n(z)/scale^n
 c     jnd(z)=\frac{\partial jn(z)}{\partial z}
       implicit none
       integer nterms,ifder,nbessel,ntop,i,ncntr
-      real *8 scale,dc1,dc2,dcoef,dd
+      real *8 scale,coef,dd
       real *8 scalinv,sctot,eps
       integer iscale(0:nbessel)
       complex *16 wavek,jn(0:nbessel),jnd(0:nbessel)
-      complex *16 z,zinv,com,fj0,fj1,zscale,ztmp
+      complex *16 z,zinv,fj0,fj1,zscale,ztmp
       data eps/1.0d-15/
 c     set to asymptotic values if argument is sufficiently small
       if (abs(z).lt.eps) then
@@ -320,8 +320,8 @@ c ... Step 1: recursion up to find ntop, starting from nterms
       jn(nterms) = 1.0d0
       jn(nterms-1) = 0.0d0
       do i=nterms,nbessel
-         dcoef = 2 * i + 1.0d0
-         ztmp = dcoef * zinv * jn(i) - jn(i-1)
+         coef = 2 * i + 1.0d0
+         ztmp = coef * zinv * jn(i) - jn(i-1)
          jn(i+1) = ztmp
          dd = dreal(ztmp)**2 + dimag(ztmp)**2
          if (dd .gt. 1/eps) then
@@ -343,8 +343,8 @@ c	      in array iscale.
       jn(ntop) = 0.0d0
       jn(ntop-1) = 1.0d0
       do i=ntop-1,1,-1
-	 dcoef = 2 * i + 1.0d0
-         ztmp=dcoef*zinv*jn(i)-jn(i+1)
+	 coef = 2 * i + 1.0d0
+         ztmp=coef*zinv*jn(i)-jn(i+1)
          jn(i-1)=ztmp
          dd = dreal(ztmp)**2 + dimag(ztmp)**2
          if (dd.gt.1/eps) then
@@ -384,11 +384,8 @@ c ... Finally, calculate the derivatives if desired:
          jn(nterms+1)=jn(nterms+1)*ztmp
          jnd(0)=-jn(1)*scale
          do i=1,nterms
-            dc1 = i / (2 * i + 1.0d0)
-            dc2 = 1.0d0 - dc1
-            dc1=dc1*scalinv
-            dc2=dc2*scale
-            jnd(i)=dc1*jn(i-1)-dc2*jn(i+1)
+            coef = i/(2*i+1.0d0)
+            jnd(i)=coef*scalinv*jn(i-1)-(1-coef)*scale*jn(i+1)
          enddo
       endif
       return
