@@ -355,39 +355,35 @@ c     jnd(z)=\frac{\partial jn(z)}{\partial z}
       return
       end
 
-      subroutine legendre(n,ts,whts,ifwhts)
+      subroutine legendre(nquad,xquad,wquad)
       implicit none
-      integer n, i, k, ifout, ifwhts
-      real *8 pi, h, t, xk, delta, deltold, pol, der, sum, eps
-      real *8 ts(n), whts(n), ws2(1000), rats(1000)
+      integer nquad, i, k, ifout
+      real *8 pi, h, xk, delta, pol, der, sum, eps
+      real *8 xquad(10000), wquad(10000)
       data eps/1.0d-15/
       pi=datan(1.0d0)*4
-      h=pi/(2*n)
-      do i=1,n
-         t=(2*i-1)*h
-         ts(n-i+1)=dcos(t)
+      h=pi/(2*nquad)
+      do i=1,nquad
+         xquad(nquad-i+1)=dcos((2*i-1)*h)
       enddo
-      ts(n/2+1)=0
-      do i=1,n/2
-         xk=ts(i)
+      xquad(nquad/2+1)=0
+      do i=1,nquad/2
+         xk=xquad(i)
          ifout=0
-         deltold=1
          do k=1,10
-            call polynomial(xk,n,pol,der,sum)
+            call polynomial(xk,nquad,pol,der,sum)
             delta=-pol/der
             xk=xk+delta
-            if(abs(delta) .lt. eps) ifout=ifout+1
-            if(ifout .eq. 3) cycle
+            if(abs(delta).lt.eps) ifout=ifout+1
+            if(ifout.eq.3) cycle
          enddo
-         ts(i)=xk
-         ts(n-i+1)=-xk
+         xquad(i)=xk
+         xquad(nquad-i+1)=-xk
       enddo
-c     construct the weights via the orthogonality relation
-      if(ifwhts .eq. 0) return
-      do i=1,(n+1)/2
-         call polynomial(ts(i),n,pol,der,sum)
-         whts(i)=1/sum
-         whts(n-i+1)=whts(i)
+      do i=1,(nquad+1)/2
+         call polynomial(xquad(i),nquad,pol,der,sum)
+         wquad(i)=1/sum
+         wquad(nquad-i+1)=wquad(i)
       enddo
       return
       end
@@ -397,8 +393,8 @@ c     construct the weights via the orthogonality relation
       sum=0
       pkm1=1
       pk=x
-      sum=sum+pkm1**2 /2
-      sum=sum+pk**2 * 1.5
+      sum=sum+pkm1**2/2
+      sum=sum+pk**2*1.5
       pk=1
       pkp1=x
       if(n.lt.2) then
@@ -412,14 +408,12 @@ c     construct the weights via the orthogonality relation
       sum=sum+pol**2*1.5
       return
       endif
-c     n is greater than 1. conduct recursion
       do k=1,n-1
          pkm1=pk
          pk=pkp1
-         pkp1=( (2*k+1)*x*pk-k*pkm1 )/(k+1)
+         pkp1=((2*k+1)*x*pk-k*pkm1)/(k+1)
          sum=sum+pkp1**2*(k+1.5)
       enddo
-c     calculate the derivative
       pol=pkp1
       der=n*(x*pkp1-pk)/(x**2-1)
       return
