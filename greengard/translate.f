@@ -42,20 +42,7 @@
       return
       end
 
-c*****************************************************************
       subroutine rotate(theta,ntermsj,Mnm,ntermsi,Mrot)
-c*****************************************************************
-c     INPUT:
-c     ntermsj : dimension parameter for d - the rotation matrix.
-c     Mnm     : coefficients of original multiple expansion
-c     Rnm1    : rotation matrix 1
-c     Rnm2    : rotation matrix 2
-c     sqrtCnm : square roots of the binomial coefficients.
-c     theta   : the rotate angle about the y-axis.
-c---------------------------------------------------------------------
-c     OUTPUT:
-c     Mrot    : coefficients of rotated expansion.
-c---------------------------------------------------------------------
       implicit none
       integer ntermsi,ntermsj,n,m,mp
       real *8 theta,ctheta,stheta,hsthta,cthtap,cthtan,d
@@ -92,7 +79,7 @@ c---------------------------------------------------------------------
             Rnm2(0,m)=Rnm2(0,m)*hsthta
             if (m.gt.-n) then
                Rnm2(0,m)=Rnm2(0,m)+
-     1              Rnm1(0,m)*ctheta*sqrtCnm(n+m,1)*sqrtCnm(n-m,1)
+     $              Rnm1(0,m)*ctheta*sqrtCnm(n+m,1)*sqrtCnm(n-m,1)
             endif
             Rnm2(0,m)=Rnm2(0,m)/n
          enddo
@@ -141,8 +128,7 @@ c---------------------------------------------------------------------
             Mrot(n,m)=Mnm(n,0)*Rnm2(0,m)
             do mp=1,n
                Mrot(n,m)=Mrot(n,m)+
-     1              Mnm(n,mp)*Rnm2(mp,m)+
-     1              Mnm(n,-mp)*Rnm2(mp,-m)
+     $              Mnm(n,mp)*Rnm2(mp,m)+Mnm(n,-mp)*Rnm2(mp,-m)
             enddo
          enddo
          do m=-n,n
@@ -357,9 +343,9 @@ c     jnd(z)=\frac{\partial jn(z)}{\partial z}
 
       subroutine legendre(nquad,xquad,wquad)
       implicit none
-      integer nquad, i, k, ifout
-      real *8 pi, h, xk, delta, pol, der, sum, eps
-      real *8 xquad(10000), wquad(10000)
+      integer nquad,i,k,ifout
+      real *8 pi,h,xk,delta,pol,der,sum,eps
+      real *8 xquad(10000),wquad(10000)
       data eps/1.0d-15/
       pi=datan(1.0d0)*4
       h=pi/(2*nquad)
@@ -389,23 +375,18 @@ c     jnd(z)=\frac{\partial jn(z)}{\partial z}
       end
 
       subroutine polynomial(x,n,pol,der,sum)
-      implicit real *8 (a-h,o-z)
-      sum=0
-      pkm1=1
-      pk=x
-      sum=sum+pkm1**2/2
-      sum=sum+pk**2*1.5
+      implicit none
+      integer n,k
+      real *8 x,pol,der,sum,pk,pkp1,pkm1
+      sum=0.5+x**2*1.5
       pk=1
       pkp1=x
       if(n.lt.2) then
-      sum=0
-      pol=1
       der=0
-      sum=sum+pol**2 /2
+      sum=0.5
       if(n.eq.0) return
-      pol=x
       der=1
-      sum=sum+pol**2*1.5
+      sum=sum+x**2*1.5
       return
       endif
       do k=1,n-1
@@ -419,30 +400,28 @@ c     jnd(z)=\frac{\partial jn(z)}{\partial z}
       return
       end
 
-      subroutine getNumTermsList(size, wavek, eps, itable, ier)
-      implicit real *8 (a-h,o-z)
-      complex *16  wavek, z1, z2, z3, jfun(0:2000), ht0,
-     1     ht1, ht2, jnd(0:1), ztmp,
-     1     hfun(0:2000), fhder(0:1)
-      dimension nterms_table(2:3,0:3,0:3)
-      dimension itable(-3:3,-3:3,-3:3)
+      subroutine getNumTermsList(size,wavek,eps,itable,ier)
+      implicit none
+      integer ier,i,j,k,nterms
+      integer nterms_table(2:3,0:3,0:3),itable(-3:3,-3:3,-3:3)
+      real *8 size,eps,dx,dy,dz,rr
+      complex *16 wavek
       ier = 0
-      do ii=2,3
-         do jj=0,3
-            do kk=0,3
-               dx=ii
-               dy=jj
-               dz=kk
+      do i=2,3
+         do j=0,3
+            do k=0,3
+               dx=i
+               dy=j
+               dz=k
                if(dx.gt.0) dx=dx-.5
                if(dy.gt.0) dy=dy-.5
                if(dz.gt.0) dz=dz-.5
                rr=sqrt(dx*dx+dy*dy+dz*dz)
                call getNumTerms(1, rr, size, wavek, eps, nterms, ier)
-               nterms_table(ii,jj,kk)=nterms
+               nterms_table(i,j,k)=nterms
             enddo
          enddo
       enddo
-c     build the rank table for all boxes in list 2
       do i=-3,3
          do j=-3,3
             do k=-3,3
@@ -476,7 +455,7 @@ c     build the rank table for all boxes in list 2
       subroutine getNumTerms(itype, rr, size, wavek, eps, nterms, ier)
       implicit real *8 (a-h,o-z)
       complex *16  wavek, z1, z2, z3, jn(0:2000), ht0,
-     $     ht1, ht2, jnd(0:1), ztmp,
+     $     ht1, ht2, jnd(0:1),
      $     hfun(0:2000)
       ier = 0
       z1 = (wavek*size)*rr
