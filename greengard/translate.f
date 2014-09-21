@@ -1,6 +1,6 @@
       subroutine cart2sph(dX, r, theta, phi)
       implicit none
-      real *8 r, theta, phi, dX(3)
+      real *8 r,theta,phi,dX(3)
       r = sqrt(dX(1) * dX(1) + dX(2) * dX(2) + dX(3) * dX(3))
       theta = datan2(sqrt(dX(1) * dX(1) + dX(2) * dX(2)), dX(3))
       if(abs(dX(1)).eq.0.and.abs(dX(2)).eq.0) then
@@ -13,7 +13,7 @@
 
       subroutine initCoefs(C, nterms)
       implicit none
-      integer nterms, m, n
+      integer nterms,m,n
       complex *16 C(0:nterms,-nterms:nterms)
       do n=0,nterms
          do m=-n,n
@@ -25,8 +25,8 @@
 
       subroutine getAnm(Pmax, Anm1, Anm2)
       implicit none
-      integer Pmax, m, n
-      real *8 Anm1(0:Pmax,0:Pmax), Anm2(0:Pmax,0:Pmax)
+      integer Pmax,m,n
+      real *8 Anm1(0:Pmax,0:Pmax),Anm2(0:Pmax,0:Pmax)
       Anm1(0,0) = 1
       Anm2(0,0) = 1
       do m=0,Pmax
@@ -45,20 +45,6 @@
 c*****************************************************************
       subroutine rotate(theta,ntermsj,Mnm,ntermsi,Mrot)
 c*****************************************************************
-c     Fast, recursive method for applying rotation matrix about
-c     the y-axis determined by angle theta.
-c     The rotation matrices for each order (first index) are computed
-c     from the lowest to the highest. As each one is generated, it
-c     is applied to the input expansion "Mnm" and overwritten.
-c
-c     As a result, it is sufficient to use two arrays rd1 and rd2 for
-c     the two term recurrence, rather than storing them for all orders
-c     as in the original code. There is some loss in speed
-c     if the rotation operator is to be used multiple times, but the
-c     memory savings is often more critical.
-c
-c     Use symmetry properties of rotation matrices
-c---------------------------------------------------------------------
 c     INPUT:
 c     ntermsj : dimension parameter for d - the rotation matrix.
 c     Mnm     : coefficients of original multiple expansion
@@ -71,8 +57,7 @@ c     OUTPUT:
 c     Mrot    : coefficients of rotated expansion.
 c---------------------------------------------------------------------
       implicit none
-      integer ntermsi,ntermsj
-      integer n,m,mp
+      integer ntermsi,ntermsj,n,m,mp
       real *8 theta,ctheta,stheta,hsthta,cthtap,cthtan,d
       real *8 eps,scale
       real *8 Rnm1(0:ntermsj,-ntermsj:ntermsj)
@@ -82,22 +67,22 @@ c---------------------------------------------------------------------
       complex *16 Mrot(0:ntermsi,-ntermsi:ntermsi)
       data eps/1.0d-15/
       do m=0,2*ntermsj
-         sqrtCnm(m,1) = dsqrt(m+0.0d0)
+         sqrtCnm(m,1)=dsqrt(m+0.0d0)
       enddo
-      sqrtCnm(0,2) = 0.0d0
-      if(ntermsj.gt.0) sqrtCnm(1,2) = 0.0d0
+      sqrtCnm(0,2)=0.0d0
+      if(ntermsj.gt.0) sqrtCnm(1,2)=0.0d0
       do m=2,2*ntermsj
-         sqrtCnm(m,2) = dsqrt((m+0.0d0)*(m-1)/2.0d0)
+         sqrtCnm(m,2)=dsqrt((m+0.0d0)*(m-1)/2.0d0)
       enddo
-      ctheta = dcos(theta)
-      if(dabs(ctheta).le.eps) ctheta = 0.0d0
-      stheta = dsin(-theta)
-      if(dabs(stheta).le.eps) stheta = 0.0d0
-      hsthta = stheta / sqrt(2.0d0)
-      cthtap = sqrt(2.0d0) * dcos(theta / 2.0d0) ** 2
-      cthtan =-sqrt(2.0d0) * dsin(theta / 2.0d0) ** 2
-      Rnm1(0,0) = 1.0d0
-      Mrot(0,0) = Mnm(0,0) * Rnm1(0,0)
+      ctheta=dcos(theta)
+      if(dabs(ctheta).le.eps) ctheta=0.0d0
+      stheta=dsin(-theta)
+      if(dabs(stheta).le.eps) stheta=0.0d0
+      hsthta=stheta/sqrt(2.0d0)
+      cthtap= sqrt(2.0d0)*dcos(theta/2.0d0)**2
+      cthtan=-sqrt(2.0d0)*dsin(theta/2.0d0)**2
+      Rnm1(0,0)=1.0d0
+      Mrot(0,0)=Mnm(0,0)*Rnm1(0,0)
       do n=1,ntermsj
          do m=-n,-1
             Rnm2(0,m)=-sqrtCnm(n-m,2)*Rnm1(0,m+1)
@@ -124,7 +109,7 @@ c---------------------------------------------------------------------
             endif
          enddo
          do mp=1,n
-            scale = 1 / (sqrt(2.0d0) * sqrtCnm(n+mp,2))
+            scale=1/(sqrt(2.0d0)*sqrtCnm(n+mp,2))
             do m=mp,n
                Rnm2(mp,+m)=Rnm1(mp-1,+m-1)*(cthtap*sqrtCnm(n+m,2))
                Rnm2(mp,-m)=Rnm1(mp-1,-m+1)*(cthtan*sqrtCnm(n+m,2))
@@ -169,105 +154,105 @@ c---------------------------------------------------------------------
       return
       end
 
-      subroutine get_Ynm(nterms, x, Ynm, Anm1, Anm2, Pmax)
+      subroutine get_Ynm(nterms,x,Ynm,Anm1,Anm2,Pmax)
 c     Ynm(x) = sqrt(2n+1)  sqrt( (n-m)!/ (n+m)! ) Pnm(x)
       implicit none
-      integer nterms, Pmax, m, n
-      real *8 x, y, Ynm(0:nterms,0:nterms)
-      real *8 Anm1(0:Pmax,0:Pmax), Anm2(0:Pmax,0:Pmax)
-      y = -sqrt((1 - x) * (1 + x))
+      integer nterms,Pmax,m,n
+      real *8 x,y,Ynm(0:nterms,0:nterms)
+      real *8 Anm1(0:Pmax,0:Pmax),Anm2(0:Pmax,0:Pmax)
+      y = -sqrt((1-x)*(1+x))
       Ynm(0,0) = 1
       do m=0,nterms
-         if (m.gt.0) Ynm(m,m) = Ynm(m-1,m-1) * y * Anm1(m,m)
-         if (m.lt.nterms) Ynm(m+1,m) = x * Ynm(m,m) * Anm1(m+1,m)
+         if (m.gt.0) Ynm(m,m)=Ynm(m-1,m-1)*y*Anm1(m,m)
+         if (m.lt.nterms) Ynm(m+1,m)=x*Ynm(m,m)*Anm1(m+1,m)
          do n=m+2,nterms
-            Ynm(n,m) = Anm1(n,m) * x * Ynm(n-1,m)
-     $           - Anm2(n,m) * Ynm(n-2,m)
+            Ynm(n,m)=Anm1(n,m)*x*Ynm(n-1,m)
+     $           -Anm2(n,m)*Ynm(n-2,m)
          enddo
       enddo
       do n=0,nterms
          do m=0,n
-            Ynm(n,m) = Ynm(n,m) * sqrt(2*n+1.0d0)
+            Ynm(n,m)=Ynm(n,m)*sqrt(2*n+1.0d0)
          enddo
       enddo
       return
       end
 
-      subroutine get_Ynmd(nterms, x, Ynm, Ynmd, Anm1, Anm2, Pmax)
+      subroutine get_Ynmd(nterms,x,Ynm,Ynmd,Anm1,Anm2,Pmax)
 c     Ynm(x) = sqrt(2n+1)  sqrt( (n-m)!/ (n+m)! ) Pnm(x)
 c     d Ynm(x) / dx = sqrt(2n+1)  sqrt( (n-m)!/ (n+m)! ) d Pnm(x) / dx
       implicit none
-      integer nterms, Pmax, m, n
-      real *8 x, y, y2, Ynm(0:nterms,0:nterms), Ynmd(0:nterms,0:nterms)
-      real *8 Anm1(0:Pmax,0:Pmax), Anm2(0:Pmax,0:Pmax)
-      y = -sqrt((1 - x) * (1 + x))
-      y2 = (1 - x) * (1 + x)
-      Ynm(0,0) = 1
-      Ynmd(0,0) = 0
-      Ynm(1,0) = x * Ynm(0,0) * Anm1(1,0)
-      Ynmd(1,0) = (x * Ynmd(0,0) + Ynm(0,0)) * Anm1(1,0)
+      integer nterms,Pmax,m,n
+      real *8 x,y,y2,Ynm(0:nterms,0:nterms),Ynmd(0:nterms,0:nterms)
+      real *8 Anm1(0:Pmax,0:Pmax),Anm2(0:Pmax,0:Pmax)
+      y=-sqrt((1-x)*(1+x))
+      y2=(1-x)*(1+x)
+      Ynm(0,0)=1
+      Ynmd(0,0)=0
+      Ynm(1,0)=x*Ynm(0,0)*Anm1(1,0)
+      Ynmd(1,0)=(x*Ynmd(0,0)+Ynm(0,0))*Anm1(1,0)
       do n=2,nterms
-         Ynm(n,0) = Anm1(n,0) * x * Ynm(n-1,0) - Anm2(n,0) * Ynm(n-2,0)
-         Ynmd(n,0) = Anm1(n,0) * (x * Ynmd(n-1,0)
-     $        + Ynm(n-1,0)) - Anm2(n,0) * Ynmd(n-2,0)
+         Ynm(n,0)=Anm1(n,0)*x*Ynm(n-1,0)-Anm2(n,0)*Ynm(n-2,0)
+         Ynmd(n,0)=Anm1(n,0)*(x*Ynmd(n-1,0)
+     $        +Ynm(n-1,0))-Anm2(n,0)*Ynmd(n-2,0)
       enddo
       do m=1,nterms
-         if (m.eq.1) Ynm(m,m) = -Ynm(m-1,m-1) * Anm1(m,m)
-         if (m.gt.1) Ynm(m,m) = Ynm(m-1,m-1) * y * Anm1(m,m)
-         if (m.gt.0) Ynmd(m,m) = -Ynm(m,m) * m * x
-         if (m.lt.nterms) Ynm(m+1,m) = x * Ynm(m,m) * Anm1(m+1,m)
-         if (m.lt.nterms) Ynmd(m+1,m) = (x * Ynmd(m,m) + y2 * Ynm(m,m))
-     $        * Anm1(m+1,m)
+         if (m.eq.1) Ynm(m,m)=-Ynm(m-1,m-1)*Anm1(m,m)
+         if (m.gt.1) Ynm(m,m)=Ynm(m-1,m-1)*y*Anm1(m,m)
+         if (m.gt.0) Ynmd(m,m)=-Ynm(m,m)*m*x
+         if (m.lt.nterms) Ynm(m+1,m)=x*Ynm(m,m)*Anm1(m+1,m)
+         if (m.lt.nterms) Ynmd(m+1,m)=(x*Ynmd(m,m)+y2*Ynm(m,m))
+     $        *Anm1(m+1,m)
          do n=m+2,nterms
-            Ynm(n,m) = Anm1(n,m) * x * Ynm(n-1,m)
-     $           - Anm2(n,m) * Ynm(n-2,m)
-            Ynmd(n,m) = Anm1(n,m) * (x * Ynmd(n-1,m) + y2 * Ynm(n-1,m))
-     $           - Anm2(n,m) * Ynmd(n-2,m)
+            Ynm(n,m)=Anm1(n,m)*x*Ynm(n-1,m)
+     $           -Anm2(n,m)*Ynm(n-2,m)
+            Ynmd(n,m)=Anm1(n,m)*(x*Ynmd(n-1,m)+y2*Ynm(n-1,m))
+     $           -Anm2(n,m)*Ynmd(n-2,m)
          enddo
       enddo
       do n=0,nterms
          do m=0,n
-            Ynm(n,m) = Ynm(n,m) * sqrt(2*n+1.0d0)
-            Ynmd(n,m) = Ynmd(n,m) * sqrt(2*n+1.0d0)
+            Ynm(n,m)=Ynm(n,m)*sqrt(2*n+1.0d0)
+            Ynmd(n,m)=Ynmd(n,m)*sqrt(2*n+1.0d0)
          enddo
       enddo
       return
       end
 
-      subroutine get_hn(nterms, z, scale, hn)
+      subroutine get_hn(nterms,z,scale,hn)
 c     hn(n) = h_n(z)*scale^(n)
       implicit none
-      integer nterms, i
-      real *8 eps, scale, scale2
+      integer nterms,i
+      real *8 eps,scale,scale2
       complex *16 hn(0:nterms)
-      complex *16 eye, z, zi, zinv
-      data eye/(0.0d0,1.0d0)/, eps/1.0d-15/
+      complex *16 eye,z,zi,zinv
+      data eye/(0.0d0,1.0d0)/,eps/1.0d-15/
       if (abs(z).lt.eps) then
          do i=0,nterms
-            hn(i) = 0
+            hn(i)=0
          enddo
          return
       endif
-      zi = eye * z
-      zinv = scale / z
-      hn(0) = exp(zi) / zi
-      hn(1) = hn(0) * (zinv - eye * scale)
-      scale2 = scale * scale
+      zi=eye*z
+      zinv=scale/z
+      hn(0)=exp(zi)/zi
+      hn(1)=hn(0)*(zinv-eye*scale)
+      scale2=scale*scale
       do i=2,nterms
-         hn(i) = zinv * (2 * i - 1.0d0) * hn(i-1) - scale2 * hn(i-2)
+         hn(i)=zinv*(2*i-1.0d0)*hn(i-1)-scale2*hn(i-2)
       enddo
       return
       end
 
-      subroutine get_hnd(nterms, z, scale, hn, hnd)
+      subroutine get_hnd(nterms,z,scale,hn,hnd)
 c     hn(n) = h_n(z)*scale^(n)
 c     hnd(n) = \frac{\partial hn(z)}{\partial z}
       implicit none
-      integer nterms, i
-      real *8 eps, scale, scale2
+      integer nterms,i
+      real *8 eps,scale,scale2
       complex *16 hn(0:nterms),hnd(0:nterms)
-      complex *16 eye, z, zi, zinv, ztmp
-      data eye/(0.0d0,1.0d0)/, eps/1.0d-15/
+      complex *16 eye,z,zi,zinv,ztmp
+      data eye/(0.0d0,1.0d0)/,eps/1.0d-15/
       if (abs(z).lt.eps) then
          do i=0,nterms
             hn(i)=0
@@ -275,16 +260,15 @@ c     hnd(n) = \frac{\partial hn(z)}{\partial z}
          enddo
          return
       endif
-      zi = eye * z
-      zinv = 1.0 / z
-      hn(0) = exp(zi) / zi
-      hn(1) = hn(0) * (zinv - eye) * scale
-      hnd(0) = -hn(1) / scale
-      hnd(1) = -zinv * 2 * hn(1) + scale * hn(0)
+      zi=eye*z
+      zinv=1.0/z
+      hn(0)=exp(zi)/zi
+      hn(1)=hn(0)*(zinv-eye)*scale
+      hnd(0)=-hn(1)/scale
+      hnd(1)=-zinv*2*hn(1)+scale*hn(0)
       do i=2,nterms
-         hn(i) = (zinv * (2 * i - 1.0d0) * hn(i-1) - scale * hn(i-2))
-     $        * scale
-         hnd(i) = -zinv * (i + 1.0d0) * hn(i) + scale * hn(i-1)
+         hn(i)=(zinv*(2*i-1.0d0)*hn(i-1)-scale*hn(i-2))*scale
+         hnd(i)=-zinv*(i+1.0d0)*hn(i)+scale*hn(i-1)
       enddo
       return
       end
@@ -293,38 +277,33 @@ c     hnd(n) = \frac{\partial hn(z)}{\partial z}
 c     jn(z)=j_n(z)/scale^n
 c     jnd(z)=\frac{\partial jn(z)}{\partial z}
       implicit none
-      integer nterms,ifder,nbessel,ntop,i,ncntr
-      real *8 scale,coef,dd
-      real *8 scalinv,sctot,eps
-      integer iscale(0:nbessel)
+      integer nterms,ifder,nbessel,ntop,i,iscale(0:nbessel)
+      real *8 scale,scalinv,coef,eps
       complex *16 wavek,jn(0:nbessel),jnd(0:nbessel)
-      complex *16 z,zinv,fj0,fj1,zscale,ztmp
+      complex *16 z,zinv,fj0,fj1,ztmp
       data eps/1.0d-15/
-c     set to asymptotic values if argument is sufficiently small
       if (abs(z).lt.eps) then
-         jn(0) = 1.0d0
+         jn(0)=1.0d0
          do i=1,nterms
-            jn(i) = 0.0d0
+            jn(i)=0.0d0
 	 enddo
 	 if (ifder.eq.1) then
 	    do i=0,nterms
-	       jnd(i) = 0.0d0
+	       jnd(i)=0.0d0
 	    enddo
-	    jnd(1) = 1.0d0 / (3 * scale)
+	    jnd(1)=1.0d0/(3*scale)
 	 endif
          return
       endif
-c ... Step 1: recursion up to find ntop, starting from nterms
-      ntop = 0
-      zinv = 1.0d0 / z
-      jn(nterms) = 1.0d0
-      jn(nterms-1) = 0.0d0
+      ntop=0
+      zinv=1.0d0/z
+      jn(nterms)=1.0d0
+      jn(nterms-1)=0.0d0
       do i=nterms,nbessel
-         coef = 2 * i + 1.0d0
-         ztmp = coef * zinv * jn(i) - jn(i-1)
-         jn(i+1) = ztmp
-         dd = dreal(ztmp)**2 + dimag(ztmp)**2
-         if (dd .gt. 1/eps) then
+         coef=2*i+1.0d0
+         ztmp=coef*zinv*jn(i)-jn(i-1)
+         jn(i+1)=ztmp
+         if (abs(ztmp).gt.1/eps) then
             ntop=i+1
             exit
          endif
@@ -333,88 +312,61 @@ c ... Step 1: recursion up to find ntop, starting from nterms
          print*,"Error: insufficient array dimension nbessel"
          stop
       endif
-c ... Step 2: Recursion back down to generate the unscaled jfuns:
-c             if magnitude exceeds 1/eps, rescale and continue the
-c	      recursion (saving the order at which rescaling occurred
-c	      in array iscale.
       do i=0,ntop
          iscale(i)=0
       enddo
-      jn(ntop) = 0.0d0
-      jn(ntop-1) = 1.0d0
+      jn(ntop)=0.0d0
+      jn(ntop-1)=1.0d0
       do i=ntop-1,1,-1
-	 coef = 2 * i + 1.0d0
+	 coef=2*i+1.0d0
          ztmp=coef*zinv*jn(i)-jn(i+1)
          jn(i-1)=ztmp
-         dd = dreal(ztmp)**2 + dimag(ztmp)**2
-         if (dd.gt.1/eps) then
-            jn(i) = jn(i)*eps
-            jn(i-1) = jn(i-1)*eps
-            iscale(i) = 1
+         if (abs(ztmp).gt.1/eps) then
+            jn(i)=jn(i)*eps
+            jn(i-1)=jn(i-1)*eps
+            iscale(i)=1
          endif
       enddo
-c ...  Step 3: go back up to the top and make sure that all
-c              Bessel functions are scaled by the same factor
-c              (i.e. the net total of times rescaling was invoked
-c              on the way down in the previous loop).
-c              At the same time, add scaling to jn array.
-      ncntr = 0
-      scalinv = 1.0d0 / scale
-      sctot = 1.0d0
+      scalinv=1.0d0/scale
+      coef=1.0d0
       do i=1,ntop
-         sctot = sctot*scalinv
-         if(iscale(i-1).eq.1) sctot=sctot*eps
-         jn(i)=jn(i)*sctot
+         coef=coef*scalinv
+         if(iscale(i-1).eq.1) coef=coef*eps
+         jn(i)=jn(i)*coef
       enddo
-c ... Determine the normalization parameter:
       fj0=sin(z)*zinv
       fj1=fj0*zinv-cos(z)*zinv
-      if (abs(fj1) .gt. abs(fj0)) then
-         zscale=fj1/(jn(1)*scale)
+      if (abs(fj1).gt.abs(fj0)) then
+         ztmp=fj1/(jn(1)*scale)
       else
-         zscale=fj0/jn(0)
+         ztmp=fj0/jn(0)
       endif
-c ... Scale the jfuns by zscale:
-      ztmp=zscale
       do i=0,nterms
          jn(i)=jn(i)*ztmp
       enddo
-c ... Finally, calculate the derivatives if desired:
       if (ifder.eq.1) then
          jn(nterms+1)=jn(nterms+1)*ztmp
          jnd(0)=-jn(1)*scale
          do i=1,nterms
-            coef = i/(2*i+1.0d0)
+            coef=i/(2*i+1.0d0)
             jnd(i)=coef*scalinv*jn(i-1)-(1-coef)*scale*jn(i+1)
          enddo
       endif
       return
       end
 
-c**********************************************************************
       subroutine legendre(n,ts,whts,ifwhts)
-c**********************************************************************
-c     This subroutine constructs the nodes and the
-c     weights of the n-point gaussian quadrature on
-c     the interval [-1,1]
-c---------------------------------------------------------------------
-c     INPUT:
-c     n  : the number of nodes in the quadrature
-c---------------------------------------------------------------------
-c     OUTPUT:
-c     ts : the nodes of the n-point gaussian quadrature
-c     w  : the weights of the n-point gaussian quadrature
-c---------------------------------------------------------------------
-      implicit real *8 (a-h,o-z)
-      dimension ts(1),whts(1),ws2(1000),rats(1000)
-      data eps/1.0d-14/
+      implicit none
+      integer n, i, k, ifout, ifwhts
+      real *8 pi, h, t, xk, delta, deltold, pol, der, sum, eps
+      real *8 ts(n), whts(n), ws2(1000), rats(1000)
+      data eps/1.0d-15/
       pi=datan(1.0d0)*4
       h=pi/(2*n)
       do i=1,n
          t=(2*i-1)*h
          ts(n-i+1)=dcos(t)
       enddo
-c     use newton to find all roots of the legendre polynomial
       ts(n/2+1)=0
       do i=1,n/2
          xk=ts(i)

@@ -1,5 +1,4 @@
 - Match variable names between kernel.f and translate.f
-- Make get_jnd
 - Remove redundant storage of M/L expansion coefs
 - Remove memory pool variables
 Change function/variable names to be more descriptive
