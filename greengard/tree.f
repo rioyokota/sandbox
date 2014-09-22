@@ -8,7 +8,7 @@ c        this subroutine constructs the logical structure for the
 c        fully adaptive FMM in three dimensions and stores it in the
 c        array wlists in the form of a link-list. after that, the user 
 c        can obtain the information about various boxes and lists 
-c        in it by calling the entries d3tgetb, d3tgetl, d3tlinfo
+c        in it by calling the entries getCell, getList, d3tlinfo
 c        of this subroutine (see).
 c
 c        this subroutine constructs the tree on sources and targets
@@ -60,10 +60,10 @@ c         the whole simulation
 c  size - the side of the box on the level 0
 c  w - the array containing all tables describing boxes, lists, etc. 
 c         it is a link-list (for the most part), and can only be accessed
-c         via the entries d3tgetb, d3tgetl, d3tlinfo, of this  subroutine 
+c         via the entries getCell, getList, d3tlinfo, of this  subroutine 
 c         (see below). the first lused 777 integer locations of 
 c         this array should not be altered between the call to this
-c         entry and subsequent calls to the entries d3tgetb, d3tgetl,
+c         entry and subsequent calls to the entries getCell, getList,
 c         d3tlinfo, of this  subroutine 
         ier=0
         iiwork=501
@@ -77,7 +77,7 @@ c     initialize the sorting index
         ifempty=0
         minlevel=0
         maxlevel=100
-        call d3tallbem(ier,z,n,ncrit,wlists(iboxes),maxboxes,
+        call growTree(ier,z,n,ncrit,wlists(iboxes),maxboxes,
      1    nboxes,iz,laddr,nlev,center,size,wlists(iiwork),
      $     ifempty,minlevel,maxlevel)
 c     compress the array wlists
@@ -96,10 +96,10 @@ c     construct the centers and the corners for all boxes in the oct-tree
         lcorners=(nboxes*24+2)*2
         iwlists=icorners+lcorners
         lwlists=lwlists-iwlists-6
-        call d3tcentc(center,size,wlists(iboxes),nboxes,
+        call getCenter(center,size,wlists(iboxes),nboxes,
      1      wlists(icenters),wlists(icorners) )
 c     now, construct all lists for all boxes
-        call d3tlsts(ier,wlists(iboxes),nboxes,wlists(icorners),
+        call getLists(ier,wlists(iboxes),nboxes,wlists(icorners),
      1        wlists(iwlists),lwlists,lused)
         lused777=lused+iwlists
 c     store all pointers
@@ -124,7 +124,7 @@ c     store all pointers
         return
         end
 
-        subroutine d3tnkids(box,nkids)
+        subroutine getNumChild(box,nkids)
         implicit real *8 (a-h,o-z)
         integer box(20)
         nkids=0
@@ -134,7 +134,7 @@ c     store all pointers
         return
         end
 
-        subroutine d3tgetb(ier,ibox,box,center,corners,w)
+        subroutine getCell(ier,ibox,box,center,corners,w)
         implicit real *8 (a-h,o-z)
         integer w(*),box(20),nums(*)
         real *8 center(3),corners(3,8)
@@ -207,7 +207,7 @@ c
 c
 c
 c
-         entry d3tgetl(ier,ibox,itype,list,nlist,w)
+         entry getList(ier,ibox,itype,list,nlist,w)
 c
 c  ibox - the box number for which the information is desired
 c  itype - the type of the desired list for the box ibox
@@ -249,7 +249,7 @@ c
 c
 c
 c
-        subroutine d3tlsts(ier,boxes,nboxes,corners,w,lw,lused)
+        subroutine getLists(ier,boxes,nboxes,corners,w,lw,lused)
         implicit real *8 (a-h,o-z)
         integer boxes(20,*),collkids(50000),w(*),
      1      dadcolls(2000),list5(20000),stack(60000)
@@ -791,7 +791,7 @@ c
 c
 c
 c
-        subroutine d3tallbem(ier,z,n,ncrit,boxes,maxboxes,
+        subroutine growTree(ier,z,n,ncrit,boxes,maxboxes,
      1    nboxes,iz,laddr,nlev,center0,size,iwork,
      1    ifempty,minlevel,maxlevel)
         implicit real *8 (a-h,o-z)
@@ -1045,7 +1045,7 @@ c
 c
 c
 c
-        subroutine d3tcentc(center0,size,boxes,nboxes,
+        subroutine getCenter(center0,size,boxes,nboxes,
      1      centers,corners)
         implicit real *8 (a-h,o-z)
         integer boxes(20,*)
@@ -1504,7 +1504,7 @@ c
 c
 c
 c
-        entry d3tlinkrem(ier,itype,ibox,list,nlist,w,lused)
+c        entry d3tlinkrem(ier,itype,ibox,list,nlist,w,lused)
 c
 c       this entry deletes elements in array lists corresponding 
 c       the user-specified list  list. actually, it does not 
@@ -1535,11 +1535,11 @@ c          w both before and after this call.
 c
 c       mark for destruction the user-specified elements 
 c
-        call d3tlinkrem0(ier,itype,ibox,list,nlist,w(w(iilistad)),
-     1      w(inboxes),w(w(iilists)),w(inums(itype)) )
+c        call d3tlinkrem0(ier,itype,ibox,list,nlist,w(w(iilistad)),
+c     1      w(inboxes),w(w(iilists)),w(inums(itype)) )
 c
-        lused=w(iilists)+w(inumele)*2+10
-        return
+c        lused=w(iilists)+w(inumele)*2+10
+c        return
 c
 c
 c
@@ -1729,151 +1729,4 @@ c
  2800 continue
  3000 continue
         return
-c
-c
-c
-c
-        entry d3tlinkrem0(ier,itype,ibox,list,nlist,listaddr,
-     1      nboxes,lists,numtype)
-c
-c       this entry deletes elements in array lists corresponding 
-c       the user-specified list  list. actually, it does not 
-c       delete anything, but rather marks these elements for
-c       future destruction by making them negative.
-c
-c                      input parameters:
-c
-c  itype - the type of the elements to be destroyed
-c  ibox - the box to which these elements correspond
-c  list - the list of positive integer elements to be destroyed
-c  nlist - the number of elements in the array list
-c  listaddr - the addressing array for the main storage array lists;
-c             it is assumed that it has been formatted by a call 
-c             to the entry d3tlinkini0 of this subroutine (see below).
-c  nboxes - the total number of boxes indexing the elements 
-c           in array lists
-c  lists - the main storage area used by this subroutine
-c
-c                      output parameters:
-c
-c  ier - error return code;
-c          ier=0 means successful execution, nothing to report
-c          ier=4*k means that k of the elements on the user-specified
-c                   list  list were not present
-c          ier=22 means that  no elements whatsoever were present 
-c                   for the type  itype   and the box  ibox
-c  listaddr - the addressing array for the main storage array lists;
-c             it is assumed that it has been formatted by a call 
-c             to the entry d3tlinkini0 of this subroutine (see below).
-c  lists - the main storage area used by this subroutine
-c
-c       . . . mark for destruction the elements of type (itype,ibox)
-c             that are in the list  list.
-c
-        ier=0
-        do 4000 i=1,nlist 
-        ilast=listaddr(ibox,itype)
-        if(ilast. gt. 0) goto 3200
-        ier=22
-        return
- 3200 continue
-c
-        iffound=0
-        do 3600 j=1,1 000 000 000
-c
-        if(ilast .le. 0) goto 3800
-        if(lists(2,ilast) .ne. list(i)) goto 3400
-        lists(2,ilast)=-lists(2,ilast)
-        numtype=numtype-1
-        iffound=1
- 3400 continue
-        ilast=lists(1,ilast)
- 3600 continue
- 3800 continue
-         if(iffound .eq. 0) ier=ier+4
-c
- 4000 continue
-        return
         end
-c
-c
-c
-c
-c
-        subroutine d3tgetbbox(n,z,center,size,corners)
-        implicit real *8 (a-h,o-z)
-        real *8 z(3,*),center(3),corners(3,8)
-c
-c       this subroutine finds the center and 
-c       corners for the top level box in the oct-tree structure
-c
-c
-        xmin=z(1,1)
-        xmax=z(1,1)
-        ymin=z(2,1)
-        ymax=z(2,1)
-        zmin=z(3,1)
-        zmax=z(3,1)
-c
-c        xmin=1.0d50
-c        xmax=-xmin
-c        ymin=1.0d50
-c        ymax=-ymin
-c        zmin=1.0d50
-c        zmax=-zmin
-c
-        do 1100 i=1,n
-        if(z(1,i) .lt. xmin) xmin=z(1,i)
-        if(z(1,i) .gt. xmax) xmax=z(1,i)
-        if(z(2,i) .lt. ymin) ymin=z(2,i)
-        if(z(2,i) .gt. ymax) ymax=z(2,i)
-        if(z(3,i) .lt. zmin) zmin=z(3,i)
-        if(z(3,i) .gt. zmax) zmax=z(3,i)
- 1100 continue
-        size=xmax-xmin
-        sizey=ymax-ymin
-        sizez=zmax-zmin
-        if(sizey .gt. size) size=sizey
-        if(sizez .gt. size) size=sizez
-c
-c
-        center(1)=(xmin+xmax)/2
-        center(2)=(ymin+ymax)/2
-        center(3)=(zmin+zmax)/2
-c
-c
-        corners(1,1)=center(1)-size/2
-        corners(1,2)=corners(1,1)
-        corners(1,3)=corners(1,1)
-        corners(1,4)=corners(1,1)
-c
-        corners(1,5)=corners(1,1)+size
-        corners(1,6)=corners(1,5)
-        corners(1,7)=corners(1,5)
-        corners(1,8)=corners(1,5)
-c
-c
-        corners(2,1)=center(2)-size/2
-        corners(2,2)=corners(2,1)
-        corners(2,5)=corners(2,1)
-        corners(2,6)=corners(2,1)
-c
-        corners(2,3)=corners(2,1)+size
-        corners(2,4)=corners(2,3)
-        corners(2,7)=corners(2,3)
-        corners(2,8)=corners(2,3)
-c
-c
-        corners(3,1)=center(3)-size/2
-        corners(3,3)=corners(3,1)
-        corners(3,5)=corners(3,1)
-        corners(3,7)=corners(3,1)
-c
-        corners(3,2)=corners(3,1)+size
-        corners(3,4)=corners(3,2)
-        corners(3,6)=corners(3,2)
-        corners(3,8)=corners(3,2)
-c
-        return
-        end
-

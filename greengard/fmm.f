@@ -74,7 +74,7 @@ c     create oct-tree data structure
       ifinit=1
       iptr=1
       do ibox=1,nboxes
-         call d3tgetb(ier,ibox,box,center0,corners0,wlists)
+         call getCell(ier,ibox,box,center0,corners0,wlists)
          level=box(1)
          iaddr(ibox)=iptr
          iptr=iptr+(nterms(level)+1)*(2*nterms(level)+1)*2
@@ -151,7 +151,7 @@ c     ... initialize Legendre function evaluation routines
       enddo
 c     ... set all multipole and local expansions to zero
       do ibox = 1,nboxes
-         call d3tgetb(ier,ibox,box,center0,corners0,wlists)
+         call getCell(ier,ibox,box,center0,corners0,wlists)
          call initCoefs(Multipole(iaddr(ibox)),nterms(level))
          call initCoefs(Local(iaddr(ibox)),nterms(level))
       enddo
@@ -160,15 +160,15 @@ c     ... step 1: P2M
 c$    tic=omp_get_wtime()
       do ilev=3,nlev+1
 c$omp parallel do default(shared)
-c$omp$private(ibox,box,center0,corners0,level,npts,nkids,radius)
+c$omp$private(ibox,box,center0,corners0,level,npts,numChild,radius)
 c$omp$private(lused,ier,i,j,ptemp,ftemp,cd)
          do ibox=laddr(1,ilev),laddr(1,ilev)+laddr(2,ilev)-1
-            call d3tgetb(ier,ibox,box,center0,corners0,wlists)
-            call d3tnkids(box,nkids)
+            call getCell(ier,ibox,box,center0,corners0,wlists)
+            call getNumChild(box,numChild)
             level=box(1)
             nbessel = nterms(level)+1000
             if( box(15) .eq. 0 ) cycle
-            if (nkids .eq. 0 ) then
+            if (numChild .eq. 0 ) then
                radius = (corners0(1,1) - center0(1))**2
                radius = radius + (corners0(2,1) - center0(2))**2
                radius = radius + (corners0(3,1) - center0(3))**2
@@ -192,14 +192,15 @@ c$    tic=omp_get_wtime()
          nquad=max(6,nquad)
          call legendre(nquad,xquad,wquad)
 c$omp parallel do default(shared)
-c$omp$private(ibox,box,center0,corners0,level0,level,npts,nkids,radius)
+c$omp$private(ibox,box,center0,corners0,level0)
+c$omp$private(level,npts,numChild,radius)
 c$omp$private(jbox,box1,center1,corners1,level1)
 c$omp$private(lused,ier,i,j,ptemp,ftemp,cd)
          do ibox=laddr(1,ilev),laddr(1,ilev)+laddr(2,ilev)-1
-            call d3tgetb(ier,ibox,box,center0,corners0,wlists)
-            call d3tnkids(box,nkids)
+            call getCell(ier,ibox,box,center0,corners0,wlists)
+            call getNumChild(box,numChild)
             if( box(15) .eq. 0 ) cycle
-            if (nkids .ne. 0) then
+            if (numChild .ne. 0) then
                level0=box(1)
                if( level0 .ge. 2 ) then
                   radius = (corners0(1,1) - center0(1))**2
@@ -209,7 +210,7 @@ c$omp$private(lused,ier,i,j,ptemp,ftemp,cd)
                   do i = 1,8
                      jbox = box(5+i)
                      if (jbox.eq.0) cycle
-                     call d3tgetb(ier,jbox,box1,center1,corners1,wlists)
+                     call getCell(ier,jbox,box1,center1,corners1,wlists)
                      level1=box1(1)
                      call M2M(wavek,scale(level1),center1,
      1                    Multipole(iaddr(jbox)),nterms(level1),
@@ -240,16 +241,16 @@ c$omp$private(lused,ier,i,j,ptemp,ftemp,cd,ilist,itype)
 c$omp$private(nterms_trunc,ii,jj,kk)
 c$omp$schedule(dynamic)
          do 4200 ibox=laddr(1,ilev),laddr(1,ilev)+laddr(2,ilev)-1
-            call d3tgetb(ier,ibox,box,center0,corners0,wlists)
+            call getCell(ier,ibox,box,center0,corners0,wlists)
             level0=box(1)
             if (level0 .ge. 2) then
 c     ... retrieve list #2
                itype=2
-               call d3tgetl(ier,ibox,itype,list,nlist,wlists)
+               call getList(ier,ibox,itype,list,nlist,wlists)
 c     ... for all pairs in list #2, apply the translation operator
                do 4150 ilist=1,nlist
                   jbox=list(ilist)
-                  call d3tgetb(ier,jbox,box1,center1,corners1,wlists)
+                  call getCell(ier,jbox,box1,center1,corners1,wlists)
                   if (box1(15).eq.0) goto 4150
                   if ((box(17).eq.0).and.(ifprune_list2.eq.1))
      $                 goto 4150
@@ -289,20 +290,21 @@ c$    tic=omp_get_wtime()
          nquad=max(6,nquad)
          call legendre(nquad,xquad,wquad)
 c$omp parallel do default(shared)
-c$omp$private(ibox,box,center0,corners0,level0,level,npts,nkids,radius)
+c$omp$private(ibox,box,center0,corners0,level0)
+c$omp$private(level,npts,numChild,radius)
 c$omp$private(jbox,box1,center1,corners1,level1)
 c$omp$private(lused,ier,i,j,ptemp,ftemp,cd)
          do 5200 ibox=laddr(1,ilev),laddr(1,ilev)+laddr(2,ilev)-1
-            call d3tgetb(ier,ibox,box,center0,corners0,wlists)
-            call d3tnkids(box,nkids)
-            if (nkids .ne. 0) then
+            call getCell(ier,ibox,box,center0,corners0,wlists)
+            call getNumChild(box,numChild)
+            if (numChild .ne. 0) then
                level0=box(1)
                if (level0 .ge. 2) then
 c     ... split local expansion of the parent box
                   do 5100 i = 1,8
                      jbox = box(5+i)
                      if (jbox.eq.0) goto 5100
-                     call d3tgetb(ier,jbox,box1,center1,corners1,wlists)
+                     call getCell(ier,jbox,box1,center1,corners1,wlists)
                      radius = (corners1(1,1) - center1(1))**2
                      radius = radius + (corners1(2,1) - center1(2))**2
                      radius = radius + (corners1(3,1) - center1(3))**2
@@ -328,11 +330,11 @@ c$    toc=omp_get_wtime()
 c     ... step 5: L2P
 c$    tic=omp_get_wtime()
 c$omp parallel do default(shared)
-c$omp$private(ibox,box,center0,corners0,level,npts,nkids,ier)
+c$omp$private(ibox,box,center0,corners0,level,npts,numChild,ier)
       do ibox=1,nboxes
-         call d3tgetb(ier,ibox,box,center0,corners0,wlists)
-         call d3tnkids(box,nkids)
-         if (nkids .eq. 0) then
+         call getCell(ier,ibox,box,center0,corners0,wlists)
+         call getNumChild(box,numChild)
+         if (numChild .eq. 0) then
             level=box(1)
             npts=box(15)
             nbessel = nterms(level)+1000
@@ -353,23 +355,23 @@ c$    toc=omp_get_wtime()
 c     ... step 6: P2P
 c$    tic=omp_get_wtime()
 c$omp parallel do default(shared)
-c$omp$private(ibox,box,center0,corners0,nkids,list,nlist,npts)
+c$omp$private(ibox,box,center0,corners0,numChild,list,nlist,npts)
 c$omp$private(jbox,box1,center1,corners1,ier,ilist,itype)
 c$omp$schedule(dynamic)
       do ibox=1,nboxes
-         call d3tgetb(ier,ibox,box,center0,corners0,wlists)
-         call d3tnkids(box,nkids)
-         if (nkids .eq. 0) then
+         call getCell(ier,ibox,box,center0,corners0,wlists)
+         call getNumChild(box,numChild)
+         if (numChild .eq. 0) then
 c     ... evaluate self interactions
             call P2P(box,sourcesort,pot,fld,
      1           box,sourcesort,chargesort,wavek)
 c     ... evaluate interactions with the nearest neighbours
             itype=1
-            call d3tgetl(ier,ibox,itype,list,nlist,wlists)
+            call getList(ier,ibox,itype,list,nlist,wlists)
 c     ... for all pairs in list #1, evaluate the potentials and fields directly
             do ilist=1,nlist
                jbox=list(ilist)
-               call d3tgetb(ier,jbox,box1,center1,corners1,wlists)
+               call getCell(ier,jbox,box1,center1,corners1,wlists)
 c     ... prune all sourceless boxes
                if( box1(15) .eq. 0 ) cycle
                call P2P(box,sourcesort,pot,fld,

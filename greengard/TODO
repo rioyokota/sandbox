@@ -1,5 +1,7 @@
 - Remove memory pool variables
 - Change function/variable names in tree.f
+* kids -> child
+ 
 Use implicit none
 Remove goto
 Remove continue
