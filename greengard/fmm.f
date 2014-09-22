@@ -50,7 +50,7 @@ c     create oct-tree data structure
       ntot = 2*numBodies+10000
       allocate (isource(numBodies))
       allocate (wlists(ntot))
-      call d3tstrcr(ier,Xj,numBodies,ncrit,
+      call buildTree(ier,Xj,numBodies,ncrit,
      1     nboxes,isource,laddr,nlev,center,size,
      1     wlists,ntot,lwlists)
       allocate(iaddr(nboxes))

@@ -1,4 +1,4 @@
-        subroutine d3tstrcr(ier,z,n,ncrit,
+        subroutine buildTree(ier,z,n,ncrit,
      1    nboxes,iz,laddr,nlev,center,size,
      1    wlists,lwlists,lused777)
         implicit real *8 (a-h,o-z)
@@ -145,7 +145,7 @@ c
 c                     input parameters:
 c
 c  ibox - the box number for which the information is desired
-c  w - storage area as created by the entry d3tstrcr (see above)
+c  w - storage area as created by the entry buildTree (see above)
 c
 c                     output parameters:
 c
@@ -211,7 +211,7 @@ c
 c
 c  ibox - the box number for which the information is desired
 c  itype - the type of the desired list for the box ibox
-c  w - storage area as created by the entry d3tstrcr (see above)
+c  w - storage area as created by the entry buildTree (see above)
 c
 c                     output parameters:
 c

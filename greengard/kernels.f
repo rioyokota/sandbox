@@ -78,7 +78,7 @@ c-----------------------------------------------------------------------
       data imag/(0.0d0,1.0d0)/
       do n=0,nterms
          do m=-n,n
-            Mnm(n,m) = 0
+            Mnm(n,m)=0
          enddo
       enddo
       do i=1,nj
@@ -95,7 +95,7 @@ c-----------------------------------------------------------------------
          call get_Ynm(ntrunc,ctheta,Ynm,Anm1,Anm2,Pmax)
          z=wavek*r
          call get_jn(ntrunc,z,scale,jn,0,jnd,nbessel)
-         do n = 0,ntrunc
+         do n=0,ntrunc
             jn(n)=jn(n)*qj(i)
          enddo
          Mnm(0,0)=Mnm(0,0)+jn(0)
@@ -159,7 +159,6 @@ c---------------------------------------------------------------------
       complex *16 Mrot(0:ntermsj,-ntermsj:ntermsj)
       complex *16 phitemp(nquad,-ntermsj:ntermsj)
       complex *16 fhs(0:ntermsj),fhder(0:ntermsj)
-      real *8 rat1(0:ntermsj,0:ntermsj),rat2(0:ntermsj,0:ntermsj)
       complex *16 imag,wavek,z
       complex *16 ephi(-ntermsj-1:ntermsj+1)
       data imag/(0.0d0,1.0d0)/
@@ -167,12 +166,12 @@ c---------------------------------------------------------------------
       dX(2)=Xi(2)-Xj(2)
       dX(3)=Xi(3)-Xj(3)
       call cart2sph(dX,r,theta,phi)
-      ephi(1) = exp(imag*phi)
+      ephi(1)=exp(imag*phi)
       ephi(0)=1.0d0
       ephi(-1)=dconjg(ephi(1))
       do n=1,ntermsj
-         ephi(n+1) = ephi(n)*ephi(1)
-         ephi(-1-n) = dconjg(ephi(n+1))
+         ephi(n+1)=ephi(n)*ephi(1)
+         ephi(-1-n)=dconjg(ephi(n+1))
       enddo
       do n=0,ntermsj
          do m=-n,n
@@ -180,14 +179,9 @@ c---------------------------------------------------------------------
          enddo
       enddo
       call rotate(theta,ntermsj,Mnm,ntermsj,Mrot)
-      do n=0,ntermsi
-         do m=-n,n
-            Mnm(n,m)=0.0d0
-         enddo
-      enddo
       do l=1,nquad
          do m=-ntermsj,ntermsj
-            phitemp(l,m) = 0.0d0
+            phitemp(l,m)=0.0d0
          enddo
       enddo
       do l=1,nquad
@@ -222,7 +216,7 @@ c---------------------------------------------------------------------
             enddo
          enddo
       enddo
-      z = wavek*radius
+      z=wavek*radius
       call get_hn(ntermsi,z,scalei,fhs)
       do n=0,ntermsi
          do m=-n,n
@@ -235,9 +229,9 @@ c---------------------------------------------------------------------
             Mnm(n,m)=ephi(-m)*Mrot(n,m)
          enddo
       enddo
-      do n = 0,min(ntermsj,ntermsi)
+      do n=0,min(ntermsj,ntermsi)
          do m=-n,n
-            Mi(n,m) = Mi(n,m)+Mnm(n,m)
+            Mi(n,m)=Mi(n,m)+Mnm(n,m)
          enddo
       enddo
       return
@@ -278,7 +272,6 @@ c---------------------------------------------------------------------
       real *8 ynm(0:ntrunc,0:ntrunc),ynmd(0:ntrunc,0:ntrunc)
       real *8 Anm1(0:Pmax,0:Pmax)
       real *8 Anm2(0:Pmax,0:Pmax)
-      real *8 rat1(0:ntrunc,0:ntrunc),rat2(0:ntrunc,0:ntrunc)
       complex *16 phitemp(nquad,-ntrunc:ntrunc)
       complex *16 phitempn(nquad,-ntrunc:ntrunc)
       complex *16 fhs(0:ntrunc),fhder(0:ntrunc)
@@ -317,8 +310,8 @@ c---------------------------------------------------------------------
       call rotate(theta,ntrunc,Mnm,ntermsj,Mrot)
       do l=1,nquad
          do m=-ntrunc,ntrunc
-            phitemp(l,m) = 0.0d0
-            phitempn(l,m) = 0.0d0
+            phitemp(l,m)=0.0d0
+            phitempn(l,m)=0.0d0
          enddo
       enddo
       do l=1,nquad
@@ -334,7 +327,7 @@ c---------------------------------------------------------------------
          call get_Ynmd(ntrunc,cthetaj,ynm,ynmd,Anm1,Anm2,Pmax)
          call get_hnd(ntrunc,z,scalej,fhs,fhder)
          do n=0,ntrunc
-            fhder(n) = fhder(n)*wavek
+            fhder(n)=fhder(n)*wavek
          enddo
          do n=1,ntrunc
             do m=1,n
@@ -380,7 +373,7 @@ c---------------------------------------------------------------------
             enddo
          enddo
       enddo
-      z = wavek*radius
+      z=wavek*radius
       call get_jn(ntrunc,z,scalei,jn,1,jnd,nbessel)
       do n=0,ntrunc
          do m=-n,n
@@ -444,7 +437,6 @@ c***********************************************************************
       real *8 ynm(0:ntermsi,0:ntermsi),ynmd(0:ntermsi,0:ntermsi)
       real *8 Anm1(0:Pmax,0:Pmax)
       real *8 Anm2(0:Pmax,0:Pmax)
-      real *8 rat1(0:ntermsi,0:ntermsi),rat2(0:ntermsi,0:ntermsi)
       complex *16 phitemp(nquad,-ntermsi:ntermsi)
       complex *16 phitempn(nquad,-ntermsi:ntermsi)
       complex *16 jn(0:nbessel)
@@ -544,7 +536,7 @@ c***********************************************************************
             enddo
          enddo
       enddo
-      z = wavek*radius
+      z=wavek*radius
       call get_jn(ntermsi,z,scalei,jn,1,jnd,nbessel)
       do n=0,ntermsi
          do m=-n,n
@@ -573,7 +565,7 @@ c**********************************************************************
 c**********************************************************************
 c     This subroutine evaluates a j-expansion centered at CENTER
 c     at the target point TARGET.
-c     pi =  sum sum  Lj(n,m) j_n(k r) Y_nm(theta,phi)
+c     pi= sum sum  Lj(n,m) j_n(k r) Y_nm(theta,phi)
 c             n   m
 c---------------------------------------------------------------------
 c     INPUT:
@@ -622,15 +614,15 @@ c---------------------------------------------------------------------
          do j=2,nterms+1
             ephi(j)=ephi(j-1)*ephi(1)
          enddo
-         rx = stheta*cphi
-         thetax = ctheta*cphi
-         phix = -sphi
-         ry = stheta*sphi
-         thetay = ctheta*sphi
-         phiy = cphi
-         rz = ctheta
-         thetaz = -stheta
-         phiz = 0.0d0
+         rx=stheta*cphi
+         thetax=ctheta*cphi
+         phix=-sphi
+         ry=stheta*sphi
+         thetay=ctheta*sphi
+         phiy=cphi
+         rz=ctheta
+         thetaz=-stheta
+         phiz=0.0d0
          call get_Ynmd(ntrunc,ctheta,Ynm,Ynmd,Anm1,Anm2,Pmax)
          z=wavek*r
          call get_jn(ntrunc,z,scalej,jn,1,jnd,nbessel)

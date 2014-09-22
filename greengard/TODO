@@ -1,7 +1,5 @@
-- Match variable names between kernel.f and translate.f
-- Remove redundant storage of M/L expansion coefs
 - Remove memory pool variables
-Change function/variable names to be more descriptive
+- Change function/variable names in tree.f
 Use implicit none
 Remove goto
 Remove continue
