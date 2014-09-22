@@ -400,13 +400,12 @@ c     jnd(z)=\frac{\partial jn(z)}{\partial z}
       return
       end
 
-      subroutine getNumTermsList(size,wavek,eps,itable,ier)
+      subroutine getNumTermsList(size,wavek,eps,itable)
       implicit none
-      integer ier,i,j,k,nterms
+      integer i,j,k,nterms
       integer nterms_table(2:3,0:3,0:3),itable(-3:3,-3:3,-3:3)
       real *8 size,eps,dx,dy,dz,rr
       complex *16 wavek
-      ier = 0
       do i=2,3
          do j=0,3
             do k=0,3
@@ -417,7 +416,7 @@ c     jnd(z)=\frac{\partial jn(z)}{\partial z}
                if(dy.gt.0) dy=dy-.5
                if(dz.gt.0) dz=dz-.5
                rr=sqrt(dx*dx+dy*dy+dz*dz)
-               call getNumTerms(1, rr, size, wavek, eps, nterms, ier)
+               call getNumTerms(1,rr,size,wavek,eps,nterms)
                nterms_table(i,j,k)=nterms
             enddo
          enddo
@@ -452,47 +451,37 @@ c     jnd(z)=\frac{\partial jn(z)}{\partial z}
       return
       end
 
-      subroutine getNumTerms(itype, rr, size, wavek, eps, nterms, ier)
-      implicit real *8 (a-h,o-z)
-      complex *16  wavek, z1, z2, z3, jn(0:2000), ht0,
-     $     ht1, ht2, jnd(0:1),
-     $     hfun(0:2000)
-      ier = 0
-      z1 = (wavek*size)*rr
-c     The code will run out memory if frequency is too small
-c     set frequency to something more reasonable, nterms is
-c     approximately the same for all small frequencies
-c     Maximum number of terms is 1000, which
-c     works for boxes up to 160 wavelengths in size
-      ntmax = 1000
-      rscale = 1.0d0
-      if(cdabs(wavek*size).lt.1.0d0) rscale = cdabs(wavek*size)
-      call get_hn(ntmax,z1,rscale,hfun)
-      z2 = (wavek*size) * dsqrt(3d0)/2.d0
+      subroutine getNumTerms(itype,rr,size,wavek,eps,nterms)
+      implicit none
+      integer itype,nterms,ntmax,j
+      real *8 rr,size,eps,scale,x,x0
+      complex *16 wavek,z,jn(0:2000),jnd(0:2000),hn(0:2000)
+      z=(wavek*size)*rr
+c     Maximum number of terms is 1000, which works for boxes up to 160 wavelengths in size
+      ntmax=1000
+      scale=1.0d0
+      if(cdabs(wavek*size).lt.1.0d0) scale=cdabs(wavek*size)
+      call get_hn(ntmax,z,scale,hn)
+      z=(wavek*size)*dsqrt(3d0)/2.d0
 c     corners included
-      if(itype.eq.1) z2 = (wavek*size) * dsqrt(3d0)/2.d0
+      if(itype.eq.1) z=(wavek*size)*dsqrt(3d0)/2.d0
 c     edges included, no corners
-      if(itype.eq.2) z2 = (wavek*size) * dsqrt(2d0)/2.d0
+      if(itype.eq.2) z=(wavek*size)*dsqrt(2d0)/2.d0
 c     center only
-      if(itype.eq.3) z2 = (wavek*size) * 1.0d0/2.d0
+      if(itype.eq.3) z=(wavek*size)*1.0d0/2.d0
 c     center only, small interior sphere
-      if(itype.eq.4) z2 = (wavek*size) * 0.8d0/2.d0
-      call get_jn(ntmax,z2,rscale,jn,0,jnd,2000)
-      xtemp1 = cdabs(jn(0)*hfun(0))
-      xtemp2 = cdabs(jn(1)*hfun(1))
-      xtemp0 = xtemp1+xtemp2
-      nterms = 1
+      if(itype.eq.4) z=(wavek*size)*0.8d0/2.d0
+      call get_jn(ntmax,z,scale,jn,0,jnd,2000)
+      x0=cdabs(jn(0)*hn(0))+cdabs(jn(1)*hn(1))
+      nterms=1
       do j=2,ntmax
-         xtemp1 = cdabs(jn(j)*hfun(j))
-         xtemp2 = cdabs(jn(j-1)*hfun(j-1))
-         xtemp = xtemp1+xtemp2
-         if(xtemp.lt.eps*xtemp0)then
-            nterms = j + 1
+         x=cdabs(jn(j)*hn(j))+cdabs(jn(j-1)*hn(j-1))
+         if(x.lt.eps*x0)then
+            nterms=j+1
             return
          endif
       enddo
-c     ... computational box is too big, set nterms to 1000
-      ier = 13
+      print*,"Computational box is too big, setting nterms to 1000\n";
       nterms = 1000
       return
       end

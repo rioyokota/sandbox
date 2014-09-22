@@ -62,7 +62,7 @@ c     create oct-tree data structure
       nmax = 0
       do i = 0,nlev
          bsize(i)=size/2.0d0**i
-         call getNumTerms(1,1.5d0,bsize(i),wavek,epsfmm,nterms(i),ier)
+         call getNumTerms(1,1.5d0,bsize(i),wavek,epsfmm,nterms(i))
          if (nterms(i).gt. nmax .and. i.ge. 2) nmax = nterms(i)
       enddo
       do i = 1,numBodies
@@ -146,7 +146,7 @@ c     ... initialize Legendre function evaluation routines
       do i=0,nlev
          do itype=1,4
             call getNumTerms(itype,1.5d0,bsize(i),wavek,epsfmm,
-     1           nterms_eval(itype,i),ier)
+     1           nterms_eval(itype,i))
          enddo
       enddo
 c     ... set all multipole and local expansions to zero
@@ -229,7 +229,7 @@ c$    toc=omp_get_wtime()
 c     ... step 3, M2L
 c$    tic=omp_get_wtime()
       do 4300 ilev=3,nlev+1
-         call getNumTermsList(bsize(ilev-1),wavek,epsfmm, itable, ier)
+         call getNumTermsList(bsize(ilev-1),wavek,epsfmm,itable)
          nquad=nterms(ilev-1)*1.2
          nquad=max(6,nquad)
          call legendre(nquad,xquad,wquad)
