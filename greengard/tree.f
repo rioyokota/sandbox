@@ -8,7 +8,7 @@ c        this subroutine constructs the logical structure for the
 c        fully adaptive FMM in three dimensions and stores it in the
 c        array wlists in the form of a link-list. after that, the user 
 c        can obtain the information about various boxes and lists 
-c        in it by calling the entries getCell, getList, d3tlinfo
+c        in it by calling the entries getCell, getList, getMemory
 c        of this subroutine (see).
 c
 c        this subroutine constructs the tree on sources and targets
@@ -60,11 +60,11 @@ c         the whole simulation
 c  size - the side of the box on the level 0
 c  w - the array containing all tables describing boxes, lists, etc. 
 c         it is a link-list (for the most part), and can only be accessed
-c         via the entries getCell, getList, d3tlinfo, of this  subroutine 
+c         via the entries getCell, getList, getMemory, of this  subroutine 
 c         (see below). the first lused 777 integer locations of 
 c         this array should not be altered between the call to this
 c         entry and subsequent calls to the entries getCell, getList,
-c         d3tlinfo, of this  subroutine 
+c         getMemory, of this  subroutine 
         ier=0
         iiwork=501
         iboxes=iiwork+n+4
@@ -96,7 +96,7 @@ c     construct the centers and the corners for all boxes in the oct-tree
         lcorners=(nboxes*24+2)*2
         iwlists=icorners+lcorners
         lwlists=lwlists-iwlists-6
-        call getCenter(center,size,wlists(iboxes),nboxes,
+        call setCenter(center,size,wlists(iboxes),nboxes,
      1      wlists(icenters),wlists(icorners) )
 c     now, construct all lists for all boxes
         call getLists(ier,wlists(iboxes),nboxes,wlists(icorners),
@@ -136,7 +136,7 @@ c     store all pointers
 
         subroutine getCell(ier,ibox,box,center,corners,w)
         implicit real *8 (a-h,o-z)
-        integer w(*),box(20),nums(*)
+        integer w(*),box(20)
         real *8 center(3),corners(3,8)
 c
 c        this entry returns to the user the characteristics of
@@ -200,7 +200,7 @@ c
 c
 c      return to the user the center and the corners of the box ibox
 c
-        call d3tcpcc(w(icenters),w(icorners),ibox,center,corners) 
+        call getCenter(w(icenters),w(icorners),ibox,center,corners) 
 c
         return
 c
@@ -226,22 +226,6 @@ c
         iwlists=w(5)
 c
         call d3tlinkretr(ier,itype,ibox,list,nlist,w(iwlists),lused)
-        return
-c
-c
-c
-c
-        entry d3tlinfo(w,lused77,nums)
-c
-c       this entry returns to the user some of the information
-c       about the storage area. namely, it returns the total 
-c       amount lused777 of memory utilized in the array w (in integer 
-c       locations), and the integer array nums containing the numbers
-c       of elements in each of the lists
-c
-        iwlists=w(5)
-c       
-        call d3tlinkinfo(w(iwlists),lused77,nums)
         return
         end
 c
@@ -767,7 +751,7 @@ c
 c
 c
 c
-        subroutine d3tcpcc(centers,corners,ibox,center,corner)
+        subroutine getCenter(centers,corners,ibox,center,corner)
         implicit real *8 (a-h,o-z)
         real *8 centers(3,*),corners(3,8,*),center(3),corner(3,8)
 ccc        save
@@ -1045,7 +1029,7 @@ c
 c
 c
 c
-        subroutine getCenter(center0,size,boxes,nboxes,
+        subroutine setCenter(center0,size,boxes,nboxes,
      1      centers,corners)
         implicit real *8 (a-h,o-z)
         integer boxes(20,*)
@@ -1351,7 +1335,7 @@ c
 c
 c
         subroutine d3tlinkinit(ier,nboxes,ntypes,w,lw)
-        integer w(*),nums(*),inums(20)
+        integer w(*),inums(20)
         data iilistad/1/,iilists/2/,inumele/3/,inboxes/4/,
      1      intypes/5/,ilw/6/,iltot/7/,
      2      inums/11,12,13,14,15,16,17,18,19,20,21,22,23,24,
@@ -1361,7 +1345,7 @@ c
 c        this is the initialization entry point for the link-list
 c        storage-retrieval facility. it formats the array w, to
 c        be used by the entries d3tlinkstor, d3tlinkretr, d3tlinkrem,
-c        d3tlinkinfo below. 
+c        below. 
 c
 c                     input parameters:
 c
@@ -1396,9 +1380,9 @@ c
          return
  1200 continue
 c
-         do 1400 i=1,20
+      do i=1,20
          w(inums(i))=0
- 1400 continue
+      enddo
 c
         w(iilistad)=ilistadd
         w(iilists)=ilists
@@ -1408,7 +1392,11 @@ c
         w(ilw)=lw
         w(iltot)=ltot
 c
-        call d3tlinkini0(w(ilistadd),nboxes,ntypes)
+        do k=1,ntypes
+           do i=1,nboxes
+              w(i*ntypes+k+ilistadd)=-1
+           enddo
+        enddo
         return
 c
 c
@@ -1494,75 +1482,14 @@ c  nlist - the number of elements in the array list
 c  lused - the number of integer elements used in array
 c          w after this call.
 c
-        call d3tlinkret0(ier,itype,ibox,w(w(iilistad)),
+        ilistadd=w(iilistad)
+        call d3tlinkret0(ier,itype,ibox,w(ilistadd),
      1      w(w(iilists)),list,w(inboxes),nlist)
 c
         lused=w(iilists)+w(inumele)*2+10
 c
         return
-c
-c
-c
-c
-c        entry d3tlinkrem(ier,itype,ibox,list,nlist,w,lused)
-c
-c       this entry deletes elements in array lists corresponding 
-c       the user-specified list  list. actually, it does not 
-c       delete anything, but rather marks these elements for
-c       future destruction by making them negative.
-c
-c                      input parameters:
-c
-c  itype - the type of the elements to be destroyed
-c  ibox - the box to which these elements correspond
-c  list - the list of positive integer elements to be destroyed
-c  nlist - the number of elements in the array list
-c  w - the storage area from which the information is to be 
-c          retrieved
-c
-c                      output parameters:
-c
-c  ier - error return code;
-c          ier=0 means successful execution, nothing to report
-c          ier=4*k means that k of the elements on the user-specified
-c                   list  list were not present
-c          ier=22 means that  no elements whatsoever were present 
-c                   for the type  itype   and the box  ibox
-c  w - the storage area from which the information is to be 
-c          retrieved
-c  lused - the number of integer elements used in array
-c          w both before and after this call.
-c
-c       mark for destruction the user-specified elements 
-c
-c        call d3tlinkrem0(ier,itype,ibox,list,nlist,w(w(iilistad)),
-c     1      w(inboxes),w(w(iilists)),w(inums(itype)) )
-c
-c        lused=w(iilists)+w(inumele)*2+10
-c        return
-c
-c
-c
-c
-        entry d3tlinkinfo(w,lused,nums)
-c
-c       this entry returns to the user some of the information
-c       about the storage area. namely, it returns the total 
-c       amount lused of memory utilized in the array w (in integer 
-c       locations), and the integer array nums containing the numbers
-c       of elements in each of the lists
-c
-        lused=w(iilists)+w(inumele)*2+10
-        ntypes7=w(intypes)
-        do 6200 i=1,ntypes7
-        nums(i)=w(inums(i))
- 6200 continue
-        return
         end
-c
-c
-c
-c
 c
         subroutine d3tlinksto0(itype,ibox,list,nlist,listaddr,
      1      nboxes,lists,numele,numtype)
@@ -1625,108 +1552,39 @@ c
         numtype=numtype+1
         lists(1,numele)=ilast
         lists(2,numele)=list(i)
-c
         ilast=numele
  1200 continue
         listaddr(ibox,itype)=ilast
-c
         return
-c
-c
-c
 c
         entry d3tlinkret0(ier,itype,ibox,listaddr,lists,list,
-     1      nboxes,nlist)
-c
-c       this entry retrieves from the main storage array lists
-c       a list of positive numbers that has been stored there
-c       by the entry d3tlinksto0 (see above).
-c
-c                      input parameters:
-c
-c  itype - the type of the elements being to be retrieved
-c  ibox - the box to which these element corresponds
-c  listaddr - the addressing array for the main storage array lists;
-c             it is assumed that it has been formatted by a call 
-c             to the entry d3tlinkini0 of this subroutine (see below).
-c  nboxes - the total number of boxes indexing the elements 
-c           in array lists
-c  lists - the main storage area used by this subroutine
-c
-c                      output parameters:
-c
-c  ier - error return code;
-c          ier=0 means successful execution, nothing to report
-c          ier=4 means that no elements are present of the type
-c                  itype and the box ibox
-c  list - the list of positive integer elements to be stored
-c  nlist - the number of elements in the array list
-c
-c
-c       . . . retrieve and store in array list the list of the 
-c             type itype for the box ibox
-c
+     $       nboxes,nlist)
         ier=0
         ilast=listaddr(ibox,itype)
-        if(ilast .gt. 0) goto 2200
+        if(ilast.le.0)then
+           nlist=0
+           ier=4
+           return
+        endif
         nlist=0
-        ier=4
-        return
- 2200 continue
-c
-        nlist=0
-        do 2400 i=1,1 000 000 000
-c
-        if(lists(2,ilast) .le. 0) goto 2300       
-        nlist=nlist+1
-        list(nlist)=lists(2,ilast)
- 2300 continue
-        ilast=lists(1,ilast)
-        if(ilast .le. 0) goto 2600
- 2400 continue
- 2600 continue
-c
-        if(nlist .gt. 0) goto 2650
-        ier=4
-        return
- 2650 continue
-c
-c        flip the retrieved array
-c
-        if(nlist .eq. 1) return
-        do 2700 i=1,nlist/2
-        j=list(i)
-        list(i)=list(nlist-i+1)
-        list(nlist-i+1)=j
- 2700 continue
-        return
-c
-c
-c
-c
-        entry d3tlinkini0(listaddr,nboxes,ntypes)
-c
-c       this subroutine initializes the array listaddr to be used 
-c       later by other entries of this subroutine
-c
-c                        input parameters:
-c
-c  nboxes - the number of boxes for which the various types of lists
-c        will be stored
-c  ntypes - the number of types of lists that will be stored
-c
-c                        output parameters:
-c
-c  listaddr - the addressing array for the main storage array lists;
-c             it is assumed that it has been formatted by a call 
-c             to the entry d3tlinkini0 of this subroutine (see below).
-c
-c       . . . initialize the array listaddr
-c
-        do 3000 k=1,ntypes
-        do 2800 i=1,nboxes
-        listaddr(i,k)=-1
- 2800 continue
- 3000 continue
+        do i=1,1 000 000 000
+           if(lists(2,ilast).gt.0)then       
+              nlist=nlist+1
+              list(nlist)=lists(2,ilast)
+           endif
+           ilast=lists(1,ilast)
+           if(ilast.le.0) exit
+        enddo
+
+        if(nlist.lt.0)then
+           ier=4
+           return
+        endif
+        if(nlist.eq.1) return
+        do i=1,nlist/2
+           j=list(i)
+           list(i)=list(nlist-i+1)
+           list(nlist-i+1)=j
+        enddo
         return
         end
