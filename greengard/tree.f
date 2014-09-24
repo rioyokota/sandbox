@@ -1336,12 +1336,9 @@ c
 c
         subroutine d3tlinkinit(ier,nboxes,ntypes,w,lw)
         integer w(*),inums(20)
-        data iilistad/1/,iilists/2/,inumele/3/,inboxes/4/,
-     1      intypes/5/,ilw/6/,iltot/7/,
-     2      inums/11,12,13,14,15,16,17,18,19,20,21,22,23,24,
+        data ilistadd/0/,ilists/0/,numele/0/
+        data inums/11,12,13,14,15,16,17,18,19,20,21,22,23,24,
      3            25,26,27,28,29,30/
-ccc        save
-c
 c        this is the initialization entry point for the link-list
 c        storage-retrieval facility. it formats the array w, to
 c        be used by the entries d3tlinkstor, d3tlinkretr, d3tlinkrem,
@@ -1372,26 +1369,21 @@ c
         nlistadd=nboxes*ntypes+10
 c
         ilists=ilistadd+nlistadd
-        numele=0
-        ltot=ilists+numele*2+10
+        ltot=ilists+10
 c
          if(ltot+100 .lt. lw) goto 1200
          ier=1024
          return
  1200 continue
 c
-      do i=1,20
-         w(inums(i))=0
-      enddo
+        do i=1,20
+           w(inums(i))=0
+        enddo
 c
-        w(iilistad)=ilistadd
-        w(iilists)=ilists
-        w(inumele)=numele
-        w(inboxes)=nboxes
-        w(intypes)=ntypes      
-        w(ilw)=lw
-        w(iltot)=ltot
-c
+c        w(3)=0
+        w(4)=nboxes
+        w(6)=lw
+
         do k=1,ntypes
            do i=1,nboxes
               w(i*ntypes+k+ilistadd)=-1
@@ -1430,29 +1422,20 @@ c
 c       . . . if this storage request exceeds the available memory - bomb
 c
         ier=0
-        if(w(iilists)+w(inumele)*2+nlist*2 .lt. w(ilw) ) goto 2200
+        if(ilists+numele*2+nlist*2 .lt. w(6) ) goto 2200
         ier=32
         return
  2200 continue
 c
 c       store the user-specified list in array w
 c
-c       Old versions of gfortran <=4.3 will naively optimize w(inumele)
-c       away if w(inumele)=0, at optimization levels greater than 1.
-c       We use a temporary variable to fix this nasty compiler bug.
-c
-        itemp = w(inumele)
-        call d3tlinksto0(itype,ibox,list,nlist,w(w(iilistad)),
-     1      w(inboxes),w(w(iilists)),itemp,w(inums(itype)) )
-        w(inumele)=itemp
-c
-ccc        call d3tlinksto0(itype,ibox,list,nlist,w(w(iilistad)),
-ccc     1      w(inboxes),w(w(iilists)),w(inumele),w(inums(itype)) )
-c
+
+        call d3tlinksto0(itype,ibox,list,nlist,w(ilistadd),
+     1      w(4),w(ilists),numele,w(inums(itype)) )
 c
 c       augment the amount of storage used 
 c        
-        lused=w(iilists)+w(inumele)*2+10
+        lused=ilists+numele*2+10
         return
 c
 c
@@ -1482,11 +1465,10 @@ c  nlist - the number of elements in the array list
 c  lused - the number of integer elements used in array
 c          w after this call.
 c
-        ilistadd=w(iilistad)
         call d3tlinkret0(ier,itype,ibox,w(ilistadd),
-     1      w(w(iilists)),list,w(inboxes),nlist)
+     1      w(ilists),list,w(4),nlist)
 c
-        lused=w(iilists)+w(inumele)*2+10
+        lused=ilists+numele*2+10
 c
         return
         end
