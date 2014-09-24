@@ -100,7 +100,7 @@ c     construct the centers and the corners for all boxes in the oct-tree
      1      wlists(icenters),wlists(icorners) )
 c     now, construct all lists for all boxes
         call getLists(ier,wlists(iboxes),nboxes,wlists(icorners),
-     1        wlists(iwlists),lwlists,listOffset,lists,lused)
+     1        lwlists,listOffset,lists,lused)
         lused777=lused+iwlists
 c     store all pointers
         wlists(1)=nboxes
@@ -208,24 +208,7 @@ c
 c
 c
 c
-         entry getList(ier,ibox,itype,list,nlist,w,listOffset,lists)
-c
-c  ibox - the box number for which the information is desired
-c  itype - the type of the desired list for the box ibox
-c  w - storage area as created by the entry buildTree (see above)
-c
-c                     output parameters:
-c
-c  ier - the error return code.
-c    ier=0 means successful execution
-c    ier=4 means that the list  itype  for the box  ibox  is empty
-c  list - the list  itype  for the box  ibox 
-c  nlist - the number of elements in array  list
-c
-c       return to the user the list number itype for the box ibox
-c
-        iwlists=w(5)
-c
+        entry getList(ier,ibox,itype,list,nlist,listOffset,lists)
         call d3tlinkretr(ier,itype,ibox,nboxes,list,nlist,
      $       listOffset,lists,lused)
         return
@@ -235,10 +218,10 @@ c
 c
 c
 c
-        subroutine getLists(ier,boxes,nboxes,corners,w,lw,listOffset,
+        subroutine getLists(ier,boxes,nboxes,corners,lw,listOffset,
      $     lists,lused)
         implicit real *8 (a-h,o-z)
-        integer boxes(20,*),collkids(50000),w(*),listOffset(*),lists(*),
+        integer boxes(20,*),collkids(50000),listOffset(*),lists(*),
      1      dadcolls(2000),list5(20000),stack(60000)
         real *8 corners(3,8,*)
 ccc        save
@@ -303,7 +286,7 @@ c
 c
         ier=0
         ntypes=5
-        call d3tlinkinit(jer,nboxes,ntypes,w,lw,listOffset,lists)
+        call d3tlinkinit(jer,nboxes,ntypes,lw,listOffset,lists)
 c
 c        construct lists 5,2 for all boxes
 c
@@ -387,7 +370,7 @@ c
         do 2200 j=1,nlist
         jbox=list5(j)
         call d3tlst31(ier,i,jbox,boxes,nboxes,
-     1    corners,w,stack,lw,listOffset,lists,lused)
+     1    corners,stack,lw,listOffset,lists,lused)
 c
 c        if storage capacity has been exceeded - bomb
 c
@@ -423,9 +406,9 @@ c
 c
 c
         subroutine d3tlst31(ier,ibox,jbox0,boxes,nboxes,
-     1    corners,w,stack,lw,listOffset,lists,lused)
+     1    corners,stack,lw,listOffset,lists,lused)
         implicit real *8 (a-h,o-z)
-        integer w(*),listOffset(*),lists(*)
+        integer listOffset(*),lists(*)
         real *8 corners(3,8,*)
         integer boxes(20,*),stack(3,*)
         data itype1/1/,itype2/2/,itype3/3/,itype4/4/,itype5/5/,
@@ -1314,53 +1297,17 @@ c
 c
 c
 c
-        subroutine d3tlinkinit(ier,nboxes,ntypes,w,lw,listOffset,lists)
-        integer w(*),listOffset(*),lists(*)
+        subroutine d3tlinkinit(ier,nboxes,ntypes,lw,listOffset,lists)
+        integer listOffset(*),lists(*)
         data ilists/0/,numele/0/
-c        this is the initialization entry point for the link-list
-c        storage-retrieval facility. it formats the array w, to
-c        be used by the entries d3tlinkstor, d3tlinkretr, d3tlinkrem,
-c        below. 
-c
-c                     input parameters:
-c
-c  nboxes - the number of boxes for which the various types of lists
-c        will be stored
-c  ntypes - the number of types of lists that will be stored
-c  lw - the total amount of space in the area w to be used for storage
-c        (in integer locations)
-c
-c                     output parameters:
-c
-c  ier - error return code;
-c    ier=0 means successful execution
-c    ier=1024 means that the amount of space in array w is grossly 
-c        insufficient
-c  w - the formatted area for storage
-c
-c
-c       . . . allocate memory for the storage facility
-c
         ier=0
-c
         ilists=nboxes*ntypes
-        ltot=ilists+10
-c
-         if(ltot+100 .lt. lw) goto 1200
-         ier=1024
-         return
- 1200 continue
-c
         do k=1,ntypes
            do i=1,nboxes
-              w((i-1)*ntypes+k)=-1
               listOffset((i-1)*ntypes+k)=-1
            enddo
         enddo
         return
-c
-c
-c
 c
         entry d3tlinkstor(ier,itype,ibox,nboxes,list,nlist,lw,
      $       listOffset,lists,lused)
