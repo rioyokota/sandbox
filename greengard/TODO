@@ -2,6 +2,7 @@
 * start from the end of w()
 - Change function/variable names in tree.f
 * kids -> child
+- Use common blocks
  
 Use implicit none
 Remove goto

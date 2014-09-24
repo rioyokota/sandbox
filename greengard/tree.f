@@ -1,9 +1,10 @@
-        subroutine buildTree(ier,z,n,ncrit,
-     1    nboxes,iz,laddr,nlev,center,size,
-     1    wlists,listOffset,lists,lwlists,lused777)
-        implicit real *8 (a-h,o-z)
-        integer iz(*),wlists(*),listOffset(*),lists(*),laddr(2,*)
-        real *8 z(3,*),center(3),corners(3,8)
+      subroutine buildTree(ier,z,n,ncrit,
+     $     nboxes,iz,laddr,nlev,center,size,
+     $     wlists,lists,lwlists,lused777)
+      use arrays, only : listOffset
+      implicit real *8 (a-h,o-z)
+      integer iz(*),wlists(*),lists(*),laddr(2,*)
+      real *8 z(3,*),center(3),corners(3,8)
 c        this subroutine constructs the logical structure for the 
 c        fully adaptive FMM in three dimensions and stores it in the
 c        array wlists in the form of a link-list. after that, the user 
@@ -96,11 +97,12 @@ c     construct the centers and the corners for all boxes in the oct-tree
         lcorners=(nboxes*24+2)*2
         iwlists=icorners+lcorners
         lwlists=lwlists-iwlists-6
+        allocate(listOffset(nboxes,5))
         call setCenter(center,size,wlists(iboxes),nboxes,
      1      wlists(icenters),wlists(icorners) )
 c     now, construct all lists for all boxes
         call getLists(ier,wlists(iboxes),nboxes,wlists(icorners),
-     1        lwlists,listOffset,lists,lused)
+     1        lwlists,lists,lused)
         lused777=lused+iwlists
 c     store all pointers
         wlists(1)=nboxes
@@ -135,8 +137,9 @@ c     store all pointers
         end
 
         subroutine getCell(ier,ibox,box,center,corners,w)
+        use arrays, only : listOffset
         implicit real *8 (a-h,o-z)
-        integer w(*),box(20),listOffset(*),lists(*)
+        integer w(*),box(20),lists(*)
         real *8 center(3),corners(3,8)
         data nboxes/0/
 c
@@ -208,9 +211,9 @@ c
 c
 c
 c
-        entry getList(ier,ibox,itype,list,nlist,listOffset,lists)
+        entry getList(ier,ibox,itype,list,nlist,lists)
         call d3tlinkretr(ier,itype,ibox,nboxes,list,nlist,
-     $       listOffset,lists,lused)
+     $       lists,lused)
         return
         end
 c
@@ -218,10 +221,11 @@ c
 c
 c
 c
-        subroutine getLists(ier,boxes,nboxes,corners,lw,listOffset,
+        subroutine getLists(ier,boxes,nboxes,corners,lw,
      $     lists,lused)
+        use arrays, only : listOffset
         implicit real *8 (a-h,o-z)
-        integer boxes(20,*),collkids(50000),listOffset(*),lists(*),
+        integer boxes(20,*),collkids(50000),lists(*),
      1      dadcolls(2000),list5(20000),stack(60000)
         real *8 corners(3,8,*)
 ccc        save
@@ -286,7 +290,7 @@ c
 c
         ier=0
         ntypes=5
-        call d3tlinkinit(jer,nboxes,ntypes,lw,listOffset,lists)
+        call d3tlinkinit(jer,nboxes,ntypes,lw,lists)
 c
 c        construct lists 5,2 for all boxes
 c
@@ -302,7 +306,7 @@ c
         itype5=5
         itype2=2
         call d3tlinkretr(jer,itype5,idad,nboxes,dadcolls(2),ncolls,
-     $       listOffset,lists,lused)
+     $       lists,lused)
         ncolls=ncolls+1
 c
 c        find the children of the daddy's collegues
@@ -333,14 +337,14 @@ ccc        call d3tifint2(boxes(1,kid),boxes(1,ibox),ifinter)
 c
         if(ifinter .eq. 1)
      $    call d3tlinkstor(ier,itype5,ibox,nboxes,kid,nlist1,lw,
-     $       listOffset,lists,lused)
+     $       lists,lused)
 c
 c        if storage capacity has been exceeed - bomb
 c
         if(ier .eq. 32) return
         if(ifinter .eq. 0)
      $    call d3tlinkstor(ier,itype2,ibox,nboxes,kid,nlist1,lw,
-     $       listOffset,lists,lused)
+     $       lists,lused)
  1800 continue
 c
 c        if storage capacity has been exceeed - bomb
@@ -363,14 +367,14 @@ c
         if(boxes(1,i) .eq. 0) goto 3000
 c
         call d3tlinkretr(jer,itype5,i,nboxes,list5,nlist,
-     $       listOffset,lists,lused)  
+     $       lists,lused)  
 c
         if(jer .eq. 4) goto 3000
 c
         do 2200 j=1,nlist
         jbox=list5(j)
         call d3tlst31(ier,i,jbox,boxes,nboxes,
-     1    corners,stack,lw,listOffset,lists,lused)
+     1    corners,stack,lw,lists,lused)
 c
 c        if storage capacity has been exceeded - bomb
 c
@@ -385,11 +389,11 @@ c
         do 4400 ibox=1,nboxes
 c
         call d3tlinkretr(jer,itype3,ibox,nboxes,list5,nlist,
-     $          listOffset,lists,lused)
+     $          lists,lused)
         if(jer .eq. 4) goto 4400
         do 4200 j=1,nlist
         call d3tlinkstor(ier,itype4,list5(j),nboxes,ibox,nlist1,
-     $          lw,listOffset,lists,lused2)
+     $          lw,lists,lused2)
 c
 c        if storage capacity has been exceeed - bomb
 c
@@ -406,9 +410,9 @@ c
 c
 c
         subroutine d3tlst31(ier,ibox,jbox0,boxes,nboxes,
-     1    corners,stack,lw,listOffset,lists,lused)
+     1    corners,stack,lw,lists,lused)
         implicit real *8 (a-h,o-z)
-        integer listOffset(*),lists(*)
+        integer lists(*)
         real *8 corners(3,8,*)
         integer boxes(20,*),stack(3,*)
         data itype1/1/,itype2/2/,itype3/3/,itype4/4/,itype5/5/,
@@ -478,11 +482,10 @@ c       enter this fact in the daddy's table; pass control
 c       to the daddy
 c
         call d3tifint(corners(1,1,ibox),corners(1,1,jbox),ifinter)
-ccc        call d3tifint2(boxes(1,ibox),boxes(1,jbox),ifinter)
 c
         if(ifinter .eq. 1) goto 2000
         call d3tlinkstor(ier,itype3,ibox,nboxes,jbox,nlist1,lw,
-     $       listOffset,lists,lused)
+     $       lists,lused)
 c
 c        if storage capacity has been exceeed - bomb
 c
@@ -499,7 +502,7 @@ c       pass control to the daddy
 c       
         if(boxes(6,jbox) .ne. 0) goto 3000
         call d3tlinkstor(ier,itype1,ibox,nboxes,jbox,nlist1,lw,
-     $       listOffset,lists,lused)
+     $       lists,lused)
 c
 c        if storage capacity has been exceeed - bomb
 c
@@ -511,7 +514,7 @@ c             in the list 1 of jbox
 c
         if(boxes(1,jbox) .eq. boxes(1,ibox)) goto 2400
         call d3tlinkstor(ier,itype1,jbox,nboxes,ibox,nlist1,lw,
-     $       listOffset,lists,lused)
+     $       lists,lused)
 c
 c        if storage capacity has been exceeed - bomb
 c
@@ -608,22 +611,6 @@ c
         xmax2=c2(1,1)
         ymax2=c2(2,1)
         zmax2=c2(3,1)
-c
-c        xmin1=1.0d50
-c        ymin1=1.0d50
-c        zmin1=1.0d50
-c
-c        xmax1=-1.0d50
-c        ymax1=-1.0d50
-c        zmax1=-1.0d50
-c
-c        xmin2=1.0d50
-c        ymin2=1.0d50
-c        zmin2=1.0d50
-c
-c        xmax2=-1.0d50
-c        ymax2=-1.0d50
-c        zmax2=-1.0d50
 c
         do 1200 i=1,8
 c
@@ -1297,20 +1284,21 @@ c
 c
 c
 c
-        subroutine d3tlinkinit(ier,nboxes,ntypes,lw,listOffset,lists)
-        integer listOffset(*),lists(*)
+        subroutine d3tlinkinit(ier,nboxes,ntypes,lw,lists)
+        use arrays, only : listOffset
+        integer lists(*)
         data ilists/0/,numele/0/
         ier=0
         ilists=nboxes*ntypes
         do k=1,ntypes
            do i=1,nboxes
-              listOffset((i-1)*ntypes+k)=-1
+              listOffset(i,k)=-1
            enddo
         enddo
         return
 c
         entry d3tlinkstor(ier,itype,ibox,nboxes,list,nlist,lw,
-     $       listOffset,lists,lused)
+     $       lists,lused)
 c
 c       this entry stores dynamically a list of positive numbers 
 c       in the storage array w.
@@ -1346,7 +1334,7 @@ c
 c       store the user-specified list in array w
 c
         call d3tlinksto0(itype,ibox,list,nlist,
-     $      nboxes,listOffset,lists,numele)
+     $      nboxes,lists,numele)
 c
 c       augment the amount of storage used 
 c        
@@ -1357,7 +1345,7 @@ c
 c
 c
         entry d3tlinkretr(ier,itype,ibox,nboxes,list,nlist,
-     $       listOffset,lists,lused)
+     $       lists,lused)
 c
 c       this entry retrieves from the storage area  w 
 c       a list of positive numbers that has been stored there
@@ -1382,7 +1370,7 @@ c  lused - the number of integer elements used in array
 c          w after this call.
 c
         call d3tlinkret0(ier,itype,ibox,
-     $       lists,listOffset,list,nboxes,nlist)
+     $       lists,list,nboxes,nlist)
 c
         lused=ilists+numele*2+10
 c
@@ -1390,8 +1378,8 @@ c
         end
 c
         subroutine d3tlinksto0(itype,ibox,list,nlist,
-     $     nboxes,listOffset,lists,numele)
-        integer listOffset(nboxes,*)
+     $     nboxes,lists,numele)
+        use arrays, only : listOffset
         integer lists(2,*),list(*)
 ccc        save
 c
@@ -1452,7 +1440,7 @@ c
         listOffset(ibox,itype)=ilast
         return
 c
-        entry d3tlinkret0(ier,itype,ibox,lists,listOffset,list,
+        entry d3tlinkret0(ier,itype,ibox,lists,list,
      $       nboxes,nlist)
         ier=0
         ilast=listOffset(ibox,itype)

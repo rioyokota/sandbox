@@ -7,11 +7,11 @@ MAKEFLAGS += --no-print-directory
 
 .SUFFIXES: .o .f
 
-SRC = main.f fmm.f kernels.f translate.f tree.f
+SRC = arrays.f main.f fmm.f kernels.f translate.f tree.f
 
 all: $(SRC:.f=.o)
 	$(FC) $?
 	./a.out
 
 clean:
-	@rm -f *.o *.out
+	@rm -f *.mod *.o *.out

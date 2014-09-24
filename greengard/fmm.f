@@ -20,7 +20,6 @@
       dimension corners0(3,8)
       integer, allocatable :: iaddr(:)
       integer, allocatable :: isource(:)
-      integer, allocatable :: listOffset(:)
       integer, allocatable :: lists(:)
       real *8, allocatable :: wlists(:)
       real *8, allocatable :: Multipole(:)
@@ -51,12 +50,11 @@ c     set criterion for box subdivision (number of sources per box)
 c     create oct-tree data structure
       ntot = 2*numBodies+10000
       allocate (isource(numBodies))
-      allocate (listOffset(numBodies)) ! TODO: change size
-      allocate (lists(ntot)) ! TODO: change size
+      allocate (lists(ntot)) ! TODO: 2 * numele
       allocate (wlists(ntot))
       call buildTree(ier,Xj,numBodies,ncrit,
      1     nboxes,isource,laddr,nlev,center,size,
-     1     wlists,listOffset,lists,ntot,lwlists)
+     1     wlists,lists,ntot,lwlists)
       allocate(iaddr(nboxes))
       do i = 0,nlev
          scale(i) = 1.0d0
@@ -90,7 +88,7 @@ c      call h3dmpalloc(wlists,iaddr,nboxes,lmptot,nterms)
       call evaluate(ier,iprec,wavek,numBodies,Xjd,isource,
      1     1,qjd,pid,Fid,epsfmm,iaddr,Multipole,Local,
      1     nboxes,laddr,nlev,scale,bsize,nterms,
-     1     wlists,listOffset,lists,lwlists)
+     1     wlists,lists,lwlists)
       do i=1,numBodies
          pi(isource(i))=pid(i)
          Fi(1,isource(i))=Fid(1,i)
@@ -105,14 +103,15 @@ c      call h3dmpalloc(wlists,iaddr,nboxes,lmptot,nterms)
      1     ifcharge,chargesort,pot,fld,
      1     epsfmm,iaddr,Multipole,Local,
      1     nboxes,laddr,nlev,scale,bsize,nterms,
-     1     wlists,listOffset,lists,lwlists)
+     1     wlists,lists,lwlists)
+      use arrays, only : listOffset
       implicit real *8 (a-h,o-z)
       dimension sourcesort(3,1),isource(1)
       complex *16 chargesort(1),wavek
       complex *16 imag
       complex *16 pot(1)
       complex *16 fld(3,1)
-      dimension wlists(1),listOffset(1),lists(1)
+      dimension wlists(1),lists(1)
       dimension iaddr(nboxes)
       real *8 Multipole(1),Local(1),xquad(10000),wquad(10000)
       dimension center(3)
@@ -251,8 +250,7 @@ c$omp$schedule(dynamic)
             if (level0 .ge. 2) then
 c     ... retrieve list #2
                itype=2
-               call getList(ier,ibox,itype,list,nlist,listOffset,
-     $              lists)
+               call getList(ier,ibox,itype,list,nlist,lists)
 c     ... for all pairs in list #2, apply the translation operator
                do 4150 ilist=1,nlist
                   jbox=list(ilist)
@@ -373,8 +371,7 @@ c     ... evaluate self interactions
      $           box,sourcesort,chargesort,wavek)
 c     ... evaluate interactions with the nearest neighbours
             itype=1
-            call getList(ier,ibox,itype,list,nlist,listOffset,
-     $           lists)
+            call getList(ier,ibox,itype,list,nlist,lists)
 c     ... for all pairs in list #1, evaluate the potentials and fields directly
             do ilist=1,nlist
                jbox=list(ilist)
