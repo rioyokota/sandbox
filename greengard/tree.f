@@ -1340,10 +1340,8 @@ c
 c
 c
         subroutine d3tlinkinit(ier,nboxes,ntypes,w,lw)
-        integer w(*),inums(20)
-        data ilistadd/0/,ilists/0/,numele/0/
-        data inums/11,12,13,14,15,16,17,18,19,20,21,22,23,24,
-     3            25,26,27,28,29,30/
+        integer w(*)
+        data ilists/0/,numele/0/
 c        this is the initialization entry point for the link-list
 c        storage-retrieval facility. it formats the array w, to
 c        be used by the entries d3tlinkstor, d3tlinkretr, d3tlinkrem,
@@ -1370,10 +1368,7 @@ c       . . . allocate memory for the storage facility
 c
         ier=0
 c
-        ilistadd=32
-        nlistadd=nboxes*ntypes+10
-c
-        ilists=ilistadd+nlistadd
+        ilists=nboxes*ntypes
         ltot=ilists+10
 c
          if(ltot+100 .lt. lw) goto 1200
@@ -1381,13 +1376,9 @@ c
          return
  1200 continue
 c
-        do i=1,20
-           w(inums(i))=0
-        enddo
-c
         do k=1,ntypes
            do i=1,nboxes
-              w(i*ntypes+k+ilistadd)=-1
+              w((i-1)*ntypes+k)=-1
            enddo
         enddo
         return
@@ -1431,8 +1422,8 @@ c
 c       store the user-specified list in array w
 c
 
-        call d3tlinksto0(itype,ibox,list,nlist,w(ilistadd),
-     1      nboxes,w(ilists),numele,w(inums(itype)) )
+        call d3tlinksto0(itype,ibox,list,nlist,w,
+     1      nboxes,w(ilists),numele)
 c
 c       augment the amount of storage used 
 c        
@@ -1466,7 +1457,7 @@ c  nlist - the number of elements in the array list
 c  lused - the number of integer elements used in array
 c          w after this call.
 c
-        call d3tlinkret0(ier,itype,ibox,w(ilistadd),
+        call d3tlinkret0(ier,itype,ibox,w,
      1      w(ilists),list,nboxes,nlist)
 c
         lused=ilists+numele*2+10
@@ -1475,7 +1466,7 @@ c
         end
 c
         subroutine d3tlinksto0(itype,ibox,list,nlist,listaddr,
-     1      nboxes,lists,numele,numtype)
+     1      nboxes,lists,numele)
         integer listaddr(nboxes,*),lists(2,*),list(*)
 ccc        save
 c
@@ -1496,8 +1487,8 @@ c  nboxes - the total number of boxes indexing the elements
 c           in array lists
 c  lists - the main storage area used by this subroutine
 c  numele - the number of elements stored in array lists on entry 
-c             to this subroutinec
-
+c             to this subroutine
+c
 c                      output parameters:
 c
 c  listaddr - the addressing array for the main storage array lists;
@@ -1506,9 +1497,6 @@ c             to the entry d3tlinkini0 of this subroutine (see below).
 c  lists - the main storage area used by this subroutine
 c  numele - the number of elements stored in array lists on exit
 c             from this subroutine
-c  numtype - the total number of elements in all lists of the 
-c           type itype AFTER this call
-c
 c .........................................................................
 c
 c        interpretation of the entries in arrays lists, listaddr:
@@ -1532,7 +1520,6 @@ c
         ilast=listaddr(ibox,itype)
         do 1200 i=1,nlist
         numele=numele+1
-        numtype=numtype+1
         lists(1,numele)=ilast
         lists(2,numele)=list(i)
         ilast=numele

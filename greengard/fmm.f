@@ -131,7 +131,7 @@ c      call h3dmpalloc(wlists,iaddr,nboxes,lmptot,nterms)
       real *8, allocatable :: rotmatb(:,:,:,:)
       real *8, allocatable :: thetas(:,:,:)
       real *8 rvec(3)
-      data imag/(0.0d0,1.0d0)/
+      data imag/(0.0d0,1.0d0)/, tic/0.0d0/, toc/0.0d0/
 c     ... set the potential and field to zero
       do i=1,numBodies
          pot(i)=0
@@ -152,6 +152,7 @@ c     ... initialize Legendre function evaluation routines
 c     ... set all multipole and local expansions to zero
       do ibox = 1,nboxes
          call getCell(ier,ibox,box,center0,corners0,wlists)
+         level=box(1)
          call initCoefs(Multipole(iaddr(ibox)),nterms(level))
          call initCoefs(Local(iaddr(ibox)),nterms(level))
       enddo
