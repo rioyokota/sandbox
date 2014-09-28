@@ -206,21 +206,13 @@ c
 c      return to the user the center and the corners of the box ibox
 c
         call getCenter(w(icenters),w(icorners),ibox,center,corners) 
-c
         return
-c
-c
-c
 c
         entry getList(ier,ibox,itype,list,nlist)
         call d3tlinkretr(ier,itype,ibox,nboxes,list,nlist,
      $       lused)
         return
         end
-c
-c
-c
-c
 c
         subroutine getLists(ier,boxes,nboxes,corners,lw,
      $     lused)
