@@ -22,7 +22,7 @@
       enddo
 c     FMM
 c$    tic=omp_get_wtime()
-      call fmm(ier,iprec, wavek,
+      call fmm(iprec, wavek,
      1     nsource,source,charge,
      1     pot,fld)
 c$    toc=omp_get_wtime()

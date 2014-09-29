@@ -1,4 +1,4 @@
-      subroutine buildTree(ier,z,n,ncrit,
+      subroutine buildTree(z,n,ncrit,
      $     nboxes,iz,laddr,nlev,center,size,
      $     wlists)
       use arrays, only : listOffset,lists
@@ -58,7 +58,6 @@ c         the number of levels required.
 c  center - the center of the box on the level 0, containing
 c         the whole simulation
 c  size - the side of the box on the level 0
-        ier=0
         iiwork=501
         iboxes=iiwork+n+4
         maxboxes=n
@@ -69,7 +68,7 @@ c     initialize the sorting index
         ifempty=0
         minlevel=0
         maxlevel=100
-        call growTree(ier,z,n,ncrit,wlists(iboxes),maxboxes,
+        call growTree(z,n,ncrit,wlists(iboxes),maxboxes,
      1    nboxes,iz,laddr,nlev,center,size,wlists(iiwork),
      $     ifempty,minlevel,maxlevel)
 c     compress the array wlists
@@ -92,7 +91,7 @@ c     construct the centers and the corners for all boxes in the oct-tree
         call setCenter(center,size,wlists(iboxes),nboxes,
      1      wlists(icenters),wlists(icorners) )
 c     now, construct all lists for all boxes
-        call getLists(ier,wlists(iboxes),nboxes,wlists(icorners))
+        call getLists(wlists(iboxes),nboxes,wlists(icorners))
 c     store all pointers
         wlists(1)=nboxes
         wlists(2)=iboxes
@@ -103,7 +102,7 @@ c     store all pointers
         wlists(7)=n
         wlists(8)=ncrit
         wlists(9)=nlev
-        wlists(10)=ier
+        wlists(10)=0
         wlists(11)=0
         wlists(12)=ifempty
         wlists(13)=minlevel
@@ -125,7 +124,7 @@ c     store all pointers
         return
         end
 
-        subroutine getCell(ier,ibox,box,center,corners,w)
+        subroutine getCell(ibox,box,center,corners,w)
         use arrays, only : listOffset
         implicit real *8 (a-h,o-z)
         integer w(*),box(20)
@@ -176,7 +175,6 @@ c
         icenters=w(4)
         iwlists=w(5)
 c 
-        ier=0
         if( (ibox.lt.1).or.(ibox.gt.nboxes) ) then
         print*,"Error: ibox out of bounds"
         stop
@@ -192,12 +190,12 @@ c
         call getCenter(w(icenters),w(icorners),ibox,center,corners) 
         return
 c
-        entry getList(ier,ibox,itype,list,nlist)
-        call d3tlinkretr(ier,itype,ibox,nboxes,list,nlist)
+        entry getList(ibox,itype,list,nlist)
+        call d3tlinkretr(itype,ibox,nboxes,list,nlist)
         return
         end
 c
-        subroutine getLists(ier,boxes,nboxes,corners)
+        subroutine getLists(boxes,nboxes,corners)
         use arrays, only : listOffset
         implicit real *8 (a-h,o-z)
         integer boxes(20,*),collkids(50000),
@@ -245,9 +243,8 @@ c
 c  w - storage area containing all lists for all boxes in 
 c        the form of link-lists, accessible by the subroutine 
 c        d3tlinkretr (see).
-        ier=0
         ntypes=5
-        call d3tlinkinit(jer,nboxes,ntypes)
+        call d3tlinkinit(nboxes,ntypes)
 c
 c        construct lists 5,2 for all boxes
 c
@@ -262,7 +259,7 @@ c
         dadcolls(1)=idad
         itype5=5
         itype2=2
-        call d3tlinkretr(jer,itype5,idad,nboxes,dadcolls(2),ncolls)
+        call d3tlinkretr(itype5,idad,nboxes,dadcolls(2),ncolls)
         ncolls=ncolls+1
 c
 c        find the children of the daddy's collegues
@@ -292,12 +289,12 @@ c
 ccc        call d3tifint2(boxes(1,kid),boxes(1,ibox),ifinter)
 c
         if(ifinter .eq. 1)
-     $    call d3tlinkstor(ier,itype5,ibox,nboxes,kid,nlist1)
+     $    call d3tlinkstor(itype5,ibox,nboxes,kid,nlist1)
 c
 c        if storage capacity has been exceeed - bomb
 c
         if(ifinter .eq. 0)
-     $    call d3tlinkstor(ier,itype2,ibox,nboxes,kid,nlist1)
+     $    call d3tlinkstor(itype2,ibox,nboxes,kid,nlist1)
  1800 continue
 c
 c        if storage capacity has been exceeed - bomb
@@ -318,11 +315,11 @@ c       do not construct lists 1, 3 for the main box
 c
         if(boxes(1,i) .eq. 0) goto 3000
 c
-        call d3tlinkretr(jer,itype5,i,nboxes,list5,nlist)  
+        call d3tlinkretr(itype5,i,nboxes,list5,nlist)  
 c
         do 2200 j=1,nlist
         jbox=list5(j)
-        call d3tlst31(ier,i,jbox,boxes,nboxes,
+        call d3tlst31(i,jbox,boxes,nboxes,
      1    corners,stack)
 c
 c        if storage capacity has been exceeded - bomb
@@ -335,16 +332,16 @@ c
         itype4=4
         nlist1=1
         do ibox=1,nboxes
-           call d3tlinkretr(jer,itype3,ibox,nboxes,list5,nlist)
+           call d3tlinkretr(itype3,ibox,nboxes,list5,nlist)
            do j=1,nlist
-              call d3tlinkstor(ier,itype4,list5(j),nboxes,ibox,nlist1)
+              call d3tlinkstor(itype4,list5(j),nboxes,ibox,nlist1)
            enddo
         enddo
 
         return
         end        
 c
-        subroutine d3tlst31(ier,ibox,jbox0,boxes,nboxes,
+        subroutine d3tlst31(ibox,jbox0,boxes,nboxes,
      1    corners,stack)
         implicit real *8 (a-h,o-z)
         real *8 corners(3,8,*)
@@ -412,7 +409,7 @@ c
         call d3tifint(corners(1,1,ibox),corners(1,1,jbox),ifinter)
 c
         if(ifinter .eq. 1) goto 2000
-        call d3tlinkstor(ier,itype3,ibox,nboxes,jbox,nlist1)
+        call d3tlinkstor(itype3,ibox,nboxes,jbox,nlist1)
 c
 c        if storage capacity has been exceeed - bomb
 c
@@ -427,7 +424,7 @@ c       - enter it in list 1; enter this fact in the daddy's table;
 c       pass control to the daddy
 c       
         if(boxes(6,jbox) .ne. 0) goto 3000
-        call d3tlinkstor(ier,itype1,ibox,nboxes,jbox,nlist1)
+        call d3tlinkstor(itype1,ibox,nboxes,jbox,nlist1)
 c
 c        if storage capacity has been exceeed - bomb
 c
@@ -436,7 +433,7 @@ c             is on the finer level than ibox - enter ibox
 c             in the list 1 of jbox
 c
         if(boxes(1,jbox) .eq. boxes(1,ibox)) goto 2400
-        call d3tlinkstor(ier,itype1,jbox,nboxes,ibox,nlist1)
+        call d3tlinkstor(itype1,jbox,nboxes,ibox,nlist1)
 c
 c        if storage capacity has been exceeed - bomb
 c
@@ -646,7 +643,7 @@ c
 c
 c
 c
-        subroutine growTree(ier,z,n,ncrit,boxes,maxboxes,
+        subroutine growTree(z,n,ncrit,boxes,maxboxes,
      1    nboxes,iz,laddr,nlev,center0,size,iwork,
      1    ifempty,minlevel,maxlevel)
         implicit real *8 (a-h,o-z)
@@ -671,10 +668,7 @@ c  ncrit - the maximum number of points permitted in a box on
 c        the finest level. in other words, a box will be further
 c        subdivided if it contains more than ncrit points.
 c  maxboxes - the maximum total number of boxes the subroutine 
-c        is permitted to create. if the points z are such that 
-c        more boxes are needed, the error return code ier is
-c        set to 4, and the execution of the subroutine is
-c        terminated.
+c        is permitted to create.
 c  
 c              output parameters:
 c
@@ -740,7 +734,6 @@ c
 c        . . . find the main box containing the whole picture
 c
 c
-        ier=0
         xmin=z(1,1)
         xmax=z(1,1)
         ymin=z(2,1)
@@ -1202,10 +1195,9 @@ c
 c
 c
 c
-        subroutine d3tlinkinit(ier,nboxes,ntypes)
+        subroutine d3tlinkinit(nboxes,ntypes)
         use arrays, only : listOffset
         data ilists/0/,numele/0/
-        ier=0
         ilists=nboxes*ntypes
         do k=1,ntypes
            do i=1,nboxes
@@ -1214,64 +1206,13 @@ c
         enddo
         return
 c
-        entry d3tlinkstor(ier,itype,ibox,nboxes,list,nlist)
-c
-c       this entry stores dynamically a list of positive numbers 
-c       in the storage array w.
-c
-c                      input parameters:
-c
-c  itype - the type of the elements being stored
-c  ibox - the box to which these elements corresponds
-c  list - the list of positive integer elements to be stored
-c  nlist - the number of elements in the array list
-c  w - the storage area used by this subroutine; must be first 
-c          formatted by the entry d3tlinkinit of this subroutine
-c          (see above)
-c
-c                      output parameters:
-c
-c  w - the storage area used by this subroutine
-c
-c       . . . if this storage request exceeds the available memory - bomb
-c
-        ier=0
-c
-c       store the user-specified list in array w
-c
+        entry d3tlinkstor(itype,ibox,nboxes,list,nlist)
         call d3tlinksto0(itype,ibox,list,nlist,
      $      nboxes,numele)
-c
-c       augment the amount of storage used 
-c        
         return
 c
-c
-c
-c
-        entry d3tlinkretr(ier,itype,ibox,nboxes,list,nlist)
-c
-c       this entry retrieves from the storage area  w 
-c       a list of positive numbers that has been stored there
-c       by the entry d3tlinkstor (see above).
-c
-c                      input parameters:
-c
-c  itype - the type of the elements to be retrieved
-c  ibox - the box to which these elements correspond
-c  w - the storage area from which the information is to be 
-c          retrieved
-c
-c                      output parameters:
-c
-c  ier - error return code;
-c          ier=0 means successful execution, nothing to report
-c          ier=4 means that no elements are present of the type
-c                  itype and the box ibox
-c  list - the list of positive integer elements retrieved 
-c  nlist - the number of elements in the array list
-c
-        call d3tlinkret0(ier,itype,ibox,
+        entry d3tlinkretr(itype,ibox,nboxes,list,nlist)
+        call d3tlinkret0(itype,ibox,
      $       list,nboxes,nlist)
 c
         return
@@ -1340,13 +1281,11 @@ c
         listOffset(ibox,itype)=ilast
         return
 c
-        entry d3tlinkret0(ier,itype,ibox,list,
+        entry d3tlinkret0(itype,ibox,list,
      $       nboxes,nlist)
-        ier=0
         ilast=listOffset(ibox,itype)
         if(ilast.le.0)then
            nlist=0
-           ier=4
            return
         endif
         nlist=0
