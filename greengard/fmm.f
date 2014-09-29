@@ -47,12 +47,12 @@ c     set criterion for box subdivision (number of sources per box)
       if( iprec .eq. 5 ) ncrit=1400
       if( iprec .eq. 6 ) ncrit=numBodies
 c     create oct-tree data structure
-      ntot = 2*numBodies+10000
+      lwlists = 2*numBodies+10000
       allocate (isource(numBodies))
-      allocate (wlists(ntot))
+      allocate (wlists(lwlists))
       call buildTree(ier,Xj,numBodies,ncrit,
      1     nboxes,isource,laddr,nlev,center,size,
-     1     wlists,ntot,lwlists)
+     1     wlists,lwlists)
       allocate(iaddr(nboxes))
       do i = 0,nlev
          scale(i) = 1.0d0
@@ -85,7 +85,7 @@ c     create oct-tree data structure
       call evaluate(ier,iprec,wavek,numBodies,Xjd,isource,
      1     1,qjd,pid,Fid,epsfmm,iaddr,Multipole,Local,
      1     nboxes,laddr,nlev,scale,bsize,nterms,
-     1     wlists,lwlists)
+     1     wlists)
       do i=1,numBodies
          pi(isource(i))=pid(i)
          Fi(1,isource(i))=Fid(1,i)
@@ -100,7 +100,7 @@ c     create oct-tree data structure
      1     ifcharge,chargesort,pot,fld,
      1     epsfmm,iaddr,Multipole,Local,
      1     nboxes,laddr,nlev,scale,bsize,nterms,
-     1     wlists,lwlists)
+     1     wlists)
       use arrays, only : listOffset,lists
       implicit real *8 (a-h,o-z)
       dimension sourcesort(3,1),isource(1)
@@ -162,7 +162,7 @@ c$    tic=omp_get_wtime()
       do ilev=3,nlev+1
 c$omp parallel do default(shared)
 c$omp$private(ibox,box,center0,corners0,level,npts,numChild,radius)
-c$omp$private(lused,ier,i,j,ptemp,ftemp,cd)
+c$omp$private(ier,i,j,ptemp,ftemp,cd)
          do ibox=laddr(1,ilev),laddr(1,ilev)+laddr(2,ilev)-1
             call getCell(ier,ibox,box,center0,corners0,wlists)
             call getNumChild(box,numChild)
@@ -196,7 +196,7 @@ c$omp parallel do default(shared)
 c$omp$private(ibox,box,center0,corners0,level0)
 c$omp$private(level,npts,numChild,radius)
 c$omp$private(jbox,box1,center1,corners1,level1)
-c$omp$private(lused,ier,i,j,ptemp,ftemp,cd)
+c$omp$private(ier,i,j,ptemp,ftemp,cd)
          do ibox=laddr(1,ilev),laddr(1,ilev)+laddr(2,ilev)-1
             call getCell(ier,ibox,box,center0,corners0,wlists)
             call getNumChild(box,numChild)
@@ -238,7 +238,7 @@ c$    tic=omp_get_wtime()
 c$omp parallel do default(shared)
 c$omp$private(ibox,box,center0,corners0,list,nlist)
 c$omp$private(jbox,box1,center1,corners1,level1,ifdirect2,radius)
-c$omp$private(lused,ier,i,j,ptemp,ftemp,cd,ilist,itype)
+c$omp$private(ier,i,j,ptemp,ftemp,cd,ilist,itype)
 c$omp$private(nterms_trunc,ii,jj,kk)
 c$omp$schedule(dynamic)
          do 4200 ibox=laddr(1,ilev),laddr(1,ilev)+laddr(2,ilev)-1
@@ -294,7 +294,7 @@ c$omp parallel do default(shared)
 c$omp$private(ibox,box,center0,corners0,level0)
 c$omp$private(level,npts,numChild,radius)
 c$omp$private(jbox,box1,center1,corners1,level1)
-c$omp$private(lused,ier,i,j,ptemp,ftemp,cd)
+c$omp$private(ier,i,j,ptemp,ftemp,cd)
          do 5200 ibox=laddr(1,ilev),laddr(1,ilev)+laddr(2,ilev)-1
             call getCell(ier,ibox,box,center0,corners0,wlists)
             call getNumChild(box,numChild)
