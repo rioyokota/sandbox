@@ -142,10 +142,6 @@ c  w - storage area as created by the entry buildTree (see above)
 c
 c                     output parameters:
 c
-c  ier - the error return code.
-c    ier=0 means successful execution
-c    ier=2 means that ibox is either greater than the number of boxes
-c           in the structure or less than 1.
 c  box - an integer array dimensioned box(20). its elements describe 
 c        the box number ibox, as follows:
 c
@@ -181,10 +177,10 @@ c
         iwlists=w(5)
 c 
         ier=0
-        if( (ibox .ge. 1)  .and. (ibox .le. nboxes) ) goto 2100
-        ier=2
-        return
- 2100 continue
+        if( (ibox.lt.1).or.(ibox.gt.nboxes) ) then
+        print*,"Error: ibox out of bounds"
+        stop
+        endif
 c
         ibox0=iboxes+(ibox-1)*20-1
         do 2200 i=1,20
@@ -246,8 +242,6 @@ c  corners - the array of corners of all the boxes to in array boxes
 c 
 c              output parameters:
 c
-c  ier - the error return code.
-c    ier=0 means successful execution
 c  w - storage area containing all lists for all boxes in 
 c        the form of link-lists, accessible by the subroutine 
 c        d3tlinkretr (see).
@@ -326,8 +320,6 @@ c
 c
         call d3tlinkretr(jer,itype5,i,nboxes,list5,nlist)  
 c
-        if(jer .eq. 4) goto 3000
-c
         do 2200 j=1,nlist
         jbox=list5(j)
         call d3tlst31(ier,i,jbox,boxes,nboxes,
@@ -342,24 +334,15 @@ c
         itype3=3
         itype4=4
         nlist1=1
-        do 4400 ibox=1,nboxes
-c
-        call d3tlinkretr(jer,itype3,ibox,nboxes,list5,nlist)
-        if(jer .eq. 4) goto 4400
-        do 4200 j=1,nlist
-        call d3tlinkstor(ier,itype4,list5(j),nboxes,ibox,nlist1)
-c
-c        if storage capacity has been exceeed - bomb
-c
- 4200 continue
- 4400 continue
+        do ibox=1,nboxes
+           call d3tlinkretr(jer,itype3,ibox,nboxes,list5,nlist)
+           do j=1,nlist
+              call d3tlinkstor(ier,itype4,list5(j),nboxes,ibox,nlist1)
+           enddo
+        enddo
 
         return
         end        
-c
-c
-c
-c
 c
         subroutine d3tlst31(ier,ibox,jbox0,boxes,nboxes,
      1    corners,stack)
@@ -391,8 +374,6 @@ c          plenty of other lists.
 c  
 c                      output parameters:
 c
-c  ier - the error return code.
-c    ier=0 means successful execution
 c  w - the augmented storage area, containing all the boxes just 
 c          created, in addition to whatever had been stored previously
 c
@@ -697,12 +678,6 @@ c        terminated.
 c  
 c              output parameters:
 c
-c  ier - the error return code.
-c    ier=0 means successful execution
-c    ier=4 means that the subroutine attempted to create more 
-c        than maxboxes boxes
-c    ier=16 means that the subroutine attempted to construct more 
-c        than 197 levels of subdivision.
 c  boxes - an integer array dimensioned (20,nboxes). each 20-element
 c        column describes one box, as follows:
 c
@@ -871,10 +846,10 @@ c
 c       . . . if the user-provided array boxes is too
 c             short - bomb out
 c
-        if(ison .le. maxson) goto 1400
-        ier=4
-        return
- 1400 continue
+        if(ison.gt.maxson) then
+        print*,"Error: ibox out of bounds"
+        stop
+        endif
 c
 c        store in array boxes all information about this son
 c
@@ -909,7 +884,10 @@ c
          if(nlevson .eq. 0) goto 4000
          level1=level
  3000 continue
-        if( level1 .ge. 197 ) ier=16
+        if( level1 .ge. 197 ) then
+           print*,"Error: level out of bounds"
+           stop
+        endif
  4000 continue
         nboxes=ison
         return
@@ -1253,8 +1231,6 @@ c          (see above)
 c
 c                      output parameters:
 c
-c  ier - error return code; 
-c         ier=0 means successful execution
 c  w - the storage area used by this subroutine
 c
 c       . . . if this storage request exceeds the available memory - bomb
@@ -1383,11 +1359,6 @@ c
            if(ilast.le.0) exit
         enddo
 
-        if(nlist.lt.0)then
-           ier=4
-           return
-        endif
-        if(nlist.eq.1) return
         do i=1,nlist/2
            j=list(i)
            list(i)=list(nlist-i+1)
