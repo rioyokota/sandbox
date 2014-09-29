@@ -1,6 +1,6 @@
       subroutine buildTree(ier,z,n,ncrit,
      $     nboxes,iz,laddr,nlev,center,size,
-     $     wlists,lwlists)
+     $     wlists)
       use arrays, only : listOffset,lists
       implicit real *8 (a-h,o-z)
       integer iz(*),wlists(*),laddr(2,*)
@@ -61,8 +61,7 @@ c  size - the side of the box on the level 0
         ier=0
         iiwork=501
         iboxes=iiwork+n+4
-        lboxes=lwlists-n-9
-        maxboxes=lboxes/20-1
+        maxboxes=n
 c     initialize the sorting index 
         do i=1,n
            iz(i)=i
@@ -88,14 +87,12 @@ c     construct the centers and the corners for all boxes in the oct-tree
         icorners=icenters+lcenters
         lcorners=(nboxes*24+2)*2
         iwlists=icorners+lcorners
-        lwlists=lwlists-iwlists-6
         allocate(listOffset(nboxes,5))
         allocate(lists(2,189*nboxes))
         call setCenter(center,size,wlists(iboxes),nboxes,
      1      wlists(icenters),wlists(icorners) )
 c     now, construct all lists for all boxes
-        call getLists(ier,wlists(iboxes),nboxes,wlists(icorners),
-     1        lwlists)
+        call getLists(ier,wlists(iboxes),nboxes,wlists(icorners))
 c     store all pointers
         wlists(1)=nboxes
         wlists(2)=iboxes
@@ -204,7 +201,7 @@ c
         return
         end
 c
-        subroutine getLists(ier,boxes,nboxes,corners,lw)
+        subroutine getLists(ier,boxes,nboxes,corners)
         use arrays, only : listOffset
         implicit real *8 (a-h,o-z)
         integer boxes(20,*),collkids(50000),
@@ -246,7 +243,6 @@ c       20 - reserved for future use
 c
 c  nboxes - the total number of boxes created
 c  corners - the array of corners of all the boxes to in array boxes
-c  lw - the total amount of storage in array w (in integer words)
 c 
 c              output parameters:
 c
@@ -257,7 +253,7 @@ c        the form of link-lists, accessible by the subroutine
 c        d3tlinkretr (see).
         ier=0
         ntypes=5
-        call d3tlinkinit(jer,nboxes,ntypes,lw)
+        call d3tlinkinit(jer,nboxes,ntypes)
 c
 c        construct lists 5,2 for all boxes
 c
@@ -1228,7 +1224,7 @@ c
 c
 c
 c
-        subroutine d3tlinkinit(ier,nboxes,ntypes,lw)
+        subroutine d3tlinkinit(ier,nboxes,ntypes)
         use arrays, only : listOffset
         data ilists/0/,numele/0/
         ier=0

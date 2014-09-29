@@ -52,7 +52,7 @@ c     create oct-tree data structure
       allocate (wlists(lwlists))
       call buildTree(ier,Xj,numBodies,ncrit,
      1     nboxes,isource,laddr,nlev,center,size,
-     1     wlists,lwlists)
+     1     wlists)
       allocate(iaddr(nboxes))
       do i = 0,nlev
          scale(i) = 1.0d0
