@@ -119,12 +119,11 @@ c     store all pointers
         return
         end
 
-        subroutine getCell(ibox,box,center,corners,w)
+        subroutine getCell(ibox,box,nboxes,center,corners)
         use arrays, only : boxes,listOffset
         implicit real *8 (a-h,o-z)
-        integer w(*),box(20)
+        integer box(20)
         real *8 center(3),corners(3,8)
-        data nboxes/0/
 c
 c        this entry returns to the user the characteristics of
 c        user-specified box  ibox.  
@@ -164,8 +163,6 @@ c  corners - the corners of the box number ibox
 c
 c       . . . return to the user all information about the box ibox
 c 
-        nboxes=w(1)
-c 
         if( (ibox.lt.1).or.(ibox.gt.nboxes) ) then
            print*,"Error: ibox out of bounds"
            stop
@@ -180,7 +177,7 @@ c
         call getCenter(ibox,center,corners) 
         return
 c
-        entry getList(ibox,itype,list,nlist)
+        entry getList(ibox,itype,nboxes,list,nlist)
         call d3tlinkretr(itype,ibox,nboxes,list,nlist)
         return
         end
