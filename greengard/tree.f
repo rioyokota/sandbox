@@ -1,7 +1,7 @@
       subroutine buildTree(z,n,ncrit,
      $     nboxes,iz,laddr,nlev,center,size,
      $     wlists)
-      use arrays, only : listOffset,lists,centers,corners
+      use arrays, only : listOffset,lists,nodes,boxes,centers,corners
       implicit real *8 (a-h,o-z)
       integer iz(*),wlists(*),laddr(2,*)
       real *8 z(3,*),center(3)
@@ -68,34 +68,30 @@ c     initialize the sorting index
         ifempty=0
         minlevel=0
         maxlevel=100
+        allocate(nodes(20,maxboxes))
         call growTree(z,n,ncrit,wlists(iboxes),maxboxes,
      1    nboxes,iz,laddr,nlev,center,size,wlists(iiwork),
      $     ifempty,minlevel,maxlevel)
 c     compress the array wlists
-        nn=nboxes*20
-        do i=1,nn
-           wlists(iiwork+i-1)=wlists(iboxes+i-1)
-        enddo
-        iboxes=iiwork
-        lboxes=nboxes*20+20
-c     align array for real *16 storage
-        lboxes=lboxes+4-mod(lboxes,4)
-c     construct the centers and the corners for all boxes in the oct-tree
-        icenters=iboxes+lboxes
-        lcenters=(nboxes*3+2)*2
-        lcorners=(nboxes*24+2)*2
         allocate(listOffset(nboxes,5))
         allocate(lists(2,189*nboxes))
+        allocate(boxes(20,nboxes))
         allocate(centers(3,nboxes))
         allocate(corners(3,8,nboxes))
-        call setCenter(center,size,wlists(iboxes),nboxes)
+        do i=1,nboxes*20
+           wlists(iiwork+i-1)=wlists(iboxes+i-1)
+           boxes(mod(i-1,20)+1,(i-1)/20+1)=wlists(iboxes+i-1)
+        enddo
+        iboxes=iiwork
+c     construct the centers and the corners for all boxes in the oct-tree
+        call setCenter(center,size,nboxes)
 c     now, construct all lists for all boxes
-        call getLists(wlists(iboxes),nboxes)
+        call getLists(nboxes)
 c     store all pointers
         wlists(1)=nboxes
         wlists(2)=iboxes
         wlists(3)=0
-        wlists(4)=icenters
+        wlists(4)=0
         wlists(5)=0
         wlists(6)=0
         wlists(7)=n
@@ -124,7 +120,7 @@ c     store all pointers
         end
 
         subroutine getCell(ibox,box,center,corners,w)
-        use arrays, only : listOffset
+        use arrays, only : boxes,listOffset
         implicit real *8 (a-h,o-z)
         integer w(*),box(20)
         real *8 center(3),corners(3,8)
@@ -169,18 +165,15 @@ c
 c       . . . return to the user all information about the box ibox
 c 
         nboxes=w(1)
-        iboxes=w(2)
-        icenters=w(4)
 c 
         if( (ibox.lt.1).or.(ibox.gt.nboxes) ) then
-        print*,"Error: ibox out of bounds"
-        stop
+           print*,"Error: ibox out of bounds"
+           stop
         endif
 c
-        ibox0=iboxes+(ibox-1)*20-1
-        do 2200 i=1,20
-        box(i)=w(ibox0+i)
- 2200 continue
+        do i=1,20
+           box(i)=boxes(i,ibox)
+        enddo
 c
 c      return to the user the center and the corners of the box ibox
 c
@@ -192,10 +185,10 @@ c
         return
         end
 c
-        subroutine getLists(boxes,nboxes)
-        use arrays, only : listOffset,corners
+        subroutine getLists(nboxes)
+        use arrays, only : boxes,listOffset,corners
         implicit real *8 (a-h,o-z)
-        integer boxes(20,*),collkids(50000),
+        integer collkids(50000),
      1      dadcolls(2000),list5(20000),stack(60000)
 ccc        save
 c
@@ -282,13 +275,9 @@ c       check if this kid is touching the box ibox
 c
         kid=collkids(i)
         call d3tifint(corners(1,1,kid),corners(1,1,ibox),ifinter)
-ccc        call d3tifint2(boxes(1,kid),boxes(1,ibox),ifinter)
-c
         if(ifinter .eq. 1)
      $    call d3tlinkstor(itype5,ibox,nboxes,kid,nlist1)
-c
 c        if storage capacity has been exceeed - bomb
-c
         if(ifinter .eq. 0)
      $    call d3tlinkstor(itype2,ibox,nboxes,kid,nlist1)
  1800 continue
@@ -315,7 +304,7 @@ c
 c
         do 2200 j=1,nlist
         jbox=list5(j)
-        call d3tlst31(i,jbox,boxes,nboxes,stack)
+        call d3tlst31(i,jbox,nboxes,stack)
 c
 c        if storage capacity has been exceeded - bomb
 c
@@ -336,10 +325,10 @@ c
         return
         end        
 c
-        subroutine d3tlst31(ibox,jbox0,boxes,nboxes,stack)
-        use arrays, only : corners
+        subroutine d3tlst31(ibox,jbox0,nboxes,stack)
+        use arrays, only : boxes,corners
         implicit real *8 (a-h,o-z)
-        integer boxes(20,*),stack(3,*)
+        integer stack(3,*)
         data itype1/1/,itype2/2/,itype3/3/,itype4/4/,itype5/5/,
      1      nlist1/1/
 ccc        save
@@ -881,10 +870,9 @@ c
 c
 c
 c
-        subroutine setCenter(center0,size,boxes,nboxes)
-        use arrays, only : centers,corners
+        subroutine setCenter(center0,size,nboxes)
+        use arrays, only : boxes,centers,corners
         implicit real *8 (a-h,o-z)
-        integer boxes(20,*)
         real *8 center(3),center0(3)
 ccc        save
 c
