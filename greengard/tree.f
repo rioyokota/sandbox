@@ -1,10 +1,10 @@
       subroutine buildTree(z,n,ncrit,
      $     nboxes,iz,laddr,nlev,center,size,
      $     wlists)
-      use arrays, only : listOffset,lists
+      use arrays, only : listOffset,lists,centers,corners
       implicit real *8 (a-h,o-z)
       integer iz(*),wlists(*),laddr(2,*)
-      real *8 z(3,*),center(3),corners(3,8)
+      real *8 z(3,*),center(3)
 c        this subroutine constructs the logical structure for the 
 c        fully adaptive FMM in three dimensions and stores it in the
 c        array wlists in the form of a link-list. after that, the user 
@@ -83,21 +83,20 @@ c     align array for real *16 storage
 c     construct the centers and the corners for all boxes in the oct-tree
         icenters=iboxes+lboxes
         lcenters=(nboxes*3+2)*2
-        icorners=icenters+lcenters
         lcorners=(nboxes*24+2)*2
-        iwlists=icorners+lcorners
         allocate(listOffset(nboxes,5))
         allocate(lists(2,189*nboxes))
-        call setCenter(center,size,wlists(iboxes),nboxes,
-     1      wlists(icenters),wlists(icorners) )
+        allocate(centers(3,nboxes))
+        allocate(corners(3,8,nboxes))
+        call setCenter(center,size,wlists(iboxes),nboxes)
 c     now, construct all lists for all boxes
-        call getLists(wlists(iboxes),nboxes,wlists(icorners))
+        call getLists(wlists(iboxes),nboxes)
 c     store all pointers
         wlists(1)=nboxes
         wlists(2)=iboxes
-        wlists(3)=icorners
+        wlists(3)=0
         wlists(4)=icenters
-        wlists(5)=iwlists
+        wlists(5)=0
         wlists(6)=0
         wlists(7)=n
         wlists(8)=ncrit
@@ -144,9 +143,9 @@ c
 c  box - an integer array dimensioned box(20). its elements describe 
 c        the box number ibox, as follows:
 c
-c       1. level - the level of subdivision on which this box 
+c       1 - the level of subdivision on which this box 
 c             was constructed; 
-c       2, 3, 4  - the coordinates of this box among  all
+c       2,3,4  - the coordinates of this box among  all
 c             boxes on this level
 c       5 - the daddy of this box, identified by it address
 c             in array boxes
@@ -171,9 +170,7 @@ c       . . . return to the user all information about the box ibox
 c 
         nboxes=w(1)
         iboxes=w(2)
-        icorners=w(3)
         icenters=w(4)
-        iwlists=w(5)
 c 
         if( (ibox.lt.1).or.(ibox.gt.nboxes) ) then
         print*,"Error: ibox out of bounds"
@@ -187,7 +184,7 @@ c
 c
 c      return to the user the center and the corners of the box ibox
 c
-        call getCenter(w(icenters),w(icorners),ibox,center,corners) 
+        call getCenter(ibox,center,corners) 
         return
 c
         entry getList(ibox,itype,list,nlist)
@@ -195,12 +192,11 @@ c
         return
         end
 c
-        subroutine getLists(boxes,nboxes,corners)
-        use arrays, only : listOffset
+        subroutine getLists(boxes,nboxes)
+        use arrays, only : listOffset,corners
         implicit real *8 (a-h,o-z)
         integer boxes(20,*),collkids(50000),
      1      dadcolls(2000),list5(20000),stack(60000)
-        real *8 corners(3,8,*)
 ccc        save
 c
 c        this subroutine constructs all lists for all boxes 
@@ -319,8 +315,7 @@ c
 c
         do 2200 j=1,nlist
         jbox=list5(j)
-        call d3tlst31(i,jbox,boxes,nboxes,
-     1    corners,stack)
+        call d3tlst31(i,jbox,boxes,nboxes,stack)
 c
 c        if storage capacity has been exceeded - bomb
 c
@@ -341,10 +336,9 @@ c
         return
         end        
 c
-        subroutine d3tlst31(ibox,jbox0,boxes,nboxes,
-     1    corners,stack)
+        subroutine d3tlst31(ibox,jbox0,boxes,nboxes,stack)
+        use arrays, only : corners
         implicit real *8 (a-h,o-z)
-        real *8 corners(3,8,*)
         integer boxes(20,*),stack(3,*)
         data itype1/1/,itype2/2/,itype3/3/,itype4/4/,itype5/5/,
      1      nlist1/1/
@@ -619,21 +613,18 @@ c
 c
 c
 c
-        subroutine getCenter(centers,corners,ibox,center,corner)
+        subroutine getCenter(ibox,center,corner)
+        use arrays, only : centers,corners
         implicit real *8 (a-h,o-z)
-        real *8 centers(3,*),corners(3,8,*),center(3),corner(3,8)
-ccc        save
-c
+        real *8 center(3),corner(3,8)
         center(1)=centers(1,ibox)        
         center(2)=centers(2,ibox)        
         center(3)=centers(3,ibox)        
-c
-        do 1200 i=1,8
+        do i=1,8
         corner(1,i)=corners(1,i,ibox)        
         corner(2,i)=corners(2,i,ibox)        
         corner(3,i)=corners(3,i,ibox)        
-c
- 1200 continue
+        enddo
 c
         return
         end
@@ -890,11 +881,11 @@ c
 c
 c
 c
-        subroutine setCenter(center0,size,boxes,nboxes,
-     1      centers,corners)
+        subroutine setCenter(center0,size,boxes,nboxes)
+        use arrays, only : centers,corners
         implicit real *8 (a-h,o-z)
         integer boxes(20,*)
-        real *8 centers(3,*),corners(3,8,*),center(3),center0(3)
+        real *8 center(3),center0(3)
 ccc        save
 c
 c       this subroutine produces arrays of centers and 
@@ -921,7 +912,7 @@ c
         x00=center0(1)-size/2
         y00=center0(2)-size/2
         z00=center0(3)-size/2
-        do 1400 i=1,nboxes
+        do i=1,nboxes
         level=boxes(1,i)
         side=size/2**level
         side2=side/2
@@ -940,37 +931,31 @@ c
         corners(1,2,i)=corners(1,1,i)
         corners(1,3,i)=corners(1,1,i)
         corners(1,4,i)=corners(1,1,i)
-c
         corners(1,5,i)=corners(1,1,i)+side
         corners(1,6,i)=corners(1,5,i)
         corners(1,7,i)=corners(1,5,i)
         corners(1,8,i)=corners(1,5,i)
 c
-c
         corners(2,1,i)=center(2)-side/2
         corners(2,2,i)=corners(2,1,i)
         corners(2,5,i)=corners(2,1,i)
         corners(2,6,i)=corners(2,1,i)
-c
         corners(2,3,i)=corners(2,1,i)+side
         corners(2,4,i)=corners(2,3,i)
         corners(2,7,i)=corners(2,3,i)
         corners(2,8,i)=corners(2,3,i)
 c
-c
         corners(3,1,i)=center(3)-side/2
         corners(3,3,i)=corners(3,1,i)
         corners(3,5,i)=corners(3,1,i)
         corners(3,7,i)=corners(3,1,i)
-c
         corners(3,2,i)=corners(3,1,i)+side
         corners(3,4,i)=corners(3,2,i)
         corners(3,6,i)=corners(3,2,i)
         corners(3,8,i)=corners(3,2,i)
-c
- 1400 continue
-         return
-         end
+        enddo
+        return
+        end
 c
 c
 c
