@@ -15,11 +15,11 @@ c
 c     list 2 of the box ibox - the list of all boxes with which the
 c           box ibox interacts in the regular multipole fashion, i.e. 
 c           boxes on the same level as ibox that are separated from it
-c           but whose daddies are not separated from the daddy of ibox.
+c           but whose parents are not separated from the parent of ibox.
 c
 c     list 3 of the box ibox - for a childless ibox, the list of all 
 c           boxes on the levels finer than that of ibox, which are 
-c           separated from ibox, and whose daddys are not separated 
+c           separated from ibox, and whose parents are not separated 
 c           from ibox. for a box with children, list 3 is empty.
 c           
 c     list 4 is dual to list 3, i.e. jbox is on the list 4 of ibox if 
@@ -48,47 +48,47 @@ c         the number of levels required.
 c  center - the center of the box on the level 0, containing
 c         the whole simulation
 c  size - the side of the box on the level 0
-        maxboxes=numBodies
-        do i=1,numBodies
-           isource(i)=i
-	enddo
-        ifempty=0
-        minlevel=0
-        maxlevel=100
-        allocate(nodes(20,maxboxes))
-        call growTree(Xj,numBodies,ncrit,nodes,maxboxes,
-     $       nboxes,isource,laddr,nlev,center,size,
-     $       ifempty,minlevel,maxlevel)
-        allocate(listOffset(nboxes,5))
-        allocate(lists(2,189*nboxes))
-        allocate(boxes(20,nboxes))
-        allocate(centers(3,nboxes))
-        allocate(corners(3,8,nboxes))
-        do i=1,nboxes
-           do j=1,20
-              boxes(j,i)=nodes(j,i)
-           enddo
-        enddo
-        call setCenter(center,size,nboxes)
-        call getLists(nboxes)
-        return
-        end
+      maxboxes=numBodies
+      do i=1,numBodies
+         isource(i)=i
+      enddo
+      ifempty=0
+      minlevel=0
+      maxlevel=100
+      allocate(nodes(20,maxboxes))
+      call growTree(Xj,numBodies,ncrit,nodes,maxboxes,
+     $     nboxes,isource,laddr,nlev,center,size,
+     $     ifempty,minlevel,maxlevel)
+      allocate(listOffset(nboxes,5))
+      allocate(lists(2,189*nboxes))
+      allocate(boxes(20,nboxes))
+      allocate(centers(3,nboxes))
+      allocate(corners(3,8,nboxes))
+      do i=1,nboxes
+         do j=1,20
+            boxes(j,i)=nodes(j,i)
+         enddo
+      enddo
+      call setCenter(center,size,nboxes)
+      call getLists(nboxes)
+      return
+      end
 
-        subroutine getNumChild(box,nkids)
-        implicit real *8 (a-h,o-z)
-        integer box(20)
-        nkids=0
-        do ikid=1,8
-           if( box(5+ikid) .ne. 0 ) nkids=nkids+1
-        enddo
-        return
-        end
-
-        subroutine getCell(ibox,box,nboxes,center,corners)
-        use arrays, only : boxes,listOffset
-        implicit real *8 (a-h,o-z)
-        integer box(20)
-        real *8 center(3),corners(3,8)
+      subroutine getNumChild(box,nkids)
+      implicit real *8 (a-h,o-z)
+      integer box(20)
+      nkids=0
+      do ikid=1,8
+         if( box(5+ikid) .ne. 0 ) nkids=nkids+1
+      enddo
+      return
+      end
+      
+      subroutine getCell(ibox,box,nboxes,center,corners)
+      use arrays, only : boxes,listOffset
+      implicit real *8 (a-h,o-z)
+      integer box(20)
+      real *8 center(3),corners(3,8)
 c
 c        this entry returns to the user the characteristics of
 c        user-specified box  ibox.  
@@ -107,7 +107,7 @@ c       1 - the level of subdivision on which this box
 c             was constructed; 
 c       2,3,4  - the coordinates of this box among  all
 c             boxes on this level
-c       5 - the daddy of this box, identified by it address
+c       5 - the parent of this box, identified by it address
 c             in array boxes
 c       6,7,8,9,10,11,12,13 - the  list of children of this box 
 c             (eight of them, and the child is identified by its address
@@ -128,786 +128,735 @@ c  corners - the corners of the box number ibox
 c
 c       . . . return to the user all information about the box ibox
 c 
-        if( (ibox.lt.1).or.(ibox.gt.nboxes) ) then
-           print*,"Error: ibox out of bounds"
-           stop
-        endif
+      if( (ibox.lt.1).or.(ibox.gt.nboxes) ) then
+         print*,"Error: ibox out of bounds"
+         stop
+      endif
 c
-        do i=1,20
-           box(i)=boxes(i,ibox)
-        enddo
+      do i=1,20
+         box(i)=boxes(i,ibox)
+      enddo
 c
-c      return to the user the center and the corners of the box ibox
+c     return to the user the center and the corners of the box ibox
 c
-        call getCenter(ibox,center,corners) 
-        return
-        end
+      call getCenter(ibox,center,corners) 
+      return
+      end
 c
-        subroutine getLists(nboxes)
-        use arrays, only : boxes,listOffset,corners
-        implicit real *8 (a-h,o-z)
-        integer collkids(50000),dadcolls(2000),list5(20000),stack(60000)
-        ntypes=5
-        do k=1,ntypes
-           do i=1,nboxes
-              listOffset(i,k)=-1
-           enddo
-        enddo
+      subroutine getLists(nboxes)
+      use arrays, only : boxes,listOffset,corners
+      implicit real *8 (a-h,o-z)
+      integer collkids(50000),dadcolls(2000),list5(20000),stack(60000)
+      ntypes=5
+      do k=1,ntypes
+         do i=1,nboxes
+            listOffset(i,k)=-1
+         enddo
+      enddo
+c     
+c     construct lists 5,2 for all boxes
 c
-c        construct lists 5,2 for all boxes
+      do 2000 ibox=2,nboxes
+         iparent=boxes(5,ibox)
 c
-        do 2000 ibox=2,nboxes
+c     find parent's collegues including parent
+c     
+         dadcolls(1)=iparent
+         itype5=5
+         itype2=2
+         call getList(itype5,iparent,nboxes,dadcolls(2),ncolls)
+         ncolls=ncolls+1
 c
-c       find this guy's daddy
+c        find the children of the parent's collegues
 c
-        idad=boxes(5,ibox)
-c
-c       find daddy's collegues, including daddy himself
-c
-        dadcolls(1)=idad
-        itype5=5
-        itype2=2
-        call getList(itype5,idad,nboxes,dadcolls(2),ncolls)
-        ncolls=ncolls+1
-c
-c        find the children of the daddy's collegues
-c
-        nkids=0
-        do 1600 i=1,ncolls
-        icoll=dadcolls(i)
-        do 1400 j=1,8
-        kid=boxes(5+j,icoll)
-        if(kid .le. 0) goto 1600
-        if(kid .eq. ibox) goto 1400
-        nkids=nkids+1
-        collkids(nkids)=kid
- 1400 continue
- 1600 continue
-c
-c       sort the kids of the daddy's collegues into the 
-c       lists 2, 5 of the box ibox
-c
-        nlist1=1
-        do 1800 i=1,nkids
-c
-c       check if this kid is touching the box ibox
-c
-        kid=collkids(i)
-        call d3tifint(corners(1,1,kid),corners(1,1,ibox),ifinter)
-        if(ifinter .eq. 1)
-     $    call setList(itype5,ibox,nboxes,kid,nlist1)
-c        if storage capacity has been exceeed - bomb
-        if(ifinter .eq. 0)
-     $    call setList(itype2,ibox,nboxes,kid,nlist1)
- 1800 continue
-c
-c        if storage capacity has been exceeed - bomb
-c
+         nkids=0
+         do i=1,ncolls
+            icoll=dadcolls(i)
+            do j=1,8
+               kid=boxes(5+j,icoll)
+               if(kid.gt.0)then
+                  if(kid.ne.ibox)then
+                     nkids=nkids+1
+                     collkids(nkids)=kid
+                  endif
+               endif
+            enddo
+         enddo
+c     sort the kids of the parent's collegues into the 
+c     lists 2, 5 of the box ibox
+         nlist1=1
+         do i=1,nkids
+            kid=collkids(i)
+            call intersect(corners(1,1,kid),corners(1,1,ibox),ifinter)
+            if(ifinter.eq.1)
+     $           call setList(itype5,ibox,nboxes,kid,nlist1)
+            if(ifinter.eq.0)
+     $           call setList(itype2,ibox,nboxes,kid,nlist1)
+         enddo
+c     
+c     if storage capacity has been exceeed - bomb
+c     
  2000 continue
-c
-c
-c       now, construct lists 1, 3
-c
-        do 3000 i=1,nboxes
-c
-c       if this box has kids - its lists 1, 3 are empty;
-c       do not construct them
-c
-        if(boxes(6,i) .gt. 0) goto 3000
-c
-c       do not construct lists 1, 3 for the main box
-c
-        if(boxes(1,i) .eq. 0) goto 3000
-c
-        call getList(itype5,i,nboxes,list5,nlist)  
-c
-        do 2200 j=1,nlist
-        jbox=list5(j)
-        call d3tlst31(i,jbox,nboxes,stack)
-c
-c        if storage capacity has been exceeded - bomb
-c
- 2200 continue
+c     
+c     
+c     now, construct lists 1, 3
+c     
+      do 3000 i=1,nboxes
+c     
+c     if this box has kids - its lists 1, 3 are empty;
+c     do not construct them
+c     
+         if(boxes(6,i) .gt. 0) goto 3000
+c     
+c     do not construct lists 1, 3 for the main box
+c     
+         if(boxes(1,i) .eq. 0) goto 3000
+c     
+         call getList(itype5,i,nboxes,list5,nlist)  
+c     
+         do 2200 j=1,nlist
+            jbox=list5(j)
+            call getList13(i,jbox,nboxes,stack)
+c     
+c     if storage capacity has been exceeded - bomb
+c     
+ 2200    continue
  3000 continue
-c
-c
-        itype3=3
-        itype4=4
-        nlist1=1
-        do ibox=1,nboxes
-           call getList(itype3,ibox,nboxes,list5,nlist)
-           do j=1,nlist
-              call setList(itype4,list5(j),nboxes,ibox,nlist1)
-           enddo
-        enddo
+c     
+c     
+      itype3=3
+      itype4=4
+      nlist1=1
+      do ibox=1,nboxes
+         call getList(itype3,ibox,nboxes,list5,nlist)
+         do j=1,nlist
+            call setList(itype4,list5(j),nboxes,ibox,nlist1)
+         enddo
+      enddo
 
-        return
-        end        
-c
-        subroutine d3tlst31(ibox,jbox0,nboxes,stack)
-        use arrays, only : boxes,corners
-        implicit real *8 (a-h,o-z)
-        integer stack(3,*)
-        data itype1/1/,itype2/2/,itype3/3/,itype4/4/,itype5/5/,
-     1      nlist1/1/
-        jbox=jbox0
-        istack=1
-        stack(1,1)=1
-        stack(2,1)=jbox
-c
-        nsons=0
-        do 1200 j=6,13
-c
-        if(boxes(j,jbox) .gt. 0) nsons=nsons+1
+      return
+      end        
+c     
+      subroutine getList13(ibox,jbox0,nboxes,stack)
+      use arrays, only : boxes,corners
+      implicit real *8 (a-h,o-z)
+      integer stack(3,*)
+      data itype1/1/,itype2/2/,itype3/3/,itype4/4/,itype5/5/,
+     1     nlist1/1/
+      jbox=jbox0
+      istack=1
+      stack(1,1)=1
+      stack(2,1)=jbox
+c     
+      nsons=0
+      do 1200 j=6,13
+c     
+         if(boxes(j,jbox) .gt. 0) nsons=nsons+1
  1200 continue
-c
-        stack(3,1)=nsons
-c
-c       . . . move up and down the stack, generating the elements 
-c             of lists 1, 3 for the box jbox, as appropriate
-c
-        do 5000 ijk=1,1 000 000 000
-c
-c       if this box is separated from ibox - store it in list 3;
-c       enter this fact in the daddy's table; pass control
-c       to the daddy
-c
-        call d3tifint(corners(1,1,ibox),corners(1,1,jbox),ifinter)
-c
-        if(ifinter .eq. 1) goto 2000
-        call setList(itype3,ibox,nboxes,jbox,nlist1)
-c
-c        if storage capacity has been exceeed - bomb
-c
-        istack=istack-1
-        stack(3,istack)=stack(3,istack)-1
-        jbox=stack(2,istack)
-        goto 5000
- 2000 continue
-c
-c       this box is not separated from ibox. if it is childless 
-c       - enter it in list 1; enter this fact in the daddy's table; 
-c       pass control to the daddy
-c       
-        if(boxes(6,jbox) .ne. 0) goto 3000
-        call setList(itype1,ibox,nboxes,jbox,nlist1)
-c
-c        if storage capacity has been exceeed - bomb
-c
-c       . . . entered jbox in the list1 of ibox; if jbox
-c             is on the finer level than ibox - enter ibox
-c             in the list 1 of jbox
-c
-        if(boxes(1,jbox) .eq. boxes(1,ibox)) goto 2400
-        call setList(itype1,jbox,nboxes,ibox,nlist1)
-c
-c        if storage capacity has been exceeed - bomb
-c
- 2400 continue
-c
-c       if we have processed the whole box jbox0, get out
-c       of the subroutine
-c
-        if(jbox .eq. jbox0) return
-c
-        istack=istack-1
-        stack(3,istack)=stack(3,istack)-1
-        jbox=stack(2,istack)
-        goto 5000
- 3000 continue
-c
-c       this box is not separated from ibox, and has children. if 
-c       the number of unprocessed sons of this box is zero 
-c       - pass control to his daddy
-c
-        nsons=stack(3,istack)
-        if(nsons .ne. 0) goto 4000
-c
-        if(jbox .eq. jbox0) return
-c
-        istack=istack-1
-        stack(3,istack)=stack(3,istack)-1
-        jbox=stack(2,istack)
-        goto 5000
- 4000 continue
-c
-c       this box is not separated from ibox; it has sons, and
-c       not all of them have been processed. construct the stack
-c       element for the appropriate son, and pass the control
-c       to him. 
-c
-        jbox=boxes(5+nsons,jbox)
-        istack=istack+1
-c
-        nsons=0
-        do 4600 j=6,13
-c
-        if(boxes(j,jbox) .gt. 0) nsons=nsons+1
- 4600 continue
-c
-        stack(1,istack)=istack
-        stack(2,istack)=jbox
-        stack(3,istack)=nsons
-c
+c     
+      stack(3,1)=nsons
+c     
+c     . . . move up and down the stack, generating the elements 
+c     of lists 1, 3 for the box jbox, as appropriate
+c     
+      do 5000 ijk=1,1 000 000 000
+c     
+c     if this box is separated from ibox - store it in list 3;
+c     enter this fact in the parent's table; pass control
+c     to the parent
+c     
+         call intersect(corners(1,1,ibox),corners(1,1,jbox),ifinter)
+c     
+         if(ifinter .eq. 1) goto 2000
+         call setList(itype3,ibox,nboxes,jbox,nlist1)
+c     
+c     if storage capacity has been exceeed - bomb
+c     
+         istack=istack-1
+         stack(3,istack)=stack(3,istack)-1
+         jbox=stack(2,istack)
+         goto 5000
+ 2000    continue
+c     
+c     this box is not separated from ibox. if it is childless 
+c     - enter it in list 1; enter this fact in the parent's table; 
+c     pass control to the parent
+c     
+         if(boxes(6,jbox) .ne. 0) goto 3000
+         call setList(itype1,ibox,nboxes,jbox,nlist1)
+c     
+c     if storage capacity has been exceeed - bomb
+c     
+c     . . . entered jbox in the list1 of ibox; if jbox
+c     is on the finer level than ibox - enter ibox
+c     in the list 1 of jbox
+c     
+         if(boxes(1,jbox) .eq. boxes(1,ibox)) goto 2400
+         call setList(itype1,jbox,nboxes,ibox,nlist1)
+c     
+c     if storage capacity has been exceeed - bomb
+c     
+ 2400    continue
+c     
+c     if we have processed the whole box jbox0, get out
+c     of the subroutine
+c     
+         if(jbox .eq. jbox0) return
+c     
+         istack=istack-1
+         stack(3,istack)=stack(3,istack)-1
+         jbox=stack(2,istack)
+         goto 5000
+ 3000    continue
+c     
+c     this box is not separated from ibox, and has children. if 
+c     the number of unprocessed sons of this box is zero 
+c     - pass control to his parent
+c     
+         nsons=stack(3,istack)
+         if(nsons .ne. 0) goto 4000
+c     
+         if(jbox .eq. jbox0) return
+c     
+         istack=istack-1
+         stack(3,istack)=stack(3,istack)-1
+         jbox=stack(2,istack)
+         goto 5000
+ 4000    continue
+c     
+c     this box is not separated from ibox; it has sons, and
+c     not all of them have been processed. construct the stack
+c     element for the appropriate son, and pass the control
+c     to him. 
+c     
+         jbox=boxes(5+nsons,jbox)
+         istack=istack+1
+c     
+         nsons=0
+         do 4600 j=6,13
+c     
+            if(boxes(j,jbox) .gt. 0) nsons=nsons+1
+ 4600    continue
+c     
+         stack(1,istack)=istack
+         stack(2,istack)=jbox
+         stack(3,istack)=nsons
+c     
  5000 continue
-c
-        return
-        end
-c
-c
-c
-c
-c
-        subroutine d3tifint(c1,c2,ifinter)
-        implicit real *8 (a-h,o-z)
-        real *8 c1(3,8),c2(3,8)
-ccc        save
-c
-c        this subroutine determines if two boxes in the square 
-c        intersect or touch.
-c
-c                input parameters:
-c
-c  c1 - the four corners of the first box
-c  c2 - the four corners of the second box
-c
-c                output parametes:
-c 
-c  ifinter - the indicator.
-c      ifinter=1 means that the boxes intersect
-c      ifinter=0 means that the boxes do not intersect
-c
-c       . . . find the maximum and minimum coordinates
-c             for both boxes
-c
-        xmin1=c1(1,1)
-        ymin1=c1(2,1)
-        zmin1=c1(3,1)
-c
-        xmax1=c1(1,1)
-        ymax1=c1(2,1)
-        zmax1=c1(3,1)
-c
-        xmin2=c2(1,1)
-        ymin2=c2(2,1)
-        zmin2=c2(3,1)
-c
-        xmax2=c2(1,1)
-        ymax2=c2(2,1)
-        zmax2=c2(3,1)
-c
-        do 1200 i=1,8
-c
-        if(xmin1 .gt. c1(1,i)) xmin1=c1(1,i)
-        if(ymin1 .gt. c1(2,i)) ymin1=c1(2,i)
-        if(zmin1 .gt. c1(3,i)) zmin1=c1(3,i)
-c
-        if(xmax1 .lt. c1(1,i)) xmax1=c1(1,i)
-        if(ymax1 .lt. c1(2,i)) ymax1=c1(2,i)
-        if(zmax1 .lt. c1(3,i)) zmax1=c1(3,i)
-c
-c
-        if(xmin2 .gt. c2(1,i)) xmin2=c2(1,i)
-        if(ymin2 .gt. c2(2,i)) ymin2=c2(2,i)
-        if(zmin2 .gt. c2(3,i)) zmin2=c2(3,i)
-c
-        if(xmax2 .lt. c2(1,i)) xmax2=c2(1,i)
-        if(ymax2 .lt. c2(2,i)) ymax2=c2(2,i)
-        if(zmax2 .lt. c2(3,i)) zmax2=c2(3,i)
-c
- 1200 continue
-c        
-c        decide if the boxes intersect
-c
-        eps=xmax1-xmin1
-        if(eps .gt. xmax2-xmin2) eps=xmax2-xmin2
-        if(eps .gt. ymax2-ymin2) eps=ymax2-ymin2
-        if(eps .gt. zmax2-zmin2) eps=zmax2-zmin2
-c
-        if(eps .gt. ymax1-ymin1) eps=ymax1-ymin1
-        if(eps .gt. zmax1-zmin1) eps=zmax1-zmin1
-c
-        eps=eps/10000
-c
-        ifinter=1
-        if(xmin1 .gt. xmax2+eps) ifinter=0
-        if(xmin2 .gt. xmax1+eps) ifinter=0
-c
-        if(ymin1 .gt. ymax2+eps) ifinter=0
-        if(ymin2 .gt. ymax1+eps) ifinter=0
-c
-        if(zmin1 .gt. zmax2+eps) ifinter=0
-        if(zmin2 .gt. zmax1+eps) ifinter=0
-        return
-        end
-c
-        subroutine getCenter(ibox,center,corner)
-        use arrays, only : centers,corners
-        implicit real *8 (a-h,o-z)
-        real *8 center(3),corner(3,8)
-        center(1)=centers(1,ibox)        
-        center(2)=centers(2,ibox)        
-        center(3)=centers(3,ibox)        
-        do i=1,8
-        corner(1,i)=corners(1,i,ibox)        
-        corner(2,i)=corners(2,i,ibox)        
-        corner(3,i)=corners(3,i,ibox)        
-        enddo
-        return
-        end
-c
-        subroutine growTree(z,n,ncrit,boxes,maxboxes,
-     1    nboxes,iz,laddr,nlev,center0,size,
-     1    ifempty,minlevel,maxlevel)
-        implicit real *8 (a-h,o-z)
-        integer boxes(20,*),iz(*),laddr(2,*),iwork(n),
-     1      is(8),ns(8),
-     1      iisons(8),jjsons(8),kksons(8)
-        real *8 z(3,*),center0(3),center(3)
-        data kksons/1,1,1,1,2,2,2,2/,jjsons/1,1,2,2,1,1,2,2/,
-     1      iisons/1,2,1,2,1,2,1,2/
-        xmin=z(1,1)
-        xmax=z(1,1)
-        ymin=z(2,1)
-        ymax=z(2,1)
-        zmin=z(3,1)
-        zmax=z(3,1)
-        do 1100 i=1,n
-        if(z(1,i) .lt. xmin) xmin=z(1,i)
-        if(z(1,i) .gt. xmax) xmax=z(1,i)
-        if(z(2,i) .lt. ymin) ymin=z(2,i)
-        if(z(2,i) .gt. ymax) ymax=z(2,i)
-        if(z(3,i) .lt. zmin) zmin=z(3,i)
-        if(z(3,i) .gt. zmax) zmax=z(3,i)
+c     
+      return
+      end
+c     
+c     
+c     
+c     
+c     
+      subroutine intersect(c1,c2,ifinter)
+      implicit real *8 (a-h,o-z)
+      real *8 c1(3,8),c2(3,8)
+      xmin1=c1(1,1)
+      ymin1=c1(2,1)
+      zmin1=c1(3,1)
+      xmax1=c1(1,1)
+      ymax1=c1(2,1)
+      zmax1=c1(3,1)
+
+      xmin2=c2(1,1)
+      ymin2=c2(2,1)
+      zmin2=c2(3,1)
+      xmax2=c2(1,1)
+      ymax2=c2(2,1)
+      zmax2=c2(3,1)
+
+      do i=1,8
+         if(xmin1 .gt. c1(1,i)) xmin1=c1(1,i)
+         if(ymin1 .gt. c1(2,i)) ymin1=c1(2,i)
+         if(zmin1 .gt. c1(3,i)) zmin1=c1(3,i)
+         if(xmax1 .lt. c1(1,i)) xmax1=c1(1,i)
+         if(ymax1 .lt. c1(2,i)) ymax1=c1(2,i)
+         if(zmax1 .lt. c1(3,i)) zmax1=c1(3,i)
+
+         if(xmin2 .gt. c2(1,i)) xmin2=c2(1,i)
+         if(ymin2 .gt. c2(2,i)) ymin2=c2(2,i)
+         if(zmin2 .gt. c2(3,i)) zmin2=c2(3,i)
+         if(xmax2 .lt. c2(1,i)) xmax2=c2(1,i)
+         if(ymax2 .lt. c2(2,i)) ymax2=c2(2,i)
+         if(zmax2 .lt. c2(3,i)) zmax2=c2(3,i)
+      enddo
+
+      eps=xmax1-xmin1
+      if(eps .gt. ymax1-ymin1) eps=ymax1-ymin1
+      if(eps .gt. zmax1-zmin1) eps=zmax1-zmin1
+      if(eps .gt. xmax2-xmin2) eps=xmax2-xmin2
+      if(eps .gt. ymax2-ymin2) eps=ymax2-ymin2
+      if(eps .gt. zmax2-zmin2) eps=zmax2-zmin2
+      eps=eps/10000
+      ifinter=1
+      if(xmin1 .gt. xmax2+eps) ifinter=0
+      if(xmin2 .gt. xmax1+eps) ifinter=0
+      if(ymin1 .gt. ymax2+eps) ifinter=0
+      if(ymin2 .gt. ymax1+eps) ifinter=0
+      if(zmin1 .gt. zmax2+eps) ifinter=0
+      if(zmin2 .gt. zmax1+eps) ifinter=0
+      return
+      end
+
+      subroutine getCenter(ibox,center,corner)
+      use arrays, only : centers,corners
+      implicit real *8 (a-h,o-z)
+      real *8 center(3),corner(3,8)
+      center(1)=centers(1,ibox)        
+      center(2)=centers(2,ibox)        
+      center(3)=centers(3,ibox)        
+      do i=1,8
+         corner(1,i)=corners(1,i,ibox)        
+         corner(2,i)=corners(2,i,ibox)        
+         corner(3,i)=corners(3,i,ibox)        
+      enddo
+      return
+      end
+c     
+      subroutine growTree(z,n,ncrit,boxes,maxboxes,
+     1     nboxes,iz,laddr,nlev,center0,size,
+     1     ifempty,minlevel,maxlevel)
+      implicit real *8 (a-h,o-z)
+      integer boxes(20,*),iz(*),laddr(2,*),iwork(n),
+     1     is(8),ns(8),
+     1     iisons(8),jjsons(8),kksons(8)
+      real *8 z(3,*),center0(3),center(3)
+      data kksons/1,1,1,1,2,2,2,2/,jjsons/1,1,2,2,1,1,2,2/,
+     1     iisons/1,2,1,2,1,2,1,2/
+      xmin=z(1,1)
+      xmax=z(1,1)
+      ymin=z(2,1)
+      ymax=z(2,1)
+      zmin=z(3,1)
+      zmax=z(3,1)
+      do 1100 i=1,n
+         if(z(1,i) .lt. xmin) xmin=z(1,i)
+         if(z(1,i) .gt. xmax) xmax=z(1,i)
+         if(z(2,i) .lt. ymin) ymin=z(2,i)
+         if(z(2,i) .gt. ymax) ymax=z(2,i)
+         if(z(3,i) .lt. zmin) zmin=z(3,i)
+         if(z(3,i) .gt. zmax) zmax=z(3,i)
  1100 continue
-        size=xmax-xmin
-        sizey=ymax-ymin
-        sizez=zmax-zmin
-        if(sizey .gt. size) size=sizey
-        if(sizez .gt. size) size=sizez
-        center0(1)=(xmin+xmax)/2
-        center0(2)=(ymin+ymax)/2
-        center0(3)=(zmin+zmax)/2
-        boxes(1,1)=0
-        boxes(2,1)=1
-        boxes(3,1)=1
-        boxes(4,1)=1
-        boxes(5,1)=0     
-        boxes(6,1)=0     
-        boxes(7,1)=0     
-        boxes(8,1)=0     
-        boxes(9,1)=0
-        boxes(10,1)=0
-        boxes(11,1)=0
-        boxes(12,1)=0
-        boxes(13,1)=0
-        boxes(14,1)=1
-        boxes(15,1)=n
-        boxes(16,1)=1
-        boxes(17,1)=0
-        if( n .le. 0 ) boxes(18,1)=0
-        if( n .gt. 0 ) boxes(18,1)=1
-        boxes(19,1)=0
-        boxes(20,1)=0
-c
-        laddr(1,1)=1
-        laddr(2,1)=1
-c
-        do 1200 i=1,n 
-        iz(i)=i
+      size=xmax-xmin
+      sizey=ymax-ymin
+      sizez=zmax-zmin
+      if(sizey .gt. size) size=sizey
+      if(sizez .gt. size) size=sizez
+      center0(1)=(xmin+xmax)/2
+      center0(2)=(ymin+ymax)/2
+      center0(3)=(zmin+zmax)/2
+      boxes(1,1)=0
+      boxes(2,1)=1
+      boxes(3,1)=1
+      boxes(4,1)=1
+      boxes(5,1)=0     
+      boxes(6,1)=0     
+      boxes(7,1)=0     
+      boxes(8,1)=0     
+      boxes(9,1)=0
+      boxes(10,1)=0
+      boxes(11,1)=0
+      boxes(12,1)=0
+      boxes(13,1)=0
+      boxes(14,1)=1
+      boxes(15,1)=n
+      boxes(16,1)=1
+      boxes(17,1)=0
+      if( n .le. 0 ) boxes(18,1)=0
+      if( n .gt. 0 ) boxes(18,1)=1
+      boxes(19,1)=0
+      boxes(20,1)=0
+c     
+      laddr(1,1)=1
+      laddr(2,1)=1
+c     
+      do 1200 i=1,n 
+         iz(i)=i
  1200 continue
-c
-c       recursively (one level after another) subdivide all 
-c       boxes till none are left with more than ncrit particles
-        maxson=maxboxes
-        maxlev=198
-        if( maxlevel .lt. maxlev ) maxlev=maxlevel
-        ison=1
-        nlev=0
-        do 3000 level=0,maxlev-1
-        laddr(1,level+2)=laddr(1,level+1)+laddr(2,level+1)
-        nlevson=0
-        idad0=laddr(1,level+1)
-        idad1=idad0+laddr(2,level+1)-1
-        do 2000 idad=idad0,idad1
-c       subdivide the box number idad (if needed)
-        numpdad=boxes(15,idad)
-        numtdad=boxes(17,idad)
-c       ... refine on both sources and targets
-        if(numpdad .le. ncrit .and. numtdad .le. ncrit .and.
-     $     level .ge. minlevel ) goto 2000
-c       ... not a leaf node on sources or targets
-        if( numpdad .gt. ncrit .or. numtdad .gt. ncrit ) then
-        if( boxes(18,idad) .eq. 1 ) boxes(18,idad)=2
-        if( boxes(19,idad) .eq. 1 ) boxes(19,idad)=2
-        endif
-        ii=boxes(2,idad)
-        jj=boxes(3,idad)
-        kk=boxes(4,idad)
-        call d3tcentf(center0,size,level,ii,jj,kk,center)
-        iiz=boxes(14,idad)
-        nz=boxes(15,idad)
-        call d3tsepa1(center,z,iz(iiz),nz,iwork,is,ns)
-c
-c       store in array boxes the sons obtained by the routine 
-c       d3tsepa1
-c
-         idadson=6
-        do 1600 i=1,8
-        if(ns(i) .eq. 0 .and. 
-     $     ifempty .ne. 1) goto 1600
-        nlevson=nlevson+1
-        ison=ison+1
-        nlev=level+1
-c
-c       . . . if the user-provided array boxes is too
-c             short - bomb out
-c
-        if(ison.gt.maxson) then
-        print*,"Error: ibox out of bounds"
-        stop
-        endif
-c
-c        store in array boxes all information about this son
-c
-        do 1500 lll=6,13
-        boxes(lll,ison)=0
- 1500 continue
-c
-        boxes(1,ison)=level+1
-        iison=(ii-1)*2+iisons(i)
-        jjson=(jj-1)*2+jjsons(i)
-        kkson=(kk-1)*2+kksons(i)
-        boxes(2,ison)=iison
-        boxes(3,ison)=jjson
-        boxes(4,ison)=kkson
-        boxes(5,ison)=idad        
-c
-        boxes(14,ison)=is(i)+iiz-1
-        boxes(15,ison)=ns(i)
-c
-        boxes(16,ison)=0
-        boxes(17,ison)=0
-        if( ns(i) .le. 0 ) boxes(18,ison)=0
-        if( ns(i) .gt. 0 ) boxes(18,ison)=1
-        boxes(19,ison)=0
-        boxes(20,ison)=0
-        boxes(idadson,idad)=ison
-        idadson=idadson+1
-        nboxes=ison
- 1600 continue
- 2000 continue
-        laddr(2,level+2)=nlevson
+c     
+c     recursively (one level after another) subdivide all 
+c     boxes till none are left with more than ncrit particles
+      maxson=maxboxes
+      maxlev=198
+      if( maxlevel .lt. maxlev ) maxlev=maxlevel
+      ison=1
+      nlev=0
+      do 3000 level=0,maxlev-1
+         laddr(1,level+2)=laddr(1,level+1)+laddr(2,level+1)
+         nlevson=0
+         iparent0=laddr(1,level+1)
+         iparent1=iparent0+laddr(2,level+1)-1
+         do 2000 iparent=iparent0,iparent1
+c     subdivide the box number iparent (if needed)
+            nump=boxes(15,iparent)
+            numt=boxes(17,iparent)
+c     ... refine on both sources and targets
+            if(nump.le.ncrit.and.numt.le.ncrit.and.
+     $           level.ge.minlevel) goto 2000
+c     ... not a leaf node on sources or targets
+            if(nump.gt.ncrit.or.numt.gt.ncrit)then
+               if(boxes(18,iparent).eq.1) boxes(18,iparent)=2
+               if(boxes(19,iparent).eq.1) boxes(19,iparent)=2
+            endif
+            ii=boxes(2,iparent)
+            jj=boxes(3,iparent)
+            kk=boxes(4,iparent)
+            call findCenter(center0,size,level,ii,jj,kk,center)
+            iiz=boxes(14,iparent)
+            nz=boxes(15,iparent)
+            call reorder(center,z,iz(iiz),nz,iwork,is,ns)
+            ichild=6
+            do 1600 i=1,8
+               if(ns(i) .eq. 0 .and. 
+     $              ifempty .ne. 1) goto 1600
+               nlevson=nlevson+1
+               ison=ison+1
+               nlev=level+1
+c     
+c     . . . if the user-provided array boxes is too
+c     short - bomb out
+c     
+               if(ison.gt.maxson) then
+                  print*,"Error: ibox out of bounds"
+                  stop
+               endif
+c     
+c     store in array boxes all information about this son
+c     
+               do 1500 lll=6,13
+                  boxes(lll,ison)=0
+ 1500          continue
+c     
+               boxes(1,ison)=level+1
+               iison=(ii-1)*2+iisons(i)
+               jjson=(jj-1)*2+jjsons(i)
+               kkson=(kk-1)*2+kksons(i)
+               boxes(2,ison)=iison
+               boxes(3,ison)=jjson
+               boxes(4,ison)=kkson
+               boxes(5,ison)=iparent        
+c     
+               boxes(14,ison)=is(i)+iiz-1
+               boxes(15,ison)=ns(i)
+c     
+               boxes(16,ison)=0
+               boxes(17,ison)=0
+               if( ns(i) .le. 0 ) boxes(18,ison)=0
+               if( ns(i) .gt. 0 ) boxes(18,ison)=1
+               boxes(19,ison)=0
+               boxes(20,ison)=0
+               boxes(ichild,iparent)=ison
+               ichild=ichild+1
+               nboxes=ison
+ 1600       continue
+ 2000    continue
+         laddr(2,level+2)=nlevson
          if(nlevson .eq. 0) goto 4000
          level1=level
  3000 continue
-        if( level1 .ge. 197 ) then
-           print*,"Error: level out of bounds"
-           stop
-        endif
+      if( level1 .ge. 197 ) then
+         print*,"Error: level out of bounds"
+         stop
+      endif
  4000 continue
-        nboxes=ison
-        return
-        end
-c
-c
-c
-c
-c
-        subroutine setCenter(center0,size,nboxes)
-        use arrays, only : boxes,centers,corners
-        implicit real *8 (a-h,o-z)
-        real *8 center(3),center0(3)
-ccc        save
-c
-c       this subroutine produces arrays of centers and 
-c       corners for all boxes in the oct-tree structure.
-c
-c              input parameters:
-c
-c  center0 - the center of the box on the level 0, containing
-c         the whole simulation
-c  size - the side of the box on the level 0
-c  boxes - an integer array dimensioned (10,nboxes), as produced 
-c        by the subroutine d3tallb (see)
-c        column describes one box, as follows:
-c  nboxes - the total number of boxes created
-c
-c  
-c              output parameters:
-c
-c  centers - the centers of all boxes in the array boxes
-c  corners - the corners of all boxes in the array boxes
-c
-c       . . . construct the corners for all boxes
-c
-        x00=center0(1)-size/2
-        y00=center0(2)-size/2
-        z00=center0(3)-size/2
-        do i=1,nboxes
-        level=boxes(1,i)
-        side=size/2**level
-        side2=side/2
-        ii=boxes(2,i)
-        jj=boxes(3,i)
-        kk=boxes(4,i)
-        center(1)=x00+(ii-1)*side+side2
-        center(2)=y00+(jj-1)*side+side2        
-        center(3)=z00+(kk-1)*side+side2        
-c
-        centers(1,i)=center(1)
-        centers(2,i)=center(2)
-        centers(3,i)=center(3)
-c
-        corners(1,1,i)=center(1)-side/2
-        corners(1,2,i)=corners(1,1,i)
-        corners(1,3,i)=corners(1,1,i)
-        corners(1,4,i)=corners(1,1,i)
-        corners(1,5,i)=corners(1,1,i)+side
-        corners(1,6,i)=corners(1,5,i)
-        corners(1,7,i)=corners(1,5,i)
-        corners(1,8,i)=corners(1,5,i)
-c
-        corners(2,1,i)=center(2)-side/2
-        corners(2,2,i)=corners(2,1,i)
-        corners(2,5,i)=corners(2,1,i)
-        corners(2,6,i)=corners(2,1,i)
-        corners(2,3,i)=corners(2,1,i)+side
-        corners(2,4,i)=corners(2,3,i)
-        corners(2,7,i)=corners(2,3,i)
-        corners(2,8,i)=corners(2,3,i)
-c
-        corners(3,1,i)=center(3)-side/2
-        corners(3,3,i)=corners(3,1,i)
-        corners(3,5,i)=corners(3,1,i)
-        corners(3,7,i)=corners(3,1,i)
-        corners(3,2,i)=corners(3,1,i)+side
-        corners(3,4,i)=corners(3,2,i)
-        corners(3,6,i)=corners(3,2,i)
-        corners(3,8,i)=corners(3,2,i)
-        enddo
-        return
-        end
-c
-c
-c
-c
-c
-        subroutine d3tcentf(center0,size,level,i,j,k,center) 
-        implicit real *8 (a-h,o-z)
-        real *8 center(3),center0(3)
-        data level0/-1/
-ccc        save
-c
-c       this subroutine finds the center of the box 
-c       number (i,j) on the level level. note that the 
-c       box on level 0 is assumed to have the center 
-c       center0, and the side size
-c
-ccc        if(level .eq. level0) goto 1200
-        side=size/2**level
-        side2=side/2
-        x0=center0(1)-size/2
-        y0=center0(2)-size/2
-        z0=center0(3)-size/2
-        level0=level
+      nboxes=ison
+      return
+      end
+c     
+c     
+c     
+c     
+c     
+      subroutine setCenter(center0,size,nboxes)
+      use arrays, only : boxes,centers,corners
+      implicit real *8 (a-h,o-z)
+      real *8 center(3),center0(3)
+ccc   save
+c     
+c     this subroutine produces arrays of centers and 
+c     corners for all boxes in the oct-tree structure.
+c     
+c     input parameters:
+c     
+c     center0 - the center of the box on the level 0, containing
+c     the whole simulation
+c     size - the side of the box on the level 0
+c     boxes - an integer array dimensioned (10,nboxes), as produced 
+c     by the subroutine d3tallb (see)
+c     column describes one box, as follows:
+c     nboxes - the total number of boxes created
+c     
+c     
+c     output parameters:
+c     
+c     centers - the centers of all boxes in the array boxes
+c     corners - the corners of all boxes in the array boxes
+c     
+c     . . . construct the corners for all boxes
+c     
+      x00=center0(1)-size/2
+      y00=center0(2)-size/2
+      z00=center0(3)-size/2
+      do i=1,nboxes
+         level=boxes(1,i)
+         side=size/2**level
+         side2=side/2
+         ii=boxes(2,i)
+         jj=boxes(3,i)
+         kk=boxes(4,i)
+         center(1)=x00+(ii-1)*side+side2
+         center(2)=y00+(jj-1)*side+side2        
+         center(3)=z00+(kk-1)*side+side2        
+c     
+         centers(1,i)=center(1)
+         centers(2,i)=center(2)
+         centers(3,i)=center(3)
+c     
+         corners(1,1,i)=center(1)-side/2
+         corners(1,2,i)=corners(1,1,i)
+         corners(1,3,i)=corners(1,1,i)
+         corners(1,4,i)=corners(1,1,i)
+         corners(1,5,i)=corners(1,1,i)+side
+         corners(1,6,i)=corners(1,5,i)
+         corners(1,7,i)=corners(1,5,i)
+         corners(1,8,i)=corners(1,5,i)
+c     
+         corners(2,1,i)=center(2)-side/2
+         corners(2,2,i)=corners(2,1,i)
+         corners(2,5,i)=corners(2,1,i)
+         corners(2,6,i)=corners(2,1,i)
+         corners(2,3,i)=corners(2,1,i)+side
+         corners(2,4,i)=corners(2,3,i)
+         corners(2,7,i)=corners(2,3,i)
+         corners(2,8,i)=corners(2,3,i)
+c     
+         corners(3,1,i)=center(3)-side/2
+         corners(3,3,i)=corners(3,1,i)
+         corners(3,5,i)=corners(3,1,i)
+         corners(3,7,i)=corners(3,1,i)
+         corners(3,2,i)=corners(3,1,i)+side
+         corners(3,4,i)=corners(3,2,i)
+         corners(3,6,i)=corners(3,2,i)
+         corners(3,8,i)=corners(3,2,i)
+      enddo
+      return
+      end
+c     
+c     
+c     
+c     
+c     
+      subroutine findCenter(center0,size,level,i,j,k,center) 
+      implicit real *8 (a-h,o-z)
+      real *8 center(3),center0(3)
+      data level0/-1/
+ccc   save
+c     
+c     this subroutine finds the center of the box 
+c     number (i,j) on the level level. note that the 
+c     box on level 0 is assumed to have the center 
+c     center0, and the side size
+c     
+ccc   if(level .eq. level0) goto 1200
+      side=size/2**level
+      side2=side/2
+      x0=center0(1)-size/2
+      y0=center0(2)-size/2
+      z0=center0(3)-size/2
+      level0=level
  1200 continue
-        center(1)=x0+(i-1)*side+side2
-        center(2)=y0+(j-1)*side+side2
-        center(3)=z0+(k-1)*side+side2
-        return
-        end
+      center(1)=x0+(i-1)*side+side2
+      center(2)=y0+(j-1)*side+side2
+      center(3)=z0+(k-1)*side+side2
+      return
+      end
 
-c
-c
-c
-c
-c
-        subroutine d3tsepa1(cent,z,iz,n,iwork,
-     1    is,ns)
-        implicit real *8 (a-h,o-z)
-        real *8 cent(3),z(3,*)
-        integer iz(*),iwork(*),is(*),ns(*)
-ccc        save
-c
-c        this subroutine reorders the particles in a box,
-c        so that each of the children occupies a contigious 
-c        chunk of array iz
-c
-c        note that we are using a standard numbering convention 
-c        for the children:
-c
-c
-c             5,6     7,8
-c    
-c                                     <- looking down the z-axis
-c             1,2     3,4
-c
-c
-cccc        in the original code, we were using a strange numbering convention 
-cccc        for the children:
-cccc
-cccc             3,4     7,8
-cccc    
-cccc                                     <- looking down the z-axis
-cccc             1,2     5,6
-c
-c 
-c                        input parameters:
-c
-c  cent - the center of the box to be subdivided
-c  z - the list of all points in the box to be subdivided
-c  iz - the integer array specifying the transposition already
-c       applied to the points z, before the subdivision of 
-c       the box into children
-c  n - the total number of points in array z
-c  
-c                        output parameters:
-c
-c  iz - the integer array specifying the transposition already
-c       applied to the points z, after the subdivision of 
-c       the box into children
-c  is - an integer array of length 8 containing the locations 
-c       of the sons in array iz
-c  ns - an integer array of length 8 containig the numbers of 
-c       elements in the sons
-c
-c                        work arrays:
-c
-c  iwork - must be n integer elements long
-c
-c        . . . separate all particles in this box in x
-c
-        n1=0
-        n2=0
-        n3=0
-        n4=0
-        n5=0
-        n6=0
-        n7=0
-        n8=0
-c
-        n12=0
-        n34=0
-        n56=0
-        n78=0
-c
-        n1234=0
-        n5678=0
-c
-ccc        itype=1
-ccc        thresh=cent(1)
-        itype=3
-        thresh=cent(3)
-        call d3tsepa0(z,iz,n,itype,thresh,iwork,n1234)
-        n5678=n-n1234
-c
-c       at this point, the contents of sons number 1,2,3,4 are in
-c       the part of array iz with numbers 1,2,...n1234
-c       the contents of sons number 5,6,7,8  are in
-c       the part of array iz with numbers n1234+1,n12+2,...,n
-c
-c        . . . separate the boxes 1, 2, 3, 4 and boxes 5, 6, 7, 8
-c
-        itype=2
-        thresh=cent(2)
-        if(n1234 .ne. 0) 
-     1    call d3tsepa0(z,iz,n1234,itype,thresh,iwork,n12)
-        n34=n1234-n12
-c
-        if(n5678 .ne. 0) 
-     1    call d3tsepa0(z,iz(n1234+1),n5678,itype,thresh,iwork,n56)
-        n78=n5678-n56
-c
-c       perform the final separation of pairs of sonnies into
-c       individual ones
-c
-ccc        itype=3
-ccc     thresh=cent(3)
-        itype=1
-        thresh=cent(1)
-        if(n12 .ne. 0) 
-     1    call d3tsepa0(z,iz,n12,itype,thresh,iwork,n1)
-        n2=n12-n1
-c
-        if(n34 .ne. 0) 
-     1    call d3tsepa0(z,iz(n12+1),n34,itype,thresh,iwork,n3)
-        n4=n34-n3
-c
-        if(n56 .ne. 0) 
-     1    call d3tsepa0(z,iz(n1234+1),n56,itype,thresh,iwork,n5)
-        n6=n56-n5
-c
-        if(n78 .ne. 0) 
-     1    call d3tsepa0(z,iz(n1234+n56+1),n78,itype,thresh,iwork,n7)
-        n8=n78-n7
-c
-c
-c       store the information about the sonnies in appropriate arrays
-c
-        is(1)=1
-        ns(1)=n1
-c
-        is(2)=is(1)+ns(1)
-        ns(2)=n2
-c
-        is(3)=is(2)+ns(2)
-        ns(3)=n3
-c
-        is(4)=is(3)+ns(3)
-        ns(4)=n4
-c
-        is(5)=is(4)+ns(4)
-        ns(5)=n5
-c
-        is(6)=is(5)+ns(5)
-        ns(6)=n6
-c
-        is(7)=is(6)+ns(6)
-        ns(7)=n7
-c
-        is(8)=is(7)+ns(7)
-        ns(8)=n8
-c
-        return
-        end
-c
-c
-c
-c
-c
-        subroutine d3tsepa0(z,iz,n,itype,thresh,iwork,n1)
-        implicit real *8 (a-h,o-z)
-        real *8 z(3,*)
-        integer iz(*),iwork(*)
-ccc        save
-c
-c       subdivide the points in this box, horizontally
-c       or vertically, depending on the parameter itype
-c
-cccc        call prin2('in d3tsepa0,thresh=*',thresh,1)
-c
-        i1=0
-        i2=0
-        do 1400 i=1,n
-        j=iz(i)
-        if(z(itype,j) .gt. thresh) goto 1200
-        i1=i1+1
-        iz(i1)=j
-        goto 1400
-c
- 1200 continue
-        i2=i2+1
-        iwork(i2)=j
+c     
+c     
+c     
+c     
+c     
+      subroutine reorder(cent,z,iz,n,iwork,
+     1     is,ns)
+      implicit real *8 (a-h,o-z)
+      real *8 cent(3),z(3,*)
+      integer iz(*),iwork(*),is(*),ns(*)
+ccc   save
+c     
+c     this subroutine reorders the particles in a box,
+c     so that each of the children occupies a contigious 
+c     chunk of array iz
+c     
+c     note that we are using a standard numbering convention 
+c     for the children:
+c     
+c     
+c     5,6     7,8
+c     
+c     <- looking down the z-axis
+c     1,2     3,4
+c     
+c     
+cccc  in the original code, we were using a strange numbering convention 
+cccc  for the children:
+cccc  
+cccc  3,4     7,8
+cccc  
+cccc  <- looking down the z-axis
+cccc  1,2     5,6
+c     
+c     
+c     input parameters:
+c     
+c     cent - the center of the box to be subdivided
+c     z - the list of all points in the box to be subdivided
+c     iz - the integer array specifying the transposition already
+c     applied to the points z, before the subdivision of 
+c     the box into children
+c     n - the total number of points in array z
+c     
+c     output parameters:
+c     
+c     iz - the integer array specifying the transposition already
+c     applied to the points z, after the subdivision of 
+c     the box into children
+c     is - an integer array of length 8 containing the locations 
+c     of the sons in array iz
+c     ns - an integer array of length 8 containig the numbers of 
+c     elements in the sons
+c     
+c     work arrays:
+c     
+c     iwork - must be n integer elements long
+c     
+c     . . . separate all particles in this box in x
+c     
+      n1=0
+      n2=0
+      n3=0
+      n4=0
+      n5=0
+      n6=0
+      n7=0
+      n8=0
+c     
+      n12=0
+      n34=0
+      n56=0
+      n78=0
+c     
+      n1234=0
+      n5678=0
+c     
+ccc   itype=1
+ccc   thresh=cent(1)
+      itype=3
+      thresh=cent(3)
+      call divide(z,iz,n,itype,thresh,iwork,n1234)
+      n5678=n-n1234
+c     
+c     at this point, the contents of sons number 1,2,3,4 are in
+c     the part of array iz with numbers 1,2,...n1234
+c     the contents of sons number 5,6,7,8  are in
+c     the part of array iz with numbers n1234+1,n12+2,...,n
+c     
+c     . . . separate the boxes 1, 2, 3, 4 and boxes 5, 6, 7, 8
+c     
+      itype=2
+      thresh=cent(2)
+      if(n1234 .ne. 0) 
+     1     call divide(z,iz,n1234,itype,thresh,iwork,n12)
+      n34=n1234-n12
+c     
+      if(n5678 .ne. 0) 
+     1     call divide(z,iz(n1234+1),n5678,itype,thresh,iwork,n56)
+      n78=n5678-n56
+c     
+c     perform the final separation of pairs of sonnies into
+c     individual ones
+c     
+ccc   itype=3
+ccc   thresh=cent(3)
+      itype=1
+      thresh=cent(1)
+      if(n12 .ne. 0) 
+     1     call divide(z,iz,n12,itype,thresh,iwork,n1)
+      n2=n12-n1
+c     
+      if(n34 .ne. 0) 
+     1     call divide(z,iz(n12+1),n34,itype,thresh,iwork,n3)
+      n4=n34-n3
+c     
+      if(n56 .ne. 0) 
+     1     call divide(z,iz(n1234+1),n56,itype,thresh,iwork,n5)
+      n6=n56-n5
+c     
+      if(n78 .ne. 0) 
+     1     call divide(z,iz(n1234+n56+1),n78,itype,thresh,iwork,n7)
+      n8=n78-n7
+c     
+c     
+c     store the information about the sonnies in appropriate arrays
+c     
+      is(1)=1
+      ns(1)=n1
+c     
+      is(2)=is(1)+ns(1)
+      ns(2)=n2
+c     
+      is(3)=is(2)+ns(2)
+      ns(3)=n3
+c     
+      is(4)=is(3)+ns(3)
+      ns(4)=n4
+c     
+      is(5)=is(4)+ns(4)
+      ns(5)=n5
+c     
+      is(6)=is(5)+ns(5)
+      ns(6)=n6
+c     
+      is(7)=is(6)+ns(6)
+      ns(7)=n7
+c     
+      is(8)=is(7)+ns(7)
+      ns(8)=n8
+c     
+      return
+      end
+c     
+c     
+c     
+c     
+c     
+      subroutine divide(z,iz,n,itype,thresh,iwork,n1)
+      implicit real *8 (a-h,o-z)
+      real *8 z(3,*)
+      integer iz(*),iwork(*)
+      i1=0
+      i2=0
+      do 1400 i=1,n
+         j=iz(i)
+         if(z(itype,j) .gt. thresh) goto 1200
+         i1=i1+1
+         iz(i1)=j
+         goto 1400
+c     
+ 1200    continue
+         i2=i2+1
+         iwork(i2)=j
  1400 continue
-c
-        do 1600 i=1,i2
-        iz(i1+i)=iwork(i)
+c     
+      do 1600 i=1,i2
+         iz(i1+i)=iwork(i)
  1600 continue
-        n1=i1
-        return
-        end
-c
+      n1=i1
+      return
+      end
+c     
       subroutine setList(itype,ibox,nboxes,list,nlist)
       use arrays, only : listOffset,lists
       integer list(*)
@@ -922,7 +871,7 @@ c
       listOffset(ibox,itype)=ilast
       return
       end
-c
+c     
       subroutine getList(itype,ibox,nboxes,
      $     list,nlist)
       use arrays, only : listOffset,lists
