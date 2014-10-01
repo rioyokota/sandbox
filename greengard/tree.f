@@ -1,9 +1,9 @@
-      subroutine buildTree(z,n,ncrit,
-     $     nboxes,iz,laddr,nlev,center,size)
+      subroutine buildTree(Xj,numBodies,ncrit,
+     $     nboxes,isource,laddr,nlev,center,size)
       use arrays, only : listOffset,lists,nodes,boxes,centers,corners
       implicit real *8 (a-h,o-z)
-      integer iz(*),laddr(2,*)
-      real *8 z(3,*),center(3)
+      integer isource(*),laddr(2,*)
+      real *8 Xj(3,*),center(3)
 c     This subroutine constructs the tree on sources and targets
 c
 c     list 1 of the box ibox - the list of all boxes with which the
@@ -30,8 +30,8 @@ c           that are adjacent to the box ibox - the list of colleagues
 c
 c                            input parameters:
 c
-c  z - the user-specified points in the space
-c  n - the number of elements in array z
+c  Xj - the user-specified points in the space
+c  numBodies - the number of elements in array Xj
 c  ncrit - the maximum number of points in a box on the finest level
 c
 c                            output parameters:
@@ -48,16 +48,16 @@ c         the number of levels required.
 c  center - the center of the box on the level 0, containing
 c         the whole simulation
 c  size - the side of the box on the level 0
-        maxboxes=n
-        do i=1,n
-           iz(i)=i
+        maxboxes=numBodies
+        do i=1,numBodies
+           isource(i)=i
 	enddo
         ifempty=0
         minlevel=0
         maxlevel=100
         allocate(nodes(20,maxboxes))
-        call growTree(z,n,ncrit,nodes,maxboxes,
-     $       nboxes,iz,laddr,nlev,center,size,
+        call growTree(Xj,numBodies,ncrit,nodes,maxboxes,
+     $       nboxes,isource,laddr,nlev,center,size,
      $       ifempty,minlevel,maxlevel)
         allocate(listOffset(nboxes,5))
         allocate(lists(2,189*nboxes))
@@ -141,61 +141,18 @@ c      return to the user the center and the corners of the box ibox
 c
         call getCenter(ibox,center,corners) 
         return
-c
-        entry getList(ibox,itype,nboxes,list,nlist)
-        call d3tlinkretr(itype,ibox,nboxes,list,nlist)
-        return
         end
 c
         subroutine getLists(nboxes)
         use arrays, only : boxes,listOffset,corners
         implicit real *8 (a-h,o-z)
-        integer collkids(50000),
-     1      dadcolls(2000),list5(20000),stack(60000)
-ccc        save
-c
-c        this subroutine constructs all lists for all boxes 
-c        and stores them in the storage area w in the form
-c        of a link list. the resulting data can be accessed 
-c        by calls to various entries of the subroutine d3tlinkinit (see).
-c
-c                          input parameters:
-c
-c  boxes - an integer array dimensioned (20,nboxes), as created by 
-c        the subroutine d3tallb (see).  each 20-element column
-c         describes one box, as follows:
-c
-c
-c       1. level - the level of subdivision on which this box 
-c             was constructed; 
-c       2, 3, 4  - the coordinates of this box among  all
-c             boxes on this level
-c       5 - the daddy of this box, identified by it address
-c             in array boxes
-c       6,7,8,9,10,11,12,13 - the  list of children of this box 
-c             (eight of them, and the child is identified by its address
-c             in the array boxes; if a box has only one child, only the
-c             first of the four child entries is non-zero, etc.)
-c       14 - the location in the array iz of the particles 
-c             living in this box
-c       15 - the number of particles living in this box
-c       16 - the location in the array iztarg of the targets
-c             living in this box
-c       17 - the number of targets living in this box
-c       18 - source box type: 0 - empty, 1 - leaf node, 2 - sub-divided
-c       19 - target box type: 0 - empty, 1 - leaf node, 2 - sub-divided
-c       20 - reserved for future use
-c
-c  nboxes - the total number of boxes created
-c  corners - the array of corners of all the boxes to in array boxes
-c 
-c              output parameters:
-c
-c  w - storage area containing all lists for all boxes in 
-c        the form of link-lists, accessible by the subroutine 
-c        d3tlinkretr (see).
+        integer collkids(50000),dadcolls(2000),list5(20000),stack(60000)
         ntypes=5
-        call d3tlinkinit(nboxes,ntypes)
+        do k=1,ntypes
+           do i=1,nboxes
+              listOffset(i,k)=-1
+           enddo
+        enddo
 c
 c        construct lists 5,2 for all boxes
 c
@@ -210,7 +167,7 @@ c
         dadcolls(1)=idad
         itype5=5
         itype2=2
-        call d3tlinkretr(itype5,idad,nboxes,dadcolls(2),ncolls)
+        call getList(itype5,idad,nboxes,dadcolls(2),ncolls)
         ncolls=ncolls+1
 c
 c        find the children of the daddy's collegues
@@ -262,7 +219,7 @@ c       do not construct lists 1, 3 for the main box
 c
         if(boxes(1,i) .eq. 0) goto 3000
 c
-        call d3tlinkretr(itype5,i,nboxes,list5,nlist)  
+        call getList(itype5,i,nboxes,list5,nlist)  
 c
         do 2200 j=1,nlist
         jbox=list5(j)
@@ -278,7 +235,7 @@ c
         itype4=4
         nlist1=1
         do ibox=1,nboxes
-           call d3tlinkretr(itype3,ibox,nboxes,list5,nlist)
+           call getList(itype3,ibox,nboxes,list5,nlist)
            do j=1,nlist
               call d3tlinkstor(itype4,list5(j),nboxes,ibox,nlist1)
            enddo
@@ -293,42 +250,6 @@ c
         integer stack(3,*)
         data itype1/1/,itype2/2/,itype3/3/,itype4/4/,itype5/5/,
      1      nlist1/1/
-ccc        save
-c
-c       this subroutine constructs all elements of lists 1 and 3 
-c       resulting from the subdivision of one element of list 5
-c       of the box ibox. all these elements of lists 1, 3 are 
-c       stored in the link-lists by the subroutine linstro (see)
-c
-c        input parameters:
-c
-c  ibox - the box whose lists are being constructed
-c  
-c  jbox0 - the element of list 5 of the box ibox that is being
-c          subdfivided
-c  boxes - the array boxes as created by the subroutine d3tallb (see)
-c  nboxes - the number of boxes in array boxes
-c  corners - the array of corners of all the boxes to in array boxes
-c  w - the storage area formatted by the subroutine d3tlinkinit (see) 
-c          to be used to store the elements of lists 1, 3 constructed
-c          by this subroutine. obviously, by this time, it contains
-c          plenty of other lists.
-c  
-c                      output parameters:
-c
-c  w - the augmented storage area, containing all the boxes just 
-c          created, in addition to whatever had been stored previously
-c
-c                      work arrays:
-c
-c  stack - must be at least 600 integer locations long
-c
-c       . . . starting with the initial element of list 5, 
-c             subdivide the boxes recursively and store 
-c             the pieces where they belong
-c
-c        . . . initialize the process
-c
         jbox=jbox0
         istack=1
         stack(1,1)=1
@@ -1145,98 +1066,44 @@ c
         call d3tlinksto0(itype,ibox,list,nlist,
      $      nboxes,numele)
         return
-c
-        entry d3tlinkretr(itype,ibox,nboxes,list,nlist)
-        call d3tlinkret0(itype,ibox,
-     $       list,nboxes,nlist)
-c
-        return
         end
 c
-        subroutine d3tlinksto0(itype,ibox,list,nlist,
+      subroutine d3tlinksto0(itype,ibox,list,nlist,
      $     nboxes,numele)
-        use arrays, only : listOffset,lists
-        integer list(*)
-ccc        save
+      use arrays, only : listOffset,lists
+      integer list(*)
+      ilast=listOffset(ibox,itype)
+      do i=1,nlist
+         numele=numele+1
+         lists(1,numele)=ilast
+         lists(2,numele)=list(i)
+         ilast=numele
+      enddo
+      listOffset(ibox,itype)=ilast
+      return
+      end
 c
-c       this entry stores dynamically a list of positive numbers 
-c       in the storage array lists, while entering the information
-c       about this event in the array listOffset.
-c
-c                      input parameters:
-c
-c  itype - the type of the elements being stored
-c  ibox - the box to which these elements corresponds
-c  list - the list of positive integer elements to be stored
-c  nlist - the number of elements in the array list
-c  listOffset - the addressing array for the main storage array lists;
-c             it is assumed that it has been formatted by a call 
-c             to the entry d3tlinkini0 of this subroutine (see below).
-c  nboxes - the total number of boxes indexing the elements 
-c           in array lists
-c  lists - the main storage area used by this subroutine
-c  numele - the number of elements stored in array lists on entry 
-c             to this subroutine
-c
-c                      output parameters:
-c
-c  listOffset - the addressing array for the main storage array lists;
-c             it is assumed that it has been formatted by a call 
-c             to the entry d3tlinkini0 of this subroutine (see below).
-c  lists - the main storage area used by this subroutine
-c  numele - the number of elements stored in array lists on exit
-c             from this subroutine
-c .........................................................................
-c
-c        interpretation of the entries in arrays lists, listOffset:
-c
-c  lists(1,i) - the location in array lists of the preceding
-c        element in the list with (box,type) combination as the 
-c        user-supplied (ibox,itype)
-c     lists(1,i) .leq. 0 means that this is the first element 
-c        of its type,
-c  lists(2,i) - the box number on the interaction list.
-c
-c
-c  listOffset(ibox,itype) - the address in the array lists of the last element
-c        of this type for this box;
-c     listOffset(ibox,itype) .leq. 0 means that there are no elements 
-c        in the list of this type for this box.
-c
-c       . . . store the user-supplied list elements in the array lists,
-c             and enter information about this change in array listOffset
-c
-        ilast=listOffset(ibox,itype)
-        do 1200 i=1,nlist
-        numele=numele+1
-        lists(1,numele)=ilast
-        lists(2,numele)=list(i)
-        ilast=numele
- 1200 continue
-        listOffset(ibox,itype)=ilast
-        return
-c
-        entry d3tlinkret0(itype,ibox,list,
-     $       nboxes,nlist)
-        ilast=listOffset(ibox,itype)
-        if(ilast.le.0)then
-           nlist=0
-           return
-        endif
-        nlist=0
-        do i=1,1 000 000 000
-           if(lists(2,ilast).gt.0)then       
-              nlist=nlist+1
-              list(nlist)=lists(2,ilast)
-           endif
-           ilast=lists(1,ilast)
-           if(ilast.le.0) exit
-        enddo
-
-        do i=1,nlist/2
-           j=list(i)
-           list(i)=list(nlist-i+1)
-           list(nlist-i+1)=j
-        enddo
-        return
-        end
+      subroutine getList(itype,ibox,nboxes,
+     $     list,nlist)
+      use arrays, only : listOffset,lists
+      integer list(*)
+      ilast=listOffset(ibox,itype)
+      if(ilast.le.0)then
+         nlist=0
+         return
+      endif
+      nlist=0
+      do while(ilast.gt.0)
+         if(lists(2,ilast).gt.0)then       
+            nlist=nlist+1
+            list(nlist)=lists(2,ilast)
+         endif
+         ilast=lists(1,ilast)
+      enddo
+      do i=1,nlist/2
+         j=list(i)
+         list(i)=list(nlist-i+1)
+         list(nlist-i+1)=j
+      enddo
+      return
+      end

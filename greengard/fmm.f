@@ -23,7 +23,7 @@
       real *8, allocatable :: Multipole(:)
       real *8, allocatable :: Local(:)
       complex *16 ptemp,ftemp(3)
-      data imag/(0.0d0,1.0d0)/
+      data imag/(0.0d0,1.0d0)/, tic/0.0d0/, toc/0.0d0/
 c     set fmm tolerance based on iprec flag.
       if( iprec .eq. -2 ) epsfmm=.5d-0
       if( iprec .eq. -1 ) epsfmm=.5d-1
@@ -46,6 +46,7 @@ c     set criterion for box subdivision (number of sources per box)
       if( iprec .eq. 6 ) ncrit=numBodies
 c     create oct-tree data structure
       allocate (isource(numBodies))
+c$    tic=omp_get_wtime() 
       call buildTree(Xj,numBodies,ncrit,
      1     nboxes,isource,laddr,nlev,center,size)
       allocate(iaddr(nboxes))
@@ -77,6 +78,8 @@ c     create oct-tree data structure
       lmptot = iptr
       allocate(Multipole(lmptot))
       allocate(Local(lmptot))
+c$    toc=omp_get_wtime()
+      print*,'Tree   =',toc-tic
       call evaluate(iprec,wavek,numBodies,Xjd,isource,
      1     1,qjd,pid,Fid,epsfmm,iaddr,Multipole,Local,
      1     nboxes,laddr,nlev,scale,bsize,nterms)
@@ -239,7 +242,7 @@ c$omp$schedule(dynamic)
             if (level0 .ge. 2) then
 c     ... retrieve list #2
                itype=2
-               call getList(ibox,itype,nboxes,list,nlist)
+               call getList(itype,ibox,nboxes,list,nlist)
 c     ... for all pairs in list #2, apply the translation operator
                do 4150 ilist=1,nlist
                   jbox=list(ilist)
@@ -360,7 +363,7 @@ c     ... evaluate self interactions
      $           box,sourcesort,chargesort,wavek)
 c     ... evaluate interactions with the nearest neighbours
             itype=1
-            call getList(ibox,itype,nboxes,list,nlist)
+            call getList(itype,ibox,nboxes,list,nlist)
 c     ... for all pairs in list #1, evaluate the potentials and fields directly
             do ilist=1,nlist
                jbox=list(ilist)

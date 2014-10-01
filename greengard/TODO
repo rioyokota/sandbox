@@ -1,5 +1,3 @@
-- Remove memory pool variables
-* start from the end of w()
 - Change function/variable names in tree.f
 * kids -> child
 - Use common blocks
