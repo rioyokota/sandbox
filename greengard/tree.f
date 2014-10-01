@@ -4,50 +4,6 @@
       implicit real *8 (a-h,o-z)
       integer isource(*),laddr(2,*)
       real *8 Xj(3,*),center(3)
-c     This subroutine constructs the tree on sources and targets
-c
-c     list 1 of the box ibox - the list of all boxes with which the
-c           box ibox interacts directly, including the boxes on the 
-c           same level as ibox, boxes on the finer levels, and boxes 
-c           on the coarser levels. obviously, list 1 is empty for any
-c           box that is not childless.
-c
-c     list 2 of the box ibox - the list of all boxes with which the
-c           box ibox interacts in the regular multipole fashion, i.e. 
-c           boxes on the same level as ibox that are separated from it
-c           but whose parents are not separated from the parent of ibox.
-c
-c     list 3 of the box ibox - for a childless ibox, the list of all 
-c           boxes on the levels finer than that of ibox, which are 
-c           separated from ibox, and whose parents are not separated 
-c           from ibox. for a box with children, list 3 is empty.
-c           
-c     list 4 is dual to list 3, i.e. jbox is on the list 4 of ibox if 
-c           and only if ibox is on the list 3 of jbox. 
-c
-c     list 5 of the box ibox - the list of all boxes at the same level 
-c           that are adjacent to the box ibox - the list of colleagues
-c
-c                            input parameters:
-c
-c  Xj - the user-specified points in the space
-c  numBodies - the number of elements in array Xj
-c  ncrit - the maximum number of points in a box on the finest level
-c
-c                            output parameters:
-c
-c  laddr - an integer array dimensioned (2,nlev), describing the
-c         numbers of boxes on various levels of sybdivision, so that
-c         the first box on level (i-1) has sequence number laddr(1,i),
-c         and there are laddr(2,i) boxes on level i-1
-c  nlev - the maximum level number on which any boxes have 
-c         been created. the maximum number possible is 200. 
-c         it is recommended that the array laddr above be 
-c         dimensioned at least (2,200), in case the user underestimates
-c         the number of levels required.
-c  center - the center of the box on the level 0, containing
-c         the whole simulation
-c  size - the side of the box on the level 0
       maxboxes=numBodies
       do i=1,numBodies
          isource(i)=i
@@ -89,45 +45,6 @@ c  size - the side of the box on the level 0
       implicit real *8 (a-h,o-z)
       integer box(20)
       real *8 center(3),corners(3,8)
-c
-c        this entry returns to the user the characteristics of
-c        user-specified box  ibox.  
-c
-c                     input parameters:
-c
-c  ibox - the box number for which the information is desired
-c  w - storage area as created by the entry buildTree (see above)
-c
-c                     output parameters:
-c
-c  box - an integer array dimensioned box(20). its elements describe 
-c        the box number ibox, as follows:
-c
-c       1 - the level of subdivision on which this box 
-c             was constructed; 
-c       2,3,4  - the coordinates of this box among  all
-c             boxes on this level
-c       5 - the parent of this box, identified by it address
-c             in array boxes
-c       6,7,8,9,10,11,12,13 - the  list of children of this box 
-c             (eight of them, and the child is identified by its address
-c             in the array boxes; if a box has only one child, only the
-c             first of the four child entries is non-zero, etc.)
-c       14 - the location in the array iz of the particles 
-c             living in this box
-c       15 - the number of particles living in this box
-c       16 - the location in the array iztarg of the targets
-c             living in this box
-c       17 - the number of targets living in this box
-c       18 - source box type: 0 - empty, 1 - leaf node, 2 - sub-divided
-c       19 - target box type: 0 - empty, 1 - leaf node, 2 - sub-divided
-c       20 - reserved for future use
-c
-c  center - the center of the box number ibox 
-c  corners - the corners of the box number ibox 
-c
-c       . . . return to the user all information about the box ibox
-c 
       if( (ibox.lt.1).or.(ibox.gt.nboxes) ) then
          print*,"Error: ibox out of bounds"
          stop
@@ -146,38 +63,32 @@ c
       subroutine getLists(nboxes)
       use arrays, only : boxes,listOffset,corners
       implicit real *8 (a-h,o-z)
-      integer collkids(50000),dadcolls(2000),list5(20000),stack(60000)
+      integer kids(50000),parents(2000),list5(20000),stack(60000)
       ntypes=5
       do k=1,ntypes
          do i=1,nboxes
             listOffset(i,k)=-1
          enddo
       enddo
-c     
 c     construct lists 5,2 for all boxes
-c
-      do 2000 ibox=2,nboxes
+      do ibox=2,nboxes
          iparent=boxes(5,ibox)
-c
 c     find parent's collegues including parent
-c     
-         dadcolls(1)=iparent
+         parents(1)=iparent
          itype5=5
          itype2=2
-         call getList(itype5,iparent,nboxes,dadcolls(2),ncolls)
+         call getList(itype5,iparent,nboxes,parents(2),ncolls)
          ncolls=ncolls+1
-c
-c        find the children of the parent's collegues
-c
+c     find the children of the parent's collegues
          nkids=0
          do i=1,ncolls
-            icoll=dadcolls(i)
+            icoll=parents(i)
             do j=1,8
                kid=boxes(5+j,icoll)
                if(kid.gt.0)then
                   if(kid.ne.ibox)then
                      nkids=nkids+1
-                     collkids(nkids)=kid
+                     kids(nkids)=kid
                   endif
                endif
             enddo
@@ -186,43 +97,24 @@ c     sort the kids of the parent's collegues into the
 c     lists 2, 5 of the box ibox
          nlist1=1
          do i=1,nkids
-            kid=collkids(i)
+            kid=kids(i)
             call intersect(corners(1,1,kid),corners(1,1,ibox),ifinter)
             if(ifinter.eq.1)
      $           call setList(itype5,ibox,nboxes,kid,nlist1)
             if(ifinter.eq.0)
      $           call setList(itype2,ibox,nboxes,kid,nlist1)
          enddo
-c     
-c     if storage capacity has been exceeed - bomb
-c     
- 2000 continue
-c     
-c     
+      enddo
 c     now, construct lists 1, 3
-c     
-      do 3000 i=1,nboxes
-c     
-c     if this box has kids - its lists 1, 3 are empty;
-c     do not construct them
-c     
-         if(boxes(6,i) .gt. 0) goto 3000
-c     
-c     do not construct lists 1, 3 for the main box
-c     
-         if(boxes(1,i) .eq. 0) goto 3000
-c     
-         call getList(itype5,i,nboxes,list5,nlist)  
-c     
-         do 2200 j=1,nlist
-            jbox=list5(j)
-            call getList13(i,jbox,nboxes,stack)
-c     
-c     if storage capacity has been exceeded - bomb
-c     
- 2200    continue
- 3000 continue
-c     
+      do i=1,nboxes
+         if(boxes(6,i).le.0.and.boxes(1,i).ne.0)then
+            call getList(itype5,i,nboxes,list5,nlist)  
+            do j=1,nlist
+               jbox=list5(j)
+               call getList13(i,jbox,nboxes,stack)
+            enddo
+         endif
+      enddo
 c     
       itype3=3
       itype4=4
@@ -247,18 +139,13 @@ c
       istack=1
       stack(1,1)=1
       stack(2,1)=jbox
-c     
-      nsons=0
-      do 1200 j=6,13
-c     
-         if(boxes(j,jbox) .gt. 0) nsons=nsons+1
- 1200 continue
-c     
-      stack(3,1)=nsons
-c     
+      nchilds=0
+      do j=6,13
+         if(boxes(j,jbox) .gt. 0) nchilds=nchilds+1
+      enddo
+      stack(3,1)=nchilds
 c     . . . move up and down the stack, generating the elements 
 c     of lists 1, 3 for the box jbox, as appropriate
-c     
       do 5000 ijk=1,1 000 000 000
 c     
 c     if this box is separated from ibox - store it in list 3;
@@ -310,11 +197,11 @@ c
  3000    continue
 c     
 c     this box is not separated from ibox, and has children. if 
-c     the number of unprocessed sons of this box is zero 
+c     the number of unprocessed childs of this box is zero 
 c     - pass control to his parent
 c     
-         nsons=stack(3,istack)
-         if(nsons .ne. 0) goto 4000
+         nchilds=stack(3,istack)
+         if(nchilds .ne. 0) goto 4000
 c     
          if(jbox .eq. jbox0) return
 c     
@@ -324,23 +211,23 @@ c
          goto 5000
  4000    continue
 c     
-c     this box is not separated from ibox; it has sons, and
+c     this box is not separated from ibox; it has childs, and
 c     not all of them have been processed. construct the stack
-c     element for the appropriate son, and pass the control
+c     element for the appropriate child, and pass the control
 c     to him. 
 c     
-         jbox=boxes(5+nsons,jbox)
+         jbox=boxes(5+nchilds,jbox)
          istack=istack+1
 c     
-         nsons=0
+         nchilds=0
          do 4600 j=6,13
 c     
-            if(boxes(j,jbox) .gt. 0) nsons=nsons+1
+            if(boxes(j,jbox) .gt. 0) nchilds=nchilds+1
  4600    continue
 c     
          stack(1,istack)=istack
          stack(2,istack)=jbox
-         stack(3,istack)=nsons
+         stack(3,istack)=nchilds
 c     
  5000 continue
 c     
@@ -422,10 +309,10 @@ c
       implicit real *8 (a-h,o-z)
       integer boxes(20,*),iz(*),laddr(2,*),iwork(n),
      1     is(8),ns(8),
-     1     iisons(8),jjsons(8),kksons(8)
+     1     iichilds(8),jjchilds(8),kkchilds(8)
       real *8 z(3,*),center0(3),center(3)
-      data kksons/1,1,1,1,2,2,2,2/,jjsons/1,1,2,2,1,1,2,2/,
-     1     iisons/1,2,1,2,1,2,1,2/
+      data kkchilds/1,1,1,1,2,2,2,2/,jjchilds/1,1,2,2,1,1,2,2/,
+     1     iichilds/1,2,1,2,1,2,1,2/
       xmin=z(1,1)
       xmax=z(1,1)
       ymin=z(2,1)
@@ -479,14 +366,14 @@ c
 c     
 c     recursively (one level after another) subdivide all 
 c     boxes till none are left with more than ncrit particles
-      maxson=maxboxes
+      maxChild=maxboxes
       maxlev=198
       if( maxlevel .lt. maxlev ) maxlev=maxlevel
-      ison=1
+      ichild=1
       nlev=0
       do 3000 level=0,maxlev-1
          laddr(1,level+2)=laddr(1,level+1)+laddr(2,level+1)
-         nlevson=0
+         nlevChild=0
          iparent0=laddr(1,level+1)
          iparent1=iparent0+laddr(2,level+1)-1
          do 2000 iparent=iparent0,iparent1
@@ -508,18 +395,18 @@ c     ... not a leaf node on sources or targets
             iiz=boxes(14,iparent)
             nz=boxes(15,iparent)
             call reorder(center,z,iz(iiz),nz,iwork,is,ns)
-            ichild=6
+            ic=6
             do 1600 i=1,8
                if(ns(i) .eq. 0 .and. 
      $              ifempty .ne. 1) goto 1600
-               nlevson=nlevson+1
-               ison=ison+1
+               nlevChild=nlevChild+1
+               ichild=ichild+1
                nlev=level+1
 c     
 c     . . . if the user-provided array boxes is too
 c     short - bomb out
 c     
-               if(ison.gt.maxson) then
+               if(ichild.gt.maxChild) then
                   print*,"Error: ibox out of bounds"
                   stop
                endif
@@ -527,34 +414,34 @@ c
 c     store in array boxes all information about this son
 c     
                do 1500 lll=6,13
-                  boxes(lll,ison)=0
+                  boxes(lll,ichild)=0
  1500          continue
 c     
-               boxes(1,ison)=level+1
-               iison=(ii-1)*2+iisons(i)
-               jjson=(jj-1)*2+jjsons(i)
-               kkson=(kk-1)*2+kksons(i)
-               boxes(2,ison)=iison
-               boxes(3,ison)=jjson
-               boxes(4,ison)=kkson
-               boxes(5,ison)=iparent        
+               boxes(1,ichild)=level+1
+               iichild=(ii-1)*2+iichilds(i)
+               jjson=(jj-1)*2+jjchilds(i)
+               kkson=(kk-1)*2+kkchilds(i)
+               boxes(2,ichild)=iichild
+               boxes(3,ichild)=jjson
+               boxes(4,ichild)=kkson
+               boxes(5,ichild)=iparent        
 c     
-               boxes(14,ison)=is(i)+iiz-1
-               boxes(15,ison)=ns(i)
+               boxes(14,ichild)=is(i)+iiz-1
+               boxes(15,ichild)=ns(i)
 c     
-               boxes(16,ison)=0
-               boxes(17,ison)=0
-               if( ns(i) .le. 0 ) boxes(18,ison)=0
-               if( ns(i) .gt. 0 ) boxes(18,ison)=1
-               boxes(19,ison)=0
-               boxes(20,ison)=0
-               boxes(ichild,iparent)=ison
-               ichild=ichild+1
-               nboxes=ison
+               boxes(16,ichild)=0
+               boxes(17,ichild)=0
+               if( ns(i) .le. 0 ) boxes(18,ichild)=0
+               if( ns(i) .gt. 0 ) boxes(18,ichild)=1
+               boxes(19,ichild)=0
+               boxes(20,ichild)=0
+               boxes(ic,iparent)=ichild
+               ic=ic+1
+               nboxes=ichild
  1600       continue
  2000    continue
-         laddr(2,level+2)=nlevson
-         if(nlevson .eq. 0) goto 4000
+         laddr(2,level+2)=nlevChild
+         if(nlevChild .eq. 0) goto 4000
          level1=level
  3000 continue
       if( level1 .ge. 197 ) then
@@ -562,7 +449,7 @@ c
          stop
       endif
  4000 continue
-      nboxes=ison
+      nboxes=ichild
       return
       end
 c     
@@ -724,9 +611,9 @@ c     iz - the integer array specifying the transposition already
 c     applied to the points z, after the subdivision of 
 c     the box into children
 c     is - an integer array of length 8 containing the locations 
-c     of the sons in array iz
+c     of the childs in array iz
 c     ns - an integer array of length 8 containig the numbers of 
-c     elements in the sons
+c     elements in the childs
 c     
 c     work arrays:
 c     
@@ -758,9 +645,9 @@ ccc   thresh=cent(1)
       call divide(z,iz,n,itype,thresh,iwork,n1234)
       n5678=n-n1234
 c     
-c     at this point, the contents of sons number 1,2,3,4 are in
+c     at this point, the contents of childs number 1,2,3,4 are in
 c     the part of array iz with numbers 1,2,...n1234
-c     the contents of sons number 5,6,7,8  are in
+c     the contents of childs number 5,6,7,8  are in
 c     the part of array iz with numbers n1234+1,n12+2,...,n
 c     
 c     . . . separate the boxes 1, 2, 3, 4 and boxes 5, 6, 7, 8
