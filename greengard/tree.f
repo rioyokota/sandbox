@@ -195,10 +195,10 @@ c
         kid=collkids(i)
         call d3tifint(corners(1,1,kid),corners(1,1,ibox),ifinter)
         if(ifinter .eq. 1)
-     $    call d3tlinkstor(itype5,ibox,nboxes,kid,nlist1)
+     $    call setList(itype5,ibox,nboxes,kid,nlist1)
 c        if storage capacity has been exceeed - bomb
         if(ifinter .eq. 0)
-     $    call d3tlinkstor(itype2,ibox,nboxes,kid,nlist1)
+     $    call setList(itype2,ibox,nboxes,kid,nlist1)
  1800 continue
 c
 c        if storage capacity has been exceeed - bomb
@@ -237,7 +237,7 @@ c
         do ibox=1,nboxes
            call getList(itype3,ibox,nboxes,list5,nlist)
            do j=1,nlist
-              call d3tlinkstor(itype4,list5(j),nboxes,ibox,nlist1)
+              call setList(itype4,list5(j),nboxes,ibox,nlist1)
            enddo
         enddo
 
@@ -275,7 +275,7 @@ c
         call d3tifint(corners(1,1,ibox),corners(1,1,jbox),ifinter)
 c
         if(ifinter .eq. 1) goto 2000
-        call d3tlinkstor(itype3,ibox,nboxes,jbox,nlist1)
+        call setList(itype3,ibox,nboxes,jbox,nlist1)
 c
 c        if storage capacity has been exceeed - bomb
 c
@@ -290,7 +290,7 @@ c       - enter it in list 1; enter this fact in the daddy's table;
 c       pass control to the daddy
 c       
         if(boxes(6,jbox) .ne. 0) goto 3000
-        call d3tlinkstor(itype1,ibox,nboxes,jbox,nlist1)
+        call setList(itype1,ibox,nboxes,jbox,nlist1)
 c
 c        if storage capacity has been exceeed - bomb
 c
@@ -299,7 +299,7 @@ c             is on the finer level than ibox - enter ibox
 c             in the list 1 of jbox
 c
         if(boxes(1,jbox) .eq. boxes(1,ibox)) goto 2400
-        call d3tlinkstor(itype1,jbox,nboxes,ibox,nlist1)
+        call setList(itype1,jbox,nboxes,ibox,nlist1)
 c
 c        if storage capacity has been exceeed - bomb
 c
@@ -441,50 +441,6 @@ c
         return
         end
 c
-c
-c
-c
-c
-        subroutine d3tifint2(box1,box2,ifinter)
-        implicit real *8 (a-h,o-z)
-        integer box1(20),box2(20)
-c
-c        this subroutine determines if two boxes in the square 
-c        intersect or touch.
-c
-c                input parameters:
-c
-c  box1 - the integer array describing the first box
-c  box1 - the integer array describing the second box
-c
-c       integer arrays are dimensioned (20), as produced by d3tallb
-c
-c                output parametes:
-c 
-c  ifinter - the indicator.
-c      ifinter=1 means that the boxes intersect
-c      ifinter=0 means that the boxes do not intersect
-c
-c
-        ifinter=1
-c
-        do i=1,3
-        level1=box1(1)
-        level2=box2(1)
-        ip1=box1(i+1)-1
-        ip2=box2(i+1)-1
-	if( (ip1+1)*2**(level2-level1) .lt. (ip2  ) ) ifinter=0
-	if( (ip1  )*2**(level2-level1) .gt. (ip2+1) ) ifinter=0
-        if( ifinter .eq. 0 ) return
-        enddo
-c
-        return
-        end
-c
-c
-c
-c
-c
         subroutine getCenter(ibox,center,corner)
         use arrays, only : centers,corners
         implicit real *8 (a-h,o-z)
@@ -497,14 +453,8 @@ c
         corner(2,i)=corners(2,i,ibox)        
         corner(3,i)=corners(3,i,ibox)        
         enddo
-c
         return
         end
-
-c
-c
-c
-c
 c
         subroutine growTree(z,n,ncrit,boxes,maxboxes,
      1    nboxes,iz,laddr,nlev,center0,size,
@@ -516,101 +466,12 @@ c
         real *8 z(3,*),center0(3),center(3)
         data kksons/1,1,1,1,2,2,2,2/,jjsons/1,1,2,2,1,1,2,2/,
      1      iisons/1,2,1,2,1,2,1,2/
-ccc        save
-c
-c        this subroutine constructs a oct-tree corresponding
-c        to the user-specified collection of points in the space
-c
-c              input parameters:
-c
-c  z - the set of points in the space
-c  n - the number of elements in z
-c
-
-c  ncrit - the maximum number of points permitted in a box on 
-c        the finest level. in other words, a box will be further
-c        subdivided if it contains more than ncrit points.
-c  maxboxes - the maximum total number of boxes the subroutine 
-c        is permitted to create.
-c  
-c              output parameters:
-c
-c  boxes - an integer array dimensioned (20,nboxes). each 20-element
-c        column describes one box, as follows:
-c
-c       1. level - the level of subdivision on which this box 
-c             was constructed; 
-c       2, 3, 4  - the coordinates of this box among  all
-c             boxes on this level
-c       5 - the daddy of this box, identified by it address
-c             in array boxes
-c       6,7,8,9,10,11,12,13 - the  list of children of this box 
-c             (eight of them, and the child is identified by its address
-c             in the array boxes; if a box has only one child, only the
-c             first of the four child entries is non-zero, etc.)
-c       14 - the location in the array iz of the particles 
-c             living in this box
-c       15 - the number of particles living in this box
-c       16 - the location in the array iztarg of the targets
-c             living in this box
-c       17 - the number of targets living in this box
-c       18 - source box type: 0 - empty, 1 - leaf node, 2 - sub-divided
-c       19 - target box type: 0 - empty, 1 - leaf node, 2 - sub-divided
-c       20 - reserved for future use
-c
-c    important warning: the array boxes has to be dimensioned 
-c                       at least (20,maxboxes)!! otherwise, 
-c                       the subroutine is likely to bomb, since
-c                       it assumes that it has that much space!!!!
-c  nboxes - the total number of boxes created
-c  iz - the integer array addressing the particles in 
-c         all boxes. 
-c       explanation: for a box ibox, the particles living in
-c         it are:
-c
-c         (z(1,j),z(2,j),z(3,j)),(z(1,j+1),z(2,j+1),z(3,j+1)),
-c         (z(1,j+2),z(2,j+2),z(3,j+3)), . . . 
-c         (z(1,j+nj-1),z(2,j+nj-1),z(3,j+nj-1)),
-c         (z(1,j+nj),z(2,j+nj),z(3,j+nj)),
-c
-c         with j=boxes(14,ibox), and nj=boxes(15,ibox)
-c        
-c  laddr - an integer array dimensioned (2,numlev), containing
-c         the map of array boxes, as follows:
-c       laddr(1,i) is the location in array boxes of the information
-c         pertaining to level=i-1
-c       laddr(2,i) is the number of boxes created on the level i-1
-c
-c  nlev - the maximum level number on which any boxes have 
-c         been created. the maximim number possible is 200. 
-c         it is recommended that the array laddr above be 
-c         dimensioned at least (2,200), in case the user underestimates
-c         the number of levels required.
-c  center0 - the center of the box on the level 0, containing
-c         the whole simulation
-c  size - the side of the box on the level 0
-c
-c                  work arrays:
-c
-c  iwork - must be at least n+2 integer*4 elements long.
-c
-c        . . . find the main box containing the whole picture
-c
-c
         xmin=z(1,1)
         xmax=z(1,1)
         ymin=z(2,1)
         ymax=z(2,1)
         zmin=z(3,1)
         zmax=z(3,1)
-c
-c        xmin=1.0d50
-c        xmax=-xmin
-c        ymin=1.0d50
-c        ymax=-ymin
-c        zmin=1.0d50
-c        zmax=-zmin
-c
         do 1100 i=1,n
         if(z(1,i) .lt. xmin) xmin=z(1,i)
         if(z(1,i) .gt. xmax) xmax=z(1,i)
@@ -1047,31 +908,10 @@ c
         return
         end
 c
-c
-c
-c
-c
-        subroutine d3tlinkinit(nboxes,ntypes)
-        use arrays, only : listOffset
-        data ilists/0/,numele/0/
-        ilists=nboxes*ntypes
-        do k=1,ntypes
-           do i=1,nboxes
-              listOffset(i,k)=-1
-           enddo
-        enddo
-        return
-c
-        entry d3tlinkstor(itype,ibox,nboxes,list,nlist)
-        call d3tlinksto0(itype,ibox,list,nlist,
-     $      nboxes,numele)
-        return
-        end
-c
-      subroutine d3tlinksto0(itype,ibox,list,nlist,
-     $     nboxes,numele)
+      subroutine setList(itype,ibox,nboxes,list,nlist)
       use arrays, only : listOffset,lists
       integer list(*)
+      data numele/0/
       ilast=listOffset(ibox,itype)
       do i=1,nlist
          numele=numele+1
