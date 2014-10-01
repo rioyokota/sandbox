@@ -20,7 +20,6 @@
       dimension corners0(3,8)
       integer, allocatable :: iaddr(:)
       integer, allocatable :: isource(:)
-      real *8, allocatable :: wlists(:)
       real *8, allocatable :: Multipole(:)
       real *8, allocatable :: Local(:)
       complex *16 ptemp,ftemp(3)
@@ -46,12 +45,9 @@ c     set criterion for box subdivision (number of sources per box)
       if( iprec .eq. 5 ) ncrit=1400
       if( iprec .eq. 6 ) ncrit=numBodies
 c     create oct-tree data structure
-      lwlists = 2*numBodies+10000
       allocate (isource(numBodies))
-      allocate (wlists(lwlists))
       call buildTree(Xj,numBodies,ncrit,
-     1     nboxes,isource,laddr,nlev,center,size,
-     1     wlists)
+     1     nboxes,isource,laddr,nlev,center,size)
       allocate(iaddr(nboxes))
       do i = 0,nlev
          scale(i) = 1.0d0
@@ -83,8 +79,7 @@ c     create oct-tree data structure
       allocate(Local(lmptot))
       call evaluate(iprec,wavek,numBodies,Xjd,isource,
      1     1,qjd,pid,Fid,epsfmm,iaddr,Multipole,Local,
-     1     nboxes,laddr,nlev,scale,bsize,nterms,
-     1     wlists)
+     1     nboxes,laddr,nlev,scale,bsize,nterms)
       do i=1,numBodies
          pi(isource(i))=pid(i)
          Fi(1,isource(i))=Fid(1,i)
@@ -98,8 +93,7 @@ c     create oct-tree data structure
      1     numBodies,sourcesort,isource,
      1     ifcharge,chargesort,pot,fld,
      1     epsfmm,iaddr,Multipole,Local,
-     1     nboxes,laddr,nlev,scale,bsize,nterms,
-     1     wlists)
+     1     nboxes,laddr,nlev,scale,bsize,nterms)
       use arrays, only : listOffset,lists
       implicit real *8 (a-h,o-z)
       dimension sourcesort(3,1),isource(1)
@@ -107,7 +101,6 @@ c     create oct-tree data structure
       complex *16 imag
       complex *16 pot(1)
       complex *16 fld(3,1)
-      dimension wlists(1)
       dimension iaddr(nboxes)
       real *8 Multipole(1),Local(1),xquad(10000),wquad(10000)
       dimension center(3)

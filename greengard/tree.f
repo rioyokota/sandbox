@@ -1,41 +1,31 @@
       subroutine buildTree(z,n,ncrit,
-     $     nboxes,iz,laddr,nlev,center,size,
-     $     wlists)
+     $     nboxes,iz,laddr,nlev,center,size)
       use arrays, only : listOffset,lists,nodes,boxes,centers,corners
       implicit real *8 (a-h,o-z)
-      integer iz(*),wlists(*),laddr(2,*)
+      integer iz(*),laddr(2,*)
       real *8 z(3,*),center(3)
-c        this subroutine constructs the logical structure for the 
-c        fully adaptive FMM in three dimensions and stores it in the
-c        array wlists in the form of a link-list. after that, the user 
-c        can obtain the information about various boxes and lists 
-c        in it by calling the entries getCell, getList, getMemory
-c        of this subroutine (see).
+c     This subroutine constructs the tree on sources and targets
 c
-c        this subroutine constructs the tree on sources and targets
-c
-c              note on the list conventions. 
-c
-c    list 1 of the box ibox - the list of all boxes with which the
+c     list 1 of the box ibox - the list of all boxes with which the
 c           box ibox interacts directly, including the boxes on the 
 c           same level as ibox, boxes on the finer levels, and boxes 
 c           on the coarser levels. obviously, list 1 is empty for any
 c           box that is not childless.
 c
-c    list 2 of the box ibox - the list of all boxes with which the
+c     list 2 of the box ibox - the list of all boxes with which the
 c           box ibox interacts in the regular multipole fashion, i.e. 
 c           boxes on the same level as ibox that are separated from it
 c           but whose daddies are not separated from the daddy of ibox.
 c
-c    list 3 of the box ibox - for a childless ibox, the list of all 
+c     list 3 of the box ibox - for a childless ibox, the list of all 
 c           boxes on the levels finer than that of ibox, which are 
 c           separated from ibox, and whose daddys are not separated 
 c           from ibox. for a box with children, list 3 is empty.
 c           
-c    list 4 is dual to list 3, i.e. jbox is on the list 4 of ibox if 
+c     list 4 is dual to list 3, i.e. jbox is on the list 4 of ibox if 
 c           and only if ibox is on the list 3 of jbox. 
 c
-c    list 5 of the box ibox - the list of all boxes at the same level 
+c     list 5 of the box ibox - the list of all boxes at the same level 
 c           that are adjacent to the box ibox - the list of colleagues
 c
 c                            input parameters:
@@ -58,10 +48,7 @@ c         the number of levels required.
 c  center - the center of the box on the level 0, containing
 c         the whole simulation
 c  size - the side of the box on the level 0
-        iiwork=501
-        iboxes=iiwork+n+4
         maxboxes=n
-c     initialize the sorting index 
         do i=1,n
            iz(i)=i
 	enddo
@@ -69,43 +56,21 @@ c     initialize the sorting index
         minlevel=0
         maxlevel=100
         allocate(nodes(20,maxboxes))
-        call growTree(z,n,ncrit,wlists(iboxes),maxboxes,
-     1    nboxes,iz,laddr,nlev,center,size,wlists(iiwork),
-     $     ifempty,minlevel,maxlevel)
-c     compress the array wlists
+        call growTree(z,n,ncrit,nodes,maxboxes,
+     $       nboxes,iz,laddr,nlev,center,size,
+     $       ifempty,minlevel,maxlevel)
         allocate(listOffset(nboxes,5))
         allocate(lists(2,189*nboxes))
         allocate(boxes(20,nboxes))
         allocate(centers(3,nboxes))
         allocate(corners(3,8,nboxes))
-        do i=1,nboxes*20
-           wlists(iiwork+i-1)=wlists(iboxes+i-1)
-           boxes(mod(i-1,20)+1,(i-1)/20+1)=wlists(iboxes+i-1)
+        do i=1,nboxes
+           do j=1,20
+              boxes(j,i)=nodes(j,i)
+           enddo
         enddo
-        iboxes=iiwork
-c     construct the centers and the corners for all boxes in the oct-tree
         call setCenter(center,size,nboxes)
-c     now, construct all lists for all boxes
         call getLists(nboxes)
-c     store all pointers
-        wlists(1)=nboxes
-        wlists(2)=iboxes
-        wlists(3)=0
-        wlists(4)=0
-        wlists(5)=0
-        wlists(6)=0
-        wlists(7)=n
-        wlists(8)=ncrit
-        wlists(9)=nlev
-        wlists(10)=0
-        wlists(11)=0
-        wlists(12)=ifempty
-        wlists(13)=minlevel
-        wlists(14)=maxlevel
-        do i=1,200
-           wlists(100+2*i-2)=laddr(1,i)
-           wlists(100+2*i-1)=laddr(2,i)
-        enddo
         return
         end
 
@@ -621,10 +586,10 @@ c
 c
 c
         subroutine growTree(z,n,ncrit,boxes,maxboxes,
-     1    nboxes,iz,laddr,nlev,center0,size,iwork,
+     1    nboxes,iz,laddr,nlev,center0,size,
      1    ifempty,minlevel,maxlevel)
         implicit real *8 (a-h,o-z)
-        integer boxes(20,*),iz(*),laddr(2,*),iwork(*),
+        integer boxes(20,*),iz(*),laddr(2,*),iwork(n),
      1      is(8),ns(8),
      1      iisons(8),jjsons(8),kksons(8)
         real *8 z(3,*),center0(3),center(3)
