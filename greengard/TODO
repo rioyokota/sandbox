@@ -5,6 +5,7 @@
 Use implicit none
 Remove goto
 Remove continue
+Allocatable -> Static array
 ibox -> Ci
 
 list 1 - the list of all boxes with which the
