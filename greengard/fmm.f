@@ -158,7 +158,7 @@ c$    tic=omp_get_wtime()
 c$omp parallel do default(shared)
 c$omp$private(ibox,box,center0,corners0,level,npts,numChild,radius)
 c$omp$private(i,j,ptemp,ftemp,cd)
-         do ibox=levelRange(1,ilev),levelRange(2,ilev)
+         do ibox=levelRange(1,ilev),levelRange(1,ilev+1)-1
             call getCell(ibox,box,nboxes,center0,corners0)
             call getNumChild(box,numChild)
             level=box(1)
@@ -192,7 +192,7 @@ c$omp$private(ibox,box,center0,corners0,level0)
 c$omp$private(level,npts,numChild,radius)
 c$omp$private(jbox,box1,center1,corners1,level1)
 c$omp$private(i,j,ptemp,ftemp,cd)
-         do ibox=levelRange(1,ilev),levelRange(2,ilev)
+         do ibox=levelRange(1,ilev),levelRange(1,ilev+1)-1
             call getCell(ibox,box,nboxes,center0,corners0)
             call getNumChild(box,numChild)
             if( box(15) .eq. 0 ) cycle
@@ -236,7 +236,7 @@ c$omp$private(jbox,box1,center1,corners1,level1,ifdirect2,radius)
 c$omp$private(i,j,ptemp,ftemp,cd,ilist,itype)
 c$omp$private(nterms_trunc,ii,jj,kk)
 c$omp$schedule(dynamic)
-         do 4200 ibox=levelRange(1,ilev),levelRange(2,ilev)
+         do 4200 ibox=levelRange(1,ilev),levelRange(1,ilev+1)-1
             call getCell(ibox,box,nboxes,center0,corners0)
             level0=box(1)
             if (level0 .ge. 2) then
@@ -290,7 +290,7 @@ c$omp$private(ibox,box,center0,corners0,level0)
 c$omp$private(level,npts,numChild,radius)
 c$omp$private(jbox,box1,center1,corners1,level1)
 c$omp$private(i,j,ptemp,ftemp,cd)
-         do 5200 ibox=levelRange(1,ilev),levelRange(2,ilev)
+         do 5200 ibox=levelRange(1,ilev),levelRange(1,ilev+1)-1
             call getCell(ibox,box,nboxes,center0,corners0)
             call getNumChild(box,numChild)
             if (numChild .ne. 0) then
