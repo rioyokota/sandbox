@@ -1,5 +1,7 @@
 - Change function/variable names in tree.f
-* kids -> child
+* kid -> child
+* box -> cell
+* laddr -> levelRange
 - Use common blocks
 
 Use implicit none

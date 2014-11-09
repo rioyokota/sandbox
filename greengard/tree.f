@@ -1,8 +1,8 @@
       subroutine buildTree(Xj,numBodies,ncrit,
-     $     nboxes,isource,laddr,nlev,center,size)
+     $     nboxes,isource,levelRange,nlev,center,size)
       use arrays, only : listOffset,lists,nodes,boxes,centers,corners
       implicit real *8 (a-h,o-z)
-      integer isource(*),laddr(2,*)
+      integer isource(*),levelRange(2,*)
       real *8 Xj(3,*),center(3)
       maxboxes=numBodies
       do i=1,numBodies
@@ -13,7 +13,7 @@
       maxlevel=100
       allocate(nodes(20,maxboxes))
       call growTree(Xj,numBodies,ncrit,nodes,maxboxes,
-     $     nboxes,isource,laddr,nlev,center,size,
+     $     nboxes,isource,levelRange,nlev,center,size,
      $     ifempty,minlevel,maxlevel)
       allocate(listOffset(nboxes,5))
       allocate(lists(2,189*nboxes))
@@ -304,10 +304,10 @@ c
       end
 c     
       subroutine growTree(z,n,ncrit,boxes,maxboxes,
-     1     nboxes,iz,laddr,nlev,center0,size,
+     1     nboxes,iz,levelRange,nlev,center0,size,
      1     ifempty,minlevel,maxlevel)
       implicit real *8 (a-h,o-z)
-      integer boxes(20,*),iz(*),laddr(2,*),iwork(n),
+      integer boxes(20,*),iz(*),levelRange(2,*),iwork(n),
      1     is(8),ns(8),
      1     iichilds(8),jjchilds(8),kkchilds(8)
       real *8 z(3,*),center0(3),center(3)
@@ -357,8 +357,8 @@ c
       boxes(19,1)=0
       boxes(20,1)=0
 c     
-      laddr(1,1)=1
-      laddr(2,1)=1
+      levelRange(1,1)=1
+      levelRange(2,1)=1
 c     
       do 1200 i=1,n 
          iz(i)=i
@@ -372,10 +372,11 @@ c     boxes till none are left with more than ncrit particles
       ichild=1
       nlev=0
       do 3000 level=0,maxlev-1
-         laddr(1,level+2)=laddr(1,level+1)+laddr(2,level+1)
+         levelRange(1,level+2)=levelRange(1,level+1)+
+     1        levelRange(2,level+1)
          nlevChild=0
-         iparent0=laddr(1,level+1)
-         iparent1=iparent0+laddr(2,level+1)-1
+         iparent0=levelRange(1,level+1)
+         iparent1=iparent0+levelRange(2,level+1)-1
          do 2000 iparent=iparent0,iparent1
 c     subdivide the box number iparent (if needed)
             nump=boxes(15,iparent)
@@ -440,7 +441,7 @@ c
                nboxes=ichild
  1600       continue
  2000    continue
-         laddr(2,level+2)=nlevChild
+         levelRange(2,level+2)=nlevChild
          if(nlevChild .eq. 0) goto 4000
          level1=level
  3000 continue
