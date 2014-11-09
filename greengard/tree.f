@@ -1,8 +1,9 @@
       subroutine buildTree(Xj,numBodies,ncrit,
-     $     nboxes,isource,levelRange,nlev,center,size)
-      use arrays, only : listOffset,lists,nodes,boxes,centers,corners
+     $     nboxes,isource,nlev,center,size)
+      use arrays, only : listOffset,lists,levelOffset,nodes,boxes,
+     $     centers,corners
       implicit real *8 (a-h,o-z)
-      integer isource(*),levelRange(*)
+      integer isource(*)
       real *8 Xj(3,*),center(3)
       maxboxes=numBodies
       do i=1,numBodies
@@ -13,7 +14,7 @@
       maxlevel=100
       allocate(nodes(20,maxboxes))
       call growTree(Xj,numBodies,ncrit,nodes,maxboxes,
-     $     nboxes,isource,levelRange,nlev,center,size,
+     $     nboxes,isource,nlev,center,size,
      $     ifempty,minlevel,maxlevel)
       allocate(listOffset(nboxes,5))
       allocate(lists(2,189*nboxes))
@@ -304,10 +305,11 @@ c
       end
 c     
       subroutine growTree(z,n,ncrit,boxes,maxboxes,
-     1     nboxes,iz,levelRange,nlev,center0,size,
+     1     nboxes,iz,nlev,center0,size,
      1     ifempty,minlevel,maxlevel)
+      use arrays, only : levelOffset
       implicit real *8 (a-h,o-z)
-      integer boxes(20,*),iz(*),levelRange(*),iwork(n),
+      integer boxes(20,*),iz(*),iwork(n),
      1     is(8),ns(8),
      1     iichilds(8),jjchilds(8),kkchilds(8)
       real *8 z(3,*),center0(3),center(3)
@@ -357,8 +359,8 @@ c
       boxes(19,1)=0
       boxes(20,1)=0
 c     
-      levelRange(1)=1
-      levelRange(2)=2
+      levelOffset(1)=1
+      levelOffset(2)=2
 c     
       do 1200 i=1,n 
          iz(i)=i
@@ -373,7 +375,7 @@ c     boxes till none are left with more than ncrit particles
       nlev=0
       do 3000 level=0,maxlev-1
          nlevChild=0
-         do 2000 iparent=levelRange(level+1),levelRange(level+2)-1
+         do 2000 iparent=levelOffset(level+1),levelOffset(level+2)-1
 c     subdivide the box number iparent (if needed)
             nump=boxes(15,iparent)
             numt=boxes(17,iparent)
@@ -437,7 +439,7 @@ c
                nboxes=ichild
  1600       continue
  2000    continue
-         levelRange(level+3)=levelRange(level+2)+nlevChild
+         levelOffset(level+3)=levelOffset(level+2)+nlevChild
          if(nlevChild .eq. 0) goto 4000
          level1=level
  3000 continue

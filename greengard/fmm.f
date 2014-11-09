@@ -1,5 +1,6 @@
       subroutine fmm(iprec,wavek,numBodies,Xj,
      $     qj,pi,Fi)
+      use arrays, only : levelOffset
       implicit real *8 (a-h,o-z)
       integer box(20)
       dimension Xj(3,numBodies)
@@ -11,7 +12,6 @@
       complex *16 Fi(3,numBodies)
       complex *16 pid(numBodies)
       complex *16 Fid(3,numBodies)
-      dimension levelRange(200)
       dimension bsize(0:200)
       dimension nterms(0:200)
       dimension scale(0:200)
@@ -46,9 +46,10 @@ c     set criterion for box subdivision (number of sources per box)
       if( iprec .eq. 6 ) ncrit=numBodies
 c     create oct-tree data structure
       allocate (isource(numBodies))
+      allocate (levelOffset(200)) 
 c$    tic=omp_get_wtime() 
       call buildTree(Xj,numBodies,ncrit,
-     1     nboxes,isource,levelRange,nlev,center,size)
+     1     nboxes,isource,nlev,center,size)
       allocate(iaddr(nboxes))
       do i = 0,nlev
          scale(i) = 1.0d0
@@ -82,7 +83,7 @@ c$    toc=omp_get_wtime()
       print*,'Tree   =',toc-tic
       call evaluate(iprec,wavek,numBodies,Xjd,isource,
      1     1,qjd,pid,Fid,epsfmm,iaddr,Multipole,Local,
-     1     nboxes,levelRange,nlev,scale,bsize,nterms)
+     1     nboxes,nlev,scale,bsize,nterms)
       do i=1,numBodies
          pi(isource(i))=pid(i)
          Fi(1,isource(i))=Fid(1,i)
@@ -96,8 +97,8 @@ c$    toc=omp_get_wtime()
      1     numBodies,sourcesort,isource,
      1     ifcharge,chargesort,pot,fld,
      1     epsfmm,iaddr,Multipole,Local,
-     1     nboxes,levelRange,nlev,scale,bsize,nterms)
-      use arrays, only : listOffset,lists
+     1     nboxes,nlev,scale,bsize,nterms)
+      use arrays, only : listOffset,lists,levelOffset
       implicit real *8 (a-h,o-z)
       dimension sourcesort(3,1),isource(1)
       complex *16 chargesort(1),wavek
@@ -107,7 +108,6 @@ c$    toc=omp_get_wtime()
       dimension iaddr(nboxes)
       real *8 Multipole(1),Local(1),xquad(10000),wquad(10000)
       dimension center(3)
-      dimension levelRange(200)
       dimension scale(0:200)
       dimension bsize(0:200)
       dimension nterms(0:200)
@@ -158,7 +158,7 @@ c$    tic=omp_get_wtime()
 c$omp parallel do default(shared)
 c$omp$private(ibox,box,center0,corners0,level,npts,numChild,radius)
 c$omp$private(i,j,ptemp,ftemp,cd)
-         do ibox=levelRange(ilev),levelRange(ilev+1)-1
+         do ibox=levelOffset(ilev),levelOffset(ilev+1)-1
             call getCell(ibox,box,nboxes,center0,corners0)
             call getNumChild(box,numChild)
             level=box(1)
@@ -192,7 +192,7 @@ c$omp$private(ibox,box,center0,corners0,level0)
 c$omp$private(level,npts,numChild,radius)
 c$omp$private(jbox,box1,center1,corners1,level1)
 c$omp$private(i,j,ptemp,ftemp,cd)
-         do ibox=levelRange(ilev),levelRange(ilev+1)-1
+         do ibox=levelOffset(ilev),levelOffset(ilev+1)-1
             call getCell(ibox,box,nboxes,center0,corners0)
             call getNumChild(box,numChild)
             if( box(15) .eq. 0 ) cycle
@@ -236,7 +236,7 @@ c$omp$private(jbox,box1,center1,corners1,level1,ifdirect2,radius)
 c$omp$private(i,j,ptemp,ftemp,cd,ilist,itype)
 c$omp$private(nterms_trunc,ii,jj,kk)
 c$omp$schedule(dynamic)
-         do 4200 ibox=levelRange(ilev),levelRange(ilev+1)-1
+         do 4200 ibox=levelOffset(ilev),levelOffset(ilev+1)-1
             call getCell(ibox,box,nboxes,center0,corners0)
             level0=box(1)
             if (level0 .ge. 2) then
@@ -290,7 +290,7 @@ c$omp$private(ibox,box,center0,corners0,level0)
 c$omp$private(level,npts,numChild,radius)
 c$omp$private(jbox,box1,center1,corners1,level1)
 c$omp$private(i,j,ptemp,ftemp,cd)
-         do 5200 ibox=levelRange(ilev),levelRange(ilev+1)-1
+         do 5200 ibox=levelOffset(ilev),levelOffset(ilev+1)-1
             call getCell(ibox,box,nboxes,center0,corners0)
             call getNumChild(box,numChild)
             if (numChild .ne. 0) then
