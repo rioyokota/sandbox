@@ -372,11 +372,10 @@ c     boxes till none are left with more than ncrit particles
       ichild=1
       nlev=0
       do 3000 level=0,maxlev-1
-         levelRange(1,level+2)=levelRange(1,level+1)+
-     1        levelRange(2,level+1)
+         levelRange(1,level+2)=levelRange(2,level+1)+1
          nlevChild=0
          iparent0=levelRange(1,level+1)
-         iparent1=iparent0+levelRange(2,level+1)-1
+         iparent1=levelRange(2,level+1)
          do 2000 iparent=iparent0,iparent1
 c     subdivide the box number iparent (if needed)
             nump=boxes(15,iparent)
@@ -441,7 +440,7 @@ c
                nboxes=ichild
  1600       continue
  2000    continue
-         levelRange(2,level+2)=nlevChild
+         levelRange(2,level+2)=levelRange(1,level+2)+nlevChild-1
          if(nlevChild .eq. 0) goto 4000
          level1=level
  3000 continue
