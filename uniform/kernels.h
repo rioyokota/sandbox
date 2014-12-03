@@ -36,8 +36,6 @@ public:
   real (*Jbodies)[4];
   real (*Multipole)[MTERM];
   real (*Local)[LTERM];
-  real (*globMultipole)[MTERM];
-  real (*globLocal)[LTERM];
   int (*Leafs)[2];
 
 private:
@@ -116,9 +114,7 @@ public:
             int jxp[3];
             for_3d jxp[d] = (jx[d] + nunit) % nunit;
             int j = getKey(jxp,maxLevel,false);
-            int rankOffset = 13 * numLeafs;
-            j += rankOffset;
-            P2P(Leafs[i+rankOffset][0],Leafs[i+rankOffset][1],Leafs[j][0],Leafs[j][1]);
+            P2P(Leafs[i][0],Leafs[i][1],Leafs[j][0],Leafs[j][1]);
           }
         }
       }
@@ -126,13 +122,12 @@ public:
   }
 
   void P2M() const {
-    int rankOffset = 13 * numLeafs;
-    int levelOffset = ((1 << 3 * maxLevel) - 1) / 7 + 13 * numCells;
+    int levelOffset = ((1 << 3 * maxLevel) - 1) / 7;
 #pragma omp parallel for
     for( int i=0; i<numLeafs; i++ ) {
       real center[3];
       getCenter(center,i,maxLevel);
-      for( int j=Leafs[i+rankOffset][0]; j<Leafs[i+rankOffset][1]; j++ ) {
+      for( int j=Leafs[i][0]; j<Leafs[i][1]; j++ ) {
         real dist[3];
         for_3d dist[d] = center[d] - Jbodies[j][d];
         real M[MTERM];
@@ -144,10 +139,9 @@ public:
   }
 
   void M2M() const {
-    int rankOffset = 13 * numCells;
     for( int lev=maxLevel; lev>0; lev-- ) {
-      int childOffset = ((1 << 3 * lev) - 1) / 7 + rankOffset;
-      int parentOffset = ((1 << 3 * (lev - 1)) - 1) / 7 + rankOffset;
+      int childOffset = ((1 << 3 * lev) - 1) / 7;
+      int parentOffset = ((1 << 3 * (lev - 1)) - 1) / 7;
       real radius = R0 / (1 << lev);
 #pragma omp parallel for schedule(static, 8)
       for( int i=0; i<(1 << 3 * lev); i++ ) {
@@ -201,8 +195,6 @@ public:
                 for_3d jxp[d] = (jx[d] + nunit) % nunit;
                 int j = getKey(jxp,lev);
                 for_3d jxp[d] = (jx[d] + nunit) / nunit;
-                int rankOffset = 13 * numCells;
-                j += rankOffset;
                 real M[MTERM];
                 for_m M[m] = Multipole[j][m];
                 real dist[3];
@@ -247,7 +239,6 @@ public:
   }
 
   void L2P() const {
-    int rankOffset = 13 * numLeafs;
     int levelOffset = ((1 << 3 * maxLevel) - 1) / 7;
 #pragma omp parallel for
     for( int i=0; i<numLeafs; i++ ) {
@@ -255,7 +246,7 @@ public:
       getCenter(center,i,maxLevel);
       real L[LTERM];
       for_l L[l] = Local[i+levelOffset][l];
-      for( int j=Leafs[i+rankOffset][0]; j<Leafs[i+rankOffset][1]; j++ ) {
+      for( int j=Leafs[i][0]; j<Leafs[i][1]; j++ ) {
         real dist[3];
         for_3d dist[d] = Jbodies[j][d] - center[d];
         real C[LTERM];

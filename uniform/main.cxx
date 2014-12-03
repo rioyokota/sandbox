@@ -35,9 +35,8 @@ int main() {
     logger::stopTimer("Grow tree");
   
     logger::startTimer("Upward pass");
-    int rankOffset = 13 * FMM.numCells;
     for( int i=0; i<FMM.numCells; i++ ) {
-      for_m FMM.Multipole[i+rankOffset][m] = 0;
+      for_m FMM.Multipole[i][m] = 0;
       for_l FMM.Local[i][l] = 0;
     }
     FMM.P2M();

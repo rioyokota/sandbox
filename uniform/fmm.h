@@ -42,8 +42,6 @@ public:
     Multipole = new real [27*numCells][MTERM]();
     Local = new real [numCells][LTERM]();
     Leafs = new int [27*numLeafs][2]();
-    globMultipole = new real [2][MTERM]();
-    globLocal = new real [10][LTERM]();
   }
 
   void deallocate() {
@@ -54,8 +52,6 @@ public:
     delete[] Multipole;
     delete[] Local;
     delete[] Leafs;
-    delete[] globMultipole;
-    delete[] globLocal;
   }
 
   void sortBodies() const {
@@ -76,26 +72,25 @@ public:
   }
 
   void buildTree() const {
-    int rankOffset = 13 * numLeafs;
-    for( int i=rankOffset; i<numLeafs+rankOffset; i++ ) {
+    for( int i=0; i<numLeafs; i++ ) {
       Leafs[i][0] = Leafs[i][1] = 0;
     }
     real diameter = 2 * R0 / (1 << maxLevel);
     int ix[3] = {0, 0, 0};
     getIndex(0,ix,diameter);
-    int ileaf = getKey(ix,maxLevel,false) + rankOffset;
+    int ileaf = getKey(ix,maxLevel,false);
     Leafs[ileaf][0] = 0;
     for( int i=0; i<numBodies; i++ ) {
       getIndex(i,ix,diameter);
-      int inew = getKey(ix,maxLevel,false) + rankOffset;
+      int inew = getKey(ix,maxLevel,false);
       if( ileaf != inew ) {
         Leafs[ileaf][1] = Leafs[inew][0] = i;
         ileaf = inew;
       }
     }
     Leafs[ileaf][1] = numBodies;
-    for( int i=rankOffset; i<numLeafs+rankOffset; i++ ) {
-      //assert( Leafs[i][1] != Leafs[i][0] );
+    for( int i=0; i<numLeafs; i++ ) {
+      assert( Leafs[i][1] != Leafs[i][0] );
     }
   }
 };
