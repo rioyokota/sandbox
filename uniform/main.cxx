@@ -1,6 +1,4 @@
 #include "args.h"
-#include "bound_box.h"
-#include "build_tree_tbb.h"
 #include "dataset.h"
 #include "traversal.h"
 #include "verify.h"
@@ -11,8 +9,6 @@ int main(int argc, char ** argv) {
   const real cycle = 10 * M_PI;
 
   Args args(argc, argv);
-  BoundBox boundBox(args.nspawn);
-  BuildTree buildTree(args.ncrit, args.nspawn);
   Dataset data;
   Traversal traversal(args.nspawn, args.images, eps2);
   SerialFMM FMM;
