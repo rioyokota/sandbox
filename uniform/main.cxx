@@ -1,4 +1,3 @@
-#include "base_mpi.h"
 #include "args.h"
 #include "bound_box.h"
 #include "build_tree_tbb.h"
@@ -18,7 +17,6 @@ int main(int argc, char ** argv) {
   const real_t cutoff = 10;
 
   Args args(argc, argv);
-  BaseMPI baseMPI;
   BoundBox boundBox(args.nspawn);
   BuildTree buildTree(args.ncrit, args.nspawn);
   Dataset data;
@@ -27,9 +25,6 @@ int main(int argc, char ** argv) {
   UpDownPass upDownPass(args.theta, args.useRmax, args.useRopt);
   SerialFMM FMM;
 
-#ifdef IJHPCA
-  //args.numBodies /= FMM.MPISIZE;
-#endif
   const int numBodies = args.numBodies;
   const int ncrit = 100;
   const int maxLevel = numBodies >= ncrit ? 1 + int(log(numBodies / ncrit)/M_LN2/3) : 0;
@@ -56,15 +51,15 @@ int main(int argc, char ** argv) {
     for_3d FMM.X0[d] = 2 * FMM.R0 * (ix[d] + .5);
     srand48(FMM.MPIRANK);
     real average = 0;
-    for( int i=0; i<FMM.numBodies; i++ ) {
+    for( int i=0; i<numBodies; i++ ) {
       FMM.Jbodies[i][0] = 2 * FMM.R0 * (drand48() + ix[0]);
       FMM.Jbodies[i][1] = 2 * FMM.R0 * (drand48() + ix[1]);
       FMM.Jbodies[i][2] = 2 * FMM.R0 * (drand48() + ix[2]);
-      FMM.Jbodies[i][3] = (drand48() - .5) / FMM.numBodies;
+      FMM.Jbodies[i][3] = (drand48() - .5) / numBodies;
       average += FMM.Jbodies[i][3];
     }
-    average /= FMM.numBodies;
-    for( int i=0; i<FMM.numBodies; i++ ) {
+    average /= numBodies;
+    for( int i=0; i<numBodies; i++ ) {
       FMM.Jbodies[i][3] -= average;
     }
   
@@ -82,18 +77,16 @@ int main(int argc, char ** argv) {
     FMM.downwardPass();
     logger::stopTimer("Total FMM", 0);
 
-    Bodies bodies(FMM.numBodies);
+    Bodies bodies(numBodies);
     B_iter B = bodies.begin();
-    for (int b=0; b<FMM.numBodies; b++, B++) {
+    for (int b=0; b<numBodies; b++, B++) {
       for_3d B->X[d] = FMM.Jbodies[b][d];
       B->SRC = FMM.Jbodies[b][3];
       for_4d B->TRG[d] = FMM.Ibodies[b][d];
     }
     Bodies jbodies = bodies;
-    vec3 localDipole = upDownPass.getDipole(bodies, FMM.RGlob[0]);
-    vec3 globalDipole = baseMPI.allreduceVec3(localDipole);
-    int numBodies = baseMPI.allreduceInt(bodies.size());
-    upDownPass.dipoleCorrection(bodies, globalDipole, numBodies, cycle);
+    vec3 dipole = upDownPass.getDipole(bodies, FMM.RGlob[0]);
+    upDownPass.dipoleCorrection(bodies, dipole, numBodies, cycle);
 #ifndef IJHPCA
 #if 1
     logger::startTimer("Total Ewald");
@@ -122,7 +115,7 @@ int main(int argc, char ** argv) {
       traversal.direct(bodies, jbodies, cycle);
     }
     traversal.normalize(bodies);
-    upDownPass.dipoleCorrection(bodies, globalDipole, numBodies, cycle);
+    upDownPass.dipoleCorrection(bodies, dipole, numBodies, cycle);
     logger::printTitle("Total runtime");
     logger::printTime("Total FMM");
     logger::stopTimer("Total Direct");
@@ -134,22 +127,10 @@ int main(int argc, char ** argv) {
     double accDif = verify.getDifVector(bodies, bodies2);
     double accNrm = verify.getNrmVector(bodies);
     logger::printTitle("FMM vs. direct");
-#if Serial
     double potDif = (potSum - potSum2) * (potSum - potSum2);
     double potNrm = potSum * potSum;
     verify.print("Rel. L2 Error (pot)",std::sqrt(potDif/potNrm));
     verify.print("Rel. L2 Error (acc)",std::sqrt(accDif/accNrm));
-#else
-    double potSumGlob, potSumGlob2, accDifGlob, accNrmGlob;
-    MPI_Reduce(&potSum,  &potSumGlob,  1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-    MPI_Reduce(&potSum2, &potSumGlob2, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-    MPI_Reduce(&accDif,  &accDifGlob,  1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-    MPI_Reduce(&accNrm,  &accNrmGlob,  1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-    double potDifGlob = (potSumGlob - potSumGlob2) * (potSumGlob - potSumGlob2);
-    double potNrmGlob = potSumGlob * potSumGlob;
-    verify.print("Rel. L2 Error (pot)",std::sqrt(potDifGlob/potNrmGlob));
-    verify.print("Rel. L2 Error (acc)",std::sqrt(accDifGlob/accNrmGlob));
-#endif
 #endif
   }
   FMM.deallocate();
