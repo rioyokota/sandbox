@@ -11,6 +11,7 @@ private:
   const bool useRopt;                                           //!< Use error optimized theta for MAC
 
 private:
+  /*
   //! Recursive functor for error optimization of R
   struct SetRopt {
     C_iter C;                                                   //!< Iterator of current cell
@@ -109,12 +110,14 @@ private:
       wait_tasks;                                               //  Synchronize tasks
     }                                                           // End overload operator()
   };
+  */
 
 public:
   //! Constructor
   UpDownPass(real_t _theta, bool _useRmax, bool _useRopt) :
     theta(_theta), useRmax(_useRmax), useRopt(_useRopt) {}      // Initialize variables
 
+  /*
   //! Upward pass (P2M, M2M)
   void upwardPass(Cells & cells) {
     logger::startTimer("Upward pass");                          // Start timer
@@ -146,6 +149,7 @@ public:
     }                                                           // End if for empty cell vector
     logger::stopTimer("Downward pass");                         // Stop timer
   }
+  */
 
   //! Get dipole of entire system
   vec3 getDipole(Bodies & bodies, vec3 X0) {

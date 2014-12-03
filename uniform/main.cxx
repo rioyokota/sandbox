@@ -5,14 +5,9 @@
 #include "dataset.h"
 #include "ewald.h"
 #include "traversal.h"
-#include "tree_mpi.h"
 #include "up_down_pass.h"
 #include "verify.h"
-#if Serial
 #include "serialfmm.h"
-#else
-#include "parallelfmm.h"
-#endif
 
 int main(int argc, char ** argv) {
   const int ksize = 11;
@@ -30,12 +25,7 @@ int main(int argc, char ** argv) {
   Ewald ewald(ksize, alpha, sigma, cutoff, cycle);
   Traversal traversal(args.nspawn, args.images, eps2);
   UpDownPass upDownPass(args.theta, args.useRmax, args.useRopt);
-#if Serial
   SerialFMM FMM;
-#else
-  ParallelFMM FMM;
-#endif
-  TreeMPI treeMPI(FMM.MPIRANK, FMM.MPISIZE, args.images);
 
 #ifdef IJHPCA
   //args.numBodies /= FMM.MPISIZE;
@@ -87,34 +77,8 @@ int main(int argc, char ** argv) {
     FMM.upwardPass();
     logger::stopTimer("Upward pass");
   
-#if Serial
-#else
-    logger::startTimer("Comm LET bodies");
-    FMM.P2PSend();
-    FMM.P2PRecv();
-    logger::stopTimer("Comm LET bodies");
-
-    logger::startTimer("Comm LET cells");
-    for( int lev=FMM.maxLevel; lev>0; lev-- ) {
-      MPI_Barrier(MPI_COMM_WORLD);
-      FMM.M2LSend(lev);
-      FMM.M2LRecv(lev);
-    }
-    FMM.rootGather();
-    logger::stopTimer("Comm LET cells", 0);
-    FMM.globM2M();
-    FMM.globM2L();
-#endif
-  
     FMM.periodicM2L();
 
-#if Serial
-#else
-    logger::startTimer("Downward pass");
-    FMM.globL2L();
-    logger::stopTimer("Downward pass", 0);
-#endif
-  
     FMM.downwardPass();
     logger::stopTimer("Total FMM", 0);
 
@@ -140,7 +104,6 @@ int main(int argc, char ** argv) {
     data.initTarget(bodies);
     for (int i=0; i<FMM.MPISIZE; i++) {
       if (args.verbose) std::cout << "Ewald loop           : " << i+1 << "/" << FMM.MPISIZE << std::endl;
-      if (FMM.MPISIZE > 1) treeMPI.shiftBodies(jbodies);
       bounds = boundBox.getBounds(jbodies);
       buffer = jbodies;
       Cells jcells = buildTree.buildTree(jbodies, buffer, bounds);
@@ -156,7 +119,6 @@ int main(int argc, char ** argv) {
     data.initTarget(bodies);
     for (int i=0; i<FMM.MPISIZE; i++) {
       if (args.verbose) std::cout << "Direct loop          : " << i+1 << "/" << FMM.MPISIZE << std::endl;
-      if (FMM.MPISIZE > 1) treeMPI.shiftBodies(jbodies);
       traversal.direct(bodies, jbodies, cycle);
     }
     traversal.normalize(bodies);

@@ -33,6 +33,7 @@ private:
   void countWeight(C_iter, C_iter, bool, real_t) {}
 #endif
 
+  /*
   //! Dual tree traversal for a single pair of cells
   void traverse(C_iter Ci, C_iter Cj, vec3 Xperiodic, bool mutual, real_t remote) {
     vec3 dX = Ci->X - Cj->X - Xperiodic;                        // Distance vector from source to target
@@ -210,6 +211,7 @@ private:
       }                                                         //  End loop over Cj's children
     }                                                           // End if for leafs and Ci Cj size
   }
+  */
 
 public:
   //! Constructor
@@ -220,6 +222,7 @@ public:
 #endif
   {}
 
+  /*
 #if USE_WEIGHT
   //! Initialize interaction weights of bodies and cells
   void initWeight(Cells & cells) {
@@ -262,6 +265,7 @@ public:
     logger::stopTimer("Traverse");                              // Stop timer
     logger::writeTracer();                                      // Write tracer to file
   }
+  */
 
   struct DirectRecursion {
     C_iter Ci;                                                  //!< Iterator of target cell
