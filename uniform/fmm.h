@@ -1,7 +1,7 @@
 #include <mpi.h>
-#include "evaluator.h"
+#include "kernels.h"
 
-class Fmm : public Evaluator {
+class Fmm : public Kernel {
 protected:
   int bodiesDispl[26];
   int bodiesCount[26];

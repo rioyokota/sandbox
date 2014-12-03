@@ -76,7 +76,10 @@ private:
     for_3d dist[d] = X0[d] - R0 + (2 * ix[d] + 1) * R;
   }
 
-protected:
+public:
+  Kernel() : MPISIZE(1), MPIRANK(0) {}
+  ~Kernel() {}
+
   inline int getGlobKey(int *ix, int level) const {
     return ix[0] + (ix[1] + ix[2] * numPartition[level][1]) * numPartition[level][0];
   }
@@ -357,10 +360,6 @@ protected:
       }
     }
   }
-
-public:
-  Kernel() : MPISIZE(1), MPIRANK(0) {}
-  ~Kernel() {}
 
   inline int getKey(int *ix, int level, bool levelOffset=true) const {
     int id = 0;

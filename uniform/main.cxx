@@ -1,4 +1,5 @@
 #include "fmm.h"
+#include "logger.h"
 
 int main() {
   Fmm FMM;
@@ -42,11 +43,28 @@ int main() {
     logger::stopTimer("Grow tree");
   
     logger::startTimer("Upward pass");
-    FMM.upwardPass();
+    int rankOffset = 13 * FMM.numCells;
+    for( int i=0; i<FMM.numCells; i++ ) {
+      for_m FMM.Multipole[i+rankOffset][m] = 0;
+      for_l FMM.Local[i][l] = 0;
+    }
+    FMM.P2M();
+    FMM.M2M();
     logger::stopTimer("Upward pass");
-  
-    FMM.downwardPass();
 
+    logger::startTimer("Traverse");
+    FMM.M2L();
+    logger::stopTimer("Traverse", 0);
+
+    logger::startTimer("Downward pass");
+    FMM.L2L();
+    FMM.L2P();
+    logger::stopTimer("Downward pass");
+
+    logger::startTimer("Traverse");
+    FMM.P2P();
+    logger::stopTimer("Traverse");
+  
     double potDif = 0, potNrm = 0, accDif = 0, accNrm = 0;
     for (int i=0; i<100; i++) {
       float Ibodies[4] = {0, 0, 0, 0};
