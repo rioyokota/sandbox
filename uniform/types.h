@@ -1,21 +1,13 @@
 #ifndef types_h
 #define types_h
 #include <complex>
-#include "kahan.h"
 #include "macros.h"
 #include <stdint.h>
 #include <vector>
 #include "vec.h"
 
-// Basic type definitions
-#if FP64
-typedef double               real_t;                            //!< Floating point type is double precision
-const real_t EPS = 1e-16;                                       //!< Double precision epsilon
-#else
 typedef float                real_t;                            //!< Floating point type is single precision
 const real_t EPS = 1e-8;                                        //!< Single precision epsilon
-#endif
-typedef std::complex<real_t> complex_t;                         //!< Complex type
 typedef vec<3,real_t>        vec3;                              //!< Vector of 3 real_t types
 
 // SIMD vector types for MIC, AVX, and SSE
@@ -23,15 +15,9 @@ const int NSIMD = SIMD_BYTES / sizeof(real_t);                  //!< SIMD vector
 typedef vec<NSIMD,real_t> simdvec;                              //!< SIMD vector type
 
 // Kahan summation types (Achieves quasi-double precision using single precision types)
-#if KAHAN
-typedef kahan<real_t>  kreal_t;                                 //!< Floating point type with Kahan summation
-typedef vec<4,kreal_t> kvec4;                                   //!< Vector of 4 floats with Kahan summaiton
-typedef kahan<simdvec> ksimdvec;                                //!< SIMD vector type with Kahan summation
-#else
 typedef real_t         kreal_t;                                 //!< Floating point type
 typedef vec<4,real_t>  kvec4;                                   //!< Vector of 4 floating point types
 typedef simdvec        ksimdvec;                                //!< SIMD vector type
-#endif
 
 // Multipole/local expansion coefficients
 const int P = 6;                                                //!< Order of expansions

@@ -191,24 +191,4 @@ int main(int argc, char ** argv) {
 #endif
   }
   FMM.deallocate();
-
-#ifndef IJHPCA
-  logger::startTimer("Attach root");
-  logger::stopTimer("Attach root", 0);
-  logger::startTimer("Comm partition");
-  logger::stopTimer("Comm partition", 0);
-  logger::startTimer("Get bounds");
-  logger::stopTimer("Get bounds", 0);
-  logger::startTimer("Link LET");
-  logger::stopTimer("Link LET", 0);
-  logger::startTimer("Link tree");
-  logger::stopTimer("Link tree", 0);
-  logger::startTimer("Root to body");
-  logger::stopTimer("Root to body", 0);
-  logger::startTimer("Set LET");
-  logger::stopTimer("Set LET", 0);
-  logger::startTimer("Set LET size");
-  logger::stopTimer("Set LET size", 0);
-  logger::writeTime(FMM.MPIRANK);
-#endif
 }
