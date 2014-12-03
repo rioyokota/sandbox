@@ -24,21 +24,6 @@ namespace logger {
     return double(tv.tv_sec+tv.tv_usec*1e-6);                   // Combine seconds and microseconds and return
   }
 
-  //! Cycle counter
-  inline uint64_t get_cycle() {
-    uint32_t low = 0, high = 0;                                 // Define low and high 32 bits of cycle counter
-    asm volatile ("rdtsc" : "=a" (low), "=d" (high));           // Call rdtsc
-    return (uint64_t(high) << 32) | uint64_t(low);              // Return 64 bit cycle counter
-  }
-
-  //! Cycle counter with thread ID
-  inline uint64_t get_cycle(uint32_t * id) {
-    uint32_t low = 0, high = 0;                                 // Define low and high 32 bits of cycle counter
-    if (!id) return 0;                                          // Count only for valid thread ID
-    asm volatile ("rdtscp" : "=a" (low), "=d" (high), "=c" (*id));// Call rdtscp
-    return (uint64_t(high) << 32) | uint64_t(low);              // Return 64 bit cycle counter
-  }
-
   //! Print message to standard output
   inline void printTitle(std::string title) {
     if (verbose) {                                              // If verbose flag is true

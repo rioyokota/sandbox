@@ -17,35 +17,6 @@ protected:
   int gatherLevel;
 
 private:
-  void checkPartition(int *maxPartition) {
-    int partitionSize = 1;
-    for_3d partitionSize *= maxPartition[d];
-    int checkLevel[3], partition[3];
-    for_3d partition[d] = maxPartition[d];
-    for( int d=0; d<3; d++ ) {
-      int lev = 1;
-      while( partition[d] != 1 ) {
-        int ndiv = 2;
-        if( (partition[d] % 3) == 0 ) ndiv = 3;
-        partition[d] /= ndiv;
-        lev++;
-      }
-      checkLevel[d] = lev - 1;
-    }
-    maxGlobLevel = FMMMAX(FMMMAX(checkLevel[0],checkLevel[1]),checkLevel[2]);
-    for_3d numPartition[0][d] = 1;
-    for_3d partition[d] = maxPartition[d];
-    for( int lev=1; lev<=maxGlobLevel; lev++ ) {
-      for( int d=0; d<3; d++ ) {
-        int ndiv = 2;
-        if( (partition[d] % 3) == 0 ) ndiv = 3;
-        if( checkLevel[d] < maxGlobLevel && lev == 1 ) ndiv = 1;
-        numPartition[lev][d] = ndiv * numPartition[lev-1][d];
-        partition[d] /= ndiv;
-      }
-    }
-  }
-
   void setSendCounts() {
     int leafsType[3] = {1, (1 << maxLevel), (1 << (2 * maxLevel))};
     int bodiesType[3];
@@ -188,8 +159,7 @@ public:
   }
 
   void partitioner(int level) {
-    int maxPartition[3] = {1, 1, 1};
-    checkPartition(maxPartition);
+    for_3d numPartition[0][d] = 1;
     numGlobCells = 0;
     for( int lev=0; lev<=maxGlobLevel; lev++ ) {
       globLevelOffset[lev] = numGlobCells;
