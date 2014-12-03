@@ -1,23 +1,13 @@
 #ifndef types_h
 #define types_h
 #include <complex>
-#include "macros.h"
 #include <stdint.h>
 #include <vector>
 #include "vec.h"
 
 typedef float                real_t;                            //!< Floating point type is single precision
-const real_t EPS = 1e-8;                                        //!< Single precision epsilon
 typedef vec<3,real_t>        vec3;                              //!< Vector of 3 real_t types
-
-// SIMD vector types for MIC, AVX, and SSE
-const int NSIMD = SIMD_BYTES / sizeof(real_t);                  //!< SIMD vector length (SIMD_BYTES defined in macros.h)
-typedef vec<NSIMD,real_t> simdvec;                              //!< SIMD vector type
-
-// Kahan summation types (Achieves quasi-double precision using single precision types)
-typedef real_t         kreal_t;                                 //!< Floating point type
-typedef vec<4,real_t>  kvec4;                                   //!< Vector of 4 floating point types
-typedef simdvec        ksimdvec;                                //!< SIMD vector type
+typedef vec<4,real_t>        vec4;                              //!< Vector of 3 real_t types
 
 // Multipole/local expansion coefficients
 const int P = 6;                                                //!< Order of expansions
@@ -48,7 +38,7 @@ struct Body : public Source {
   int      IRANK;                                               //!< Initial rank numbering for partitioning back
   uint64_t ICELL;                                               //!< Cell index   
   real_t   WEIGHT;                                              //!< Weight for partitioning
-  kvec4    TRG;                                                 //!< Scalar+vector3 target values
+  vec4     TRG;                                                 //!< Scalar+vector3 target values
 };
 typedef std::vector<Body>                 Bodies;               //!< Vector of bodies
 typedef Bodies::iterator                  B_iter;               //!< Iterator of body vector
