@@ -3,77 +3,10 @@
 
 class Fmm : public Kernel {
 protected:
-  int bodiesDispl[26];
-  int bodiesCount[26];
-  int sendBodiesDispl[1024];
-  int sendBodiesCount[1024];
-  int recvBodiesDispl[1024];
-  int recvBodiesCount[1024];
-  int multipoleDispl[10][26];
-  int multipoleCount[10][26];
-  int leafsDispl[26];
-  int leafsCount[26];
-  int IX[10][3];
   int gatherLevel;
 
 private:
-  void setSendCounts() {
-    int leafsType[3] = {1, (1 << maxLevel), (1 << (2 * maxLevel))};
-    int bodiesType[3];
-    for_3d bodiesType[d] = leafsType[d] * float(numBodies) / numLeafs * 2;
-    int i = 0;
-    int ix[3];
-    bodiesDispl[0] = leafsDispl[0] = 0;
-    for( ix[2]=-1; ix[2]<=1; ix[2]++ ) {
-      for( ix[1]=-1; ix[1]<=1; ix[1]++ ) {
-        for( ix[0]=-1; ix[0]<=1; ix[0]++ ) {
-          if( ix[0] != 0 || ix[1] != 0 || ix[2] != 0 ) {
-            int zeros = 0;
-            for_3d zeros += ix[d] == 0;
-            bodiesCount[i] = bodiesType[zeros];
-            leafsCount[i] = leafsType[zeros];
-            if( i > 0 ) {
-              bodiesDispl[i] = bodiesDispl[i-1] + bodiesCount[i-1];
-              leafsDispl[i] = leafsDispl[i-1] + leafsCount[i-1];
-            }
-            i++;
-          }
-        }
-      }
-    }
-    assert( numSendBodies >= bodiesDispl[25] + bodiesCount[25] );
-    assert( bodiesDispl[25] + bodiesCount[25] > 0 );
-    assert( numSendLeafs == leafsDispl[25] + leafsCount[25] );
-    int sumSendCells = 0;
-    for( int lev=1; lev<=maxLevel; lev++ ) {
-      int multipoleType[3] = {8, 4*(1<<lev), 2*(1<<(2*lev))};
-      multipoleDispl[lev][0] = 0;
-      i = 0;
-      for( ix[2]=-1; ix[2]<=1; ix[2]++ ) {
-        for( ix[1]=-1; ix[1]<=1; ix[1]++ ) {
-          for( ix[0]=-1; ix[0]<=1; ix[0]++ ) {
-            if( ix[0] != 0 || ix[1] != 0 || ix[2] != 0 ) {
-              int zeros = 0;
-              for_3d zeros += ix[d] == 0;
-              multipoleCount[lev][i] = multipoleType[zeros];
-              sumSendCells += multipoleCount[lev][i];
-              if( i > 0 ) {
-                multipoleDispl[lev][i] = multipoleDispl[lev][i-1] + multipoleCount[lev][i-1];
-              }
-              i++;
-            }
-          }
-        }
-      }
-    }
-    assert( numSendCells == sumSendCells );
-  }
-
-protected:
   inline void getIndex(int i, int *ix, real diameter) const {
-#if NOWRAP
-    i = (i / 3) * 3;
-#endif
     for_3d ix[d] = int((Jbodies[i][d] + R0 - X0[d]) / diameter);
   }
 
@@ -107,21 +40,6 @@ public:
     numSendCells = 64 * L + 48 * ((1 << (L + 1)) - 2) + 12 * (((1 << (2 * L + 2)) - 1) / 3 - 1);
     numSendLeafs = 8 + 12 * (1 << L) + 6 * (1 << (2 * L));
     numSendBodies = numSendLeafs * float(numBodies) / numLeafs * 2;
-    float memory = 0;
-    memory += numBodies * 4 * sizeof(real);
-    memory += (numBodies + numSendBodies) * 4 * sizeof(real);
-    memory += 27 * numCells * MTERM * sizeof(real);
-    memory += numCells * LTERM * sizeof(real);
-    memory += 27 * numLeafs * 2 * sizeof(int);
-    memory += 2 * MTERM * sizeof(real);
-    memory += 10 * LTERM * sizeof(real);
-    memory += numSendBodies * 4 * sizeof(float);
-    memory += numSendBodies * 4 * sizeof(float);
-    memory += numSendCells * MTERM * sizeof(float);
-    memory += numSendCells * MTERM * sizeof(float);
-    memory += numSendLeafs * 2 * sizeof(int);
-    memory += numSendLeafs * 2 * sizeof(int);
-    //std::cout << "Memory: " << memory/1e6 << " MB" << std::endl;
     Index = new int [2*numBodies];
     Index2 = new int [2*numBodies];
     Rank = new int [2*numBodies];
@@ -161,15 +79,8 @@ public:
   void partitioner(int level) {
     for_3d numPartition[0][d] = 1;
     numGlobCells = 0;
-    for( int lev=0; lev<=maxGlobLevel; lev++ ) {
-      globLevelOffset[lev] = numGlobCells;
-      numGlobCells += numPartition[lev][0] * numPartition[lev][1] * numPartition[lev][2];
-    }
-    getGlobIndex(IX[maxGlobLevel],0,maxGlobLevel);
-    for( int lev=maxGlobLevel; lev>0; lev-- ) {
-      for_3d IX[lev-1][d] = IX[lev][d] * numPartition[lev-1][d] / numPartition[lev][d];
-    }
-    setSendCounts();
+    globLevelOffset[0] = numGlobCells;
+    numGlobCells = 1;
     gatherLevel = level;
     if(gatherLevel > maxGlobLevel) gatherLevel = maxGlobLevel;
   }

@@ -73,11 +73,18 @@ private:
     for_3d dist[d] = X0[d] - R0 + (2 * ix[d] + 1) * R;
   }
 
-public:
-  inline int getGlobKey(int *ix, int level) const {
-    return ix[0] + (ix[1] + ix[2] * numPartition[level][1]) * numPartition[level][0];
+protected:
+  inline int getKey(int *ix, int level, bool levelOffset=true) const {
+    int id = 0;
+    if( levelOffset ) id = ((1 << 3 * level) - 1) / 7;
+    for( int lev=0; lev<level; ++lev ) {
+      for_3d id += ix[d] % 2 << (3 * lev + d);
+      for_3d ix[d] >>= 1;
+    }
+    return id;
   }
 
+public:
   void P2P(int ibegin, int iend, int jbegin, int jend) const {
     for( int i=ibegin; i<iend; i++ ) {
       real Po = 0, Fx = 0, Fy = 0, Fz = 0;
@@ -102,13 +109,11 @@ public:
   }
 
   void P2P() const {
-    int ixc[3];
-    getGlobIndex(ixc,0,maxGlobLevel);
     int nunit = 1 << maxLevel;
     int nunitGlob[3];
     for_3d nunitGlob[d] = nunit * numPartition[maxGlobLevel][d];
     int nxmin[3], nxmax[3];
-    for_3d nxmin[d] = -ixc[d] * nunit;
+    for_3d nxmin[d] = 0;
     for_3d nxmax[d] = nunitGlob[d] + nxmin[d] - 1;
 #pragma omp parallel for
     for( int i=0; i<numLeafs; i++ ) {
@@ -180,15 +185,13 @@ public:
   }
 
   void M2L() const {
-    int ixc[3];
-    getGlobIndex(ixc,0,maxGlobLevel);
     for( int lev=1; lev<=maxLevel; lev++ ) {
       int levelOffset = ((1 << 3 * lev) - 1) / 7;
       int nunit = 1 << lev;
       int nunitGlob[3];
       for_3d nunitGlob[d] = nunit * numPartition[maxGlobLevel][d];
       int nxmin[3], nxmax[3];
-      for_3d nxmin[d] = -ixc[d] * (nunit >> 1);
+      for_3d nxmin[d] = 0;
       for_3d nxmax[d] = (nunitGlob[d] >> 1) + nxmin[d] - 1;
       real diameter = 2 * R0 / (1 << lev);
 #pragma omp parallel for
@@ -279,19 +282,4 @@ public:
     }
   }
 
-  inline int getKey(int *ix, int level, bool levelOffset=true) const {
-    int id = 0;
-    if( levelOffset ) id = ((1 << 3 * level) - 1) / 7;
-    for( int lev=0; lev<level; ++lev ) {
-      for_3d id += ix[d] % 2 << (3 * lev + d);
-      for_3d ix[d] >>= 1;
-    }
-    return id;
-  }
-
-  inline void getGlobIndex(int *ix, int index, int level) const {
-    ix[0] = index % numPartition[level][0];
-    ix[1] = index / numPartition[level][0] % numPartition[level][1];
-    ix[2] = index / numPartition[level][0] / numPartition[level][1];
-  }
 };
