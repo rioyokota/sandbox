@@ -1,22 +1,18 @@
-#include "args.h"
 #include "fmm.h"
 
-int main(int argc, char ** argv) {
+int main() {
   const real cycle = 10 * M_PI;
 
-  Args args(argc, argv);
   Fmm FMM;
 
-  const int numBodies = args.numBodies;
+  const int numBodies = 10000;
   const int ncrit = 100;
   const int maxLevel = numBodies >= ncrit ? 1 + int(log(numBodies / ncrit)/M_LN2/3) : 0;
   const int gatherLevel = 1;
-  const int numImages = args.images;
+  const int numImages = 0;
 
   FMM.allocate(numBodies, maxLevel, numImages);
-  logger::verbose = args.verbose;
-  logger::printTitle("FMM Parameters");
-  args.print(logger::stringLength, PP);
+  logger::verbose = true;
 
   logger::printTitle("FMM Profiling");
   logger::startTimer("Total FMM");

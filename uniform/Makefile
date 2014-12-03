@@ -10,7 +10,7 @@ compile	: main.cxx
 	$(CXX) $? -DSerial
 
 run	:
-	./a.out -n 10000 -c 32
+	./a.out
 
 clean:
 	find . -name "*.o" -o -name "*.out*" -o -name "*.mod" | xargs rm -rf
