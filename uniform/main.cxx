@@ -1,21 +1,17 @@
 #include "fmm.h"
 
 int main() {
-  const real cycle = 10 * M_PI;
-
   Fmm FMM;
-
   const int numBodies = 10000;
   const int ncrit = 100;
   const int maxLevel = numBodies >= ncrit ? 1 + int(log(numBodies / ncrit)/M_LN2/3) : 0;
   const int gatherLevel = 1;
-  const int numImages = 0;
+  const real cycle = 10 * M_PI;
 
-  FMM.allocate(numBodies, maxLevel, numImages);
+  FMM.allocate(numBodies, maxLevel, 0);
   logger::verbose = true;
 
   logger::printTitle("FMM Profiling");
-  logger::startTimer("Total FMM");
   logger::startTimer("Partition");
   FMM.partitioner(gatherLevel);
   logger::stopTimer("Partition");
@@ -50,9 +46,7 @@ int main() {
     logger::stopTimer("Upward pass");
   
     FMM.downwardPass();
-    logger::stopTimer("Total FMM", 0);
 
-    logger::startTimer("Total Direct");
     double potDif = 0, potNrm = 0, accDif = 0, accNrm = 0;
     for (int i=0; i<100; i++) {
       float Ibodies[4] = {0, 0, 0, 0};
@@ -74,10 +68,6 @@ int main() {
       for_3d accDif += (FMM.Ibodies[i][d+1] - Ibodies[d+1]) * (FMM.Ibodies[i][d+1] - Ibodies[d+1]);
       for_3d accNrm += (Ibodies[d+1] * Ibodies[d+1]);
     }
-    logger::printTitle("Total runtime");
-    logger::printTime("Total FMM");
-    logger::stopTimer("Total Direct");
-    logger::resetTimer("Total Direct");
     logger::printTitle("FMM vs. direct");
     logger::printError("Rel. L2 Error (pot)",std::sqrt(potDif/potNrm));
     logger::printError("Rel. L2 Error (acc)",std::sqrt(accDif/accNrm));

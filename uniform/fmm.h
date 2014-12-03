@@ -217,16 +217,6 @@ public:
     setSendCounts();
     gatherLevel = level;
     if(gatherLevel > maxGlobLevel) gatherLevel = maxGlobLevel;
-#if Serial
-#else
-    int ix[3], numChild[3];
-    for_3d numChild[d] = numPartition[maxGlobLevel][d] / numPartition[gatherLevel][d];
-    for_3d ix[d] = IX[maxGlobLevel][d] % numChild[d];
-    int key = ix[0] + (ix[1] + ix[2] * numChild[1]) * numChild[0];
-    int color = getGlobKey(IX[gatherLevel],gatherLevel);
-    MPI_Comm_split(MPI_COMM_WORLD, color, key, &MPI_COMM_LOCAL);
-    MPI_Comm_split(MPI_COMM_WORLD, key, color, &MPI_COMM_GLOBAL);
-#endif
   }
 
   void sortBodies() const {

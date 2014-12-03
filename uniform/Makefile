@@ -7,7 +7,7 @@ all	:
 	make run
 
 compile	: main.cxx
-	$(CXX) $? -DSerial
+	$(CXX) $?
 
 run	:
 	./a.out

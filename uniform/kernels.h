@@ -196,11 +196,7 @@ protected:
             for_3d jxp[d] = (jx[d] + nunit) % nunit;
             int j = getKey(jxp,maxLevel,false);
             for_3d jxp[d] = (jx[d] + nunit) / nunit;
-#if Serial
             int rankOffset = 13 * numLeafs;
-#else
-            int rankOffset = (jxp[0] + 3 * jxp[1] + 9 * jxp[2]) * numLeafs;
-#endif
             j += rankOffset;
             rankOffset = 13 * numLeafs;
             real periodic[3] = {0, 0, 0};
@@ -295,11 +291,7 @@ protected:
                 for_3d jxp[d] = (jx[d] + nunit) % nunit;
                 int j = getKey(jxp,lev);
                 for_3d jxp[d] = (jx[d] + nunit) / nunit;
-#if Serial
                 int rankOffset = 13 * numCells;
-#else
-                int rankOffset = (jxp[0] + 3 * jxp[1] + 9 * jxp[2]) * numCells;
-#endif
                 j += rankOffset;
                 real M[MTERM];
                 for_m M[m] = Multipole[j][m];
