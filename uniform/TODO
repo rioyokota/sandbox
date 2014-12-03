@@ -1,1 +1,3 @@
-Bring kernels out of evaluator.
+- Remove periodic.
+- Remove MPI.
+- Remove rankOffset.
