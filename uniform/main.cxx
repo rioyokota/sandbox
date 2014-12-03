@@ -2,24 +2,18 @@
 #include "bound_box.h"
 #include "build_tree_tbb.h"
 #include "dataset.h"
-#include "ewald.h"
 #include "traversal.h"
 #include "verify.h"
 #include "serialfmm.h"
 
 int main(int argc, char ** argv) {
-  const int ksize = 11;
   const real_t eps2 = 0.0;
   const real cycle = 10 * M_PI;
-  const real_t alpha = 10 / cycle;
-  const real_t sigma = .25 / M_PI;
-  const real_t cutoff = 10;
 
   Args args(argc, argv);
   BoundBox boundBox(args.nspawn);
   BuildTree buildTree(args.ncrit, args.nspawn);
   Dataset data;
-  Ewald ewald(ksize, alpha, sigma, cutoff, cycle);
   Traversal traversal(args.nspawn, args.images, eps2);
   SerialFMM FMM;
 
