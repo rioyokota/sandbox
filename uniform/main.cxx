@@ -60,8 +60,6 @@ int main(int argc, char ** argv) {
     FMM.upwardPass();
     logger::stopTimer("Upward pass");
   
-    FMM.periodicM2L();
-
     FMM.downwardPass();
     logger::stopTimer("Total FMM", 0);
 
