@@ -26,11 +26,6 @@ public:
   int numBodies;
   int numCells;
   int numLeafs;
-  int numGlobCells;
-  int globLevelOffset[10];
-  int numSendBodies;
-  int numSendCells;
-  int numSendLeafs;
 
   real X0[3];
   real R0;
@@ -44,12 +39,6 @@ public:
   real (*globMultipole)[MTERM];
   real (*globLocal)[LTERM];
   int (*Leafs)[2];
-  float (*sendJbodies)[4];
-  float (*recvJbodies)[4];
-  float (*sendMultipole)[MTERM];
-  float (*recvMultipole)[MTERM];
-  int (*sendLeafs)[2];
-  int (*recvLeafs)[2];
 
 private:
   inline void getIndex(int *ix, int index) const {

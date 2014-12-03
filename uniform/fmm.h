@@ -7,7 +7,7 @@ private:
     for_3d ix[d] = int((Jbodies[i][d] + R0 - X0[d]) / diameter);
   }
 
-  void sort(real (*bodies)[4], float (*buffer)[4], int *Index, int *Index2, int *key) const {
+  void sort(real (*bodies)[4], real (*buffer)[4], int *Index, int *Index2, int *key) const {
     int Imax = key[0];
     int Imin = key[0];
     for( int i=0; i<numBodies; i++ ) {
@@ -34,25 +34,16 @@ public:
     numBodies = N;
     numCells = ((1 << 3 * (L + 1)) - 1) / 7;
     numLeafs = 1 << 3 * L;
-    numSendCells = 64 * L + 48 * ((1 << (L + 1)) - 2) + 12 * (((1 << (2 * L + 2)) - 1) / 3 - 1);
-    numSendLeafs = 8 + 12 * (1 << L) + 6 * (1 << (2 * L));
-    numSendBodies = numSendLeafs * float(numBodies) / numLeafs * 2;
     Index = new int [2*numBodies];
     Index2 = new int [2*numBodies];
     Rank = new int [2*numBodies];
     Ibodies = new real [2*numBodies][4]();
-    Jbodies = new real [2*numBodies+numSendBodies][4]();
+    Jbodies = new real [2*numBodies][4]();
     Multipole = new real [27*numCells][MTERM]();
     Local = new real [numCells][LTERM]();
     Leafs = new int [27*numLeafs][2]();
     globMultipole = new real [2][MTERM]();
     globLocal = new real [10][LTERM]();
-    sendJbodies = new float [2*numBodies+numSendBodies][4]();
-    recvJbodies = new float [2*numBodies+numSendBodies][4]();
-    sendMultipole = new float [numSendCells][MTERM]();
-    recvMultipole = new float [numSendCells][MTERM]();
-    sendLeafs = new int [numSendLeafs][2]();
-    recvLeafs = new int [numSendLeafs][2]();
   }
 
   void deallocate() {
@@ -65,12 +56,6 @@ public:
     delete[] Leafs;
     delete[] globMultipole;
     delete[] globLocal;
-    delete[] sendJbodies;
-    delete[] recvJbodies;
-    delete[] sendMultipole;
-    delete[] recvMultipole;
-    delete[] sendLeafs;
-    delete[] recvLeafs;
   }
 
   void sortBodies() const {
@@ -81,10 +66,11 @@ public:
       getIndex(i,ix,diameter);
       key[i] = getKey(ix,maxLevel);
     }
-    sort(Jbodies,sendJbodies,Index,Index2,key);
+    sort(Jbodies,Ibodies,Index,Index2,key);
     for( int i=0; i<numBodies; i++ ) {
       Index[i] = Index2[i];
-      for_4d Jbodies[i][d] = sendJbodies[i][d];
+      for_4d Jbodies[i][d] = Ibodies[i][d];
+      for_4d Ibodies[i][d] = 0;
     }
     delete[] key;
   }
