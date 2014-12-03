@@ -1,16 +1,10 @@
 #include "args.h"
-#include "dataset.h"
-#include "traversal.h"
-#include "verify.h"
 #include "fmm.h"
 
 int main(int argc, char ** argv) {
-  const real_t eps2 = 0.0;
   const real cycle = 10 * M_PI;
 
   Args args(argc, argv);
-  Dataset data;
-  Traversal traversal(args.nspawn, args.images, eps2);
   Fmm FMM;
 
   const int numBodies = args.numBodies;
@@ -89,9 +83,8 @@ int main(int argc, char ** argv) {
     logger::stopTimer("Total Direct");
     logger::resetTimer("Total Direct");
     logger::printTitle("FMM vs. direct");
-    Verify verify;
-    verify.print("Rel. L2 Error (pot)",std::sqrt(potDif/potNrm));
-    verify.print("Rel. L2 Error (acc)",std::sqrt(accDif/accNrm));
+    logger::printError("Rel. L2 Error (pot)",std::sqrt(potDif/potNrm));
+    logger::printError("Rel. L2 Error (acc)",std::sqrt(accDif/accNrm));
   }
   FMM.deallocate();
 }

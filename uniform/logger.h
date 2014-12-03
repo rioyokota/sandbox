@@ -129,6 +129,15 @@ namespace logger {
     timer.clear();                                              // Clear timer
   }
 
+  //! Print error between FMM and direct
+  inline void printError(std::string title, double v) {
+    if (logger::verbose) {                                      // If verbose flag is true
+      std::cout << std::setw(logger::stringLength) << std::left //  Set format
+                << title << " : " << std::setprecision(logger::decimal) << std::scientific // Set title
+                << v << std::endl;                              //  Print potential error
+    }                                                           // End if for verbose flag
+  }
+
   //! Start PAPI event
   inline void startPAPI() {
 #if PAPI
