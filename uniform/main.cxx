@@ -9,7 +9,7 @@ int main() {
   const int gatherLevel = 1;
   const real cycle = 10 * M_PI;
 
-  FMM.allocate(numBodies, maxLevel, 0);
+  FMM.allocate(numBodies, maxLevel);
   logger::verbose = true;
 
   logger::printTitle("FMM Profiling");

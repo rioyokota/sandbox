@@ -25,7 +25,6 @@ public:
   int maxLevel;
   int maxGlobLevel;
   int numBodies;
-  int numImages;
   int numCells;
   int numLeafs;
   int numGlobCells;
@@ -84,35 +83,12 @@ public:
     return ix[0] + (ix[1] + ix[2] * numPartition[level][1]) * numPartition[level][0];
   }
 
-  void P2P(int ibegin, int iend, int jbegin, int jend, real *periodic) const {
-    int ii;
-    for( ii=ibegin; ii<iend-1; ii+=2 ) {
-      for( int i=ii; i<=ii+1; i++ ) {
-        real Po = 0, Fx = 0, Fy = 0, Fz = 0;
-        for( int j=jbegin; j<jend; j++ ) {
-          real dist[3];
-          for_3d dist[d] = Jbodies[i][d] - Jbodies[j][d] - periodic[d];
-          real R2 = dist[0] * dist[0] + dist[1] * dist[1] + dist[2] * dist[2];
-          real invR2 = 1.0 / R2;                                  
-          if( R2 == 0 ) invR2 = 0;                                
-          real invR = Jbodies[j][3] * sqrt(invR2);
-          real invR3 = invR2 * invR;
-          Po += invR;
-          Fx += dist[0] * invR3;
-          Fy += dist[1] * invR3;
-          Fz += dist[2] * invR3;
-        }
-        Ibodies[i][0] += Po;
-        Ibodies[i][1] -= Fx;
-        Ibodies[i][2] -= Fy;
-        Ibodies[i][3] -= Fz;
-      }
-    }
-    for( int i=ii; i<iend; i++ ) {
+  void P2P(int ibegin, int iend, int jbegin, int jend) const {
+    for( int i=ibegin; i<iend; i++ ) {
       real Po = 0, Fx = 0, Fy = 0, Fz = 0;
       for( int j=jbegin; j<jend; j++ ) {
         real dist[3];
-        for_3d dist[d] = Jbodies[i][d] - Jbodies[j][d] - periodic[d];
+        for_3d dist[d] = Jbodies[i][d] - Jbodies[j][d];
         real R2 = dist[0] * dist[0] + dist[1] * dist[1] + dist[2] * dist[2];
         real invR2 = 1.0 / R2;
         if( R2 == 0 ) invR2 = 0;
@@ -139,10 +115,6 @@ public:
     int nxmin[3], nxmax[3];
     for_3d nxmin[d] = -ixc[d] * nunit;
     for_3d nxmax[d] = nunitGlob[d] + nxmin[d] - 1;
-    if( numImages != 0 ) {
-      for_3d nxmin[d] -= nunitGlob[d];
-      for_3d nxmax[d] += nunitGlob[d];
-    }
 #pragma omp parallel for
     for( int i=0; i<numLeafs; i++ ) {
       int ix[3] = {0, 0, 0};
@@ -158,14 +130,9 @@ public:
             int jxp[3];
             for_3d jxp[d] = (jx[d] + nunit) % nunit;
             int j = getKey(jxp,maxLevel,false);
-            for_3d jxp[d] = (jx[d] + nunit) / nunit;
             int rankOffset = 13 * numLeafs;
             j += rankOffset;
-            rankOffset = 13 * numLeafs;
-            real periodic[3] = {0, 0, 0};
-            for_3d jxp[d] = (jx[d] + ixc[d] * nunit + nunitGlob[d]) / nunitGlob[d];
-            for_3d periodic[d] = (jxp[d] - 1) * 2 * RGlob[d];
-            P2P(Leafs[i+rankOffset][0],Leafs[i+rankOffset][1],Leafs[j][0],Leafs[j][1],periodic);
+            P2P(Leafs[i+rankOffset][0],Leafs[i+rankOffset][1],Leafs[j][0],Leafs[j][1]);
           }
         }
       }
@@ -228,10 +195,6 @@ public:
       int nxmin[3], nxmax[3];
       for_3d nxmin[d] = -ixc[d] * (nunit >> 1);
       for_3d nxmax[d] = (nunitGlob[d] >> 1) + nxmin[d] - 1;
-      if( numImages != 0 ) {
-        for_3d nxmin[d] -= (nunitGlob[d] >> 1);
-        for_3d nxmax[d] += (nunitGlob[d] >> 1);
-      }
       real diameter = 2 * R0 / (1 << lev);
 #pragma omp parallel for
       for( int i=0; i<(1 << 3 * lev); i++ ) {

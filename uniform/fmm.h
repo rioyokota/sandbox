@@ -130,10 +130,9 @@ protected:
   }
 
 public:
-  void allocate(int N, int L, int I) {
+  void allocate(int N, int L) {
     maxLevel = L;
     numBodies = N;
-    numImages = I;
     numCells = ((1 << 3 * (L + 1)) - 1) / 7;
     numLeafs = 1 << 3 * L;
     numSendCells = 64 * L + 48 * ((1 << (L + 1)) - 2) + 12 * (((1 << (2 * L + 2)) - 1) / 3 - 1);
@@ -191,9 +190,6 @@ public:
   }
 
   void partitioner(int level) {
-    if (numImages > 0 && int(log2(MPISIZE)) % 3 != 0) {
-      if (MPIRANK==0) printf("Warning: MPISIZE must be a power of 8 for periodic domain to be square\n");
-    }
     int mpisize = MPISIZE;
     int maxPartition[3] = {1, 1, 1};
     int dim = 0;
