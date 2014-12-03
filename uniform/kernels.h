@@ -33,8 +33,6 @@ public:
   int numSendBodies;
   int numSendCells;
   int numSendLeafs;
-  int MPISIZE;
-  int MPIRANK;
 
   real X0[3];
   real R0;
@@ -76,9 +74,6 @@ private:
   }
 
 public:
-  Kernel() : MPISIZE(1), MPIRANK(0) {}
-  ~Kernel() {}
-
   inline int getGlobKey(int *ix, int level) const {
     return ix[0] + (ix[1] + ix[2] * numPartition[level][1]) * numPartition[level][0];
   }
@@ -108,7 +103,7 @@ public:
 
   void P2P() const {
     int ixc[3];
-    getGlobIndex(ixc,MPIRANK,maxGlobLevel);
+    getGlobIndex(ixc,0,maxGlobLevel);
     int nunit = 1 << maxLevel;
     int nunitGlob[3];
     for_3d nunitGlob[d] = nunit * numPartition[maxGlobLevel][d];
@@ -186,7 +181,7 @@ public:
 
   void M2L() const {
     int ixc[3];
-    getGlobIndex(ixc,MPIRANK,maxGlobLevel);
+    getGlobIndex(ixc,0,maxGlobLevel);
     for( int lev=1; lev<=maxLevel; lev++ ) {
       int levelOffset = ((1 << 3 * lev) - 1) / 7;
       int nunit = 1 << lev;

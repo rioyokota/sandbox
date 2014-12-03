@@ -15,13 +15,11 @@ protected:
   int leafsCount[26];
   int IX[10][3];
   int gatherLevel;
-  MPI_Comm MPI_COMM_LOCAL, MPI_COMM_GLOBAL;
 
 private:
   void checkPartition(int *maxPartition) {
     int partitionSize = 1;
     for_3d partitionSize *= maxPartition[d];
-    assert( MPISIZE == partitionSize );
     int checkLevel[3], partition[3];
     for_3d partition[d] = maxPartition[d];
     for( int d=0; d<3; d++ ) {
@@ -144,7 +142,7 @@ public:
     memory += 27 * numCells * MTERM * sizeof(real);
     memory += numCells * LTERM * sizeof(real);
     memory += 27 * numLeafs * 2 * sizeof(int);
-    memory += 2 * MPISIZE * MTERM * sizeof(real);
+    memory += 2 * MTERM * sizeof(real);
     memory += 10 * LTERM * sizeof(real);
     memory += numSendBodies * 4 * sizeof(float);
     memory += numSendBodies * 4 * sizeof(float);
@@ -161,7 +159,7 @@ public:
     Multipole = new real [27*numCells][MTERM]();
     Local = new real [numCells][LTERM]();
     Leafs = new int [27*numLeafs][2]();
-    globMultipole = new real [2*MPISIZE][MTERM]();
+    globMultipole = new real [2][MTERM]();
     globLocal = new real [10][LTERM]();
     sendJbodies = new float [2*numBodies+numSendBodies][4]();
     recvJbodies = new float [2*numBodies+numSendBodies][4]();
@@ -190,23 +188,14 @@ public:
   }
 
   void partitioner(int level) {
-    int mpisize = MPISIZE;
     int maxPartition[3] = {1, 1, 1};
-    int dim = 0;
-    while( mpisize != 1 ) {
-      int ndiv = 2;
-      if( (mpisize % 3) == 0 ) ndiv = 3;
-      maxPartition[dim] *= ndiv;
-      mpisize /= ndiv;
-      dim = (dim + 1) % 3;
-    }
     checkPartition(maxPartition);
     numGlobCells = 0;
     for( int lev=0; lev<=maxGlobLevel; lev++ ) {
       globLevelOffset[lev] = numGlobCells;
       numGlobCells += numPartition[lev][0] * numPartition[lev][1] * numPartition[lev][2];
     }
-    getGlobIndex(IX[maxGlobLevel],MPIRANK,maxGlobLevel);
+    getGlobIndex(IX[maxGlobLevel],0,maxGlobLevel);
     for( int lev=maxGlobLevel; lev>0; lev-- ) {
       for_3d IX[lev-1][d] = IX[lev][d] * numPartition[lev-1][d] / numPartition[lev][d];
     }
