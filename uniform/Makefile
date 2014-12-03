@@ -1,4 +1,4 @@
-CXX	= mpicxx -ggdb3 -Wall -Wextra -O3 -msse4a -ffast-math -funroll-loops -fopenmp
+CXX	= mpicxx -ggdb3 -Wall -Wextra -O3 -ffast-math -funroll-loops -fopenmp
 MAKEFLAGS += --no-print-directory
 
 all	:
@@ -13,7 +13,4 @@ run	:
 	./a.out
 
 clean:
-	find . -name "*.o" -o -name "*.out*" -o -name "*.mod" | xargs rm -rf
-save:
-	make clean
-	cd .. && tar zcvf uniform.tgz uniform
+	find . -name "*.o" -o -name "*.out*" | xargs rm -rf

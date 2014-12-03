@@ -1,5 +1,3 @@
-//#include <emmintrin.h>
-
 void getCoef(real *C, const real *dist, real &invR2, const real &invR) {
   C[0] = invR;
   invR2 = -invR2;

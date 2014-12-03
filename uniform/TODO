@@ -1,3 +1,4 @@
 - Remove periodic.
+- Use templated kernels.
 - Remove MPI.
 - Remove rankOffset.
