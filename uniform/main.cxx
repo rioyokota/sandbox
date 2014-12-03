@@ -4,7 +4,6 @@
 #include "dataset.h"
 #include "ewald.h"
 #include "traversal.h"
-#include "up_down_pass.h"
 #include "verify.h"
 #include "serialfmm.h"
 
@@ -22,7 +21,6 @@ int main(int argc, char ** argv) {
   Dataset data;
   Ewald ewald(ksize, alpha, sigma, cutoff, cycle);
   Traversal traversal(args.nspawn, args.images, eps2);
-  UpDownPass upDownPass(args.theta, args.useRmax, args.useRopt);
   SerialFMM FMM;
 
   const int numBodies = args.numBodies;
@@ -85,7 +83,6 @@ int main(int argc, char ** argv) {
       for_4d B->TRG[d] = FMM.Ibodies[b][d];
     }
     Bodies jbodies = bodies;
-    vec3 dipole = upDownPass.getDipole(bodies, FMM.RGlob[0]);
     logger::startTimer("Total Direct");
     const int numTargets = 100;
     data.sampleBodies(bodies, numTargets);
