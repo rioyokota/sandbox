@@ -2,9 +2,6 @@
 #include "kernels.h"
 
 class Fmm : public Kernel {
-protected:
-  int gatherLevel;
-
 private:
   inline void getIndex(int i, int *ix, real diameter) const {
     for_3d ix[d] = int((Jbodies[i][d] + R0 - X0[d]) / diameter);
@@ -74,15 +71,6 @@ public:
     delete[] recvMultipole;
     delete[] sendLeafs;
     delete[] recvLeafs;
-  }
-
-  void partitioner(int level) {
-    for_3d numPartition[0][d] = 1;
-    numGlobCells = 0;
-    globLevelOffset[0] = numGlobCells;
-    numGlobCells = 1;
-    gatherLevel = level;
-    if(gatherLevel > maxGlobLevel) gatherLevel = maxGlobLevel;
   }
 
   void sortBodies() const {

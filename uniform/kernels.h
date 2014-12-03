@@ -23,12 +23,10 @@ const int LTERM = (PP+1)*(PP+2)*(PP+3)/6;
 class Kernel {
 public:
   int maxLevel;
-  int maxGlobLevel;
   int numBodies;
   int numCells;
   int numLeafs;
   int numGlobCells;
-  int numPartition[10][3];
   int globLevelOffset[10];
   int numSendBodies;
   int numSendCells;
@@ -36,7 +34,6 @@ public:
 
   real X0[3];
   real R0;
-  real RGlob[3];
   int *Index;
   int *Index2;
   int *Rank;
@@ -111,7 +108,7 @@ public:
   void P2P() const {
     int nunit = 1 << maxLevel;
     int nunitGlob[3];
-    for_3d nunitGlob[d] = nunit * numPartition[maxGlobLevel][d];
+    for_3d nunitGlob[d] = nunit;
     int nxmin[3], nxmax[3];
     for_3d nxmin[d] = 0;
     for_3d nxmax[d] = nunitGlob[d] + nxmin[d] - 1;
@@ -189,7 +186,7 @@ public:
       int levelOffset = ((1 << 3 * lev) - 1) / 7;
       int nunit = 1 << lev;
       int nunitGlob[3];
-      for_3d nunitGlob[d] = nunit * numPartition[maxGlobLevel][d];
+      for_3d nunitGlob[d] = nunit;
       int nxmin[3], nxmax[3];
       for_3d nxmin[d] = 0;
       for_3d nxmax[d] = (nunitGlob[d] >> 1) + nxmin[d] - 1;

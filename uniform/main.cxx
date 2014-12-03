@@ -6,21 +6,14 @@ int main() {
   const int numBodies = 10000;
   const int ncrit = 100;
   const int maxLevel = numBodies >= ncrit ? 1 + int(log(numBodies / ncrit)/M_LN2/3) : 0;
-  const int gatherLevel = 1;
   const real cycle = 10 * M_PI;
 
   FMM.allocate(numBodies, maxLevel);
   logger::verbose = true;
-
   logger::printTitle("FMM Profiling");
-  logger::startTimer("Partition");
-  FMM.partitioner(gatherLevel);
-  logger::stopTimer("Partition");
-
   for( int it=0; it<1; it++ ) {
     int ix[3] = {0, 0, 0};
     FMM.R0 = 0.5 * cycle;
-    for_3d FMM.RGlob[d] = FMM.R0;
     for_3d FMM.X0[d] = FMM.R0;
     srand48(0);
     real average = 0;
