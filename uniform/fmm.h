@@ -1,7 +1,7 @@
 #include <mpi.h>
 #include "evaluator.h"
 
-class SerialFMM : public Evaluator {
+class Fmm : public Evaluator {
 protected:
   int bodiesDispl[26];
   int bodiesCount[26];

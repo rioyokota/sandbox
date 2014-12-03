@@ -2,7 +2,7 @@
 #include "dataset.h"
 #include "traversal.h"
 #include "verify.h"
-#include "serialfmm.h"
+#include "fmm.h"
 
 int main(int argc, char ** argv) {
   const real_t eps2 = 0.0;
@@ -11,7 +11,7 @@ int main(int argc, char ** argv) {
   Args args(argc, argv);
   Dataset data;
   Traversal traversal(args.nspawn, args.images, eps2);
-  SerialFMM FMM;
+  Fmm FMM;
 
   const int numBodies = args.numBodies;
   const int ncrit = 100;
@@ -20,7 +20,6 @@ int main(int argc, char ** argv) {
   const int numImages = args.images;
 
   FMM.allocate(numBodies, maxLevel, numImages);
-  args.verbose &= FMM.MPIRANK == 0;
   logger::verbose = args.verbose;
   logger::printTitle("FMM Parameters");
   args.print(logger::stringLength, PP);
@@ -33,11 +32,11 @@ int main(int argc, char ** argv) {
 
   for( int it=0; it<1; it++ ) {
     int ix[3] = {0, 0, 0};
-    FMM.R0 = 0.5 * cycle / FMM.numPartition[FMM.maxGlobLevel][0];
-    for_3d FMM.RGlob[d] = FMM.R0 * FMM.numPartition[FMM.maxGlobLevel][d];
+    FMM.R0 = 0.5 * cycle;
+    for_3d FMM.RGlob[d] = FMM.R0;
     FMM.getGlobIndex(ix,FMM.MPIRANK,FMM.maxGlobLevel);
     for_3d FMM.X0[d] = 2 * FMM.R0 * (ix[d] + .5);
-    srand48(FMM.MPIRANK);
+    srand48(0);
     real average = 0;
     for( int i=0; i<numBodies; i++ ) {
       FMM.Jbodies[i][0] = 2 * FMM.R0 * (drand48() + ix[0]);
@@ -63,34 +62,34 @@ int main(int argc, char ** argv) {
     FMM.downwardPass();
     logger::stopTimer("Total FMM", 0);
 
-    Bodies bodies(numBodies);
-    B_iter B = bodies.begin();
-    for (int b=0; b<numBodies; b++, B++) {
-      for_3d B->X[d] = FMM.Jbodies[b][d];
-      B->SRC = FMM.Jbodies[b][3];
-      for_4d B->TRG[d] = FMM.Ibodies[b][d];
-    }
-    Bodies jbodies = bodies;
     logger::startTimer("Total Direct");
-    const int numTargets = 100;
-    data.sampleBodies(bodies, numTargets);
-    Bodies bodies2 = bodies;
-    data.initTarget(bodies);
-    for (int i=0; i<FMM.MPISIZE; i++) {
-      if (args.verbose) std::cout << "Direct loop          : " << i+1 << "/" << FMM.MPISIZE << std::endl;
-      traversal.direct(bodies, jbodies, cycle);
+    double potDif = 0, potNrm = 0, accDif = 0, accNrm = 0;
+    for (int i=0; i<100; i++) {
+      float Ibodies[4] = {0, 0, 0, 0};
+      float Jbodies[4], dX[3];
+      for_4d Jbodies[d] = FMM.Jbodies[i][d];
+      for (int j=0; j<numBodies; j++) {
+	for_3d dX[d] = Jbodies[d] - FMM.Jbodies[j][d];
+	float R2 = dX[0] * dX[0] + dX[1] * dX[1] + dX[2] * dX[2];
+	float invR2 = R2 == 0 ? 0 : 1.0 / R2;
+	float invR = FMM.Jbodies[j][3] * sqrtf(invR2);
+	for_3d dX[d] *= invR2 * invR;
+	Ibodies[0] += invR;
+	Ibodies[1] -= dX[0];
+	Ibodies[2] -= dX[1];
+	Ibodies[3] -= dX[2];
+      }
+      potDif += (FMM.Ibodies[i][0] - Ibodies[0]) * (FMM.Ibodies[i][0] - Ibodies[0]);
+      potNrm += Ibodies[0] * Ibodies[0];
+      for_3d accDif += (FMM.Ibodies[i][d+1] - Ibodies[d+1]) * (FMM.Ibodies[i][d+1] - Ibodies[d+1]);
+      for_3d accNrm += (Ibodies[d+1] * Ibodies[d+1]);
     }
-    traversal.normalize(bodies);
     logger::printTitle("Total runtime");
     logger::printTime("Total FMM");
     logger::stopTimer("Total Direct");
     logger::resetTimer("Total Direct");
-    Verify verify;
-    double potDif = verify.getDifScalar(bodies, bodies2);
-    double potNrm = verify.getNrmScalar(bodies);
-    double accDif = verify.getDifVector(bodies, bodies2);
-    double accNrm = verify.getNrmVector(bodies);
     logger::printTitle("FMM vs. direct");
+    Verify verify;
     verify.print("Rel. L2 Error (pot)",std::sqrt(potDif/potNrm));
     verify.print("Rel. L2 Error (acc)",std::sqrt(accDif/accNrm));
   }
