@@ -86,25 +86,6 @@ int main(int argc, char ** argv) {
     }
     Bodies jbodies = bodies;
     vec3 dipole = upDownPass.getDipole(bodies, FMM.RGlob[0]);
-    upDownPass.dipoleCorrection(bodies, dipole, numBodies, cycle);
-#ifndef IJHPCA
-#if 1
-    logger::startTimer("Total Ewald");
-    Bounds bounds = boundBox.getBounds(bodies);
-    Bodies buffer = bodies;
-    Cells cells = buildTree.buildTree(bodies, buffer, bounds);
-    Bodies bodies2 = bodies;
-    data.initTarget(bodies);
-    for (int i=0; i<FMM.MPISIZE; i++) {
-      if (args.verbose) std::cout << "Ewald loop           : " << i+1 << "/" << FMM.MPISIZE << std::endl;
-      bounds = boundBox.getBounds(jbodies);
-      buffer = jbodies;
-      Cells jcells = buildTree.buildTree(jbodies, buffer, bounds);
-      ewald.wavePart(bodies, jbodies);
-      ewald.realPart(cells, jcells);
-    }
-    ewald.selfTerm(bodies);
-#else
     logger::startTimer("Total Direct");
     const int numTargets = 100;
     data.sampleBodies(bodies, numTargets);
@@ -115,23 +96,18 @@ int main(int argc, char ** argv) {
       traversal.direct(bodies, jbodies, cycle);
     }
     traversal.normalize(bodies);
-    upDownPass.dipoleCorrection(bodies, dipole, numBodies, cycle);
     logger::printTitle("Total runtime");
     logger::printTime("Total FMM");
     logger::stopTimer("Total Direct");
     logger::resetTimer("Total Direct");
-#endif
     Verify verify;
-    double potSum = verify.getSumScalar(bodies);
-    double potSum2 = verify.getSumScalar(bodies2);
+    double potDif = verify.getDifScalar(bodies, bodies2);
+    double potNrm = verify.getNrmScalar(bodies);
     double accDif = verify.getDifVector(bodies, bodies2);
     double accNrm = verify.getNrmVector(bodies);
     logger::printTitle("FMM vs. direct");
-    double potDif = (potSum - potSum2) * (potSum - potSum2);
-    double potNrm = potSum * potSum;
     verify.print("Rel. L2 Error (pot)",std::sqrt(potDif/potNrm));
     verify.print("Rel. L2 Error (acc)",std::sqrt(accDif/accNrm));
-#endif
   }
   FMM.deallocate();
 }
