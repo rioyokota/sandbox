@@ -2,14 +2,12 @@
 #define logger_h
 #include <iomanip>
 #include <iostream>
-#include <stdint.h>
-#include <sstream>
+#include <map>
 #include <sys/time.h>
 
 //! Timer and Tracer logger
 namespace logger {
   typedef std::map<std::string,double> Timer;                   //!< Map of timer event name to timed value
-  typedef Timer::iterator              T_iter;                  //!< Iterator of timer event name map
 
   Timer beginTimer;                                             //!< Timer base value
   Timer timer;                                                  //!< Timings of all events
@@ -56,30 +54,6 @@ namespace logger {
     timer[event] += endTimer - beginTimer[event];               // Accumulate event time to timer
     if (verbose && print) printTime(event);                     // Print event and timer to screen
     return endTimer - beginTimer[event];                        // Return the event time
-  }
-
-  //! Write timings of all events
-  inline void writeTime(int mpirank=0) {
-    std::stringstream name;                                     // File name
-    name << "time" << std::setfill('0') << std::setw(6)         // Set format
-         << mpirank << ".dat";                                  // Create file name for timer
-    std::ofstream timerFile(name.str().c_str(), std::ios::app); // Open timer log file
-    for (T_iter E=timer.begin(); E!=timer.end(); E++) {         // Loop over all events
-      timerFile << std::setw(stringLength) << std::left         //  Set format
-		<< E->first << " " << E->second << std::endl;   //  Print event and timer
-    }                                                           // End loop over all events
-    timerFile.close();                                          // Close timer log file
-    timer.clear();                                              // Clear timer
-  }
-
-  //! Erase single event in timer
-  inline void resetTimer(std::string event) {
-    timer.erase(event);                                         // Erase event from timer
-  }
-
-  //! Erase all events in timer
-  inline void resetTimer() {
-    timer.clear();                                              // Clear timer
   }
 
   //! Print error between FMM and direct

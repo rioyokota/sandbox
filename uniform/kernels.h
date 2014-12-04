@@ -1,10 +1,4 @@
-#include <cassert>
 #include <cmath>
-#include <cstdlib>
-#include <cstdio>
-#include <fstream>
-#include <iostream>
-#include <omp.h>
 
 typedef double real;
 const int PP = 6;
@@ -26,6 +20,7 @@ public:
   int numBodies;
   int numCells;
   int numLeafs;
+  int numNeighbors;
 
   real X0[3];
   real R0;

@@ -1,3 +1,4 @@
+#include <cstdlib>
 #include "fmm.h"
 #include "logger.h"
 
@@ -6,9 +7,10 @@ int main() {
   const int numBodies = 10000;
   const int ncrit = 100;
   const int maxLevel = numBodies >= ncrit ? 1 + int(log(numBodies / ncrit)/M_LN2/3) : 0;
-  const real cycle = 10 * M_PI;
+  const int numNeighbors = 1;
+  const real cycle = 2 * M_PI;
 
-  FMM.allocate(numBodies, maxLevel);
+  FMM.allocate(numBodies, maxLevel, numNeighbors);
   logger::verbose = true;
   logger::printTitle("FMM Profiling");
   for( int it=0; it<1; it++ ) {

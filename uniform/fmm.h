@@ -1,9 +1,9 @@
-#include <mpi.h>
+#include <cassert>
 #include "kernels.h"
 
 class Fmm : public Kernel {
 private:
-  void sort(real (*bodies)[4], real (*buffer)[4], int *Index, int *Index2, int *key) const {
+  void sort(real (*bodies)[4], real (*bodies2)[4], int *Index, int *Index2, int *key) const {
     int Imax = key[0];
     int Imin = key[0];
     for( int i=0; i<numBodies; i++ ) {
@@ -19,17 +19,18 @@ private:
       bucket[key[i]-Imin]--;
       int inew = bucket[key[i]-Imin];
       Index2[inew] = Index[i];
-      for_4d buffer[inew][d] = bodies[i][d];
+      for_4d bodies2[inew][d] = bodies[i][d];
     }
     delete[] bucket;
   }
 
 public:
-  void allocate(int N, int L) {
-    maxLevel = L;
-    numBodies = N;
-    numCells = ((1 << 3 * (L + 1)) - 1) / 7;
-    numLeafs = 1 << 3 * L;
+  void allocate(int NumBodies, int MaxLevel, int NumNeighbors) {
+    numBodies = NumBodies;
+    maxLevel = MaxLevel;
+    numNeighbors = NumNeighbors;
+    numCells = ((1 << 3 * (maxLevel + 1)) - 1) / 7;
+    numLeafs = 1 << 3 * maxLevel;
     Index = new int [numBodies];
     Index2 = new int [numBodies];
     Ibodies = new real [numBodies][4]();
@@ -85,7 +86,7 @@ public:
     }
     Leafs[ileaf][1] = numBodies;
     for( int i=0; i<numLeafs; i++ ) {
-      assert( Leafs[i][1] != Leafs[i][0] );
+      if( Leafs[i][1] != Leafs[i][0] ) printf("Warning: Cell %d is empty.",i);
     }
   }
 };
