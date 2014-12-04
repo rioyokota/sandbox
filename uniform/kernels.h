@@ -60,20 +60,20 @@ protected:
   }
 
 public:
-  void P2P(int ibegin, int iend, int jbegin, int jend) const {
+  void P2PSum(int ibegin, int iend, int jbegin, int jend) const {
     for( int i=ibegin; i<iend; i++ ) {
       real Po = 0, Fx = 0, Fy = 0, Fz = 0;
       for( int j=jbegin; j<jend; j++ ) {
-        real dist[3];
-        for_3d dist[d] = Jbodies[i][d] - Jbodies[j][d];
-        real R2 = dist[0] * dist[0] + dist[1] * dist[1] + dist[2] * dist[2];
-        real invR2 = R2 == 0 ? 0 : 1.0 / R2;
-        real invR = Jbodies[j][3] * sqrt(invR2);
-        real invR3 = invR2 * invR;
-        Po += invR;
-        Fx += dist[0] * invR3;
-        Fy += dist[1] * invR3;
-        Fz += dist[2] * invR3;
+	real dist[3];
+	for_3d dist[d] = Jbodies[i][d] - Jbodies[j][d];
+	real R2 = dist[0] * dist[0] + dist[1] * dist[1] + dist[2] * dist[2];
+	real invR2 = R2 == 0 ? 0 : 1.0 / R2;
+	real invR = Jbodies[j][3] * sqrt(invR2);
+	real invR3 = invR2 * invR;
+	Po += invR;
+	Fx += dist[0] * invR3;
+	Fy += dist[1] * invR3;
+	Fz += dist[2] * invR3;
       }
       Ibodies[i][0] += Po;
       Ibodies[i][1] -= Fx;
@@ -97,7 +97,7 @@ public:
         for( jx[1]=jxmin[1]; jx[1]<=jxmax[1]; jx[1]++ ) {
           for( jx[0]=jxmin[0]; jx[0]<=jxmax[0]; jx[0]++ ) {
             int j = getKey(jx,maxLevel,false);
-            P2P(Leafs[i][0],Leafs[i][1],Leafs[j][0],Leafs[j][1]);
+            P2PSum(Leafs[i][0],Leafs[i][1],Leafs[j][0],Leafs[j][1]);
           }
         }
       }
