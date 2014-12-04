@@ -31,7 +31,6 @@ public:
   real R0;
   int *Index;
   int *Index2;
-  int *Rank;
   real (*Ibodies)[4];
   real (*Jbodies)[4];
   real (*Multipole)[MTERM];

@@ -32,7 +32,6 @@ public:
     numLeafs = 1 << 3 * L;
     Index = new int [numBodies];
     Index2 = new int [numBodies];
-    Rank = new int [numBodies];
     Ibodies = new real [numBodies][4]();
     Jbodies = new real [numBodies][4]();
     Multipole = new real [numCells][MTERM]();
