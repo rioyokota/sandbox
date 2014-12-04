@@ -56,8 +56,7 @@ protected:
     int id = 0;
     if( levelOffset ) id = ((1 << 3 * level) - 1) / 7;
     for( int lev=0; lev<level; ++lev ) {
-      for_3d id += ix[d] % 2 << (3 * lev + d);
-      for_3d ix[d] >>= 1;
+      for_3d id += (ix[d] >> lev) % 2 << (3 * lev + d);
     }
     return id;
   }
@@ -70,8 +69,7 @@ public:
         real dist[3];
         for_3d dist[d] = Jbodies[i][d] - Jbodies[j][d];
         real R2 = dist[0] * dist[0] + dist[1] * dist[1] + dist[2] * dist[2];
-        real invR2 = 1.0 / R2;
-        if( R2 == 0 ) invR2 = 0;
+        real invR2 = R2 == 0 ? 0 : 1.0 / R2;
         real invR = Jbodies[j][3] * sqrt(invR2);
         real invR3 = invR2 * invR;
         Po += invR;
@@ -93,16 +91,14 @@ public:
       int ix[3] = {0, 0, 0};
       getIndex(ix,i);
       int jxmin[3];
-      for_3d jxmin[d] = MAX(0, ix[d] - 1);
+      for_3d jxmin[d] = MAX(0,         ix[d] - numNeighbors);
       int jxmax[3];
-      for_3d jxmax[d] = MIN(nunit - 1, ix[d] + 1) + 1;
+      for_3d jxmax[d] = MIN(nunit - 1, ix[d] + numNeighbors);
       int jx[3];
-      for( jx[2]=jxmin[2]; jx[2]<jxmax[2]; jx[2]++ ) {
-        for( jx[1]=jxmin[1]; jx[1]<jxmax[1]; jx[1]++ ) {
-          for( jx[0]=jxmin[0]; jx[0]<jxmax[0]; jx[0]++ ) {
-            int jxp[3];
-            for_3d jxp[d] = (jx[d] + nunit) % nunit;
-            int j = getKey(jxp,maxLevel,false);
+      for( jx[2]=jxmin[2]; jx[2]<=jxmax[2]; jx[2]++ ) {
+        for( jx[1]=jxmin[1]; jx[1]<=jxmax[1]; jx[1]++ ) {
+          for( jx[0]=jxmin[0]; jx[0]<=jxmax[0]; jx[0]++ ) {
+            int j = getKey(jx,maxLevel,false);
             P2P(Leafs[i][0],Leafs[i][1],Leafs[j][0],Leafs[j][1]);
           }
         }
@@ -142,13 +138,11 @@ public:
         ix[2] = 1 - ((i / 4) & 1) * 2;
         real dist[3];
         for_3d dist[d] = ix[d] * radius;
-        real M[MTERM];
         real C[LTERM];
         C[0] = 1;
         powerM(C,dist);
-        for_m M[m] = Multipole[c][m];
-        for_m Multipole[p][m] += C[m] * M[0];
-        M2MSum(Multipole[p],C,M);
+        for_m Multipole[p][m] += C[m] * Multipole[c][0];
+        M2MSum(Multipole[p],C,Multipole[c]);
       }
     }
   }
@@ -165,28 +159,24 @@ public:
         int ix[3] = {0, 0, 0};
         getIndex(ix,i);
         int jxmin[3];
-        for_3d jxmin[d] =  MAX(0,                (ix[d] >> 1) - 1)      << 1;
+        for_3d jxmin[d] =  MAX(0,                (ix[d] >> 1) - numNeighbors) << 1;
         int jxmax[3];
-        for_3d jxmax[d] = (MIN((nunit >> 1) - 1, (ix[d] >> 1) + 1) + 1) << 1;
+        for_3d jxmax[d] = (MIN((nunit >> 1) - 1, (ix[d] >> 1) + numNeighbors) << 1) + 1;
         int jx[3];
-        for( jx[2]=jxmin[2]; jx[2]<jxmax[2]; jx[2]++ ) {
-          for( jx[1]=jxmin[1]; jx[1]<jxmax[1]; jx[1]++ ) {
-            for( jx[0]=jxmin[0]; jx[0]<jxmax[0]; jx[0]++ ) {
-              if(jx[0] < ix[0]-1 || ix[0]+1 < jx[0] ||
-                 jx[1] < ix[1]-1 || ix[1]+1 < jx[1] ||
-                 jx[2] < ix[2]-1 || ix[2]+1 < jx[2]) {
-                int jxp[3];
-                for_3d jxp[d] = (jx[d] + nunit) % nunit;
-                int j = getKey(jxp,lev);
-                real M[MTERM];
-                for_m M[m] = Multipole[j][m];
+        for( jx[2]=jxmin[2]; jx[2]<=jxmax[2]; jx[2]++ ) {
+          for( jx[1]=jxmin[1]; jx[1]<=jxmax[1]; jx[1]++ ) {
+            for( jx[0]=jxmin[0]; jx[0]<=jxmax[0]; jx[0]++ ) {
+              if(jx[0] < ix[0]-numNeighbors || ix[0]+numNeighbors < jx[0] ||
+                 jx[1] < ix[1]-numNeighbors || ix[1]+numNeighbors < jx[1] ||
+                 jx[2] < ix[2]-numNeighbors || ix[2]+numNeighbors < jx[2]) {
+                int j = getKey(jx,lev);
                 real dist[3];
                 for_3d dist[d] = (ix[d] - jx[d]) * diameter;
                 real invR2 = 1. / (dist[0] * dist[0] + dist[1] * dist[1] + dist[2] * dist[2]);
                 real invR  = sqrt(invR2);
                 real C[LTERM];
                 getCoef(C,dist,invR2,invR);
-                M2LSum(L,C,M);
+                M2LSum(L,C,Multipole[j]);
               }
             }
           }

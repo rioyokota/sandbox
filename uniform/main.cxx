@@ -36,27 +36,28 @@ int main() {
     FMM.buildTree();
     logger::stopTimer("Grow tree");
   
-    logger::startTimer("Upward pass");
+    logger::startTimer("P2M");
     for( int i=0; i<FMM.numCells; i++ ) {
       for_m FMM.Multipole[i][m] = 0;
       for_l FMM.Local[i][l] = 0;
     }
     FMM.P2M();
+    logger::stopTimer("P2M");
+    logger::startTimer("M2M");
     FMM.M2M();
-    logger::stopTimer("Upward pass");
-
-    logger::startTimer("Traverse");
+    logger::stopTimer("M2M");
+    logger::startTimer("M2L");
     FMM.M2L();
-    logger::stopTimer("Traverse", 0);
-
-    logger::startTimer("Downward pass");
+    logger::stopTimer("M2L");
+    logger::startTimer("L2L");
     FMM.L2L();
+    logger::stopTimer("L2L");
+    logger::startTimer("L2P");
     FMM.L2P();
-    logger::stopTimer("Downward pass");
-
-    logger::startTimer("Traverse");
+    logger::stopTimer("L2P");
+    logger::startTimer("P2P");
     FMM.P2P();
-    logger::stopTimer("Traverse");
+    logger::stopTimer("P2P");
   
     double potDif = 0, potNrm = 0, accDif = 0, accNrm = 0;
     for (int i=0; i<100; i++) {
