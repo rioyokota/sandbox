@@ -17,8 +17,8 @@ const int LTERM = (PP+1)*(PP+2)*(PP+3)/6;
 #define for_4d for( int d=0; d<4; d++ )
 #define for_m for( int m=0; m<MTERM; m++ )
 #define for_l for( int l=0; l<LTERM; l++ )
-#define FMMMAX(a,b) (((a) > (b)) ? (a) : (b))
-#define FMMMIN(a,b) (((a) < (b)) ? (a) : (b))
+#define MAX(a,b) (((a) > (b)) ? (a) : (b))
+#define MIN(a,b) (((a) < (b)) ? (a) : (b))
 
 class Kernel {
 public:
@@ -93,19 +93,14 @@ public:
 
   void P2P() const {
     int nunit = 1 << maxLevel;
-    int nunitGlob[3];
-    for_3d nunitGlob[d] = nunit;
-    int nxmin[3], nxmax[3];
-    for_3d nxmin[d] = 0;
-    for_3d nxmax[d] = nunitGlob[d] + nxmin[d] - 1;
 #pragma omp parallel for
     for( int i=0; i<numLeafs; i++ ) {
       int ix[3] = {0, 0, 0};
       getIndex(ix,i);
       int jxmin[3];
-      for_3d jxmin[d] = FMMMAX(nxmin[d],ix[d] - 1);
+      for_3d jxmin[d] = MAX(0, ix[d] - 1);
       int jxmax[3];
-      for_3d jxmax[d] = FMMMIN(nxmax[d],ix[d] + 1) + 1;
+      for_3d jxmax[d] = MIN(nunit - 1, ix[d] + 1) + 1;
       int jx[3];
       for( jx[2]=jxmin[2]; jx[2]<jxmax[2]; jx[2]++ ) {
         for( jx[1]=jxmin[1]; jx[1]<jxmax[1]; jx[1]++ ) {
@@ -167,11 +162,6 @@ public:
     for( int lev=1; lev<=maxLevel; lev++ ) {
       int levelOffset = ((1 << 3 * lev) - 1) / 7;
       int nunit = 1 << lev;
-      int nunitGlob[3];
-      for_3d nunitGlob[d] = nunit;
-      int nxmin[3], nxmax[3];
-      for_3d nxmin[d] = 0;
-      for_3d nxmax[d] = (nunitGlob[d] >> 1) + nxmin[d] - 1;
       real diameter = 2 * R0 / (1 << lev);
 #pragma omp parallel for
       for( int i=0; i<(1 << 3 * lev); i++ ) {
@@ -180,9 +170,9 @@ public:
         int ix[3] = {0, 0, 0};
         getIndex(ix,i);
         int jxmin[3];
-        for_3d jxmin[d] =  FMMMAX(nxmin[d],(ix[d] >> 1) - 1)      << 1;
+        for_3d jxmin[d] =  MAX(0,                (ix[d] >> 1) - 1)      << 1;
         int jxmax[3];
-        for_3d jxmax[d] = (FMMMIN(nxmax[d],(ix[d] >> 1) + 1) + 1) << 1;
+        for_3d jxmax[d] = (MIN((nunit >> 1) - 1, (ix[d] >> 1) + 1) + 1) << 1;
         int jx[3];
         for( jx[2]=jxmin[2]; jx[2]<jxmax[2]; jx[2]++ ) {
           for( jx[1]=jxmin[1]; jx[1]<jxmax[1]; jx[1]++ ) {

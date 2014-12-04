@@ -7,8 +7,8 @@ private:
     int Imax = key[0];
     int Imin = key[0];
     for( int i=0; i<numBodies; i++ ) {
-      Imax = FMMMAX(Imax,key[i]);
-      Imin = FMMMIN(Imin,key[i]);
+      Imax = MAX(Imax,key[i]);
+      Imin = MIN(Imin,key[i]);
     }
     int numBucket = Imax - Imin + 1;
     int *bucket = new int [numBucket];
