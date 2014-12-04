@@ -24,8 +24,6 @@ public:
 
   real X0[3];
   real R0;
-  int *Index;
-  int *Index2;
   real (*Ibodies)[4];
   real (*Jbodies)[4];
   real (*Multipole)[MTERM];
