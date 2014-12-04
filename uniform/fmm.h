@@ -3,10 +3,6 @@
 
 class Fmm : public Kernel {
 private:
-  inline void getIndex(int i, int *ix, real diameter) const {
-    for_3d ix[d] = int((Jbodies[i][d] + R0 - X0[d]) / diameter);
-  }
-
   void sort(real (*bodies)[4], real (*buffer)[4], int *Index, int *Index2, int *key) const {
     int Imax = key[0];
     int Imin = key[0];
@@ -34,14 +30,14 @@ public:
     numBodies = N;
     numCells = ((1 << 3 * (L + 1)) - 1) / 7;
     numLeafs = 1 << 3 * L;
-    Index = new int [2*numBodies];
-    Index2 = new int [2*numBodies];
-    Rank = new int [2*numBodies];
-    Ibodies = new real [2*numBodies][4]();
-    Jbodies = new real [2*numBodies][4]();
-    Multipole = new real [27*numCells][MTERM]();
+    Index = new int [numBodies];
+    Index2 = new int [numBodies];
+    Rank = new int [numBodies];
+    Ibodies = new real [numBodies][4]();
+    Jbodies = new real [numBodies][4]();
+    Multipole = new real [numCells][MTERM]();
     Local = new real [numCells][LTERM]();
-    Leafs = new int [27*numLeafs][2]();
+    Leafs = new int [numLeafs][2]();
   }
 
   void deallocate() {
@@ -59,7 +55,7 @@ public:
     real diameter = 2 * R0 / (1 << maxLevel);
     int ix[3] = {0, 0, 0};
     for( int i=0; i<numBodies; i++ ) {
-      getIndex(i,ix,diameter);
+      for_3d ix[d] = int((Jbodies[i][d] + R0 - X0[d]) / diameter);
       key[i] = getKey(ix,maxLevel);
     }
     sort(Jbodies,Ibodies,Index,Index2,key);
@@ -77,11 +73,11 @@ public:
     }
     real diameter = 2 * R0 / (1 << maxLevel);
     int ix[3] = {0, 0, 0};
-    getIndex(0,ix,diameter);
+    for_3d ix[d] = int((Jbodies[0][d] + R0 - X0[d]) / diameter);
     int ileaf = getKey(ix,maxLevel,false);
     Leafs[ileaf][0] = 0;
     for( int i=0; i<numBodies; i++ ) {
-      getIndex(i,ix,diameter);
+      for_3d ix[d] = int((Jbodies[i][d] + R0 - X0[d]) / diameter);
       int inew = getKey(ix,maxLevel,false);
       if( ileaf != inew ) {
         Leafs[ileaf][1] = Leafs[inew][0] = i;
