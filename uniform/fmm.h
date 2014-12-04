@@ -1,4 +1,5 @@
 #include <cassert>
+#include <cstdio>
 #include "kernels.h"
 
 class Fmm : public Kernel {
@@ -86,7 +87,7 @@ public:
     }
     Leafs[ileaf][1] = numBodies;
     for( int i=0; i<numLeafs; i++ ) {
-      if( Leafs[i][1] != Leafs[i][0] ) printf("Warning: Cell %d is empty.",i);
+      if( Leafs[i][1] == Leafs[i][0] ) printf("Warning: Cell %d is empty.\n",i);
     }
   }
 };

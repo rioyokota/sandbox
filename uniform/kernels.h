@@ -178,7 +178,6 @@ public:
                 int jxp[3];
                 for_3d jxp[d] = (jx[d] + nunit) % nunit;
                 int j = getKey(jxp,lev);
-                for_3d jxp[d] = (jx[d] + nunit) / nunit;
                 real M[MTERM];
                 for_m M[m] = Multipole[j][m];
                 real dist[3];
