@@ -3,11 +3,11 @@
 
 int main() {
   Fmm FMM;
-  const int numBodies = 10000;
+  const int numBodies = 1000;
   const int ncrit = 100;
   const int maxLevel = numBodies >= ncrit ? 1 + int(log(numBodies / ncrit)/M_LN2/3) : 0;
   const int numNeighbors = 1;
-  const int numImages = 1;
+  const int numImages = 2;
 
   logger::verbose = true;
   logger::printTitle("FMM Profiling");
