@@ -62,7 +62,7 @@ int main() {
   Ewald ewald;
   ewald.init(FMM.R0,FMM.X0);
   ewald.dipoleCorrection(numBodies, cycle, FMM.Ibodies, FMM.Jbodies);
-  FMM.ewald(numBodies, maxLevel, cycle, FMM.Ibodies2, FMM.Jbodies, FMM.Leafs);
+  ewald.ewald(numBodies, maxLevel, cycle, FMM.Ibodies2, FMM.Jbodies, FMM.Leafs);
   FMM.verify(numBodies, potDif, potNrm, accDif, accNrm);
 #endif
   logger::stopTimer("Verify");
