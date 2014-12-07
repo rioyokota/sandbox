@@ -55,9 +55,9 @@ public:
     delete[] Leafs;
   }
 
-  void initBodies() {
+  void initBodies(real cycle) {
     int ix[3] = {0, 0, 0};
-    R0 = M_PI;
+    R0 = cycle * .5;
     for_3d X0[d] = R0;
     srand48(0);
     real average = 0;
@@ -110,10 +110,10 @@ public:
     }
   }
 
-  void verify(real & potDif, real & potNrm, real & accDif, real & accNrm) {
+  void direct(real Ibodies2[100][4]) {
     int range = (pow(3,numImages) - 1) / 2;
     for (int i=0; i<100; i++) {
-      real Ibodies2[4] = {0, 0, 0, 0};
+      for_4d Ibodies2[i][d] = 0;
       real Jbodies2[4], dX[3];
       for_4d Jbodies2[d] = Jbodies[i][d];
       int jx[3];
@@ -126,18 +126,22 @@ public:
 	      real invR2 = R2 == 0 ? 0 : 1.0 / R2;
 	      real invR = Jbodies[j][3] * sqrtf(invR2);
 	      for_3d dX[d] *= invR2 * invR;
-	      Ibodies2[0] += invR;
-	      Ibodies2[1] -= dX[0];
-	      Ibodies2[2] -= dX[1];
-	      Ibodies2[3] -= dX[2];
+	      Ibodies2[i][0] += invR;
+	      Ibodies2[i][1] -= dX[0];
+	      Ibodies2[i][2] -= dX[1];
+	      Ibodies2[i][3] -= dX[2];
 	    }
 	  }
 	}
       }
-      potDif += (Ibodies[i][0] - Ibodies2[0]) * (Ibodies[i][0] - Ibodies2[0]);
-      potNrm += Ibodies2[0] * Ibodies2[0];
-      for_3d accDif += (Ibodies[i][d+1] - Ibodies2[d+1]) * (Ibodies[i][d+1] - Ibodies2[d+1]);
-      for_3d accNrm += (Ibodies2[d+1] * Ibodies2[d+1]);
+    }
+  }
+  void verify(real Ibodies2[100][4], real & potDif, real & potNrm, real & accDif, real & accNrm) {
+    for (int i=0; i<100; i++) {
+      potDif += (Ibodies[i][0] - Ibodies2[i][0]) * (Ibodies[i][0] - Ibodies2[i][0]);
+      potNrm += Ibodies2[i][0] * Ibodies2[i][0];
+      for_3d accDif += (Ibodies[i][d+1] - Ibodies2[i][d+1]) * (Ibodies[i][d+1] - Ibodies2[i][d+1]);
+      for_3d accNrm += (Ibodies2[i][d+1] * Ibodies2[i][d+1]);
     }
   }
 };

@@ -8,6 +8,7 @@ int main() {
   const int maxLevel = numBodies >= ncrit ? 1 + int(log(numBodies / ncrit)/M_LN2/3) : 0;
   const int numNeighbors = 1;
   const int numImages = 2;
+  const real cycle = 2 * M_PI;
 
   logger::verbose = true;
   logger::printTitle("FMM Profiling");
@@ -17,7 +18,7 @@ int main() {
   logger::stopTimer("Allocate");
 
   logger::startTimer("Init bodies");
-  FMM.initBodies();
+  FMM.initBodies(cycle);
   logger::stopTimer("Init bodies");
   
   logger::startTimer("Sort bodies");
@@ -52,9 +53,11 @@ int main() {
   FMM.P2P();
   logger::stopTimer("P2P");
 
-  real potDif = 0, potNrm = 0, accDif = 0, accNrm = 0;
   logger::startTimer("Verify");
-  FMM.verify(potDif,potNrm,accDif,accNrm);
+  real Ibodies2[100][4];
+  FMM.direct(Ibodies2);
+  real potDif = 0, potNrm = 0, accDif = 0, accNrm = 0;
+  FMM.verify(Ibodies2,potDif,potNrm,accDif,accNrm);
   logger::stopTimer("Verify");
 
   logger::startTimer("Deallocate");
