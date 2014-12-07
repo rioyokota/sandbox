@@ -1,6 +1,1 @@
-- Make ewald.h
-- separate realPart() and wavePart()
-- Use class variables in ewald.h
-- for_3d -> for_3
-- getIndex2 -> getIndex
 - b -> i

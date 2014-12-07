@@ -22,7 +22,7 @@ public:
 
 private:
   inline void getIndex(int *ix, int index) const {
-    for_3d ix[d] = 0;
+    for_3 ix[d] = 0;
     int d = 0, level = 0;
     while (index != 0) {
       ix[d] += (index & 1) * (1 << level);
@@ -36,7 +36,7 @@ private:
     real R = R0 / (1 << level);
     int ix[3] = {0, 0, 0};
     getIndex(ix, index);
-    for_3d dist[d] = X0[d] - R0 + (2 * ix[d] + 1) * R;
+    for_3 dist[d] = X0[d] - R0 + (2 * ix[d] + 1) * R;
   }
 
   void P2PSum(int ibegin, int iend, int jbegin, int jend, real *Xperiodic) const {
@@ -44,7 +44,7 @@ private:
       real Po = 0, Fx = 0, Fy = 0, Fz = 0;
       for (int j=jbegin; j<jend; j++) {
 	real dist[3];
-	for_3d dist[d] = Jbodies[i][d] - Jbodies[j][d] - Xperiodic[d];
+	for_3 dist[d] = Jbodies[i][d] - Jbodies[j][d] - Xperiodic[d];
 	real R2 = dist[0] * dist[0] + dist[1] * dist[1] + dist[2] * dist[2];
 	real invR2 = R2 == 0 ? 0 : 1.0 / R2;
 	real invR = Jbodies[j][3] * sqrt(invR2);
@@ -76,7 +76,7 @@ private:
 	       jx[1] < -1 || 1 < jx[1] ||
 	       jx[2] < -1 || 1 < jx[2]) {
 	      real dist[3];
-	      for_3d dist[d] = jx[d] * diameter;
+	      for_3 dist[d] = jx[d] * diameter;
 	      real invR2 = 1. / (dist[0] * dist[0] + dist[1] * dist[1] + dist[2] * dist[2]);
 	      real invR  = sqrt(invR2);
 	      real C[LTERM];
@@ -93,7 +93,7 @@ private:
 	for( ix[1]=-1; ix[1]<=1; ix[1]++ ) {
 	  for( ix[0]=-1; ix[0]<=1; ix[0]++ ) {
 	    real dist[3];
-	    for_3d dist[d] = ix[d] * diameter;
+	    for_3 dist[d] = ix[d] * diameter;
 	    real C[LTERM];
 	    C[0] = 1;
 	    powerM(C,dist);
@@ -112,7 +112,7 @@ protected:
     int id = 0;
     if (levelOffset) id = ((1 << 3 * level) - 1) / 7;
     for (int lev=0; lev<level; lev++) {
-      for_3d id += ((ix[d] >> lev) & 1) << (3 * lev + d);
+      for_3 id += ((ix[d] >> lev) & 1) << (3 * lev + d);
     }
     return id;
   }
@@ -131,19 +131,19 @@ public:
       int ix[3] = {0, 0, 0};
       getIndex(ix,i);
       int jxmin[3];
-      for_3d jxmin[d] = MAX(nmin, ix[d] - numNeighbors);
+      for_3 jxmin[d] = MAX(nmin, ix[d] - numNeighbors);
       int jxmax[3];
-      for_3d jxmax[d] = MIN(nmax, ix[d] + numNeighbors);
+      for_3 jxmax[d] = MIN(nmax, ix[d] + numNeighbors);
       int jx[3];
       for (jx[2]=jxmin[2]; jx[2]<=jxmax[2]; jx[2]++) {
         for (jx[1]=jxmin[1]; jx[1]<=jxmax[1]; jx[1]++) {
           for (jx[0]=jxmin[0]; jx[0]<=jxmax[0]; jx[0]++) {
 	    int jxp[3];
-	    for_3d jxp[d] = (jx[d] + nunit) % nunit;
+	    for_3 jxp[d] = (jx[d] + nunit) % nunit;
             int j = getKey(jxp,maxLevel,false);
 	    real Xperiodic[3] = {0, 0, 0};
-	    for_3d jxp[d] = (jx[d] + nunit) / nunit;
-	    for_3d Xperiodic[d] = (jxp[d] - 1) * 2 * R0;
+	    for_3 jxp[d] = (jx[d] + nunit) / nunit;
+	    for_3 Xperiodic[d] = (jxp[d] - 1) * 2 * R0;
             P2PSum(Leafs[i][0],Leafs[i][1],Leafs[j][0],Leafs[j][1],Xperiodic);
           }
         }
@@ -159,7 +159,7 @@ public:
       getCenter(center,i,maxLevel);
       for (int j=Leafs[i][0]; j<Leafs[i][1]; j++) {
         real dist[3];
-        for_3d dist[d] = center[d] - Jbodies[j][d];
+        for_3 dist[d] = center[d] - Jbodies[j][d];
         real M[MTERM];
         M[0] = Jbodies[j][3];
         powerM(M,dist);
@@ -182,7 +182,7 @@ public:
         ix[1] = 1 - ((i / 2) & 1) * 2;
         ix[2] = 1 - ((i / 4) & 1) * 2;
         real dist[3];
-        for_3d dist[d] = ix[d] * radius;
+        for_3 dist[d] = ix[d] * radius;
         real C[LTERM];
         C[0] = 1;
         powerM(C,dist);
@@ -210,9 +210,9 @@ public:
         int ix[3] = {0, 0, 0};
         getIndex(ix,i);
         int jxmin[3];
-        for_3d jxmin[d] =  MAX(nmin, (ix[d] >> 1) - numNeighbors) << 1;
+        for_3 jxmin[d] =  MAX(nmin, (ix[d] >> 1) - numNeighbors) << 1;
         int jxmax[3];
-        for_3d jxmax[d] = (MIN(nmax, (ix[d] >> 1) + numNeighbors) << 1) + 1;
+        for_3 jxmax[d] = (MIN(nmax, (ix[d] >> 1) + numNeighbors) << 1) + 1;
         int jx[3];
         for (jx[2]=jxmin[2]; jx[2]<=jxmax[2]; jx[2]++) {
           for (jx[1]=jxmin[1]; jx[1]<=jxmax[1]; jx[1]++) {
@@ -221,10 +221,10 @@ public:
                  jx[1] < ix[1]-numNeighbors || ix[1]+numNeighbors < jx[1] ||
                  jx[2] < ix[2]-numNeighbors || ix[2]+numNeighbors < jx[2]) {
 		int jxp[3];
-		for_3d jxp[d] = (jx[d] + nunit) % nunit;
+		for_3 jxp[d] = (jx[d] + nunit) % nunit;
                 int j = getKey(jxp,lev);
                 real dist[3];
-                for_3d dist[d] = (ix[d] - jx[d]) * diameter;
+                for_3 dist[d] = (ix[d] - jx[d]) * diameter;
                 real invR2 = 1. / (dist[0] * dist[0] + dist[1] * dist[1] + dist[2] * dist[2]);
                 real invR  = sqrt(invR2);
                 real C[LTERM];
@@ -256,7 +256,7 @@ public:
         ix[1] = ((i / 2) & 1) * 2 - 1;
         ix[2] = ((i / 4) & 1) * 2 - 1;
         real dist[3];
-        for_3d dist[d] = ix[d] * radius;
+        for_3 dist[d] = ix[d] * radius;
         real C[LTERM];
         C[0] = 1;
         powerL(C,dist);
@@ -277,11 +277,11 @@ public:
       for_l L[l] = Local[i+levelOffset][l];
       for (int j=Leafs[i][0]; j<Leafs[i][1]; j++) {
         real dist[3];
-        for_3d dist[d] = Jbodies[j][d] - center[d];
+        for_3 dist[d] = Jbodies[j][d] - center[d];
         real C[LTERM];
         C[0] = 1;
         powerL(C,dist);
-        for_4d Ibodies[j][d] += L[d];
+        for_4 Ibodies[j][d] += L[d];
         for (int l=1; l<LTERM; l++) Ibodies[j][0] += C[l] * L[l];
         L2PSum(Ibodies[j],C,L);
       }

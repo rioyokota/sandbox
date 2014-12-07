@@ -23,13 +23,13 @@ private:
   inline int getKey(int *ix, int level) const {
     int id = 0;
     for (int lev=0; lev<level; lev++) {
-      for_3d id += ((ix[d] >> lev) & 1) << (3 * lev + d);
+      for_3 id += ((ix[d] >> lev) & 1) << (3 * lev + d);
     }
     return id;
   }
 
   inline void getIndex(int *ix, int index) const {
-    for_3d ix[d] = 0;
+    for_3 ix[d] = 0;
     int d = 0, level = 0;
     while (index != 0) {
       ix[d] += (index & 1) * (1 << level);
@@ -38,14 +38,37 @@ private:
       if (d == 0) level++;
     }
   }
-  
+
+  void initWaves(real *waveRe, real *waveIm, real (*waveK)[3]) {
+    numWaves = 0;
+    for (int l=0; l<=ksize; l++) {
+      int mmin = -ksize;
+      if (l==0) mmin = 0;
+      for (int m=mmin; m<=ksize; m++) {
+	int nmin = -ksize;
+	if (l==0 && m==0) nmin=1;
+	for (int n=nmin; n<=ksize; n++) {
+	  real k2 = l * l + m * m + n * n;
+	  if (k2 <= ksize * ksize) {
+	    waveK[numWaves][0] = l;
+	    waveK[numWaves][1] = m;
+	    waveK[numWaves][2] = n;
+	    waveRe[numWaves] = waveIm[numWaves] = 0;
+	    numWaves++;
+	  }
+	}
+      }
+    }
+    assert(numWaves < 4. / 3 * M_PI * ksize * ksize * ksize);
+  }
+
   void dft(real (*Jbodies)[4]) {
 #pragma omp parallel for
     for (int w=0; w<numWaves; w++) { 
       waveRe[w] = waveIm[w] = 0;
       for (int b=0; b<numBodies; b++) {
 	real th = 0;
-	for_3d th += waveK[w][d] * Jbodies[b][d] * scale;
+	for_3 th += waveK[w][d] * Jbodies[b][d] * scale;
 	waveRe[w] += Jbodies[b][3] * cos(th);
 	waveIm[w] += Jbodies[b][3] * sin(th);
       }
@@ -57,10 +80,10 @@ private:
     for (int b=0; b<numBodies; b++) {
       for (int w=0; w<numWaves; w++) {
 	real th = 0;
-	for_3d th += waveK[w][d] * Jbodies[b][d] * scale;
+	for_3 th += waveK[w][d] * Jbodies[b][d] * scale;
 	real dtmp = waveRe[w] * sin(th) - waveIm[w] * cos(th);
 	Ibodies[b][0] += waveRe[w] * cos(th) + waveIm[w] * sin(th);
-	for_3d Ibodies[b][d+1] -= dtmp * waveK[w][d] * scale;
+	for_3 Ibodies[b][d+1] -= dtmp * waveK[w][d] * scale;
       }
     }
   }
@@ -71,7 +94,7 @@ private:
       real Po = 0, Fx = 0, Fy = 0, Fz = 0;
       for (int j=jbegin; j<jend; j++) {
 	real dist[3];
-	for_3d dist[d] = Jbodies[i][d] - Jbodies[j][d] - Xperiodic[d];
+	for_3 dist[d] = Jbodies[i][d] - Jbodies[j][d] - Xperiodic[d];
 	real R2 = dist[0] * dist[0] + dist[1] * dist[1] + dist[2] * dist[2];
 	if (0 < R2 && R2 < cutoff * cutoff) {
 	  real R2s = R2 * alpha * alpha;
@@ -106,7 +129,7 @@ public:
     cutoff = 10;
     scale = 2 * M_PI / cycle;
     R0 = cycle * .5;
-    for_3d X0[d] = R0;
+    for_3 X0[d] = R0;
     waveRe = new real [numWaves];
     waveIm = new real [numWaves];
     waveK = new real [numWaves][3]();
@@ -121,38 +144,15 @@ public:
   void dipoleCorrection(real (*Ibodies)[4], real (*Jbodies)[4]) {
     real dipole[3] = {0, 0, 0};
     for (int i=0; i<numBodies; i++) {
-      for_3d dipole[d] += (Jbodies[i][d] - X0[d]) * Jbodies[i][3];
+      for_3 dipole[d] += (Jbodies[i][d] - X0[d]) * Jbodies[i][3];
     }
     real norm = dipole[0] * dipole[0] + dipole[1] * dipole[1] + dipole[2] * dipole[2];
     real cycle = 2 * R0;
     real coef = 4 * M_PI / (3 * cycle * cycle * cycle);
     for (int i=0; i<numBodies; i++) {
       Ibodies[i][0] -= coef * norm / numBodies / Jbodies[i][3];
-      for_3d Ibodies[i][d+1] -= coef * dipole[d];
+      for_3 Ibodies[i][d+1] -= coef * dipole[d];
     }
-  }
-
-  void initWaves(real *waveRe, real *waveIm, real (*waveK)[3]) {
-    numWaves = 0;
-    for (int l=0; l<=ksize; l++) {
-      int mmin = -ksize;
-      if (l==0) mmin = 0;
-      for (int m=mmin; m<=ksize; m++) {
-	int nmin = -ksize;
-	if (l==0 && m==0) nmin=1;
-	for (int n=nmin; n<=ksize; n++) {
-	  real k2 = l * l + m * m + n * n;
-	  if (k2 <= ksize * ksize) {
-	    waveK[numWaves][0] = l;
-	    waveK[numWaves][1] = m;
-	    waveK[numWaves][2] = n;
-	    waveRe[numWaves] = waveIm[numWaves] = 0;
-	    numWaves++;
-	  }
-	}
-      }
-    }
-    assert(numWaves < 4. / 3 * M_PI * ksize * ksize * ksize);
   }
 
   void wavePart(real (*Ibodies2)[4], real (*Jbodies)[4]) {
@@ -163,7 +163,7 @@ public:
 #pragma omp parallel for
     for (int w=0; w<numWaves; w++) {
       real k2 = 0;
-      for_3d k2 += waveK[w][d] * waveK[w][d];
+      for_3 k2 += waveK[w][d] * waveK[w][d];
       real factor = coef * exp(-k2 * coef2) / k2;
       waveRe[w] *= factor;
       waveIm[w] *= factor;
@@ -180,19 +180,19 @@ public:
       int ix[3] = {0, 0, 0};
       getIndex(ix,i);
       int jxmin[3];
-      for_3d jxmin[d] = MAX(nmin, ix[d] - 2);
+      for_3 jxmin[d] = MAX(nmin, ix[d] - 2);
       int jxmax[3];
-      for_3d jxmax[d] = MIN(nmax, ix[d] + 2);
+      for_3 jxmax[d] = MIN(nmax, ix[d] + 2);
       int jx[3];
       for (jx[2]=jxmin[2]; jx[2]<=jxmax[2]; jx[2]++) {
 	for (jx[1]=jxmin[1]; jx[1]<=jxmax[1]; jx[1]++) {
 	  for (jx[0]=jxmin[0]; jx[0]<=jxmax[0]; jx[0]++) {
 	    int jxp[3];
-	    for_3d jxp[d] = (jx[d] + nunit) % nunit;
+	    for_3 jxp[d] = (jx[d] + nunit) % nunit;
 	    int j = getKey(jxp,maxLevel);
 	    real Xperiodic[3] = {0, 0, 0};
-	    for_3d jxp[d] = (jx[d] + nunit) / nunit;
-	    for_3d Xperiodic[d] = (jxp[d] - 1) * 2 * R0;
+	    for_3 jxp[d] = (jx[d] + nunit) / nunit;
+	    for_3 Xperiodic[d] = (jxp[d] - 1) * 2 * R0;
 	    P2PEwald(Leafs[i][0],Leafs[i][1],Leafs[j][0],Leafs[j][1],Xperiodic,
 		     cutoff,alpha,Ibodies2,Jbodies);
 	  }

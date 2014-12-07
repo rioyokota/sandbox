@@ -20,7 +20,7 @@ private:
     for (int i=numBodies-1; i>=0; i--) {
       bucket[key[i]-Imin]--;
       int inew = bucket[key[i]-Imin];
-      for_4d bodies2[inew][d] = bodies[i][d];
+      for_4 bodies2[inew][d] = bodies[i][d];
     }
     delete[] bucket;
   }
@@ -60,7 +60,7 @@ public:
   void initBodies(real cycle) {
     int ix[3] = {0, 0, 0};
     R0 = cycle * .5;
-    for_3d X0[d] = R0;
+    for_3 X0[d] = R0;
     srand48(0);
     real average = 0;
     for (int i=0; i<numBodies; i++) {
@@ -81,13 +81,13 @@ public:
     real diameter = 2 * R0 / (1 << maxLevel);
     int ix[3] = {0, 0, 0};
     for (int i=0; i<numBodies; i++) {
-      for_3d ix[d] = int((Jbodies[i][d] + R0 - X0[d]) / diameter);
+      for_3 ix[d] = int((Jbodies[i][d] + R0 - X0[d]) / diameter);
       key[i] = getKey(ix,maxLevel);
     }
     sort(Jbodies,Ibodies,key);
     for (int i=0; i<numBodies; i++) {
-      for_4d Jbodies[i][d] = Ibodies[i][d];
-      for_4d Ibodies[i][d] = 0;
+      for_4 Jbodies[i][d] = Ibodies[i][d];
+      for_4 Ibodies[i][d] = 0;
     }
     delete[] key;
   }
@@ -95,11 +95,11 @@ public:
   void fillLeafs() const {
     real diameter = 2 * R0 / (1 << maxLevel);
     int ix[3] = {0, 0, 0};
-    for_3d ix[d] = int((Jbodies[0][d] + R0 - X0[d]) / diameter);
+    for_3 ix[d] = int((Jbodies[0][d] + R0 - X0[d]) / diameter);
     int ileaf = getKey(ix,maxLevel,false);
     Leafs[ileaf][0] = 0;
     for (int i=0; i<numBodies; i++) {
-      for_3d ix[d] = int((Jbodies[i][d] + R0 - X0[d]) / diameter);
+      for_3 ix[d] = int((Jbodies[i][d] + R0 - X0[d]) / diameter);
       int inew = getKey(ix,maxLevel,false);
       if (ileaf != inew) {
         Leafs[ileaf][1] = Leafs[inew][0] = i;
@@ -116,18 +116,18 @@ public:
     real Ibodies3[4], Jbodies2[4], dX[3];
     int range = (pow(3,numImages) - 1) / 2;
     for (int i=0; i<100; i++) {
-      for_4d Ibodies3[d] = 0;
-      for_4d Jbodies2[d] = Jbodies[i][d];
+      for_4 Ibodies3[d] = 0;
+      for_4 Jbodies2[d] = Jbodies[i][d];
       int jx[3];
       for (jx[2]=-range; jx[2]<=range; jx[2]++) {
 	for (jx[1]=-range; jx[1]<=range; jx[1]++) {
 	  for (jx[0]=-range; jx[0]<=range; jx[0]++) {	
 	    for (int j=0; j<numBodies; j++) {
-	      for_3d dX[d] = Jbodies2[d] - Jbodies[j][d] - jx[d] * 2 * R0;
+	      for_3 dX[d] = Jbodies2[d] - Jbodies[j][d] - jx[d] * 2 * R0;
 	      real R2 = dX[0] * dX[0] + dX[1] * dX[1] + dX[2] * dX[2];
 	      real invR2 = R2 == 0 ? 0 : 1.0 / R2;
 	      real invR = Jbodies[j][3] * sqrtf(invR2);
-	      for_3d dX[d] *= invR2 * invR;
+	      for_3 dX[d] *= invR2 * invR;
 	      Ibodies3[0] += invR;
 	      Ibodies3[1] -= dX[0];
 	      Ibodies3[2] -= dX[1];
@@ -136,7 +136,7 @@ public:
 	  }
 	}
       }
-      for_4d Ibodies2[i][d] = Ibodies3[d];
+      for_4 Ibodies2[i][d] = Ibodies3[d];
     }
   }
 
@@ -149,8 +149,8 @@ public:
     potDif = (potSum - potSum2) * (potSum - potSum2);
     potNrm = potSum2 * potSum2;
     for (int i=0; i<numTargets; i++) {
-      for_3d accDif += (Ibodies[i][d+1] - Ibodies2[i][d+1]) * (Ibodies[i][d+1] - Ibodies2[i][d+1]);
-      for_3d accNrm += (Ibodies2[i][d+1] * Ibodies2[i][d+1]);
+      for_3 accDif += (Ibodies[i][d+1] - Ibodies2[i][d+1]) * (Ibodies[i][d+1] - Ibodies2[i][d+1]);
+      for_3 accNrm += (Ibodies2[i][d+1] * Ibodies2[i][d+1]);
     }
   }
 };
