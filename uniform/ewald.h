@@ -64,32 +64,32 @@ private:
 
   void dft(real (*Jbodies)[4]) {
 #pragma omp parallel for
-    for (int w=0; w<numWaves; w++) { 
-      waveRe[w] = waveIm[w] = 0;
-      for (int b=0; b<numBodies; b++) {
+    for (int i=0; i<numWaves; i++) { 
+      waveRe[i] = waveIm[i] = 0;
+      for (int j=0; j<numBodies; j++) {
 	real th = 0;
-	for_3 th += waveK[w][d] * Jbodies[b][d] * scale;
-	waveRe[w] += Jbodies[b][3] * cos(th);
-	waveIm[w] += Jbodies[b][3] * sin(th);
+	for_3 th += waveK[i][d] * Jbodies[j][d] * scale;
+	waveRe[i] += Jbodies[j][3] * cos(th);
+	waveIm[i] += Jbodies[j][3] * sin(th);
       }
     }
   }
 
   void idft(real (*Ibodies)[4], real (*Jbodies)[4]) {
 #pragma omp parallel for
-    for (int b=0; b<numBodies; b++) {
-      for (int w=0; w<numWaves; w++) {
+    for (int i=0; i<numBodies; i++) {
+      for (int j=0; j<numWaves; j++) {
 	real th = 0;
-	for_3 th += waveK[w][d] * Jbodies[b][d] * scale;
-	real dtmp = waveRe[w] * sin(th) - waveIm[w] * cos(th);
-	Ibodies[b][0] += waveRe[w] * cos(th) + waveIm[w] * sin(th);
-	for_3 Ibodies[b][d+1] -= dtmp * waveK[w][d] * scale;
+	for_3 th += waveK[j][d] * Jbodies[i][d] * scale;
+	real dtmp = waveRe[j] * sin(th) - waveIm[j] * cos(th);
+	Ibodies[i][0] += waveRe[j] * cos(th) + waveIm[j] * sin(th);
+	for_3 Ibodies[i][d+1] -= dtmp * waveK[j][d] * scale;
       }
     }
   }
 
   void P2PEwald(int ibegin, int iend, int jbegin, int jend, real *Xperiodic,
-		real cutoff, real alpha, real (*Ibodies)[4], real (*Jbodies)[4]) const {
+		real (*Ibodies)[4], real (*Jbodies)[4]) const {
     for (int i=ibegin; i<iend; i++) {
       real Po = 0, Fx = 0, Fy = 0, Fz = 0;
       for (int j=jbegin; j<jend; j++) {
@@ -194,7 +194,7 @@ public:
 	    for_3 jxp[d] = (jx[d] + nunit) / nunit;
 	    for_3 Xperiodic[d] = (jxp[d] - 1) * 2 * R0;
 	    P2PEwald(Leafs[i][0],Leafs[i][1],Leafs[j][0],Leafs[j][1],Xperiodic,
-		     cutoff,alpha,Ibodies2,Jbodies);
+		     Ibodies2,Jbodies);
 	  }
 	}
       }
