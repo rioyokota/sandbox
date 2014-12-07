@@ -60,10 +60,10 @@ int main() {
   FMM.direct();
   FMM.verify(100, potDif, potNrm, accDif, accNrm);
 #else
-  Ewald ewald;
-  ewald.init(numBodies, maxLevel, cycle);
+  Ewald ewald(numBodies, maxLevel, cycle);
   ewald.dipoleCorrection(FMM.Ibodies, FMM.Jbodies);
-  ewald.ewald(FMM.Ibodies2, FMM.Jbodies, FMM.Leafs);
+  ewald.wavePart(FMM.Ibodies2, FMM.Jbodies);
+  ewald.realPart(FMM.Ibodies2, FMM.Jbodies, FMM.Leafs);
   FMM.verify(numBodies, potDif, potNrm, accDif, accNrm);
 #endif
   logger::stopTimer("Verify");
