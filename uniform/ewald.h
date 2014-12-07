@@ -4,6 +4,11 @@
 
 class Ewald {
 private:
+  int ksize;
+  real alpha;
+  real sigma;
+  real cutoff;
+  real scale;
   real R0;
   real X0[3];
 
@@ -85,9 +90,14 @@ private:
   }
   
 public:
-  void init(real _R0, real _X0[3]) {
-    R0 = _R0;
-    for_3d X0[d] = _X0[d];
+  void init(real cycle) {
+    ksize = 11;
+    alpha = 10 / cycle;
+    sigma = .25 / M_PI;
+    cutoff = 10;
+    scale = 2 * M_PI / cycle;
+    R0 = cycle * .5;
+    for_3d X0[d] = R0;
   }
   
   void dipoleCorrection(int numBodies, real cycle, real (*Ibodies)[4], real (*Jbodies)[4]) {
@@ -103,7 +113,7 @@ public:
     }
   }
 
-  int initWaves(int ksize, real *waveRe, real *waveIm, real (*waveK)[3]) {
+  int initWaves(real *waveRe, real *waveIm, real (*waveK)[3]) {
     int numWaves = 0;
     for (int l=0; l<=ksize; l++) {
       int mmin = -ksize;
@@ -128,11 +138,6 @@ public:
   
   void ewald(int numBodies, int maxLevel, real cycle, real (*Ibodies2)[4],
 	     real (*Jbodies)[4], int (*Leafs)[2]) {
-    const int ksize = 11;
-    const real alpha = 10 / cycle;
-    const real sigma = .25 / M_PI;
-    const real cutoff = 10;
-    const real scale = 2 * M_PI / cycle;
     const real coef = .5 / M_PI / M_PI / sigma / cycle;
     const real coef2 = scale * scale / (4 * alpha * alpha);
     int numLeafs = 1 << 3 * maxLevel;
@@ -140,7 +145,7 @@ public:
     real *waveRe = new real [numWaves];
     real *waveIm = new real [numWaves];
     real (*waveK)[3] = new real [numWaves][3]();
-    numWaves = initWaves(ksize, waveRe, waveIm, waveK);
+    numWaves = initWaves(waveRe, waveIm, waveK);
     assert(numWaves < 4. / 3 * M_PI * ksize * ksize * ksize);
     dft(numWaves, numBodies, scale, waveRe, waveIm, waveK, Jbodies);
 #pragma omp parallel for
