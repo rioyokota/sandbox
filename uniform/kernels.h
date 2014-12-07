@@ -26,6 +26,7 @@ public:
   real X0[3];
   real R0;
   real (*Ibodies)[4];
+  real (*Ibodies2)[4];
   real (*Jbodies)[4];
   real (*Multipole)[MTERM];
   real (*Local)[LTERM];
@@ -248,9 +249,9 @@ public:
         for_l Local[i+levelOffset][l] += L[l];
       }
     }
-    //if (numImages > 1) {
+    if (numImages > 1) {
       M2LPeriodic();
-      //}
+    }
   }
 
   void L2L() const {
