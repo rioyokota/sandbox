@@ -1,3 +1,4 @@
+#include "ewald.h"
 #include "fmm.h"
 #include "logger.h"
 
