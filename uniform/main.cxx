@@ -7,12 +7,13 @@ int main() {
   const int ncrit = 100;
   const int maxLevel = numBodies >= ncrit ? 1 + int(log(numBodies / ncrit)/M_LN2/3) : 0;
   const int numNeighbors = 1;
+  const int numImages = 1;
 
   logger::verbose = true;
   logger::printTitle("FMM Profiling");
 
   logger::startTimer("Allocate");
-  FMM.allocate(numBodies, maxLevel, numNeighbors);
+  FMM.allocate(numBodies, maxLevel, numNeighbors, numImages);
   logger::stopTimer("Allocate");
 
   logger::startTimer("Init bodies");

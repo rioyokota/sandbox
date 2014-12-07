@@ -26,10 +26,11 @@ private:
   }
 
 public:
-  void allocate(int NumBodies, int MaxLevel, int NumNeighbors) {
+  void allocate(int NumBodies, int MaxLevel, int NumNeighbors, int NumImages) {
     numBodies = NumBodies;
     maxLevel = MaxLevel;
     numNeighbors = NumNeighbors;
+    numImages = NumImages;
     numCells = ((1 << 3 * (maxLevel + 1)) - 1) / 7;
     numLeafs = 1 << 3 * maxLevel;
     Ibodies = new real [numBodies][4]();
@@ -110,20 +111,28 @@ public:
   }
 
   void verify(real & potDif, real & potNrm, real & accDif, real & accNrm) {
+    int range = (pow(3,numImages) - 1) / 2;
     for (int i=0; i<100; i++) {
       real Ibodies2[4] = {0, 0, 0, 0};
       real Jbodies2[4], dX[3];
       for_4d Jbodies2[d] = Jbodies[i][d];
-      for (int j=0; j<numBodies; j++) {
-	for_3d dX[d] = Jbodies2[d] - Jbodies[j][d];
-	real R2 = dX[0] * dX[0] + dX[1] * dX[1] + dX[2] * dX[2];
-	real invR2 = R2 == 0 ? 0 : 1.0 / R2;
-	real invR = Jbodies[j][3] * sqrtf(invR2);
-	for_3d dX[d] *= invR2 * invR;
-	Ibodies2[0] += invR;
-	Ibodies2[1] -= dX[0];
-	Ibodies2[2] -= dX[1];
-	Ibodies2[3] -= dX[2];
+      int jx[3];
+      for (jx[2]=-range; jx[2]<=range; jx[2]++) {
+	for (jx[1]=-range; jx[1]<=range; jx[1]++) {
+	  for (jx[0]=-range; jx[0]<=range; jx[0]++) {	
+	    for (int j=0; j<numBodies; j++) {
+	      for_3d dX[d] = Jbodies2[d] - Jbodies[j][d] - jx[d] * 2 * R0;
+	      real R2 = dX[0] * dX[0] + dX[1] * dX[1] + dX[2] * dX[2];
+	      real invR2 = R2 == 0 ? 0 : 1.0 / R2;
+	      real invR = Jbodies[j][3] * sqrtf(invR2);
+	      for_3d dX[d] *= invR2 * invR;
+	      Ibodies2[0] += invR;
+	      Ibodies2[1] -= dX[0];
+	      Ibodies2[2] -= dX[1];
+	      Ibodies2[3] -= dX[2];
+	    }
+	  }
+	}
       }
       potDif += (Ibodies[i][0] - Ibodies2[0]) * (Ibodies[i][0] - Ibodies2[0]);
       potNrm += Ibodies2[0] * Ibodies2[0];
