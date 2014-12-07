@@ -3,6 +3,31 @@
 #include <cstdio>
 #include "kernels.h"
 
+class Ewald {
+private:
+  real R0;
+  real X0[3];
+
+public:
+  void init(real r0, real x0[3]) {
+    R0 = r0;
+    for_3d X0[d] = x0[d];
+  }
+  
+  void dipoleCorrection(int numBodies, real cycle, real (*Ibodies)[4], real (*Jbodies)[4]) {
+    real dipole[3] = {0, 0, 0};
+    for (int i=0; i<numBodies; i++) {
+      for_3d dipole[d] += (Jbodies[i][d] - X0[d]) * Jbodies[i][3];
+    }
+    real norm = dipole[0] * dipole[0] + dipole[1] * dipole[1] + dipole[2] * dipole[2];
+    real coef = 4 * M_PI / (3 * cycle * cycle * cycle);
+    for (int i=0; i<numBodies; i++) {
+      Ibodies[i][0] -= coef * norm / numBodies / Jbodies[i][3];
+      for_3d Ibodies[i][d+1] -= coef * dipole[d];
+    }
+  }
+};
+
 class Fmm : public Kernel {
 private:
   void sort(real (*bodies)[4], real (*bodies2)[4], int *key) const {
@@ -140,6 +165,7 @@ public:
     }
   }
 
+  /*
   void dipoleCorrection(int numBodies, real cycle, real (*Ibodies)[4], real (*Jbodies)[4]) {
     real dipole[3] = {0, 0, 0};
     for (int i=0; i<numBodies; i++) {
@@ -152,6 +178,7 @@ public:
       for_3d Ibodies[i][d+1] -= coef * dipole[d];
     }
   }
+  */
   
   inline void getIndex2(int *ix, int index) const {
     for_3d ix[d] = 0;
