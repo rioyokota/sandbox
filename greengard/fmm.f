@@ -247,9 +247,8 @@ c     ... for all pairs in list #2, apply the translation operator
                do 4150 ilist=1,nlist
                   jbox=list(ilist)
                   call getCell(jbox,box1,nboxes,center1,corners1)
-                  if (box1(15).eq.0) goto 4150
-                  if ((box(17).eq.0).and.(ifprune_list2.eq.1))
-     $                 goto 4150
+                  if (box1(15).eq.0) cycle
+                  if ((box(17).eq.0).and.(ifprune_list2.eq.1)) cycle
                   radius = (corners1(1,1) - center1(1))**2
                   radius = radius + (corners1(2,1) - center1(2))**2
                   radius = radius + (corners1(3,1) - center1(3))**2
@@ -299,7 +298,7 @@ c$omp$private(i,j,ptemp,ftemp,cd)
 c     ... split local expansion of the parent box
                   do 5100 i = 1,8
                      jbox = box(5+i)
-                     if (jbox.eq.0) goto 5100
+                     if (jbox.eq.0) cycle
                      call getCell(jbox,box1,nboxes,center1,corners1)
                      radius = (corners1(1,1) - center1(1))**2
                      radius = radius + (corners1(2,1) - center1(2))**2
