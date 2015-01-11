@@ -1,15 +1,16 @@
       program main
-      implicit real *8 (a-h,o-z)
-      integer     ibox(20),jbox(20)
-      real *8     source(3,1000000)
+      use omp_lib, only : omp_get_wtime
+      implicit none
+      integer nsource,ntarget,i,iprec
+      integer ibox(20),jbox(20)
+      real *8 pi,tic,toc,pdiff,pnorm,fdiff,fnorm
+      real *8 source(3,1000000)
       complex *16 charge(1000000)
       complex *16 pot(1000000)
       complex *16 fld(3,1000000)
       complex *16 pot2(1000000)
       complex *16 fld2(3,1000000)
-      complex *16 ima
-      complex *16 wavek
-      data ima/(0.0d0,1.0d0)/
+      complex *16 wavek,ima/(0.0d0,1.0d0)/
       pi=4*atan(1.0d0)
       nsource= 100000
       wavek = 1.0d0 + ima*0.1d0

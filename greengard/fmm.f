@@ -7,7 +7,7 @@
       integer box(20),nterms(0:200)
       integer, allocatable :: iaddr(:)
       integer, allocatable :: isource(:)
-      real *8 tic,toc,epsfmm,size,boxsize,wavek
+      real *8 tic,toc,epsfmm,size,boxsize
       real *8 Xj(3,numBodies)
       real *8 Xjd(3,numBodies)
       real *8 bsize(0:200)
@@ -17,7 +17,7 @@
       real *8 corners0(3,8)
       real *8, allocatable :: Multipole(:)
       real *8, allocatable :: Local(:)
-      complex *16 imag
+      complex *16 imag,wavek
       complex *16 qj(numBodies)
       complex *16 qjd(2*numBodies)
       complex *16 pi(numBodies)
@@ -101,33 +101,33 @@ c$    toc=omp_get_wtime()
      1     epsfmm,iaddr,Multipole,Local,
      1     nboxes,nlev,scale,bsize,nterms)
       use arrays, only : listOffset,lists,levelOffset
-      implicit real *8 (a-h,o-z)
-      dimension sourcesort(3,1),isource(1)
-      complex *16 chargesort(1),wavek
-      complex *16 imag
-      complex *16 pot(1)
-      complex *16 fld(3,1)
-      dimension iaddr(nboxes)
+      use omp_lib, only : omp_get_wtime
+      implicit none
+      integer Pmax,i,j,numBodies,lw7,itype,nlev,ibox,ilev,npts,numChild
+      integer ifprune,nquad,level,level0,level1,ilist,nbessel,iprec
+      integer ifprune_list2,jbox,nlist,ifdirect2,nterms_trunc,ii,jj,kk
+      integer ifcharge,nboxes
+      integer box(20),box1(20),iaddr(nboxes),nterms(0:200),list(10000)
+      integer itable(-3:3,-3:3,-3:3)
+      integer nterms_eval(4,0:200)
+      real *8 tic,toc,epsfmm,radius,cd
+      real *8 center(3),center0(3),corners0(3,8)
+      real *8 center1(3),corners1(3,8)
+      real *8 sourcesort(3,1),isource(1)
       real *8 Multipole(1),Local(1),xquad(10000),wquad(10000)
-      dimension center(3)
-      dimension scale(0:200)
-      dimension bsize(0:200)
-      dimension nterms(0:200)
-      dimension list(10 000)
-      complex *16 ptemp,ftemp(3)
-      integer Pmax,box(20)
-      dimension center0(3),corners0(3,8)
-      integer box1(20)
-      dimension center1(3),corners1(3,8)
-      dimension itable(-3:3,-3:3,-3:3)
-      dimension Anm1(0:200,0:200)
-      dimension Anm2(0:200,0:200)
-      dimension nterms_eval(4,0:200)
-      complex *16 pottarg(1),fldtarg(3,1)
+      real *8 scale(0:200),bsize(0:200)
+      real *8 Anm1(0:200,0:200)
+      real *8 Anm2(0:200,0:200)
+      real *8 rvec(3)
       real *8, allocatable :: rotmatf(:,:,:,:)
       real *8, allocatable :: rotmatb(:,:,:,:)
       real *8, allocatable :: thetas(:,:,:)
-      real *8 rvec(3)
+      complex *16 imag,wavek
+      complex *16 pot(1)
+      complex *16 fld(3,1)
+      complex *16 ptemp,ftemp(3)
+      complex *16 chargesort(1)
+      complex *16 pottarg(1),fldtarg(3,1)
       data imag/(0.0d0,1.0d0)/, tic/0.0d0/, toc/0.0d0/
 c     ... set the potential and field to zero
       do i=1,numBodies
