@@ -225,7 +225,7 @@ c$    toc=omp_get_wtime()
 
 c     ... step 3, M2L
 c$    tic=omp_get_wtime()
-      do 4300 ilev=3,nlev+1
+      do ilev=3,nlev+1
          call getNumTermsList(bsize(ilev-1),wavek,epsfmm,itable)
          nquad=nterms(ilev-1)*1.2
          nquad=max(6,nquad)
@@ -236,7 +236,7 @@ c$omp$private(jbox,box1,center1,corners1,level1,ifdirect2,radius)
 c$omp$private(i,j,ptemp,ftemp,cd,ilist,itype)
 c$omp$private(nterms_trunc,ii,jj,kk)
 c$omp$schedule(dynamic)
-         do 4200 ibox=levelOffset(ilev),levelOffset(ilev+1)-1
+         do ibox=levelOffset(ilev),levelOffset(ilev+1)-1
             call getCell(ibox,box,nboxes,center0,corners0)
             level0=box(1)
             if (level0 .ge. 2) then
@@ -244,7 +244,7 @@ c     ... retrieve list #2
                itype=2
                call getList(itype,ibox,nboxes,list,nlist)
 c     ... for all pairs in list #2, apply the translation operator
-               do 4150 ilist=1,nlist
+               do ilist=1,nlist
                   jbox=list(ilist)
                   call getCell(jbox,box1,nboxes,center1,corners1)
                   if (box1(15).eq.0) cycle
@@ -271,16 +271,16 @@ c     ... if source is childless, evaluate directly (if cheaper)
      1                 nterms(level0),nterms_trunc,
      1                 radius,xquad,wquad,nquad,nbessel,
      1                 Anm1,Anm2,Pmax)
- 4150          continue
+               enddo
             endif
- 4200    continue
- 4300 continue
+         enddo
+      enddo
 c$    toc=omp_get_wtime()
       print*,'M2L    =',toc-tic
 
 c     ... step 4, L2L
 c$    tic=omp_get_wtime()
-      do 5300 ilev=3,nlev
+      do ilev=3,nlev
          nquad=nterms(ilev-1)*2
          nquad=max(6,nquad)
          call legendre(nquad,xquad,wquad)
@@ -289,14 +289,14 @@ c$omp$private(ibox,box,center0,corners0,level0)
 c$omp$private(level,npts,numChild,radius)
 c$omp$private(jbox,box1,center1,corners1,level1)
 c$omp$private(i,j,ptemp,ftemp,cd)
-         do 5200 ibox=levelOffset(ilev),levelOffset(ilev+1)-1
+         do ibox=levelOffset(ilev),levelOffset(ilev+1)-1
             call getCell(ibox,box,nboxes,center0,corners0)
             call getNumChild(box,numChild)
             if (numChild .ne. 0) then
                level0=box(1)
                if (level0 .ge. 2) then
 c     ... split local expansion of the parent box
-                  do 5100 i = 1,8
+                  do i = 1,8
                      jbox = box(5+i)
                      if (jbox.eq.0) cycle
                      call getCell(jbox,box1,nboxes,center1,corners1)
@@ -313,12 +313,12 @@ c     ... split local expansion of the parent box
      1                    nterms(level1),
      1                    radius,xquad,wquad,nquad,nbessel,
      1                    Anm1,Anm2,Pmax)
- 5100             continue
+                  enddo
                endif
             endif
- 5200    continue
+         enddo
 c$omp end parallel do
- 5300 continue
+      enddo
 c$    toc=omp_get_wtime()
       print*,'L2L    =',toc-tic
 

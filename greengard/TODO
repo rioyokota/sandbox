@@ -5,7 +5,6 @@
 - Use common blocks
 
 Use implicit none
-Remove goto
 Remove continue
 Allocatable -> Static array
 ibox -> Ci

@@ -270,14 +270,14 @@ c
       ymax=z(2,1)
       zmin=z(3,1)
       zmax=z(3,1)
-      do 1100 i=1,n
+      do i=1,n
          if(z(1,i) .lt. xmin) xmin=z(1,i)
          if(z(1,i) .gt. xmax) xmax=z(1,i)
          if(z(2,i) .lt. ymin) ymin=z(2,i)
          if(z(2,i) .gt. ymax) ymax=z(2,i)
          if(z(3,i) .lt. zmin) zmin=z(3,i)
          if(z(3,i) .gt. zmax) zmax=z(3,i)
- 1100 continue
+      enddo
       size=xmax-xmin
       sizey=ymax-ymin
       sizez=zmax-zmin
@@ -311,10 +311,9 @@ c
       levelOffset(1)=1
       levelOffset(2)=2
 c     
-      do 1200 i=1,n 
+      do i=1,n 
          iz(i)=i
- 1200 continue
-c     
+      enddo
 c     recursively (one level after another) subdivide all 
 c     boxes till none are left with more than ncrit particles
       maxChild=maxboxes
@@ -487,7 +486,6 @@ c     center0, and the side size
       y0=center0(2)-size/2
       z0=center0(3)-size/2
       level0=level
- 1200 continue
       center(1)=x0+(i-1)*side+side2
       center(2)=y0+(j-1)*side+side2
       center(3)=z0+(k-1)*side+side2
@@ -668,10 +666,9 @@ c
       i2=i2+1
       iwork(i2)=j
       enddo
-c     
-      do 1600 i=1,i2
+      do i=1,i2
          iz(i1+i)=iwork(i)
- 1600 continue
+      enddo
       n1=i1
       return
       end
