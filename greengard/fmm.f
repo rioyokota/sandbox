@@ -17,15 +17,14 @@
       real *8 corners0(3,8)
       real *8, allocatable :: Multipole(:)
       real *8, allocatable :: Local(:)
-      complex *16 imag,wavek
+      complex *16 wavek
       complex *16 qj(numBodies)
       complex *16 qjd(2*numBodies)
       complex *16 pi(numBodies)
       complex *16 Fi(3,numBodies)
       complex *16 pid(numBodies)
       complex *16 Fid(3,numBodies)
-      complex *16 ptemp,ftemp(3)
-      data imag/(0.0d0,1.0d0)/, tic/0.0d0/, toc/0.0d0/
+      data tic/0.0d0/, toc/0.0d0/
 c     set fmm tolerance based on iprec flag.
       if( iprec .eq. -2 ) epsfmm=.5d-0
       if( iprec .eq. -1 ) epsfmm=.5d-1
@@ -83,7 +82,7 @@ c$    tic=omp_get_wtime()
       allocate(Local(lmptot))
 c$    toc=omp_get_wtime()
       print*,'Tree   =',toc-tic
-      call evaluate(iprec,wavek,numBodies,Xjd,isource,
+      call evaluate(wavek,numBodies,Xjd,
      1     1,qjd,pid,Fid,epsfmm,iaddr,Multipole,Local,
      1     nboxes,nlev,scale,bsize,nterms)
       do i=1,numBodies
@@ -95,8 +94,8 @@ c$    toc=omp_get_wtime()
       return
       end
 
-      subroutine evaluate(iprec,wavek,
-     1     numBodies,sourcesort,isource,
+      subroutine evaluate(wavek,
+     1     numBodies,sourcesort,
      1     ifcharge,chargesort,pot,fld,
      1     epsfmm,iaddr,Multipole,Local,
      1     nboxes,nlev,scale,bsize,nterms)
@@ -104,7 +103,7 @@ c$    toc=omp_get_wtime()
       use omp_lib, only : omp_get_wtime
       implicit none
       integer Pmax,i,j,numBodies,lw7,itype,nlev,ibox,ilev,npts,numChild
-      integer ifprune,nquad,level,level0,level1,ilist,nbessel,iprec
+      integer ifprune,nquad,level,level0,level1,ilist,nbessel
       integer ifprune_list2,jbox,nlist,ifdirect2,nterms_trunc,ii,jj,kk
       integer ifcharge,nboxes
       integer box(20),box1(20),iaddr(nboxes),nterms(0:200),list(10000)
@@ -113,7 +112,7 @@ c$    toc=omp_get_wtime()
       real *8 tic,toc,epsfmm,radius,cd
       real *8 center(3),center0(3),corners0(3,8)
       real *8 center1(3),corners1(3,8)
-      real *8 sourcesort(3,1),isource(1)
+      real *8 sourcesort(3,1)
       real *8 Multipole(1),Local(1),xquad(10000),wquad(10000)
       real *8 scale(0:200),bsize(0:200)
       real *8 Anm1(0:200,0:200)
@@ -122,13 +121,12 @@ c$    toc=omp_get_wtime()
       real *8, allocatable :: rotmatf(:,:,:,:)
       real *8, allocatable :: rotmatb(:,:,:,:)
       real *8, allocatable :: thetas(:,:,:)
-      complex *16 imag,wavek
+      complex *16 wavek
       complex *16 pot(1)
       complex *16 fld(3,1)
-      complex *16 ptemp,ftemp(3)
       complex *16 chargesort(1)
       complex *16 pottarg(1),fldtarg(3,1)
-      data imag/(0.0d0,1.0d0)/, tic/0.0d0/, toc/0.0d0/
+      data tic/0.0d0/, toc/0.0d0/
 c     ... set the potential and field to zero
       do i=1,numBodies
          pot(i)=0
@@ -159,7 +157,7 @@ c$    tic=omp_get_wtime()
       do ilev=3,nlev+1
 c$omp parallel do default(shared)
 c$omp$private(ibox,box,center0,corners0,level,npts,numChild,radius)
-c$omp$private(i,j,ptemp,ftemp,cd)
+c$omp$private(i,j,cd)
          do ibox=levelOffset(ilev),levelOffset(ilev+1)-1
             call getCell(ibox,box,nboxes,center0,corners0)
             call getNumChild(box,numChild)
@@ -193,7 +191,7 @@ c$omp parallel do default(shared)
 c$omp$private(ibox,box,center0,corners0,level0)
 c$omp$private(level,npts,numChild,radius)
 c$omp$private(jbox,box1,center1,corners1,level1)
-c$omp$private(i,j,ptemp,ftemp,cd)
+c$omp$private(i,j,cd)
          do ibox=levelOffset(ilev),levelOffset(ilev+1)-1
             call getCell(ibox,box,nboxes,center0,corners0)
             call getNumChild(box,numChild)
@@ -235,7 +233,7 @@ c$    tic=omp_get_wtime()
 c$omp parallel do default(shared)
 c$omp$private(ibox,box,center0,corners0,list,nlist)
 c$omp$private(jbox,box1,center1,corners1,level1,ifdirect2,radius)
-c$omp$private(i,j,ptemp,ftemp,cd,ilist,itype)
+c$omp$private(i,j,cd,ilist,itype)
 c$omp$private(nterms_trunc,ii,jj,kk)
 c$omp$schedule(dynamic)
          do ibox=levelOffset(ilev),levelOffset(ilev+1)-1
@@ -290,7 +288,7 @@ c$omp parallel do default(shared)
 c$omp$private(ibox,box,center0,corners0,level0)
 c$omp$private(level,npts,numChild,radius)
 c$omp$private(jbox,box1,center1,corners1,level1)
-c$omp$private(i,j,ptemp,ftemp,cd)
+c$omp$private(i,j,cd)
          do ibox=levelOffset(ilev),levelOffset(ilev+1)-1
             call getCell(ibox,box,nboxes,center0,corners0)
             call getNumChild(box,numChild)

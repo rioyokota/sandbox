@@ -92,9 +92,9 @@ c     lists 2, 5 of the box ibox
             kid=kids(i)
             call intersect(corners(1,1,kid),corners(1,1,ibox),ifinter)
             if(ifinter.eq.1)
-     $           call setList(5,ibox,nboxes,kid,1)
+     $           call setList(5,ibox,kid)
             if(ifinter.eq.0)
-     $           call setList(2,ibox,nboxes,kid,1)
+     $           call setList(2,ibox,kid)
          enddo
       enddo
 c     now, construct lists 1, 3
@@ -110,7 +110,7 @@ c     now, construct lists 1, 3
       do ibox=1,nboxes
          call getList(3,ibox,list5,nlist)
          do j=1,nlist
-            call setList(4,list5(j),nboxes,ibox,1)
+            call setList(4,list5(j),ibox)
          enddo
       enddo
       return
@@ -138,7 +138,7 @@ c     enter this fact in the parent's table; pass control
 c     to the parent
          call intersect(corners(1,1,ibox),corners(1,1,jbox),ifinter)
          if(ifinter .eq. 1) exit
-         call setList(3,ibox,nboxes,jbox,1)
+         call setList(3,ibox,jbox)
 c     if storage capacity has been exceeed - bomb
          istack=istack-1
          stack(3,istack)=stack(3,istack)-1
@@ -148,12 +148,12 @@ c     this box is not separated from ibox. if it is childless
 c     - enter it in list 1; enter this fact in the parent's table;
 c     pass control to the parent
       if(boxes(6,jbox) .eq. 0) then
-         call setList(1,ibox,nboxes,jbox,1)
+         call setList(1,ibox,jbox)
 c     . . . entered jbox in the list1 of ibox; if jbox
 c     is on the finer level than ibox - enter ibox
 c     in the list 1 of jbox
          if(boxes(1,jbox) .ne. boxes(1,ibox)) then
-            call setList(1,jbox,nboxes,ibox,1)
+            call setList(1,jbox,ibox)
          endif
 c     if we have processed the whole box jbox0, get out
 c     of the subroutine
@@ -591,19 +591,16 @@ c     store the information about the sonnies in appropriate arrays
       return
       end
 
-      subroutine setList(itype,ibox,nboxes,list,nlist)
+      subroutine setList(itype,ibox,list)
       use arrays, only : listOffset,lists
       implicit none
-      integer ilast,ibox,itype,nlist,i,numele,nboxes
-      integer list(*)
+      integer ilast,ibox,itype,list,i,numele,nboxes
       data numele/0/
       ilast=listOffset(ibox,itype)
-      do i=1,nlist
-         numele=numele+1
-         lists(1,numele)=ilast
-         lists(2,numele)=list(i)
-         ilast=numele
-      enddo
+      numele=numele+1
+      lists(1,numele)=ilast
+      lists(2,numele)=list
+      ilast=numele
       listOffset(ibox,itype)=ilast
       return
       end
