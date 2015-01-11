@@ -217,7 +217,8 @@ c     of the subroutine
 
       subroutine getCenter(ibox,center,corner)
       use arrays, only : centers,corners
-      implicit real *8 (a-h,o-z)
+      implicit none
+      integer i,ibox
       real *8 center(3),corner(3,8)
       center(1)=centers(1,ibox)
       center(2)=centers(2,ibox)
@@ -234,10 +235,15 @@ c     of the subroutine
      1     nboxes,iz,nlev,center0,size,
      1     minlevel,maxlevel)
       use arrays, only : levelOffset
-      implicit real *8 (a-h,o-z)
+      implicit none
+      integer i,maxChild,maxlev,maxlevel,ichild,nlev,level,nlevChild
+      integer iparent,nump,numt,ncrit,minlevel,ii,jj,kk,n
+      integer maxboxes,iiz,nz,ic,lll,iichild,jjson,kkson,nboxes,level1
       integer boxes(20,*),iz(*),iwork(n),
      1     is(8),ns(8),
      1     iichilds(8),jjchilds(8),kkchilds(8)
+      real *8 xmin,xmax,ymin,ymax,zmin,zmax
+      real *8 size,sizey,sizez
       real *8 z(3,*),center0(3),center(3)
       data kkchilds/1,1,1,1,2,2,2,2/,jjchilds/1,1,2,2,1,1,2,2/,
      1     iichilds/1,2,1,2,1,2,1,2/
@@ -366,7 +372,9 @@ c     store in array boxes all information about this son
 
       subroutine setCenter(center0,size,nboxes)
       use arrays, only : boxes,centers,corners
-      implicit real *8 (a-h,o-z)
+      implicit none
+      integer i,nboxes,level,ii,jj,kk
+      real *8 x00,y00,z00,side,side2,size
       real *8 center(3),center0(3)
 c     this subroutine produces arrays of centers and
 c     corners for all boxes in the oct-tree structure.
@@ -429,7 +437,9 @@ c     corners - the corners of all boxes in the array boxes
       end
 
       subroutine findCenter(center0,size,level,i,j,k,center)
-      implicit real *8 (a-h,o-z)
+      implicit none
+      integer level0,level,i,j,k
+      real *8 side,side2,size,x0,y0,z0
       real *8 center(3),center0(3)
       data level0/-1/
 c     this subroutine finds the center of the box
