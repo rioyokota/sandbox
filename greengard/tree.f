@@ -1,18 +1,18 @@
       subroutine buildTree(Xj,numBodies,ncrit,
-     $     nboxes,isource,nlev,center,size)
+     $     nboxes,permutation,nlev,center,size)
       use arrays, only : listOffset,lists,levelOffset,nodes,boxes,
      $     centers,corners
       implicit none
       integer i,j,numBodies,ncrit,nboxes,nlev
-      integer isource(*)
+      integer permutation(*)
       real *8 size
       real *8 Xj(3,*),center(3)
       do i=1,numBodies
-         isource(i)=i
+         permutation(i)=i
       enddo
       allocate(nodes(20,numBodies))
       call growTree(Xj,numBodies,ncrit,nodes,numBodies,
-     $     nboxes,isource,nlev,center,size,0,100)
+     $     nboxes,permutation,nlev,center,size,0,100)
       allocate(listOffset(nboxes,5))
       allocate(lists(2,189*nboxes))
       allocate(boxes(20,nboxes))
@@ -231,35 +231,35 @@ c     of the subroutine
       return
       end
 
-      subroutine growTree(z,n,ncrit,boxes,maxboxes,
+      subroutine growTree(Xj,numBodies,ncrit,boxes,maxboxes,
      1     nboxes,iz,nlev,center0,size,
      1     minlevel,maxlevel)
       use arrays, only : levelOffset
       implicit none
       integer i,maxChild,maxlev,maxlevel,ichild,nlev,level,nlevChild
-      integer iparent,nump,numt,ncrit,minlevel,ii,jj,kk,n
+      integer iparent,nump,numt,ncrit,minlevel,ii,jj,kk,numBodies
       integer maxboxes,iiz,nz,ic,lll,iichild,jjchild,kkchild
       integer nboxes,level1
-      integer boxes(20,*),iz(*),iwork(n),is(8),ns(8),
+      integer boxes(20,*),iz(*),iwork(numBodies),is(8),ns(8),
      1     iichilds(8),jjchilds(8),kkchilds(8)
       real *8 xmin,xmax,ymin,ymax,zmin,zmax
       real *8 size,sizey,sizez
-      real *8 z(3,*),center0(3),center(3)
+      real *8 Xj(3,*),center0(3),center(3)
       data kkchilds/1,1,1,1,2,2,2,2/,jjchilds/1,1,2,2,1,1,2,2/,
      1     iichilds/1,2,1,2,1,2,1,2/
-      xmin=z(1,1)
-      xmax=z(1,1)
-      ymin=z(2,1)
-      ymax=z(2,1)
-      zmin=z(3,1)
-      zmax=z(3,1)
-      do i=1,n
-         if(z(1,i) .lt. xmin) xmin=z(1,i)
-         if(z(1,i) .gt. xmax) xmax=z(1,i)
-         if(z(2,i) .lt. ymin) ymin=z(2,i)
-         if(z(2,i) .gt. ymax) ymax=z(2,i)
-         if(z(3,i) .lt. zmin) zmin=z(3,i)
-         if(z(3,i) .gt. zmax) zmax=z(3,i)
+      xmin=Xj(1,1)
+      xmax=Xj(1,1)
+      ymin=Xj(2,1)
+      ymax=Xj(2,1)
+      zmin=Xj(3,1)
+      zmax=Xj(3,1)
+      do i=1,numBodies
+         if(Xj(1,i) .lt. xmin) xmin=Xj(1,i)
+         if(Xj(1,i) .gt. xmax) xmax=Xj(1,i)
+         if(Xj(2,i) .lt. ymin) ymin=Xj(2,i)
+         if(Xj(2,i) .gt. ymax) ymax=Xj(2,i)
+         if(Xj(3,i) .lt. zmin) zmin=Xj(3,i)
+         if(Xj(3,i) .gt. zmax) zmax=Xj(3,i)
       enddo
       size=xmax-xmin
       sizey=ymax-ymin
@@ -283,16 +283,16 @@ c     of the subroutine
       boxes(12,1)=0
       boxes(13,1)=0
       boxes(14,1)=1
-      boxes(15,1)=n
+      boxes(15,1)=numBodies
       boxes(16,1)=1
       boxes(17,1)=0
-      if( n .le. 0 ) boxes(18,1)=0
-      if( n .gt. 0 ) boxes(18,1)=1
+      if( numBodies .le. 0 ) boxes(18,1)=0
+      if( numBodies .gt. 0 ) boxes(18,1)=1
       boxes(19,1)=0
       boxes(20,1)=0
       levelOffset(1)=1
       levelOffset(2)=2
-      do i=1,n
+      do i=1,numBodies
          iz(i)=i
       enddo
 c     recursively (one level after another) subdivide all
@@ -322,7 +322,7 @@ c     ... not a leaf node on sources or targets
             call findCenter(center0,size,level,ii,jj,kk,center)
             iiz=boxes(14,iparent)
             nz=boxes(15,iparent)
-            call reorder(center,z,iz(iiz),nz,iwork,is,ns)
+            call reorder(center,Xj,iz(iiz),nz,iwork,is,ns)
             ic=6
             do i=1,8
                if(ns(i).eq.0) cycle

@@ -11,7 +11,7 @@
       complex *16 pi2(1000000)
       complex *16 Fi2(3,1000000)
       complex *16 wavek,imag/(0.0d0,1.0d0)/
-      numBodies= 100000
+      numBodies = 100000
       wavek = 1.0d0 + imag*0.1d0
       call random_number(Xj)
       print*,'N      =',numBodies
@@ -20,12 +20,10 @@
       do i=1,numBodies
          qj(i)=Xj(1,i)+imag*Xj(2,i)
       enddo
-c     FMM
 c$    tic=omp_get_wtime()
       call fmm(iprec,wavek,numBodies,Xj,qj,pi,Fi)
 c$    toc=omp_get_wtime()
       print*,'FMM    =',toc-tic
-c     Direct
       numTarget = min(numBodies,100)
       do i=1,numTarget
          pi2(i) = 0

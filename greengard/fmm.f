@@ -6,7 +6,7 @@
       integer level,lmptot
       integer box(20),nterms(0:200)
       integer, allocatable :: iaddr(:)
-      integer, allocatable :: isource(:)
+      integer, allocatable :: permutation(:)
       real *8 epsfmm,size,boxsize,tic/0.0d0/,toc/0.0d0/
       real *8 Xj(3,numBodies)
       real *8 Xjd(3,numBodies)
@@ -45,11 +45,11 @@ c     set criterion for box subdivision (number of sources per box)
       if( iprec .eq. 5 ) ncrit=1400
       if( iprec .eq. 6 ) ncrit=numBodies
 c     create oct-tree data structure
-      allocate (isource(numBodies))
+      allocate (permutation(numBodies))
       allocate (levelOffset(200)) 
 c$    tic=omp_get_wtime() 
       call buildTree(Xj,numBodies,ncrit,
-     1     nboxes,isource,nlev,center,size)
+     1     nboxes,permutation,nlev,center,size)
       allocate(iaddr(nboxes))
       do i = 0,nlev
          scale(i) = 1.0d0
@@ -63,10 +63,10 @@ c$    tic=omp_get_wtime()
          if (nterms(i).gt. nmax .and. i.ge. 2) nmax = nterms(i)
       enddo
       do i = 1,numBodies
-         Xjd(1,i) = Xj(1,isource(i))
-         Xjd(2,i) = Xj(2,isource(i))
-         Xjd(3,i) = Xj(3,isource(i))
-         qjd(i) = qj(isource(i))
+         Xjd(1,i) = Xj(1,permutation(i))
+         Xjd(2,i) = Xj(2,permutation(i))
+         Xjd(3,i) = Xj(3,permutation(i))
+         qjd(i) = qj(permutation(i))
       enddo
       iptr=1
       do ibox=1,nboxes
@@ -84,10 +84,10 @@ c$    toc=omp_get_wtime()
      1     qjd,pid,Fid,epsfmm,iaddr,Multipole,Local,
      1     nboxes,nlev,scale,bsize,nterms)
       do i=1,numBodies
-         pi(isource(i))=pid(i)
-         Fi(1,isource(i))=Fid(1,i)
-         Fi(2,isource(i))=Fid(2,i)
-         Fi(3,isource(i))=Fid(3,i)
+         pi(permutation(i))=pid(i)
+         Fi(1,permutation(i))=Fid(1,i)
+         Fi(2,permutation(i))=Fid(2,i)
+         Fi(3,permutation(i))=Fid(3,i)
       enddo
       return
       end
