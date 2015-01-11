@@ -147,7 +147,7 @@ c
       stack(3,1)=nchilds
 c     . . . move up and down the stack, generating the elements 
 c     of lists 1, 3 for the box jbox, as appropriate
-      do 5000 ijk=1,1 000 000 000
+      do ijk=1,1 000 000 000
 c     
 c     if this box is separated from ibox - store it in list 3;
 c     enter this fact in the parent's table; pass control
@@ -155,7 +155,7 @@ c     to the parent
 c     
          call intersect(corners(1,1,ibox),corners(1,1,jbox),ifinter)
 c     
-         if(ifinter .eq. 1) goto 2000
+         if(ifinter .eq. 1) exit
          call setList(itype3,ibox,nboxes,jbox,nlist1)
 c     
 c     if storage capacity has been exceeed - bomb
@@ -163,80 +163,29 @@ c
          istack=istack-1
          stack(3,istack)=stack(3,istack)-1
          jbox=stack(2,istack)
-         goto 5000
- 2000    continue
+      enddo
 c     
 c     this box is not separated from ibox. if it is childless 
 c     - enter it in list 1; enter this fact in the parent's table; 
 c     pass control to the parent
 c     
-         if(boxes(6,jbox) .ne. 0) goto 3000
+      if(boxes(6,jbox) .eq. 0) then
          call setList(itype1,ibox,nboxes,jbox,nlist1)
-c     
-c     if storage capacity has been exceeed - bomb
-c     
 c     . . . entered jbox in the list1 of ibox; if jbox
 c     is on the finer level than ibox - enter ibox
 c     in the list 1 of jbox
-c     
-         if(boxes(1,jbox) .eq. boxes(1,ibox)) goto 2400
-         call setList(itype1,jbox,nboxes,ibox,nlist1)
-c     
-c     if storage capacity has been exceeed - bomb
-c     
- 2400    continue
-c     
+         if(boxes(1,jbox) .ne. boxes(1,ibox)) then
+            call setList(itype1,jbox,nboxes,ibox,nlist1)
+         endif
 c     if we have processed the whole box jbox0, get out
 c     of the subroutine
-c     
          if(jbox .eq. jbox0) return
-c     
          istack=istack-1
          stack(3,istack)=stack(3,istack)-1
          jbox=stack(2,istack)
-         goto 5000
- 3000    continue
-c     
-c     this box is not separated from ibox, and has children. if 
-c     the number of unprocessed childs of this box is zero 
-c     - pass control to his parent
-c     
-         nchilds=stack(3,istack)
-         if(nchilds .ne. 0) goto 4000
-c     
-         if(jbox .eq. jbox0) return
-c     
-         istack=istack-1
-         stack(3,istack)=stack(3,istack)-1
-         jbox=stack(2,istack)
-         goto 5000
- 4000    continue
-c     
-c     this box is not separated from ibox; it has childs, and
-c     not all of them have been processed. construct the stack
-c     element for the appropriate child, and pass the control
-c     to him. 
-c     
-         jbox=boxes(5+nchilds,jbox)
-         istack=istack+1
-c     
-         nchilds=0
-         do 4600 j=6,13
-c     
-            if(boxes(j,jbox) .gt. 0) nchilds=nchilds+1
- 4600    continue
-c     
-         stack(1,istack)=istack
-         stack(2,istack)=jbox
-         stack(3,istack)=nchilds
-c     
- 5000 continue
-c     
+      endif
       return
       end
-c     
-c     
-c     
 c     
 c     
       subroutine intersect(c1,c2,ifinter)
@@ -373,15 +322,15 @@ c     boxes till none are left with more than ncrit particles
       if( maxlevel .lt. maxlev ) maxlev=maxlevel
       ichild=1
       nlev=0
-      do 3000 level=0,maxlev-1
+      do level=0,maxlev-1
          nlevChild=0
-         do 2000 iparent=levelOffset(level+1),levelOffset(level+2)-1
+         do iparent=levelOffset(level+1),levelOffset(level+2)-1
 c     subdivide the box number iparent (if needed)
             nump=boxes(15,iparent)
             numt=boxes(17,iparent)
 c     ... refine on both sources and targets
             if(nump.le.ncrit.and.numt.le.ncrit.and.
-     $           level.ge.minlevel) goto 2000
+     $           level.ge.minlevel) cycle
 c     ... not a leaf node on sources or targets
             if(nump.gt.ncrit.or.numt.gt.ncrit)then
                if(boxes(18,iparent).eq.1) boxes(18,iparent)=2
@@ -395,27 +344,19 @@ c     ... not a leaf node on sources or targets
             nz=boxes(15,iparent)
             call reorder(center,z,iz(iiz),nz,iwork,is,ns)
             ic=6
-            do 1600 i=1,8
-               if(ns(i) .eq. 0 .and. 
-     $              ifempty .ne. 1) goto 1600
+            do i=1,8
+               if(ns(i).eq.0.and.ifempty.ne.1) cycle
                nlevChild=nlevChild+1
                ichild=ichild+1
                nlev=level+1
-c     
-c     . . . if the user-provided array boxes is too
-c     short - bomb out
-c     
                if(ichild.gt.maxChild) then
                   print*,"Error: ibox out of bounds"
                   stop
                endif
-c     
 c     store in array boxes all information about this son
-c     
-               do 1500 lll=6,13
+               do lll=6,13
                   boxes(lll,ichild)=0
- 1500          continue
-c     
+               enddo     
                boxes(1,ichild)=level+1
                iichild=(ii-1)*2+iichilds(i)
                jjson=(jj-1)*2+jjchilds(i)
@@ -424,10 +365,8 @@ c
                boxes(3,ichild)=jjson
                boxes(4,ichild)=kkson
                boxes(5,ichild)=iparent        
-c     
                boxes(14,ichild)=is(i)+iiz-1
                boxes(15,ichild)=ns(i)
-c     
                boxes(16,ichild)=0
                boxes(17,ichild)=0
                if( ns(i) .le. 0 ) boxes(18,ichild)=0
@@ -437,17 +376,16 @@ c
                boxes(ic,iparent)=ichild
                ic=ic+1
                nboxes=ichild
- 1600       continue
- 2000    continue
+            enddo
+         enddo
          levelOffset(level+3)=levelOffset(level+2)+nlevChild
-         if(nlevChild .eq. 0) goto 4000
+         if(nlevChild .eq. 0) exit
          level1=level
- 3000 continue
+      enddo
       if( level1 .ge. 197 ) then
          print*,"Error: level out of bounds"
          stop
       endif
- 4000 continue
       nboxes=ichild
       return
       end
@@ -539,14 +477,10 @@ c
       implicit real *8 (a-h,o-z)
       real *8 center(3),center0(3)
       data level0/-1/
-ccc   save
-c     
 c     this subroutine finds the center of the box 
 c     number (i,j) on the level level. note that the 
 c     box on level 0 is assumed to have the center 
 c     center0, and the side size
-c     
-ccc   if(level .eq. level0) goto 1200
       side=size/2**level
       side2=side/2
       x0=center0(1)-size/2
@@ -724,17 +658,16 @@ c
       integer iz(*),iwork(*)
       i1=0
       i2=0
-      do 1400 i=1,n
+      do i=1,n
          j=iz(i)
-         if(z(itype,j) .gt. thresh) goto 1200
+         if(z(itype,j).le.thresh) then
          i1=i1+1
          iz(i1)=j
-         goto 1400
-c     
- 1200    continue
-         i2=i2+1
-         iwork(i2)=j
- 1400 continue
+         cycle
+      endif
+      i2=i2+1
+      iwork(i2)=j
+      enddo
 c     
       do 1600 i=1,i2
          iz(i1+i)=iwork(i)
