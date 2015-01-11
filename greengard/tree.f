@@ -460,9 +460,12 @@ c     center0, and the side size
 
       subroutine reorder(cent,z,iz,n,iwork,
      1     is,ns)
-      implicit real *8 (a-h,o-z)
-      real *8 cent(3),z(3,*)
+      implicit none
+      integer n1,n2,n3,n4,n5,n6,n7,n8,n12,n34,n56,n78
+      integer n1234,n5678,itype,n
       integer iz(*),iwork(*),is(*),ns(*)
+      real *8 thresh
+      real *8 cent(3),z(3,*)
 c     this subroutine reorders the particles in a box,
 c     so that each of the children occupies a contigious
 c     chunk of array iz
