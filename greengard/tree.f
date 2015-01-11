@@ -382,8 +382,7 @@ c     input parameters:
 c     center0 - the center of the box on the level 0, containing
 c     the whole simulation
 c     size - the side of the box on the level 0
-c     boxes - an integer array dimensioned (10,nboxes), as produced
-c     by the subroutine d3tallb (see)
+c     boxes - an integer array dimensioned (10,nboxes)
 c     column describes one box, as follows:
 c     nboxes - the total number of boxes created
 c     output parameters:

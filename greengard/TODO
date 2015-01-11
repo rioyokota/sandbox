@@ -4,6 +4,7 @@
 * laddr -> levelRange
 - Use common blocks
 
+Unify variable names
 ibox -> Ci
 
 list 1 - the list of all boxes with which the
