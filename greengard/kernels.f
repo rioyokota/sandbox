@@ -20,9 +20,8 @@ c---------------------------------------------------------------------
       implicit none
       integer i,j,ibox(20),jbox(20)
       real *8 R2,R,Xi(3,1000000),Xj(3,1000000),dX(3)
-      complex *16 imag,wavek,coef1,coef2
+      complex *16 wavek,coef1,coef2,imag/(0.0d0,1.0d0)/
       complex *16 qj(1000000),pi(1000000),Fi(3,1000000)
-      data imag/(0.0d0,1.0d0)/
       do i=ibox(14),ibox(14)+ibox(15)-1
          do j=jbox(14),jbox(14)+jbox(15)-1
             dX(1)=Xi(1,i)-Xj(1,j)
@@ -70,12 +69,11 @@ c-----------------------------------------------------------------------
       real *8 Ynm(0:nterms,0:nterms)
       real *8 Anm1(0:Pmax,0:Pmax)
       real *8 Anm2(0:Pmax,0:Pmax)
-      complex *16 qj(nj),imag,wavek,z,Ynmjn
-      complex *16 ephi(ntrunc)
+      complex *16 wavek,z,Ynmjn,imag/(0.0d0,1.0d0)/
+      complex *16 qj(nj),ephi(ntrunc)
       complex *16 jn(0:nbessel),jnd(0:nbessel)
       complex *16 Mi(0:nterms,-nterms:nterms)
       complex *16 Mnm(0:nterms,-nterms:nterms)
-      data imag/(0.0d0,1.0d0)/
       do n=0,nterms
          do m=-n,n
             Mnm(n,m)=0
@@ -153,15 +151,14 @@ c---------------------------------------------------------------------
       real *8 ynm(0:ntermsj,0:ntermsj)
       real *8 Anm1(0:Pmax,0:Pmax)
       real *8 Anm2(0:Pmax,0:Pmax)
+      complex *16 wavek,z,imag/(0.0d0,1.0d0)/
       complex *16 Mi(0:ntermsi,-ntermsi:ntermsi)
       complex *16 Mj(0:ntermsj,-ntermsj:ntermsj)
       complex *16 Mnm(0:ntermsj,-ntermsj:ntermsj)
       complex *16 Mrot(0:ntermsj,-ntermsj:ntermsj)
       complex *16 phitemp(nquad,-ntermsj:ntermsj)
       complex *16 fhs(0:ntermsj)
-      complex *16 imag,wavek,z
       complex *16 ephi(-ntermsj-1:ntermsj+1)
-      data imag/(0.0d0,1.0d0)/
       dX(1)=Xi(1)-Xj(1)
       dX(2)=Xi(2)-Xj(2)
       dX(3)=Xi(3)-Xj(3)
@@ -272,6 +269,7 @@ c---------------------------------------------------------------------
       real *8 ynm(0:ntrunc,0:ntrunc),ynmd(0:ntrunc,0:ntrunc)
       real *8 Anm1(0:Pmax,0:Pmax)
       real *8 Anm2(0:Pmax,0:Pmax)
+      complex *16 wavek,z,zh,zhn,ut1,ut2,ut3,imag/(0.0d0,1.0d0)/
       complex *16 phitemp(nquad,-ntrunc:ntrunc)
       complex *16 phitempn(nquad,-ntrunc:ntrunc)
       complex *16 fhs(0:ntrunc),fhder(0:ntrunc)
@@ -283,9 +281,7 @@ c---------------------------------------------------------------------
       complex *16 Lnm(0:ntrunc,-ntrunc:ntrunc)
       complex *16 Lnmd(0:ntrunc,-ntrunc:ntrunc)
       complex *16 Lrot(0:ntermsj,-ntermsj:ntermsj)
-      complex *16 imag,wavek,z,zh,zhn,ut1,ut2,ut3
       complex *16 ephi(-ntermsj-1:ntermsj+1)
-      data imag/(0.0d0,1.0d0)/
       dX(1)=Xi(1)-Xj(1)
       dX(2)=Xi(2)-Xj(2)
       dX(3)=Xi(3)-Xj(3)
@@ -437,6 +433,7 @@ c***********************************************************************
       real *8 ynm(0:ntermsi,0:ntermsi),ynmd(0:ntermsi,0:ntermsi)
       real *8 Anm1(0:Pmax,0:Pmax)
       real *8 Anm2(0:Pmax,0:Pmax)
+      complex *16 wavek,z,zh,zhn,ut1,ut2,ut3,imag/(0.0d0,1.0d0)/
       complex *16 phitemp(nquad,-ntermsi:ntermsi)
       complex *16 phitempn(nquad,-ntermsi:ntermsi)
       complex *16 jn(0:nbessel)
@@ -446,9 +443,7 @@ c***********************************************************************
       complex *16 Lnm(0:ntermsi,-ntermsi:ntermsi)
       complex *16 Lnmd(0:ntermsi,-ntermsi:ntermsi)
       complex *16 Lrot(0:ntermsi,-ntermsi:ntermsi)
-      complex *16 imag,wavek,z,zh,zhn,ut1,ut2,ut3
       complex *16 ephi(-ntermsi-1:ntermsi+1)
-      data imag/(0.0d0,1.0d0)/
       dX(1)=Xi(1)-Xj(1)
       dX(2)=Xi(2)-Xj(2)
       dX(3)=Xi(3)-Xj(3)
@@ -593,14 +588,14 @@ c---------------------------------------------------------------------
       real *8 Ynmd(0:nterms,0:nterms)
       real *8 Anm1(0:Pmax,0:Pmax)
       real *8 Anm2(0:Pmax,0:Pmax)
-      complex *16 wavek,pi(1),Fi(3,1)
+      complex *16 wavek,imag/(0.0d0,1.0d0)/
+      complex *16 ur,utheta,uphi,z
+      complex *16 ztmp1,ztmp2,ztmp3,ztmpsum
+      complex *16 ux,uy,uz
+      complex *16 pi(1),Fi(3,1)
       complex *16 Lj(0:nterms,-nterms:nterms)
       complex *16 ephi(nterms)
       complex *16 jnuse,jn(0:nbessel),jnd(0:nbessel)
-      complex *16 imag,ur,utheta,uphi,z
-      complex *16 ztmp1,ztmp2,ztmp3,ztmpsum
-      complex *16 ux,uy,uz
-      data imag/(0.0d0,1.0d0)/
       do i=1,ni
          dX(1)=Xi(1,i)-Xj(1)
          dX(2)=Xi(2,i)-Xj(2)

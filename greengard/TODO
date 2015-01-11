@@ -4,8 +4,6 @@
 * laddr -> levelRange
 - Use common blocks
 
-Use -warn
-Remove data/0.0/
 ibox -> Ci
 
 list 1 - the list of all boxes with which the

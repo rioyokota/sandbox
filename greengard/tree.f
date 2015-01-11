@@ -238,9 +238,9 @@ c     of the subroutine
       implicit none
       integer i,maxChild,maxlev,maxlevel,ichild,nlev,level,nlevChild
       integer iparent,nump,numt,ncrit,minlevel,ii,jj,kk,n
-      integer maxboxes,iiz,nz,ic,lll,iichild,jjson,kkson,nboxes,level1
-      integer boxes(20,*),iz(*),iwork(n),
-     1     is(8),ns(8),
+      integer maxboxes,iiz,nz,ic,lll,iichild,jjchild,kkchild
+      integer nboxes,level1
+      integer boxes(20,*),iz(*),iwork(n),is(8),ns(8),
      1     iichilds(8),jjchilds(8),kkchilds(8)
       real *8 xmin,xmax,ymin,ymax,zmin,zmax
       real *8 size,sizey,sizez
@@ -339,11 +339,11 @@ c     store in array boxes all information about this son
                enddo
                boxes(1,ichild)=level+1
                iichild=(ii-1)*2+iichilds(i)
-               jjson=(jj-1)*2+jjchilds(i)
-               kkson=(kk-1)*2+kkchilds(i)
+               jjchild=(jj-1)*2+jjchilds(i)
+               kkchild=(kk-1)*2+kkchilds(i)
                boxes(2,ichild)=iichild
-               boxes(3,ichild)=jjson
-               boxes(4,ichild)=kkson
+               boxes(3,ichild)=jjchild
+               boxes(4,ichild)=kkchild
                boxes(5,ichild)=iparent
                boxes(14,ichild)=is(i)+iiz-1
                boxes(15,ichild)=ns(i)
@@ -441,7 +441,6 @@ c     corners - the corners of all boxes in the array boxes
       integer level0,level,i,j,k
       real *8 side,side2,size,x0,y0,z0
       real *8 center(3),center0(3)
-      data level0/-1/
 c     this subroutine finds the center of the box
 c     number (i,j) on the level level. note that the
 c     box on level 0 is assumed to have the center
@@ -594,8 +593,7 @@ c     store the information about the sonnies in appropriate arrays
       subroutine setList(itype,ibox,list)
       use arrays, only : listOffset,lists
       implicit none
-      integer ilast,ibox,itype,list,numele
-      data numele/0/
+      integer ilast,ibox,itype,list,numele/0/
       ilast=listOffset(ibox,itype)
       numele=numele+1
       lists(1,numele)=ilast

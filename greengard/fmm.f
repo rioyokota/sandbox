@@ -7,7 +7,7 @@
       integer box(20),nterms(0:200)
       integer, allocatable :: iaddr(:)
       integer, allocatable :: isource(:)
-      real *8 tic,toc,epsfmm,size,boxsize
+      real *8 epsfmm,size,boxsize,tic/0.0d0/,toc/0.0d0/
       real *8 Xj(3,numBodies)
       real *8 Xjd(3,numBodies)
       real *8 bsize(0:200)
@@ -24,7 +24,6 @@
       complex *16 Fi(3,numBodies)
       complex *16 pid(numBodies)
       complex *16 Fid(3,numBodies)
-      data tic/0.0d0/, toc/0.0d0/
 c     set fmm tolerance based on iprec flag.
       if( iprec .eq. -2 ) epsfmm=.5d-0
       if( iprec .eq. -1 ) epsfmm=.5d-1
@@ -108,7 +107,7 @@ c$    toc=omp_get_wtime()
       integer box(20),box1(20),iaddr(nboxes),nterms(0:200),list(10000)
       integer itable(-3:3,-3:3,-3:3)
       integer nterms_eval(4,0:200)
-      real *8 tic,toc,epsfmm,radius,cd
+      real *8 epsfmm,radius,cd,tic/0.0d0/,toc/0.0d0/
       real *8 center0(3),corners0(3,8)
       real *8 center1(3),corners1(3,8)
       real *8 sourcesort(3,1)
@@ -120,7 +119,6 @@ c$    toc=omp_get_wtime()
       complex *16 pot(1)
       complex *16 fld(3,1)
       complex *16 chargesort(1)
-      data tic/0.0d0/, toc/0.0d0/
 c     ... set the potential and field to zero
       do i=1,numBodies
          pot(i)=0

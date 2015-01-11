@@ -46,13 +46,12 @@
       implicit none
       integer ntermsi,ntermsj,n,m,mp
       real *8 theta,ctheta,stheta,hsthta,cthtap,cthtan,d
-      real *8 eps,scale
+      real *8 scale,eps/1.0d-15/
       real *8 Rnm1(0:ntermsj,-ntermsj:ntermsj)
       real *8 Rnm2(0:ntermsj,-ntermsj:ntermsj)
       real *8 sqrtCnm(0:2*ntermsj,2)
       complex *16 Mnm(0:ntermsj,-ntermsj:ntermsj)
       complex *16 Mrot(0:ntermsi,-ntermsi:ntermsi)
-      data eps/1.0d-15/
       do m=0,2*ntermsj
          sqrtCnm(m,1)=dsqrt(m+0.0d0)
       enddo
@@ -209,10 +208,9 @@ c     d Ynm(x) / dx = sqrt(2n+1)  sqrt( (n-m)!/ (n+m)! ) d Pnm(x) / dx
 c     hn(n) = h_n(z)*scale^(n)
       implicit none
       integer nterms,i
-      real *8 eps,scale,scale2
+      real *8 scale,scale2,eps/1.0d-15/
+      complex *16 z,zi,zinv,eye/(0.0d0,1.0d0)/
       complex *16 hn(0:nterms)
-      complex *16 eye,z,zi,zinv
-      data eye/(0.0d0,1.0d0)/,eps/1.0d-15/
       if (abs(z).lt.eps) then
          do i=0,nterms
             hn(i)=0
@@ -235,10 +233,9 @@ c     hn(n) = h_n(z)*scale^(n)
 c     hnd(n) = \frac{\partial hn(z)}{\partial z}
       implicit none
       integer nterms,i
-      real *8 eps,scale
+      real *8 scale,eps/1.0d-15/
+      complex *16 z,zi,zinv,eye/(0.0d0,1.0d0)/
       complex *16 hn(0:nterms),hnd(0:nterms)
-      complex *16 eye,z,zi,zinv
-      data eye/(0.0d0,1.0d0)/,eps/1.0d-15/
       if (abs(z).lt.eps) then
          do i=0,nterms
             hn(i)=0
@@ -264,10 +261,9 @@ c     jn(z)=j_n(z)/scale^n
 c     jnd(z)=\frac{\partial jn(z)}{\partial z}
       implicit none
       integer nterms,ifder,nbessel,ntop,i,iscale(0:nbessel)
-      real *8 scale,scalinv,coef,eps
+      real *8 scale,scalinv,coef,eps/1.0d-15/
       complex *16 jn(0:nbessel),jnd(0:nbessel)
       complex *16 z,zinv,fj0,fj1,ztmp
-      data eps/1.0d-15/
       if (abs(z).lt.eps) then
          jn(0)=1.0d0
          do i=1,nterms
@@ -344,9 +340,8 @@ c     jnd(z)=\frac{\partial jn(z)}{\partial z}
       subroutine legendre(nquad,xquad,wquad)
       implicit none
       integer nquad,i,k,ifout
-      real *8 pi,h,xk,delta,pol,der,sum,eps
+      real *8 pi,h,xk,delta,pol,der,sum,eps/1.0d-15/
       real *8 xquad(10000),wquad(10000)
-      data eps/1.0d-15/
       pi=datan(1.0d0)*4
       h=pi/(2*nquad)
       do i=1,nquad
