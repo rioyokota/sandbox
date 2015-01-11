@@ -83,7 +83,7 @@ c$    tic=omp_get_wtime()
 c$    toc=omp_get_wtime()
       print*,'Tree   =',toc-tic
       call evaluate(wavek,numBodies,Xjd,
-     1     1,qjd,pid,Fid,epsfmm,iaddr,Multipole,Local,
+     1     qjd,pid,Fid,epsfmm,iaddr,Multipole,Local,
      1     nboxes,nlev,scale,bsize,nterms)
       do i=1,numBodies
          pi(isource(i))=pid(i)
@@ -95,37 +95,31 @@ c$    toc=omp_get_wtime()
       end
 
       subroutine evaluate(wavek,
-     1     numBodies,sourcesort,
-     1     ifcharge,chargesort,pot,fld,
+     1     numBodies,sourcesort,chargesort,pot,fld,
      1     epsfmm,iaddr,Multipole,Local,
      1     nboxes,nlev,scale,bsize,nterms)
       use arrays, only : listOffset,lists,levelOffset
       use omp_lib, only : omp_get_wtime
       implicit none
       integer Pmax,i,j,numBodies,lw7,itype,nlev,ibox,ilev,npts,numChild
-      integer ifprune,nquad,level,level0,level1,ilist,nbessel
-      integer ifprune_list2,jbox,nlist,ifdirect2,nterms_trunc,ii,jj,kk
-      integer ifcharge,nboxes
+      integer nquad,level,level0,level1,ilist,nbessel
+      integer jbox,nlist,ifdirect2,nterms_trunc,ii,jj,kk
+      integer nboxes
       integer box(20),box1(20),iaddr(nboxes),nterms(0:200),list(10000)
       integer itable(-3:3,-3:3,-3:3)
       integer nterms_eval(4,0:200)
       real *8 tic,toc,epsfmm,radius,cd
-      real *8 center(3),center0(3),corners0(3,8)
+      real *8 center0(3),corners0(3,8)
       real *8 center1(3),corners1(3,8)
       real *8 sourcesort(3,1)
       real *8 Multipole(1),Local(1),xquad(10000),wquad(10000)
       real *8 scale(0:200),bsize(0:200)
       real *8 Anm1(0:200,0:200)
       real *8 Anm2(0:200,0:200)
-      real *8 rvec(3)
-      real *8, allocatable :: rotmatf(:,:,:,:)
-      real *8, allocatable :: rotmatb(:,:,:,:)
-      real *8, allocatable :: thetas(:,:,:)
       complex *16 wavek
       complex *16 pot(1)
       complex *16 fld(3,1)
       complex *16 chargesort(1)
-      complex *16 pottarg(1),fldtarg(3,1)
       data tic/0.0d0/, toc/0.0d0/
 c     ... set the potential and field to zero
       do i=1,numBodies
@@ -180,7 +174,6 @@ c$omp end parallel do
 c$    toc=omp_get_wtime()
       print*,'P2M    =',toc-tic
 
-      ifprune_list2 = 0
 c     ... step 2, M2M
 c$    tic=omp_get_wtime()
       do ilev=nlev,3,-1
@@ -248,7 +241,6 @@ c     ... for all pairs in list #2, apply the translation operator
                   jbox=list(ilist)
                   call getCell(jbox,box1,nboxes,center1,corners1)
                   if (box1(15).eq.0) cycle
-                  if ((box(17).eq.0).and.(ifprune_list2.eq.1)) cycle
                   radius = (corners1(1,1) - center1(1))**2
                   radius = radius + (corners1(2,1) - center1(2))**2
                   radius = radius + (corners1(3,1) - center1(3))**2

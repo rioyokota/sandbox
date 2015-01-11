@@ -103,7 +103,7 @@ c     now, construct lists 1, 3
             call getList(5,i,list5,nlist)
             do j=1,nlist
                jbox=list5(j)
-               call getList13(i,jbox,nboxes,stack)
+               call getList13(i,jbox,stack)
             enddo
          endif
       enddo
@@ -116,10 +116,10 @@ c     now, construct lists 1, 3
       return
       end
 
-      subroutine getList13(ibox,jbox0,nboxes,stack)
+      subroutine getList13(ibox,jbox0,stack)
       use arrays, only : boxes,corners
       implicit none
-      integer jbox,jbox0,istack,nchilds,j,ijk,ibox,ifinter,nboxes
+      integer jbox,jbox0,istack,nchilds,j,ijk,ibox,ifinter
       integer stack(3,*)
       jbox=jbox0
       istack=1
@@ -594,7 +594,7 @@ c     store the information about the sonnies in appropriate arrays
       subroutine setList(itype,ibox,list)
       use arrays, only : listOffset,lists
       implicit none
-      integer ilast,ibox,itype,list,i,numele,nboxes
+      integer ilast,ibox,itype,list,numele
       data numele/0/
       ilast=listOffset(ibox,itype)
       numele=numele+1

@@ -158,7 +158,7 @@ c---------------------------------------------------------------------
       complex *16 Mnm(0:ntermsj,-ntermsj:ntermsj)
       complex *16 Mrot(0:ntermsj,-ntermsj:ntermsj)
       complex *16 phitemp(nquad,-ntermsj:ntermsj)
-      complex *16 fhs(0:ntermsj),fhder(0:ntermsj)
+      complex *16 fhs(0:ntermsj)
       complex *16 imag,wavek,z
       complex *16 ephi(-ntermsj-1:ntermsj+1)
       data imag/(0.0d0,1.0d0)/
@@ -264,7 +264,7 @@ c     OUTPUT:
 c     Li      : coefficients of shifted local expansion
 c---------------------------------------------------------------------
       implicit none
-      integer l,m,n,mabs,ntermsi,ntermsj,ntrunc,nquad,nq,nbessel,Pmax
+      integer l,m,n,mabs,ntermsi,ntermsj,ntrunc,nquad,nbessel,Pmax
       real *8 radius,r,theta,phi,ctheta,stheta,cthetaj,sthetaj,thetan
       real *8 rj,rn,scalej,scalei
       real *8 Xi(3),Xj(3),dX(3)
@@ -597,7 +597,7 @@ c---------------------------------------------------------------------
       complex *16 Lj(0:nterms,-nterms:nterms)
       complex *16 ephi(nterms)
       complex *16 jnuse,jn(0:nbessel),jnd(0:nbessel)
-      complex *16 imag,ur,utheta,uphi,ztmp,z
+      complex *16 imag,ur,utheta,uphi,z
       complex *16 ztmp1,ztmp2,ztmp3,ztmpsum
       complex *16 ux,uy,uz
       data imag/(0.0d0,1.0d0)/

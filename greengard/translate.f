@@ -235,9 +235,9 @@ c     hn(n) = h_n(z)*scale^(n)
 c     hnd(n) = \frac{\partial hn(z)}{\partial z}
       implicit none
       integer nterms,i
-      real *8 eps,scale,scale2
+      real *8 eps,scale
       complex *16 hn(0:nterms),hnd(0:nterms)
-      complex *16 eye,z,zi,zinv,ztmp
+      complex *16 eye,z,zi,zinv
       data eye/(0.0d0,1.0d0)/,eps/1.0d-15/
       if (abs(z).lt.eps) then
          do i=0,nterms
@@ -265,7 +265,7 @@ c     jnd(z)=\frac{\partial jn(z)}{\partial z}
       implicit none
       integer nterms,ifder,nbessel,ntop,i,iscale(0:nbessel)
       real *8 scale,scalinv,coef,eps
-      complex *16 wavek,jn(0:nbessel),jnd(0:nbessel)
+      complex *16 jn(0:nbessel),jnd(0:nbessel)
       complex *16 z,zinv,fj0,fj1,ztmp
       data eps/1.0d-15/
       if (abs(z).lt.eps) then
