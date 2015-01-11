@@ -29,7 +29,8 @@
       end
 
       subroutine getNumChild(box,nkids)
-      implicit real *8 (a-h,o-z)
+      implicit none
+      integer nkids,ikid
       integer box(20)
       nkids=0
       do ikid=1,8
@@ -40,24 +41,21 @@
       
       subroutine getCell(ibox,box,nboxes,center,corners)
       use arrays, only : boxes,listOffset
-      implicit real *8 (a-h,o-z)
+      implicit none
+      integer ibox,nboxes,i
       integer box(20)
       real *8 center(3),corners(3,8)
       if( (ibox.lt.1).or.(ibox.gt.nboxes) ) then
          print*,"Error: ibox out of bounds"
          stop
       endif
-c
       do i=1,20
          box(i)=boxes(i,ibox)
       enddo
-c
-c     return to the user the center and the corners of the box ibox
-c
       call getCenter(ibox,center,corners) 
       return
       end
-c
+
       subroutine getLists(nboxes)
       use arrays, only : boxes,listOffset,corners
       implicit real *8 (a-h,o-z)
@@ -75,7 +73,7 @@ c     find parent's collegues including parent
          parents(1)=iparent
          itype5=5
          itype2=2
-         call getList(itype5,iparent,nboxes,parents(2),ncolls)
+         call getList(itype5,iparent,parents(2),ncolls)
          ncolls=ncolls+1
 c     find the children of the parent's collegues
          nkids=0
@@ -106,7 +104,7 @@ c     lists 2, 5 of the box ibox
 c     now, construct lists 1, 3
       do i=1,nboxes
          if(boxes(6,i).le.0.and.boxes(1,i).ne.0)then
-            call getList(itype5,i,nboxes,list5,nlist)  
+            call getList(itype5,i,list5,nlist)  
             do j=1,nlist
                jbox=list5(j)
                call getList13(i,jbox,nboxes,stack)
@@ -118,7 +116,7 @@ c
       itype4=4
       nlist1=1
       do ibox=1,nboxes
-         call getList(itype3,ibox,nboxes,list5,nlist)
+         call getList(itype3,ibox,list5,nlist)
          do j=1,nlist
             call setList(itype4,list5(j),nboxes,ibox,nlist1)
          enddo
@@ -672,6 +670,8 @@ c
 c     
       subroutine setList(itype,ibox,nboxes,list,nlist)
       use arrays, only : listOffset,lists
+      implicit none
+      integer ilast,ibox,itype,nlist,i,numele,nboxes
       integer list(*)
       data numele/0/
       ilast=listOffset(ibox,itype)
@@ -684,19 +684,16 @@ c
       listOffset(ibox,itype)=ilast
       return
       end
-c     
-      subroutine getList(itype,ibox,nboxes,
-     $     list,nlist)
+     
+      subroutine getList(itype,ibox,list,nlist)
       use arrays, only : listOffset,lists
+      implicit none
+      integer ilast,ibox,itype,nlist,i,j
       integer list(*)
       ilast=listOffset(ibox,itype)
-      if(ilast.le.0)then
-         nlist=0
-         return
-      endif
       nlist=0
       do while(ilast.gt.0)
-         if(lists(2,ilast).gt.0)then       
+         if(lists(2,ilast).gt.0)then
             nlist=nlist+1
             list(nlist)=lists(2,ilast)
          endif

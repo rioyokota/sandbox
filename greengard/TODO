@@ -5,6 +5,7 @@
 - Use common blocks
 
 Use implicit none
+Use -warn
 ibox -> Ci
 
 list 1 - the list of all boxes with which the

@@ -242,7 +242,7 @@ c$omp$schedule(dynamic)
             if (level0 .ge. 2) then
 c     ... retrieve list #2
                itype=2
-               call getList(itype,ibox,nboxes,list,nlist)
+               call getList(itype,ibox,list,nlist)
 c     ... for all pairs in list #2, apply the translation operator
                do ilist=1,nlist
                   jbox=list(ilist)
@@ -362,7 +362,7 @@ c     ... evaluate self interactions
      $           box,sourcesort,chargesort,wavek)
 c     ... evaluate interactions with the nearest neighbours
             itype=1
-            call getList(itype,ibox,nboxes,list,nlist)
+            call getList(itype,ibox,list,nlist)
 c     ... for all pairs in list #1, evaluate the potentials and fields directly
             do ilist=1,nlist
                jbox=list(ilist)
