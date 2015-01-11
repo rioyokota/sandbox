@@ -2,20 +2,17 @@
      $     nboxes,isource,nlev,center,size)
       use arrays, only : listOffset,lists,levelOffset,nodes,boxes,
      $     centers,corners
-      implicit real *8 (a-h,o-z)
+      implicit none
+      integer i,j,numBodies,ncrit,nboxes,nlev
       integer isource(*)
+      real *8 size
       real *8 Xj(3,*),center(3)
-      maxboxes=numBodies
       do i=1,numBodies
          isource(i)=i
       enddo
-      ifempty=0
-      minlevel=0
-      maxlevel=100
-      allocate(nodes(20,maxboxes))
-      call growTree(Xj,numBodies,ncrit,nodes,maxboxes,
-     $     nboxes,isource,nlev,center,size,
-     $     ifempty,minlevel,maxlevel)
+      allocate(nodes(20,numBodies))
+      call growTree(Xj,numBodies,ncrit,nodes,numBodies,
+     $     nboxes,isource,nlev,center,size,0,100)
       allocate(listOffset(nboxes,5))
       allocate(lists(2,189*nboxes))
       allocate(boxes(20,nboxes))
@@ -255,7 +252,7 @@ c
 c     
       subroutine growTree(z,n,ncrit,boxes,maxboxes,
      1     nboxes,iz,nlev,center0,size,
-     1     ifempty,minlevel,maxlevel)
+     1     minlevel,maxlevel)
       use arrays, only : levelOffset
       implicit real *8 (a-h,o-z)
       integer boxes(20,*),iz(*),iwork(n),
@@ -344,7 +341,7 @@ c     ... not a leaf node on sources or targets
             call reorder(center,z,iz(iiz),nz,iwork,is,ns)
             ic=6
             do i=1,8
-               if(ns(i).eq.0.and.ifempty.ne.1) cycle
+               if(ns(i).eq.0) cycle
                nlevChild=nlevChild+1
                ichild=ichild+1
                nlev=level+1

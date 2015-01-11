@@ -5,8 +5,6 @@
 - Use common blocks
 
 Use implicit none
-Remove continue
-Allocatable -> Static array
 ibox -> Ci
 
 list 1 - the list of all boxes with which the
