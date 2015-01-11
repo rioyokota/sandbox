@@ -1,27 +1,29 @@
-      subroutine fmm(iprec,wavek,numBodies,Xj,
-     $     qj,pi,Fi)
+      subroutine fmm(iprec,wavek,numBodies,Xj,qj,pi,Fi)
       use arrays, only : levelOffset
-      implicit real *8 (a-h,o-z)
-      integer box(20)
-      dimension Xj(3,numBodies)
-      dimension Xjd(3,numBodies)
+      use omp_lib, only : omp_get_wtime
+      implicit none
+      integer iprec,ncrit,nboxes,nlev,i,nmax,ifinit,iptr,ibox,numBodies
+      integer level,lmptot
+      integer box(20),nterms(0:200)
+      integer, allocatable :: iaddr(:)
+      integer, allocatable :: isource(:)
+      real *8 tic,toc,epsfmm,size,boxsize,wavek
+      real *8 Xj(3,numBodies)
+      real *8 Xjd(3,numBodies)
+      real *8 bsize(0:200)
+      real *8 scale(0:200)
+      real *8 center(3)
+      real *8 center0(3)
+      real *8 corners0(3,8)
+      real *8, allocatable :: Multipole(:)
+      real *8, allocatable :: Local(:)
+      complex *16 imag
       complex *16 qj(numBodies)
       complex *16 qjd(2*numBodies)
-      complex *16 imag
       complex *16 pi(numBodies)
       complex *16 Fi(3,numBodies)
       complex *16 pid(numBodies)
       complex *16 Fid(3,numBodies)
-      dimension bsize(0:200)
-      dimension nterms(0:200)
-      dimension scale(0:200)
-      dimension center(3)
-      dimension center0(3)
-      dimension corners0(3,8)
-      integer, allocatable :: iaddr(:)
-      integer, allocatable :: isource(:)
-      real *8, allocatable :: Multipole(:)
-      real *8, allocatable :: Local(:)
       complex *16 ptemp,ftemp(3)
       data imag/(0.0d0,1.0d0)/, tic/0.0d0/, toc/0.0d0/
 c     set fmm tolerance based on iprec flag.
