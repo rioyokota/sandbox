@@ -118,7 +118,8 @@ c     now, construct lists 1, 3
 
       subroutine getList13(ibox,jbox0,nboxes,stack)
       use arrays, only : boxes,corners
-      implicit real *8 (a-h,o-z)
+      implicit none
+      integer jbox,jbox0,istack,nchilds,j,ijk,ibox,ifinter,nboxes
       integer stack(3,*)
       jbox=jbox0
       istack=1
@@ -132,27 +133,20 @@ c     now, construct lists 1, 3
 c     . . . move up and down the stack, generating the elements
 c     of lists 1, 3 for the box jbox, as appropriate
       do ijk=1,1 000 000 000
-c
 c     if this box is separated from ibox - store it in list 3;
 c     enter this fact in the parent's table; pass control
 c     to the parent
-c
          call intersect(corners(1,1,ibox),corners(1,1,jbox),ifinter)
-c
          if(ifinter .eq. 1) exit
          call setList(3,ibox,nboxes,jbox,1)
-c
 c     if storage capacity has been exceeed - bomb
-c
          istack=istack-1
          stack(3,istack)=stack(3,istack)-1
          jbox=stack(2,istack)
       enddo
-c
 c     this box is not separated from ibox. if it is childless
 c     - enter it in list 1; enter this fact in the parent's table;
 c     pass control to the parent
-c
       if(boxes(6,jbox) .eq. 0) then
          call setList(1,ibox,nboxes,jbox,1)
 c     . . . entered jbox in the list1 of ibox; if jbox
@@ -170,10 +164,13 @@ c     of the subroutine
       endif
       return
       end
-c
-c
+
       subroutine intersect(c1,c2,ifinter)
-      implicit real *8 (a-h,o-z)
+      implicit none
+      integer i,ifinter
+      real *8 xmin1, ymin1, zmin1, xmax1, ymax1, zmax1
+      real *8 xmin2, ymin2, zmin2, xmax2, ymax2, zmax2
+      real *8 eps
       real *8 c1(3,8),c2(3,8)
       xmin1=c1(1,1)
       ymin1=c1(2,1)
@@ -181,14 +178,12 @@ c
       xmax1=c1(1,1)
       ymax1=c1(2,1)
       zmax1=c1(3,1)
-
       xmin2=c2(1,1)
       ymin2=c2(2,1)
       zmin2=c2(3,1)
       xmax2=c2(1,1)
       ymax2=c2(2,1)
       zmax2=c2(3,1)
-
       do i=1,8
          if(xmin1 .gt. c1(1,i)) xmin1=c1(1,i)
          if(ymin1 .gt. c1(2,i)) ymin1=c1(2,i)
@@ -196,7 +191,6 @@ c
          if(xmax1 .lt. c1(1,i)) xmax1=c1(1,i)
          if(ymax1 .lt. c1(2,i)) ymax1=c1(2,i)
          if(zmax1 .lt. c1(3,i)) zmax1=c1(3,i)
-
          if(xmin2 .gt. c2(1,i)) xmin2=c2(1,i)
          if(ymin2 .gt. c2(2,i)) ymin2=c2(2,i)
          if(zmin2 .gt. c2(3,i)) zmin2=c2(3,i)
@@ -204,7 +198,6 @@ c
          if(ymax2 .lt. c2(2,i)) ymax2=c2(2,i)
          if(zmax2 .lt. c2(3,i)) zmax2=c2(3,i)
       enddo
-
       eps=xmax1-xmin1
       if(eps .gt. ymax1-ymin1) eps=ymax1-ymin1
       if(eps .gt. zmax1-zmin1) eps=zmax1-zmin1
@@ -236,7 +229,7 @@ c
       enddo
       return
       end
-c
+
       subroutine growTree(z,n,ncrit,boxes,maxboxes,
      1     nboxes,iz,nlev,center0,size,
      1     minlevel,maxlevel)
@@ -291,10 +284,8 @@ c
       if( n .gt. 0 ) boxes(18,1)=1
       boxes(19,1)=0
       boxes(20,1)=0
-c
       levelOffset(1)=1
       levelOffset(2)=2
-c
       do i=1,n
          iz(i)=i
       enddo
@@ -372,22 +363,14 @@ c     store in array boxes all information about this son
       nboxes=ichild
       return
       end
-c
-c
-c
-c
-c
+
       subroutine setCenter(center0,size,nboxes)
       use arrays, only : boxes,centers,corners
       implicit real *8 (a-h,o-z)
       real *8 center(3),center0(3)
-ccc   save
-c
 c     this subroutine produces arrays of centers and
 c     corners for all boxes in the oct-tree structure.
-c
 c     input parameters:
-c
 c     center0 - the center of the box on the level 0, containing
 c     the whole simulation
 c     size - the side of the box on the level 0
@@ -395,15 +378,9 @@ c     boxes - an integer array dimensioned (10,nboxes), as produced
 c     by the subroutine d3tallb (see)
 c     column describes one box, as follows:
 c     nboxes - the total number of boxes created
-c
-c
 c     output parameters:
-c
 c     centers - the centers of all boxes in the array boxes
 c     corners - the corners of all boxes in the array boxes
-c
-c     . . . construct the corners for all boxes
-c
       x00=center0(1)-size/2
       y00=center0(2)-size/2
       z00=center0(3)-size/2
@@ -417,11 +394,10 @@ c
          center(1)=x00+(ii-1)*side+side2
          center(2)=y00+(jj-1)*side+side2
          center(3)=z00+(kk-1)*side+side2
-c
          centers(1,i)=center(1)
          centers(2,i)=center(2)
          centers(3,i)=center(3)
-c
+
          corners(1,1,i)=center(1)-side/2
          corners(1,2,i)=corners(1,1,i)
          corners(1,3,i)=corners(1,1,i)
@@ -430,7 +406,7 @@ c
          corners(1,6,i)=corners(1,5,i)
          corners(1,7,i)=corners(1,5,i)
          corners(1,8,i)=corners(1,5,i)
-c
+
          corners(2,1,i)=center(2)-side/2
          corners(2,2,i)=corners(2,1,i)
          corners(2,5,i)=corners(2,1,i)
@@ -439,7 +415,7 @@ c
          corners(2,4,i)=corners(2,3,i)
          corners(2,7,i)=corners(2,3,i)
          corners(2,8,i)=corners(2,3,i)
-c
+
          corners(3,1,i)=center(3)-side/2
          corners(3,3,i)=corners(3,1,i)
          corners(3,5,i)=corners(3,1,i)
@@ -451,11 +427,7 @@ c
       enddo
       return
       end
-c
-c
-c
-c
-c
+
       subroutine findCenter(center0,size,level,i,j,k,center)
       implicit real *8 (a-h,o-z)
       real *8 center(3),center0(3)
@@ -476,43 +448,26 @@ c     center0, and the side size
       return
       end
 
-c
-c
-c
-c
-c
       subroutine reorder(cent,z,iz,n,iwork,
      1     is,ns)
       implicit real *8 (a-h,o-z)
       real *8 cent(3),z(3,*)
       integer iz(*),iwork(*),is(*),ns(*)
-ccc   save
-c
 c     this subroutine reorders the particles in a box,
 c     so that each of the children occupies a contigious
 c     chunk of array iz
-c
 c     note that we are using a standard numbering convention
 c     for the children:
-c
-c
 c     5,6     7,8
-c
 c     <- looking down the z-axis
 c     1,2     3,4
-c
-c
 cccc  in the original code, we were using a strange numbering convention
 cccc  for the children:
-cccc
 cccc  3,4     7,8
-cccc
 cccc  <- looking down the z-axis
 cccc  1,2     5,6
 c
-c
 c     input parameters:
-c
 c     cent - the center of the box to be subdivided
 c     z - the list of all points in the box to be subdivided
 c     iz - the integer array specifying the transposition already
@@ -521,7 +476,6 @@ c     the box into children
 c     n - the total number of points in array z
 c
 c     output parameters:
-c
 c     iz - the integer array specifying the transposition already
 c     applied to the points z, after the subdivision of
 c     the box into children
@@ -531,11 +485,7 @@ c     ns - an integer array of length 8 containig the numbers of
 c     elements in the childs
 c
 c     work arrays:
-c
 c     iwork - must be n integer elements long
-c
-c     . . . separate all particles in this box in x
-c
       n1=0
       n2=0
       n3=0
