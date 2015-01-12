@@ -1,18 +1,18 @@
       subroutine buildTree(Xj,numBodies,ncrit,
-     1     nboxes,permutation,nlev,center,size)
+     1     nboxes,permutation,nlev,X0,size)
       use arrays, only : listOffset,lists,levelOffset,nodes,boxes,
      1     centers
       implicit none
-      integer i,j,numBodies,ncrit,nboxes,nlev
+      integer i,j,d,numBodies,ncrit,nboxes,nlev
       integer permutation(*)
-      real *8 size
-      real *8 Xj(3,*),center(3)
+      real *8 size,R,R0
+      real *8 Xj(3,*),X0(3)
       do i=1,numBodies
          permutation(i)=i
       enddo
       allocate(nodes(20,numBodies))
       call growTree(Xj,numBodies,ncrit,nodes,
-     1     nboxes,permutation,nlev,center,size)
+     1     nboxes,permutation,nlev,X0,size)
       allocate(listOffset(nboxes,5))
       allocate(lists(2,189*nboxes))
       allocate(boxes(20,nboxes))
@@ -22,68 +22,14 @@
             boxes(j,i)=nodes(j,i)
          enddo
       enddo
-      call setCenter(center,size,nboxes)
+      R0 = size / 2
+      do i=1,nboxes
+         R=R0/2**boxes(1,i)
+         do d=1,3
+            centers(d,i)=X0(d)-R0+boxes(d+1,i)*R*2+R
+         enddo
+      enddo
       call setLists(nboxes)
-      return
-      end
-
-      subroutine setLists(nboxes)
-      use arrays, only : boxes,listOffset
-      implicit none
-      integer i,j,k,ibox,jbox,nboxes,iparent,nkids,icoll,ncolls,kid
-      integer nlist
-      integer kids(50000),parents(2000),list5(20000)
-      do k=1,5
-         do i=1,nboxes
-            listOffset(i,k)=-1
-         enddo
-      enddo
-      do ibox=2,nboxes
-         iparent=boxes(5,ibox)
-         parents(1)=iparent
-         call getList(5,iparent,parents(2),ncolls)
-         ncolls=ncolls+1
-         nkids=0
-         do i=1,ncolls
-            icoll=parents(i)
-            do j=1,boxes(7,icoll)
-               kid=boxes(6,icoll)+j-1
-               if (kid.gt.0) then
-                  if (kid.ne.ibox) then
-                     nkids=nkids+1
-                     kids(nkids)=kid
-                  endif
-               endif
-            enddo
-         enddo
-         do i=1,nkids
-            jbox=kids(i)
-            if ( boxes(2,ibox)-1.le.boxes(2,jbox).and.
-     1           boxes(2,ibox)+1.ge.boxes(2,jbox).and.
-     1           boxes(3,ibox)-1.le.boxes(3,jbox).and.
-     1           boxes(3,ibox)+1.ge.boxes(3,jbox).and.
-     1           boxes(4,ibox)-1.le.boxes(4,jbox).and.
-     1           boxes(4,ibox)+1.ge.boxes(4,jbox) ) then
-               call setList(5,ibox,jbox)
-            else
-               call setList(2,ibox,jbox)
-            endif
-         enddo
-      enddo
-      do ibox=1,nboxes
-         if (boxes(6,ibox).eq.0) then
-            call getList(5,ibox,list5,nlist)
-            do j=1,nlist
-               jbox=list5(j)
-               if (boxes(6,jbox).eq.0) then
-                  call setList(1,ibox,jbox)
-                  if (boxes(1,jbox).ne.boxes(1,ibox)) then
-                     call setList(1,jbox,ibox)
-                  endif
-               endif
-            enddo
-         endif
-      enddo
       return
       end
 
@@ -171,29 +117,6 @@
       return
       end
 
-      subroutine setCenter(X0,size,nboxes)
-      use arrays, only : boxes,centers
-      implicit none
-      integer i,nboxes,level
-      real *8 x00,y00,z00,side,side2,size
-      real *8 center(3),X0(3)
-      x00=X0(1)-size/2
-      y00=X0(2)-size/2
-      z00=X0(3)-size/2
-      do i=1,nboxes
-         level=boxes(1,i)
-         side=size/2**level
-         side2=side/2
-         center(1)=x00+boxes(2,i)*side+side2
-         center(2)=y00+boxes(3,i)*side+side2
-         center(3)=z00+boxes(4,i)*side+side2
-         centers(1,i)=center(1)
-         centers(2,i)=center(2)
-         centers(3,i)=center(3)
-      enddo
-      return
-      end
-
       subroutine reorder(X0,R0,level,iX,
      1     Xj,index,n,iwork,nbody)
       implicit none
@@ -229,6 +152,66 @@
       enddo
       do i=1,n
          index(i)=iwork(i)
+      enddo
+      return
+      end
+
+      subroutine setLists(nboxes)
+      use arrays, only : boxes,listOffset
+      implicit none
+      integer i,j,k,ibox,jbox,nboxes,iparent,nkids,icoll,ncolls,kid
+      integer nlist
+      integer kids(50000),parents(2000),list5(20000)
+      do k=1,5
+         do i=1,nboxes
+            listOffset(i,k)=-1
+         enddo
+      enddo
+      do ibox=2,nboxes
+         iparent=boxes(5,ibox)
+         parents(1)=iparent
+         call getList(5,iparent,parents(2),ncolls)
+         ncolls=ncolls+1
+         nkids=0
+         do i=1,ncolls
+            icoll=parents(i)
+            do j=1,boxes(7,icoll)
+               kid=boxes(6,icoll)+j-1
+               if (kid.gt.0) then
+                  if (kid.ne.ibox) then
+                     nkids=nkids+1
+                     kids(nkids)=kid
+                  endif
+               endif
+            enddo
+         enddo
+         do i=1,nkids
+            jbox=kids(i)
+            if ( boxes(2,ibox)-1.le.boxes(2,jbox).and.
+     1           boxes(2,ibox)+1.ge.boxes(2,jbox).and.
+     1           boxes(3,ibox)-1.le.boxes(3,jbox).and.
+     1           boxes(3,ibox)+1.ge.boxes(3,jbox).and.
+     1           boxes(4,ibox)-1.le.boxes(4,jbox).and.
+     1           boxes(4,ibox)+1.ge.boxes(4,jbox) ) then
+               call setList(5,ibox,jbox)
+            else
+               call setList(2,ibox,jbox)
+            endif
+         enddo
+      enddo
+      do ibox=1,nboxes
+         if (boxes(6,ibox).eq.0) then
+            call getList(5,ibox,list5,nlist)
+            do j=1,nlist
+               jbox=list5(j)
+               if (boxes(6,jbox).eq.0) then
+                  call setList(1,ibox,jbox)
+                  if (boxes(1,jbox).ne.boxes(1,ibox)) then
+                     call setList(1,jbox,ibox)
+                  endif
+               endif
+            enddo
+         endif
       enddo
       return
       end
