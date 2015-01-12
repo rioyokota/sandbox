@@ -287,8 +287,7 @@ c     of the subroutine
             if(nbody.le.ncrit) cycle
             ibody=boxes(8,iparent)
             call reorder(X0,R0,level,boxes(2,iparent),
-     1           Xj,permutation(ibody),nbody,iwork,
-     1           nbody8)
+     1           Xj,permutation(ibody),nbody,iwork,nbody8)
             nchild=0
             offset=ibody
             boxes(6,iparent)=nboxes+1
@@ -306,7 +305,7 @@ c     of the subroutine
                boxes(8,nboxes)=offset
                boxes(9,nboxes)=nbody8(i+1)
                nchild=nchild+1
-               offset = offset + nbody8(i+1)
+               offset=offset+nbody8(i+1)
             enddo
             boxes(7,iparent)=nchild
          enddo
@@ -369,8 +368,8 @@ c     of the subroutine
       subroutine reorder(X0,R0,level,iX,
      1     Xj,index,n,iwork,nbody)
       implicit none
-      integer d,level,iX(3)
-      integer n12,n34,n56,n78,n1234,n5678,n
+      integer n,d,i,j,level,octant
+      integer iX(3),offset(9)
       integer index(*),iwork(*),nbody(*)
       real *8 R,R0
       real *8 X(3),X0(3),Xj(3,*)
@@ -378,52 +377,30 @@ c     of the subroutine
       do d=1,3
          X(d)=X0(d)-R0+iX(d)*R*2+R
       enddo
-      call divide(Xj,index,n,3,X(3),iwork,n1234)
-      n5678=n-n1234
-      if(n1234 .ne. 0)
-     1     call divide(Xj,index,n1234,2,X(2),iwork,n12)
-      n34=n1234-n12
-      if(n5678 .ne. 0)
-     1     call divide(Xj,index(n1234+1),n5678,2,X(2),iwork,n56)
-      n78=n5678-n56
-      if(n12 .ne. 0)
-     1     call divide(Xj,index,n12,1,X(1),iwork,nbody(1))
-      nbody(2)=n12-nbody(1)
-      if(n34 .ne. 0)
-     1     call divide(Xj,index(n12+1),n34,1,X(1),iwork,nbody(3))
-      nbody(4)=n34-nbody(3)
-      if(n56 .ne. 0)
-     1     call divide(Xj,index(n1234+1),n56,1,X(1),iwork,nbody(5))
-      nbody(6)=n56-nbody(5)
-      if(n78 .ne. 0)
-     1     call divide(Xj,index(n1234+n56+1),n78,1,X(1),iwork,
-     1     nbody(7))
-      nbody(8)=n78-nbody(7)
-      return
-      end
-
-      subroutine divide(z,iz,n,d,thresh,iwork,n1)
-      implicit none
-      integer i1,i2,i,j,n1,n,d
-      integer iz(*),iwork(*)
-      real *8 thresh
-      real *8 z(3,*)
-      i1=0
-      i2=0
+      do i=1,8
+         nbody(i)=0
+      enddo
       do i=1,n
-         j=iz(i)
-         if(z(d,j).le.thresh) then
-            i1=i1+1
-            iz(i1)=j
-            cycle
-         endif
-         i2=i2+1
-         iwork(i2)=j
+         j=index(i)
+         octant=-(Xj(3,j).gt.X(3))*4-(Xj(2,j).gt.X(2))*2
+     1        -(Xj(1,j).gt.X(1))+1
+         nbody(octant)=nbody(octant)+1
       enddo
-      do i=1,i2
-         iz(i1+i)=iwork(i)
+      offset(1)=1
+      do i=1,8
+         offset(i+1)=offset(i)+nbody(i)
+         nbody(i)=0
       enddo
-      n1=i1
+      do i=1,n
+         j=index(i)
+         octant=-(Xj(3,j).gt.X(3))*4-(Xj(2,j).gt.X(2))*2
+     1        -(Xj(1,j).gt.X(1))+1
+         iwork(offset(octant)+nbody(octant))=index(i)
+         nbody(octant)=nbody(octant)+1
+      enddo
+      do i=1,n
+         index(i)=iwork(i)
+      enddo
       return
       end
 
