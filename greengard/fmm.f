@@ -144,8 +144,8 @@ c$omp$private(ibox,box,center0,corners0,level)
             call getCenter(ibox,center0,corners0)
             level=box(1)
             nbessel = nterms(level)+1000
-            if(box(9).eq.0) cycle
-            if(box(7).eq.0) then
+            if(boxes(9,ibox).eq.0) cycle
+            if(boxes(7,ibox).eq.0) then
                call P2M(wavek,scale(level),
      1              sourcesort(1,box(8)),chargesort(box(8)),box(9),
      1              center0,nterms(level),nterms_eval(1,level),nbessel,
