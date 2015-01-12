@@ -237,15 +237,12 @@ c     of the subroutine
       implicit none
       integer i,ichild,nlev,level,nlevChild
       integer iparent,nbody,ncrit,ii,jj,kk,numBodies
-      integer iiz,nz,ic,lll,iichild,jjchild,kkchild
+      integer iiz,nz,ic,lll,offset
       integer nboxes
-      integer boxes(20,*),permutation(*),iwork(numBodies),is(8),ns(8),
-     1     iichilds(8),jjchilds(8),kkchilds(8)
+      integer boxes(20,*),permutation(*),iwork(numBodies),nbody8(8)
       real *8 xmin,xmax,ymin,ymax,zmin,zmax
       real *8 size,sizey,sizez
       real *8 Xj(3,*),center0(3),center(3)
-      data kkchilds/1,1,1,1,2,2,2,2/,jjchilds/1,1,2,2,1,1,2,2/,
-     1     iichilds/1,2,1,2,1,2,1,2/
       xmin=Xj(1,1)
       xmax=Xj(1,1)
       ymin=Xj(2,1)
@@ -269,9 +266,9 @@ c     of the subroutine
       center0(2)=(ymin+ymax)/2
       center0(3)=(zmin+zmax)/2
       boxes(1,1)=0 ! level
-      boxes(2,1)=1 ! iX(1)
-      boxes(3,1)=1 ! iX(2)
-      boxes(4,1)=1 ! iX(3)
+      boxes(2,1)=0 ! iX(1)
+      boxes(3,1)=0 ! iX(2)
+      boxes(4,1)=0 ! iX(3)
       boxes(5,1)=0 ! iparent
       boxes(6,1)=0 ! ichild(1)
       boxes(7,1)=0 ! ichild(2)
@@ -288,8 +285,6 @@ c     of the subroutine
       do i=1,numBodies
          permutation(i)=i
       enddo
-c     recursively (one level after another) subdivide all
-c     boxes till none are left with more than ncrit particles
       ichild=1
       nlev=0
       do level=1,100
@@ -303,10 +298,11 @@ c     boxes till none are left with more than ncrit particles
             call findCenter(center0,size,level,ii,jj,kk,center)
             iiz=boxes(14,iparent)
             nz=boxes(15,iparent)
-            call reorder(center,Xj,permutation(iiz),nz,iwork,is,ns)
+            call reorder(center,Xj,permutation(iiz),nz,iwork,nbody8)
             ic=6
-            do i=1,8
-               if(ns(i).eq.0) cycle
+            offset = iiz
+            do i=0,7
+               if(nbody8(i+1).eq.0) cycle
                nlevChild=nlevChild+1
                ichild=ichild+1
                nlev=level
@@ -318,18 +314,16 @@ c     boxes till none are left with more than ncrit particles
                   boxes(lll,ichild)=0
                enddo
                boxes(1,ichild)=level
-               iichild=(ii-1)*2+iichilds(i)
-               jjchild=(jj-1)*2+jjchilds(i)
-               kkchild=(kk-1)*2+kkchilds(i)
-               boxes(2,ichild)=iichild
-               boxes(3,ichild)=jjchild
-               boxes(4,ichild)=kkchild
+               boxes(2,ichild)=ii*2+mod(i,2)
+               boxes(3,ichild)=jj*2+mod(i/2,2)
+               boxes(4,ichild)=kk*2+i/4
                boxes(5,ichild)=iparent
-               boxes(14,ichild)=is(i)+iiz-1
-               boxes(15,ichild)=ns(i)
+               boxes(14,ichild)=offset
+               boxes(15,ichild)=nbody8(i+1)
                boxes(ic,iparent)=ichild
                ic=ic+1
                nboxes=ichild
+               offset = offset + nbody8(i+1)
             enddo
          enddo
          levelOffset(level+2)=levelOffset(level+1)+nlevChild
@@ -367,9 +361,9 @@ c     corners - the corners of all boxes in the array boxes
          ii=boxes(2,i)
          jj=boxes(3,i)
          kk=boxes(4,i)
-         center(1)=x00+(ii-1)*side+side2
-         center(2)=y00+(jj-1)*side+side2
-         center(3)=z00+(kk-1)*side+side2
+         center(1)=x00+ii*side+side2
+         center(2)=y00+jj*side+side2
+         center(3)=z00+kk*side+side2
          centers(1,i)=center(1)
          centers(2,i)=center(2)
          centers(3,i)=center(3)
@@ -419,18 +413,17 @@ c     center0, and the side size
       y0=center0(2)-size/2
       z0=center0(3)-size/2
       level0=level
-      center(1)=x0+(i-1)*side+side2
-      center(2)=y0+(j-1)*side+side2
-      center(3)=z0+(k-1)*side+side2
+      center(1)=x0+i*side+side2
+      center(2)=y0+j*side+side2
+      center(3)=z0+k*side+side2
       return
       end
 
-      subroutine reorder(center,z,iz,n,iwork,
-     1     is,ns)
+      subroutine reorder(center,z,iz,n,iwork,nbody)
       implicit none
       integer n1,n2,n3,n4,n5,n6,n7,n8,n12,n34,n56,n78
       integer n1234,n5678,n
-      integer iz(*),iwork(*),is(*),ns(*)
+      integer iz(*),iwork(*),nbody(*)
       real *8 center(3),z(3,*)
       n1=0
       n2=0
@@ -466,23 +459,14 @@ c     center0, and the side size
       if(n78 .ne. 0)
      1     call divide(z,iz(n1234+n56+1),n78,1,center(1),iwork,n7)
       n8=n78-n7
-c     store the information about the sonnies in appropriate arrays
-      is(1)=1
-      ns(1)=n1
-      is(2)=is(1)+ns(1)
-      ns(2)=n2
-      is(3)=is(2)+ns(2)
-      ns(3)=n3
-      is(4)=is(3)+ns(3)
-      ns(4)=n4
-      is(5)=is(4)+ns(4)
-      ns(5)=n5
-      is(6)=is(5)+ns(5)
-      ns(6)=n6
-      is(7)=is(6)+ns(6)
-      ns(7)=n7
-      is(8)=is(7)+ns(7)
-      ns(8)=n8
+      nbody(1)=n1
+      nbody(2)=n2
+      nbody(3)=n3
+      nbody(4)=n4
+      nbody(5)=n5
+      nbody(6)=n6
+      nbody(7)=n7
+      nbody(8)=n8
       return
       end
 

@@ -6,6 +6,7 @@
 
 Unify variable names across interface
 Remove corners
+center0 -> X0
 box -> cell
 kid -> child
 coll -> neighbor
