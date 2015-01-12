@@ -22,8 +22,8 @@ c---------------------------------------------------------------------
       real *8 R2,R,Xi(3,1000000),Xj(3,1000000),dX(3)
       complex *16 wavek,coef1,coef2,imag/(0.0d0,1.0d0)/
       complex *16 qj(1000000),pi(1000000),Fi(3,1000000)
-      do i=ibox(14),ibox(14)+ibox(15)-1
-         do j=jbox(14),jbox(14)+jbox(15)-1
+      do i=ibox(8),ibox(8)+ibox(9)-1
+         do j=jbox(8),jbox(8)+jbox(9)-1
             dX(1)=Xi(1,i)-Xj(1,j)
             dX(2)=Xi(2,i)-Xj(2,j)
             dX(3)=Xi(3,i)-Xj(3,j)

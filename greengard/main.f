@@ -31,6 +31,10 @@ c$    toc=omp_get_wtime()
          Fi2(2,i) = 0
          Fi2(3,i) = 0
       enddo
+      ibox(8) = 1
+      ibox(9) = numTarget
+      jbox(8) = 1
+      jbox(9) = numBodies
       ibox(14) = 1
       ibox(15) = numTarget
       jbox(14) = 1

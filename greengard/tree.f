@@ -33,8 +33,8 @@
       integer nkids,ikid
       integer box(20)
       nkids=0
-      do ikid=1,8
-         if( box(5+ikid) .ne. 0 ) nkids=nkids+1
+      do ikid=1,box(7)
+         if( box(6)+ikid-1 .ne. 0 ) nkids=nkids+1
       enddo
       return
       end
@@ -126,8 +126,8 @@ c     now, construct lists 1, 3
       stack(1,1)=1
       stack(2,1)=jbox
       nchilds=0
-      do j=6,13
-         if(boxes(j,jbox) .gt. 0) nchilds=nchilds+1
+      do j=1,8
+         if(boxes(6,jbox)-j+1.gt.0) nchilds=nchilds+1
       enddo
       stack(3,1)=nchilds
 c     . . . move up and down the stack, generating the elements
@@ -236,9 +236,8 @@ c     of the subroutine
       use arrays, only : levelOffset
       implicit none
       integer i,nlev,level,nlevChild
-      integer iparent,nbody,ncrit,ii,jj,kk,numBodies
-      integer iiz,nz,ic,offset
-      integer nboxes
+      integer iparent,nchild,ibody,nbody,ncrit,ii,jj,kk,numBodies
+      integer offset,nboxes
       integer boxes(20,*),permutation(*),iwork(numBodies),nbody8(8)
       real *8 xmin,xmax,ymin,ymax,zmin,zmax
       real *8 size,sizey,sizez
@@ -272,10 +271,8 @@ c     of the subroutine
       boxes(5,1)=0 ! iparent
       boxes(6,1)=0 ! ichild
       boxes(7,1)=0 ! nchild
-      boxes(8,1)=0 ! ibody
-      boxes(9,1)=0 ! nbody
-      boxes(14,1)=1 ! ibody
-      boxes(15,1)=numBodies ! nbody
+      boxes(8,1)=1 ! ibody
+      boxes(9,1)=numBodies ! nbody
       levelOffset(1)=1
       levelOffset(2)=2
       do i=1,numBodies
@@ -286,17 +283,17 @@ c     of the subroutine
       do level=1,100
          nlevChild=0
          do iparent=levelOffset(level),levelOffset(level+1)-1
-            nbody=boxes(15,iparent)
+            nbody=boxes(9,iparent)
             if(nbody.le.ncrit) cycle
             ii=boxes(2,iparent)
             jj=boxes(3,iparent)
             kk=boxes(4,iparent)
             call findCenter(center0,size,level,ii,jj,kk,center)
-            iiz=boxes(14,iparent)
-            nz=boxes(15,iparent)
-            call reorder(center,Xj,permutation(iiz),nz,iwork,nbody8)
-            ic=6
-            offset=iiz
+            ibody=boxes(8,iparent)
+            call reorder(center,Xj,permutation(ibody),nbody,iwork,
+     1           nbody8)
+            nchild=0
+            offset=ibody
             do i=0,7
                if(nbody8(i+1).eq.0) cycle
                nlevChild=nlevChild+1
@@ -313,13 +310,13 @@ c     of the subroutine
                boxes(5,nboxes)=iparent
                boxes(6,nboxes)=0
                boxes(7,nboxes)=0
-               boxes(14,nboxes)=offset
-               boxes(15,nboxes)=nbody8(i+1)
-               ic=ic+1
+               boxes(8,nboxes)=offset
+               boxes(9,nboxes)=nbody8(i+1)
+               nchild=nchild+1
                offset = offset + nbody8(i+1)
             enddo
-            boxes(6,iparent)=nboxes-ic+7
-            boxes(7,iparent)=ic-6
+            boxes(6,iparent)=nboxes-nchild+1
+            boxes(7,iparent)=nchild
          enddo
          levelOffset(level+2)=levelOffset(level+1)+nlevChild
          if(nlevChild.eq.0) exit
