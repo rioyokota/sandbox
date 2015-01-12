@@ -236,9 +236,9 @@ c     of the subroutine
       use arrays, only : levelOffset
       implicit none
       integer i,ichild,nlev,level,nlevChild
-      integer iparent,nump,numt,ncrit,ii,jj,kk,numBodies
+      integer iparent,nbody,ncrit,ii,jj,kk,numBodies
       integer iiz,nz,ic,lll,iichild,jjchild,kkchild
-      integer nboxes,level1
+      integer nboxes
       integer boxes(20,*),permutation(*),iwork(numBodies),is(8),ns(8),
      1     iichilds(8),jjchilds(8),kkchilds(8)
       real *8 xmin,xmax,ymin,ymax,zmin,zmax
@@ -268,27 +268,21 @@ c     of the subroutine
       center0(1)=(xmin+xmax)/2
       center0(2)=(ymin+ymax)/2
       center0(3)=(zmin+zmax)/2
-      boxes(1,1)=0
-      boxes(2,1)=1
-      boxes(3,1)=1
-      boxes(4,1)=1
-      boxes(5,1)=0
-      boxes(6,1)=0
-      boxes(7,1)=0
-      boxes(8,1)=0
-      boxes(9,1)=0
-      boxes(10,1)=0
-      boxes(11,1)=0
-      boxes(12,1)=0
-      boxes(13,1)=0
-      boxes(14,1)=1
-      boxes(15,1)=numBodies
-      boxes(16,1)=1
-      boxes(17,1)=0
-      if( numBodies .le. 0 ) boxes(18,1)=0
-      if( numBodies .gt. 0 ) boxes(18,1)=1
-      boxes(19,1)=0
-      boxes(20,1)=0
+      boxes(1,1)=0 ! level
+      boxes(2,1)=1 ! iX(1)
+      boxes(3,1)=1 ! iX(2)
+      boxes(4,1)=1 ! iX(3)
+      boxes(5,1)=0 ! iparent
+      boxes(6,1)=0 ! ichild(1)
+      boxes(7,1)=0 ! ichild(2)
+      boxes(8,1)=0 ! ichild(3)
+      boxes(9,1)=0 ! ichild(4)
+      boxes(10,1)=0 ! ichild(5)
+      boxes(11,1)=0 ! ichild(6)
+      boxes(12,1)=0 ! ichild(7)
+      boxes(13,1)=0 ! ichild(8)
+      boxes(14,1)=1 ! ibody
+      boxes(15,1)=numBodies ! nbody
       levelOffset(1)=1
       levelOffset(2)=2
       do i=1,numBodies
@@ -298,20 +292,11 @@ c     recursively (one level after another) subdivide all
 c     boxes till none are left with more than ncrit particles
       ichild=1
       nlev=0
-      do level=0,100
+      do level=1,100
          nlevChild=0
-         do iparent=levelOffset(level+1),levelOffset(level+2)-1
-c     subdivide the box number iparent (if needed)
-            nump=boxes(15,iparent)
-            numt=boxes(17,iparent)
-c     ... refine on both sources and targets
-            if(nump.le.ncrit.and.numt.le.ncrit.and.
-     1           level.ge.0) cycle
-c     ... not a leaf node on sources or targets
-            if(nump.gt.ncrit.or.numt.gt.ncrit)then
-               if(boxes(18,iparent).eq.1) boxes(18,iparent)=2
-               if(boxes(19,iparent).eq.1) boxes(19,iparent)=2
-            endif
+         do iparent=levelOffset(level),levelOffset(level+1)-1
+            nbody=boxes(15,iparent)
+            if(nbody.le.ncrit) cycle
             ii=boxes(2,iparent)
             jj=boxes(3,iparent)
             kk=boxes(4,iparent)
@@ -324,16 +309,15 @@ c     ... not a leaf node on sources or targets
                if(ns(i).eq.0) cycle
                nlevChild=nlevChild+1
                ichild=ichild+1
-               nlev=level+1
+               nlev=level
                if(ichild.gt.numBodies) then
                   print*,"Error: ibox out of bounds"
                   stop
                endif
-c     store in array boxes all information about this son
                do lll=6,13
                   boxes(lll,ichild)=0
                enddo
-               boxes(1,ichild)=level+1
+               boxes(1,ichild)=level
                iichild=(ii-1)*2+iichilds(i)
                jjchild=(jj-1)*2+jjchilds(i)
                kkchild=(kk-1)*2+kkchilds(i)
@@ -343,25 +327,14 @@ c     store in array boxes all information about this son
                boxes(5,ichild)=iparent
                boxes(14,ichild)=is(i)+iiz-1
                boxes(15,ichild)=ns(i)
-               boxes(16,ichild)=0
-               boxes(17,ichild)=0
-               if( ns(i) .le. 0 ) boxes(18,ichild)=0
-               if( ns(i) .gt. 0 ) boxes(18,ichild)=1
-               boxes(19,ichild)=0
-               boxes(20,ichild)=0
                boxes(ic,iparent)=ichild
                ic=ic+1
                nboxes=ichild
             enddo
          enddo
-         levelOffset(level+3)=levelOffset(level+2)+nlevChild
+         levelOffset(level+2)=levelOffset(level+1)+nlevChild
          if(nlevChild .eq. 0) exit
-         level1=level
       enddo
-      if( level1 .ge. 197 ) then
-         print*,"Error: level out of bounds"
-         stop
-      endif
       nboxes=ichild
       return
       end
@@ -440,7 +413,7 @@ c     this subroutine finds the center of the box
 c     number (i,j) on the level level. note that the
 c     box on level 0 is assumed to have the center
 c     center0, and the side size
-      side=size/2**level
+      side=size/2**(level-1)
       side2=side/2
       x0=center0(1)-size/2
       y0=center0(2)-size/2
@@ -513,9 +486,9 @@ c     store the information about the sonnies in appropriate arrays
       return
       end
 
-      subroutine divide(z,iz,n,itype,thresh,iwork,n1)
+      subroutine divide(z,iz,n,d,thresh,iwork,n1)
       implicit none
-      integer i1,i2,i,j,n1,n,itype
+      integer i1,i2,i,j,n1,n,d
       integer iz(*),iwork(*)
       real *8 thresh
       real *8 z(3,*)
@@ -523,7 +496,7 @@ c     store the information about the sonnies in appropriate arrays
       i2=0
       do i=1,n
          j=iz(i)
-         if(z(itype,j).le.thresh) then
+         if(z(d,j).le.thresh) then
             i1=i1+1
             iz(i1)=j
             cycle

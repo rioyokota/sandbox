@@ -28,17 +28,18 @@ list 4 is dual to list 3, i.e. jbox is on the list 4 of ibox if
 list 5 - the list of all boxes at the same level
    that are adjacent to the box ibox - the list of colleagues
 
-1 - the level of subdivision on which this box was constructed
-2,3,4 - the coordinates of this box among  all boxes on this level
-5 - the parent of this box, identified by it address in array boxes
-6,7,8,9,10,11,12,13 - the  list of children of this box
-   (eight of them, and the child is identified by its address
-   in the array boxes; if a box has only one child, only the
-   first of the four child entries is non-zero, etc.)
-14 - the location in the array iz of the particles living in this box
-15 - the number of particles living in this box
-16 - the location in the array iztarg of the targets living in this box
-17 - the number of targets living in this box
-18 - source box type: 0 - empty, 1 - leaf node, 2 - sub-divided
-19 - target box type: 0 - empty, 1 - leaf node, 2 - sub-divided
-20 - reserved for future use
+boxes(1,1)  level
+boxes(2,1)  iX(1)
+boxes(3,1)  iX(2)
+boxes(4,1)  iX(3)
+boxes(5,1)  iparent
+boxes(6,1)  ichild(1)
+boxes(7,1)  ichild(2)
+boxes(8,1)  ichild(3)
+boxes(9,1)  ichild(4)
+boxes(10,1) ichild(5)
+boxes(11,1) ichild(6)
+boxes(12,1) ichild(7)
+boxes(13,1) ichild(8)
+boxes(14,1) ibody
+boxes(15,1) nbody
