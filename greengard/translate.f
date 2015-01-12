@@ -377,12 +377,12 @@ c     jnd(z)=\frac{\partial jn(z)}{\partial z}
       pk=1
       pkp1=x
       if(n.lt.2) then
-      der=0
-      sum=0.5
-      if(n.eq.0) return
-      der=1
-      sum=sum+x**2*1.5
-      return
+         der=0
+         sum=0.5
+         if(n.eq.0) return
+         der=1
+         sum=sum+x**2*1.5
+         return
       endif
       do k=1,n-1
          pkm1=pk

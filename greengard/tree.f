@@ -452,47 +452,13 @@ c     center0, and the side size
       return
       end
 
-      subroutine reorder(cent,z,iz,n,iwork,
+      subroutine reorder(center,z,iz,n,iwork,
      1     is,ns)
       implicit none
       integer n1,n2,n3,n4,n5,n6,n7,n8,n12,n34,n56,n78
-      integer n1234,n5678,itype,n
+      integer n1234,n5678,n
       integer iz(*),iwork(*),is(*),ns(*)
-      real *8 thresh
-      real *8 cent(3),z(3,*)
-c     this subroutine reorders the particles in a box,
-c     so that each of the children occupies a contigious
-c     chunk of array iz
-c     note that we are using a standard numbering convention
-c     for the children:
-c     5,6     7,8
-c     <- looking down the z-axis
-c     1,2     3,4
-cccc  in the original code, we were using a strange numbering convention
-cccc  for the children:
-cccc  3,4     7,8
-cccc  <- looking down the z-axis
-cccc  1,2     5,6
-c
-c     input parameters:
-c     cent - the center of the box to be subdivided
-c     z - the list of all points in the box to be subdivided
-c     iz - the integer array specifying the transposition already
-c     applied to the points z, before the subdivision of
-c     the box into children
-c     n - the total number of points in array z
-c
-c     output parameters:
-c     iz - the integer array specifying the transposition already
-c     applied to the points z, after the subdivision of
-c     the box into children
-c     is - an integer array of length 8 containing the locations
-c     of the childs in array iz
-c     ns - an integer array of length 8 containig the numbers of
-c     elements in the childs
-c
-c     work arrays:
-c     iwork - must be n integer elements long
+      real *8 center(3),z(3,*)
       n1=0
       n2=0
       n3=0
@@ -507,38 +473,25 @@ c     iwork - must be n integer elements long
       n78=0
       n1234=0
       n5678=0
-      itype=3
-      thresh=cent(3)
-      call divide(z,iz,n,itype,thresh,iwork,n1234)
+      call divide(z,iz,n,3,center(3),iwork,n1234)
       n5678=n-n1234
-c     at this point, the contents of childs number 1,2,3,4 are in
-c     the part of array iz with numbers 1,2,...n1234
-c     the contents of childs number 5,6,7,8  are in
-c     the part of array iz with numbers n1234+1,n12+2,...,n
-c     . . . separate the boxes 1, 2, 3, 4 and boxes 5, 6, 7, 8
-      itype=2
-      thresh=cent(2)
       if(n1234 .ne. 0)
-     1     call divide(z,iz,n1234,itype,thresh,iwork,n12)
+     1     call divide(z,iz,n1234,2,center(2),iwork,n12)
       n34=n1234-n12
       if(n5678 .ne. 0)
-     1     call divide(z,iz(n1234+1),n5678,itype,thresh,iwork,n56)
+     1     call divide(z,iz(n1234+1),n5678,2,center(2),iwork,n56)
       n78=n5678-n56
-c     perform the final separation of pairs of sonnies into
-c     individual ones
-      itype=1
-      thresh=cent(1)
       if(n12 .ne. 0)
-     1     call divide(z,iz,n12,itype,thresh,iwork,n1)
+     1     call divide(z,iz,n12,1,center(1),iwork,n1)
       n2=n12-n1
       if(n34 .ne. 0)
-     1     call divide(z,iz(n12+1),n34,itype,thresh,iwork,n3)
+     1     call divide(z,iz(n12+1),n34,1,center(1),iwork,n3)
       n4=n34-n3
       if(n56 .ne. 0)
-     1     call divide(z,iz(n1234+1),n56,itype,thresh,iwork,n5)
+     1     call divide(z,iz(n1234+1),n56,1,center(1),iwork,n5)
       n6=n56-n5
       if(n78 .ne. 0)
-     1     call divide(z,iz(n1234+n56+1),n78,itype,thresh,iwork,n7)
+     1     call divide(z,iz(n1234+n56+1),n78,1,center(1),iwork,n7)
       n8=n78-n7
 c     store the information about the sonnies in appropriate arrays
       is(1)=1
@@ -571,12 +524,12 @@ c     store the information about the sonnies in appropriate arrays
       do i=1,n
          j=iz(i)
          if(z(itype,j).le.thresh) then
-         i1=i1+1
-         iz(i1)=j
-         cycle
-      endif
-      i2=i2+1
-      iwork(i2)=j
+            i1=i1+1
+            iz(i1)=j
+            cycle
+         endif
+         i2=i2+1
+         iwork(i2)=j
       enddo
       do i=1,i2
          iz(i1+i)=iwork(i)

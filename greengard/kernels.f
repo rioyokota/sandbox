@@ -4,8 +4,8 @@ c**********************************************************************
 c     This subroutine calculates the potential and field
 c     at the target point Xi, due to a charge at Xj.
 c     The scaling is that required of the delta function response: i.e.,
-c              	pi = exp(i*k*r)/r
-c		Fi = -grad(pi)
+c     pi = exp(i*k*r)/r
+c     Fi = -grad(pi)
 c---------------------------------------------------------------------
 c     INPUT:
 c     Xj    : location of the source
@@ -393,8 +393,8 @@ c---------------------------------------------------------------------
       return
       end
       subroutine L2L(wavek,scalej,Xj,Lj,ntermsj,
-     1           scalei,Xi,Li,ntermsi,
-     2           radius,xnodes,wts,nquad,nbessel,Anm1,Anm2,Pmax)
+     1     scalei,Xi,Li,ntermsi,
+     2     radius,xnodes,wts,nquad,nbessel,Anm1,Anm2,Pmax)
 c***********************************************************************
 c     Shifts center of a local expansion.
 c     This is a reasonably fast "point and shoot" version which
@@ -561,7 +561,7 @@ c**********************************************************************
 c     This subroutine evaluates a j-expansion centered at CENTER
 c     at the target point TARGET.
 c     pi= sum sum  Lj(n,m) j_n(k r) Y_nm(theta,phi)
-c             n   m
+c     n   m
 c---------------------------------------------------------------------
 c     INPUT:
 c     wavek  : the Helmholtz coefficient
