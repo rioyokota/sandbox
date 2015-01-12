@@ -12,7 +12,7 @@
       enddo
       allocate(nodes(20,numBodies))
       call growTree(Xj,numBodies,ncrit,nodes,
-     1     nboxes,permutation,nlev,center,size,0,100)
+     1     nboxes,permutation,nlev,center,size)
       allocate(listOffset(nboxes,5))
       allocate(lists(2,189*nboxes))
       allocate(boxes(20,nboxes))
@@ -232,15 +232,14 @@ c     of the subroutine
       end
 
       subroutine growTree(Xj,numBodies,ncrit,boxes,
-     1     nboxes,iz,nlev,center0,size,
-     1     minlevel,maxlevel)
+     1     nboxes,permutation,nlev,center0,size)
       use arrays, only : levelOffset
       implicit none
-      integer i,maxChild,maxlev,maxlevel,ichild,nlev,level,nlevChild
-      integer iparent,nump,numt,ncrit,minlevel,ii,jj,kk,numBodies
+      integer i,ichild,nlev,level,nlevChild
+      integer iparent,nump,numt,ncrit,ii,jj,kk,numBodies
       integer iiz,nz,ic,lll,iichild,jjchild,kkchild
       integer nboxes,level1
-      integer boxes(20,*),iz(*),iwork(numBodies),is(8),ns(8),
+      integer boxes(20,*),permutation(*),iwork(numBodies),is(8),ns(8),
      1     iichilds(8),jjchilds(8),kkchilds(8)
       real *8 xmin,xmax,ymin,ymax,zmin,zmax
       real *8 size,sizey,sizez
@@ -293,16 +292,13 @@ c     of the subroutine
       levelOffset(1)=1
       levelOffset(2)=2
       do i=1,numBodies
-         iz(i)=i
+         permutation(i)=i
       enddo
 c     recursively (one level after another) subdivide all
 c     boxes till none are left with more than ncrit particles
-      maxChild=numBodies
-      maxlev=198
-      if( maxlevel .lt. maxlev ) maxlev=maxlevel
       ichild=1
       nlev=0
-      do level=0,maxlev-1
+      do level=0,100
          nlevChild=0
          do iparent=levelOffset(level+1),levelOffset(level+2)-1
 c     subdivide the box number iparent (if needed)
@@ -310,7 +306,7 @@ c     subdivide the box number iparent (if needed)
             numt=boxes(17,iparent)
 c     ... refine on both sources and targets
             if(nump.le.ncrit.and.numt.le.ncrit.and.
-     1           level.ge.minlevel) cycle
+     1           level.ge.0) cycle
 c     ... not a leaf node on sources or targets
             if(nump.gt.ncrit.or.numt.gt.ncrit)then
                if(boxes(18,iparent).eq.1) boxes(18,iparent)=2
@@ -322,14 +318,14 @@ c     ... not a leaf node on sources or targets
             call findCenter(center0,size,level,ii,jj,kk,center)
             iiz=boxes(14,iparent)
             nz=boxes(15,iparent)
-            call reorder(center,Xj,iz(iiz),nz,iwork,is,ns)
+            call reorder(center,Xj,permutation(iiz),nz,iwork,is,ns)
             ic=6
             do i=1,8
                if(ns(i).eq.0) cycle
                nlevChild=nlevChild+1
                ichild=ichild+1
                nlev=level+1
-               if(ichild.gt.maxChild) then
+               if(ichild.gt.numBodies) then
                   print*,"Error: ibox out of bounds"
                   stop
                endif
