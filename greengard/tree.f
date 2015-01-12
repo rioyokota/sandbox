@@ -32,7 +32,7 @@
       use arrays, only : boxes,listOffset,corners
       implicit none
       integer i,j,k,ibox,jbox,nboxes,iparent,nkids,icoll,ncolls,kid
-      integer nlist,ifinter
+      integer nlist
       integer kids(50000),parents(2000),list5(20000)
       do k=1,5
          do i=1,nboxes
@@ -49,8 +49,8 @@
             icoll=parents(i)
             do j=1,boxes(7,icoll)
                kid=boxes(6,icoll)+j-1
-               if (kid.gt.0)then
-                  if (kid.ne.ibox)then
+               if (kid.gt.0) then
+                  if (kid.ne.ibox) then
                      nkids=nkids+1
                      kids(nkids)=kid
                   endif
@@ -58,16 +58,21 @@
             enddo
          enddo
          do i=1,nkids
-            kid=kids(i)
-            call intersect(corners(1,1,kid),corners(1,1,ibox),ifinter)
-            if (ifinter.eq.1)
-     1           call setList(5,ibox,kid)
-            if (ifinter.eq.0)
-     1           call setList(2,ibox,kid)
+            jbox=kids(i)
+            if ( boxes(2,ibox)-1.le.boxes(2,jbox).and.
+     1           boxes(2,ibox)+1.ge.boxes(2,jbox).and.
+     1           boxes(3,ibox)-1.le.boxes(3,jbox).and.
+     1           boxes(3,ibox)+1.ge.boxes(3,jbox).and.
+     1           boxes(4,ibox)-1.le.boxes(4,jbox).and.
+     1           boxes(4,ibox)+1.ge.boxes(4,jbox) ) then
+               call setList(5,ibox,jbox)
+            else
+               call setList(2,ibox,jbox)
+            endif
          enddo
       enddo
       do ibox=1,nboxes
-         if (boxes(6,ibox).eq.0)then
+         if (boxes(6,ibox).eq.0) then
             call getList(5,ibox,list5,nlist)
             do j=1,nlist
                jbox=list5(j)
@@ -80,56 +85,6 @@
             enddo
          endif
       enddo
-      return
-      end
-
-      subroutine intersect(c1,c2,ifinter)
-      implicit none
-      integer i,ifinter
-      real *8 xmin1, ymin1, zmin1, xmax1, ymax1, zmax1
-      real *8 xmin2, ymin2, zmin2, xmax2, ymax2, zmax2
-      real *8 eps
-      real *8 c1(3,8),c2(3,8)
-      xmin1=c1(1,1)
-      ymin1=c1(2,1)
-      zmin1=c1(3,1)
-      xmax1=c1(1,1)
-      ymax1=c1(2,1)
-      zmax1=c1(3,1)
-      xmin2=c2(1,1)
-      ymin2=c2(2,1)
-      zmin2=c2(3,1)
-      xmax2=c2(1,1)
-      ymax2=c2(2,1)
-      zmax2=c2(3,1)
-      do i=1,8
-         if (xmin1.gt.c1(1,i)) xmin1=c1(1,i)
-         if (ymin1.gt.c1(2,i)) ymin1=c1(2,i)
-         if (zmin1.gt.c1(3,i)) zmin1=c1(3,i)
-         if (xmax1.lt.c1(1,i)) xmax1=c1(1,i)
-         if (ymax1.lt.c1(2,i)) ymax1=c1(2,i)
-         if (zmax1.lt.c1(3,i)) zmax1=c1(3,i)
-         if (xmin2.gt.c2(1,i)) xmin2=c2(1,i)
-         if (ymin2.gt.c2(2,i)) ymin2=c2(2,i)
-         if (zmin2.gt.c2(3,i)) zmin2=c2(3,i)
-         if (xmax2.lt.c2(1,i)) xmax2=c2(1,i)
-         if (ymax2.lt.c2(2,i)) ymax2=c2(2,i)
-         if (zmax2.lt.c2(3,i)) zmax2=c2(3,i)
-      enddo
-      eps=xmax1-xmin1
-      if (eps.gt.ymax1-ymin1) eps=ymax1-ymin1
-      if (eps.gt.zmax1-zmin1) eps=zmax1-zmin1
-      if (eps.gt.xmax2-xmin2) eps=xmax2-xmin2
-      if (eps.gt.ymax2-ymin2) eps=ymax2-ymin2
-      if (eps.gt.zmax2-zmin2) eps=zmax2-zmin2
-      eps=eps/10000
-      ifinter=1
-      if (xmin1.gt.xmax2+eps) ifinter=0
-      if (xmin2.gt.xmax1+eps) ifinter=0
-      if (ymin1.gt.ymax2+eps) ifinter=0
-      if (ymin2.gt.ymax1+eps) ifinter=0
-      if (zmin1.gt.zmax2+eps) ifinter=0
-      if (zmin2.gt.zmax1+eps) ifinter=0
       return
       end
 
