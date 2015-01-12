@@ -47,7 +47,7 @@ c     set criterion for box subdivision (number of sources per box)
 c     create oct-tree data structure
       allocate (permutation(numBodies))
       allocate (levelOffset(200)) 
-c     $    tic=omp_get_wtime() 
+c$    tic=omp_get_wtime() 
       call buildTree(Xj,numBodies,ncrit,
      1     nboxes,permutation,nlev,center,size)
       allocate(iaddr(nboxes))
@@ -78,7 +78,7 @@ c     $    tic=omp_get_wtime()
       lmptot = iptr
       allocate(Multipole(lmptot))
       allocate(Local(lmptot))
-c     $    toc=omp_get_wtime()
+c$    toc=omp_get_wtime()
       print*,'Tree   =',toc-tic
       call evaluate(wavek,numBodies,Xjd,
      1     qjd,pid,Fid,epsfmm,iaddr,Multipole,Local,
@@ -140,10 +140,10 @@ c     $    toc=omp_get_wtime()
       enddo
 
 c     ... step 1: P2M
-c     $    tic=omp_get_wtime()
+c$    tic=omp_get_wtime()
       do ilev=3,nlev+1
-c     $omp parallel do default(shared)
-c     $omp$private(ibox,box,center0,corners0,level,numChild,radius)
+c$omp parallel do default(shared)
+c$omp$private(ibox,box,center0,corners0,level,numChild,radius)
          do ibox=levelOffset(ilev),levelOffset(ilev+1)-1
             call getCell(ibox,box,nboxes,center0,corners0)
             call getNumChild(box,numChild)
@@ -161,21 +161,21 @@ c     $omp$private(ibox,box,center0,corners0,level,numChild,radius)
      1              Multipole(iaddr(ibox)),Anm1,Anm2,Pmax)
             endif
          enddo
-c     $omp end parallel do
+c$omp end parallel do
       enddo
-c     $    toc=omp_get_wtime()
+c$    toc=omp_get_wtime()
       print*,'P2M    =',toc-tic
 
 c     ... step 2, M2M
-c     $    tic=omp_get_wtime()
+c$    tic=omp_get_wtime()
       do ilev=nlev,3,-1
          nquad=nterms(ilev-1)*2.5
          nquad=max(6,nquad)
          call legendre(nquad,xquad,wquad)
-c     $omp parallel do default(shared)
-c     $omp$private(ibox,box,center0,corners0,level0)
-c     $omp$private(level,numChild,radius)
-c     $omp$private(i,jbox,box1,center1,corners1,level1)
+c$omp parallel do default(shared)
+c$omp$private(ibox,box,center0,corners0,level0)
+c$omp$private(level,numChild,radius)
+c$omp$private(i,jbox,box1,center1,corners1,level1)
          do ibox=levelOffset(ilev),levelOffset(ilev+1)-1
             call getCell(ibox,box,nboxes,center0,corners0)
             call getNumChild(box,numChild)
@@ -202,23 +202,23 @@ c     $omp$private(i,jbox,box1,center1,corners1,level1)
                endif
             endif
          enddo
-c     $omp end parallel do
+c$omp end parallel do
       enddo
-c     $    toc=omp_get_wtime()
+c$    toc=omp_get_wtime()
       print*,'M2M    =',toc-tic
 
 c     ... step 3, M2L
-c     $    tic=omp_get_wtime()
+c$    tic=omp_get_wtime()
       do ilev=3,nlev+1
          call getNumTermsList(bsize(ilev-1),wavek,epsfmm,itable)
          nquad=nterms(ilev-1)*1.2
          nquad=max(6,nquad)
          call legendre(nquad,xquad,wquad)
-c     $omp parallel do default(shared)
-c     $omp$private(ibox,box,center0,corners0,level0,list,ilist,nlist)
-c     $omp$private(jbox,box1,center1,corners1,level1,radius)
-c     $omp$private(nterms_trunc,ii,jj,kk)
-c     $omp$schedule(dynamic)
+c$omp parallel do default(shared)
+c$omp$private(ibox,box,center0,corners0,level0,list,ilist,nlist)
+c$omp$private(jbox,box1,center1,corners1,level1,radius)
+c$omp$private(nterms_trunc,ii,jj,kk)
+c$omp$schedule(dynamic)
          do ibox=levelOffset(ilev),levelOffset(ilev+1)-1
             call getCell(ibox,box,nboxes,center0,corners0)
             level0=box(1)
@@ -252,19 +252,19 @@ c     $omp$schedule(dynamic)
             endif
          enddo
       enddo
-c     $    toc=omp_get_wtime()
+c$    toc=omp_get_wtime()
       print*,'M2L    =',toc-tic
 
 c     ... step 4, L2L
-c     $    tic=omp_get_wtime()
+c$    tic=omp_get_wtime()
       do ilev=3,nlev
          nquad=nterms(ilev-1)*2
          nquad=max(6,nquad)
          call legendre(nquad,xquad,wquad)
-c     $omp parallel do default(shared)
-c     $omp$private(ibox,box,center0,corners0,level0)
-c     $omp$private(level,numChild,radius)
-c     $omp$private(i,jbox,box1,center1,corners1,level1)
+c$omp parallel do default(shared)
+c$omp$private(ibox,box,center0,corners0,level0)
+c$omp$private(level,numChild,radius)
+c$omp$private(i,jbox,box1,center1,corners1,level1)
          do ibox=levelOffset(ilev),levelOffset(ilev+1)-1
             call getCell(ibox,box,nboxes,center0,corners0)
             call getNumChild(box,numChild)
@@ -292,15 +292,15 @@ c     $omp$private(i,jbox,box1,center1,corners1,level1)
                endif
             endif
          enddo
-c     $omp end parallel do
+c$omp end parallel do
       enddo
-c     $    toc=omp_get_wtime()
+c$    toc=omp_get_wtime()
       print*,'L2L    =',toc-tic
 
 c     ... step 5: L2P
-c     $    tic=omp_get_wtime()
-c     $omp parallel do default(shared)
-c     $omp$private(ibox,box,center0,corners0,level,npts,numChild)
+c$    tic=omp_get_wtime()
+c$omp parallel do default(shared)
+c$omp$private(ibox,box,center0,corners0,level,npts,numChild)
       do ibox=1,nboxes
          call getCell(ibox,box,nboxes,center0,corners0)
          call getNumChild(box,numChild)
@@ -318,16 +318,16 @@ c     $omp$private(ibox,box,center0,corners0,level,npts,numChild)
             endif
          endif
       enddo
-c     $omp end parallel do
-c     $    toc=omp_get_wtime()
+c$omp end parallel do
+c$    toc=omp_get_wtime()
       print*,'L2P    =',toc-tic
 
 c     ... step 6: P2P
-c     $    tic=omp_get_wtime()
-c     $omp parallel do default(shared)
-c     $omp$private(ibox,box,center0,corners0,numChild,list,nlist)
-c     $omp$private(jbox,box1,center1,corners1,ilist)
-c     $omp$schedule(dynamic)
+c$    tic=omp_get_wtime()
+c$omp parallel do default(shared)
+c$omp$private(ibox,box,center0,corners0,numChild,list,nlist)
+c$omp$private(jbox,box1,center1,corners1,ilist)
+c$omp$schedule(dynamic)
       do ibox=1,nboxes
          call getCell(ibox,box,nboxes,center0,corners0)
          call getNumChild(box,numChild)
@@ -348,8 +348,8 @@ c     ... prune all sourceless boxes
             enddo
          endif
       enddo
-c     $omp end parallel do
-c     $    toc=omp_get_wtime()
+c$omp end parallel do
+c$    toc=omp_get_wtime()
       print*,'P2P    =',toc-tic
       return
       end

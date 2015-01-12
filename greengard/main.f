@@ -20,9 +20,9 @@
       do i=1,numBodies
          qj(i)=Xj(1,i)+imag*Xj(2,i)
       enddo
-c     $    tic=omp_get_wtime()
+c$    tic=omp_get_wtime()
       call fmm(iprec,wavek,numBodies,Xj,qj,pi,Fi)
-c     $    toc=omp_get_wtime()
+c$    toc=omp_get_wtime()
       print*,'FMM    =',toc-tic
       numTarget = min(numBodies,100)
       do i=1,numTarget
@@ -35,9 +35,9 @@ c     $    toc=omp_get_wtime()
       ibox(15) = numTarget
       jbox(14) = 1
       jbox(15) = numBodies
-c     $    tic=omp_get_wtime()
+c$    tic=omp_get_wtime()
       call P2P(ibox,Xj,pi2,Fi2,jbox,Xj,qj,wavek)
-c     $    toc=omp_get_wtime()
+c$    toc=omp_get_wtime()
       print*,'Direct =',toc-tic
       pdiff = 0
       pnorm = 0
