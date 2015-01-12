@@ -452,19 +452,14 @@ c     jnd(z)=\frac{\partial jn(z)}{\partial z}
       real *8 rr,size,eps,scale,x,x0
       complex *16 wavek,z,jn(0:2000),jnd(0:2000),hn(0:2000)
       z=(wavek*size)*rr
-c     Maximum number of terms is 1000, which works for boxes up to 160 wavelengths in size
       ntmax=1000
       scale=1.0d0
       if(cdabs(wavek*size).lt.1.0d0) scale=cdabs(wavek*size)
       call get_hn(ntmax,z,scale,hn)
       z=(wavek*size)*dsqrt(3d0)/2.d0
-c     corners included
       if(itype.eq.1) z=(wavek*size)*dsqrt(3d0)/2.d0
-c     edges included, no corners
       if(itype.eq.2) z=(wavek*size)*dsqrt(2d0)/2.d0
-c     center only
       if(itype.eq.3) z=(wavek*size)*1.0d0/2.d0
-c     center only, small interior sphere
       if(itype.eq.4) z=(wavek*size)*0.8d0/2.d0
       call get_jn(ntmax,z,scale,jn,0,jnd,2000)
       x0=cdabs(jn(0)*hn(0))+cdabs(jn(1)*hn(1))

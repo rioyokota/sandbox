@@ -1,7 +1,7 @@
       subroutine buildTree(Xj,numBodies,ncrit,
      1     nboxes,permutation,nlev,center,size)
       use arrays, only : listOffset,lists,levelOffset,nodes,boxes,
-     1     centers,corners
+     1     centers
       implicit none
       integer i,j,numBodies,ncrit,nboxes,nlev
       integer permutation(*)
@@ -17,7 +17,6 @@
       allocate(lists(2,189*nboxes))
       allocate(boxes(20,nboxes))
       allocate(centers(3,nboxes))
-      allocate(corners(3,8,nboxes))
       do i=1,nboxes
          do j=1,20
             boxes(j,i)=nodes(j,i)
@@ -29,7 +28,7 @@
       end
 
       subroutine setLists(nboxes)
-      use arrays, only : boxes,listOffset,corners
+      use arrays, only : boxes,listOffset
       implicit none
       integer i,j,k,ibox,jbox,nboxes,iparent,nkids,icoll,ncolls,kid
       integer nlist
@@ -88,19 +87,14 @@
       return
       end
 
-      subroutine getCenter(ibox,center,corner)
-      use arrays, only : centers,corners
+      subroutine getCenter(ibox,center)
+      use arrays, only : centers
       implicit none
       integer i,ibox
-      real *8 center(3),corner(3,8)
+      real *8 center(3)
       center(1)=centers(1,ibox)
       center(2)=centers(2,ibox)
       center(3)=centers(3,ibox)
-      do i=1,8
-         corner(1,i)=corners(1,i,ibox)
-         corner(2,i)=corners(2,i,ibox)
-         corner(3,i)=corners(3,i,ibox)
-      enddo
       return
       end
 
@@ -189,7 +183,7 @@
       end
 
       subroutine setCenter(X0,size,nboxes)
-      use arrays, only : boxes,centers,corners
+      use arrays, only : boxes,centers
       implicit none
       integer i,nboxes,level
       real *8 x00,y00,z00,side,side2,size
@@ -207,33 +201,6 @@
          centers(1,i)=center(1)
          centers(2,i)=center(2)
          centers(3,i)=center(3)
-
-         corners(1,1,i)=center(1)-side/2
-         corners(1,2,i)=corners(1,1,i)
-         corners(1,3,i)=corners(1,1,i)
-         corners(1,4,i)=corners(1,1,i)
-         corners(1,5,i)=corners(1,1,i)+side
-         corners(1,6,i)=corners(1,5,i)
-         corners(1,7,i)=corners(1,5,i)
-         corners(1,8,i)=corners(1,5,i)
-
-         corners(2,1,i)=center(2)-side/2
-         corners(2,2,i)=corners(2,1,i)
-         corners(2,5,i)=corners(2,1,i)
-         corners(2,6,i)=corners(2,1,i)
-         corners(2,3,i)=corners(2,1,i)+side
-         corners(2,4,i)=corners(2,3,i)
-         corners(2,7,i)=corners(2,3,i)
-         corners(2,8,i)=corners(2,3,i)
-
-         corners(3,1,i)=center(3)-side/2
-         corners(3,3,i)=corners(3,1,i)
-         corners(3,5,i)=corners(3,1,i)
-         corners(3,7,i)=corners(3,1,i)
-         corners(3,2,i)=corners(3,1,i)+side
-         corners(3,4,i)=corners(3,2,i)
-         corners(3,6,i)=corners(3,2,i)
-         corners(3,8,i)=corners(3,2,i)
       enddo
       return
       end
