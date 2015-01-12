@@ -232,11 +232,11 @@ c     of the subroutine
       end
 
       subroutine growTree(Xj,numBodies,ncrit,boxes,
-     1     nboxes,permutation,nlev,center0,size)
+     1     nboxes,permutation,numLevels,center0,size)
       use arrays, only : levelOffset
       implicit none
-      integer i,nlev,level,nlevChild
-      integer iparent,nchild,ibody,nbody,ncrit,ii,jj,kk,numBodies
+      integer i,numLevels,level
+      integer iparent,nchild,ibody,nbody,ncrit,numBodies
       integer offset,nboxes
       integer boxes(20,*),permutation(*),iwork(numBodies),nbody8(8)
       real *8 xmin,xmax,ymin,ymax,zmin,zmax
@@ -279,34 +279,26 @@ c     of the subroutine
          permutation(i)=i
       enddo
       nboxes=1
-      nlev=0
-      do level=1,100
-         nlevChild=0
+      numLevels=0
+      do level=1,198
          do iparent=levelOffset(level),levelOffset(level+1)-1
             nbody=boxes(9,iparent)
             if(nbody.le.ncrit) cycle
-            ii=boxes(2,iparent)
-            jj=boxes(3,iparent)
-            kk=boxes(4,iparent)
-            call findCenter(center0,size,level,ii,jj,kk,center)
             ibody=boxes(8,iparent)
-            call reorder(center,Xj,permutation(ibody),nbody,iwork,
+            call reorder(center0,size,level,boxes(2,iparent),
+     1           center,Xj,permutation(ibody),nbody,iwork,
      1           nbody8)
             nchild=0
             offset=ibody
+            boxes(6,iparent)=nboxes+1
             do i=0,7
                if(nbody8(i+1).eq.0) cycle
-               nlevChild=nlevChild+1
                nboxes=nboxes+1
-               nlev=level
-               if(nboxes.gt.numBodies) then
-                  print*,"Error: ibox out of bounds"
-                  stop
-               endif
+               numLevels=level
                boxes(1,nboxes)=level
-               boxes(2,nboxes)=ii*2+mod(i,2)
-               boxes(3,nboxes)=jj*2+mod(i/2,2)
-               boxes(4,nboxes)=kk*2+i/4
+               boxes(2,nboxes)=boxes(2,iparent)*2+mod(i,2)
+               boxes(3,nboxes)=boxes(3,iparent)*2+mod(i/2,2)
+               boxes(4,nboxes)=boxes(4,iparent)*2+i/4
                boxes(5,nboxes)=iparent
                boxes(6,nboxes)=0
                boxes(7,nboxes)=0
@@ -315,11 +307,10 @@ c     of the subroutine
                nchild=nchild+1
                offset = offset + nbody8(i+1)
             enddo
-            boxes(6,iparent)=nboxes-nchild+1
             boxes(7,iparent)=nchild
          enddo
-         levelOffset(level+2)=levelOffset(level+1)+nlevChild
-         if(nlevChild.eq.0) exit
+         levelOffset(level+2)=nboxes+1
+         if(levelOffset(level+1).eq.levelOffset(level+2)) exit
       enddo
       return
       end
@@ -327,21 +318,9 @@ c     of the subroutine
       subroutine setCenter(center0,size,nboxes)
       use arrays, only : boxes,centers,corners
       implicit none
-      integer i,nboxes,level,ii,jj,kk
+      integer i,nboxes,level
       real *8 x00,y00,z00,side,side2,size
       real *8 center(3),center0(3)
-c     this subroutine produces arrays of centers and
-c     corners for all boxes in the oct-tree structure.
-c     input parameters:
-c     center0 - the center of the box on the level 0, containing
-c     the whole simulation
-c     size - the side of the box on the level 0
-c     boxes - an integer array dimensioned (10,nboxes)
-c     column describes one box, as follows:
-c     nboxes - the total number of boxes created
-c     output parameters:
-c     centers - the centers of all boxes in the array boxes
-c     corners - the corners of all boxes in the array boxes
       x00=center0(1)-size/2
       y00=center0(2)-size/2
       z00=center0(3)-size/2
@@ -349,12 +328,9 @@ c     corners - the corners of all boxes in the array boxes
          level=boxes(1,i)
          side=size/2**level
          side2=side/2
-         ii=boxes(2,i)
-         jj=boxes(3,i)
-         kk=boxes(4,i)
-         center(1)=x00+ii*side+side2
-         center(2)=y00+jj*side+side2
-         center(3)=z00+kk*side+side2
+         center(1)=x00+boxes(2,i)*side+side2
+         center(2)=y00+boxes(3,i)*side+side2
+         center(3)=z00+boxes(4,i)*side+side2
          centers(1,i)=center(1)
          centers(2,i)=center(2)
          centers(3,i)=center(3)
@@ -389,75 +365,43 @@ c     corners - the corners of all boxes in the array boxes
       return
       end
 
-      subroutine findCenter(center0,size,level,i,j,k,center)
+      subroutine reorder(center0,size,level,iX,
+     1     center,Xj,index,n,iwork,nbody)
       implicit none
-      integer level0,level,i,j,k
+      integer level,iX(3)
+      integer n12,n34,n56,n78,n1234,n5678,n
+      integer index(*),iwork(*),nbody(*)
       real *8 side,side2,size,x0,y0,z0
-      real *8 center(3),center0(3)
-c     this subroutine finds the center of the box
-c     number (i,j) on the level level. note that the
-c     box on level 0 is assumed to have the center
-c     center0, and the side size
+      real *8 center(3),center0(3),Xj(3,*)
       side=size/2**(level-1)
       side2=side/2
       x0=center0(1)-size/2
       y0=center0(2)-size/2
       z0=center0(3)-size/2
-      level0=level
-      center(1)=x0+i*side+side2
-      center(2)=y0+j*side+side2
-      center(3)=z0+k*side+side2
-      return
-      end
-
-      subroutine reorder(center,z,iz,n,iwork,nbody)
-      implicit none
-      integer n1,n2,n3,n4,n5,n6,n7,n8,n12,n34,n56,n78
-      integer n1234,n5678,n
-      integer iz(*),iwork(*),nbody(*)
-      real *8 center(3),z(3,*)
-      n1=0
-      n2=0
-      n3=0
-      n4=0
-      n5=0
-      n6=0
-      n7=0
-      n8=0
-      n12=0
-      n34=0
-      n56=0
-      n78=0
-      n1234=0
-      n5678=0
-      call divide(z,iz,n,3,center(3),iwork,n1234)
+      center(1)=x0+iX(1)*side+side2
+      center(2)=y0+iX(2)*side+side2
+      center(3)=z0+iX(3)*side+side2
+      call divide(Xj,index,n,3,center(3),iwork,n1234)
       n5678=n-n1234
       if(n1234 .ne. 0)
-     1     call divide(z,iz,n1234,2,center(2),iwork,n12)
+     1     call divide(Xj,index,n1234,2,center(2),iwork,n12)
       n34=n1234-n12
       if(n5678 .ne. 0)
-     1     call divide(z,iz(n1234+1),n5678,2,center(2),iwork,n56)
+     1     call divide(Xj,index(n1234+1),n5678,2,center(2),iwork,n56)
       n78=n5678-n56
       if(n12 .ne. 0)
-     1     call divide(z,iz,n12,1,center(1),iwork,n1)
-      n2=n12-n1
+     1     call divide(Xj,index,n12,1,center(1),iwork,nbody(1))
+      nbody(2)=n12-nbody(1)
       if(n34 .ne. 0)
-     1     call divide(z,iz(n12+1),n34,1,center(1),iwork,n3)
-      n4=n34-n3
+     1     call divide(Xj,index(n12+1),n34,1,center(1),iwork,nbody(3))
+      nbody(4)=n34-nbody(3)
       if(n56 .ne. 0)
-     1     call divide(z,iz(n1234+1),n56,1,center(1),iwork,n5)
-      n6=n56-n5
+     1     call divide(Xj,index(n1234+1),n56,1,center(1),iwork,nbody(5))
+      nbody(6)=n56-nbody(5)
       if(n78 .ne. 0)
-     1     call divide(z,iz(n1234+n56+1),n78,1,center(1),iwork,n7)
-      n8=n78-n7
-      nbody(1)=n1
-      nbody(2)=n2
-      nbody(3)=n3
-      nbody(4)=n4
-      nbody(5)=n5
-      nbody(6)=n6
-      nbody(7)=n7
-      nbody(8)=n8
+     1     call divide(Xj,index(n1234+n56+1),n78,1,center(1),iwork,
+     1     nbody(7))
+      nbody(8)=n78-nbody(7)
       return
       end
 
