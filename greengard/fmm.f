@@ -169,15 +169,12 @@ c$omp$private(ibox,box,center0,corners0,level0)
 c$omp$private(level,radius)
 c$omp$private(i,jbox,center1,corners1,level1)
          do ibox=levelOffset(ilev),levelOffset(ilev+1)-1
+            radius = bsize(ilev)*sqrt(3.0)
             call getCenter(ibox,center0,corners0)
             if (boxes(9,ibox).eq.0) cycle
             if (boxes(7,ibox).ne.0) then
                level0=boxes(1,ibox)
                if (level0.ge.2) then
-                  radius = (corners0(1,1) - center0(1))**2
-                  radius = radius + (corners0(2,1) - center0(2))**2
-                  radius = radius + (corners0(3,1) - center0(3))**2
-                  radius = sqrt(radius)
                   do i=1,boxes(7,ibox)
                      jbox=boxes(6,ibox)+i-1
                      call getCenter(jbox,center1,corners1)
@@ -210,6 +207,7 @@ c$omp$private(jbox,box1,center1,corners1,level1,radius)
 c$omp$private(nterms_trunc,ii,jj,kk)
 c$omp$schedule(dynamic)
          do ibox=levelOffset(ilev),levelOffset(ilev+1)-1
+            radius = bsize(ilev-1)*sqrt(3.0)*0.5
             call getCenter(ibox,center0,corners0)
             level0=boxes(1,ibox)
             if (level0 .ge. 2) then
@@ -218,10 +216,6 @@ c$omp$schedule(dynamic)
                   jbox=list(ilist)
                   call getCenter(jbox,center1,corners1)
                   if (boxes(9,jbox).eq.0) cycle
-                  radius = (corners1(1,1) - center1(1))**2
-                  radius = radius + (corners1(2,1) - center1(2))**2
-                  radius = radius + (corners1(3,1) - center1(3))**2
-                  radius = sqrt(radius)
                   level1=boxes(1,jbox)
                   ii=boxes(2,jbox)-boxes(2,ibox)
                   jj=boxes(3,jbox)-boxes(3,ibox)
@@ -256,6 +250,7 @@ c$omp$private(ibox,box,center0,corners0,level0)
 c$omp$private(level,radius)
 c$omp$private(i,jbox,box1,center1,corners1,level1)
          do ibox=levelOffset(ilev),levelOffset(ilev+1)-1
+            radius = bsize(ilev)*sqrt(3.0)
             call getCenter(ibox,center0,corners0)
             if (boxes(7,ibox).ne.0) then
                level0=boxes(1,ibox)
@@ -264,14 +259,9 @@ c$omp$private(i,jbox,box1,center1,corners1,level1)
                      jbox=boxes(6,ibox)+i-1
                      if (jbox.eq.0) cycle
                      call getCenter(jbox,center1,corners1)
-                     radius = (corners1(1,1) - center1(1))**2
-                     radius = radius + (corners1(2,1) - center1(2))**2
-                     radius = radius + (corners1(3,1) - center1(3))**2
-                     radius = sqrt(radius)
                      level1=boxes(1,jbox)
                      nbessel = nquad+1000
-                     call L2L(wavek,scale(level0),
-     1                    center0,
+                     call L2L(wavek,scale(level0),center0,
      1                    Local(iaddr(ibox)),nterms(level0),
      1                    scale(level1),center1,Local(iaddr(jbox)),
      1                    nterms(level1),

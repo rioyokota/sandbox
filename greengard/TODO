@@ -4,6 +4,7 @@
 * laddr -> levelRange
 - Use common blocks
 
+Intersect from boxes(2,3,4)
 Remove corners
 center0 -> X0
 box -> cell

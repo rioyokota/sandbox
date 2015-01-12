@@ -39,7 +39,6 @@
             listOffset(i,k)=-1
          enddo
       enddo
-c     construct lists 5,2 for all boxes
       do ibox=2,nboxes
          iparent=boxes(5,ibox)
          parents(1)=iparent
@@ -58,8 +57,6 @@ c     construct lists 5,2 for all boxes
                endif
             enddo
          enddo
-c     sort the kids of the parent's collegues into the
-c     lists 2, 5 of the box ibox
          do i=1,nkids
             kid=kids(i)
             call intersect(corners(1,1,kid),corners(1,1,ibox),ifinter)
@@ -69,29 +66,20 @@ c     lists 2, 5 of the box ibox
      1           call setList(2,ibox,kid)
          enddo
       enddo
-c     now, construct lists 1, 3
-      do i=1,nboxes
-         if (boxes(6,i).le.0.and.boxes(1,i).ne.0)then
-            call getList(5,i,list5,nlist)
+      do ibox=1,nboxes
+         if (boxes(6,ibox).eq.0)then
+            call getList(5,ibox,list5,nlist)
             do j=1,nlist
                jbox=list5(j)
-               call setList13(i,jbox)
+               if (boxes(6,jbox).eq.0) then
+                  call setList(1,ibox,jbox)
+                  if (boxes(1,jbox).ne.boxes(1,ibox)) then
+                     call setList(1,jbox,ibox)
+                  endif
+               endif
             enddo
          endif
       enddo
-      return
-      end
-
-      subroutine setList13(ibox,jbox)
-      use arrays, only : boxes,corners
-      implicit none
-      integer jbox,ibox
-      if (boxes(6,jbox).eq.0) then
-         call setList(1,ibox,jbox)
-         if (boxes(1,jbox).ne.boxes(1,ibox)) then
-            call setList(1,jbox,ibox)
-         endif
-      endif
       return
       end
 
