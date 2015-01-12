@@ -33,7 +33,7 @@
       implicit none
       integer i,j,k,ibox,jbox,nboxes,iparent,nkids,icoll,ncolls,kid
       integer nlist,ifinter
-      integer kids(50000),parents(2000),list5(20000),stack(60000)
+      integer kids(50000),parents(2000),list5(20000)
       do k=1,5
          do i=1,nboxes
             listOffset(i,k)=-1
@@ -50,8 +50,8 @@ c     construct lists 5,2 for all boxes
             icoll=parents(i)
             do j=1,boxes(7,icoll)
                kid=boxes(6,icoll)+j-1
-               if(kid.gt.0)then
-                  if(kid.ne.ibox)then
+               if (kid.gt.0)then
+                  if (kid.ne.ibox)then
                      nkids=nkids+1
                      kids(nkids)=kid
                   endif
@@ -63,76 +63,34 @@ c     lists 2, 5 of the box ibox
          do i=1,nkids
             kid=kids(i)
             call intersect(corners(1,1,kid),corners(1,1,ibox),ifinter)
-            if(ifinter.eq.1)
+            if (ifinter.eq.1)
      1           call setList(5,ibox,kid)
-            if(ifinter.eq.0)
+            if (ifinter.eq.0)
      1           call setList(2,ibox,kid)
          enddo
       enddo
 c     now, construct lists 1, 3
       do i=1,nboxes
-         if(boxes(6,i).le.0.and.boxes(1,i).ne.0)then
+         if (boxes(6,i).le.0.and.boxes(1,i).ne.0)then
             call getList(5,i,list5,nlist)
             do j=1,nlist
                jbox=list5(j)
-               call setList13(i,jbox,stack)
+               call setList13(i,jbox)
             enddo
          endif
-      enddo
-      do ibox=1,nboxes
-         call getList(3,ibox,list5,nlist)
-         do j=1,nlist
-            call setList(4,list5(j),ibox)
-         enddo
       enddo
       return
       end
 
-      subroutine setList13(ibox,jbox0,stack)
+      subroutine setList13(ibox,jbox)
       use arrays, only : boxes,corners
       implicit none
-      integer jbox,jbox0,istack,nchilds,j,ijk,ibox,ifinter
-      integer stack(3,*)
-      jbox=jbox0
-      istack=1
-      stack(1,1)=1
-      stack(2,1)=jbox
-      nchilds=0
-      do j=1,8
-         if(boxes(6,jbox)-j+1.gt.0) nchilds=nchilds+1
-      enddo
-      stack(3,1)=nchilds
-c     . . . move up and down the stack, generating the elements
-c     of lists 1, 3 for the box jbox, as appropriate
-      do ijk=1,1 000 000 000
-c     if this box is separated from ibox - store it in list 3;
-c     enter this fact in the parent's table; pass control
-c     to the parent
-         call intersect(corners(1,1,ibox),corners(1,1,jbox),ifinter)
-         if(ifinter .eq. 1) exit
-         call setList(3,ibox,jbox)
-c     if storage capacity has been exceeed - bomb
-         istack=istack-1
-         stack(3,istack)=stack(3,istack)-1
-         jbox=stack(2,istack)
-      enddo
-c     this box is not separated from ibox. if it is childless
-c     - enter it in list 1; enter this fact in the parent's table;
-c     pass control to the parent
-      if(boxes(6,jbox) .eq. 0) then
+      integer jbox,ibox
+      if (boxes(6,jbox).eq.0) then
          call setList(1,ibox,jbox)
-c     . . . entered jbox in the list1 of ibox; if jbox
-c     is on the finer level than ibox - enter ibox
-c     in the list 1 of jbox
-         if(boxes(1,jbox) .ne. boxes(1,ibox)) then
+         if (boxes(1,jbox).ne.boxes(1,ibox)) then
             call setList(1,jbox,ibox)
          endif
-c     if we have processed the whole box jbox0, get out
-c     of the subroutine
-         if(jbox .eq. jbox0) return
-         istack=istack-1
-         stack(3,istack)=stack(3,istack)-1
-         jbox=stack(2,istack)
       endif
       return
       end
@@ -157,33 +115,33 @@ c     of the subroutine
       ymax2=c2(2,1)
       zmax2=c2(3,1)
       do i=1,8
-         if(xmin1 .gt. c1(1,i)) xmin1=c1(1,i)
-         if(ymin1 .gt. c1(2,i)) ymin1=c1(2,i)
-         if(zmin1 .gt. c1(3,i)) zmin1=c1(3,i)
-         if(xmax1 .lt. c1(1,i)) xmax1=c1(1,i)
-         if(ymax1 .lt. c1(2,i)) ymax1=c1(2,i)
-         if(zmax1 .lt. c1(3,i)) zmax1=c1(3,i)
-         if(xmin2 .gt. c2(1,i)) xmin2=c2(1,i)
-         if(ymin2 .gt. c2(2,i)) ymin2=c2(2,i)
-         if(zmin2 .gt. c2(3,i)) zmin2=c2(3,i)
-         if(xmax2 .lt. c2(1,i)) xmax2=c2(1,i)
-         if(ymax2 .lt. c2(2,i)) ymax2=c2(2,i)
-         if(zmax2 .lt. c2(3,i)) zmax2=c2(3,i)
+         if (xmin1.gt.c1(1,i)) xmin1=c1(1,i)
+         if (ymin1.gt.c1(2,i)) ymin1=c1(2,i)
+         if (zmin1.gt.c1(3,i)) zmin1=c1(3,i)
+         if (xmax1.lt.c1(1,i)) xmax1=c1(1,i)
+         if (ymax1.lt.c1(2,i)) ymax1=c1(2,i)
+         if (zmax1.lt.c1(3,i)) zmax1=c1(3,i)
+         if (xmin2.gt.c2(1,i)) xmin2=c2(1,i)
+         if (ymin2.gt.c2(2,i)) ymin2=c2(2,i)
+         if (zmin2.gt.c2(3,i)) zmin2=c2(3,i)
+         if (xmax2.lt.c2(1,i)) xmax2=c2(1,i)
+         if (ymax2.lt.c2(2,i)) ymax2=c2(2,i)
+         if (zmax2.lt.c2(3,i)) zmax2=c2(3,i)
       enddo
       eps=xmax1-xmin1
-      if(eps .gt. ymax1-ymin1) eps=ymax1-ymin1
-      if(eps .gt. zmax1-zmin1) eps=zmax1-zmin1
-      if(eps .gt. xmax2-xmin2) eps=xmax2-xmin2
-      if(eps .gt. ymax2-ymin2) eps=ymax2-ymin2
-      if(eps .gt. zmax2-zmin2) eps=zmax2-zmin2
+      if (eps.gt.ymax1-ymin1) eps=ymax1-ymin1
+      if (eps.gt.zmax1-zmin1) eps=zmax1-zmin1
+      if (eps.gt.xmax2-xmin2) eps=xmax2-xmin2
+      if (eps.gt.ymax2-ymin2) eps=ymax2-ymin2
+      if (eps.gt.zmax2-zmin2) eps=zmax2-zmin2
       eps=eps/10000
       ifinter=1
-      if(xmin1 .gt. xmax2+eps) ifinter=0
-      if(xmin2 .gt. xmax1+eps) ifinter=0
-      if(ymin1 .gt. ymax2+eps) ifinter=0
-      if(ymin2 .gt. ymax1+eps) ifinter=0
-      if(zmin1 .gt. zmax2+eps) ifinter=0
-      if(zmin2 .gt. zmax1+eps) ifinter=0
+      if (xmin1.gt.xmax2+eps) ifinter=0
+      if (xmin2.gt.xmax1+eps) ifinter=0
+      if (ymin1.gt.ymax2+eps) ifinter=0
+      if (ymin2.gt.ymax1+eps) ifinter=0
+      if (zmin1.gt.zmax2+eps) ifinter=0
+      if (zmin2.gt.zmax1+eps) ifinter=0
       return
       end
 
@@ -221,18 +179,18 @@ c     of the subroutine
       zmin=Xj(3,1)
       zmax=Xj(3,1)
       do i=1,numBodies
-         if(Xj(1,i) .lt. xmin) xmin=Xj(1,i)
-         if(Xj(1,i) .gt. xmax) xmax=Xj(1,i)
-         if(Xj(2,i) .lt. ymin) ymin=Xj(2,i)
-         if(Xj(2,i) .gt. ymax) ymax=Xj(2,i)
-         if(Xj(3,i) .lt. zmin) zmin=Xj(3,i)
-         if(Xj(3,i) .gt. zmax) zmax=Xj(3,i)
+         if (Xj(1,i).lt.xmin) xmin=Xj(1,i)
+         if (Xj(1,i).gt.xmax) xmax=Xj(1,i)
+         if (Xj(2,i).lt.ymin) ymin=Xj(2,i)
+         if (Xj(2,i).gt.ymax) ymax=Xj(2,i)
+         if (Xj(3,i).lt.zmin) zmin=Xj(3,i)
+         if (Xj(3,i).gt.zmax) zmax=Xj(3,i)
       enddo
       size=xmax-xmin
       sizey=ymax-ymin
       sizez=zmax-zmin
-      if(sizey .gt. size) size=sizey
-      if(sizez .gt. size) size=sizez
+      if (sizey.gt.size) size=sizey
+      if (sizez.gt.size) size=sizez
       R0=size/2
       X0(1)=(xmin+xmax)/2
       X0(2)=(ymin+ymax)/2
@@ -256,7 +214,7 @@ c     of the subroutine
       do level=1,198
          do iparent=levelOffset(level),levelOffset(level+1)-1
             nbody=boxes(9,iparent)
-            if(nbody.le.ncrit) cycle
+            if (nbody.le.ncrit) cycle
             ibody=boxes(8,iparent)
             call reorder(X0,R0,level,boxes(2,iparent),
      1           Xj,permutation(ibody),nbody,iwork,nbody8)
@@ -264,7 +222,7 @@ c     of the subroutine
             offset=ibody
             boxes(6,iparent)=nboxes+1
             do i=0,7
-               if(nbody8(i+1).eq.0) cycle
+               if (nbody8(i+1).eq.0) cycle
                nboxes=nboxes+1
                numLevels=level
                boxes(1,nboxes)=level
@@ -282,7 +240,7 @@ c     of the subroutine
             boxes(7,iparent)=nchild
          enddo
          levelOffset(level+2)=nboxes+1
-         if(levelOffset(level+1).eq.levelOffset(level+2)) exit
+         if (levelOffset(level+1).eq.levelOffset(level+2)) exit
       enddo
       return
       end
@@ -379,13 +337,11 @@ c     of the subroutine
       subroutine setList(itype,ibox,list)
       use arrays, only : listOffset,lists
       implicit none
-      integer ilast,ibox,itype,list,numele/0/
-      ilast=listOffset(ibox,itype)
+      integer ibox,itype,list,numele/0/
       numele=numele+1
-      lists(1,numele)=ilast
+      lists(1,numele)=listOffset(ibox,itype)
       lists(2,numele)=list
-      ilast=numele
-      listOffset(ibox,itype)=ilast
+      listOffset(ibox,itype)=numele
       return
       end
 
@@ -397,7 +353,7 @@ c     of the subroutine
       ilast=listOffset(ibox,itype)
       nlist=0
       do while(ilast.gt.0)
-         if(lists(2,ilast).gt.0)then
+         if (lists(2,ilast).gt.0) then
             nlist=nlist+1
             list(nlist)=lists(2,ilast)
          endif
