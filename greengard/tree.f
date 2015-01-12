@@ -76,8 +76,8 @@ c     construct lists 5,2 for all boxes
          nkids=0
          do i=1,ncolls
             icoll=parents(i)
-            do j=1,8
-               kid=boxes(5+j,icoll)
+            do j=1,boxes(7,icoll)
+               kid=boxes(6,icoll)+j-1
                if(kid.gt.0)then
                   if(kid.ne.ibox)then
                      nkids=nkids+1
@@ -235,9 +235,9 @@ c     of the subroutine
      1     nboxes,permutation,nlev,center0,size)
       use arrays, only : levelOffset
       implicit none
-      integer i,ichild,nlev,level,nlevChild
+      integer i,nlev,level,nlevChild
       integer iparent,nbody,ncrit,ii,jj,kk,numBodies
-      integer iiz,nz,ic,lll,offset
+      integer iiz,nz,ic,offset
       integer nboxes
       integer boxes(20,*),permutation(*),iwork(numBodies),nbody8(8)
       real *8 xmin,xmax,ymin,ymax,zmin,zmax
@@ -270,14 +270,10 @@ c     of the subroutine
       boxes(3,1)=0 ! iX(2)
       boxes(4,1)=0 ! iX(3)
       boxes(5,1)=0 ! iparent
-      boxes(6,1)=0 ! ichild(1)
-      boxes(7,1)=0 ! ichild(2)
-      boxes(8,1)=0 ! ichild(3)
-      boxes(9,1)=0 ! ichild(4)
-      boxes(10,1)=0 ! ichild(5)
-      boxes(11,1)=0 ! ichild(6)
-      boxes(12,1)=0 ! ichild(7)
-      boxes(13,1)=0 ! ichild(8)
+      boxes(6,1)=0 ! ichild
+      boxes(7,1)=0 ! nchild
+      boxes(8,1)=0 ! ibody
+      boxes(9,1)=0 ! nbody
       boxes(14,1)=1 ! ibody
       boxes(15,1)=numBodies ! nbody
       levelOffset(1)=1
@@ -285,7 +281,7 @@ c     of the subroutine
       do i=1,numBodies
          permutation(i)=i
       enddo
-      ichild=1
+      nboxes=1
       nlev=0
       do level=1,100
          nlevChild=0
@@ -300,36 +296,34 @@ c     of the subroutine
             nz=boxes(15,iparent)
             call reorder(center,Xj,permutation(iiz),nz,iwork,nbody8)
             ic=6
-            offset = iiz
+            offset=iiz
             do i=0,7
                if(nbody8(i+1).eq.0) cycle
                nlevChild=nlevChild+1
-               ichild=ichild+1
+               nboxes=nboxes+1
                nlev=level
-               if(ichild.gt.numBodies) then
+               if(nboxes.gt.numBodies) then
                   print*,"Error: ibox out of bounds"
                   stop
                endif
-               do lll=6,13
-                  boxes(lll,ichild)=0
-               enddo
-               boxes(1,ichild)=level
-               boxes(2,ichild)=ii*2+mod(i,2)
-               boxes(3,ichild)=jj*2+mod(i/2,2)
-               boxes(4,ichild)=kk*2+i/4
-               boxes(5,ichild)=iparent
-               boxes(14,ichild)=offset
-               boxes(15,ichild)=nbody8(i+1)
-               boxes(ic,iparent)=ichild
+               boxes(1,nboxes)=level
+               boxes(2,nboxes)=ii*2+mod(i,2)
+               boxes(3,nboxes)=jj*2+mod(i/2,2)
+               boxes(4,nboxes)=kk*2+i/4
+               boxes(5,nboxes)=iparent
+               boxes(6,nboxes)=0
+               boxes(7,nboxes)=0
+               boxes(14,nboxes)=offset
+               boxes(15,nboxes)=nbody8(i+1)
                ic=ic+1
-               nboxes=ichild
                offset = offset + nbody8(i+1)
             enddo
+            boxes(6,iparent)=nboxes-ic+7
+            boxes(7,iparent)=ic-6
          enddo
          levelOffset(level+2)=levelOffset(level+1)+nlevChild
-         if(nlevChild .eq. 0) exit
+         if(nlevChild.eq.0) exit
       enddo
-      nboxes=ichild
       return
       end
 

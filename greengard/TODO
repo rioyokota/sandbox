@@ -8,6 +8,7 @@ Unify variable names across interface
 Remove corners
 center0 -> X0
 box -> cell
+nboxes -> numCells
 kid -> child
 coll -> neighbor
 

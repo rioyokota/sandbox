@@ -187,9 +187,8 @@ c$omp$private(i,jbox,box1,center1,corners1,level1)
                   radius = radius + (corners0(2,1) - center0(2))**2
                   radius = radius + (corners0(3,1) - center0(3))**2
                   radius = sqrt(radius)
-                  do i = 1,8
-                     jbox = box(5+i)
-                     if (jbox.eq.0) cycle
+                  do i=1,box(7)
+                     jbox=box(6)+i-1
                      call getCell(jbox,box1,nboxes,center1,corners1)
                      level1=box1(1)
                      call M2M(wavek,scale(level1),center1,
@@ -271,8 +270,8 @@ c$omp$private(i,jbox,box1,center1,corners1,level1)
             if (numChild .ne. 0) then
                level0=box(1)
                if (level0 .ge. 2) then
-                  do i = 1,8
-                     jbox = box(5+i)
+                  do i=1,box(7)
+                     jbox=box(6)+i-1
                      if (jbox.eq.0) cycle
                      call getCell(jbox,box1,nboxes,center1,corners1)
                      radius = (corners1(1,1) - center1(1))**2
