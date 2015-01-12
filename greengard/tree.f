@@ -87,17 +87,6 @@
       return
       end
 
-      subroutine getCenter(ibox,center)
-      use arrays, only : centers
-      implicit none
-      integer i,ibox
-      real *8 center(3)
-      center(1)=centers(1,ibox)
-      center(2)=centers(2,ibox)
-      center(3)=centers(3,ibox)
-      return
-      end
-
       subroutine growTree(Xj,numBodies,ncrit,boxes,
      1     nboxes,permutation,numLevels,X0,size)
       use arrays, only : levelOffset

@@ -92,7 +92,7 @@ c$    toc=omp_get_wtime()
      1     numBodies,sourcesort,chargesort,pot,fld,
      1     epsfmm,iaddr,Multipole,Local,
      1     nboxes,nlev,scale,bsize,nterms)
-      use arrays, only : listOffset,lists,levelOffset,boxes
+      use arrays, only : listOffset,lists,levelOffset,boxes,centers
       use omp_lib, only : omp_get_wtime
       implicit none
       integer Pmax,i,numBodies,itype,nlev,ibox,ilev
@@ -103,7 +103,6 @@ c$    toc=omp_get_wtime()
       integer itable(-3:3,-3:3,-3:3)
       integer nterms_eval(4,0:200)
       real *8 epsfmm,radius,tic/0.0d0/,toc/0.0d0/
-      real *8 center0(3),center1(3)
       real *8 sourcesort(3,1)
       real *8 Multipole(1),Local(1),xquad(10000),wquad(10000)
       real *8 scale(0:200),bsize(0:200)
@@ -137,9 +136,8 @@ c     ... step 1: P2M
 c$    tic=omp_get_wtime()
       do ilev=3,nlev+1
 c$omp parallel do default(shared)
-c$omp$private(ibox,box,center0,level,ibegin,isize)
+c$omp$private(ibox,box,level,ibegin,isize)
          do ibox=levelOffset(ilev),levelOffset(ilev+1)-1
-            call getCenter(ibox,center0)
             level=boxes(1,ibox)
             nbessel = nterms(level)+1000
             if (boxes(9,ibox).eq.0) cycle
@@ -148,8 +146,8 @@ c$omp$private(ibox,box,center0,level,ibegin,isize)
                isize=boxes(9,ibox)
                call P2M(wavek,scale(level),
      1              sourcesort(1,ibegin),chargesort(ibegin),isize,
-     1              center0,nterms(level),nterms_eval(1,level),nbessel,
-     1              Multipole(iaddr(ibox)),Anm1,Anm2,Pmax)
+     1              centers(1,ibox),nterms(level),nterms_eval(1,level),
+     1              nbessel,Multipole(iaddr(ibox)),Anm1,Anm2,Pmax)
             endif
          enddo
 c$omp end parallel do
@@ -164,23 +162,21 @@ c$    tic=omp_get_wtime()
          nquad=max(6,nquad)
          call legendre(nquad,xquad,wquad)
 c$omp parallel do default(shared)
-c$omp$private(ibox,box,center0,level0)
+c$omp$private(ibox,box,level0)
 c$omp$private(level,radius)
-c$omp$private(i,jbox,center1,level1)
+c$omp$private(i,jbox,level1)
          do ibox=levelOffset(ilev),levelOffset(ilev+1)-1
             radius = bsize(ilev)*sqrt(3.0)
-            call getCenter(ibox,center0)
             if (boxes(9,ibox).eq.0) cycle
             if (boxes(7,ibox).ne.0) then
                level0=boxes(1,ibox)
                if (level0.ge.2) then
                   do i=1,boxes(7,ibox)
                      jbox=boxes(6,ibox)+i-1
-                     call getCenter(jbox,center1)
                      level1=boxes(1,jbox)
-                     call M2M(wavek,scale(level1),center1,
+                     call M2M(wavek,scale(level1),centers(1,jbox),
      1                    Multipole(iaddr(jbox)),nterms(level1),
-     1                    scale(level0),center0,
+     1                    scale(level0),centers(1,ibox),
      1                    Multipole(iaddr(ibox)),
      1                    nterms(level0),
      1                    radius,xquad,wquad,nquad,Anm1,Anm2,Pmax)
@@ -201,19 +197,17 @@ c$    tic=omp_get_wtime()
          nquad=max(6,nquad)
          call legendre(nquad,xquad,wquad)
 c$omp parallel do default(shared)
-c$omp$private(ibox,box,center0,level0,list,ilist,nlist)
-c$omp$private(jbox,box1,center1,level1,radius)
+c$omp$private(ibox,box,level0,list,ilist,nlist)
+c$omp$private(jbox,box1,level1,radius)
 c$omp$private(nterms_trunc,ii,jj,kk)
 c$omp$schedule(dynamic)
          do ibox=levelOffset(ilev),levelOffset(ilev+1)-1
             radius = bsize(ilev-1)*sqrt(3.0)*0.5
-            call getCenter(ibox,center0)
             level0=boxes(1,ibox)
             if (level0 .ge. 2) then
                call getList(2,ibox,list,nlist)
                do ilist=1,nlist
                   jbox=list(ilist)
-                  call getCenter(jbox,center1)
                   if (boxes(9,jbox).eq.0) cycle
                   level1=boxes(1,jbox)
                   ii=boxes(2,jbox)-boxes(2,ibox)
@@ -225,9 +219,9 @@ c$omp$schedule(dynamic)
                   nbessel = nterms_trunc+1000
                   call M2L(wavek,
      1                 scale(level1),
-     1                 center1,Multipole(iaddr(jbox)),
+     1                 centers(1,jbox),Multipole(iaddr(jbox)),
      1                 nterms(level1),scale(level0),
-     1                 center0,Local(iaddr(ibox)),
+     1                 centers(1,ibox),Local(iaddr(ibox)),
      1                 nterms(level0),nterms_trunc,
      1                 radius,xquad,wquad,nquad,nbessel,
      1                 Anm1,Anm2,Pmax)
@@ -245,25 +239,23 @@ c$    tic=omp_get_wtime()
          nquad=max(6,nquad)
          call legendre(nquad,xquad,wquad)
 c$omp parallel do default(shared)
-c$omp$private(ibox,box,center0,level0)
+c$omp$private(ibox,box,level0)
 c$omp$private(level,radius)
-c$omp$private(i,jbox,box1,center1,level1)
+c$omp$private(i,jbox,box1,level1)
          do ibox=levelOffset(ilev),levelOffset(ilev+1)-1
             radius = bsize(ilev)*sqrt(3.0)
-            call getCenter(ibox,center0)
             if (boxes(7,ibox).ne.0) then
                level0=boxes(1,ibox)
                if (level0.ge.2) then
                   do i=1,boxes(7,ibox)
                      jbox=boxes(6,ibox)+i-1
                      if (jbox.eq.0) cycle
-                     call getCenter(jbox,center1)
                      level1=boxes(1,jbox)
                      nbessel = nquad+1000
-                     call L2L(wavek,scale(level0),center0,
+                     call L2L(wavek,scale(level0),centers(1,ibox),
      1                    Local(iaddr(ibox)),nterms(level0),
-     1                    scale(level1),center1,Local(iaddr(jbox)),
-     1                    nterms(level1),
+     1                    scale(level1),centers(1,jbox),
+     1                    Local(iaddr(jbox)),nterms(level1),
      1                    radius,xquad,wquad,nquad,nbessel,
      1                    Anm1,Anm2,Pmax)
                   enddo
@@ -278,16 +270,15 @@ c$    toc=omp_get_wtime()
 c     ... step 5: L2P
 c$    tic=omp_get_wtime()
 c$omp parallel do default(shared)
-c$omp$private(ibox,box,center0,level,ibegin,isize)
+c$omp$private(ibox,box,level,ibegin,isize)
       do ibox=1,nboxes
-         call getCenter(ibox,center0)
          if (boxes(7,ibox).eq.0) then
             level=boxes(1,ibox)
             nbessel=nterms(level)+1000
             if (level.ge.2) then
                ibegin=boxes(8,ibox)
                isize=boxes(9,ibox)
-               call L2P(wavek,scale(level),center0,
+               call L2P(wavek,scale(level),centers(1,ibox),
      1              Local(iaddr(ibox)),
      1              nterms(level),nterms_eval(1,level),nbessel,
      1              sourcesort(1,ibegin),isize,
@@ -303,8 +294,8 @@ c$    toc=omp_get_wtime()
 c     ... step 6: P2P
 c$    tic=omp_get_wtime()
 c$omp parallel do default(shared)
-c$omp$private(ibox,box,center0,list,nlist)
-c$omp$private(jbox,box1,center1,ilist)
+c$omp$private(ibox,box,list,nlist)
+c$omp$private(jbox,box1,ilist)
 c$omp$schedule(dynamic)
       do ibox=1,nboxes
          if (boxes(7,ibox).eq.0) then
