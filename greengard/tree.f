@@ -232,7 +232,7 @@ c     of the subroutine
       end
 
       subroutine growTree(Xj,numBodies,ncrit,boxes,
-     1     nboxes,permutation,numLevels,center0,size)
+     1     nboxes,permutation,numLevels,X0,size)
       use arrays, only : levelOffset
       implicit none
       integer i,numLevels,level
@@ -240,8 +240,8 @@ c     of the subroutine
       integer offset,nboxes
       integer boxes(20,*),permutation(*),iwork(numBodies),nbody8(8)
       real *8 xmin,xmax,ymin,ymax,zmin,zmax
-      real *8 size,sizey,sizez
-      real *8 Xj(3,*),center0(3),center(3)
+      real *8 size,sizey,sizez,R0
+      real *8 Xj(3,*),X0(3)
       xmin=Xj(1,1)
       xmax=Xj(1,1)
       ymin=Xj(2,1)
@@ -261,9 +261,10 @@ c     of the subroutine
       sizez=zmax-zmin
       if(sizey .gt. size) size=sizey
       if(sizez .gt. size) size=sizez
-      center0(1)=(xmin+xmax)/2
-      center0(2)=(ymin+ymax)/2
-      center0(3)=(zmin+zmax)/2
+      R0=size/2
+      X0(1)=(xmin+xmax)/2
+      X0(2)=(ymin+ymax)/2
+      X0(3)=(zmin+zmax)/2
       boxes(1,1)=0 ! level
       boxes(2,1)=0 ! iX(1)
       boxes(3,1)=0 ! iX(2)
@@ -285,8 +286,8 @@ c     of the subroutine
             nbody=boxes(9,iparent)
             if(nbody.le.ncrit) cycle
             ibody=boxes(8,iparent)
-            call reorder(center0,size,level,boxes(2,iparent),
-     1           center,Xj,permutation(ibody),nbody,iwork,
+            call reorder(X0,R0,level,boxes(2,iparent),
+     1           Xj,permutation(ibody),nbody,iwork,
      1           nbody8)
             nchild=0
             offset=ibody
@@ -315,15 +316,15 @@ c     of the subroutine
       return
       end
 
-      subroutine setCenter(center0,size,nboxes)
+      subroutine setCenter(X0,size,nboxes)
       use arrays, only : boxes,centers,corners
       implicit none
       integer i,nboxes,level
       real *8 x00,y00,z00,side,side2,size
-      real *8 center(3),center0(3)
-      x00=center0(1)-size/2
-      y00=center0(2)-size/2
-      z00=center0(3)-size/2
+      real *8 center(3),X0(3)
+      x00=X0(1)-size/2
+      y00=X0(2)-size/2
+      z00=X0(3)-size/2
       do i=1,nboxes
          level=boxes(1,i)
          side=size/2**level
@@ -365,41 +366,37 @@ c     of the subroutine
       return
       end
 
-      subroutine reorder(center0,size,level,iX,
-     1     center,Xj,index,n,iwork,nbody)
+      subroutine reorder(X0,R0,level,iX,
+     1     Xj,index,n,iwork,nbody)
       implicit none
-      integer level,iX(3)
+      integer d,level,iX(3)
       integer n12,n34,n56,n78,n1234,n5678,n
       integer index(*),iwork(*),nbody(*)
-      real *8 side,side2,size,x0,y0,z0
-      real *8 center(3),center0(3),Xj(3,*)
-      side=size/2**(level-1)
-      side2=side/2
-      x0=center0(1)-size/2
-      y0=center0(2)-size/2
-      z0=center0(3)-size/2
-      center(1)=x0+iX(1)*side+side2
-      center(2)=y0+iX(2)*side+side2
-      center(3)=z0+iX(3)*side+side2
-      call divide(Xj,index,n,3,center(3),iwork,n1234)
+      real *8 R,R0
+      real *8 X(3),X0(3),Xj(3,*)
+      R=R0/2**(level-1)
+      do d=1,3
+         X(d)=X0(d)-R0+iX(d)*R*2+R
+      enddo
+      call divide(Xj,index,n,3,X(3),iwork,n1234)
       n5678=n-n1234
       if(n1234 .ne. 0)
-     1     call divide(Xj,index,n1234,2,center(2),iwork,n12)
+     1     call divide(Xj,index,n1234,2,X(2),iwork,n12)
       n34=n1234-n12
       if(n5678 .ne. 0)
-     1     call divide(Xj,index(n1234+1),n5678,2,center(2),iwork,n56)
+     1     call divide(Xj,index(n1234+1),n5678,2,X(2),iwork,n56)
       n78=n5678-n56
       if(n12 .ne. 0)
-     1     call divide(Xj,index,n12,1,center(1),iwork,nbody(1))
+     1     call divide(Xj,index,n12,1,X(1),iwork,nbody(1))
       nbody(2)=n12-nbody(1)
       if(n34 .ne. 0)
-     1     call divide(Xj,index(n12+1),n34,1,center(1),iwork,nbody(3))
+     1     call divide(Xj,index(n12+1),n34,1,X(1),iwork,nbody(3))
       nbody(4)=n34-nbody(3)
       if(n56 .ne. 0)
-     1     call divide(Xj,index(n1234+1),n56,1,center(1),iwork,nbody(5))
+     1     call divide(Xj,index(n1234+1),n56,1,X(1),iwork,nbody(5))
       nbody(6)=n56-nbody(5)
       if(n78 .ne. 0)
-     1     call divide(Xj,index(n1234+n56+1),n78,1,center(1),iwork,
+     1     call divide(Xj,index(n1234+n56+1),n78,1,X(1),iwork,
      1     nbody(7))
       nbody(8)=n78-nbody(7)
       return
