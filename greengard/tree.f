@@ -24,11 +24,11 @@
          enddo
       enddo
       call setCenter(center,size,nboxes)
-      call getLists(nboxes)
+      call setLists(nboxes)
       return
       end
 
-      subroutine getLists(nboxes)
+      subroutine setLists(nboxes)
       use arrays, only : boxes,listOffset,corners
       implicit none
       integer i,j,k,ibox,jbox,nboxes,iparent,nkids,icoll,ncolls,kid
@@ -75,7 +75,7 @@ c     now, construct lists 1, 3
             call getList(5,i,list5,nlist)
             do j=1,nlist
                jbox=list5(j)
-               call getList13(i,jbox,stack)
+               call setList13(i,jbox,stack)
             enddo
          endif
       enddo
@@ -88,7 +88,7 @@ c     now, construct lists 1, 3
       return
       end
 
-      subroutine getList13(ibox,jbox0,stack)
+      subroutine setList13(ibox,jbox0,stack)
       use arrays, only : boxes,corners
       implicit none
       integer jbox,jbox0,istack,nchilds,j,ijk,ibox,ifinter
