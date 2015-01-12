@@ -4,7 +4,6 @@
 * laddr -> levelRange
 - Use common blocks
 
-Unify variable names across interface
 Remove corners
 center0 -> X0
 box -> cell
@@ -12,6 +11,8 @@ nboxes -> numCells
 kid -> child
 coll -> neighbor
 index -> something else
+*0 -> *i
+*1 -> *j
 
 list 1 - the list of all boxes with which the
    box ibox interacts directly, including the boxes on the

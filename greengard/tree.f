@@ -28,23 +28,6 @@
       return
       end
 
-      subroutine getCell(ibox,box,nboxes,center,corners)
-      use arrays, only : boxes,listOffset
-      implicit none
-      integer ibox,nboxes,i
-      integer box(20)
-      real *8 center(3),corners(3,8)
-      if( (ibox.lt.1).or.(ibox.gt.nboxes) ) then
-         print*,"Error: ibox out of bounds"
-         stop
-      endif
-      do i=1,20
-         box(i)=boxes(i,ibox)
-      enddo
-      call getCenter(ibox,center,corners)
-      return
-      end
-
       subroutine getLists(nboxes)
       use arrays, only : boxes,listOffset,corners
       implicit none
