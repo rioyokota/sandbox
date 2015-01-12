@@ -78,7 +78,7 @@
             Rnm2(0,m)=Rnm2(0,m)*hsthta
             if (m.gt.-n) then
                Rnm2(0,m)=Rnm2(0,m)+
-     $              Rnm1(0,m)*ctheta*sqrtCnm(n+m,1)*sqrtCnm(n-m,1)
+     1              Rnm1(0,m)*ctheta*sqrtCnm(n+m,1)*sqrtCnm(n-m,1)
             endif
             Rnm2(0,m)=Rnm2(0,m)/n
          enddo
@@ -101,9 +101,9 @@
                Rnm2(mp,-m)=Rnm1(mp-1,-m+1)*(cthtan*sqrtCnm(n+m,2))
                if (m.lt.(n-1)) then
                   Rnm2(mp,+m)=Rnm2(mp,+m)-Rnm1(mp-1,+m+1)*
-     $                 (cthtan*sqrtCnm(n-m,2))
+     1                 (cthtan*sqrtCnm(n-m,2))
                   Rnm2(mp,-m)=Rnm2(mp,-m)-Rnm1(mp-1,-m-1)*
-     $                 (cthtap*sqrtCnm(n-m,2))
+     1                 (cthtap*sqrtCnm(n-m,2))
                endif
                if (m.lt.n) then
                   d=(stheta*sqrtCnm(n+m,1)*sqrtCnm(n-m,1))
@@ -127,7 +127,7 @@
             Mrot(n,m)=Mnm(n,0)*Rnm2(0,m)
             do mp=1,n
                Mrot(n,m)=Mrot(n,m)+
-     $              Mnm(n,mp)*Rnm2(mp,m)+Mnm(n,-mp)*Rnm2(mp,-m)
+     1              Mnm(n,mp)*Rnm2(mp,m)+Mnm(n,-mp)*Rnm2(mp,-m)
             enddo
          enddo
          do m=-n,n
@@ -152,7 +152,7 @@ c     Ynm(x) = sqrt(2n+1)  sqrt( (n-m)!/ (n+m)! ) Pnm(x)
          if (m.lt.nterms) Ynm(m+1,m)=x*Ynm(m,m)*Anm1(m+1,m)
          do n=m+2,nterms
             Ynm(n,m)=Anm1(n,m)*x*Ynm(n-1,m)
-     $           -Anm2(n,m)*Ynm(n-2,m)
+     1           -Anm2(n,m)*Ynm(n-2,m)
          enddo
       enddo
       do n=0,nterms
@@ -179,7 +179,7 @@ c     d Ynm(x) / dx = sqrt(2n+1)  sqrt( (n-m)!/ (n+m)! ) d Pnm(x) / dx
       do n=2,nterms
          Ynm(n,0)=Anm1(n,0)*x*Ynm(n-1,0)-Anm2(n,0)*Ynm(n-2,0)
          Ynmd(n,0)=Anm1(n,0)*(x*Ynmd(n-1,0)
-     $        +Ynm(n-1,0))-Anm2(n,0)*Ynmd(n-2,0)
+     1        +Ynm(n-1,0))-Anm2(n,0)*Ynmd(n-2,0)
       enddo
       do m=1,nterms
          if (m.eq.1) Ynm(m,m)=-Ynm(m-1,m-1)*Anm1(m,m)
@@ -187,12 +187,12 @@ c     d Ynm(x) / dx = sqrt(2n+1)  sqrt( (n-m)!/ (n+m)! ) d Pnm(x) / dx
          if (m.gt.0) Ynmd(m,m)=-Ynm(m,m)*m*x
          if (m.lt.nterms) Ynm(m+1,m)=x*Ynm(m,m)*Anm1(m+1,m)
          if (m.lt.nterms) Ynmd(m+1,m)=(x*Ynmd(m,m)+y2*Ynm(m,m))
-     $        *Anm1(m+1,m)
+     1        *Anm1(m+1,m)
          do n=m+2,nterms
             Ynm(n,m)=Anm1(n,m)*x*Ynm(n-1,m)
-     $           -Anm2(n,m)*Ynm(n-2,m)
+     1           -Anm2(n,m)*Ynm(n-2,m)
             Ynmd(n,m)=Anm1(n,m)*(x*Ynmd(n-1,m)+y2*Ynm(n-1,m))
-     $           -Anm2(n,m)*Ynmd(n-2,m)
+     1           -Anm2(n,m)*Ynmd(n-2,m)
          enddo
       enddo
       do n=0,nterms

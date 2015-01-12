@@ -1,7 +1,7 @@
       subroutine buildTree(Xj,numBodies,ncrit,
-     $     nboxes,permutation,nlev,center,size)
+     1     nboxes,permutation,nlev,center,size)
       use arrays, only : listOffset,lists,levelOffset,nodes,boxes,
-     $     centers,corners
+     1     centers,corners
       implicit none
       integer i,j,numBodies,ncrit,nboxes,nlev
       integer permutation(*)
@@ -11,8 +11,8 @@
          permutation(i)=i
       enddo
       allocate(nodes(20,numBodies))
-      call growTree(Xj,numBodies,ncrit,nodes,numBodies,
-     $     nboxes,permutation,nlev,center,size,0,100)
+      call growTree(Xj,numBodies,ncrit,nodes,
+     1     nboxes,permutation,nlev,center,size,0,100)
       allocate(listOffset(nboxes,5))
       allocate(lists(2,189*nboxes))
       allocate(boxes(20,nboxes))
@@ -92,9 +92,9 @@ c     lists 2, 5 of the box ibox
             kid=kids(i)
             call intersect(corners(1,1,kid),corners(1,1,ibox),ifinter)
             if(ifinter.eq.1)
-     $           call setList(5,ibox,kid)
+     1           call setList(5,ibox,kid)
             if(ifinter.eq.0)
-     $           call setList(2,ibox,kid)
+     1           call setList(2,ibox,kid)
          enddo
       enddo
 c     now, construct lists 1, 3
@@ -231,14 +231,14 @@ c     of the subroutine
       return
       end
 
-      subroutine growTree(Xj,numBodies,ncrit,boxes,maxboxes,
+      subroutine growTree(Xj,numBodies,ncrit,boxes,
      1     nboxes,iz,nlev,center0,size,
      1     minlevel,maxlevel)
       use arrays, only : levelOffset
       implicit none
       integer i,maxChild,maxlev,maxlevel,ichild,nlev,level,nlevChild
       integer iparent,nump,numt,ncrit,minlevel,ii,jj,kk,numBodies
-      integer maxboxes,iiz,nz,ic,lll,iichild,jjchild,kkchild
+      integer iiz,nz,ic,lll,iichild,jjchild,kkchild
       integer nboxes,level1
       integer boxes(20,*),iz(*),iwork(numBodies),is(8),ns(8),
      1     iichilds(8),jjchilds(8),kkchilds(8)
@@ -297,7 +297,7 @@ c     of the subroutine
       enddo
 c     recursively (one level after another) subdivide all
 c     boxes till none are left with more than ncrit particles
-      maxChild=maxboxes
+      maxChild=numBodies
       maxlev=198
       if( maxlevel .lt. maxlev ) maxlev=maxlevel
       ichild=1
@@ -310,7 +310,7 @@ c     subdivide the box number iparent (if needed)
             numt=boxes(17,iparent)
 c     ... refine on both sources and targets
             if(nump.le.ncrit.and.numt.le.ncrit.and.
-     $           level.ge.minlevel) cycle
+     1           level.ge.minlevel) cycle
 c     ... not a leaf node on sources or targets
             if(nump.gt.ncrit.or.numt.gt.ncrit)then
                if(boxes(18,iparent).eq.1) boxes(18,iparent)=2

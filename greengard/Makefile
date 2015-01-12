@@ -14,4 +14,4 @@ all: $(SRC:.f=.o)
 	./a.out
 
 clean:
-	@rm -f *.mod *.o *.out
+	@rm -f *.mod *.o *.out *genmod*
