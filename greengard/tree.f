@@ -28,17 +28,6 @@
       return
       end
 
-      subroutine getNumChild(box,nkids)
-      implicit none
-      integer nkids,ikid
-      integer box(20)
-      nkids=0
-      do ikid=1,box(7)
-         if( box(6)+ikid-1 .ne. 0 ) nkids=nkids+1
-      enddo
-      return
-      end
-
       subroutine getCell(ibox,box,nboxes,center,corners)
       use arrays, only : boxes,listOffset
       implicit none

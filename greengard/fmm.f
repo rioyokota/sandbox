@@ -1,10 +1,10 @@
       subroutine fmm(iprec,wavek,numBodies,Xj,qj,pi,Fi)
-      use arrays, only : levelOffset
+      use arrays, only : levelOffset,boxes
       use omp_lib, only : omp_get_wtime
       implicit none
-      integer iprec,ncrit,nboxes,nlev,i,nmax,iptr,ibox,numBodies
-      integer level,lmptot
-      integer box(20),nterms(0:200)
+      integer iprec,ncrit,nboxes,nlev,i,nmax,ibox,numBodies
+      integer level,sumTerms
+      integer nterms(0:200)
       integer, allocatable :: iaddr(:)
       integer, allocatable :: permutation(:)
       real *8 epsfmm,size,boxsize,tic/0.0d0/,toc/0.0d0/
@@ -13,8 +13,6 @@
       real *8 bsize(0:200)
       real *8 scale(0:200)
       real *8 center(3)
-      real *8 center0(3)
-      real *8 corners0(3,8)
       real *8, allocatable :: Multipole(:)
       real *8, allocatable :: Local(:)
       complex *16 wavek
@@ -68,16 +66,14 @@ c$    tic=omp_get_wtime()
          Xjd(3,i) = Xj(3,permutation(i))
          qjd(i) = qj(permutation(i))
       enddo
-      iptr=1
+      sumTerms=1
       do ibox=1,nboxes
-         call getCell(ibox,box,nboxes,center0,corners0)
-         level=box(1)
-         iaddr(ibox)=iptr
-         iptr=iptr+(nterms(level)+1)*(2*nterms(level)+1)*2
+         level=boxes(1,ibox)
+         iaddr(ibox)=sumTerms
+         sumTerms=sumTerms+(nterms(level)+1)*(2*nterms(level)+1)*2
       enddo
-      lmptot = iptr
-      allocate(Multipole(lmptot))
-      allocate(Local(lmptot))
+      allocate(Multipole(sumTerms))
+      allocate(Local(sumTerms))
 c$    toc=omp_get_wtime()
       print*,'Tree   =',toc-tic
       call evaluate(wavek,numBodies,Xjd,
@@ -96,10 +92,10 @@ c$    toc=omp_get_wtime()
      1     numBodies,sourcesort,chargesort,pot,fld,
      1     epsfmm,iaddr,Multipole,Local,
      1     nboxes,nlev,scale,bsize,nterms)
-      use arrays, only : listOffset,lists,levelOffset
+      use arrays, only : listOffset,lists,levelOffset,boxes
       use omp_lib, only : omp_get_wtime
       implicit none
-      integer Pmax,i,numBodies,itype,nlev,ibox,ilev,numChild
+      integer Pmax,i,numBodies,itype,nlev,ibox,ilev
       integer nquad,level,level0,level1,ilist,nbessel
       integer jbox,nlist,nterms_trunc,ii,jj,kk
       integer nboxes
@@ -133,8 +129,7 @@ c$    toc=omp_get_wtime()
          enddo
       enddo
       do ibox = 1,nboxes
-         call getCell(ibox,box,nboxes,center0,corners0)
-         level=box(1)
+         level=boxes(1,ibox)
          call initCoefs(Multipole(iaddr(ibox)),nterms(level))
          call initCoefs(Local(iaddr(ibox)),nterms(level))
       enddo
@@ -143,18 +138,14 @@ c     ... step 1: P2M
 c$    tic=omp_get_wtime()
       do ilev=3,nlev+1
 c$omp parallel do default(shared)
-c$omp$private(ibox,box,center0,corners0,level,numChild,radius)
+c$omp$private(ibox,box,center0,corners0,level)
          do ibox=levelOffset(ilev),levelOffset(ilev+1)-1
             call getCell(ibox,box,nboxes,center0,corners0)
-            call getNumChild(box,numChild)
+            call getCenter(ibox,center0,corners0)
             level=box(1)
             nbessel = nterms(level)+1000
-            if( box(9) .eq. 0 ) cycle
-            if (numChild .eq. 0 ) then
-               radius = (corners0(1,1) - center0(1))**2
-               radius = radius + (corners0(2,1) - center0(2))**2
-               radius = radius + (corners0(3,1) - center0(3))**2
-               radius = sqrt(radius)
+            if(box(9).eq.0) cycle
+            if(box(7).eq.0) then
                call P2M(wavek,scale(level),
      1              sourcesort(1,box(8)),chargesort(box(8)),box(9),
      1              center0,nterms(level),nterms_eval(1,level),nbessel,
@@ -174,15 +165,15 @@ c$    tic=omp_get_wtime()
          call legendre(nquad,xquad,wquad)
 c$omp parallel do default(shared)
 c$omp$private(ibox,box,center0,corners0,level0)
-c$omp$private(level,numChild,radius)
+c$omp$private(level,radius)
 c$omp$private(i,jbox,box1,center1,corners1,level1)
          do ibox=levelOffset(ilev),levelOffset(ilev+1)-1
             call getCell(ibox,box,nboxes,center0,corners0)
-            call getNumChild(box,numChild)
-            if( box(9) .eq. 0 ) cycle
-            if (numChild .ne. 0) then
+            call getCenter(ibox,center0,corners0)
+            if(box(9).eq.0) cycle
+            if(box(7).ne.0) then
                level0=box(1)
-               if( level0 .ge. 2 ) then
+               if(level0.ge.2) then
                   radius = (corners0(1,1) - center0(1))**2
                   radius = radius + (corners0(2,1) - center0(2))**2
                   radius = radius + (corners0(3,1) - center0(3))**2
@@ -190,6 +181,7 @@ c$omp$private(i,jbox,box1,center1,corners1,level1)
                   do i=1,box(7)
                      jbox=box(6)+i-1
                      call getCell(jbox,box1,nboxes,center1,corners1)
+                     call getCenter(jbox,center1,corners1)
                      level1=box1(1)
                      call M2M(wavek,scale(level1),center1,
      1                    Multipole(iaddr(jbox)),nterms(level1),
@@ -220,12 +212,14 @@ c$omp$private(nterms_trunc,ii,jj,kk)
 c$omp$schedule(dynamic)
          do ibox=levelOffset(ilev),levelOffset(ilev+1)-1
             call getCell(ibox,box,nboxes,center0,corners0)
+            call getCenter(ibox,center0,corners0)
             level0=box(1)
             if (level0 .ge. 2) then
                call getList(2,ibox,list,nlist)
                do ilist=1,nlist
                   jbox=list(ilist)
                   call getCell(jbox,box1,nboxes,center1,corners1)
+                  call getCenter(jbox,center1,corners1)
                   if (box1(9).eq.0) cycle
                   radius = (corners1(1,1) - center1(1))**2
                   radius = radius + (corners1(2,1) - center1(2))**2
@@ -262,18 +256,19 @@ c$    tic=omp_get_wtime()
          call legendre(nquad,xquad,wquad)
 c$omp parallel do default(shared)
 c$omp$private(ibox,box,center0,corners0,level0)
-c$omp$private(level,numChild,radius)
+c$omp$private(level,radius)
 c$omp$private(i,jbox,box1,center1,corners1,level1)
          do ibox=levelOffset(ilev),levelOffset(ilev+1)-1
             call getCell(ibox,box,nboxes,center0,corners0)
-            call getNumChild(box,numChild)
-            if (numChild .ne. 0) then
+            call getCenter(ibox,center0,corners0)
+            if (box(7).ne.0) then
                level0=box(1)
                if (level0 .ge. 2) then
                   do i=1,box(7)
                      jbox=box(6)+i-1
                      if (jbox.eq.0) cycle
                      call getCell(jbox,box1,nboxes,center1,corners1)
+                     call getCenter(jbox,center1,corners1)
                      radius = (corners1(1,1) - center1(1))**2
                      radius = radius + (corners1(2,1) - center1(2))**2
                      radius = radius + (corners1(3,1) - center1(3))**2
@@ -299,11 +294,11 @@ c$    toc=omp_get_wtime()
 c     ... step 5: L2P
 c$    tic=omp_get_wtime()
 c$omp parallel do default(shared)
-c$omp$private(ibox,box,center0,corners0,level,numChild)
+c$omp$private(ibox,box,center0,corners0,level)
       do ibox=1,nboxes
          call getCell(ibox,box,nboxes,center0,corners0)
-         call getNumChild(box,numChild)
-         if (numChild .eq. 0) then
+         call getCenter(ibox,center0,corners0)
+         if (box(7).eq.0) then
             level=box(1)
             nbessel = nterms(level)+1000
             if (level .ge. 2) then
@@ -323,26 +318,23 @@ c$    toc=omp_get_wtime()
 c     ... step 6: P2P
 c$    tic=omp_get_wtime()
 c$omp parallel do default(shared)
-c$omp$private(ibox,box,center0,corners0,numChild,list,nlist)
+c$omp$private(ibox,box,center0,corners0,list,nlist)
 c$omp$private(jbox,box1,center1,corners1,ilist)
 c$omp$schedule(dynamic)
       do ibox=1,nboxes
-         call getCell(ibox,box,nboxes,center0,corners0)
-         call getNumChild(box,numChild)
-         if (numChild .eq. 0) then
+         if (boxes(7,ibox).eq.0) then
 c     ... evaluate self interactions
-            call P2P(box,sourcesort,pot,fld,
-     1           box,sourcesort,chargesort,wavek)
+            call P2P(boxes(1,ibox),sourcesort,pot,fld,
+     1           boxes(1,ibox),sourcesort,chargesort,wavek)
 c     ... evaluate interactions with the nearest neighbours
             call getList(1,ibox,list,nlist)
 c     ... for all pairs in list #1, evaluate the potentials and fields directly
             do ilist=1,nlist
                jbox=list(ilist)
-               call getCell(jbox,box1,nboxes,center1,corners1)
 c     ... prune all sourceless boxes
-               if( box1(9) .eq. 0 ) cycle
-               call P2P(box,sourcesort,pot,fld,
-     1              box1,sourcesort,chargesort,wavek)
+               if( boxes(9,jbox) .eq. 0 ) cycle
+               call P2P(boxes(1,ibox),sourcesort,pot,fld,
+     1              boxes(1,jbox),sourcesort,chargesort,wavek)
             enddo
          endif
       enddo
