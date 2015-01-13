@@ -1,5 +1,5 @@
       subroutine buildTree(Xj,numBodies,ncrit,
-     1     nboxes,permutation,nlev,X0,size)
+     1     nboxes,permutation,nlev,size)
       use arrays, only : listOffset,lists,levelOffset,nodes,boxes,
      1     centers
       implicit none
@@ -159,34 +159,32 @@
       subroutine setLists(nboxes)
       use arrays, only : boxes,listOffset
       implicit none
-      integer i,j,k,ibox,jbox,nboxes,iparent,nkids,icoll,ncolls,kid
-      integer nlist
-      integer kids(50000),parents(2000),list5(20000)
-      do k=1,5
+      integer i,j,ibox,jbox,nboxes,nchilds,numNeighbors
+      integer iparent,jparent
+      integer childs(216),neighbors(27)
+      do j=1,5
          do i=1,nboxes
-            listOffset(i,k)=-1
+            listOffset(i,j)=-1
          enddo
       enddo
       do ibox=2,nboxes
          iparent=boxes(5,ibox)
-         parents(1)=iparent
-         call getList(5,iparent,parents(2),ncolls)
-         ncolls=ncolls+1
-         nkids=0
-         do i=1,ncolls
-            icoll=parents(i)
-            do j=1,boxes(7,icoll)
-               kid=boxes(6,icoll)+j-1
-               if (kid.gt.0) then
-                  if (kid.ne.ibox) then
-                     nkids=nkids+1
-                     kids(nkids)=kid
-                  endif
+         neighbors(1)=iparent
+         call getList(5,iparent,neighbors(2),numNeighbors)
+         numNeighbors=numNeighbors+1
+         nchilds=0
+         do i=1,numNeighbors
+            jparent=neighbors(i)
+            do j=1,boxes(7,jparent)
+               jbox=boxes(6,jparent)+j-1
+               if (jbox.ne.ibox) then
+                  nchilds=nchilds+1
+                  childs(nchilds)=jbox
                endif
             enddo
          enddo
-         do i=1,nkids
-            jbox=kids(i)
+         do i=1,nchilds
+            jbox=childs(i)
             if ( boxes(2,ibox)-1.le.boxes(2,jbox).and.
      1           boxes(2,ibox)+1.ge.boxes(2,jbox).and.
      1           boxes(3,ibox)-1.le.boxes(3,jbox).and.
@@ -201,9 +199,9 @@
       enddo
       do ibox=1,nboxes
          if (boxes(6,ibox).eq.0) then
-            call getList(5,ibox,list5,nlist)
-            do j=1,nlist
-               jbox=list5(j)
+            call getList(5,ibox,neighbors,numNeighbors)
+            do j=1,numNeighbors
+               jbox=neighbors(j)
                if (boxes(6,jbox).eq.0) then
                   call setList(1,ibox,jbox)
                   if (boxes(1,jbox).ne.boxes(1,ibox)) then
@@ -230,7 +228,7 @@
       subroutine getList(itype,ibox,list,nlist)
       use arrays, only : listOffset,lists
       implicit none
-      integer ilast,ibox,itype,nlist,i,j
+      integer ilast,ibox,itype,nlist
       integer list(*)
       ilast=listOffset(ibox,itype)
       nlist=0
@@ -240,11 +238,6 @@
             list(nlist)=lists(2,ilast)
          endif
          ilast=lists(1,ilast)
-      enddo
-      do i=1,nlist/2
-         j=list(i)
-         list(i)=list(nlist-i+1)
-         list(nlist-i+1)=j
       enddo
       return
       end

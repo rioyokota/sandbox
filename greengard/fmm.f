@@ -12,7 +12,6 @@
       real *8 Xjd(3,numBodies)
       real *8 bsize(0:200)
       real *8 scale(0:200)
-      real *8 center(3)
       real *8, allocatable :: Multipole(:)
       real *8, allocatable :: Local(:)
       complex *16 wavek
@@ -47,7 +46,7 @@ c     create oct-tree data structure
       allocate (levelOffset(200)) 
 c$    tic=omp_get_wtime() 
       call buildTree(Xj,numBodies,ncrit,
-     1     nboxes,permutation,nlev,center,size)
+     1     nboxes,permutation,nlev,size)
       allocate(iaddr(nboxes))
       do i = 0,nlev
          scale(i) = 1.0d0
