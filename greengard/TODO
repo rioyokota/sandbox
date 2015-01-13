@@ -1,6 +1,7 @@
 iprec,epsfmm -> specify P
 iaddr
-nterms, nterms_trunc, nterms_eval, nbessel
+Remove itype
+200 -> Pmax
 
 [Change when translating to C]
 wavek -> K

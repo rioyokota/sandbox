@@ -56,7 +56,7 @@ c$    tic=omp_get_wtime()
       enddo
       do i=0,numLevels
          diameter=R0/2.0d0**(i-1)
-         call getNumTerms(1,1.5d0,diameter,wavek,epsfmm,nterms(i))
+         call getNumTerms(1.5d0,diameter,wavek,epsfmm,nterms(i))
       enddo
       do i=1,numBodies
          Xjd(1,i)=Xj(1,permutation(i))
@@ -92,9 +92,9 @@ c$    toc=omp_get_wtime()
       use arrays, only : listOffset,lists,levelOffset,cells,centers
       use omp_lib, only : omp_get_wtime
       implicit none
-      integer Pmax,i,numBodies,itype,numLevels,icell,jcell
-      integer nquad,level,ilist,nlist,nbessel
-      integer nterms_trunc,ii,jj,kk
+      integer Pmax,i,numBodies,numLevels,icell,jcell
+      integer nquad,level,ilist,nlist,ntrunc
+      integer ii,jj,kk
       integer numCells,ibegin,isize
       integer iaddr(numCells),nterms(0:200),list(10000)
       integer itable(-3:3,-3:3,-3:3)
@@ -132,11 +132,9 @@ c$omp$private(icell,ibegin,isize)
             if (cells(7,icell).eq.0) then
                ibegin=cells(8,icell)
                isize=cells(9,icell)
-               nbessel=nterms(level)+1000
-               call P2M(wavek,scale(level),
-     1              Xj(1,ibegin),qj(ibegin),isize,
-     1              centers(1,icell),nterms(level),nterms(level),
-     1              nbessel,Multipole(iaddr(icell)),Anm1,Anm2,Pmax)
+               call P2M(wavek,scale(level),Xj(1,ibegin),qj(ibegin),
+     1              isize,centers(1,icell),nterms(level),
+     1              Multipole(iaddr(icell)),Anm1,Anm2,Pmax)
             endif
          enddo
 c$omp end parallel do
@@ -161,8 +159,7 @@ c$omp$private(icell,jcell,ilist)
                   call M2M(wavek,scale(level),centers(1,jcell),
      1                 Multipole(iaddr(jcell)),nterms(level),
      1                 scale(level-1),centers(1,icell),
-     1                 Multipole(iaddr(icell)),
-     1                 nterms(level-1),
+     1                 Multipole(iaddr(icell)),nterms(level-1),
      1                 radius,xquad,wquad,nquad,Anm1,Anm2,Pmax)
                enddo
             endif
@@ -183,7 +180,7 @@ c$    tic=omp_get_wtime()
          call legendre(nquad,xquad,wquad)
 c$omp parallel do default(shared)
 c$omp$private(icell,jcell,list,ilist,nlist)
-c$omp$private(nterms_trunc,ii,jj,kk)
+c$omp$private(ntrunc,ii,jj,kk)
 c$omp$schedule(dynamic)
          do icell=levelOffset(level+1),levelOffset(level+2)-1
             call getList(2,icell,list,nlist)
@@ -193,17 +190,14 @@ c$omp$schedule(dynamic)
                ii=cells(2,jcell)-cells(2,icell)
                jj=cells(3,jcell)-cells(3,icell)
                kk=cells(4,jcell)-cells(4,icell)
-               nterms_trunc=itable(ii,jj,kk)
-               nterms_trunc=min(nterms(level),nterms_trunc)
-               nterms_trunc=min(nterms(level),nterms_trunc)
-               nbessel=nterms_trunc+1000
+               ntrunc=itable(ii,jj,kk)
                call M2L(wavek,
      1              scale(level),
      1              centers(1,jcell),Multipole(iaddr(jcell)),
      1              nterms(level),scale(level),
      1              centers(1,icell),Local(iaddr(icell)),
-     1              nterms(level),nterms_trunc,
-     1              radius,xquad,wquad,nquad,nbessel,
+     1              nterms(level),ntrunc,
+     1              radius,xquad,wquad,nquad,
      1              Anm1,Anm2,Pmax)
             enddo
          enddo
@@ -224,12 +218,11 @@ c$omp$private(icell,jcell,ilist)
             if (cells(7,icell).ne.0) then
                do ilist=1,cells(7,icell)
                   jcell=cells(6,icell)+ilist-1
-                  nbessel=nquad+1000
                   call L2L(wavek,scale(level-1),centers(1,icell),
      1                 Local(iaddr(icell)),nterms(level-1),
      1                 scale(level),centers(1,jcell),
      1                 Local(iaddr(jcell)),nterms(level),
-     1                 radius,xquad,wquad,nquad,nbessel,
+     1                 radius,xquad,wquad,nquad,
      1                 Anm1,Anm2,Pmax)
                enddo
             endif
@@ -249,12 +242,9 @@ c$omp$private(icell,ibegin,isize)
             if (cells(7,icell).eq.0) then
                ibegin=cells(8,icell)
                isize=cells(9,icell)
-               nbessel=nterms(level)+1000
                call L2P(wavek,scale(level),centers(1,icell),
-     1              Local(iaddr(icell)),
-     1              nterms(level),nterms(level),nbessel,
-     1              Xj(1,ibegin),isize,
-     1              pi(ibegin),Fi(1,ibegin),
+     1              Local(iaddr(icell)),nterms(level),
+     1              Xj(1,ibegin),isize,pi(ibegin),Fi(1,ibegin),
      1              Anm1,Anm2,Pmax)
             endif
          enddo

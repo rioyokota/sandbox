@@ -256,13 +256,13 @@ c     hnd(n) = \frac{\partial hn(z)}{\partial z}
       return
       end
 
-      subroutine get_jn(nterms,z,scale,jn,ifder,jnd,nbessel)
+      subroutine get_jn(nterms,z,scale,jn,ifder,jnd)
 c     jn(z)=j_n(z)/scale^n
 c     jnd(z)=\frac{\partial jn(z)}{\partial z}
       implicit none
-      integer nterms,ifder,nbessel,ntop,i,iscale(0:nbessel)
+      integer nterms,ifder,ntop,i,iscale(0:nterms+1)
       real *8 scale,scalinv,coef,eps/1.0d-15/
-      complex *16 jn(0:nbessel),jnd(0:nbessel)
+      complex *16 jn(0:nterms+1),jnd(0:nterms+1)
       complex *16 z,zinv,fj0,fj1,ztmp
       if (abs(z).lt.eps) then
          jn(0)=1.0d0
@@ -277,23 +277,13 @@ c     jnd(z)=\frac{\partial jn(z)}{\partial z}
 	 endif
          return
       endif
-      ntop=0
       zinv=1.0d0/z
-      jn(nterms)=1.0d0
       jn(nterms-1)=0.0d0
-      do i=nterms,nbessel
-         coef=2*i+1.0d0
-         ztmp=coef*zinv*jn(i)-jn(i-1)
-         jn(i+1)=ztmp
-         if (abs(ztmp).gt.1/eps) then
-            ntop=i+1
-            exit
-         endif
-      enddo
-      if (ntop.eq.0) then
-         print*,"Error: insufficient array dimension nbessel"
-         stop
-      endif
+      jn(nterms)=1.0d0
+      coef=2*nterms+1.0d0
+      ztmp=coef*zinv
+      jn(nterms+1)=ztmp
+      ntop=nterms+1
       do i=0,ntop
          iscale(i)=0
       enddo
@@ -411,7 +401,7 @@ c     jnd(z)=\frac{\partial jn(z)}{\partial z}
                if(dy.gt.0) dy=dy-.5
                if(dz.gt.0) dz=dz-.5
                rr=sqrt(dx*dx+dy*dy+dz*dz)
-               call getNumTerms(1,rr,size,wavek,eps,nterms)
+               call getNumTerms(rr,size,wavek,eps,nterms)
                nterms_table(i,j,k)=nterms
             enddo
          enddo
@@ -446,22 +436,18 @@ c     jnd(z)=\frac{\partial jn(z)}{\partial z}
       return
       end
 
-      subroutine getNumTerms(itype,rr,size,wavek,eps,nterms)
+      subroutine getNumTerms(rr,size,wavek,eps,nterms)
       implicit none
-      integer itype,nterms,ntmax,j
+      integer nterms,ntmax,j
       real *8 rr,size,eps,scale,x,x0
-      complex *16 wavek,z,jn(0:2000),jnd(0:2000),hn(0:2000)
+      complex *16 wavek,z,jn(0:1001),jnd(0:1001),hn(0:1001)
       z=(wavek*size)*rr
       ntmax=1000
       scale=1.0d0
       if(cdabs(wavek*size).lt.1.0d0) scale=cdabs(wavek*size)
       call get_hn(ntmax,z,scale,hn)
       z=(wavek*size)*dsqrt(3d0)/2.d0
-      if(itype.eq.1) z=(wavek*size)*dsqrt(3d0)/2.d0
-      if(itype.eq.2) z=(wavek*size)*dsqrt(2d0)/2.d0
-      if(itype.eq.3) z=(wavek*size)*1.0d0/2.d0
-      if(itype.eq.4) z=(wavek*size)*0.8d0/2.d0
-      call get_jn(ntmax,z,scale,jn,0,jnd,2000)
+      call get_jn(ntmax,z,scale,jn,0,jnd)
       x0=cdabs(jn(0)*hn(0))+cdabs(jn(1)*hn(1))
       nterms=1
       do j=2,ntmax

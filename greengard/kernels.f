@@ -1,22 +1,4 @@
-c**********************************************************************
       subroutine P2P(icell,pi,Fi,jcell,Xj,qj,wavek)
-c**********************************************************************
-c     This subroutine calculates the potential and field
-c     at the target point Xi, due to a charge at Xj.
-c     The scaling is that required of the delta function response: i.e.,
-c     pi = exp(i*k*r)/r
-c     Fi = -grad(pi)
-c---------------------------------------------------------------------
-c     INPUT:
-c     Xj    : location of the source
-c     qj    : charge strength
-c     Xi    : location of the target
-c     wavek : helmholtz parameter
-c---------------------------------------------------------------------
-c     OUTPUT:
-c     pi   : calculated potential
-c     Fi   : calculated gradient
-c---------------------------------------------------------------------
       implicit none
       integer i,j,icell(20),jcell(20)
       real *8 R2,R,Xj(3,1000000),dX(3)
@@ -40,38 +22,19 @@ c---------------------------------------------------------------------
       enddo
       return
       end
-c***********************************************************************
+
       subroutine P2M(wavek,scale,Xj,qj,nj,Xi,
-     1     nterms,ntrunc,nbessel,Mi,Anm1,Anm2,Pmax)
-c***********************************************************************
-c     Constructs multipole expansion about Xi due to nj sources
-c     located at Xj.
-c-----------------------------------------------------------------------
-c     INPUT:
-c     wavek  : Helmholtz parameter
-c     scale  : the scaling factor.
-c     Xj     : coordinates of sources
-c     qj     : source strengths
-c     nj     : number of sources
-c     Xi     : epxansion center
-c     nterms : order of multipole expansion
-c     ntrunc : order of truncated expansion
-c     Anm    : precomputed array of scaling coeffs for Pnm
-c     Pmax   : dimension parameter for Anm
-c-----------------------------------------------------------------------
-c     OUTPUT:
-c     Mi     : coeffs of the h-expansion
-c-----------------------------------------------------------------------
+     1     nterms,Mi,Anm1,Anm2,Pmax)
       implicit none
-      integer i,m,n,nj,nterms,ntrunc,Pmax,nbessel
+      integer i,m,n,nj,nterms,Pmax
       real *8 r,theta,phi,ctheta,stheta,scale
       real *8 Xi(3),Xj(3,nj),dX(3)
       real *8 Ynm(0:nterms,0:nterms)
       real *8 Anm1(0:Pmax,0:Pmax)
       real *8 Anm2(0:Pmax,0:Pmax)
       complex *16 wavek,z,Ynmjn,imag/(0.0d0,1.0d0)/
-      complex *16 qj(nj),ephi(ntrunc)
-      complex *16 jn(0:nbessel),jnd(0:nbessel)
+      complex *16 qj(nj),ephi(nterms)
+      complex *16 jn(0:nterms+1),jnd(0:nterms+1)
       complex *16 Mi(0:nterms,-nterms:nterms)
       complex *16 Mnm(0:nterms,-nterms:nterms)
       do n=0,nterms
@@ -87,17 +50,17 @@ c-----------------------------------------------------------------------
          ctheta=dcos(theta)
          stheta=dsin(theta)
          ephi(1)=exp(imag*phi)
-         do n=2,ntrunc
+         do n=2,nterms
             ephi(n)=ephi(n-1)*ephi(1)
          enddo
-         call get_Ynm(ntrunc,ctheta,Ynm,Anm1,Anm2,Pmax)
+         call get_Ynm(nterms,ctheta,Ynm,Anm1,Anm2,Pmax)
          z=wavek*r
-         call get_jn(ntrunc,z,scale,jn,0,jnd,nbessel)
-         do n=0,ntrunc
+         call get_jn(nterms,z,scale,jn,0,jnd)
+         do n=0,nterms
             jn(n)=jn(n)*qj(i)
          enddo
          Mnm(0,0)=Mnm(0,0)+jn(0)
-         do n=1,ntrunc
+         do n=1,nterms
             Mnm(n,0)=Mnm(n,0)+Ynm(n,0)*jn(n)
             do m=1,n
                Ynmjn=Ynm(n,m)*jn(n)
@@ -113,41 +76,16 @@ c-----------------------------------------------------------------------
       enddo
       return
       end
-c***********************************************************************
+
       subroutine M2M(wavek,scalej,Xj,Mj,ntermsj,
      1     scalei,Xi,Mi,ntermsi,
-     2     radius,xnodes,wts,nquad,Anm1,Anm2,Pmax)
-c***********************************************************************
-c     Shift multipole expansion.
-c     This is a reasonably fast "point and shoot" version which
-c     first rotates the coordinate system, then doing the shifting
-c     along the Z-axis, and then rotating back to the original
-c     coordinates.
-c---------------------------------------------------------------------
-c     INPUT:
-c     wavek   : Helmholtz parameter
-c     Xj      : center of original multiple expansion
-c     Xi      : center of shifted expansion
-c     Mj      : coefficients of original multiple expansion
-c     ntermsj : order of multipole expansion
-c     ntermsi : order of shifted expansion
-c     scalej  : scaling parameter for mpole expansion
-c     scalei  : scaling parameter for shifted expansion
-c     radius  : radius of sphere on which shifted expansion is computed
-c     xnodes  : Legendre nodes (precomputed)
-c     wts     : Legendre weights (precomputed)
-c     nquad   : number of quadrature nodes in theta
-c     nq      : used to allocate work arrays for both z-shift and rotations.
-c---------------------------------------------------------------------
-c     OUTPUT:
-c     Mi  : coefficients of shifted expansion
-c---------------------------------------------------------------------
+     1     radius,xquad,wquad,nquad,Anm1,Anm2,Pmax)
       implicit none
       integer l,m,n,mabs,ntermsi,ntermsj,nquad,Pmax
       real *8 radius,r,theta,phi,ctheta,stheta,cthetaj,rj
       real *8 scalei,scalej
       real *8 Xi(3),Xj(3),dX(3)
-      real *8 xnodes(nquad),wts(nquad)
+      real *8 xquad(nquad),wquad(nquad)
       real *8 ynm(0:ntermsj,0:ntermsj)
       real *8 Anm1(0:Pmax,0:Pmax)
       real *8 Anm2(0:Pmax,0:Pmax)
@@ -182,7 +120,7 @@ c---------------------------------------------------------------------
          enddo
       enddo
       do l=1,nquad
-         ctheta=xnodes(l)
+         ctheta=xquad(l)
          stheta=dsqrt(1.0d0-ctheta**2)
          rj=(r+radius*ctheta)**2+(radius*stheta)**2
          rj=dsqrt(rj)
@@ -204,10 +142,10 @@ c---------------------------------------------------------------------
          enddo
       enddo
       do l=1,nquad
-         call get_Ynm(ntermsi,xnodes(l),ynm,Anm1,Anm2,Pmax)
+         call get_Ynm(ntermsi,xquad(l),ynm,Anm1,Anm2,Pmax)
          do m=-ntermsj,ntermsj
             mabs=abs(m)
-            z=phitemp(l,m)*wts(l)/2
+            z=phitemp(l,m)*wquad(l)/2
             do n=mabs,ntermsi
                Mnm(n,m)=Mnm(n,m)+z*ynm(n,mabs)
             enddo
@@ -233,39 +171,16 @@ c---------------------------------------------------------------------
       enddo
       return
       end
-c***********************************************************************
-      subroutine M2L(wavek,scalej,Xj,Mj,
-     1     ntermsj,scalei,Xi,Li,ntermsi,ntrunc,
-     1     radius,xnodes,wts,nquad,nbessel,Anm1,Anm2,Pmax)
-c***********************************************************************
-c     Convert multipole expansion to a local expansion.
-c     This is a reasonably fast "point and shoot" version which
-c     first rotates the coordinate system, then doing the shifting
-c     along the Z-axis, and then rotating back to the original
-c     coordinates.
-c---------------------------------------------------------------------
-c     INPUT:
-c     wavek   : Helmholtz parameter
-c     Xj      : center of original multiple expansion
-c     Xi      : center of shifted local expansion
-c     Mj      : coefficients of original multiple expansion
-c     ntermsj : order of multipole expansion
-c     scalej  : scaling parameter for mpole expansion
-c     scalei  : scaling parameter for local expansion
-c     radius  : radius of sphere on which local expansion is computed
-c     xnodes  : Legendre nodes (precomputed)
-c     wts     : Legendre weights (precomputed)
-c     nquad   : number of quadrature nodes used (really nquad**2)
-c---------------------------------------------------------------------
-c     OUTPUT:
-c     Li      : coefficients of shifted local expansion
-c---------------------------------------------------------------------
+
+      subroutine M2L(wavek,scalej,Xj,Mj,ntermsj,
+     1     scalei,Xi,Li,ntermsi,ntrunc,
+     1     radius,xquad,wquad,nquad,Anm1,Anm2,Pmax)
       implicit none
-      integer l,m,n,mabs,ntermsi,ntermsj,ntrunc,nquad,nbessel,Pmax
+      integer l,m,n,mabs,ntermsi,ntermsj,ntrunc,nquad,Pmax
       real *8 radius,r,theta,phi,ctheta,stheta,cthetaj,sthetaj,thetan
       real *8 rj,rn,scalej,scalei
       real *8 Xi(3),Xj(3),dX(3)
-      real *8 xnodes(nquad),wts(nquad)
+      real *8 xquad(nquad),wquad(nquad)
       real *8 ynm(0:ntrunc,0:ntrunc),ynmd(0:ntrunc,0:ntrunc)
       real *8 Anm1(0:Pmax,0:Pmax)
       real *8 Anm2(0:Pmax,0:Pmax)
@@ -273,7 +188,7 @@ c---------------------------------------------------------------------
       complex *16 phitemp(nquad,-ntrunc:ntrunc)
       complex *16 phitempn(nquad,-ntrunc:ntrunc)
       complex *16 fhs(0:ntrunc),fhder(0:ntrunc)
-      complex *16 jn(0:nbessel),jnd(0:nbessel)
+      complex *16 jn(0:ntermsj+1),jnd(0:ntermsj+1)
       complex *16 Mj(0:ntermsj,-ntermsj:ntermsj)
       complex *16 Mnm(0:ntrunc,-ntrunc:ntrunc)
       complex *16 Mrot(0:ntermsj,-ntermsj:ntermsj)
@@ -311,7 +226,7 @@ c---------------------------------------------------------------------
          enddo
       enddo
       do l=1,nquad
-         ctheta=xnodes(l)
+         ctheta=xquad(l)
          stheta=dsqrt(1.0d0-ctheta**2)
          rj=(r+radius*ctheta)**2+(radius*stheta)**2
          rj=dsqrt(rj)
@@ -355,22 +270,22 @@ c---------------------------------------------------------------------
          enddo
       enddo
       do l=1,nquad
-         cthetaj=xnodes(l)
+         cthetaj=xquad(l)
          call get_Ynm(ntrunc,cthetaj,ynm,Anm1,Anm2,Pmax)
          do m=-ntrunc,ntrunc
             mabs=abs(m)
-            z=phitemp(l,m)*wts(l)/2.0d0
+            z=phitemp(l,m)*wquad(l)/2.0d0
             do n=mabs,ntrunc
                Lnm(n,m)=Lnm(n,m)+z*ynm(n,mabs)
             enddo
-            z=phitempn(l,m)*wts(l)/2.0d0
+            z=phitempn(l,m)*wquad(l)/2.0d0
             do n=mabs,ntrunc
                Lnmd(n,m)=Lnmd(n,m)+z*ynm(n,mabs)
             enddo
          enddo
       enddo
       z=wavek*radius
-      call get_jn(ntrunc,z,scalei,jn,1,jnd,nbessel)
+      call get_jn(ntrunc,z,scalei,jn,1,jnd)
       do n=0,ntrunc
          do m=-n,n
             zh=jn(n)
@@ -392,52 +307,24 @@ c---------------------------------------------------------------------
       enddo
       return
       end
+
       subroutine L2L(wavek,scalej,Xj,Lj,ntermsj,
      1     scalei,Xi,Li,ntermsi,
-     2     radius,xnodes,wts,nquad,nbessel,Anm1,Anm2,Pmax)
-c***********************************************************************
-c     Shifts center of a local expansion.
-c     This is a reasonably fast "point and shoot" version which
-c     first rotates the coordinate system, then doing the shifting
-c     along the Z-axis, and then rotating back to the original
-c     coordinates.
-c---------------------------------------------------------------------
-c     INPUT:
-c     wavek   : Helmholtz parameter
-c     Xi      : center of shifted local expansion
-c     Xj      : center of original multiple expansion
-c     Lj      : coefficients of original multiple expansion
-c     scalei  : scaling parameter for local expansion
-c     scalej  : scaling parameter for local expansion
-c     ntermsi : order of new local expansion
-c     ntermsj : order of original local expansion
-c     marray  : work array
-c     dc      : another work array
-c     rd1     : work array for rotation operators.
-c     rd2     : work array for rotation operators.
-c     ephi    : work array for rotation operators.
-c     radius  : radius of sphere on which local expansion is computed
-c     xnodes  : Legendre nodes (precomputed)
-c     wts     : Legendre weights (precomputed)
-c     nquad   : number of quadrature nodes in theta direction.
-c---------------------------------------------------------------------
-c     OUTPUT:
-c     Li      : coefficients of shifted local expansion
-c***********************************************************************
+     1     radius,xquad,wquad,nquad,Anm1,Anm2,Pmax)
       implicit none
-      integer l,m,n,mabs,ntermsi,ntermsj,nquad,nbessel,Pmax
+      integer l,m,n,mabs,ntermsi,ntermsj,nquad,Pmax
       real *8 radius,r,theta,phi,ctheta,stheta,cthetaj,sthetaj,thetan
       real *8 rj,rn,scalej,scalei
       real *8 Xi(3),Xj(3),dX(3)
-      real *8 xnodes(nquad),wts(nquad)
+      real *8 xquad(nquad),wquad(nquad)
       real *8 ynm(0:ntermsi,0:ntermsi),ynmd(0:ntermsi,0:ntermsi)
       real *8 Anm1(0:Pmax,0:Pmax)
       real *8 Anm2(0:Pmax,0:Pmax)
       complex *16 wavek,z,zh,zhn,ut1,ut2,ut3,imag/(0.0d0,1.0d0)/
       complex *16 phitemp(nquad,-ntermsi:ntermsi)
       complex *16 phitempn(nquad,-ntermsi:ntermsi)
-      complex *16 jn(0:nbessel)
-      complex *16 jnd(0:nbessel)
+      complex *16 jn(0:ntermsi+1)
+      complex *16 jnd(0:ntermsi+1)
       complex *16 Li(0:ntermsi,-ntermsi:ntermsi)
       complex *16 Lj(0:ntermsj,-ntermsj:ntermsj)
       complex *16 Lnm(0:ntermsi,-ntermsi:ntermsi)
@@ -473,7 +360,7 @@ c***********************************************************************
          enddo
       enddo
       do l=1,nquad
-         ctheta=xnodes(l)
+         ctheta=xquad(l)
          stheta=dsqrt(1.0d0-ctheta**2)
          rj=(r+radius*ctheta)**2+(radius*stheta)**2
          rj=dsqrt(rj)
@@ -483,7 +370,7 @@ c***********************************************************************
          thetan=(cthetaj*stheta-sthetaj*ctheta)/rj
          z=wavek*rj
          call get_Ynmd(ntermsj,cthetaj,ynm,ynmd,Anm1,Anm2,Pmax)
-         call get_jn(ntermsj,z,scalej,jn,1,jnd,nbessel)
+         call get_jn(ntermsj,z,scalej,jn,1,jnd)
          do n=0,ntermsj
             jnd(n)=jnd(n)*wavek
          enddo
@@ -517,22 +404,22 @@ c***********************************************************************
          enddo
       enddo
       do l=1,nquad
-         cthetaj=xnodes(l)
+         cthetaj=xquad(l)
          call get_Ynm(ntermsi,cthetaj,ynm,Anm1,Anm2,Pmax)
          do m=-ntermsi,ntermsi
             mabs=abs(m)
-            z=phitemp(l,m)*wts(l)/2.0d0
+            z=phitemp(l,m)*wquad(l)/2.0d0
             do n=mabs,ntermsi
                Lnm(n,m)=Lnm(n,m)+z*ynm(n,mabs)
             enddo
-            z=phitempn(l,m)*wts(l)/2.0d0
+            z=phitempn(l,m)*wquad(l)/2.0d0
             do n=mabs,ntermsi
                Lnmd(n,m)=Lnmd(n,m)+z*ynm(n,mabs)
             enddo
          enddo
       enddo
       z=wavek*radius
-      call get_jn(ntermsi,z,scalei,jn,1,jnd,nbessel)
+      call get_jn(ntermsi,z,scalei,jn,1,jnd)
       do n=0,ntermsi
          do m=-n,n
             zh=jn(n)
@@ -554,33 +441,11 @@ c***********************************************************************
       enddo
       return
       end
-c**********************************************************************
+
       subroutine L2P(wavek,scalej,Xj,Lj,nterms,
-     1     ntrunc,nbessel,Xi,ni,pi,Fi,Anm1,Anm2,Pmax)
-c**********************************************************************
-c     This subroutine evaluates a j-expansion centered at CENTER
-c     at the target point TARGET.
-c     pi= sum sum  Lj(n,m) j_n(k r) Y_nm(theta,phi)
-c     n   m
-c---------------------------------------------------------------------
-c     INPUT:
-c     wavek  : the Helmholtz coefficient
-c     scalej : scaling parameter used in forming expansion
-c     Xj     : coordinates of the expansion center
-c     Lj     : coeffs of the j-expansion
-c     nterms : order of the h-expansion
-c     ntrunc : order of the truncated expansion
-c     Xi     : target vector
-c     ni     : number of targets
-c     Anm    : precomputed array of scaling coeffs for Pnm
-c     Pmax   : dimension parameter for Anm
-c---------------------------------------------------------------------
-c     OUTPUT:
-c     pi     : potential at target (if requested)
-c     Fi     : gradient at target (if requested)
-c---------------------------------------------------------------------
+     1     Xi,ni,pi,Fi,Anm1,Anm2,Pmax)
       implicit none
-      integer i,j,m,n,ni,nterms,ntrunc,Pmax,nbessel
+      integer i,j,m,n,ni,nterms,Pmax
       real *8 r,rx,ry,rz,theta,thetax,thetay,thetaz,scalej
       real *8 phi,phix,phiy,phiz,ctheta,stheta,cphi,sphi
       real *8 Xj(3),Xi(3,1),dX(3)
@@ -595,7 +460,7 @@ c---------------------------------------------------------------------
       complex *16 pi(1),Fi(3,1)
       complex *16 Lj(0:nterms,-nterms:nterms)
       complex *16 ephi(nterms)
-      complex *16 jnuse,jn(0:nbessel),jnd(0:nbessel)
+      complex *16 jnuse,jn(0:nterms+1),jnd(0:nterms+1)
       do i=1,ni
          dX(1)=Xi(1,i)-Xj(1)
          dX(2)=Xi(2,i)-Xj(2)
@@ -618,17 +483,17 @@ c---------------------------------------------------------------------
          rz=ctheta
          thetaz=-stheta
          phiz=0.0d0
-         call get_Ynmd(ntrunc,ctheta,Ynm,Ynmd,Anm1,Anm2,Pmax)
+         call get_Ynmd(nterms,ctheta,Ynm,Ynmd,Anm1,Anm2,Pmax)
          z=wavek*r
-         call get_jn(ntrunc,z,scalej,jn,1,jnd,nbessel)
+         call get_jn(nterms,z,scalej,jn,1,jnd)
          pi(i)=pi(i)+Lj(0,0)*jn(0)
-         do j=0,ntrunc
+         do j=0,nterms
             jnd(j)=jnd(j)*wavek
          enddo
          ur=Lj(0,0)*jnd(0)
          utheta=0.0d0
          uphi=0.0d0
-         do n=1,ntrunc
+         do n=1,nterms
             pi(i)=pi(i)+Lj(n,0)*jn(n)*Ynm(n,0)
             ur=ur+jnd(n)*Ynm(n,0)*Lj(n,0)
             jnuse=jn(n+1)*scalej+jn(n-1)/scalej
