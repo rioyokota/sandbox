@@ -1,9 +1,7 @@
-*0 -> *i
-*1 -> *j
 iprec,epsfmm -> specify P
 Remove bsize
-pot -> pi
-fld -> Fi
+iaddr
+nterms, nterms_trunc, nterms_eval, nbessel
 
 [Change when translating to C]
 wavek -> K
