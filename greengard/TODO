@@ -1,5 +1,4 @@
 iprec,epsfmm -> specify P
-Remove bsize
 iaddr
 nterms, nterms_trunc, nterms_eval, nbessel
 

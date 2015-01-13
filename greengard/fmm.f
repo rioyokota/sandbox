@@ -98,7 +98,6 @@ c$    toc=omp_get_wtime()
       integer numCells,ibegin,isize
       integer iaddr(numCells),nterms(0:200),list(10000)
       integer itable(-3:3,-3:3,-3:3)
-      integer nterms_eval(4,0:200)
       real *8 epsfmm,radius,diameter,R0,tic/0.0d0/,toc/0.0d0/
       real *8 Xj(3,*)
       real *8 Multipole(1),Local(1),xquad(10000),wquad(10000)
@@ -117,13 +116,6 @@ c$    toc=omp_get_wtime()
       enddo
       Pmax=200
       call getAnm(Pmax,Anm1,Anm2)
-      do level=0,numLevels
-         diameter=R0/2.0d0**(level-1)
-         do itype=1,4
-            call getNumTerms(itype,1.5d0,diameter,wavek,epsfmm,
-     1           nterms_eval(itype,level))
-         enddo
-      enddo
       do icell=1,numCells
          level=cells(1,icell)
          call initCoefs(Multipole(iaddr(icell)),nterms(level))
@@ -143,7 +135,7 @@ c$omp$private(icell,ibegin,isize)
                nbessel=nterms(level)+1000
                call P2M(wavek,scale(level),
      1              Xj(1,ibegin),qj(ibegin),isize,
-     1              centers(1,icell),nterms(level),nterms_eval(1,level),
+     1              centers(1,icell),nterms(level),nterms(level),
      1              nbessel,Multipole(iaddr(icell)),Anm1,Anm2,Pmax)
             endif
          enddo
@@ -260,7 +252,7 @@ c$omp$private(icell,ibegin,isize)
                nbessel=nterms(level)+1000
                call L2P(wavek,scale(level),centers(1,icell),
      1              Local(iaddr(icell)),
-     1              nterms(level),nterms_eval(1,level),nbessel,
+     1              nterms(level),nterms(level),nbessel,
      1              Xj(1,ibegin),isize,
      1              pi(ibegin),Fi(1,ibegin),
      1              Anm1,Anm2,Pmax)
