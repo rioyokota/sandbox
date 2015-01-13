@@ -98,7 +98,7 @@ c$    toc=omp_get_wtime()
       integer nquad,level,level0,level1,ilist,nbessel
       integer jbox,nlist,nterms_trunc,ii,jj,kk
       integer nboxes,ibegin,isize
-      integer box(20),box1(20),iaddr(nboxes),nterms(0:200),list(10000)
+      integer iaddr(nboxes),nterms(0:200),list(10000)
       integer itable(-3:3,-3:3,-3:3)
       integer nterms_eval(4,0:200)
       real *8 epsfmm,radius,tic/0.0d0/,toc/0.0d0/
@@ -135,7 +135,7 @@ c     ... step 1: P2M
 c$    tic=omp_get_wtime()
       do ilev=3,nlev+1
 c$omp parallel do default(shared)
-c$omp$private(ibox,box,level,ibegin,isize)
+c$omp$private(ibox,level,ibegin,isize)
          do ibox=levelOffset(ilev),levelOffset(ilev+1)-1
             level=boxes(1,ibox)
             nbessel = nterms(level)+1000
@@ -161,7 +161,7 @@ c$    tic=omp_get_wtime()
          nquad=max(6,nquad)
          call legendre(nquad,xquad,wquad)
 c$omp parallel do default(shared)
-c$omp$private(ibox,box,level0)
+c$omp$private(ibox,level0)
 c$omp$private(level,radius)
 c$omp$private(i,jbox,level1)
          do ibox=levelOffset(ilev),levelOffset(ilev+1)-1
@@ -196,8 +196,8 @@ c$    tic=omp_get_wtime()
          nquad=max(6,nquad)
          call legendre(nquad,xquad,wquad)
 c$omp parallel do default(shared)
-c$omp$private(ibox,box,level0,list,ilist,nlist)
-c$omp$private(jbox,box1,level1,radius)
+c$omp$private(ibox,level0,list,ilist,nlist)
+c$omp$private(jbox,level1,radius)
 c$omp$private(nterms_trunc,ii,jj,kk)
 c$omp$schedule(dynamic)
          do ibox=levelOffset(ilev),levelOffset(ilev+1)-1
@@ -238,9 +238,9 @@ c$    tic=omp_get_wtime()
          nquad=max(6,nquad)
          call legendre(nquad,xquad,wquad)
 c$omp parallel do default(shared)
-c$omp$private(ibox,box,level0)
+c$omp$private(ibox,level0)
 c$omp$private(level,radius)
-c$omp$private(i,jbox,box1,level1)
+c$omp$private(i,jbox,level1)
          do ibox=levelOffset(ilev),levelOffset(ilev+1)-1
             radius = bsize(ilev)*sqrt(3.0)
             if (boxes(7,ibox).ne.0) then
@@ -269,7 +269,7 @@ c$    toc=omp_get_wtime()
 c     ... step 5: L2P
 c$    tic=omp_get_wtime()
 c$omp parallel do default(shared)
-c$omp$private(ibox,box,level,ibegin,isize)
+c$omp$private(ibox,level,ibegin,isize)
       do ibox=1,nboxes
          if (boxes(7,ibox).eq.0) then
             level=boxes(1,ibox)
@@ -293,8 +293,8 @@ c$    toc=omp_get_wtime()
 c     ... step 6: P2P
 c$    tic=omp_get_wtime()
 c$omp parallel do default(shared)
-c$omp$private(ibox,box,list,nlist)
-c$omp$private(jbox,box1,ilist)
+c$omp$private(ibox,list,nlist)
+c$omp$private(jbox,ilist)
 c$omp$schedule(dynamic)
       do ibox=1,nboxes
          if (boxes(7,ibox).eq.0) then

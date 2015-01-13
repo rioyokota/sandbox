@@ -118,11 +118,11 @@
       end
 
       subroutine reorder(X0,R0,level,iX,
-     1     Xj,index,n,iwork,nbody)
+     1     Xj,permutation,n,iwork,nbody)
       implicit none
       integer n,d,i,j,level,octant
       integer iX(3),offset(9)
-      integer index(*),iwork(*),nbody(*)
+      integer permutation(*),iwork(*),nbody(*)
       real *8 R,R0
       real *8 X(3),X0(3),Xj(3,*)
       R=R0/2**(level-1)
@@ -133,7 +133,7 @@
          nbody(i)=0
       enddo
       do i=1,n
-         j=index(i)
+         j=permutation(i)
          octant=-(Xj(3,j).gt.X(3))*4-(Xj(2,j).gt.X(2))*2
      1        -(Xj(1,j).gt.X(1))+1
          nbody(octant)=nbody(octant)+1
@@ -144,14 +144,14 @@
          nbody(i)=0
       enddo
       do i=1,n
-         j=index(i)
+         j=permutation(i)
          octant=-(Xj(3,j).gt.X(3))*4-(Xj(2,j).gt.X(2))*2
      1        -(Xj(1,j).gt.X(1))+1
-         iwork(offset(octant)+nbody(octant))=index(i)
+         iwork(offset(octant)+nbody(octant))=permutation(i)
          nbody(octant)=nbody(octant)+1
       enddo
       do i=1,n
-         index(i)=iwork(i)
+         permutation(i)=iwork(i)
       enddo
       return
       end

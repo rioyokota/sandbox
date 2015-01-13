@@ -6,9 +6,6 @@
 
 box -> cell
 nboxes -> numCells
-kid -> child
-coll -> neighbor
-index -> something else
 *0 -> *i
 *1 -> *j
 
