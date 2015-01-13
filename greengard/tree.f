@@ -21,10 +21,10 @@
       end
 
       subroutine buildTree(Xj,numBodies,ncrit,
-     1     numCells,permutation,nlev,X0,R0)
+     1     numCells,permutation,numLevels,X0,R0)
       use arrays, only : listOffset,lists,nodes,cells,centers
       implicit none
-      integer i,j,d,numBodies,ncrit,numCells,nlev
+      integer i,j,d,numBodies,ncrit,numCells,numLevels
       integer permutation(*)
       real *8 R,R0
       real *8 Xj(3,*),X0(3)
@@ -33,7 +33,7 @@
       enddo
       allocate(nodes(20,numBodies))
       call growTree(Xj,numBodies,ncrit,nodes,
-     1     numCells,permutation,nlev,X0,R0)
+     1     numCells,permutation,numLevels,X0,R0)
       allocate(listOffset(numCells,5))
       allocate(lists(2,189*numCells))
       allocate(cells(20,numCells))
