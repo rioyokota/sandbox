@@ -90,7 +90,7 @@ c$    toc=omp_get_wtime()
       end
 
       subroutine evaluate(wavek,
-     1     numBodies,sourcesort,chargesort,pot,fld,
+     1     numBodies,Xj,qj,pot,fld,
      1     epsfmm,iaddr,Multipole,Local,
      1     nboxes,nlev,scale,bsize,nterms)
       use arrays, only : listOffset,lists,levelOffset,boxes,centers
@@ -104,7 +104,7 @@ c$    toc=omp_get_wtime()
       integer itable(-3:3,-3:3,-3:3)
       integer nterms_eval(4,0:200)
       real *8 epsfmm,radius,tic/0.0d0/,toc/0.0d0/
-      real *8 sourcesort(3,1)
+      real *8 Xj(3,1)
       real *8 Multipole(1),Local(1),xquad(10000),wquad(10000)
       real *8 scale(0:200),bsize(0:200)
       real *8 Anm1(0:200,0:200)
@@ -112,7 +112,7 @@ c$    toc=omp_get_wtime()
       complex *16 wavek
       complex *16 pot(1)
       complex *16 fld(3,1)
-      complex *16 chargesort(1)
+      complex *16 qj(1)
       do i=1,numBodies
          pot(i)=0
          fld(1,i)=0
@@ -146,7 +146,7 @@ c$omp$private(ibox,level,ibegin,isize)
                ibegin=boxes(8,ibox)
                isize=boxes(9,ibox)
                call P2M(wavek,scale(level),
-     1              sourcesort(1,ibegin),chargesort(ibegin),isize,
+     1              Xj(1,ibegin),qj(ibegin),isize,
      1              centers(1,ibox),nterms(level),nterms_eval(1,level),
      1              nbessel,Multipole(iaddr(ibox)),Anm1,Anm2,Pmax)
             endif
@@ -205,7 +205,7 @@ c$omp$schedule(dynamic)
          do ibox=levelOffset(ilev),levelOffset(ilev+1)-1
             radius=bsize(ilev-1)*sqrt(3.0)*0.5
             level0=boxes(1,ibox)
-            if (level0 .ge. 2) then
+            if (level0.ge.2) then
                call getList(2,ibox,list,nlist)
                do ilist=1,nlist
                   jbox=list(ilist)
@@ -282,7 +282,7 @@ c$omp$private(ibox,level,ibegin,isize)
                call L2P(wavek,scale(level),centers(1,ibox),
      1              Local(iaddr(ibox)),
      1              nterms(level),nterms_eval(1,level),nbessel,
-     1              sourcesort(1,ibegin),isize,
+     1              Xj(1,ibegin),isize,
      1              pot(ibegin),fld(1,ibegin),
      1              Anm1,Anm2,Pmax)
             endif
@@ -301,8 +301,8 @@ c$omp$schedule(dynamic)
       do ibox=1,nboxes
          if (boxes(7,ibox).eq.0) then
 c     ... evaluate self interactions
-            call P2P(boxes(1,ibox),sourcesort,pot,fld,
-     1           boxes(1,ibox),sourcesort,chargesort,wavek)
+            call P2P(boxes(1,ibox),pot,fld,
+     1           boxes(1,ibox),Xj,qj,wavek)
 c     ... evaluate interactions with the nearest neighbours
             call getList(1,ibox,list,nlist)
 c     ... for all pairs in list #1, evaluate the potentials and fields directly
@@ -310,8 +310,8 @@ c     ... for all pairs in list #1, evaluate the potentials and fields directly
                jbox=list(ilist)
 c     ... prune all sourceless boxes
                if (boxes(9,jbox).eq.0) cycle
-               call P2P(boxes(1,ibox),sourcesort,pot,fld,
-     1              boxes(1,jbox),sourcesort,chargesort,wavek)
+               call P2P(boxes(1,ibox),pot,fld,
+     1              boxes(1,jbox),Xj,qj,wavek)
             enddo
          endif
       enddo
