@@ -7,7 +7,8 @@
       integer nterms(0:200)
       integer, allocatable :: iaddr(:)
       integer, allocatable :: permutation(:)
-      real *8 epsfmm,size,boxsize,tic/0.0d0/,toc/0.0d0/
+      real *8 epsfmm,R0,tic/0.0d0/,toc/0.0d0/
+      real *8 X0(3)
       real *8 Xj(3,numBodies)
       real *8 Xjd(3,numBodies)
       real *8 bsize(0:200)
@@ -43,27 +44,28 @@ c     set criterion for box subdivision (number of sources per box)
       if (iprec.eq.6) ncrit=numBodies
 c     create oct-tree data structure
       allocate (permutation(numBodies))
-      allocate (levelOffset(200)) 
-c$    tic=omp_get_wtime() 
+      allocate (levelOffset(200))
+c$    tic=omp_get_wtime()
+c$    tic=omp_get_wtime()
+      call getBounds(Xj,numBodies,X0,R0)
       call buildTree(Xj,numBodies,ncrit,
-     1     nboxes,permutation,nlev,size)
+     1     nboxes,permutation,nlev,X0,R0)
       allocate(iaddr(nboxes))
-      do i = 0,nlev
-         scale(i) = 1.0d0
-         boxsize = abs((size/2.0**i)*wavek)
-         if (boxsize.lt.1) scale(i) = boxsize
+      do i=0,nlev
+         scale(i)=(R0/2.0**(i-1))*wavek
+         if (scale(i).ge.1) scale(i)=1.0
       enddo
-      nmax = 0
-      do i = 0,nlev
-         bsize(i)=size/2.0d0**i
+      nmax=0
+      do i=0,nlev
+         bsize(i)=R0/2.0d0**(i-1)
          call getNumTerms(1,1.5d0,bsize(i),wavek,epsfmm,nterms(i))
-         if (nterms(i).gt.nmax.and.i.ge.2) nmax = nterms(i)
+         if (nterms(i).gt.nmax.and.i.ge.2) nmax=nterms(i)
       enddo
-      do i = 1,numBodies
-         Xjd(1,i) = Xj(1,permutation(i))
-         Xjd(2,i) = Xj(2,permutation(i))
-         Xjd(3,i) = Xj(3,permutation(i))
-         qjd(i) = qj(permutation(i))
+      do i=1,numBodies
+         Xjd(1,i)=Xj(1,permutation(i))
+         Xjd(2,i)=Xj(2,permutation(i))
+         Xjd(3,i)=Xj(3,permutation(i))
+         qjd(i)=qj(permutation(i))
       enddo
       sumTerms=1
       do ibox=1,nboxes
@@ -125,7 +127,7 @@ c$    toc=omp_get_wtime()
      1           nterms_eval(itype,i))
          enddo
       enddo
-      do ibox = 1,nboxes
+      do ibox=1,nboxes
          level=boxes(1,ibox)
          call initCoefs(Multipole(iaddr(ibox)),nterms(level))
          call initCoefs(Local(iaddr(ibox)),nterms(level))
@@ -138,7 +140,7 @@ c$omp parallel do default(shared)
 c$omp$private(ibox,level,ibegin,isize)
          do ibox=levelOffset(ilev),levelOffset(ilev+1)-1
             level=boxes(1,ibox)
-            nbessel = nterms(level)+1000
+            nbessel=nterms(level)+1000
             if (boxes(9,ibox).eq.0) cycle
             if (boxes(7,ibox).eq.0) then
                ibegin=boxes(8,ibox)
@@ -165,7 +167,7 @@ c$omp$private(ibox,level0)
 c$omp$private(level,radius)
 c$omp$private(i,jbox,level1)
          do ibox=levelOffset(ilev),levelOffset(ilev+1)-1
-            radius = bsize(ilev)*sqrt(3.0)
+            radius=bsize(ilev)*sqrt(3.0)
             if (boxes(9,ibox).eq.0) cycle
             if (boxes(7,ibox).ne.0) then
                level0=boxes(1,ibox)
@@ -201,7 +203,7 @@ c$omp$private(jbox,level1,radius)
 c$omp$private(nterms_trunc,ii,jj,kk)
 c$omp$schedule(dynamic)
          do ibox=levelOffset(ilev),levelOffset(ilev+1)-1
-            radius = bsize(ilev-1)*sqrt(3.0)*0.5
+            radius=bsize(ilev-1)*sqrt(3.0)*0.5
             level0=boxes(1,ibox)
             if (level0 .ge. 2) then
                call getList(2,ibox,list,nlist)
@@ -215,7 +217,7 @@ c$omp$schedule(dynamic)
                   nterms_trunc=itable(ii,jj,kk)
                   nterms_trunc=min(nterms(level0),nterms_trunc)
                   nterms_trunc=min(nterms(level1),nterms_trunc)
-                  nbessel = nterms_trunc+1000
+                  nbessel=nterms_trunc+1000
                   call M2L(wavek,
      1                 scale(level1),
      1                 centers(1,jbox),Multipole(iaddr(jbox)),
@@ -242,7 +244,7 @@ c$omp$private(ibox,level0)
 c$omp$private(level,radius)
 c$omp$private(i,jbox,level1)
          do ibox=levelOffset(ilev),levelOffset(ilev+1)-1
-            radius = bsize(ilev)*sqrt(3.0)
+            radius=bsize(ilev)*sqrt(3.0)
             if (boxes(7,ibox).ne.0) then
                level0=boxes(1,ibox)
                if (level0.ge.2) then
@@ -250,7 +252,7 @@ c$omp$private(i,jbox,level1)
                      jbox=boxes(6,ibox)+i-1
                      if (jbox.eq.0) cycle
                      level1=boxes(1,jbox)
-                     nbessel = nquad+1000
+                     nbessel=nquad+1000
                      call L2L(wavek,scale(level0),centers(1,ibox),
      1                    Local(iaddr(ibox)),nterms(level0),
      1                    scale(level1),centers(1,jbox),

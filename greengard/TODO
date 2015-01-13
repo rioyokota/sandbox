@@ -1,28 +1,4 @@
-- Change function/variable names in tree.f
-* kid -> child
-* box -> cell
-* laddr -> levelRange
-- Use common blocks
-
 box -> cell
 nboxes -> numCells
 *0 -> *i
 *1 -> *j
-
-list 1 - the list of all boxes with which the
-   box ibox interacts directly, including the boxes on the
-   same level as ibox, boxes on the finer levels, and boxes
-   on the coarser levels. obviously, list 1 is empty for any
-   box that is not childless.
-list 2 - the list of all boxes with which the
-   box ibox interacts in the regular multipole fashion, i.e.
-   boxes on the same level as ibox that are separated from it
-   but whose parents are not separated from the parent of ibox.
-list 3 - for a childless ibox, the list of all
-   boxes on the levels finer than that of ibox, which are
-   separated from ibox, and whose parents are not separated
-   from ibox. for a box with children, list 3 is empty.
-list 4 is dual to list 3, i.e. jbox is on the list 4 of ibox if
-   and only if ibox is on the list 3 of jbox.
-list 5 - the list of all boxes at the same level
-   that are adjacent to the box ibox - the list of colleagues

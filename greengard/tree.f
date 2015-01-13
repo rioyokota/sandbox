@@ -1,18 +1,39 @@
+      subroutine getBounds(Xj,numBodies,X0,R0)
+      integer numBodies,i,d
+      real *8 R0,diameter/0.0/
+      real *8 Xj(3,*),Xmin(3),Xmax(3),X0(3)
+      do d=1,3
+         Xmin(d)=Xj(d,1)
+         Xmax(d)=Xj(d,1)
+      enddo
+      do i=1,numBodies
+         do d=1,3
+            if (Xj(d,i).lt.Xmin(d)) Xmin(d)=Xj(d,i)
+            if (Xj(d,i).gt.Xmax(d)) Xmax(d)=Xj(d,i)
+         enddo
+      enddo
+      do d=1,3
+         if (Xmax(d)-Xmin(d).gt.diameter) diameter=Xmax(d)-Xmin(d)
+         X0(d)=(Xmax(d)+Xmin(d))*0.5
+      enddo
+      R0=diameter*0.5
+      return
+      end
+
       subroutine buildTree(Xj,numBodies,ncrit,
-     1     nboxes,permutation,nlev,size)
-      use arrays, only : listOffset,lists,levelOffset,nodes,boxes,
-     1     centers
+     1     nboxes,permutation,nlev,X0,R0)
+      use arrays, only : listOffset,lists,nodes,boxes,centers
       implicit none
       integer i,j,d,numBodies,ncrit,nboxes,nlev
       integer permutation(*)
-      real *8 size,R,R0
+      real *8 R,R0
       real *8 Xj(3,*),X0(3)
       do i=1,numBodies
          permutation(i)=i
       enddo
       allocate(nodes(20,numBodies))
       call growTree(Xj,numBodies,ncrit,nodes,
-     1     nboxes,permutation,nlev,X0,size)
+     1     nboxes,permutation,nlev,X0,R0)
       allocate(listOffset(nboxes,5))
       allocate(lists(2,189*nboxes))
       allocate(boxes(20,nboxes))
@@ -22,7 +43,6 @@
             boxes(j,i)=nodes(j,i)
          enddo
       enddo
-      R0 = size / 2
       do i=1,nboxes
          R=R0/2**boxes(1,i)
          do d=1,3
@@ -34,39 +54,15 @@
       end
 
       subroutine growTree(Xj,numBodies,ncrit,boxes,
-     1     nboxes,permutation,numLevels,X0,size)
+     1     nboxes,permutation,numLevels,X0,R0)
       use arrays, only : levelOffset
       implicit none
       integer i,numLevels,level
       integer iparent,nchild,ibody,nbody,ncrit,numBodies
       integer offset,nboxes
       integer boxes(20,*),permutation(*),iwork(numBodies),nbody8(8)
-      real *8 xmin,xmax,ymin,ymax,zmin,zmax
-      real *8 size,sizey,sizez,R0
+      real *8 R0
       real *8 Xj(3,*),X0(3)
-      xmin=Xj(1,1)
-      xmax=Xj(1,1)
-      ymin=Xj(2,1)
-      ymax=Xj(2,1)
-      zmin=Xj(3,1)
-      zmax=Xj(3,1)
-      do i=1,numBodies
-         if (Xj(1,i).lt.xmin) xmin=Xj(1,i)
-         if (Xj(1,i).gt.xmax) xmax=Xj(1,i)
-         if (Xj(2,i).lt.ymin) ymin=Xj(2,i)
-         if (Xj(2,i).gt.ymax) ymax=Xj(2,i)
-         if (Xj(3,i).lt.zmin) zmin=Xj(3,i)
-         if (Xj(3,i).gt.zmax) zmax=Xj(3,i)
-      enddo
-      size=xmax-xmin
-      sizey=ymax-ymin
-      sizez=zmax-zmin
-      if (sizey.gt.size) size=sizey
-      if (sizez.gt.size) size=sizez
-      R0=size/2
-      X0(1)=(xmin+xmax)/2
-      X0(2)=(ymin+ymax)/2
-      X0(3)=(zmin+zmax)/2
       boxes(1,1)=0 ! level
       boxes(2,1)=0 ! iX(1)
       boxes(3,1)=0 ! iX(2)
