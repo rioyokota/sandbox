@@ -21,10 +21,10 @@
       end
 
       subroutine buildTree(Xj,numBodies,ncrit,
-     1     nboxes,permutation,nlev,X0,R0)
-      use arrays, only : listOffset,lists,nodes,boxes,centers
+     1     numCells,permutation,nlev,X0,R0)
+      use arrays, only : listOffset,lists,nodes,cells,centers
       implicit none
-      integer i,j,d,numBodies,ncrit,nboxes,nlev
+      integer i,j,d,numBodies,ncrit,numCells,nlev
       integer permutation(*)
       real *8 R,R0
       real *8 Xj(3,*),X0(3)
@@ -33,81 +33,81 @@
       enddo
       allocate(nodes(20,numBodies))
       call growTree(Xj,numBodies,ncrit,nodes,
-     1     nboxes,permutation,nlev,X0,R0)
-      allocate(listOffset(nboxes,5))
-      allocate(lists(2,189*nboxes))
-      allocate(boxes(20,nboxes))
-      allocate(centers(3,nboxes))
-      do i=1,nboxes
+     1     numCells,permutation,nlev,X0,R0)
+      allocate(listOffset(numCells,5))
+      allocate(lists(2,189*numCells))
+      allocate(cells(20,numCells))
+      allocate(centers(3,numCells))
+      do i=1,numCells
          do j=1,20
-            boxes(j,i)=nodes(j,i)
+            cells(j,i)=nodes(j,i)
          enddo
       enddo
-      do i=1,nboxes
-         R=R0/2**boxes(1,i)
+      do i=1,numCells
+         R=R0/2**cells(1,i)
          do d=1,3
-            centers(d,i)=X0(d)-R0+boxes(d+1,i)*R*2+R
+            centers(d,i)=X0(d)-R0+cells(d+1,i)*R*2+R
          enddo
       enddo
-      call setLists(nboxes)
+      call setLists(numCells)
       return
       end
 
-      subroutine growTree(Xj,numBodies,ncrit,boxes,
-     1     nboxes,permutation,numLevels,X0,R0)
+      subroutine growTree(Xj,numBodies,ncrit,cells,
+     1     numCells,permutation,numLevels,X0,R0)
       use arrays, only : levelOffset
       implicit none
       integer i,numLevels,level
       integer iparent,nchild,ibody,nbody,ncrit,numBodies
-      integer offset,nboxes
-      integer boxes(20,*),permutation(*),iwork(numBodies),nbody8(8)
+      integer offset,numCells
+      integer cells(20,*),permutation(*),iwork(numBodies),nbody8(8)
       real *8 R0
       real *8 Xj(3,*),X0(3)
-      boxes(1,1)=0 ! level
-      boxes(2,1)=0 ! iX(1)
-      boxes(3,1)=0 ! iX(2)
-      boxes(4,1)=0 ! iX(3)
-      boxes(5,1)=0 ! iparent
-      boxes(6,1)=0 ! ichild
-      boxes(7,1)=0 ! nchild
-      boxes(8,1)=1 ! ibody
-      boxes(9,1)=numBodies ! nbody
+      cells(1,1)=0 ! level
+      cells(2,1)=0 ! iX(1)
+      cells(3,1)=0 ! iX(2)
+      cells(4,1)=0 ! iX(3)
+      cells(5,1)=0 ! iparent
+      cells(6,1)=0 ! ichild
+      cells(7,1)=0 ! nchild
+      cells(8,1)=1 ! ibody
+      cells(9,1)=numBodies ! nbody
       levelOffset(1)=1
       levelOffset(2)=2
       do i=1,numBodies
          permutation(i)=i
       enddo
-      nboxes=1
+      numCells=1
       numLevels=0
       do level=1,198
          do iparent=levelOffset(level),levelOffset(level+1)-1
-            nbody=boxes(9,iparent)
+            nbody=cells(9,iparent)
             if (nbody.le.ncrit) cycle
-            ibody=boxes(8,iparent)
-            call reorder(X0,R0,level,boxes(2,iparent),
+            ibody=cells(8,iparent)
+            call reorder(X0,R0,level,cells(2,iparent),
      1           Xj,permutation(ibody),nbody,iwork,nbody8)
             nchild=0
             offset=ibody
-            boxes(6,iparent)=nboxes+1
+            cells(6,iparent)=numCells+1
             do i=0,7
                if (nbody8(i+1).eq.0) cycle
-               nboxes=nboxes+1
+               numCells=numCells+1
                numLevels=level
-               boxes(1,nboxes)=level
-               boxes(2,nboxes)=boxes(2,iparent)*2+mod(i,2)
-               boxes(3,nboxes)=boxes(3,iparent)*2+mod(i/2,2)
-               boxes(4,nboxes)=boxes(4,iparent)*2+i/4
-               boxes(5,nboxes)=iparent
-               boxes(6,nboxes)=0
-               boxes(7,nboxes)=0
-               boxes(8,nboxes)=offset
-               boxes(9,nboxes)=nbody8(i+1)
+               cells(1,numCells)=level
+               cells(2,numCells)=cells(2,iparent)*2+mod(i,2)
+               cells(3,numCells)=cells(3,iparent)*2+mod(i/2,2)
+               cells(4,numCells)=cells(4,iparent)*2+i/4
+               cells(5,numCells)=iparent
+               cells(6,numCells)=0
+               cells(7,numCells)=0
+               cells(8,numCells)=offset
+               cells(9,numCells)=nbody8(i+1)
                nchild=nchild+1
                offset=offset+nbody8(i+1)
             enddo
-            boxes(7,iparent)=nchild
+            cells(7,iparent)=nchild
          enddo
-         levelOffset(level+2)=nboxes+1
+         levelOffset(level+2)=numCells+1
          if (levelOffset(level+1).eq.levelOffset(level+2)) exit
       enddo
       return
@@ -152,56 +152,56 @@
       return
       end
 
-      subroutine setLists(nboxes)
-      use arrays, only : boxes,listOffset
+      subroutine setLists(numCells)
+      use arrays, only : cells,listOffset
       implicit none
-      integer i,j,ibox,jbox,nboxes,nchilds,numNeighbors
+      integer i,j,icell,jcell,numCells,nchilds,numNeighbors
       integer iparent,jparent
       integer childs(216),neighbors(27)
       do j=1,5
-         do i=1,nboxes
+         do i=1,numCells
             listOffset(i,j)=-1
          enddo
       enddo
-      do ibox=2,nboxes
-         iparent=boxes(5,ibox)
+      do icell=2,numCells
+         iparent=cells(5,icell)
          neighbors(1)=iparent
          call getList(5,iparent,neighbors(2),numNeighbors)
          numNeighbors=numNeighbors+1
          nchilds=0
          do i=1,numNeighbors
             jparent=neighbors(i)
-            do j=1,boxes(7,jparent)
-               jbox=boxes(6,jparent)+j-1
-               if (jbox.ne.ibox) then
+            do j=1,cells(7,jparent)
+               jcell=cells(6,jparent)+j-1
+               if (jcell.ne.icell) then
                   nchilds=nchilds+1
-                  childs(nchilds)=jbox
+                  childs(nchilds)=jcell
                endif
             enddo
          enddo
          do i=1,nchilds
-            jbox=childs(i)
-            if ( boxes(2,ibox)-1.le.boxes(2,jbox).and.
-     1           boxes(2,ibox)+1.ge.boxes(2,jbox).and.
-     1           boxes(3,ibox)-1.le.boxes(3,jbox).and.
-     1           boxes(3,ibox)+1.ge.boxes(3,jbox).and.
-     1           boxes(4,ibox)-1.le.boxes(4,jbox).and.
-     1           boxes(4,ibox)+1.ge.boxes(4,jbox) ) then
-               call setList(5,ibox,jbox)
+            jcell=childs(i)
+            if ( cells(2,icell)-1.le.cells(2,jcell).and.
+     1           cells(2,icell)+1.ge.cells(2,jcell).and.
+     1           cells(3,icell)-1.le.cells(3,jcell).and.
+     1           cells(3,icell)+1.ge.cells(3,jcell).and.
+     1           cells(4,icell)-1.le.cells(4,jcell).and.
+     1           cells(4,icell)+1.ge.cells(4,jcell) ) then
+               call setList(5,icell,jcell)
             else
-               call setList(2,ibox,jbox)
+               call setList(2,icell,jcell)
             endif
          enddo
       enddo
-      do ibox=1,nboxes
-         if (boxes(6,ibox).eq.0) then
-            call getList(5,ibox,neighbors,numNeighbors)
+      do icell=1,numCells
+         if (cells(6,icell).eq.0) then
+            call getList(5,icell,neighbors,numNeighbors)
             do j=1,numNeighbors
-               jbox=neighbors(j)
-               if (boxes(6,jbox).eq.0) then
-                  call setList(1,ibox,jbox)
-                  if (boxes(1,jbox).ne.boxes(1,ibox)) then
-                     call setList(1,jbox,ibox)
+               jcell=neighbors(j)
+               if (cells(6,jcell).eq.0) then
+                  call setList(1,icell,jcell)
+                  if (cells(1,jcell).ne.cells(1,icell)) then
+                     call setList(1,jcell,icell)
                   endif
                endif
             enddo
@@ -210,23 +210,23 @@
       return
       end
 
-      subroutine setList(itype,ibox,list)
+      subroutine setList(itype,icell,list)
       use arrays, only : listOffset,lists
       implicit none
-      integer ibox,itype,list,numele/0/
+      integer icell,itype,list,numele/0/
       numele=numele+1
-      lists(1,numele)=listOffset(ibox,itype)
+      lists(1,numele)=listOffset(icell,itype)
       lists(2,numele)=list
-      listOffset(ibox,itype)=numele
+      listOffset(icell,itype)=numele
       return
       end
 
-      subroutine getList(itype,ibox,list,nlist)
+      subroutine getList(itype,icell,list,nlist)
       use arrays, only : listOffset,lists
       implicit none
-      integer ilast,ibox,itype,nlist
+      integer ilast,icell,itype,nlist
       integer list(*)
-      ilast=listOffset(ibox,itype)
+      ilast=listOffset(icell,itype)
       nlist=0
       do while(ilast.gt.0)
          if (lists(2,ilast).gt.0) then

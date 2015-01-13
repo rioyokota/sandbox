@@ -1,5 +1,5 @@
 c**********************************************************************
-      subroutine P2P(ibox,pi,Fi,jbox,Xj,qj,wavek)
+      subroutine P2P(icell,pi,Fi,jcell,Xj,qj,wavek)
 c**********************************************************************
 c     This subroutine calculates the potential and field
 c     at the target point Xi, due to a charge at Xj.
@@ -18,12 +18,12 @@ c     pi   : calculated potential
 c     Fi   : calculated gradient
 c---------------------------------------------------------------------
       implicit none
-      integer i,j,ibox(20),jbox(20)
+      integer i,j,icell(20),jcell(20)
       real *8 R2,R,Xj(3,1000000),dX(3)
       complex *16 wavek,coef1,coef2,imag/(0.0d0,1.0d0)/
       complex *16 qj(1000000),pi(1000000),Fi(3,1000000)
-      do i=ibox(8),ibox(8)+ibox(9)-1
-         do j=jbox(8),jbox(8)+jbox(9)-1
+      do i=icell(8),icell(8)+icell(9)-1
+         do j=jcell(8),jcell(8)+jcell(9)-1
             dX(1)=Xj(1,i)-Xj(1,j)
             dX(2)=Xj(2,i)-Xj(2,j)
             dX(3)=Xj(3,i)-Xj(3,j)

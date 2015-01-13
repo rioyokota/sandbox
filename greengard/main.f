@@ -2,7 +2,7 @@
       use omp_lib, only : omp_get_wtime
       implicit none
       integer numBodies,numTarget,i,iprec
-      integer ibox(20),jbox(20)
+      integer icell(20),jcell(20)
       real *8 pdiff,pnorm,fdiff,fnorm,tic/0.0/,toc/0.0/
       real *8 Xj(3,1000000)
       complex *16 qj(1000000)
@@ -30,16 +30,12 @@ c$    toc=omp_get_wtime()
          Fi2(2,i)=0
          Fi2(3,i)=0
       enddo
-      ibox(8)=1
-      ibox(9)=numTarget
-      jbox(8)=1
-      jbox(9)=numBodies
-      ibox(14)=1
-      ibox(15)=numTarget
-      jbox(14)=1
-      jbox(15)=numBodies
+      icell(8)=1
+      icell(9)=numTarget
+      jcell(8)=1
+      jcell(9)=numBodies
 c$    tic=omp_get_wtime()
-      call P2P(ibox,pi2,Fi2,jbox,Xj,qj,wavek)
+      call P2P(icell,pi2,Fi2,jcell,Xj,qj,wavek)
 c$    toc=omp_get_wtime()
       print*,'Direct =',toc-tic
       pdiff=0

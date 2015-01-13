@@ -471,7 +471,7 @@ c     jnd(z)=\frac{\partial jn(z)}{\partial z}
             return
          endif
       enddo
-      print*,"Computational box is too big, setting nterms to 1000\n";
+      print*,"Domain is too big, setting nterms to 1000\n";
       nterms = 1000
       return
       end

@@ -1,5 +1,3 @@
-box -> cell
-nboxes -> numCells
 *0 -> *i
 *1 -> *j
 iprec,epsfmm -> specify P
