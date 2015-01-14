@@ -34,7 +34,7 @@
       allocate(nodes(20,numBodies))
       call growTree(Xj,numBodies,ncrit,nodes,
      1     numCells,permutation,numLevels,X0,R0)
-      allocate(listOffset(numCells,5))
+      allocate(listOffset(numCells,3))
       allocate(lists(2,189*numCells))
       allocate(cells(20,numCells))
       allocate(centers(3,numCells))
@@ -158,7 +158,7 @@
       integer i,j,icell,jcell,numCells,nchilds,numNeighbors
       integer iparent,jparent
       integer childs(216),neighbors(27)
-      do j=1,5
+      do j=1,3
          do i=1,numCells
             listOffset(i,j)=-1
          enddo
@@ -166,7 +166,7 @@
       do icell=2,numCells
          iparent=cells(5,icell)
          neighbors(1)=iparent
-         call getList(5,iparent,neighbors(2),numNeighbors)
+         call getList(3,iparent,neighbors(2),numNeighbors)
          numNeighbors=numNeighbors+1
          nchilds=0
          do i=1,numNeighbors
@@ -187,7 +187,7 @@
      1           cells(3,icell)+1.ge.cells(3,jcell).and.
      1           cells(4,icell)-1.le.cells(4,jcell).and.
      1           cells(4,icell)+1.ge.cells(4,jcell) ) then
-               call setList(5,icell,jcell)
+               call setList(3,icell,jcell)
             else
                call setList(2,icell,jcell)
             endif
@@ -195,7 +195,7 @@
       enddo
       do icell=1,numCells
          if (cells(6,icell).eq.0) then
-            call getList(5,icell,neighbors,numNeighbors)
+            call getList(3,icell,neighbors,numNeighbors)
             do j=1,numNeighbors
                jcell=neighbors(j)
                if (cells(6,jcell).eq.0) then

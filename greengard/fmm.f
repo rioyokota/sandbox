@@ -89,7 +89,7 @@ c$    toc=omp_get_wtime()
       subroutine evaluate(wavek,numBodies,Xj,qj,pi,Fi,
      1     epsfmm,iaddr,Multipole,Local,
      1     numCells,numLevels,scale,nterms,R0)
-      use arrays, only : listOffset,lists,levelOffset,cells,centers
+      use arrays, only : levelOffset,cells,centers
       use omp_lib, only : omp_get_wtime
       implicit none
       integer Pmax,i,numBodies,numLevels,icell,jcell
