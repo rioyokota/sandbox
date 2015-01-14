@@ -120,7 +120,7 @@ c$omp$private(icell,ibegin,isize)
                ibegin=cells(8,icell)
                isize=cells(9,icell)
                call P2M(wavek,scale(level),Xj(1,ibegin),qj(ibegin),
-     1              isize,centers(1,icell),P,
+     1              isize,centers(1,icell),
      1              Multipole(iaddr(icell)),Anm1,Anm2,Pmax)
             endif
          enddo
@@ -144,9 +144,9 @@ c$omp$private(icell,jcell,ilist)
                do ilist=1,cells(7,icell)
                   jcell=cells(6,icell)+ilist-1
                   call M2M(wavek,scale(level),centers(1,jcell),
-     1                 Multipole(iaddr(jcell)),P,
+     1                 Multipole(iaddr(jcell)),
      1                 scale(level-1),centers(1,icell),
-     1                 Multipole(iaddr(icell)),P,
+     1                 Multipole(iaddr(icell)),
      1                 radius,xquad,wquad,nquad,Anm1,Anm2,Pmax)
                enddo
             endif
@@ -178,14 +178,10 @@ c$omp$schedule(dynamic)
                jj=cells(3,jcell)-cells(3,icell)
                kk=cells(4,jcell)-cells(4,icell)
                ntrunc=itable(ii,jj,kk)
-               call M2L(wavek,
-     1              scale(level),
+               call M2L(wavek,scale(level),
      1              centers(1,jcell),Multipole(iaddr(jcell)),
-     1              P,scale(level),
-     1              centers(1,icell),Local(iaddr(icell)),
-     1              P,ntrunc,
-     1              radius,xquad,wquad,nquad,
-     1              Anm1,Anm2,Pmax)
+     1              scale(level),centers(1,icell),Local(iaddr(icell)),
+     1              ntrunc,radius,xquad,wquad,nquad,Anm1,Anm2,Pmax)
             enddo
          enddo
       enddo

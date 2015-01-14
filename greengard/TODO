@@ -1,4 +1,6 @@
 Anm Pmax -> P
+Remove P from all arguments
+ntrunc -> Popt
 iaddr -> 2D array
 ncrit -> P based, find optimal value
 itable -> distance based
