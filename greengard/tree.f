@@ -31,15 +31,15 @@
       do i=1,numBodies
          permutation(i)=i
       enddo
-      allocate(nodes(20,numBodies))
+      allocate(nodes(10,numBodies))
       call growTree(Xj,numBodies,ncrit,nodes,
      1     numCells,permutation,numLevels,X0,R0)
       allocate(listOffset(numCells,3))
       allocate(lists(2,189*numCells))
-      allocate(cells(20,numCells))
+      allocate(cells(10,numCells))
       allocate(centers(3,numCells))
       do i=1,numCells
-         do j=1,20
+         do j=1,10
             cells(j,i)=nodes(j,i)
          enddo
       enddo
@@ -60,7 +60,7 @@
       integer i,numLevels,level
       integer iparent,nchild,ibody,nbody,ncrit,numBodies
       integer offset,numCells
-      integer cells(20,*),permutation(*),iwork(numBodies),nbody8(8)
+      integer cells(10,*),permutation(*),iwork(numBodies),nbody8(8)
       real *8 R0
       real *8 Xj(3,*),X0(3)
       cells(1,1)=0 ! level

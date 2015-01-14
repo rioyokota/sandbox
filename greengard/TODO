@@ -1,7 +1,10 @@
 iprec,epsfmm -> specify P
-iaddr
-Remove itype
-200 -> Pmax
+iaddr -> 2D array
+200 -> Pmax -> nterms(:) -> P (scalar)
+ncrit -> P based, find optimal value
+itable -> distance based
+Xj=Xj*10 bug.
+All arrays allocatable
 
 [Change when translating to C]
 wavek -> K

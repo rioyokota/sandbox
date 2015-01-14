@@ -7,7 +7,7 @@ MAKEFLAGS += --no-print-directory
 
 .SUFFIXES: .o .f
 
-SRC = arrays.f main.f fmm.f kernels.f translate.f tree.f
+SRC = arrays.f constants.f main.f fmm.f kernels.f translate.f tree.f
 
 all: $(SRC:.f=.o)
 	$(FC) $?

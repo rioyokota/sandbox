@@ -1,9 +1,9 @@
       subroutine P2P(icell,pi,Fi,jcell,Xj,qj,wavek)
       implicit none
-      integer i,j,icell(20),jcell(20)
-      real *8 R2,R,Xj(3,1000000),dX(3)
+      integer i,j,icell(*),jcell(*)
+      real *8 R2,R,Xj(3,*),dX(3)
       complex *16 wavek,coef1,coef2,imag/(0.0d0,1.0d0)/
-      complex *16 qj(1000000),pi(1000000),Fi(3,1000000)
+      complex *16 qj(*),pi(*),Fi(3,*)
       do i=icell(8),icell(8)+icell(9)-1
          do j=jcell(8),jcell(8)+jcell(9)-1
             dX(1)=Xj(1,i)-Xj(1,j)
@@ -28,7 +28,7 @@
       implicit none
       integer i,m,n,nj,nterms,Pmax
       real *8 r,theta,phi,ctheta,stheta,scale
-      real *8 Xi(3),Xj(3,nj),dX(3)
+      real *8 Xi(3),Xj(3,*),dX(3)
       real *8 Ynm(0:nterms,0:nterms)
       real *8 Anm1(0:Pmax,0:Pmax)
       real *8 Anm2(0:Pmax,0:Pmax)
