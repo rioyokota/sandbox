@@ -308,29 +308,30 @@
       return
       end
 
-      subroutine L2L(wavek,scalej,Xj,Lj,ntermsj,
-     1     scalei,Xi,Li,ntermsi,
+      subroutine L2L(wavek,scalej,Xj,Lj,
+     1     scalei,Xi,Li,
      1     radius,xquad,wquad,nquad,Anm1,Anm2,Pmax)
+      use constants, only : P
       implicit none
-      integer l,m,n,mabs,ntermsi,ntermsj,nquad,Pmax
+      integer l,m,n,mabs,nquad,Pmax
       real *8 radius,r,theta,phi,ctheta,stheta,cthetaj,sthetaj,thetan
       real *8 rj,rn,scalej,scalei
       real *8 Xi(3),Xj(3),dX(3)
       real *8 xquad(nquad),wquad(nquad)
-      real *8 ynm(0:ntermsi,0:ntermsi),ynmd(0:ntermsi,0:ntermsi)
+      real *8 ynm(0:P,0:P),ynmd(0:P,0:P)
       real *8 Anm1(0:Pmax,0:Pmax)
       real *8 Anm2(0:Pmax,0:Pmax)
       complex *16 wavek,z,zh,zhn,ut1,ut2,ut3,imag/(0.0d0,1.0d0)/
-      complex *16 phitemp(nquad,-ntermsi:ntermsi)
-      complex *16 phitempn(nquad,-ntermsi:ntermsi)
-      complex *16 jn(0:ntermsi+1)
-      complex *16 jnd(0:ntermsi+1)
-      complex *16 Li(0:ntermsi,-ntermsi:ntermsi)
-      complex *16 Lj(0:ntermsj,-ntermsj:ntermsj)
-      complex *16 Lnm(0:ntermsi,-ntermsi:ntermsi)
-      complex *16 Lnmd(0:ntermsi,-ntermsi:ntermsi)
-      complex *16 Lrot(0:ntermsi,-ntermsi:ntermsi)
-      complex *16 ephi(-ntermsi-1:ntermsi+1)
+      complex *16 phitemp(nquad,-P:P)
+      complex *16 phitempn(nquad,-P:P)
+      complex *16 jn(0:P+1)
+      complex *16 jnd(0:P+1)
+      complex *16 Li(0:P,-P:P)
+      complex *16 Lj(0:P,-P:P)
+      complex *16 Lnm(0:P,-P:P)
+      complex *16 Lnmd(0:P,-P:P)
+      complex *16 Lrot(0:P,-P:P)
+      complex *16 ephi(-P-1:P+1)
       dX(1)=Xi(1)-Xj(1)
       dX(2)=Xi(2)-Xj(2)
       dX(3)=Xi(3)-Xj(3)
@@ -338,23 +339,23 @@
       ephi(0)=1.0d0
       ephi(1)=exp(imag*phi)
       ephi(-1)=dconjg(ephi(1))
-      do n=1,ntermsi
+      do n=1,P
          ephi(n+1)=ephi(n)*ephi(1)
          ephi(-1-n)=dconjg(ephi(n+1))
       enddo
-      do n=0,ntermsj
+      do n=0,P
          do m=-n,n
             Lnm(n,m)=Lj(n,m)*ephi(m)
          enddo
       enddo
-      call rotate(theta,ntermsj,Lnm,ntermsi,Lrot)
-      do n=0,ntermsi
+      call rotate(theta,P,Lnm,P,Lrot)
+      do n=0,P
          do m=-n,n
             Lnm(n,m)=0.0d0
          enddo
       enddo
       do l=1,nquad
-         do m=-ntermsi,ntermsi
+         do m=-P,P
             phitemp(l,m)=0.0d0
             phitempn(l,m)=0.0d0
          enddo
@@ -369,25 +370,25 @@
          rn=sthetaj*stheta+cthetaj*ctheta
          thetan=(cthetaj*stheta-sthetaj*ctheta)/rj
          z=wavek*rj
-         call get_Ynmd(ntermsj,cthetaj,ynm,ynmd,Anm1,Anm2,Pmax)
-         call get_jn(ntermsj,z,scalej,jn,1,jnd)
-         do n=0,ntermsj
+         call get_Ynmd(P,cthetaj,ynm,ynmd,Anm1,Anm2,Pmax)
+         call get_jn(P,z,scalej,jn,1,jnd)
+         do n=0,P
             jnd(n)=jnd(n)*wavek
          enddo
-         do n=1,ntermsj
+         do n=1,P
             do m=1,n
                ynm(n,m)=ynm(n,m)*sthetaj
             enddo
          enddo
          phitemp(l,0)=Lrot(0,0)*jn(0)
          phitempn(l,0)=Lrot(0,0)*jnd(0)*rn
-         do n=1,ntermsj
+         do n=1,P
             phitemp(l,0)=phitemp(l,0)+Lrot(n,0)*jn(n)*ynm(n,0)
             ut1=jnd(n)*rn
             ut2=jn(n)*thetan
             ut3=ut1*ynm(n,0)-ut2*ynmd(n,0)*sthetaj
             phitempn(l,0)=phitempn(l,0)+ut3*Lrot(n,0)
-            do m=1,min(n,ntermsi)
+            do m=1,min(n,P)
                z=jn(n)*ynm(n,m)
                phitemp(l,m)=phitemp(l,m)+Lrot(n,m)*z
                phitemp(l,-m)=phitemp(l,-m)+Lrot(n,-m)*z
@@ -397,7 +398,7 @@
             enddo
          enddo
       enddo
-      do n=0,ntermsi
+      do n=0,P
          do m=-n,n
             Lnm(n,m)=0.0d0
             Lnmd(n,m)=0.0d0
@@ -405,22 +406,22 @@
       enddo
       do l=1,nquad
          cthetaj=xquad(l)
-         call get_Ynm(ntermsi,cthetaj,ynm,Anm1,Anm2,Pmax)
-         do m=-ntermsi,ntermsi
+         call get_Ynm(P,cthetaj,ynm,Anm1,Anm2,Pmax)
+         do m=-P,P
             mabs=abs(m)
             z=phitemp(l,m)*wquad(l)/2.0d0
-            do n=mabs,ntermsi
+            do n=mabs,P
                Lnm(n,m)=Lnm(n,m)+z*ynm(n,mabs)
             enddo
             z=phitempn(l,m)*wquad(l)/2.0d0
-            do n=mabs,ntermsi
+            do n=mabs,P
                Lnmd(n,m)=Lnmd(n,m)+z*ynm(n,mabs)
             enddo
          enddo
       enddo
       z=wavek*radius
-      call get_jn(ntermsi,z,scalei,jn,1,jnd)
-      do n=0,ntermsi
+      call get_jn(P,z,scalei,jn,1,jnd)
+      do n=0,P
          do m=-n,n
             zh=jn(n)
             zhn=jnd(n)*wavek
@@ -428,13 +429,13 @@
             Lnm(n,m)=(zh*Lnm(n,m)+zhn*Lnmd(n,m))/z
          enddo
       enddo
-      call rotate(-theta,ntermsi,Lnm,ntermsi,Lrot)
-      do n=0,ntermsi
+      call rotate(-theta,P,Lnm,P,Lrot)
+      do n=0,P
          do m=-n,n
             Lnm(n,m)=ephi(-m)*Lrot(n,m)
          enddo
       enddo
-      do n=0,ntermsi
+      do n=0,P
          do m=-n,n
             Li(n,m)=Li(n,m)+Lnm(n,m)
          enddo
@@ -442,15 +443,16 @@
       return
       end
 
-      subroutine L2P(wavek,scalej,Xj,Lj,nterms,
+      subroutine L2P(wavek,scalej,Xj,Lj,
      1     Xi,ni,pi,Fi,Anm1,Anm2,Pmax)
+      use constants, only : P
       implicit none
-      integer i,j,m,n,ni,nterms,Pmax
+      integer i,j,m,n,ni,Pmax
       real *8 r,rx,ry,rz,theta,thetax,thetay,thetaz,scalej
       real *8 phi,phix,phiy,phiz,ctheta,stheta,cphi,sphi
       real *8 Xj(3),Xi(3,1),dX(3)
-      real *8 Ynm(0:nterms,0:nterms)
-      real *8 Ynmd(0:nterms,0:nterms)
+      real *8 Ynm(0:P,0:P)
+      real *8 Ynmd(0:P,0:P)
       real *8 Anm1(0:Pmax,0:Pmax)
       real *8 Anm2(0:Pmax,0:Pmax)
       complex *16 wavek,imag/(0.0d0,1.0d0)/
@@ -458,9 +460,9 @@
       complex *16 ztmp1,ztmp2,ztmp3,ztmpsum
       complex *16 ux,uy,uz
       complex *16 pi(1),Fi(3,1)
-      complex *16 Lj(0:nterms,-nterms:nterms)
-      complex *16 ephi(nterms)
-      complex *16 jnuse,jn(0:nterms+1),jnd(0:nterms+1)
+      complex *16 Lj(0:P,-P:P)
+      complex *16 ephi(P+1)
+      complex *16 jnuse,jn(0:P+1),jnd(0:P+1)
       do i=1,ni
          dX(1)=Xi(1,i)-Xj(1)
          dX(2)=Xi(2,i)-Xj(2)
@@ -471,7 +473,7 @@
          cphi=dcos(phi)
          sphi=dsin(phi)
          ephi(1)=dcmplx(cphi,sphi)
-         do j=2,nterms+1
+         do j=2,P+1
             ephi(j)=ephi(j-1)*ephi(1)
          enddo
          rx=stheta*cphi
@@ -483,17 +485,17 @@
          rz=ctheta
          thetaz=-stheta
          phiz=0.0d0
-         call get_Ynmd(nterms,ctheta,Ynm,Ynmd,Anm1,Anm2,Pmax)
+         call get_Ynmd(P,ctheta,Ynm,Ynmd,Anm1,Anm2,Pmax)
          z=wavek*r
-         call get_jn(nterms,z,scalej,jn,1,jnd)
+         call get_jn(P,z,scalej,jn,1,jnd)
          pi(i)=pi(i)+Lj(0,0)*jn(0)
-         do j=0,nterms
+         do j=0,P
             jnd(j)=jnd(j)*wavek
          enddo
          ur=Lj(0,0)*jnd(0)
          utheta=0.0d0
          uphi=0.0d0
-         do n=1,nterms
+         do n=1,P
             pi(i)=pi(i)+Lj(n,0)*jn(n)*Ynm(n,0)
             ur=ur+jnd(n)*Ynm(n,0)*Lj(n,0)
             jnuse=jn(n+1)*scalej+jn(n-1)/scalej

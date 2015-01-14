@@ -10,7 +10,7 @@
       complex *16 Fi(3,1000000)
       complex *16 pi2(1000000)
       complex *16 Fi2(3,1000000)
-      complex *16 wavek/(1.0d0,0.1d0)/,imag/(0.0d0,1.0d0)/
+      complex *16 wavek/(2.0d0,1.0d0)/,imag/(0.0d0,1.0d0)/
       numBodies=100000
       call random_number(Xj)
       print*,'N      =',numBodies

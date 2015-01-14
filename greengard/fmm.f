@@ -1,14 +1,13 @@
       subroutine fmm(iprec,wavek,numBodies,Xj,qj,pi,Fi)
-      use constants, only : maxLevel
+      use constants, only : P,maxLevel
       use arrays, only : levelOffset,cells
       use omp_lib, only : omp_get_wtime
       implicit none
       integer iprec,ncrit,numCells,numLevels,i,icell,numBodies
       integer level,sumTerms
-      integer nterms(0:maxLevel)
       integer, allocatable :: iaddr(:)
       integer, allocatable :: permutation(:)
-      real *8 epsfmm,diameter,R0,tic/0.0d0/,toc/0.0d0/
+      real *8 tolerance,R0,tic/0.0d0/,toc/0.0d0/
       real *8 X0(3)
       real *8 Xj(3,numBodies)
       real *8 Xjd(3,numBodies)
@@ -22,16 +21,6 @@
       complex *16 Fi(3,numBodies)
       complex *16 pid(numBodies)
       complex *16 Fid(3,numBodies)
-c     set fmm tolerance based on iprec flag.
-      if (iprec.eq.-2) epsfmm=.5d-0
-      if (iprec.eq.-1) epsfmm=.5d-1
-      if (iprec.eq.0) epsfmm=.5d-2
-      if (iprec.eq.1) epsfmm=.5d-3
-      if (iprec.eq.2) epsfmm=.5d-6
-      if (iprec.eq.3) epsfmm=.5d-9
-      if (iprec.eq.4) epsfmm=.5d-12
-      if (iprec.eq.5) epsfmm=.5d-15
-      if (iprec.eq.6) epsfmm=0
 c     set criterion for cell subdivision (number of sources per cell)
       if (iprec.eq.-2) ncrit=40
       if (iprec.eq.-1) ncrit=50
@@ -48,17 +37,13 @@ c     create oct-tree data structure
 c$    tic=omp_get_wtime()
 c$    tic=omp_get_wtime()
       call getBounds(Xj,numBodies,X0,R0)
+      call getTolerance(2*R0,wavek,P,tolerance)
       call buildTree(Xj,numBodies,ncrit,
      1     numCells,permutation,numLevels,X0,R0)
       allocate(iaddr(numCells))
       do i=0,numLevels
          scale(i)=(R0/2.0**(i-1))*wavek
          if (scale(i).ge.1) scale(i)=1.0
-      enddo
-      do i=0,numLevels
-         diameter=R0/2.0d0**(i-1)
-         call getNumTerms(1.5d0,diameter,wavek,epsfmm,nterms(i))
-         print*,i,nterms(i)
       enddo
       do i=1,numBodies
          Xjd(1,i)=Xj(1,permutation(i))
@@ -70,15 +55,15 @@ c$    tic=omp_get_wtime()
       do icell=1,numCells
          level=cells(1,icell)
          iaddr(icell)=sumTerms
-         sumTerms=sumTerms+(nterms(level)+1)*(2*nterms(level)+1)*2
+         sumTerms=sumTerms+(P+1)*(2*P+1)*2
       enddo
       allocate(Multipole(sumTerms))
       allocate(Local(sumTerms))
 c$    toc=omp_get_wtime()
       print*,'Tree   =',toc-tic
       call evaluate(wavek,numBodies,Xjd,
-     1     qjd,pid,Fid,epsfmm,iaddr,Multipole,Local,
-     1     numCells,numLevels,scale,nterms,R0)
+     1     qjd,pid,Fid,tolerance,iaddr,Multipole,Local,
+     1     numCells,numLevels,scale,R0)
       do i=1,numBodies
          pi(permutation(i))=pid(i)
          Fi(1,permutation(i))=Fid(1,i)
@@ -89,9 +74,9 @@ c$    toc=omp_get_wtime()
       end
 
       subroutine evaluate(wavek,numBodies,Xj,qj,pi,Fi,
-     1     epsfmm,iaddr,Multipole,Local,
-     1     numCells,numLevels,scale,nterms,R0)
-      use constants, only : Pmax,maxLevel
+     1     tolerance,iaddr,Multipole,Local,
+     1     numCells,numLevels,scale,R0)
+      use constants, only : P,Pmax,maxLevel
       use arrays, only : levelOffset,cells,centers
       use omp_lib, only : omp_get_wtime
       implicit none
@@ -99,9 +84,9 @@ c$    toc=omp_get_wtime()
       integer nquad,level,ilist,nlist,ntrunc
       integer ii,jj,kk
       integer numCells,ibegin,isize
-      integer iaddr(*),nterms(0:maxLevel),list(189)
+      integer iaddr(*),list(189)
       integer itable(-3:3,-3:3,-3:3)
-      real *8 epsfmm,radius,diameter,R0,tic/0.0d0/,toc/0.0d0/
+      real *8 tolerance,radius,diameter,R0,tic/0.0d0/,toc/0.0d0/
       real *8 Xj(3,*)
       real *8 Multipole(*),Local(*),xquad(2*Pmax),wquad(2*Pmax)
       real *8 scale(0:maxLevel)
@@ -120,8 +105,8 @@ c$    toc=omp_get_wtime()
       call getAnm(Pmax,Anm1,Anm2)
       do icell=1,numCells
          level=cells(1,icell)
-         call initCoefs(Multipole(iaddr(icell)),nterms(level))
-         call initCoefs(Local(iaddr(icell)),nterms(level))
+         call initCoefs(Multipole(iaddr(icell)),P)
+         call initCoefs(Local(iaddr(icell)),P)
       enddo
 
 c     ... step 1: P2M
@@ -135,7 +120,7 @@ c$omp$private(icell,ibegin,isize)
                ibegin=cells(8,icell)
                isize=cells(9,icell)
                call P2M(wavek,scale(level),Xj(1,ibegin),qj(ibegin),
-     1              isize,centers(1,icell),nterms(level),
+     1              isize,centers(1,icell),P,
      1              Multipole(iaddr(icell)),Anm1,Anm2,Pmax)
             endif
          enddo
@@ -148,7 +133,7 @@ c     ... step 2, M2M
 c$    tic=omp_get_wtime()
       do level=numLevels,3,-1
          radius=R0/2.0d0**(level-1)*sqrt(3.0)            
-         nquad=nterms(level)*2
+         nquad=P*2
          nquad=max(6,nquad)
          call legendre(nquad,xquad,wquad)
 c$omp parallel do default(shared)
@@ -159,9 +144,9 @@ c$omp$private(icell,jcell,ilist)
                do ilist=1,cells(7,icell)
                   jcell=cells(6,icell)+ilist-1
                   call M2M(wavek,scale(level),centers(1,jcell),
-     1                 Multipole(iaddr(jcell)),nterms(level),
+     1                 Multipole(iaddr(jcell)),P,
      1                 scale(level-1),centers(1,icell),
-     1                 Multipole(iaddr(icell)),nterms(level-1),
+     1                 Multipole(iaddr(icell)),P,
      1                 radius,xquad,wquad,nquad,Anm1,Anm2,Pmax)
                enddo
             endif
@@ -176,8 +161,8 @@ c$    tic=omp_get_wtime()
       do level=2,numLevels
          diameter=R0/2.0d0**(level-1)
          radius=diameter*sqrt(3.0)*0.5
-         call getNumTermsList(diameter,wavek,epsfmm,itable)
-         nquad=nterms(level)
+         call getNumTermsList(diameter,wavek,tolerance,itable)
+         nquad=P
          nquad=max(6,nquad)
          call legendre(nquad,xquad,wquad)
 c$omp parallel do default(shared)
@@ -193,13 +178,12 @@ c$omp$schedule(dynamic)
                jj=cells(3,jcell)-cells(3,icell)
                kk=cells(4,jcell)-cells(4,icell)
                ntrunc=itable(ii,jj,kk)
-               ntrunc=nterms(level)
                call M2L(wavek,
      1              scale(level),
      1              centers(1,jcell),Multipole(iaddr(jcell)),
-     1              nterms(level),scale(level),
+     1              P,scale(level),
      1              centers(1,icell),Local(iaddr(icell)),
-     1              nterms(level),ntrunc,
+     1              P,ntrunc,
      1              radius,xquad,wquad,nquad,
      1              Anm1,Anm2,Pmax)
             enddo
@@ -212,7 +196,7 @@ c     ... step 4, L2L
 c$    tic=omp_get_wtime()
       do level=3,numLevels
          radius=R0/2.0d0**(level-1)*sqrt(3.0)
-         nquad=nterms(level)
+         nquad=P
          nquad=max(6,nquad)
          call legendre(nquad,xquad,wquad)
 c$omp parallel do default(shared)
@@ -222,9 +206,9 @@ c$omp$private(icell,jcell,ilist)
                do ilist=1,cells(7,icell)
                   jcell=cells(6,icell)+ilist-1
                   call L2L(wavek,scale(level-1),centers(1,icell),
-     1                 Local(iaddr(icell)),nterms(level-1),
+     1                 Local(iaddr(icell)),
      1                 scale(level),centers(1,jcell),
-     1                 Local(iaddr(jcell)),nterms(level),
+     1                 Local(iaddr(jcell)),
      1                 radius,xquad,wquad,nquad,
      1                 Anm1,Anm2,Pmax)
                enddo
@@ -246,7 +230,7 @@ c$omp$private(icell,ibegin,isize)
                ibegin=cells(8,icell)
                isize=cells(9,icell)
                call L2P(wavek,scale(level),centers(1,icell),
-     1              Local(iaddr(icell)),nterms(level),
+     1              Local(iaddr(icell)),
      1              Xj(1,ibegin),isize,pi(ibegin),Fi(1,ibegin),
      1              Anm1,Anm2,Pmax)
             endif

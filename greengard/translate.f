@@ -402,7 +402,6 @@ c     jnd(z)=\frac{\partial jn(z)}{\partial z}
                if(dz.gt.0) dz=dz-.5
                rr=sqrt(dx*dx+dy*dy+dz*dz)
                call getNumTerms(rr,size,wavek,eps,nterms)
-               print*,rr,nterms
                nterms_table(i,j,k)=nterms
             enddo
          enddo
@@ -460,5 +459,22 @@ c     jnd(z)=\frac{\partial jn(z)}{\partial z}
       enddo
       print*,"Domain is too big, setting nterms to ",Pmax
       nterms = Pmax
+      return
+      end
+
+      subroutine getTolerance(diameter,wavek,P,tolerance)
+      implicit none
+      integer P
+      real *8 diameter,tolerance,scale,x,x0
+      complex *16 wavek,z,jn(0:P+1),jnd(0:P+1),hn(0:P+1)
+      z=(wavek*diameter)*1.5
+      scale=1.0d0
+      if(cdabs(wavek*diameter).lt.1.0d0) scale=cdabs(wavek*diameter)
+      call get_hn(P,z,scale,hn)
+      z=(wavek*diameter)*dsqrt(3d0)/2.d0
+      call get_jn(P,z,scale,jn,0,jnd)
+      x0=cdabs(jn(0)*hn(0))+cdabs(jn(1)*hn(1))
+      x=cdabs(jn(P)*hn(P))+cdabs(jn(P-1)*hn(P-1))
+      tolerance=x/x0
       return
       end

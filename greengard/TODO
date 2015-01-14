@@ -1,9 +1,8 @@
-iprec,epsfmm -> specify P
+Anm Pmax -> P
 iaddr -> 2D array
-200 -> Pmax -> nterms(:) -> P (scalar)
 ncrit -> P based, find optimal value
 itable -> distance based
-Xj=Xj*10 bug.
+Xj=Xj*10 bug -> High wavek bug
 All arrays allocatable
 
 [Change when translating to C]
