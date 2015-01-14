@@ -23,9 +23,10 @@
       return
       end
 
-      subroutine getAnm(Pmax, Anm1, Anm2)
+      subroutine getAnm(Anm1, Anm2)
+      use constants, only : Pmax
       implicit none
-      integer Pmax,m,n
+      integer m,n
       real *8 Anm1(0:Pmax,0:Pmax),Anm2(0:Pmax,0:Pmax)
       Anm1(0,0) = 1
       Anm2(0,0) = 1
@@ -139,10 +140,11 @@
       return
       end
 
-      subroutine get_Ynm(nterms,x,Ynm,Anm1,Anm2,Pmax)
+      subroutine get_Ynm(nterms,x,Ynm,Anm1,Anm2)
 c     Ynm(x) = sqrt(2n+1)  sqrt( (n-m)!/ (n+m)! ) Pnm(x)
+      use constants, only : Pmax
       implicit none
-      integer nterms,Pmax,m,n
+      integer nterms,m,n
       real *8 x,y,Ynm(0:nterms,0:nterms)
       real *8 Anm1(0:Pmax,0:Pmax),Anm2(0:Pmax,0:Pmax)
       y = -sqrt((1-x)*(1+x))
@@ -163,11 +165,12 @@ c     Ynm(x) = sqrt(2n+1)  sqrt( (n-m)!/ (n+m)! ) Pnm(x)
       return
       end
 
-      subroutine get_Ynmd(nterms,x,Ynm,Ynmd,Anm1,Anm2,Pmax)
+      subroutine get_Ynmd(nterms,x,Ynm,Ynmd,Anm1,Anm2)
 c     Ynm(x) = sqrt(2n+1)  sqrt( (n-m)!/ (n+m)! ) Pnm(x)
 c     d Ynm(x) / dx = sqrt(2n+1)  sqrt( (n-m)!/ (n+m)! ) d Pnm(x) / dx
+      use constants, only : Pmax
       implicit none
-      integer nterms,Pmax,m,n
+      integer nterms,m,n
       real *8 x,y,y2,Ynm(0:nterms,0:nterms),Ynmd(0:nterms,0:nterms)
       real *8 Anm1(0:Pmax,0:Pmax),Anm2(0:Pmax,0:Pmax)
       y=-sqrt((1-x)*(1+x))

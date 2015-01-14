@@ -102,7 +102,7 @@ c$    toc=omp_get_wtime()
          Fi(2,i)=0
          Fi(3,i)=0
       enddo
-      call getAnm(Pmax,Anm1,Anm2)
+      call getAnm(Anm1,Anm2)
       do icell=1,numCells
          level=cells(1,icell)
          call initCoefs(Multipole(iaddr(icell)),P)
@@ -121,7 +121,7 @@ c$omp$private(icell,ibegin,isize)
                isize=cells(9,icell)
                call P2M(wavek,scale(level),Xj(1,ibegin),qj(ibegin),
      1              isize,centers(1,icell),
-     1              Multipole(iaddr(icell)),Anm1,Anm2,Pmax)
+     1              Multipole(iaddr(icell)),Anm1,Anm2)
             endif
          enddo
 c$omp end parallel do
@@ -147,7 +147,7 @@ c$omp$private(icell,jcell,ilist)
      1                 Multipole(iaddr(jcell)),
      1                 scale(level-1),centers(1,icell),
      1                 Multipole(iaddr(icell)),
-     1                 radius,xquad,wquad,nquad,Anm1,Anm2,Pmax)
+     1                 radius,xquad,wquad,nquad,Anm1,Anm2)
                enddo
             endif
          enddo
@@ -181,7 +181,7 @@ c$omp$schedule(dynamic)
                call M2L(wavek,scale(level),
      1              centers(1,jcell),Multipole(iaddr(jcell)),
      1              scale(level),centers(1,icell),Local(iaddr(icell)),
-     1              ntrunc,radius,xquad,wquad,nquad,Anm1,Anm2,Pmax)
+     1              ntrunc,radius,xquad,wquad,nquad,Anm1,Anm2)
             enddo
          enddo
       enddo
@@ -206,7 +206,7 @@ c$omp$private(icell,jcell,ilist)
      1                 scale(level),centers(1,jcell),
      1                 Local(iaddr(jcell)),
      1                 radius,xquad,wquad,nquad,
-     1                 Anm1,Anm2,Pmax)
+     1                 Anm1,Anm2)
                enddo
             endif
          enddo
@@ -228,7 +228,7 @@ c$omp$private(icell,ibegin,isize)
                call L2P(wavek,scale(level),centers(1,icell),
      1              Local(iaddr(icell)),
      1              Xj(1,ibegin),isize,pi(ibegin),Fi(1,ibegin),
-     1              Anm1,Anm2,Pmax)
+     1              Anm1,Anm2)
             endif
          enddo
 c$omp end parallel do

@@ -23,10 +23,10 @@
       return
       end
 
-      subroutine P2M(wavek,scale,Xj,qj,nj,Xi,Mi,Anm1,Anm2,Pmax)
-      use constants, only : P
+      subroutine P2M(wavek,scale,Xj,qj,nj,Xi,Mi,Anm1,Anm2)
+      use constants, only : P, Pmax
       implicit none
-      integer i,m,n,nj,Pmax
+      integer i,m,n,nj
       real *8 r,theta,phi,ctheta,stheta,scale
       real *8 Xi(3),Xj(3,*),dX(3)
       real *8 Ynm(0:P,0:P)
@@ -53,7 +53,7 @@
          do n=2,P
             ephi(n)=ephi(n-1)*ephi(1)
          enddo
-         call get_Ynm(P,ctheta,Ynm,Anm1,Anm2,Pmax)
+         call get_Ynm(P,ctheta,Ynm,Anm1,Anm2)
          z=wavek*r
          call get_jn(P,z,scale,jn,0,jnd)
          do n=0,P
@@ -77,12 +77,11 @@
       return
       end
 
-      subroutine M2M(wavek,scalej,Xj,Mj,
-     1     scalei,Xi,Mi,
-     1     radius,xquad,wquad,nquad,Anm1,Anm2,Pmax)
-      use constants, only : P
+      subroutine M2M(wavek,scalej,Xj,Mj,scalei,Xi,Mi,
+     1     radius,xquad,wquad,nquad,Anm1,Anm2)
+      use constants, only : P, Pmax
       implicit none
-      integer l,m,n,mabs,nquad,Pmax
+      integer l,m,n,mabs,nquad
       real *8 radius,r,theta,phi,ctheta,stheta,cthetaj,rj
       real *8 scalei,scalej
       real *8 Xi(3),Xj(3),dX(3)
@@ -127,7 +126,7 @@
          rj=dsqrt(rj)
          cthetaj=(r+radius*ctheta)/rj
          z=wavek*rj
-         call get_Ynm(P,cthetaj,ynm,Anm1,Anm2,Pmax)
+         call get_Ynm(P,cthetaj,ynm,Anm1,Anm2)
          call get_hn(P,z,scalej,fhs)
          do m=-P,P
             mabs=abs(m)
@@ -143,7 +142,7 @@
          enddo
       enddo
       do l=1,nquad
-         call get_Ynm(P,xquad(l),ynm,Anm1,Anm2,Pmax)
+         call get_Ynm(P,xquad(l),ynm,Anm1,Anm2)
          do m=-P,P
             mabs=abs(m)
             z=phitemp(l,m)*wquad(l)/2
@@ -173,12 +172,11 @@
       return
       end
 
-      subroutine M2L(wavek,scalej,Xj,Mj,
-     1     scalei,Xi,Li,ntrunc,
-     1     radius,xquad,wquad,nquad,Anm1,Anm2,Pmax)
-      use constants, only : P
+      subroutine M2L(wavek,scalej,Xj,Mj,scalei,Xi,Li,ntrunc,
+     1     radius,xquad,wquad,nquad,Anm1,Anm2)
+      use constants, only : P, Pmax
       implicit none
-      integer l,m,n,mabs,ntrunc,nquad,Pmax
+      integer l,m,n,mabs,ntrunc,nquad
       real *8 radius,r,theta,phi,ctheta,stheta,cthetaj,sthetaj,thetan
       real *8 rj,rn,scalej,scalei
       real *8 Xi(3),Xj(3),dX(3)
@@ -237,7 +235,7 @@
          rn=sthetaj*stheta+cthetaj*ctheta
          thetan=(cthetaj*stheta-ctheta*sthetaj)/rj
          z=wavek*rj
-         call get_Ynmd(ntrunc,cthetaj,ynm,ynmd,Anm1,Anm2,Pmax)
+         call get_Ynmd(ntrunc,cthetaj,ynm,ynmd,Anm1,Anm2)
          call get_hnd(ntrunc,z,scalej,fhs,fhder)
          do n=0,ntrunc
             fhder(n)=fhder(n)*wavek
@@ -273,7 +271,7 @@
       enddo
       do l=1,nquad
          cthetaj=xquad(l)
-         call get_Ynm(ntrunc,cthetaj,ynm,Anm1,Anm2,Pmax)
+         call get_Ynm(ntrunc,cthetaj,ynm,Anm1,Anm2)
          do m=-ntrunc,ntrunc
             mabs=abs(m)
             z=phitemp(l,m)*wquad(l)/2.0d0
@@ -311,10 +309,10 @@
       end
 
       subroutine L2L(wavek,scalej,Xj,Lj,scalei,Xi,Li,
-     1     radius,xquad,wquad,nquad,Anm1,Anm2,Pmax)
-      use constants, only : P
+     1     radius,xquad,wquad,nquad,Anm1,Anm2)
+      use constants, only : P, Pmax
       implicit none
-      integer l,m,n,mabs,nquad,Pmax
+      integer l,m,n,mabs,nquad
       real *8 radius,r,theta,phi,ctheta,stheta,cthetaj,sthetaj,thetan
       real *8 rj,rn,scalej,scalei
       real *8 Xi(3),Xj(3),dX(3)
@@ -371,7 +369,7 @@
          rn=sthetaj*stheta+cthetaj*ctheta
          thetan=(cthetaj*stheta-sthetaj*ctheta)/rj
          z=wavek*rj
-         call get_Ynmd(P,cthetaj,ynm,ynmd,Anm1,Anm2,Pmax)
+         call get_Ynmd(P,cthetaj,ynm,ynmd,Anm1,Anm2)
          call get_jn(P,z,scalej,jn,1,jnd)
          do n=0,P
             jnd(n)=jnd(n)*wavek
@@ -407,7 +405,7 @@
       enddo
       do l=1,nquad
          cthetaj=xquad(l)
-         call get_Ynm(P,cthetaj,ynm,Anm1,Anm2,Pmax)
+         call get_Ynm(P,cthetaj,ynm,Anm1,Anm2)
          do m=-P,P
             mabs=abs(m)
             z=phitemp(l,m)*wquad(l)/2.0d0
@@ -445,10 +443,10 @@
       end
 
       subroutine L2P(wavek,scalej,Xj,Lj,
-     1     Xi,ni,pi,Fi,Anm1,Anm2,Pmax)
-      use constants, only : P
+     1     Xi,ni,pi,Fi,Anm1,Anm2)
+      use constants, only : P, Pmax
       implicit none
-      integer i,j,m,n,ni,Pmax
+      integer i,j,m,n,ni
       real *8 r,rx,ry,rz,theta,thetax,thetay,thetaz,scalej
       real *8 phi,phix,phiy,phiz,ctheta,stheta,cphi,sphi
       real *8 Xj(3),Xi(3,1),dX(3)
@@ -486,7 +484,7 @@
          rz=ctheta
          thetaz=-stheta
          phiz=0.0d0
-         call get_Ynmd(P,ctheta,Ynm,Ynmd,Anm1,Anm2,Pmax)
+         call get_Ynmd(P,ctheta,Ynm,Ynmd,Anm1,Anm2)
          z=wavek*r
          call get_jn(P,z,scalej,jn,1,jnd)
          pi(i)=pi(i)+Lj(0,0)*jn(0)
