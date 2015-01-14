@@ -76,7 +76,7 @@ c$    toc=omp_get_wtime()
       subroutine evaluate(wavek,numBodies,Xj,qj,pi,Fi,
      1     tolerance,iaddr,Multipole,Local,
      1     numCells,numLevels,scale,R0)
-      use constants, only : P,Pmax,maxLevel
+      use constants, only : P,maxLevel
       use arrays, only : levelOffset,cells,centers
       use omp_lib, only : omp_get_wtime
       implicit none
@@ -88,10 +88,10 @@ c$    toc=omp_get_wtime()
       integer itable(-3:3,-3:3,-3:3)
       real *8 tolerance,radius,diameter,R0,tic/0.0d0/,toc/0.0d0/
       real *8 Xj(3,*)
-      real *8 Multipole(*),Local(*),xquad(2*Pmax),wquad(2*Pmax)
+      real *8 Multipole(*),Local(*),xquad(2*P),wquad(2*P)
       real *8 scale(0:maxLevel)
-      real *8 Anm1(0:Pmax,0:Pmax)
-      real *8 Anm2(0:Pmax,0:Pmax)
+      real *8 Anm1(0:P,0:P)
+      real *8 Anm2(0:P,0:P)
       complex *16 wavek
       complex *16 pi(1)
       complex *16 Fi(3,*)

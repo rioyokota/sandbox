@@ -24,14 +24,14 @@
       end
 
       subroutine P2M(wavek,scale,Xj,qj,nj,Xi,Mi,Anm1,Anm2)
-      use constants, only : P, Pmax
+      use constants, only : P
       implicit none
       integer i,m,n,nj
       real *8 r,theta,phi,ctheta,stheta,scale
       real *8 Xi(3),Xj(3,*),dX(3)
       real *8 Ynm(0:P,0:P)
-      real *8 Anm1(0:Pmax,0:Pmax)
-      real *8 Anm2(0:Pmax,0:Pmax)
+      real *8 Anm1(0:P,0:P)
+      real *8 Anm2(0:P,0:P)
       complex *16 wavek,z,Ynmjn,imag/(0.0d0,1.0d0)/
       complex *16 qj(nj),ephi(P)
       complex *16 jn(0:P+1),jnd(0:P+1)
@@ -79,7 +79,7 @@
 
       subroutine M2M(wavek,scalej,Xj,Mj,scalei,Xi,Mi,
      1     radius,xquad,wquad,nquad,Anm1,Anm2)
-      use constants, only : P, Pmax
+      use constants, only : P
       implicit none
       integer l,m,n,mabs,nquad
       real *8 radius,r,theta,phi,ctheta,stheta,cthetaj,rj
@@ -87,8 +87,8 @@
       real *8 Xi(3),Xj(3),dX(3)
       real *8 xquad(nquad),wquad(nquad)
       real *8 ynm(0:P,0:P)
-      real *8 Anm1(0:Pmax,0:Pmax)
-      real *8 Anm2(0:Pmax,0:Pmax)
+      real *8 Anm1(0:P,0:P)
+      real *8 Anm2(0:P,0:P)
       complex *16 wavek,z,imag/(0.0d0,1.0d0)/
       complex *16 Mi(0:P,-P:P)
       complex *16 Mj(0:P,-P:P)
@@ -174,7 +174,7 @@
 
       subroutine M2L(wavek,scalej,Xj,Mj,scalei,Xi,Li,ntrunc,
      1     radius,xquad,wquad,nquad,Anm1,Anm2)
-      use constants, only : P, Pmax
+      use constants, only : P
       implicit none
       integer l,m,n,mabs,ntrunc,nquad
       real *8 radius,r,theta,phi,ctheta,stheta,cthetaj,sthetaj,thetan
@@ -182,8 +182,8 @@
       real *8 Xi(3),Xj(3),dX(3)
       real *8 xquad(nquad),wquad(nquad)
       real *8 ynm(0:ntrunc,0:ntrunc),ynmd(0:ntrunc,0:ntrunc)
-      real *8 Anm1(0:Pmax,0:Pmax)
-      real *8 Anm2(0:Pmax,0:Pmax)
+      real *8 Anm1(0:P,0:P)
+      real *8 Anm2(0:P,0:P)
       complex *16 wavek,z,zh,zhn,ut1,ut2,ut3,imag/(0.0d0,1.0d0)/
       complex *16 phitemp(nquad,-ntrunc:ntrunc)
       complex *16 phitempn(nquad,-ntrunc:ntrunc)
@@ -310,7 +310,7 @@
 
       subroutine L2L(wavek,scalej,Xj,Lj,scalei,Xi,Li,
      1     radius,xquad,wquad,nquad,Anm1,Anm2)
-      use constants, only : P, Pmax
+      use constants, only : P
       implicit none
       integer l,m,n,mabs,nquad
       real *8 radius,r,theta,phi,ctheta,stheta,cthetaj,sthetaj,thetan
@@ -318,8 +318,8 @@
       real *8 Xi(3),Xj(3),dX(3)
       real *8 xquad(nquad),wquad(nquad)
       real *8 ynm(0:P,0:P),ynmd(0:P,0:P)
-      real *8 Anm1(0:Pmax,0:Pmax)
-      real *8 Anm2(0:Pmax,0:Pmax)
+      real *8 Anm1(0:P,0:P)
+      real *8 Anm2(0:P,0:P)
       complex *16 wavek,z,zh,zhn,ut1,ut2,ut3,imag/(0.0d0,1.0d0)/
       complex *16 phitemp(nquad,-P:P)
       complex *16 phitempn(nquad,-P:P)
@@ -444,7 +444,7 @@
 
       subroutine L2P(wavek,scalej,Xj,Lj,
      1     Xi,ni,pi,Fi,Anm1,Anm2)
-      use constants, only : P, Pmax
+      use constants, only : P
       implicit none
       integer i,j,m,n,ni
       real *8 r,rx,ry,rz,theta,thetax,thetay,thetaz,scalej
@@ -452,8 +452,8 @@
       real *8 Xj(3),Xi(3,1),dX(3)
       real *8 Ynm(0:P,0:P)
       real *8 Ynmd(0:P,0:P)
-      real *8 Anm1(0:Pmax,0:Pmax)
-      real *8 Anm2(0:Pmax,0:Pmax)
+      real *8 Anm1(0:P,0:P)
+      real *8 Anm2(0:P,0:P)
       complex *16 wavek,imag/(0.0d0,1.0d0)/
       complex *16 ur,utheta,uphi,z
       complex *16 ztmp1,ztmp2,ztmp3,ztmpsum
