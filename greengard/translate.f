@@ -11,18 +11,6 @@
       return
       end
 
-      subroutine initCoefs(C, nterms)
-      implicit none
-      integer nterms,m,n
-      complex *16 C(0:nterms,-nterms:nterms)
-      do n=0,nterms
-         do m=-n,n
-            C(n,m) = 0
-         enddo
-      enddo
-      return
-      end
-
       subroutine getAnm(Anm1, Anm2)
       use constants, only : P
       implicit none
