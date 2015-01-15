@@ -16,9 +16,6 @@
       print*,'N      =',numBodies
       do i=1,numBodies
          qj(i)=Xj(1,i)+imag*Xj(2,i)
-         Xj(1,i)=Xj(1,i)
-         Xj(2,i)=Xj(2,i)
-         Xj(3,i)=Xj(3,i)
       enddo
 c$    tic=omp_get_wtime()
       call fmm(wavek,numBodies,Xj,qj,pi,Fi)
