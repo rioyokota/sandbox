@@ -1,11 +1,9 @@
-Anm Pmax -> P
-Remove P from all arguments
-ntrunc -> Popt
-iaddr -> 2D array
+1. itable -> distance based
+2. ntrunc -> Popt
+3. iaddr -> 2D array
 ncrit -> P based, find optimal value
-itable -> distance based
-Xj=Xj*10 bug -> High wavek bug
 All arrays allocatable
+Remove constants from all arguments
 
 [Change when translating to C]
 wavek -> K

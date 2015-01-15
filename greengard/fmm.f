@@ -1,9 +1,9 @@
-      subroutine fmm(iprec,wavek,numBodies,Xj,qj,pi,Fi)
+      subroutine fmm(wavek,numBodies,Xj,qj,pi,Fi)
       use constants, only : P,maxLevel
       use arrays, only : levelOffset,cells
       use omp_lib, only : omp_get_wtime
       implicit none
-      integer iprec,ncrit,numCells,numLevels,i,icell,numBodies
+      integer ncrit,numCells,numLevels,i,icell,numBodies
       integer level,sumTerms
       integer, allocatable :: iaddr(:)
       integer, allocatable :: permutation(:)
@@ -21,17 +21,7 @@
       complex *16 Fi(3,numBodies)
       complex *16 pid(numBodies)
       complex *16 Fid(3,numBodies)
-c     set criterion for cell subdivision (number of sources per cell)
-      if (iprec.eq.-2) ncrit=40
-      if (iprec.eq.-1) ncrit=50
-      if (iprec.eq.0) ncrit=80
-      if (iprec.eq.1) ncrit=160
-      if (iprec.eq.2) ncrit=400
-      if (iprec.eq.3) ncrit=800
-      if (iprec.eq.4) ncrit=1200
-      if (iprec.eq.5) ncrit=1400
-      if (iprec.eq.6) ncrit=numBodies
-c     create oct-tree data structure
+      ncrit = 800
       allocate (permutation(numBodies))
       allocate (levelOffset(maxLevel))
 c$    tic=omp_get_wtime()

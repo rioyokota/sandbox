@@ -1,7 +1,7 @@
       program main
       use omp_lib, only : omp_get_wtime
       implicit none
-      integer numBodies,numTarget,i,iprec
+      integer numBodies,numTarget,i
       integer icell(10),jcell(10)
       real *8 pdiff,pnorm,fdiff,fnorm,tic/0.0/,toc/0.0/
       real *8 Xj(3,1000000)
@@ -10,12 +10,10 @@
       complex *16 Fi(3,1000000)
       complex *16 pi2(1000000)
       complex *16 Fi2(3,1000000)
-      complex *16 wavek/(2.0d0,1.0d0)/,imag/(0.0d0,1.0d0)/
+      complex *16 wavek/(10.0d0,1.0d0)/,imag/(0.0d0,1.0d0)/
       numBodies=100000
       call random_number(Xj)
       print*,'N      =',numBodies
-      iprec=3
-      print*,'iprec  =',iprec
       do i=1,numBodies
          qj(i)=Xj(1,i)+imag*Xj(2,i)
          Xj(1,i)=Xj(1,i)
@@ -23,7 +21,7 @@
          Xj(3,i)=Xj(3,i)
       enddo
 c$    tic=omp_get_wtime()
-      call fmm(iprec,wavek,numBodies,Xj,qj,pi,Fi)
+      call fmm(wavek,numBodies,Xj,qj,pi,Fi)
 c$    toc=omp_get_wtime()
       print*,'FMM    =',toc-tic
       numTarget=min(numBodies,100)

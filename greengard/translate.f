@@ -440,28 +440,27 @@ c     jnd(z)=\frac{\partial jn(z)}{\partial z}
       end
 
       subroutine getNumTerms(rr,size,wavek,eps,nterms)
-      use constants, only : Pmax
+      use constants, only : P
       implicit none
       integer nterms,j
       real *8 rr,size,eps,scale,x,x0
-      complex *16 wavek,z,jn(0:Pmax+1),jnd(0:Pmax+1),hn(0:Pmax+1)
+      complex *16 wavek,z,jn(0:P+1),jnd(0:P+1),hn(0:P+1)
       z=(wavek*size)*rr
       scale=1.0d0
       if(cdabs(wavek*size).lt.1.0d0) scale=cdabs(wavek*size)
-      call get_hn(Pmax,z,scale,hn)
+      call get_hn(P,z,scale,hn)
       z=(wavek*size)*dsqrt(3d0)/2.d0
-      call get_jn(Pmax,z,scale,jn,0,jnd)
+      call get_jn(P,z,scale,jn,0,jnd)
       x0=cdabs(jn(0)*hn(0))+cdabs(jn(1)*hn(1))
       nterms=1
-      do j=2,Pmax
+      do j=2,P
          x=cdabs(jn(j)*hn(j))+cdabs(jn(j-1)*hn(j-1))
          if(x.lt.eps*x0)then
             nterms=j+1
             return
          endif
       enddo
-      print*,"Domain is too big, setting nterms to ",Pmax
-      nterms = Pmax
+      nterms=P
       return
       end
 
