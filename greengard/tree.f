@@ -1,7 +1,7 @@
       subroutine getBounds(Xj,numBodies,X0,R0)
       integer numBodies,i,d
-      real *8 R0,diameter/0.0/
-      real *8 Xj(3,*),Xmin(3),Xmax(3),X0(3)
+      real*8 R0,diameter/0.0/
+      real*8 Xj(3,*),Xmin(3),Xmax(3),X0(3)
       do d=1,3
          Xmin(d)=Xj(d,1)
          Xmax(d)=Xj(d,1)
@@ -26,8 +26,8 @@
       implicit none
       integer i,j,d,numBodies,numCells,numLevels
       integer permutation(*)
-      real *8 R,R0
-      real *8 Xj(3,*),X0(3)
+      real*8 R,R0
+      real*8 Xj(3,*),X0(3)
       do i=1,numBodies
          permutation(i)=i
       enddo
@@ -62,8 +62,8 @@
       integer iparent,nchild,ibody,nbody,numBodies
       integer offset,numCells
       integer cells(10,*),permutation(*),iwork(numBodies),nbody8(8)
-      real *8 R0
-      real *8 Xj(3,*),X0(3)
+      real*8 R0
+      real*8 Xj(3,*),X0(3)
       cells(1,1)=0 ! level
       cells(2,1)=0 ! iX(1)
       cells(3,1)=0 ! iX(2)
@@ -124,8 +124,8 @@
       integer n,d,i,j,level,octant
       integer iX(3),offset(9)
       integer permutation(*),iwork(*),nbody(*)
-      real *8 R,R0
-      real *8 X(3),X0(3),Xj(3,*)
+      real*8 R,R0
+      real*8 X(3),X0(3),Xj(3,*)
       R=R0/2**(level-1)
       do d=1,3
          X(d)=X0(d)-R0+iX(d)*R*2+R

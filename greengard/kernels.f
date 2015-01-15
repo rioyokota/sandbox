@@ -1,9 +1,9 @@
       subroutine P2P(icell,pi,Fi,jcell,Xj,qj,wavek)
       implicit none
       integer i,j,icell(*),jcell(*)
-      real *8 R2,R,Xj(3,*),dX(3)
-      complex *16 wavek,coef1,coef2,imag/(0.0d0,1.0d0)/
-      complex *16 qj(*),pi(*),Fi(3,*)
+      real*8 R2,R,Xj(3,*),dX(3)
+      complex*16 wavek,coef1,coef2,imag/(0.0d0,1.0d0)/
+      complex*16 qj(*),pi(*),Fi(3,*)
       do i=icell(8),icell(8)+icell(9)-1
          do j=jcell(8),jcell(8)+jcell(9)-1
             dX(1)=Xj(1,i)-Xj(1,j)
@@ -27,16 +27,16 @@
       use constants, only : P
       implicit none
       integer i,m,n,nj
-      real *8 r,theta,phi,ctheta,stheta,scale
-      real *8 Xi(3),Xj(3,*),dX(3)
-      real *8 Ynm(0:P,0:P)
-      real *8 Anm1(0:P,0:P)
-      real *8 Anm2(0:P,0:P)
-      complex *16 wavek,z,Ynmjn,imag/(0.0d0,1.0d0)/
-      complex *16 qj(nj),ephi(P)
-      complex *16 jn(0:P+1),jnd(0:P+1)
-      complex *16 Mi(0:P,-P:P)
-      complex *16 Mnm(0:P,-P:P)
+      real*8 r,theta,phi,ctheta,stheta,scale
+      real*8 Xi(3),Xj(3,*),dX(3)
+      real*8 Ynm(0:P,0:P)
+      real*8 Anm1(0:P,0:P)
+      real*8 Anm2(0:P,0:P)
+      complex*16 wavek,z,Ynmjn,imag/(0.0d0,1.0d0)/
+      complex*16 qj(nj),ephi(P)
+      complex*16 jn(0:P+1),jnd(0:P+1)
+      complex*16 Mi(0:P,-P:P)
+      complex*16 Mnm(0:P,-P:P)
       do n=0,P
          do m=-n,n
             Mnm(n,m)=0
@@ -82,21 +82,21 @@
       use constants, only : P
       implicit none
       integer l,m,n,mabs,nquad
-      real *8 radius,r,theta,phi,ctheta,stheta,cthetaj,rj
-      real *8 scalei,scalej
-      real *8 Xi(3),Xj(3),dX(3)
-      real *8 xquad(nquad),wquad(nquad)
-      real *8 ynm(0:P,0:P)
-      real *8 Anm1(0:P,0:P)
-      real *8 Anm2(0:P,0:P)
-      complex *16 wavek,z,imag/(0.0d0,1.0d0)/
-      complex *16 Mi(0:P,-P:P)
-      complex *16 Mj(0:P,-P:P)
-      complex *16 Mnm(0:P,-P:P)
-      complex *16 Mrot(0:P,-P:P)
-      complex *16 phitemp(nquad,-P:P)
-      complex *16 fhs(0:P)
-      complex *16 ephi(-P-1:P+1)
+      real*8 radius,r,theta,phi,ctheta,stheta,cthetaj,rj
+      real*8 scalei,scalej
+      real*8 Xi(3),Xj(3),dX(3)
+      real*8 xquad(nquad),wquad(nquad)
+      real*8 ynm(0:P,0:P)
+      real*8 Anm1(0:P,0:P)
+      real*8 Anm2(0:P,0:P)
+      complex*16 wavek,z,imag/(0.0d0,1.0d0)/
+      complex*16 Mi(0:P,-P:P)
+      complex*16 Mj(0:P,-P:P)
+      complex*16 Mnm(0:P,-P:P)
+      complex*16 Mrot(0:P,-P:P)
+      complex*16 phitemp(nquad,-P:P)
+      complex*16 fhs(0:P)
+      complex*16 ephi(-P-1:P+1)
       dX(1)=Xi(1)-Xj(1)
       dX(2)=Xi(2)-Xj(2)
       dX(3)=Xi(3)-Xj(3)
@@ -177,26 +177,26 @@
       use constants, only : P
       implicit none
       integer l,m,n,mabs,Popt,nquad
-      real *8 radius,r,theta,phi,ctheta,stheta,cthetaj,sthetaj,thetan
-      real *8 rj,rn,scalej,scalei
-      real *8 Xi(3),Xj(3),dX(3)
-      real *8 xquad(nquad),wquad(nquad)
-      real *8 ynm(0:Popt,0:Popt),ynmd(0:Popt,0:Popt)
-      real *8 Anm1(0:P,0:P)
-      real *8 Anm2(0:P,0:P)
-      complex *16 wavek,z,zh,zhn,ut1,ut2,ut3,imag/(0.0d0,1.0d0)/
-      complex *16 phitemp(nquad,-Popt:Popt)
-      complex *16 phitempn(nquad,-Popt:Popt)
-      complex *16 fhs(0:Popt),fhder(0:Popt)
-      complex *16 jn(0:P+1),jnd(0:P+1)
-      complex *16 Mj(0:P,-P:P)
-      complex *16 Mnm(0:Popt,-Popt:Popt)
-      complex *16 Mrot(0:P,-P:P)
-      complex *16 Li(0:P,-P:P)
-      complex *16 Lnm(0:Popt,-Popt:Popt)
-      complex *16 Lnmd(0:Popt,-Popt:Popt)
-      complex *16 Lrot(0:P,-P:P)
-      complex *16 ephi(-P-1:P+1)
+      real*8 radius,r,theta,phi,ctheta,stheta,cthetaj,sthetaj,thetan
+      real*8 rj,rn,scalej,scalei
+      real*8 Xi(3),Xj(3),dX(3)
+      real*8 xquad(nquad),wquad(nquad)
+      real*8 ynm(0:Popt,0:Popt),ynmd(0:Popt,0:Popt)
+      real*8 Anm1(0:P,0:P)
+      real*8 Anm2(0:P,0:P)
+      complex*16 wavek,z,zh,zhn,ut1,ut2,ut3,imag/(0.0d0,1.0d0)/
+      complex*16 phitemp(nquad,-Popt:Popt)
+      complex*16 phitempn(nquad,-Popt:Popt)
+      complex*16 fhs(0:Popt),fhder(0:Popt)
+      complex*16 jn(0:P+1),jnd(0:P+1)
+      complex*16 Mj(0:P,-P:P)
+      complex*16 Mnm(0:Popt,-Popt:Popt)
+      complex*16 Mrot(0:P,-P:P)
+      complex*16 Li(0:P,-P:P)
+      complex*16 Lnm(0:Popt,-Popt:Popt)
+      complex*16 Lnmd(0:Popt,-Popt:Popt)
+      complex*16 Lrot(0:P,-P:P)
+      complex*16 ephi(-P-1:P+1)
       dX(1)=Xi(1)-Xj(1)
       dX(2)=Xi(2)-Xj(2)
       dX(3)=Xi(3)-Xj(3)
@@ -313,24 +313,24 @@
       use constants, only : P
       implicit none
       integer l,m,n,mabs,nquad
-      real *8 radius,r,theta,phi,ctheta,stheta,cthetaj,sthetaj,thetan
-      real *8 rj,rn,scalej,scalei
-      real *8 Xi(3),Xj(3),dX(3)
-      real *8 xquad(nquad),wquad(nquad)
-      real *8 ynm(0:P,0:P),ynmd(0:P,0:P)
-      real *8 Anm1(0:P,0:P)
-      real *8 Anm2(0:P,0:P)
-      complex *16 wavek,z,zh,zhn,ut1,ut2,ut3,imag/(0.0d0,1.0d0)/
-      complex *16 phitemp(nquad,-P:P)
-      complex *16 phitempn(nquad,-P:P)
-      complex *16 jn(0:P+1)
-      complex *16 jnd(0:P+1)
-      complex *16 Li(0:P,-P:P)
-      complex *16 Lj(0:P,-P:P)
-      complex *16 Lnm(0:P,-P:P)
-      complex *16 Lnmd(0:P,-P:P)
-      complex *16 Lrot(0:P,-P:P)
-      complex *16 ephi(-P-1:P+1)
+      real*8 radius,r,theta,phi,ctheta,stheta,cthetaj,sthetaj,thetan
+      real*8 rj,rn,scalej,scalei
+      real*8 Xi(3),Xj(3),dX(3)
+      real*8 xquad(nquad),wquad(nquad)
+      real*8 ynm(0:P,0:P),ynmd(0:P,0:P)
+      real*8 Anm1(0:P,0:P)
+      real*8 Anm2(0:P,0:P)
+      complex*16 wavek,z,zh,zhn,ut1,ut2,ut3,imag/(0.0d0,1.0d0)/
+      complex*16 phitemp(nquad,-P:P)
+      complex*16 phitempn(nquad,-P:P)
+      complex*16 jn(0:P+1)
+      complex*16 jnd(0:P+1)
+      complex*16 Li(0:P,-P:P)
+      complex*16 Lj(0:P,-P:P)
+      complex*16 Lnm(0:P,-P:P)
+      complex*16 Lnmd(0:P,-P:P)
+      complex*16 Lrot(0:P,-P:P)
+      complex*16 ephi(-P-1:P+1)
       dX(1)=Xi(1)-Xj(1)
       dX(2)=Xi(2)-Xj(2)
       dX(3)=Xi(3)-Xj(3)
@@ -447,21 +447,21 @@
       use constants, only : P
       implicit none
       integer i,j,m,n,ni
-      real *8 r,rx,ry,rz,theta,thetax,thetay,thetaz,scalej
-      real *8 phi,phix,phiy,phiz,ctheta,stheta,cphi,sphi
-      real *8 Xj(3),Xi(3,1),dX(3)
-      real *8 Ynm(0:P,0:P)
-      real *8 Ynmd(0:P,0:P)
-      real *8 Anm1(0:P,0:P)
-      real *8 Anm2(0:P,0:P)
-      complex *16 wavek,imag/(0.0d0,1.0d0)/
-      complex *16 ur,utheta,uphi,z
-      complex *16 ztmp1,ztmp2,ztmp3,ztmpsum
-      complex *16 ux,uy,uz
-      complex *16 pi(1),Fi(3,1)
-      complex *16 Lj(0:P,-P:P)
-      complex *16 ephi(P+1)
-      complex *16 jnuse,jn(0:P+1),jnd(0:P+1)
+      real*8 r,rx,ry,rz,theta,thetax,thetay,thetaz,scalej
+      real*8 phi,phix,phiy,phiz,ctheta,stheta,cphi,sphi
+      real*8 Xj(3),Xi(3,1),dX(3)
+      real*8 Ynm(0:P,0:P)
+      real*8 Ynmd(0:P,0:P)
+      real*8 Anm1(0:P,0:P)
+      real*8 Anm2(0:P,0:P)
+      complex*16 wavek,imag/(0.0d0,1.0d0)/
+      complex*16 ur,utheta,uphi,z
+      complex*16 ztmp1,ztmp2,ztmp3,ztmpsum
+      complex*16 ux,uy,uz
+      complex*16 pi(1),Fi(3,1)
+      complex*16 Lj(0:P,-P:P)
+      complex*16 ephi(P+1)
+      complex*16 jnuse,jn(0:P+1),jnd(0:P+1)
       do i=1,ni
          dX(1)=Xi(1,i)-Xj(1)
          dX(2)=Xi(2,i)-Xj(2)

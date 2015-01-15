@@ -5,20 +5,20 @@
       implicit none
       integer numCells,numLevels,i,numBodies
       integer, allocatable :: permutation(:)
-      real *8 R0,tic/0.0d0/,toc/0.0d0/
-      real *8 X0(3)
-      real *8 Xj(3,numBodies)
-      real *8 Xjd(3,numBodies)
-      real *8 scale(0:maxLevel)
-      complex *16 wavek
-      complex *16 qj(numBodies)
-      complex *16 qjd(numBodies)
-      complex *16 pi(numBodies)
-      complex *16 Fi(3,numBodies)
-      complex *16 pid(numBodies)
-      complex *16 Fid(3,numBodies)
-      complex *16, allocatable :: Multipole(:,:)
-      complex *16, allocatable :: Local(:,:)
+      real*8 R0,tic/0.0d0/,toc/0.0d0/
+      real*8 X0(3)
+      real*8 Xj(3,numBodies)
+      real*8 Xjd(3,numBodies)
+      real*8 scale(0:maxLevel)
+      complex*16 wavek
+      complex*16 qj(numBodies)
+      complex*16 qjd(numBodies)
+      complex*16 pi(numBodies)
+      complex*16 Fi(3,numBodies)
+      complex*16 pid(numBodies)
+      complex*16 Fid(3,numBodies)
+      complex*16, allocatable :: Multipole(:,:)
+      complex*16, allocatable :: Local(:,:)
       allocate (permutation(numBodies))
       allocate (levelOffset(maxLevel))
 c$    tic=omp_get_wtime()
@@ -61,18 +61,18 @@ c$    toc=omp_get_wtime()
       integer nquad,level,ilist,nlist,Popt
       integer numCells,ibegin,isize
       integer list(189)
-      real *8 radius,diameter,R0,tic/0.0d0/,toc/0.0d0/
-      real *8 coef1,coef2,dx,dy,dz,rr,Xj(3,*)
-      real *8 xquad(2*P),wquad(2*P)
-      real *8 scale(0:maxLevel)
-      real *8 Anm1(0:P,0:P)
-      real *8 Anm2(0:P,0:P)
-      complex *16 wavek
-      complex *16 pi(1)
-      complex *16 Fi(3,*)
-      complex *16 qj(1)
-      complex *16 Multipole((P+1)*(2*P+1),*)
-      complex *16 Local((P+1)*(2*P+1),*)
+      real*8 radius,diameter,R0,tic/0.0d0/,toc/0.0d0/
+      real*8 coef1,coef2,dx,dy,dz,rr,Xj(3,*)
+      real*8 xquad(2*P),wquad(2*P)
+      real*8 scale(0:maxLevel)
+      real*8 Anm1(0:P,0:P)
+      real*8 Anm2(0:P,0:P)
+      complex*16 wavek
+      complex*16 pi(1)
+      complex*16 Fi(3,*)
+      complex*16 qj(1)
+      complex*16 Multipole((P+1)*(2*P+1),*)
+      complex*16 Local((P+1)*(2*P+1),*)
       do i=1,numBodies
          pi(i)=0
          Fi(1,i)=0

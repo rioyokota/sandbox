@@ -3,14 +3,14 @@
       implicit none
       integer numBodies,numTarget,i
       integer icell(10),jcell(10)
-      real *8 pdiff,pnorm,fdiff,fnorm,tic/0.0/,toc/0.0/
-      real *8 Xj(3,1000000)
-      complex *16 qj(1000000)
-      complex *16 pi(1000000)
-      complex *16 Fi(3,1000000)
-      complex *16 pi2(1000000)
-      complex *16 Fi2(3,1000000)
-      complex *16 wavek/(10.0d0,1.0d0)/,imag/(0.0d0,1.0d0)/
+      real*8 pdiff,pnorm,fdiff,fnorm,tic/0.0/,toc/0.0/
+      real*8 Xj(3,1000000)
+      complex*16 qj(1000000)
+      complex*16 pi(1000000)
+      complex*16 Fi(3,1000000)
+      complex*16 pi2(1000000)
+      complex*16 Fi2(3,1000000)
+      complex*16 wavek/(10.0d0,1.0d0)/,imag/(0.0d0,1.0d0)/
       numBodies=100000
       call random_number(Xj)
       print*,'N      =',numBodies

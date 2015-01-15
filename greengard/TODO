@@ -1,6 +1,5 @@
 All arrays allocatable
 Remove constants from all arguments
-Remove missuse of "size"
 real *8 -> real*8
 
 [Change when translating to C]
