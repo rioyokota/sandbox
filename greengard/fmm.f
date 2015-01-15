@@ -70,7 +70,7 @@ c$    toc=omp_get_wtime()
       use omp_lib, only : omp_get_wtime
       implicit none
       integer i,numBodies,numLevels,icell,jcell
-      integer nquad,level,ilist,nlist,ntrunc
+      integer nquad,level,ilist,nlist,Popt
       integer numCells,ibegin,isize
       integer iaddr(*),list(189)
       real *8 radius,diameter,R0,tic/0.0d0/,toc/0.0d0/
@@ -155,7 +155,7 @@ c$    tic=omp_get_wtime()
          call legendre(nquad,xquad,wquad)
 c$omp parallel do default(shared)
 c$omp$private(icell,jcell,list,ilist,nlist)
-c$omp$private(ntrunc,dx,dy,dz,rr)
+c$omp$private(Popt,dx,dy,dz,rr)
 c$omp$schedule(dynamic)
          do icell=levelOffset(level+1),levelOffset(level+2)-1
             call getList(2,icell,list,nlist)
@@ -169,11 +169,11 @@ c$omp$schedule(dynamic)
                if(dy.gt.0) dy=dy-.5
                if(dz.gt.0) dz=dz-.5
                rr=sqrt(dx*dx+dy*dy+dz*dz)
-               ntrunc=coef1/(rr*rr)+coef2
+               Popt=coef1/(rr*rr)+coef2
                call M2L(wavek,scale(level),
      1              centers(1,jcell),Multipole(iaddr(jcell)),
      1              scale(level),centers(1,icell),Local(iaddr(icell)),
-     1              ntrunc,radius,xquad,wquad,nquad,Anm1,Anm2)
+     1              Popt,radius,xquad,wquad,nquad,Anm1,Anm2)
             enddo
          enddo
       enddo

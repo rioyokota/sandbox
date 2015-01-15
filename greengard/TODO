@@ -1,6 +1,4 @@
-1. itable -> distance based
-2. ntrunc -> Popt
-3. iaddr -> 2D array
+iaddr -> 2D array
 ncrit -> P based, find optimal value
 All arrays allocatable
 Remove constants from all arguments

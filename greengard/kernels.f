@@ -172,29 +172,29 @@
       return
       end
 
-      subroutine M2L(wavek,scalej,Xj,Mj,scalei,Xi,Li,ntrunc,
+      subroutine M2L(wavek,scalej,Xj,Mj,scalei,Xi,Li,Popt,
      1     radius,xquad,wquad,nquad,Anm1,Anm2)
       use constants, only : P
       implicit none
-      integer l,m,n,mabs,ntrunc,nquad
+      integer l,m,n,mabs,Popt,nquad
       real *8 radius,r,theta,phi,ctheta,stheta,cthetaj,sthetaj,thetan
       real *8 rj,rn,scalej,scalei
       real *8 Xi(3),Xj(3),dX(3)
       real *8 xquad(nquad),wquad(nquad)
-      real *8 ynm(0:ntrunc,0:ntrunc),ynmd(0:ntrunc,0:ntrunc)
+      real *8 ynm(0:Popt,0:Popt),ynmd(0:Popt,0:Popt)
       real *8 Anm1(0:P,0:P)
       real *8 Anm2(0:P,0:P)
       complex *16 wavek,z,zh,zhn,ut1,ut2,ut3,imag/(0.0d0,1.0d0)/
-      complex *16 phitemp(nquad,-ntrunc:ntrunc)
-      complex *16 phitempn(nquad,-ntrunc:ntrunc)
-      complex *16 fhs(0:ntrunc),fhder(0:ntrunc)
+      complex *16 phitemp(nquad,-Popt:Popt)
+      complex *16 phitempn(nquad,-Popt:Popt)
+      complex *16 fhs(0:Popt),fhder(0:Popt)
       complex *16 jn(0:P+1),jnd(0:P+1)
       complex *16 Mj(0:P,-P:P)
-      complex *16 Mnm(0:ntrunc,-ntrunc:ntrunc)
+      complex *16 Mnm(0:Popt,-Popt:Popt)
       complex *16 Mrot(0:P,-P:P)
       complex *16 Li(0:P,-P:P)
-      complex *16 Lnm(0:ntrunc,-ntrunc:ntrunc)
-      complex *16 Lnmd(0:ntrunc,-ntrunc:ntrunc)
+      complex *16 Lnm(0:Popt,-Popt:Popt)
+      complex *16 Lnmd(0:Popt,-Popt:Popt)
       complex *16 Lrot(0:P,-P:P)
       complex *16 ephi(-P-1:P+1)
       dX(1)=Xi(1)-Xj(1)
@@ -208,19 +208,19 @@
          ephi(n+1)=ephi(n)*ephi(1)
          ephi(-1-n)=dconjg(ephi(n+1))
       enddo
-      do n=0,ntrunc
+      do n=0,Popt
          do m=-n,n
             Mnm(n,m)=Mj(n,m)*ephi(m)
          enddo
       enddo
-      do n=0,ntrunc
+      do n=0,Popt
          do m=-n,n
             Lnm(n,m)=0.0d0
          enddo
       enddo
-      call rotate(theta,ntrunc,Mnm,P,Mrot)
+      call rotate(theta,Popt,Mnm,P,Mrot)
       do l=1,nquad
-         do m=-ntrunc,ntrunc
+         do m=-Popt,Popt
             phitemp(l,m)=0.0d0
             phitempn(l,m)=0.0d0
          enddo
@@ -235,19 +235,19 @@
          rn=sthetaj*stheta+cthetaj*ctheta
          thetan=(cthetaj*stheta-ctheta*sthetaj)/rj
          z=wavek*rj
-         call get_Ynmd(ntrunc,cthetaj,ynm,ynmd,Anm1,Anm2)
-         call get_hnd(ntrunc,z,scalej,fhs,fhder)
-         do n=0,ntrunc
+         call get_Ynmd(Popt,cthetaj,ynm,ynmd,Anm1,Anm2)
+         call get_hnd(Popt,z,scalej,fhs,fhder)
+         do n=0,Popt
             fhder(n)=fhder(n)*wavek
          enddo
-         do n=1,ntrunc
+         do n=1,Popt
             do m=1,n
                ynm(n,m)=ynm(n,m)*sthetaj
             enddo
          enddo
          phitemp(l,0)=Mrot(0,0)*fhs(0)
          phitempn(l,0)=Mrot(0,0)*fhder(0)*rn
-         do n=1,ntrunc
+         do n=1,Popt
             phitemp(l,0)=phitemp(l,0)+Mrot(n,0)*fhs(n)*ynm(n,0)
             ut1=fhder(n)*rn
             ut2=fhs(n)*thetan
@@ -263,7 +263,7 @@
             enddo
          enddo
       enddo
-      do n=0,ntrunc
+      do n=0,Popt
          do m=-n,n
             Lnm(n,m)=0.0d0
             Lnmd(n,m)=0.0d0
@@ -271,22 +271,22 @@
       enddo
       do l=1,nquad
          cthetaj=xquad(l)
-         call get_Ynm(ntrunc,cthetaj,ynm,Anm1,Anm2)
-         do m=-ntrunc,ntrunc
+         call get_Ynm(Popt,cthetaj,ynm,Anm1,Anm2)
+         do m=-Popt,Popt
             mabs=abs(m)
             z=phitemp(l,m)*wquad(l)/2.0d0
-            do n=mabs,ntrunc
+            do n=mabs,Popt
                Lnm(n,m)=Lnm(n,m)+z*ynm(n,mabs)
             enddo
             z=phitempn(l,m)*wquad(l)/2.0d0
-            do n=mabs,ntrunc
+            do n=mabs,Popt
                Lnmd(n,m)=Lnmd(n,m)+z*ynm(n,mabs)
             enddo
          enddo
       enddo
       z=wavek*radius
-      call get_jn(ntrunc,z,scalei,jn,1,jnd)
-      do n=0,ntrunc
+      call get_jn(Popt,z,scalei,jn,1,jnd)
+      do n=0,Popt
          do m=-n,n
             zh=jn(n)
             zhn=jnd(n)*wavek
@@ -294,13 +294,13 @@
             Lnm(n,m)=(zh*Lnm(n,m)+zhn*Lnmd(n,m))/z
          enddo
       enddo
-      call rotate(-theta,ntrunc,Lnm,P,Lrot)
-      do n=0,ntrunc
+      call rotate(-theta,Popt,Lnm,P,Lrot)
+      do n=0,Popt
          do m=-n,n
             Lnm(n,m)=ephi(-m)*Lrot(n,m)
          enddo
       enddo
-      do n=0,ntrunc
+      do n=0,Popt
          do m=-n,n
             Li(n,m)=Li(n,m)+Lnm(n,m)
          enddo
