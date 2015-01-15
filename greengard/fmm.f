@@ -3,7 +3,7 @@
       use arrays, only : levelOffset,cells
       use omp_lib, only : omp_get_wtime
       implicit none
-      integer ncrit,numCells,numLevels,i,icell,numBodies
+      integer numCells,numLevels,i,icell,numBodies
       integer level,sumTerms
       integer, allocatable :: iaddr(:)
       integer, allocatable :: permutation(:)
@@ -21,14 +21,12 @@
       complex *16 Fi(3,numBodies)
       complex *16 pid(numBodies)
       complex *16 Fid(3,numBodies)
-      ncrit = 800
       allocate (permutation(numBodies))
       allocate (levelOffset(maxLevel))
 c$    tic=omp_get_wtime()
 c$    tic=omp_get_wtime()
       call getBounds(Xj,numBodies,X0,R0)
-      call buildTree(Xj,numBodies,ncrit,
-     1     numCells,permutation,numLevels,X0,R0)
+      call buildTree(Xj,numBodies,numCells,permutation,numLevels,X0,R0)
       allocate(iaddr(numCells))
       do i=0,numLevels
          scale(i)=(R0/2.0**(i-1))*wavek

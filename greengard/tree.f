@@ -20,11 +20,11 @@
       return
       end
 
-      subroutine buildTree(Xj,numBodies,ncrit,
+      subroutine buildTree(Xj,numBodies,
      1     numCells,permutation,numLevels,X0,R0)
       use arrays, only : listOffset,lists,nodes,cells,centers
       implicit none
-      integer i,j,d,numBodies,ncrit,numCells,numLevels
+      integer i,j,d,numBodies,numCells,numLevels
       integer permutation(*)
       real *8 R,R0
       real *8 Xj(3,*),X0(3)
@@ -32,7 +32,7 @@
          permutation(i)=i
       enddo
       allocate(nodes(10,numBodies))
-      call growTree(Xj,numBodies,ncrit,nodes,
+      call growTree(Xj,numBodies,nodes,
      1     numCells,permutation,numLevels,X0,R0)
       allocate(listOffset(numCells,3))
       allocate(lists(2,189*numCells))
@@ -53,12 +53,13 @@
       return
       end
 
-      subroutine growTree(Xj,numBodies,ncrit,cells,
+      subroutine growTree(Xj,numBodies,cells,
      1     numCells,permutation,numLevels,X0,R0)
+      use constants, only : P
       use arrays, only : levelOffset
       implicit none
-      integer i,numLevels,level
-      integer iparent,nchild,ibody,nbody,ncrit,numBodies
+      integer i,numLevels,level,ncrit
+      integer iparent,nchild,ibody,nbody,numBodies
       integer offset,numCells
       integer cells(10,*),permutation(*),iwork(numBodies),nbody8(8)
       real *8 R0
@@ -77,6 +78,10 @@
       do i=1,numBodies
          permutation(i)=i
       enddo
+      ncrit=1000
+      if(P.lt.40) ncrit=500
+      if(P.lt.30) ncrit=200
+      if(P.lt.20) ncrit=100
       numCells=1
       numLevels=0
       do level=1,198

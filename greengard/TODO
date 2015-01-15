@@ -1,7 +1,7 @@
 iaddr -> 2D array
-ncrit -> P based, find optimal value
 All arrays allocatable
 Remove constants from all arguments
+Remove missuse of "size"
 
 [Change when translating to C]
 wavek -> K
