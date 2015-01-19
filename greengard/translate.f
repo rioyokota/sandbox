@@ -31,22 +31,23 @@
       return
       end
 
-      subroutine rotate(theta,ntermsj,Mnm,ntermsi,Mrot)
+      subroutine rotate(theta,nterms,Mnm,Mrot)
+      use constants, only : P;
       implicit none
-      integer ntermsi,ntermsj,n,m,mp
+      integer nterms,n,m,mp
       real*8 theta,ctheta,stheta,hsthta,cthtap,cthtan,d
       real*8 scale,eps/1.0d-15/
-      real*8 Rnm1(0:ntermsj,-ntermsj:ntermsj)
-      real*8 Rnm2(0:ntermsj,-ntermsj:ntermsj)
-      real*8 sqrtCnm(0:2*ntermsj,2)
-      complex*16 Mnm(0:ntermsj,-ntermsj:ntermsj)
-      complex*16 Mrot(0:ntermsi,-ntermsi:ntermsi)
-      do m=0,2*ntermsj
+      real*8 Rnm1(0:P,-P:P)
+      real*8 Rnm2(0:P,-P:P)
+      real*8 sqrtCnm(0:2*P,2)
+      complex*16 Mnm(0:P,-P:P)
+      complex*16 Mrot(0:P,-P:P)
+      do m=0,2*nterms
          sqrtCnm(m,1)=dsqrt(m+0.0d0)
       enddo
       sqrtCnm(0,2)=0.0d0
-      if(ntermsj.gt.0) sqrtCnm(1,2)=0.0d0
-      do m=2,2*ntermsj
+      sqrtCnm(1,2)=0.0d0
+      do m=2,2*nterms
          sqrtCnm(m,2)=dsqrt((m+0.0d0)*(m-1)/2.0d0)
       enddo
       ctheta=dcos(theta)
@@ -58,7 +59,7 @@
       cthtan=-sqrt(2.0d0)*dsin(theta/2.0d0)**2
       Rnm1(0,0)=1.0d0
       Mrot(0,0)=Mnm(0,0)*Rnm1(0,0)
-      do n=1,ntermsj
+      do n=1,nterms
          do m=-n,-1
             Rnm2(0,m)=-sqrtCnm(n-m,2)*Rnm1(0,m+1)
             if (m.gt.(1-n)) then
@@ -133,7 +134,7 @@ c     Ynm(x) = sqrt(2n+1)  sqrt( (n-m)!/ (n+m)! ) Pnm(x)
       use constants, only : P
       implicit none
       integer nterms,m,n
-      real*8 x,y,Ynm(0:nterms,0:nterms)
+      real*8 x,y,Ynm(0:P,0:P)
       real*8 Anm1(0:P,0:P),Anm2(0:P,0:P)
       y = -sqrt((1-x)*(1+x))
       Ynm(0,0) = 1
@@ -159,7 +160,7 @@ c     d Ynm(x) / dx = sqrt(2n+1)  sqrt( (n-m)!/ (n+m)! ) d Pnm(x) / dx
       use constants, only : P
       implicit none
       integer nterms,m,n
-      real*8 x,y,y2,Ynm(0:nterms,0:nterms),Ynmd(0:nterms,0:nterms)
+      real*8 x,y,y2,Ynm(0:P,0:P),Ynmd(0:P,0:P)
       real*8 Anm1(0:P,0:P),Anm2(0:P,0:P)
       y=-sqrt((1-x)*(1+x))
       y2=(1-x)*(1+x)
@@ -197,11 +198,12 @@ c     d Ynm(x) / dx = sqrt(2n+1)  sqrt( (n-m)!/ (n+m)! ) d Pnm(x) / dx
 
       subroutine get_hn(nterms,z,scale,hn)
 c     hn(n) = h_n(z)*scale^(n)
+      use constants, only : P
       implicit none
       integer nterms,i
       real*8 scale,scale2,eps/1.0d-15/
       complex*16 z,zi,zinv,eye/(0.0d0,1.0d0)/
-      complex*16 hn(0:nterms)
+      complex*16 hn(0:P)
       if (abs(z).lt.eps) then
          do i=0,nterms
             hn(i)=0
@@ -222,11 +224,12 @@ c     hn(n) = h_n(z)*scale^(n)
       subroutine get_hnd(nterms,z,scale,hn,hnd)
 c     hn(n) = h_n(z)*scale^(n)
 c     hnd(n) = \frac{\partial hn(z)}{\partial z}
+      use constants, only : P
       implicit none
       integer nterms,i
       real*8 scale,eps/1.0d-15/
       complex*16 z,zi,zinv,eye/(0.0d0,1.0d0)/
-      complex*16 hn(0:nterms),hnd(0:nterms)
+      complex*16 hn(0:P),hnd(0:P)
       if (abs(z).lt.eps) then
          do i=0,nterms
             hn(i)=0
@@ -250,10 +253,11 @@ c     hnd(n) = \frac{\partial hn(z)}{\partial z}
       subroutine get_jn(nterms,z,scale,jn,ifder,jnd)
 c     jn(z)=j_n(z)/scale^n
 c     jnd(z)=\frac{\partial jn(z)}{\partial z}
+      use constants, only : P
       implicit none
-      integer nterms,ifder,ntop,i,iscale(0:nterms+1)
+      integer nterms,ifder,ntop,i,iscale(0:P+1)
       real*8 scale,scalinv,coef,eps/1.0d-15/
-      complex*16 jn(0:nterms+1),jnd(0:nterms+1)
+      complex*16 jn(0:P+1),jnd(0:P+1)
       complex*16 z,zinv,fj0,fj1,ztmp
       if (abs(z).lt.eps) then
          jn(0)=1.0d0

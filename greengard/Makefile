@@ -11,7 +11,7 @@ SRC = arrays.f constants.f main.f fmm.f kernels.f translate.f tree.f
 
 all: $(SRC:.f=.o)
 	$(FC) $?
-	OMP_NUM_THREADS=1 ./a.out
+	./a.out
 
 clean:
 	@rm -f *.mod *.o *.out *genmod*

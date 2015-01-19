@@ -85,7 +85,7 @@
       real*8 radius,r,theta,phi,ctheta,stheta,cthetaj,rj
       real*8 scalei,scalej
       real*8 Xi(3),Xj(3),dX(3)
-      real*8 xquad(nquad),wquad(nquad)
+      real*8 xquad(2*P),wquad(2*P)
       real*8 ynm(0:P,0:P)
       real*8 Anm1(0:P,0:P)
       real*8 Anm2(0:P,0:P)
@@ -96,7 +96,7 @@
       complex*16 Mrot(0:P,-P:P)
       complex*16 phitemp(nquad,-P:P)
       complex*16 fhs(0:P)
-      complex*16 ephi(-P-1:P+1)
+      complex*16 ephi(-P:P)
       dX(1)=Xi(1)-Xj(1)
       dX(2)=Xi(2)-Xj(2)
       dX(3)=Xi(3)-Xj(3)
@@ -104,16 +104,16 @@
       ephi(1)=exp(imag*phi)
       ephi(0)=1.0d0
       ephi(-1)=dconjg(ephi(1))
-      do n=1,P
-         ephi(n+1)=ephi(n)*ephi(1)
-         ephi(-1-n)=dconjg(ephi(n+1))
+      do n=2,P
+         ephi(n)=ephi(n-1)*ephi(1)
+         ephi(-n)=dconjg(ephi(n))
       enddo
       do n=0,P
          do m=-n,n
             Mnm(n,m)=Mj(n,m)*ephi(m)
          enddo
       enddo
-      call rotate(theta,P,Mnm,P,Mrot)
+      call rotate(theta,P,Mnm,Mrot)
       do l=1,nquad
          do m=-P,P
             phitemp(l,m)=0.0d0
@@ -158,7 +158,7 @@
             Mnm(n,m)=Mnm(n,m)/fhs(n)
          enddo
       enddo
-      call rotate(-theta,P,Mnm,P,Mrot)
+      call rotate(-theta,P,Mnm,Mrot)
       do n=0,P
          do m=-n,n
             Mnm(n,m)=ephi(-m)*Mrot(n,m)
@@ -180,21 +180,21 @@
       real*8 radius,r,theta,phi,ctheta,stheta,cthetaj,sthetaj,thetan
       real*8 rj,rn,scalej,scalei
       real*8 Xi(3),Xj(3),dX(3)
-      real*8 xquad(nquad),wquad(nquad)
-      real*8 ynm(0:Popt,0:Popt),ynmd(0:Popt,0:Popt)
+      real*8 xquad(2*P),wquad(2*P)
+      real*8 ynm(0:P,0:P),ynmd(0:P,0:P)
       real*8 Anm1(0:P,0:P)
       real*8 Anm2(0:P,0:P)
       complex*16 wavek,z,zh,zhn,ut1,ut2,ut3,imag/(0.0d0,1.0d0)/
       complex*16 phitemp(nquad,-Popt:Popt)
       complex*16 phitempn(nquad,-Popt:Popt)
-      complex*16 fhs(0:Popt),fhder(0:Popt)
+      complex*16 fhs(0:P),fhder(0:P)
       complex*16 jn(0:P+1),jnd(0:P+1)
       complex*16 Mj(0:P,-P:P)
-      complex*16 Mnm(0:Popt,-Popt:Popt)
+      complex*16 Mnm(0:P,-P:P)
       complex*16 Mrot(0:P,-P:P)
       complex*16 Li(0:P,-P:P)
-      complex*16 Lnm(0:Popt,-Popt:Popt)
-      complex*16 Lnmd(0:Popt,-Popt:Popt)
+      complex*16 Lnm(0:P,-P:P)
+      complex*16 Lnmd(0:P,-P:P)
       complex*16 Lrot(0:P,-P:P)
       complex*16 ephi(-P-1:P+1)
       dX(1)=Xi(1)-Xj(1)
@@ -218,7 +218,7 @@
             Lnm(n,m)=0.0d0
          enddo
       enddo
-      call rotate(theta,Popt,Mnm,P,Mrot)
+      call rotate(theta,Popt,Mnm,Mrot)
       do l=1,nquad
          do m=-Popt,Popt
             phitemp(l,m)=0.0d0
@@ -294,7 +294,7 @@
             Lnm(n,m)=(zh*Lnm(n,m)+zhn*Lnmd(n,m))/z
          enddo
       enddo
-      call rotate(-theta,Popt,Lnm,P,Lrot)
+      call rotate(-theta,Popt,Lnm,Lrot)
       do n=0,Popt
          do m=-n,n
             Lnm(n,m)=ephi(-m)*Lrot(n,m)
@@ -316,7 +316,7 @@
       real*8 radius,r,theta,phi,ctheta,stheta,cthetaj,sthetaj,thetan
       real*8 rj,rn,scalej,scalei
       real*8 Xi(3),Xj(3),dX(3)
-      real*8 xquad(nquad),wquad(nquad)
+      real*8 xquad(2*P),wquad(2*P)
       real*8 ynm(0:P,0:P),ynmd(0:P,0:P)
       real*8 Anm1(0:P,0:P)
       real*8 Anm2(0:P,0:P)
@@ -347,7 +347,7 @@
             Lnm(n,m)=Lj(n,m)*ephi(m)
          enddo
       enddo
-      call rotate(theta,P,Lnm,P,Lrot)
+      call rotate(theta,P,Lnm,Lrot)
       do n=0,P
          do m=-n,n
             Lnm(n,m)=0.0d0
@@ -428,7 +428,7 @@
             Lnm(n,m)=(zh*Lnm(n,m)+zhn*Lnmd(n,m))/z
          enddo
       enddo
-      call rotate(-theta,P,Lnm,P,Lrot)
+      call rotate(-theta,P,Lnm,Lrot)
       do n=0,P
          do m=-n,n
             Lnm(n,m)=ephi(-m)*Lrot(n,m)
