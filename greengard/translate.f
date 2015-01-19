@@ -319,10 +319,11 @@ c     jnd(z)=\frac{\partial jn(z)}{\partial z}
       end
 
       subroutine legendre(nquad,xquad,wquad)
+      use constants, only : P
       implicit none
       integer nquad,i,k,ifout
       real*8 pi,h,xk,delta,pol,der,sum,eps/1.0d-15/
-      real*8 xquad(10000),wquad(10000)
+      real*8 xquad(2*P),wquad(2*P)
       pi=datan(1.0d0)*4
       h=pi/(2*nquad)
       do i=1,nquad

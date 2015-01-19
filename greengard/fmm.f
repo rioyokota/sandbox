@@ -26,7 +26,7 @@ c$    tic=omp_get_wtime()
       call getBounds(Xj,numBodies,X0,R0)
       call buildTree(Xj,numBodies,numCells,permutation,numLevels,X0,R0)
       do i=0,numLevels
-         scale(i)=(R0/2.0**(i-1))*wavek
+         scale(i)=(R0/2.0**(i-1))*cdabs(wavek)
          if (scale(i).ge.1) scale(i)=1.0
       enddo
       do i=1,numBodies

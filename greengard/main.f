@@ -14,8 +14,10 @@
       numBodies=100000
       call random_number(Xj)
       print*,'N      =',numBodies
+      open(unit=10,file="data")
       do i=1,numBodies
          qj(i)=Xj(1,i)+imag*Xj(2,i)
+         write(10,*) Xj(1,i),Xj(2,i),Xj(3,i)
       enddo
 c$    tic=omp_get_wtime()
       call fmm(wavek,numBodies,Xj,qj,pi,Fi)

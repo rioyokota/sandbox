@@ -28,9 +28,6 @@
       integer permutation(*)
       real*8 R,R0
       real*8 Xj(3,*),X0(3)
-      do i=1,numBodies
-         permutation(i)=i
-      enddo
       allocate(nodes(10,numBodies))
       call growTree(Xj,numBodies,nodes,
      1     numCells,permutation,numLevels,X0,R0)
@@ -205,9 +202,6 @@
                jcell=neighbors(j)
                if (cells(6,jcell).eq.0) then
                   call setList(1,icell,jcell)
-                  if (cells(1,jcell).ne.cells(1,icell)) then
-                     call setList(1,jcell,icell)
-                  endif
                endif
             enddo
          endif
