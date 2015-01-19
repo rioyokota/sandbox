@@ -163,7 +163,7 @@ c     d Ynm(x) / dx = sqrt(2n+1)  sqrt( (n-m)!/ (n+m)! ) d Pnm(x) / dx
       real*8 x,y,y2,Ynm(0:P,0:P),Ynmd(0:P,0:P)
       real*8 Anm1(0:P,0:P),Anm2(0:P,0:P)
       y=-sqrt((1-x)*(1+x))
-      y2=(1-x)*(1+x)
+      y2=y*y
       Ynm(0,0)=1
       Ynmd(0,0)=0
       Ynm(1,0)=x*Ynm(0,0)*Anm1(1,0)
@@ -202,7 +202,7 @@ c     hn(n) = h_n(z)*scale^(n)
       implicit none
       integer nterms,i
       real*8 scale,scale2,eps/1.0d-15/
-      complex*16 z,zi,zinv,eye/(0.0d0,1.0d0)/
+      complex*16 z,zi,zinv,imag/(0.0d0,1.0d0)/
       complex*16 hn(0:P)
       if (abs(z).lt.eps) then
          do i=0,nterms
@@ -210,10 +210,10 @@ c     hn(n) = h_n(z)*scale^(n)
          enddo
          return
       endif
-      zi=eye*z
+      zi=imag*z
       zinv=scale/z
       hn(0)=exp(zi)/zi
-      hn(1)=hn(0)*(zinv-eye*scale)
+      hn(1)=hn(0)*(zinv-imag*scale)
       scale2=scale*scale
       do i=2,nterms
          hn(i)=zinv*(2*i-1.0d0)*hn(i-1)-scale2*hn(i-2)
@@ -228,7 +228,7 @@ c     hnd(n) = \frac{\partial hn(z)}{\partial z}
       implicit none
       integer nterms,i
       real*8 scale,eps/1.0d-15/
-      complex*16 z,zi,zinv,eye/(0.0d0,1.0d0)/
+      complex*16 z,zi,zinv,imag/(0.0d0,1.0d0)/
       complex*16 hn(0:P),hnd(0:P)
       if (abs(z).lt.eps) then
          do i=0,nterms
@@ -237,10 +237,10 @@ c     hnd(n) = \frac{\partial hn(z)}{\partial z}
          enddo
          return
       endif
-      zi=eye*z
+      zi=imag*z
       zinv=1.0/z
       hn(0)=exp(zi)/zi
-      hn(1)=hn(0)*(zinv-eye)*scale
+      hn(1)=hn(0)*(zinv-imag)*scale
       hnd(0)=-hn(1)/scale
       hnd(1)=-zinv*2*hn(1)+scale*hn(0)
       do i=2,nterms

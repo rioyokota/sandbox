@@ -126,7 +126,6 @@ c$omp$private(icell,jcell,ilist)
      1                 scale(level-1),centers(1,icell),
      1                 Multipole(1,icell),
      1                 radius,xquad,wquad,nquad,Anm1,Anm2)
-c                  stop
                enddo
             endif
          enddo
@@ -166,6 +165,7 @@ c$omp$schedule(dynamic)
      1              centers(1,jcell),Multipole(1,jcell),
      1              scale(level),centers(1,icell),Local(1,icell),
      1              Popt,radius,xquad,wquad,nquad,Anm1,Anm2)
+c               stop
             enddo
          enddo
       enddo

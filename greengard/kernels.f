@@ -164,7 +164,7 @@
             Mnm(n,m)=ephi(-m)*Mrot(n,m)
          enddo
       enddo
-      do n=0,min(P,P)
+      do n=0,P
          do m=-n,n
             Mi(n,m)=Mi(n,m)+Mnm(n,m)
          enddo
@@ -211,10 +211,6 @@
       do n=0,Popt
          do m=-n,n
             Mnm(n,m)=Mj(n,m)*ephi(m)
-         enddo
-      enddo
-      do n=0,Popt
-         do m=-n,n
             Lnm(n,m)=0.0d0
          enddo
       enddo
