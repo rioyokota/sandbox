@@ -126,6 +126,7 @@ c$omp$private(icell,jcell,ilist)
      1                 scale(level-1),centers(1,icell),
      1                 Multipole(1,icell),
      1                 radius,xquad,wquad,nquad,Anm1,Anm2)
+c                  stop
                enddo
             endif
          enddo

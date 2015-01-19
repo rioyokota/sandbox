@@ -95,7 +95,7 @@
       complex*16 Mnm(0:P,-P:P)
       complex*16 Mrot(0:P,-P:P)
       complex*16 phitemp(nquad,-P:P)
-      complex*16 fhs(0:P)
+      complex*16 hn(0:P)
       complex*16 ephi(-P:P)
       dX(1)=Xi(1)-Xj(1)
       dX(2)=Xi(2)-Xj(2)
@@ -127,12 +127,12 @@
          cthetaj=(r+radius*ctheta)/rj
          z=wavek*rj
          call get_Ynm(P,cthetaj,ynm,Anm1,Anm2)
-         call get_hn(P,z,scalej,fhs)
+         call get_hn(P,z,scalej,hn)
          do m=-P,P
             mabs=abs(m)
             do n=mabs,P
                phitemp(l,m)=phitemp(l,m)+
-     1              Mrot(n,m)*fhs(n)*ynm(n,mabs)
+     1              Mrot(n,m)*hn(n)*ynm(n,mabs)
             enddo
          enddo
       enddo
@@ -152,10 +152,10 @@
          enddo
       enddo
       z=wavek*radius
-      call get_hn(P,z,scalei,fhs)
+      call get_hn(P,z,scalei,hn)
       do n=0,P
          do m=-n,n
-            Mnm(n,m)=Mnm(n,m)/fhs(n)
+            Mnm(n,m)=Mnm(n,m)/hn(n)
          enddo
       enddo
       call rotate(-theta,P,Mnm,Mrot)
@@ -187,7 +187,7 @@
       complex*16 wavek,z,zh,zhn,ut1,ut2,ut3,imag/(0.0d0,1.0d0)/
       complex*16 phitemp(nquad,-Popt:Popt)
       complex*16 phitempn(nquad,-Popt:Popt)
-      complex*16 fhs(0:P),fhder(0:P)
+      complex*16 hn(0:P),hnd(0:P)
       complex*16 jn(0:P+1),jnd(0:P+1)
       complex*16 Mj(0:P,-P:P)
       complex*16 Mnm(0:P,-P:P)
@@ -204,9 +204,9 @@
       ephi(0)=1.0d0
       ephi(1)=exp(imag*phi)
       ephi(-1)=dconjg(ephi(1))
-      do n=1,P
-         ephi(n+1)=ephi(n)*ephi(1)
-         ephi(-1-n)=dconjg(ephi(n+1))
+      do n=2,P
+         ephi(n)=ephi(n-1)*ephi(1)
+         ephi(-n)=dconjg(ephi(n))
       enddo
       do n=0,Popt
          do m=-n,n
@@ -236,25 +236,25 @@
          thetan=(cthetaj*stheta-ctheta*sthetaj)/rj
          z=wavek*rj
          call get_Ynmd(Popt,cthetaj,ynm,ynmd,Anm1,Anm2)
-         call get_hnd(Popt,z,scalej,fhs,fhder)
+         call get_hnd(Popt,z,scalej,hn,hnd)
          do n=0,Popt
-            fhder(n)=fhder(n)*wavek
+            hnd(n)=hnd(n)*wavek
          enddo
          do n=1,Popt
             do m=1,n
                ynm(n,m)=ynm(n,m)*sthetaj
             enddo
          enddo
-         phitemp(l,0)=Mrot(0,0)*fhs(0)
-         phitempn(l,0)=Mrot(0,0)*fhder(0)*rn
+         phitemp(l,0)=Mrot(0,0)*hn(0)
+         phitempn(l,0)=Mrot(0,0)*hnd(0)*rn
          do n=1,Popt
-            phitemp(l,0)=phitemp(l,0)+Mrot(n,0)*fhs(n)*ynm(n,0)
-            ut1=fhder(n)*rn
-            ut2=fhs(n)*thetan
+            phitemp(l,0)=phitemp(l,0)+Mrot(n,0)*hn(n)*ynm(n,0)
+            ut1=hnd(n)*rn
+            ut2=hn(n)*thetan
             ut3=ut1*ynm(n,0)-ut2*ynmd(n,0)*sthetaj
             phitempn(l,0)=phitempn(l,0)+ut3*Mrot(n,0)
             do m=1,n
-               z=fhs(n)*ynm(n,m)
+               z=hn(n)*ynm(n,m)
                phitemp(l,m)=phitemp(l,m)+Mrot(n,m)*z
                phitemp(l,-m)=phitemp(l,-m)+Mrot(n,-m)*z
                ut3=ut1*ynm(n,m)-ut2*ynmd(n,m)
