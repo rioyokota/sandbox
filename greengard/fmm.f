@@ -93,7 +93,6 @@ c$    tic=omp_get_wtime()
 c$omp parallel do default(shared)
 c$omp$private(icell,ibegin,isize)
          do icell=levelOffset(level+1),levelOffset(level+2)-1
-            if (cells(9,icell).eq.0) cycle
             if (cells(7,icell).eq.0) then
                ibegin=cells(8,icell)
                isize=cells(9,icell)
@@ -117,17 +116,14 @@ c$    tic=omp_get_wtime()
 c$omp parallel do default(shared)
 c$omp$private(icell,jcell,ilist)
          do icell=levelOffset(level),levelOffset(level+1)-1
-            if (cells(9,icell).eq.0) cycle
-            if (cells(7,icell).ne.0) then
-               do ilist=1,cells(7,icell)
-                  jcell=cells(6,icell)+ilist-1
-                  call M2M(wavek,scale(level),centers(1,jcell),
-     1                 Multipole(1,jcell),
-     1                 scale(level-1),centers(1,icell),
-     1                 Multipole(1,icell),
-     1                 radius,xquad,wquad,nquad,Anm1,Anm2)
-               enddo
-            endif
+            do ilist=1,cells(7,icell)
+               jcell=cells(6,icell)+ilist-1
+               call M2M(wavek,scale(level),centers(1,jcell),
+     1              Multipole(1,jcell),
+     1              scale(level-1),centers(1,icell),
+     1              Multipole(1,icell),
+     1              radius,xquad,wquad,nquad,Anm1,Anm2)
+            enddo
          enddo
 c$omp end parallel do
       enddo
@@ -152,7 +148,6 @@ c$omp$schedule(dynamic)
             call getList(2,icell,list,nlist)
             do ilist=1,nlist
                jcell=list(ilist)
-               if (cells(9,jcell).eq.0) cycle
                dx=abs(cells(2,jcell)-cells(2,icell))
                dy=abs(cells(3,jcell)-cells(3,icell))
                dz=abs(cells(4,jcell)-cells(4,icell))
@@ -165,7 +160,6 @@ c$omp$schedule(dynamic)
      1              centers(1,jcell),Multipole(1,jcell),
      1              scale(level),centers(1,icell),Local(1,icell),
      1              Popt,radius,xquad,wquad,nquad,Anm1,Anm2)
-c               stop
             enddo
          enddo
       enddo
@@ -182,17 +176,15 @@ c$    tic=omp_get_wtime()
 c$omp parallel do default(shared)
 c$omp$private(icell,jcell,ilist)
          do icell=levelOffset(level),levelOffset(level+1)-1
-            if (cells(7,icell).ne.0) then
-               do ilist=1,cells(7,icell)
-                  jcell=cells(6,icell)+ilist-1
-                  call L2L(wavek,scale(level-1),centers(1,icell),
-     1                 Local(1,icell),
-     1                 scale(level),centers(1,jcell),
-     1                 Local(1,jcell),
-     1                 radius,xquad,wquad,nquad,
-     1                 Anm1,Anm2)
-               enddo
-            endif
+            do ilist=1,cells(7,icell)
+               jcell=cells(6,icell)+ilist-1
+               call L2L(wavek,scale(level-1),centers(1,icell),
+     1              Local(1,icell),
+     1              scale(level),centers(1,jcell),
+     1              Local(1,jcell),
+     1              radius,xquad,wquad,nquad,
+     1              Anm1,Anm2)
+            enddo
          enddo
 c$omp end parallel do
       enddo
@@ -205,7 +197,6 @@ c$    tic=omp_get_wtime()
 c$omp parallel do default(shared)
 c$omp$private(icell,ibegin,isize)
          do icell=levelOffset(level+1),levelOffset(level+2)-1
-            if (cells(9,icell).eq.0) cycle
             if (cells(7,icell).eq.0) then
                ibegin=cells(8,icell)
                isize=cells(9,icell)
@@ -232,7 +223,6 @@ c$omp$schedule(dynamic)
             call getList(1,icell,list,nlist)
             do ilist=1,nlist
                jcell=list(ilist)
-               if (cells(9,jcell).eq.0) cycle
                call P2P(cells(1,icell),pi,Fi,
      1              cells(1,jcell),Xj,qj,wavek)
             enddo

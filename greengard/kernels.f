@@ -326,7 +326,7 @@
       complex*16 Lnm(0:P,-P:P)
       complex*16 Lnmd(0:P,-P:P)
       complex*16 Lrot(0:P,-P:P)
-      complex*16 ephi(-P-1:P+1)
+      complex*16 ephi(-P:P)
       dX(1)=Xi(1)-Xj(1)
       dX(2)=Xi(2)-Xj(2)
       dX(3)=Xi(3)-Xj(3)
@@ -334,9 +334,9 @@
       ephi(0)=1.0d0
       ephi(1)=exp(imag*phi)
       ephi(-1)=dconjg(ephi(1))
-      do n=1,P
-         ephi(n+1)=ephi(n)*ephi(1)
-         ephi(-1-n)=dconjg(ephi(n+1))
+      do n=2,P
+         ephi(n)=ephi(n-1)*ephi(1)
+         ephi(-n)=dconjg(ephi(n))
       enddo
       do n=0,P
          do m=-n,n
@@ -383,7 +383,7 @@
             ut2=jn(n)*thetan
             ut3=ut1*ynm(n,0)-ut2*ynmd(n,0)*sthetaj
             phitempn(l,0)=phitempn(l,0)+ut3*Lrot(n,0)
-            do m=1,min(n,P)
+            do m=1,n
                z=jn(n)*ynm(n,m)
                phitemp(l,m)=phitemp(l,m)+Lrot(n,m)*z
                phitemp(l,-m)=phitemp(l,-m)+Lrot(n,-m)*z
