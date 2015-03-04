@@ -1,5 +1,6 @@
 *.a
 *.dat
+*genmod*
 *.mod
 *.o
 *.so
