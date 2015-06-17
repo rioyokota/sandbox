@@ -17,6 +17,9 @@ cpu2d: cpu2d.o
 cpu3d: cpu3d.o
 	$(CXX) $?
 	./a.out
+kmeans: kmeans.o
+	$(CXX) $?
+	./a.out
 matern: matern.o
 	$(CXX) $?
 	./a.out
