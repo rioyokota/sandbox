@@ -6,3 +6,4 @@
 *.so
 *.out
 *.th_o
+.deps
