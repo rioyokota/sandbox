@@ -10,126 +10,101 @@ struct Body {
 typedef std::vector<Body> Bodies;
 typedef Body* B_iter;
 
-B_iter gen_xy(int count, double radius) {
-  B_iter pt = (B_iter) malloc(sizeof(Body) * count);
-  for (B_iter p=pt; p<pt+count; p++) {
-    double ang = 2 * M_PI * drand48();
-    double r = radius * drand48();
-    p->x = r * cos(ang);
-    p->y = r * sin(ang);
+B_iter initBodies(int numBodies, double R0) {
+  B_iter B0 = (B_iter) malloc(sizeof(Body) * numBodies);
+  for (B_iter B=B0; B!=B0+numBodies; B++) {
+    double theta = 2 * M_PI * drand48();
+    double R = R0 * drand48();
+    B->x = R * cos(theta);
+    B->y = R * sin(theta);
   }
-  return pt;
+  return B0;
 }
 
-inline double dist2(B_iter a, B_iter b) {
-  double x = a->x - b->x, y = a->y - b->y;
-  return x*x + y*y;
-}
-
-inline int nearest(B_iter pt, B_iter cent, int n_cluster, double *d2)
-{
-  int i, min_i;
-  B_iter c;
-  double d, min_d;
-
-  min_d = HUGE_VAL;
-  min_i = pt->group;
-  for (c = cent, i = 0; i < n_cluster; i++, c++) {
-    if (min_d > (d = dist2(c, pt))) {
-      min_d = d; min_i = i;
+inline int nearest(B_iter B, B_iter C0, int numCluster) {
+  int min_i = B->group;
+  double min_d = HUGE_VAL;
+  for (int i=0; i<numCluster; i++) {
+    B_iter C = C0 + i;
+    double dx = B->x - C->x;
+    double dy = B->y - C->y;
+    double d = dx * dx + dy * dy;
+    if (min_d > d) {
+      min_d = d;
+      min_i = i;
     }
   }
-  if (d2) *d2 = min_d;
   return min_i;
 }
 
-void kpp(B_iter pts, int len, B_iter cent, int n_cent)
-{
-  int i, j;
-  int n_cluster;
-  double sum, *d = (double*) malloc(sizeof(double) * len);
-
-  B_iter p, c;
-  cent[0] = pts[ rand() % len ];
-  for (n_cluster = 1; n_cluster < n_cent; n_cluster++) {
-    sum = 0;
-    for (j = 0, p = pts; j < len; j++, p++) {
-      nearest(p, cent, n_cluster, d + j);
-      sum += d[j];
-    }
-    sum *= drand48();
-    for (j = 0, p = pts; j < len; j++, p++) {
-      if ((sum -= d[j]) > 0) continue;
-      cent[n_cluster] = pts[j];
-      break;
-    }
+void initCluster(B_iter B0, int numBodies, B_iter C0, int numCluster) {
+  for (int c=0; c<numCluster; c++) {
+    C0[c] = B0[rand() % numBodies];
   }
-  for (j = 0, p = pts; j < len; j++, p++) p->group = nearest(p, cent, n_cluster, 0);
-  free(d);
+  for (B_iter B=B0; B<B0+numBodies; B++) {
+    B->group = nearest(B, C0, numCluster);
+  }
 }
 
-B_iter lloyd(B_iter pts, int len, int n_cluster)
-{
-  int i, j, min_i;
+B_iter setCluster(B_iter B0, int numBodies, int numCluster) {
+  int min_i;
+  B_iter C0 = (B_iter) malloc(sizeof(Body) * numCluster);
+  initCluster(B0, numBodies, C0, numCluster);
   int changed;
-
-  B_iter cent = (B_iter) malloc(sizeof(Body) * n_cluster), p, c;
-
-  /* assign init grouping randomly */
-  //for_len p->group = j % n_cluster;
-
-  /* or call k++ init */
-  kpp(pts, len, cent, n_cluster);
-
   do {
-    /* group element for centroids are used as counters */
-    for (c = cent, i = 0; i < n_cluster; i++, c++) { c->group = 0; c->x = c->y = 0; }
-    for (j = 0, p = pts; j < len; j++, p++) {
-      c = cent + p->group;
-      c->group++;
-      c->x += p->x; c->y += p->y;
+    for (B_iter c=C0; c!=C0+numCluster; c++) {
+      c->group = 0;
+      c->x = 0;
+      c->y = 0;
     }
-    for (c = cent, i = 0; i < n_cluster; i++, c++) { c->x /= c->group; c->y /= c->group; }
+    for (B_iter p=B0; p!=B0+numBodies; p++) {
+      B_iter c = C0 + p->group;
+      c->group++;
+      c->x += p->x;
+      c->y += p->y;
+    }
+    for (B_iter c=C0; c!=C0+numCluster; c++) {
+      c->x /= c->group;
+      c->y /= c->group;
+    }
 
     changed = 0;
-    /* find closest centroid of each B_iter */
-    for (j = 0, p = pts; j < len; j++, p++) {
-      min_i = nearest(p, cent, n_cluster, 0);
+    /* find closest C0roid of each B_iter */
+    for (B_iter p=B0; p!=B0+numBodies; p++) {
+      min_i = nearest(p, C0, numCluster);
       if (min_i != p->group) {
 	changed++;
 	p->group = min_i;
       }
     }
-  } while (changed > (len >> 10)); /* stop when 99.9% of B_iters are good */
+  } while (changed > (numBodies >> 10)); /* stop when 99.9% of B_iters are good */
 
-  for (c = cent, i = 0; i < n_cluster; i++, c++) { c->group = i; }
+  for (int i=0; i<numCluster; i++) {
+    B_iter c = C0+i;
+    c->group = i;
+  }
 
-  return cent;
+  return C0;
 }
 
-void print_eps(B_iter pts, int len, B_iter cent, int n_cluster)
-{
-  int i, j;
-  B_iter p;
-  FILE * fid = fopen("kmeans.dat","w");
-  for (B_iter c = cent; c < cent+n_cluster; c++) {
-    fprintf(fid, "%d %g %g\n", c-cent, c->x, c->y);
-    for (j = 0, p = pts; j < len; j++, p++) {
-      if (p->group != c-cent) continue;
-      fprintf(fid, "%d %g %g\n", c-cent, p->x, p->y);
+void writeBodies(B_iter B0, int numBodies, B_iter C0, int numCluster) {
+  FILE *fid = fopen("kmeans.dat","w");
+  for (B_iter C=C0; C!=C0+numCluster; C++) {
+    fprintf(fid, "%ld %g %g\n", C-C0, C->x, C->y);
+    for (B_iter B=B0; B!=B0+numBodies; B++) {
+      if (B->group != C-C0) continue;
+      fprintf(fid, "%ld %g %g\n", C-C0, B->x, B->y);
     }
   }
   fclose(fid);
 }
 
-#define PTS 100000
-#define K 14
-int main()
-{
-  int i;
-  B_iter v = gen_xy(PTS, 10);
-  B_iter c = lloyd(v, PTS, K);
-  print_eps(v, PTS, c, K);
-  free(v); free(c);
-  return 0;
+int main() {
+  const int numBodies = 100000;
+  const int numClusters = 14;
+  const double R0 = 10;
+  B_iter B0 = initBodies(numBodies, R0);
+  B_iter C0 = setCluster(B0, numBodies, numClusters);
+  writeBodies(B0, numBodies, C0, numClusters);
+  free(B0); free(C0);
 }
