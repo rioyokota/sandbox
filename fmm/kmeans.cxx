@@ -2,39 +2,42 @@
 #include <cstdio>
 #include <cstdlib>
 #include <vector>
+#include "vec.h"
+
+typedef double real_t;
+typedef vec<2,real_t> vec2;
 
 struct Body {
-  double x, y;
-  int group;
+  vec2 X;
+  int IBODY;
 };
 typedef std::vector<Body> Bodies;
 typedef Body* B_iter;
 
-B_iter initBodies(int numBodies, double R0) {
+B_iter initBodies(int numBodies, real_t R0) {
   B_iter B0 = (B_iter) malloc(sizeof(Body) * numBodies);
   for (B_iter B=B0; B!=B0+numBodies; B++) {
-    double theta = 2 * M_PI * drand48();
-    double R = R0 * drand48();
-    B->x = R * cos(theta);
-    B->y = R * sin(theta);
+    real_t theta = 2 * M_PI * drand48();
+    real_t R = R0 * drand48();
+    B->X[0] = R * cos(theta);
+    B->X[1] = R * sin(theta);
   }
   return B0;
 }
 
 inline int nearest(B_iter B, B_iter C0, int numCluster) {
-  int min_i = B->group;
-  double min_d = HUGE_VAL;
+  int index = B->IBODY;
+  real_t R2min = HUGE_VAL;
   for (int i=0; i<numCluster; i++) {
     B_iter C = C0 + i;
-    double dx = B->x - C->x;
-    double dy = B->y - C->y;
-    double d = dx * dx + dy * dy;
-    if (min_d > d) {
-      min_d = d;
-      min_i = i;
+    vec2 dX = B->X - C->X;
+    real_t R2 = norm(dX);
+    if (R2min > R2) {
+      R2min = R2;
+      index = i;
     }
   }
-  return min_i;
+  return index;
 }
 
 void initCluster(B_iter B0, int numBodies, B_iter C0, int numCluster) {
@@ -42,7 +45,7 @@ void initCluster(B_iter B0, int numBodies, B_iter C0, int numCluster) {
     C0[c] = B0[rand() % numBodies];
   }
   for (B_iter B=B0; B<B0+numBodies; B++) {
-    B->group = nearest(B, C0, numCluster);
+    B->IBODY = nearest(B, C0, numCluster);
   }
 }
 
@@ -52,48 +55,42 @@ B_iter setCluster(B_iter B0, int numBodies, int numCluster) {
   initCluster(B0, numBodies, C0, numCluster);
   int changed;
   do {
-    for (B_iter c=C0; c!=C0+numCluster; c++) {
-      c->group = 0;
-      c->x = 0;
-      c->y = 0;
+    for (B_iter C=C0; C!=C0+numCluster; C++) {
+      C->IBODY = 0;
+      C->X = 0;
     }
-    for (B_iter p=B0; p!=B0+numBodies; p++) {
-      B_iter c = C0 + p->group;
-      c->group++;
-      c->x += p->x;
-      c->y += p->y;
+    for (B_iter B=B0; B!=B0+numBodies; B++) {
+      B_iter C = C0 + B->IBODY;
+      C->IBODY++;
+      C->X += B->X;
     }
-    for (B_iter c=C0; c!=C0+numCluster; c++) {
-      c->x /= c->group;
-      c->y /= c->group;
+    for (B_iter C=C0; C!=C0+numCluster; C++) {
+      C->X /= C->IBODY;
     }
-
     changed = 0;
-    /* find closest C0roid of each B_iter */
-    for (B_iter p=B0; p!=B0+numBodies; p++) {
-      min_i = nearest(p, C0, numCluster);
-      if (min_i != p->group) {
+    for (B_iter B=B0; B!=B0+numBodies; B++) {
+      min_i = nearest(B, C0, numCluster);
+      if (min_i != B->IBODY) {
 	changed++;
-	p->group = min_i;
+	B->IBODY = min_i;
       }
     }
   } while (changed > (numBodies >> 10)); /* stop when 99.9% of B_iters are good */
 
   for (int i=0; i<numCluster; i++) {
-    B_iter c = C0+i;
-    c->group = i;
+    B_iter C = C0+i;
+    C->IBODY = i;
   }
-
   return C0;
 }
 
 void writeBodies(B_iter B0, int numBodies, B_iter C0, int numCluster) {
   FILE *fid = fopen("kmeans.dat","w");
   for (B_iter C=C0; C!=C0+numCluster; C++) {
-    fprintf(fid, "%ld %g %g\n", C-C0, C->x, C->y);
+    fprintf(fid, "%ld %g %g\n", C-C0, C->X[0], C->X[1]);
     for (B_iter B=B0; B!=B0+numBodies; B++) {
-      if (B->group != C-C0) continue;
-      fprintf(fid, "%ld %g %g\n", C-C0, B->x, B->y);
+      if (B->IBODY != C-C0) continue;
+      fprintf(fid, "%ld %g %g\n", C-C0, B->X[0], B->X[1]);
     }
   }
   fclose(fid);
@@ -102,7 +99,7 @@ void writeBodies(B_iter B0, int numBodies, B_iter C0, int numCluster) {
 int main() {
   const int numBodies = 100000;
   const int numClusters = 14;
-  const double R0 = 10;
+  const real_t R0 = 10;
   B_iter B0 = initBodies(numBodies, R0);
   B_iter C0 = setCluster(B0, numBodies, numClusters);
   writeBodies(B0, numBodies, C0, numClusters);
