@@ -6,10 +6,10 @@
 #include "vec.h"
 
 typedef double real_t;
-typedef vec<2,real_t> vec2;
+typedef vec<3,real_t> vec3;
 
 struct Body {
-  vec2 X;
+  vec3 X;
   int IBODY;
 };
 typedef std::vector<Body> Bodies;
@@ -24,10 +24,12 @@ double get_time() {
 Bodies initBodies(int numBodies, real_t R0) {
   Bodies bodies(numBodies);
   for (B_iter B=bodies.begin(); B!=bodies.end(); B++) {
-    real_t theta = 2 * M_PI * drand48();
     real_t R = R0 * drand48();
-    B->X[0] = R * cos(theta);
-    B->X[1] = R * sin(theta);
+    real_t theta = 2 * M_PI * drand48();
+    real_t phi = M_PI * drand48();
+    B->X[0] = R * cos(theta) * sin(phi);
+    B->X[1] = R * sin(theta) * sin(phi);
+    B->X[2] = R * cos(phi);
   }
   return bodies;
 }
@@ -37,7 +39,7 @@ inline int nearest(B_iter B, B_iter C0, int numClusters) {
   real_t R2min = HUGE_VAL;
   for (int c=0; c<numClusters; c++) {
     B_iter C = C0 + c;
-    vec2 dX = B->X - C->X;
+    vec3 dX = B->X - C->X;
     real_t R2 = norm(dX);
     if (R2min > R2) {
       R2min = R2;
@@ -91,10 +93,10 @@ void writeBodies(Bodies bodies, Bodies clusters) {
   FILE *fid = fopen("kmeans.dat","w");
   for (B_iter C=clusters.begin(); C!=clusters.end(); C++) {
     int index = C - clusters.begin();
-    fprintf(fid, "%d %g %g\n", index, C->X[0], C->X[1]);
+    fprintf(fid, "%d %g %g %g\n", index, C->X[0], C->X[1], C->X[2]);
     for (B_iter B=bodies.begin(); B!=bodies.end(); B++) {
       if (B->IBODY != index) continue;
-      fprintf(fid, "%d %g %g\n", index, B->X[0], B->X[1]);
+      fprintf(fid, "%d %g %g %g\n", index, B->X[0], B->X[1], B->X[2]);
     }
   }
   fclose(fid);
