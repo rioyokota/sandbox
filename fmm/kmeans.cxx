@@ -1,6 +1,7 @@
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
+#include <sys/time.h>
 #include <vector>
 #include "vec.h"
 
@@ -12,80 +13,88 @@ struct Body {
   int IBODY;
 };
 typedef std::vector<Body> Bodies;
-typedef Body* B_iter;
+typedef Bodies::iterator B_iter;
 
-B_iter initBodies(int numBodies, real_t R0) {
-  B_iter B0 = (B_iter) malloc(sizeof(Body) * numBodies);
-  for (B_iter B=B0; B!=B0+numBodies; B++) {
+double get_time() {
+  struct timeval tv;
+  gettimeofday(&tv, NULL);
+  return double(tv.tv_sec+tv.tv_usec*1e-6);
+}
+
+Bodies initBodies(int numBodies, real_t R0) {
+  Bodies bodies(numBodies);
+  for (B_iter B=bodies.begin(); B!=bodies.end(); B++) {
     real_t theta = 2 * M_PI * drand48();
     real_t R = R0 * drand48();
     B->X[0] = R * cos(theta);
     B->X[1] = R * sin(theta);
   }
-  return B0;
+  return bodies;
 }
 
-inline int nearest(B_iter B, B_iter C0, int numCluster) {
+inline int nearest(B_iter B, B_iter C0, int numClusters) {
   int index = B->IBODY;
   real_t R2min = HUGE_VAL;
-  for (int i=0; i<numCluster; i++) {
-    B_iter C = C0 + i;
+  for (int c=0; c<numClusters; c++) {
+    B_iter C = C0 + c;
     vec2 dX = B->X - C->X;
     real_t R2 = norm(dX);
     if (R2min > R2) {
       R2min = R2;
-      index = i;
+      index = c;
     }
   }
   return index;
 }
 
-void initCluster(B_iter B0, int numBodies, B_iter C0, int numCluster) {
-  for (int c=0; c<numCluster; c++) {
-    C0[c] = B0[rand() % numBodies];
+void initCluster(Bodies & bodies, Bodies & clusters) {
+  for (B_iter C=clusters.begin(); C!=clusters.end(); C++) {
+    *C = bodies[rand() % bodies.size()];
   }
-  for (B_iter B=B0; B<B0+numBodies; B++) {
-    B->IBODY = nearest(B, C0, numCluster);
+  for (B_iter B=bodies.begin(); B!=bodies.end(); B++) {
+    B->IBODY = nearest(B, clusters.begin(), clusters.size());
   }
 }
 
-B_iter setCluster(B_iter B0, int numBodies, int numCluster) {
-  B_iter C0 = (B_iter) malloc(sizeof(Body) * numCluster);
-  initCluster(B0, numBodies, C0, numCluster);
+Bodies setCluster(Bodies & bodies, int numClusters) {
+  Bodies clusters(numClusters);
+  initCluster(bodies, clusters);
+  B_iter C0 = clusters.begin();
   int changed;
   do {
-    for (B_iter C=C0; C!=C0+numCluster; C++) {
+    for (B_iter C=clusters.begin(); C!=clusters.end(); C++) {
       C->IBODY = 0;
       C->X = 0;
     }
-    for (B_iter B=B0; B!=B0+numBodies; B++) {
+    for (B_iter B=bodies.begin(); B!=bodies.end(); B++) {
       B_iter C = C0 + B->IBODY;
       C->IBODY++;
       C->X += B->X;
     }
-    for (B_iter C=C0; C!=C0+numCluster; C++) {
+    for (B_iter C=clusters.begin(); C!=clusters.end(); C++) {
       C->X /= C->IBODY;
       C->IBODY = C-C0;
     }
     changed = 0;
-    for (B_iter B=B0; B!=B0+numBodies; B++) {
-      int index = nearest(B, C0, numCluster);
+    for (B_iter B=bodies.begin(); B!=bodies.end(); B++) {
+      int index = nearest(B, C0, numClusters);
       if (index != B->IBODY) {
 	changed++;
 	B->IBODY = index;
       }
     }
-  } while (changed > (numBodies >> 10));
-  return C0;
+  } while (changed > (bodies.size() >> 10));
+  return clusters;
 }
 
-void writeBodies(B_iter B0, int numBodies, B_iter C0, int numCluster) {
+void writeBodies(Bodies bodies, Bodies clusters) {
   FILE *fid = fopen("kmeans.dat","w");
-  for (B_iter C=C0; C!=C0+numCluster; C++) {
-    fprintf(fid, "%ld %g %g\n", C-C0, C->X[0], C->X[1]);
-    for (B_iter B=B0; B!=B0+numBodies; B++) {
-      if (B->IBODY != C-C0) continue;
-      fprintf(fid, "%ld %g %g\n", C-C0, B->X[0], B->X[1]);
+  for (B_iter C=clusters.begin(); C!=clusters.end(); C++) {
+    int index = C - clusters.begin();
+    fprintf(fid, "%d %g %g\n", index, C->X[0], C->X[1]);
+    for (B_iter B=bodies.begin(); B!=bodies.end(); B++) {
+      if (B->IBODY != index) continue;
+      fprintf(fid, "%d %g %g\n", index, B->X[0], B->X[1]);
     }
   }
   fclose(fid);
@@ -95,8 +104,10 @@ int main() {
   const int numBodies = 100000;
   const int numClusters = 14;
   const real_t R0 = 10;
-  B_iter B0 = initBodies(numBodies, R0);
-  B_iter C0 = setCluster(B0, numBodies, numClusters);
-  writeBodies(B0, numBodies, C0, numClusters);
-  free(B0); free(C0);
+  double tic = get_time();
+  Bodies bodies = initBodies(numBodies, R0);
+  Bodies clusters = setCluster(bodies, numClusters);
+  writeBodies(bodies, clusters);
+  double toc = get_time();
+  printf("Time: %lf s\n",toc-tic);
 }
