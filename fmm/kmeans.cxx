@@ -50,7 +50,6 @@ void initCluster(B_iter B0, int numBodies, B_iter C0, int numCluster) {
 }
 
 B_iter setCluster(B_iter B0, int numBodies, int numCluster) {
-  int min_i;
   B_iter C0 = (B_iter) malloc(sizeof(Body) * numCluster);
   initCluster(B0, numBodies, C0, numCluster);
   int changed;
@@ -66,21 +65,17 @@ B_iter setCluster(B_iter B0, int numBodies, int numCluster) {
     }
     for (B_iter C=C0; C!=C0+numCluster; C++) {
       C->X /= C->IBODY;
+      C->IBODY = C-C0;
     }
     changed = 0;
     for (B_iter B=B0; B!=B0+numBodies; B++) {
-      min_i = nearest(B, C0, numCluster);
-      if (min_i != B->IBODY) {
+      int index = nearest(B, C0, numCluster);
+      if (index != B->IBODY) {
 	changed++;
-	B->IBODY = min_i;
+	B->IBODY = index;
       }
     }
-  } while (changed > (numBodies >> 10)); /* stop when 99.9% of B_iters are good */
-
-  for (int i=0; i<numCluster; i++) {
-    B_iter C = C0+i;
-    C->IBODY = i;
-  }
+  } while (changed > (numBodies >> 10));
   return C0;
 }
 
