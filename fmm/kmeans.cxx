@@ -104,12 +104,16 @@ void writeBodies(Bodies bodies, Bodies clusters) {
 
 int main() {
   const int numBodies = 100000;
-  const int numClusters = 14;
+  const int numClusters = 64;
   const real_t R0 = 10;
   double tic = get_time();
   Bodies bodies = initBodies(numBodies, R0);
-  Bodies clusters = setCluster(bodies, numClusters);
-  writeBodies(bodies, clusters);
   double toc = get_time();
-  printf("Time: %lf s\n",toc-tic);
+  printf("initBodies   : %lf s\n",toc-tic);
+  Bodies clusters = setCluster(bodies, numClusters);
+  tic = get_time();
+  printf("setCluster   : %lf s\n",tic-toc);
+  writeBodies(bodies, clusters);
+  toc = get_time();
+  printf("writeBodies  : %lf s\n",toc-tic);
 }
