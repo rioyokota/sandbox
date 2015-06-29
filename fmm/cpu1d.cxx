@@ -14,8 +14,8 @@ double get_time() {
 }
 
 int main() {
-  const int nx = 40; // Number of target points
-  const int ny = 40; // Number of source points
+  const int nx = 100; // Number of target points
+  const int ny = 100; // Number of source points
   const int P = 4; // Order of multipole expansions
   const int pointsPerLeaf = 4; // Number of points per leaf cell
   const float eps = 1e-6; // Epsilon
@@ -28,12 +28,12 @@ int main() {
   float * w = new float [ny]; // Source values
   // Initialize variables
   for (int i=0; i<nx; i++) {
-    x[i] = drand48(); // Random number [0,1]
+    x[i] = (i + 0.5) / nx; // Random number [0,1]
     p[i] = 0;
   }
   for (int i=0; i<ny; i++) {
-    y[i] = drand48(); // Random number [0,1]
-    w[i] = drand48();
+    y[i] = (i + 0.5) / ny; // Random number [0,1]
+    w[i] = 1;
   }
   double tic = get_time();
   // Min and Max of x
@@ -66,62 +66,58 @@ int main() {
   int offset = ((1 << maxLevel) - 1);
   for (int i=0; i<nx; i++) {
     const float xCell = leafSize * (ix[i] + .5) + xmin;
-    const float dx = x[i] - xCell;
-    float powX = 1.0;
-    m[ix[i]+offset][0] += w[i];
+    const float dx = xCell - x[i];
+    float M[P] = {0};
+    M[0] = w[i];
     for (int n=1; n<P; n++) {
-      powX *= dx;
-      m[ix[i]+offset][n] -= w[i] * powX / n;
+      M[n] = M[n-1] * dx / n;
     }
+    for (int n=0; n<P; n++) m[ix[i]+offset][n] += M[n];
   }
   // M2M
-  for (int level=maxLevel; level>2; level--) {
+  for (int level=maxLevel; level>=3; level--) {
     const int joffset = ((1 << level) - 1);
     const int ioffset = ((1 << (level-1)) - 1);
     for (int jcell=0; jcell<(1<<level); jcell++) {
       const int icell = jcell / 2;
       const float dx = (xmax - xmin) / (1 << (level+1)) * (1 - 2 * (jcell & 1));
-      const float invX = 1.0 / dx;
-      m[icell+ioffset][0] += m[jcell+joffset][0];
-      float powXn = 1.0;
+      float C[P];
+      C[0] = 1;
       for (int n=1; n<P; n++) {
-	powXn *= dx;
-	m[icell+ioffset][n] -= m[jcell+joffset][0] * powXn / n;
-	float powXnk = powXn;
-	float Cnk = 1.0;
-	for (int k=1; k<=n; k++) {
-	  powXnk *= invX;
-	  m[icell+ioffset][n] += m[jcell+joffset][k] * powXnk * Cnk;
-	  Cnk *= float(n - k) / k;
+	C[n] = C[n-1] * dx / n;
+      }
+      for (int n=0; n<P; n++) {
+	for (int k=0; k<=n; k++) {
+	  m[icell+ioffset][n] += C[n-k] * m[jcell+joffset][k];
 	}
       }
     }
   }
   // M2L
-  for (int level=2; level<numLevels; level++) {
+  for (int level=2; level<=maxLevel; level++) {
     const int cellsPerLevel = 1 << level;
     offset = ((1 << level) - 1);
     for (int icell=0; icell<cellsPerLevel; icell++) {
       for (int jcell=0; jcell<cellsPerLevel; jcell++) {
 	if(jcell < icell-1 || icell+1 < jcell) {
 	  const float dx = (icell - jcell) * (xmax - xmin) / cellsPerLevel;
-	  const float invX = 1.0 / dx;
-	  float powXn = 1.0;
-	  l[icell+offset][0] += m[jcell+offset][0] * log(fabs(dx));
-	  for (int k=1; k<P; k++) {
-	    powXn *= invX;
-	    l[icell+offset][0] += m[jcell+offset][k] * powXn;
+	  const float invR2 = 1 / (dx * dx);
+	  const float invR = m[jcell+offset][0] * sqrtf(invR2);
+	  float C[P];
+	  C[0] = invR;
+	  C[1] = -dx * C[0] * invR2;
+	  for (int n=2; n<P; n++) {
+	    C[n] = ((1 - 2 * n) * dx * C[n-1] + (1 - n) * C[n-2]) / n * invR2;
 	  }
-	  powXn = 1;
+	  float fact = 1;
 	  for (int n=1; n<P; n++) {
-	    powXn *= -invX;
-	    l[icell+offset][n] -= m[jcell+offset][0] * powXn / n;
-	    float powXnk = powXn;
-	    float Cnk = 1.0;
-	    for (int k=1; k<P; k++) {
-	      powXnk *= invX;
-	      l[icell+offset][n] += m[jcell+offset][k] * powXnk * Cnk;
-	      Cnk *= float(n + 1) / k;
+	    fact *= n;
+	    C[n] *= fact;
+	  }
+	  for (int i=0; i<P; i++) l[icell+offset][i] += C[i];
+	  for (int n=0; n<P; n++) {
+	    for (int k=1; k<P-n; k++) {
+	      l[icell+offset][n] += m[jcell+offset][k] * C[n+k];
 	    }
 	  }
 	}
@@ -129,19 +125,21 @@ int main() {
     }
   }
   // L2L
-  for (int level=3; level<numLevels; level++) {
+  for (int level=3; level<=maxLevel; level++) {
     const int joffset = ((1 << (level-1)) - 1);
     const int ioffset = ((1 << level) - 1);
     for (int icell=0; icell<(1<<level); icell++) {
       const int jcell = icell / 2;
-      const float dx = (xmax - xmin) / (1 << (level+1)) * (1 - 2 * (icell & 1));
+      const float dx = (xmax - xmin) / (1 << (level+1)) * (2 * (icell & 1) - 1);
+      float C[P];
+      C[0] = 1;
+      for (int n=1; n<P; n++) {
+	C[n] = C[n-1] * dx / n;
+      }
+      for (int n=0; n<P; n++) l[icell+ioffset][n] += l[jcell+joffset][n];
       for (int n=0; n<P; n++) {
-	float powX = 1.0;
-	float Cnk = 1.0;
-	for (int k=n; k<P; k++) {
-	  l[icell+ioffset][n] += l[jcell+joffset][k] * powX * Cnk;
-	  powX *= dx;
-	  Cnk *= float(k + 1) / (k - n + 1);
+	for (int k=1; k<P-n; k++) {
+	  l[icell+ioffset][n] += C[k] * l[jcell+joffset][n+k];
 	}
       }
     }
@@ -151,19 +149,21 @@ int main() {
   for (int i=0; i<nx; i++) {
     const float xCell = leafSize * (ix[i] + .5) + xmin;
     const float dx = x[i] - xCell;
-    float powX = 1;
+    float C[P];
+    C[0] = 1;
+    for (int n=1; n<P; n++) {
+      C[n] = C[n-1] * dx / n;
+    }
     for (int n=0; n<P; n++) {
-      p[i] -= l[ix[i]+offset][n] * powX;
-      powX *= dx;
+      p[i] += l[ix[i]+offset][n] * C[n];
     }
   }
   // P2P
   for (int i=0; i<nx; i++) {
     for (int j=0; j<nx; j++) {
       if(abs(ix[i] - ix[j]) < 2) {
-	const float R = fabs(x[i] - x[j]);
-	const float logR = R != 0 ? log(R) : 0;
-	p[i] -= w[j] * logR;
+	const float R = fabs(x[i] - x[j]) + eps;
+	p[i] += w[j] / R;
       }
     }
   }
@@ -175,9 +175,8 @@ int main() {
   for (int i=0; i<nx; i++) {
     float pi = 0;
     for (int j=0; j<nx; j++) {
-      const float R = fabs(x[i] - x[j]);
-      const float logR = R != 0 ? log(R) : 0;
-      pi -= w[j] * logR;
+      const float R = fabs(x[i] - x[j]) + eps;
+      pi += w[j] / R;
     }
     dif += (p[i] - pi) * (p[i] - pi);
     nrm += pi * pi;
