@@ -158,17 +158,17 @@ public:
 #pragma omp parallel for
     for (int i=0; i<numLeafs; i++) {
       real center = X0 - R0 + (2 * i + 1) * R;
-      real L[PP+1];
-      for_l L[l] = Local[i+levelOffset][l];
+      real L[PP];
+      for_m L[m] = Local[i+levelOffset][m];
       for (int j=Leafs[i][0]; j<Leafs[i][1]; j++) {
         real dx = Jbodies[j][0] - center;
-        real C[PP+1];
+        real C[PP];
         C[0] = 1;
-	for (int l=1; l<PP+1; l++) {
+	for (int l=1; l<PP; l++) {
 	  C[l] = C[l-1] * dx / l;
 	}
-        for (int l=0; l<PP+1; l++) Ibodies[j][0] += C[l] * L[l];
-	for (int l=0; l<PP; l++) Ibodies[j][1] += C[l] * L[l+1];
+        for (int l=0; l<PP; l++) Ibodies[j][0] += C[l] * L[l];
+	for (int l=0; l<PP-1; l++) Ibodies[j][1] += C[l] * L[l+1];
       }
     }
   }
