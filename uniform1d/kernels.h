@@ -85,8 +85,11 @@ public:
 	for (int m=1; m<PP; m++) {
 	  C[m] = C[m-1] * dx / m;
 	}
-        for_m Multipole[p][m] += C[m] * Multipole[c][0];
-        M2MSum(Multipole[p],C,Multipole[c]);
+	for (int n=0; n<PP; n++) {
+	  for (int k=0; k<=n; k++) {
+	    Multipole[p][n] += C[n-k] * Multipole[c][k];
+	  }
+	}
       }
     }
   }
@@ -109,7 +112,14 @@ public:
 	    real invR  = sqrt(invR2);
 	    real C[PP+1];
 	    getCoef(C,dx,invR2,invR);
-	    M2LSum(L,C,Multipole[j+levelOffset]);
+	    for (int k=0; k<PP; k++) {
+	      L[0] += Multipole[j+levelOffset][k] * C[k];
+	    }
+	    for (int n=1; n<PP+1; n++) {
+	      for (int k=0; k<=PP-n; k++) {
+		L[n] += Multipole[j+levelOffset][k] * C[n+k];
+	      }
+	    }
 	  }
 	}
         for_l Local[i+levelOffset][l] += L[l];
