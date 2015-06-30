@@ -1,8 +1,5 @@
 #include <cmath>
 #include "types.h"
-#include "core.h"
-
-#define for_2 for (int d=0; d<2; d++)
 
 class Kernel {
 public:
@@ -60,10 +57,10 @@ public:
       real center = X0 - R0 + (2 * i + 1) * R;
       for (int j=Leafs[i][0]; j<Leafs[i][1]; j++) {
         real dx = center - Jbodies[j][0];
-        real M[PP] = {0};
+        real M[PP];
         M[0] = Jbodies[j][1];
-	for (int m=1; m<PP; m++) {
-	  M[m] = M[m-1] * dx / m;
+	for (int n=1; n<PP; n++) {
+	  M[n] = M[n-1] * dx / n;
 	}
 	for (int n=0; n<PP; n++) {
 	  Multipole[i+levelOffset][n] += M[n];
@@ -82,10 +79,10 @@ public:
         int c = i + childOffset;
         int p = (i >> 1) + parentOffset;
         real dx = (1 - (i & 1) * 2) * radius;
-        real C[PP] = {0};
+        real C[PP];
         C[0] = 1;
-	for (int m=1; m<PP; m++) {
-	  C[m] = C[m-1] * dx / m;
+	for (int n=1; n<PP; n++) {
+	  C[n] = C[n-1] * dx / n;
 	}
 	for (int n=0; n<PP; n++) {
 	  for (int k=0; k<=n; k++) {
@@ -115,7 +112,16 @@ public:
 	    real invR2 = 1. / (dx * dx);
 	    real invR  = sqrt(invR2);
 	    real C[PP];
-	    getCoef(C,dx,invR2,invR);
+	    C[0] = invR;
+	    C[1] = -dx * C[0] * invR2;
+	    for (int n=2; n<PP; n++) {
+	      C[n] = ((1 - 2 * n) * dx * C[n-1] + (1 - n) * C[n-2]) / n * invR2;
+	    }
+	    float fact = 1;
+	    for (int n=1; n<PP; n++) {
+	      fact *= n;
+	      C[n] *= fact;
+	    }
 	    for (int k=0; k<PP; k++) {
 	      L[0] += Multipole[j+levelOffset][k] * C[k];
 	    }

@@ -3,6 +3,8 @@
 #include <cstdio>
 #include "kernels.h"
 
+#define for_2 for (int d=0; d<2; d++)
+
 class Fmm : public Kernel {
 private:
   void sort(real (*bodies)[2], real (*bodies2)[2], int *key) const {
