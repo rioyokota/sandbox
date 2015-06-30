@@ -9,7 +9,6 @@ public:
   int numCells;
   int numLeafs;
   int numNeighbors;
-  int numImages;
 
   real X0[3];
   real R0;
@@ -39,13 +38,13 @@ private:
     for_3 dist[d] = X0[d] - R0 + (2 * ix[d] + 1) * R;
   }
 
-  void P2PSum(int ibegin, int iend, int jbegin, int jend, real *Xperiodic) const {
+  void P2PSum(int ibegin, int iend, int jbegin, int jend) const {
     for (int i=ibegin; i<iend; i++) {
       real Po = 0, Fx = 0, Fy = 0, Fz = 0;
       for (int j=jbegin; j<jend; j++) {
 	real dist[3];
-	for_3 dist[d] = Jbodies[i][d] - Jbodies[j][d] - Xperiodic[d];
-	real R2 = dist[0] * dist[0] + dist[1] * dist[1] + dist[2] * dist[2];
+	for_3 dist[d] = Jbodies[i][d] - Jbodies[j][d];
+	real R2 = dist[0] * dist[0];
 	real invR2 = R2 == 0 ? 0 : 1.0 / R2;
 	real invR = Jbodies[j][3] * sqrt(invR2);
 	real invR3 = invR2 * invR;
@@ -59,52 +58,6 @@ private:
       Ibodies[i][2] -= Fy;
       Ibodies[i][3] -= Fz;
     }
-  }
-
-  void M2LPeriodic() const {
-    real M[MTERM];
-    for_m M[m] = Multipole[0][m];
-    real L[LTERM];
-    for_l L[l] = 0;
-    for (int lev=1; lev<numImages; lev++) {
-      real diameter = 2 * R0 * pow(3,lev-1);
-      int jx[3];
-      for (jx[2]=-4; jx[2]<=4; jx[2]++) {
-	for (jx[1]=-4; jx[1]<=4; jx[1]++) {
-	  for (jx[0]=-4; jx[0]<=4; jx[0]++) {
-	    if(jx[0] < -1 || 1 < jx[0] ||
-	       jx[1] < -1 || 1 < jx[1] ||
-	       jx[2] < -1 || 1 < jx[2]) {
-	      real dist[3];
-	      for_3 dist[d] = jx[d] * diameter;
-	      real invR2 = 1. / (dist[0] * dist[0] + dist[1] * dist[1] + dist[2] * dist[2]);
-	      real invR  = sqrt(invR2);
-	      real C[LTERM];
-	      getCoef(C,dist,invR2,invR);
-	      M2LSum(L,C,M);
-	    }
-	  }
-	}
-      }
-      real M3[MTERM];
-      for_m M3[m] = 0;
-      int ix[3];
-      for( ix[2]=-1; ix[2]<=1; ix[2]++ ) {
-	for( ix[1]=-1; ix[1]<=1; ix[1]++ ) {
-	  for( ix[0]=-1; ix[0]<=1; ix[0]++ ) {
-	    real dist[3];
-	    for_3 dist[d] = ix[d] * diameter;
-	    real C[LTERM];
-	    C[0] = 1;
-	    powerM(C,dist);
-	    for_m M3[m] += C[m] * M[0];
-	    M2MSum(M3,C,M);
-	  }
-	}
-      }
-      for_m M[m] = M3[m];
-    }
-    for_l Local[0][l] += L[l];
   }
   
 protected:
@@ -122,10 +75,6 @@ public:
     int nunit = 1 << maxLevel;
     int nmin = 0;
     int nmax = nunit - 1;
-    if (numImages != 0) {
-      nmin -= nunit;
-      nmax += nunit;
-    }
 #pragma omp parallel for
     for (int i=0; i<numLeafs; i++) {
       int ix[3] = {0, 0, 0};
@@ -141,10 +90,7 @@ public:
 	    int jxp[3];
 	    for_3 jxp[d] = (jx[d] + nunit) % nunit;
             int j = getKey(jxp,maxLevel,false);
-	    real Xperiodic[3] = {0, 0, 0};
-	    for_3 jxp[d] = (jx[d] + nunit) / nunit;
-	    for_3 Xperiodic[d] = (jxp[d] - 1) * 2 * R0;
-            P2PSum(Leafs[i][0],Leafs[i][1],Leafs[j][0],Leafs[j][1],Xperiodic);
+            P2PSum(Leafs[i][0],Leafs[i][1],Leafs[j][0],Leafs[j][1]);
           }
         }
       }
@@ -199,10 +145,6 @@ public:
       real diameter = 2 * R0 / (1 << lev);
       int nmin = 0;
       int nmax = (nunit >> 1) - 1;
-      if( numImages != 0 ) {
-	nmin -= (nunit >> 1);
-	nmax += (nunit >> 1);
-      }
 #pragma omp parallel for
       for (int i=0; i<(1 << 3 * lev); i++) {
         real L[LTERM];
@@ -236,9 +178,6 @@ public:
         }
         for_l Local[i+levelOffset][l] += L[l];
       }
-    }
-    if (numImages > 1) {
-      M2LPeriodic();
     }
   }
 

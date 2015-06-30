@@ -26,11 +26,10 @@ private:
   }
 
 public:
-  void allocate(int NumBodies, int MaxLevel, int NumNeighbors, int NumImages) {
+  void allocate(int NumBodies, int MaxLevel, int NumNeighbors) {
     numBodies = NumBodies;
     maxLevel = MaxLevel;
     numNeighbors = NumNeighbors;
-    numImages = NumImages;
     numCells = ((1 << 3 * (maxLevel + 1)) - 1) / 7;
     numLeafs = 1 << 3 * maxLevel;
     Ibodies = new real [numBodies][4]();
@@ -65,8 +64,8 @@ public:
     real average = 0;
     for (int i=0; i<numBodies; i++) {
       Jbodies[i][0] = 2 * R0 * (drand48() + ix[0]);
-      Jbodies[i][1] = 2 * R0 * (drand48() + ix[1]) * 0;
-      Jbodies[i][2] = 2 * R0 * (drand48() + ix[2]) * 0;
+      Jbodies[i][1] = 0;
+      Jbodies[i][2] = 0;
       Jbodies[i][3] = (drand48() - .5) / numBodies;
       average += Jbodies[i][3];
     }
@@ -111,27 +110,19 @@ public:
 
   void direct() {
     real Ibodies3[4], Jbodies2[4], dX[3];
-    int range = (pow(3,numImages) - 1) / 2;
     for (int i=0; i<100; i++) {
       for_4 Ibodies3[d] = 0;
       for_4 Jbodies2[d] = Jbodies[i][d];
-      int jx[3];
-      for (jx[2]=-range; jx[2]<=range; jx[2]++) {
-	for (jx[1]=-range; jx[1]<=range; jx[1]++) {
-	  for (jx[0]=-range; jx[0]<=range; jx[0]++) {	
-	    for (int j=0; j<numBodies; j++) {
-	      for_3 dX[d] = Jbodies2[d] - Jbodies[j][d] - jx[d] * 2 * R0;
-	      real R2 = dX[0] * dX[0] + dX[1] * dX[1] + dX[2] * dX[2];
-	      real invR2 = R2 == 0 ? 0 : 1.0 / R2;
-	      real invR = Jbodies[j][3] * sqrtf(invR2);
-	      for_3 dX[d] *= invR2 * invR;
-	      Ibodies3[0] += invR;
-	      Ibodies3[1] -= dX[0];
-	      Ibodies3[2] -= dX[1];
-	      Ibodies3[3] -= dX[2];
-	    }
-	  }
-	}
+      for (int j=0; j<numBodies; j++) {
+	for_3 dX[d] = Jbodies2[d] - Jbodies[j][d];
+	real R2 = dX[0] * dX[0];
+	real invR2 = R2 == 0 ? 0 : 1.0 / R2;
+	real invR = Jbodies[j][3] * sqrtf(invR2);
+	for_3 dX[d] *= invR2 * invR;
+	Ibodies3[0] += invR;
+	Ibodies3[1] -= dX[0];
+	Ibodies3[2] -= dX[1];
+	Ibodies3[3] -= dX[2];
       }
       for_4 Ibodies2[i][d] = Ibodies3[d];
     }
