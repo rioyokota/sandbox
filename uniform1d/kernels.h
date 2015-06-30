@@ -101,8 +101,10 @@ public:
       real diameter = 2 * R0 / (1 << lev);
 #pragma omp parallel for
       for (int i=0; i<(1 << lev); i++) {
-        real L[PP+1];
-        for_l L[l] = 0;
+        real L[PP];
+	for (int n=0; n<PP; n++) {
+	  L[n] = 0;
+	}
         int jmin =  MAX(0, (i >> 1) - numNeighbors) << 1;
         int jmax = (MIN((nunit >> 1) - 1, (i >> 1) + numNeighbors) << 1) + 1;
 	for (int j=jmin; j<=jmax; j++) {
@@ -110,19 +112,21 @@ public:
 	    real dx = (i - j) * diameter;
 	    real invR2 = 1. / (dx * dx);
 	    real invR  = sqrt(invR2);
-	    real C[PP+1];
+	    real C[PP];
 	    getCoef(C,dx,invR2,invR);
 	    for (int k=0; k<PP; k++) {
 	      L[0] += Multipole[j+levelOffset][k] * C[k];
 	    }
-	    for (int n=1; n<PP+1; n++) {
-	      for (int k=0; k<=PP-n; k++) {
+	    for (int n=1; n<PP; n++) {
+	      for (int k=0; k<PP-n; k++) {
 		L[n] += Multipole[j+levelOffset][k] * C[n+k];
 	      }
 	    }
 	  }
 	}
-        for_l Local[i+levelOffset][l] += L[l];
+	for (int n=0; n<PP; n++) {
+	  Local[i+levelOffset][n] += L[n];
+	}
       }
     }
   }
@@ -137,10 +141,10 @@ public:
         int c = i + childOffset;
         int p = (i >> 1) + parentOffset;
         real dx = ((i & 1) * 2 - 1) * radius;
-        real C[PP+1];
+        real C[PP];
         C[0] = 1;
-	for (int l=1; l<PP; l++) {
-	  C[l] = C[l-1] * dx / l;
+	for (int n=1; n<PP; n++) {
+	  C[n] = C[n-1] * dx / n;
 	}
 	for (int n=0; n<PP; n++) {
 	  for (int k=n; k<PP; k++) {
@@ -158,13 +162,15 @@ public:
     for (int i=0; i<numLeafs; i++) {
       real center = X0 - R0 + (2 * i + 1) * R;
       real L[PP];
-      for_m L[m] = Local[i+levelOffset][m];
+      for (int n=0; n<PP; n++) {
+	L[n] = Local[i+levelOffset][n];
+      }
       for (int j=Leafs[i][0]; j<Leafs[i][1]; j++) {
         real dx = Jbodies[j][0] - center;
         real C[PP];
         C[0] = 1;
-	for (int l=1; l<PP; l++) {
-	  C[l] = C[l-1] * dx / l;
+	for (int n=1; n<PP; n++) {
+	  C[n] = C[n-1] * dx / n;
 	}
         for (int l=0; l<PP; l++) Ibodies[j][0] += C[l] * L[l];
 	for (int l=0; l<PP-1; l++) Ibodies[j][1] += C[l] * L[l+1];
