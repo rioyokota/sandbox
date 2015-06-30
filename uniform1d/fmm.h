@@ -65,8 +65,8 @@ public:
     real average = 0;
     for (int i=0; i<numBodies; i++) {
       Jbodies[i][0] = 2 * R0 * (drand48() + ix[0]);
-      Jbodies[i][1] = 2 * R0 * (drand48() + ix[1]);
-      Jbodies[i][2] = 2 * R0 * (drand48() + ix[2]);
+      Jbodies[i][1] = 2 * R0 * (drand48() + ix[1]) * 0;
+      Jbodies[i][2] = 2 * R0 * (drand48() + ix[2]) * 0;
       Jbodies[i][3] = (drand48() - .5) / numBodies;
       average += Jbodies[i][3];
     }
@@ -107,9 +107,6 @@ public:
       }
     }
     Leafs[ileaf][1] = numBodies;
-    for (int i=0; i<numLeafs; i++) {
-      if (Leafs[i][1] == Leafs[i][0]) printf("Warning: Cell %d is empty.\n",i);
-    }
   }
 
   void direct() {
