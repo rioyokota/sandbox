@@ -72,21 +72,13 @@ protected:
 public:
   void P2P() const {
     int nunit = 1 << maxLevel;
-    int nmin = 0;
-    int nmax = nunit - 1;
 #pragma omp parallel for
     for (int i=0; i<numLeafs; i++) {
       int ix[3] = {0, 0, 0};
       getIndex(ix,i);
-      int jxmin[3];
-      for_1 jxmin[d] = MAX(nmin, ix[d] - numNeighbors);
-      int jxmax[3];
-      for_1 jxmax[d] = MIN(nmax, ix[d] + numNeighbors);
-      int jx[3];
-      for (jx[0]=jxmin[0]; jx[0]<=jxmax[0]; jx[0]++) {
-	int jxp[3];
-	for_1 jxp[d] = (jx[d] + nunit) % nunit;
-	int j = getKey(jxp,maxLevel,false);
+      int jmin = MAX(0, ix[0] - numNeighbors);
+      int jmax = MIN(nunit - 1, ix[0] + numNeighbors);
+      for (int j=jmin; j<=jmax; j++) {
 	P2PSum(Leafs[i][0],Leafs[i][1],Leafs[j][0],Leafs[j][1]);
       }
     }
@@ -158,7 +150,7 @@ public:
 	    int j = getKey(jxp,lev);
 	    real dist[3] = {0,0,0};
 	    for_1 dist[d] = (ix[d] - jx[d]) * diameter;
-	    real invR2 = 1. / (dist[0] * dist[0] + dist[1] * dist[1] + dist[2] * dist[2]);
+	    real invR2 = 1. / (dist[0] * dist[0]);
 	    real invR  = sqrt(invR2);
 	    real C[LTERM];
 	    getCoef(C,dist,invR2,invR);

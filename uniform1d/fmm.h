@@ -81,7 +81,7 @@ public:
     int ix[3] = {0, 0, 0};
     for (int i=0; i<numBodies; i++) {
       for_1 ix[d] = int((Jbodies[i][d] + R0 - X0[d]) / diameter);
-      key[i] = getKey(ix,maxLevel);
+      key[i] = getKey(ix,maxLevel,false);
     }
     sort(Jbodies,Ibodies,key);
     for (int i=0; i<numBodies; i++) {
