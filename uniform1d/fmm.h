@@ -30,8 +30,8 @@ public:
     numBodies = NumBodies;
     maxLevel = MaxLevel;
     numNeighbors = NumNeighbors;
-    numCells = ((1 << 3 * (maxLevel + 1)) - 1) / 7;
-    numLeafs = 1 << 3 * maxLevel;
+    numCells = ((1 << (maxLevel + 1)) - 1);
+    numLeafs = 1 << maxLevel;
     Ibodies = new real [numBodies][4]();
     Ibodies2 = new real [numBodies][4]();
     Jbodies = new real [numBodies][4]();
