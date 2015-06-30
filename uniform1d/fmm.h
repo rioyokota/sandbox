@@ -5,7 +5,7 @@
 
 class Fmm : public Kernel {
 private:
-  void sort(real (*bodies)[4], real (*bodies2)[4], int *key) const {
+  void sort(real (*bodies)[2], real (*bodies2)[2], int *key) const {
     int Imax = key[0];
     int Imin = key[0];
     for( int i=0; i<numBodies; i++ ) {
@@ -20,7 +20,7 @@ private:
     for (int i=numBodies-1; i>=0; i--) {
       bucket[key[i]-Imin]--;
       int inew = bucket[key[i]-Imin];
-      for_4 bodies2[inew][d] = bodies[i][d];
+      for_2 bodies2[inew][d] = bodies[i][d];
     }
     delete[] bucket;
   }
@@ -32,9 +32,9 @@ public:
     numNeighbors = NumNeighbors;
     numCells = ((1 << (maxLevel + 1)) - 1);
     numLeafs = 1 << maxLevel;
-    Ibodies = new real [numBodies][4]();
-    Ibodies2 = new real [numBodies][4]();
-    Jbodies = new real [numBodies][4]();
+    Ibodies = new real [numBodies][2]();
+    Ibodies2 = new real [numBodies][2]();
+    Jbodies = new real [numBodies][2]();
     Multipole = new real [numCells][PP]();
     Local = new real [numCells][PP+1]();
     Leafs = new int [numLeafs][2]();
@@ -58,19 +58,17 @@ public:
 
   void initBodies(real cycle) {
     R0 = cycle * .5;
-    for_1 X0[d] = R0;
+    X0 = R0;
     srand48(0);
     real average = 0;
     for (int i=0; i<numBodies; i++) {
       Jbodies[i][0] = 2 * R0 * drand48();
-      Jbodies[i][1] = 0;
-      Jbodies[i][2] = 0;
-      Jbodies[i][3] = (drand48() - .5) / numBodies;
-      average += Jbodies[i][3];
+      Jbodies[i][1] = (drand48() - .5) / numBodies;
+      average += Jbodies[i][1];
     }
     average /= numBodies;
     for (int i=0; i<numBodies; i++) {
-      Jbodies[i][3] -= average;
+      Jbodies[i][1] -= average;
     }
   }
 
@@ -78,22 +76,22 @@ public:
     int *key = new int [numBodies];
     real diameter = 2 * R0 / (1 << maxLevel);
     for (int i=0; i<numBodies; i++) {
-      key[i] = int((Jbodies[i][0] + R0 - X0[0]) / diameter);
+      key[i] = int((Jbodies[i][0] + R0 - X0) / diameter);
     }
     sort(Jbodies,Ibodies,key);
     for (int i=0; i<numBodies; i++) {
-      for_4 Jbodies[i][d] = Ibodies[i][d];
-      for_4 Ibodies[i][d] = 0;
+      for_2 Jbodies[i][d] = Ibodies[i][d];
+      for_2 Ibodies[i][d] = 0;
     }
     delete[] key;
   }
 
   void fillLeafs() const {
     real diameter = 2 * R0 / (1 << maxLevel);
-    int ileaf = int((Jbodies[0][0] + R0 - X0[0]) / diameter);
+    int ileaf = int((Jbodies[0][0] + R0 - X0) / diameter);
     Leafs[ileaf][0] = 0;
     for (int i=0; i<numBodies; i++) {
-      int inew = int((Jbodies[i][0] + R0 - X0[0]) / diameter);
+      int inew = int((Jbodies[i][0] + R0 - X0) / diameter);
       if (ileaf != inew) {
         Leafs[ileaf][1] = Leafs[inew][0] = i;
         ileaf = inew;
@@ -103,18 +101,18 @@ public:
   }
 
   void direct() {
-    real Ibodies3[4], Jbodies2[4], dX[3];
+    real Ibodies3[2], Jbodies2[2];
     for (int i=0; i<100; i++) {
-      for_4 Ibodies3[d] = 0;
-      for_4 Jbodies2[d] = Jbodies[i][d];
+      for_2 Ibodies3[d] = 0;
+      for_2 Jbodies2[d] = Jbodies[i][d];
       for (int j=0; j<numBodies; j++) {
-	for_1 dX[d] = Jbodies2[d] - Jbodies[j][d];
-	real R2 = dX[0] * dX[0];
+	real dx = Jbodies2[0] - Jbodies[j][0];
+	real R2 = dx * dx;
 	real invR2 = R2 == 0 ? 0 : 1.0 / R2;
-	real invR = Jbodies[j][3] * sqrtf(invR2);
-	for_1 dX[d] *= invR2 * invR;
+	real invR = Jbodies[j][1] * sqrtf(invR2);
+	dx *= invR2 * invR;
 	Ibodies3[0] += invR;
-	Ibodies3[1] -= dX[0];
+	Ibodies3[1] -= dx;
       }
       for_2 Ibodies2[i][d] = Ibodies3[d];
     }
@@ -123,8 +121,8 @@ public:
   void verify(int numTargets, real & potDif, real & potNrm, real & accDif, real & accNrm) {
     real potSum = 0, potSum2 = 0;
     for (int i=0; i<numTargets; i++) {
-      potSum += Ibodies[i][0] * Jbodies[i][3];
-      potSum2 += Ibodies2[i][0] * Jbodies[i][3];
+      potSum += Ibodies[i][0] * Jbodies[i][1];
+      potSum2 += Ibodies2[i][0] * Jbodies[i][1];
     }
     potDif = (potSum - potSum2) * (potSum - potSum2);
     potNrm = potSum2 * potSum2;

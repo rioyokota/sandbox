@@ -54,57 +54,10 @@ void M2LSum(real *L, const real *C, const real*M) {
   L[5] += M[0]*C[5];
 }
 
-void powerM(real *C, const real &dx) {
-  C[1] = C[0] * dx;
-  C[2] = C[1] * dx / 2;
-  C[3] = C[2] * dx / 3;
-  C[4] = C[3] * dx / 4;
-  C[5] = C[4] * dx / 5;
-}
-
-void powerL(real *C, const real &dx) {
-  C[1] = C[0] * dx;
-  C[2] = C[1] * dx / 2;
-  C[3] = C[2] * dx / 3;
-  C[4] = C[3] * dx / 4;
-  C[5] = C[4] * dx / 5;
-  C[6] = C[5] * dx / 6;
-}
-
 void M2MSum(real *MI, const real *C, const real *MJ) {
   for (int i=1; i<PP; i++) MI[i] += MJ[i];
   MI[2] += C[1]*MJ[1];
   MI[3] += C[1]*MJ[2]+C[2]*MJ[1];
   MI[4] += C[1]*MJ[3]+C[2]*MJ[2]+C[3]*MJ[1];
   MI[5] += C[1]*MJ[4]+C[2]*MJ[3]+C[3]*MJ[2]+C[4]*MJ[1];
-}
-
-void L2LSum(real *LI, const real *C, const real *LJ) {
-  LI[1] += C[1]*LJ[2];
-
-  LI[1] += C[2]*LJ[3];
-  LI[2] += C[1]*LJ[3];
-
-  LI[1] += C[3]*LJ[4];
-  LI[2] += C[2]*LJ[4];
-  LI[3] += C[1]*LJ[4];
-
-  LI[1] += C[4]*LJ[5];
-  LI[2] += C[3]*LJ[5];
-  LI[3] += C[2]*LJ[5];
-  LI[4] += C[1]*LJ[5];
-
-  LI[1] += C[5]*LJ[6];
-  LI[2] += C[4]*LJ[6];
-  LI[3] += C[3]*LJ[6];
-  LI[4] += C[2]*LJ[6];
-  LI[5] += C[1]*LJ[6];
-}
-
-void L2PSum(real *TRG, const real *C, const real *L) {
-  TRG[1] += C[1]*L[2];
-  TRG[1] += C[2]*L[3];
-  TRG[1] += C[3]*L[4];
-  TRG[1] += C[4]*L[5];
-  TRG[1] += C[5]*L[6];
 }

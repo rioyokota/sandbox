@@ -2,7 +2,6 @@
 #include "types.h"
 #include "core.h"
 
-#define for_1 for (int d=0; d<1; d++)
 #define for_2 for (int d=0; d<2; d++)
 
 class Kernel {
@@ -13,11 +12,11 @@ public:
   int numLeafs;
   int numNeighbors;
 
-  real X0[3];
+  real X0;
   real R0;
-  real (*Ibodies)[4];
-  real (*Ibodies2)[4];
-  real (*Jbodies)[4];
+  real (*Ibodies)[2];
+  real (*Ibodies2)[2];
+  real (*Jbodies)[2];
   real (*Multipole)[PP];
   real (*Local)[PP+1];
   int (*Leafs)[2];
@@ -30,7 +29,7 @@ private:
 	real dx = Jbodies[i][0] - Jbodies[j][0];
 	real R2 = dx * dx;
 	real invR2 = R2 == 0 ? 0 : 1.0 / R2;
-	real invR = Jbodies[j][3] * sqrt(invR2);
+	real invR = Jbodies[j][1] * sqrt(invR2);
 	real invR3 = invR2 * invR;
 	Po += invR;
 	Fx += dx * invR3;
@@ -58,12 +57,14 @@ public:
     real R = R0 / (1 << maxLevel);
 #pragma omp parallel for
     for (int i=0; i<numLeafs; i++) {
-      real center = X0[0] - R0 + (2 * i + 1) * R;
+      real center = X0 - R0 + (2 * i + 1) * R;
       for (int j=Leafs[i][0]; j<Leafs[i][1]; j++) {
         real dx = center - Jbodies[j][0];
         real M[PP] = {0};
-        M[0] = Jbodies[j][3];
-        powerM(M,dx);
+        M[0] = Jbodies[j][1];
+	for (int m=1; m<PP; m++) {
+	  M[m] = M[m-1] * dx / m;
+	}
         for_m Multipole[i+levelOffset][m] += M[m];
       }
     }
@@ -81,7 +82,9 @@ public:
         real dx = (1 - (i & 1) * 2) * radius;
         real C[PP] = {0};
         C[0] = 1;
-        powerM(C,dx);
+	for (int m=1; m<PP; m++) {
+	  C[m] = C[m-1] * dx / m;
+	}
         for_m Multipole[p][m] += C[m] * Multipole[c][0];
         M2MSum(Multipole[p],C,Multipole[c]);
       }
@@ -124,12 +127,17 @@ public:
         int c = i + childOffset;
         int p = (i >> 1) + parentOffset;
         real dx = ((i & 1) * 2 - 1) * radius;
-        real C[PP+1] = {0};
+        real C[PP+1];
         C[0] = 1;
-        powerL(C,dx);
+	for (int l=1; l<PP+1; l++) {
+	  C[l] = C[l-1] * dx / l;
+	}
         for_l Local[c][l] += Local[p][l];
-        for (int l=1; l<PP+1; l++) Local[c][0] += C[l] * Local[p][l];
-        L2LSum(Local[c],C,Local[p]);
+	for (int n=0; n<PP; n++) {
+	  for (int k=1; k<PP-n; k++) {
+	    Local[c][n] += C[k] * Local[p][n+k];
+	  }
+	}
       }
     }
   }
@@ -139,17 +147,18 @@ public:
     real R = R0 / (1 << maxLevel);
 #pragma omp parallel for
     for (int i=0; i<numLeafs; i++) {
-      real center = X0[0] - R0 + (2 * i + 1) * R;
+      real center = X0 - R0 + (2 * i + 1) * R;
       real L[PP+1];
       for_l L[l] = Local[i+levelOffset][l];
       for (int j=Leafs[i][0]; j<Leafs[i][1]; j++) {
         real dx = Jbodies[j][0] - center;
-        real C[PP+1] = {0};
+        real C[PP+1];
         C[0] = 1;
-        powerL(C,dx);
-        for_2 Ibodies[j][d] += L[d];
-        for (int l=1; l<PP+1; l++) Ibodies[j][0] += C[l] * L[l];
-        L2PSum(Ibodies[j],C,L);
+	for (int l=1; l<PP+1; l++) {
+	  C[l] = C[l-1] * dx / l;
+	}
+        for (int l=0; l<PP+1; l++) Ibodies[j][0] += C[l] * L[l];
+	for (int l=0; l<PP; l++) Ibodies[j][1] += C[l] * L[l+1];
       }
     }
   }
