@@ -1,24 +1,23 @@
-void getCoef(real *C, const real *dist, real &invR2, const real &invR) {
+void getCoef(real *C, const real &dx, real &invR2, const real &invR) {
   C[0] = invR;
   invR2 = -invR2;
-  real x = dist[0];
   real invR3 = invR * invR2;
-  C[1] = x * invR3;
+  C[1] = dx * invR3;
   real invR5 = 3 * invR3 * invR2;
-  real t = x * invR5;
-  C[2] = x * t + invR3;
+  real t = dx * invR5;
+  C[2] = dx * t + invR3;
   real invR7 = 5 * invR5 * invR2;
-  t = x * x * invR7;
-  C[3] = x * (t + 3 * invR5);
+  t = dx * dx * invR7;
+  C[3] = dx * (t + 3 * invR5);
   real invR9 = 7 * invR7 * invR2;
-  t = x * x * invR9;
-  C[4] = x * x * (t + 6 * invR7) + 3 * invR5;
+  t = dx * dx * invR9;
+  C[4] = dx * dx * (t + 6 * invR7) + 3 * invR5;
   real invR11 = 9 * invR9 * invR2;
-  t = x * x * invR11;
-  C[5] = x * x * x * (t + 10 * invR9) + 15 * x * invR7;
+  t = dx * dx * invR11;
+  C[5] = dx * dx * dx * (t + 10 * invR9) + 15 * dx * invR7;
   real invR13 = 11 * invR11 * invR2;
-  t = x * x * invR13;
-  C[6] = x * x * x * x * (t + 15 * invR11) + 45 * x * x * invR9 + 15 * invR7;
+  t = dx * dx * invR13;
+  C[6] = dx * dx * dx * dx * (t + 15 * invR11) + 45 * dx * dx * invR9 + 15 * invR7;
 }
 
 void M2LSum(real *L, const real *C, const real*M) {
@@ -55,21 +54,21 @@ void M2LSum(real *L, const real *C, const real*M) {
   L[5] += M[0]*C[5];
 }
 
-void powerM(real *C, const real *dist) {
-  C[1] = C[0] * dist[0];
-  C[2] = C[1] * dist[0] / 2;
-  C[3] = C[2] * dist[0] / 3;
-  C[4] = C[3] * dist[0] / 4;
-  C[5] = C[4] * dist[0] / 5;
+void powerM(real *C, const real &dx) {
+  C[1] = C[0] * dx;
+  C[2] = C[1] * dx / 2;
+  C[3] = C[2] * dx / 3;
+  C[4] = C[3] * dx / 4;
+  C[5] = C[4] * dx / 5;
 }
 
-void powerL(real *C, const real *dist) {
-  C[1] = C[0] * dist[0];
-  C[2] = C[1] * dist[0] / 2;
-  C[3] = C[2] * dist[0] / 3;
-  C[4] = C[3] * dist[0] / 4;
-  C[5] = C[4] * dist[0] / 5;
-  C[6] = C[5] * dist[0] / 6;
+void powerL(real *C, const real &dx) {
+  C[1] = C[0] * dx;
+  C[2] = C[1] * dx / 2;
+  C[3] = C[2] * dx / 3;
+  C[4] = C[3] * dx / 4;
+  C[5] = C[4] * dx / 5;
+  C[6] = C[5] * dx / 6;
 }
 
 void M2MSum(real *MI, const real *C, const real *MJ) {
