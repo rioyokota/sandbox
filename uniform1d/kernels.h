@@ -2,6 +2,9 @@
 #include "types.h"
 #include "core.h"
 
+#define for_1 for (int d=0; d<1; d++)
+#define for_2 for (int d=0; d<2; d++)
+
 class Kernel {
 public:
   int maxLevel;
@@ -35,28 +38,24 @@ private:
     real R = R0 / (1 << level);
     int ix[3] = {0, 0, 0};
     getIndex(ix, index);
-    for_3 dist[d] = X0[d] - R0 + (2 * ix[d] + 1) * R;
+    for_1 dist[d] = X0[d] - R0 + (2 * ix[d] + 1) * R;
   }
 
   void P2PSum(int ibegin, int iend, int jbegin, int jend) const {
     for (int i=ibegin; i<iend; i++) {
-      real Po = 0, Fx = 0, Fy = 0, Fz = 0;
+      real Po = 0, Fx = 0;
       for (int j=jbegin; j<jend; j++) {
 	real dist[3];
-	for_3 dist[d] = Jbodies[i][d] - Jbodies[j][d];
+	for_1 dist[d] = Jbodies[i][d] - Jbodies[j][d];
 	real R2 = dist[0] * dist[0];
 	real invR2 = R2 == 0 ? 0 : 1.0 / R2;
 	real invR = Jbodies[j][3] * sqrt(invR2);
 	real invR3 = invR2 * invR;
 	Po += invR;
 	Fx += dist[0] * invR3;
-	Fy += dist[1] * invR3;
-	Fz += dist[2] * invR3;
       }
       Ibodies[i][0] += Po;
       Ibodies[i][1] -= Fx;
-      Ibodies[i][2] -= Fy;
-      Ibodies[i][3] -= Fz;
     }
   }
   
@@ -65,7 +64,7 @@ protected:
     int id = 0;
     if (levelOffset) id = ((1 << 3 * level) - 1) / 7;
     for (int lev=0; lev<level; lev++) {
-      for_3 id += ((ix[d] >> lev) & 1) << (3 * lev + d);
+      for_1 id += ((ix[d] >> lev) & 1) << (3 * lev + d);
     }
     return id;
   }
@@ -80,19 +79,15 @@ public:
       int ix[3] = {0, 0, 0};
       getIndex(ix,i);
       int jxmin[3];
-      for_3 jxmin[d] = MAX(nmin, ix[d] - numNeighbors);
+      for_1 jxmin[d] = MAX(nmin, ix[d] - numNeighbors);
       int jxmax[3];
-      for_3 jxmax[d] = MIN(nmax, ix[d] + numNeighbors);
+      for_1 jxmax[d] = MIN(nmax, ix[d] + numNeighbors);
       int jx[3];
-      for (jx[2]=jxmin[2]; jx[2]<=jxmax[2]; jx[2]++) {
-        for (jx[1]=jxmin[1]; jx[1]<=jxmax[1]; jx[1]++) {
-          for (jx[0]=jxmin[0]; jx[0]<=jxmax[0]; jx[0]++) {
-	    int jxp[3];
-	    for_3 jxp[d] = (jx[d] + nunit) % nunit;
-            int j = getKey(jxp,maxLevel,false);
-            P2PSum(Leafs[i][0],Leafs[i][1],Leafs[j][0],Leafs[j][1]);
-          }
-        }
+      for (jx[0]=jxmin[0]; jx[0]<=jxmax[0]; jx[0]++) {
+	int jxp[3];
+	for_1 jxp[d] = (jx[d] + nunit) % nunit;
+	int j = getKey(jxp,maxLevel,false);
+	P2PSum(Leafs[i][0],Leafs[i][1],Leafs[j][0],Leafs[j][1]);
       }
     }
   }
@@ -104,8 +99,8 @@ public:
       real center[3];
       getCenter(center,i,maxLevel);
       for (int j=Leafs[i][0]; j<Leafs[i][1]; j++) {
-        real dist[3];
-        for_3 dist[d] = center[d] - Jbodies[j][d];
+        real dist[3] = {0,0,0};
+        for_1 dist[d] = center[d] - Jbodies[j][d];
         real M[MTERM];
         M[0] = Jbodies[j][3];
         powerM(M,dist);
@@ -127,8 +122,8 @@ public:
         ix[0] = 1 - (i & 1) * 2;
         ix[1] = 1 - ((i / 2) & 1) * 2;
         ix[2] = 1 - ((i / 4) & 1) * 2;
-        real dist[3];
-        for_3 dist[d] = ix[d] * radius;
+        real dist[3] = {0,0,0};
+        for_1 dist[d] = ix[d] * radius;
         real C[LTERM];
         C[0] = 1;
         powerM(C,dist);
@@ -149,33 +144,27 @@ public:
       for (int i=0; i<(1 << 3 * lev); i++) {
         real L[LTERM];
         for_l L[l] = 0;
-        int ix[3] = {0, 0, 0};
+        int ix[3] = {0,0,0};
         getIndex(ix,i);
         int jxmin[3];
-        for_3 jxmin[d] =  MAX(nmin, (ix[d] >> 1) - numNeighbors) << 1;
+        for_1 jxmin[d] =  MAX(nmin, (ix[d] >> 1) - numNeighbors) << 1;
         int jxmax[3];
-        for_3 jxmax[d] = (MIN(nmax, (ix[d] >> 1) + numNeighbors) << 1) + 1;
+        for_1 jxmax[d] = (MIN(nmax, (ix[d] >> 1) + numNeighbors) << 1) + 1;
         int jx[3];
-        for (jx[2]=jxmin[2]; jx[2]<=jxmax[2]; jx[2]++) {
-          for (jx[1]=jxmin[1]; jx[1]<=jxmax[1]; jx[1]++) {
-            for (jx[0]=jxmin[0]; jx[0]<=jxmax[0]; jx[0]++) {
-              if(jx[0] < ix[0]-numNeighbors || ix[0]+numNeighbors < jx[0] ||
-                 jx[1] < ix[1]-numNeighbors || ix[1]+numNeighbors < jx[1] ||
-                 jx[2] < ix[2]-numNeighbors || ix[2]+numNeighbors < jx[2]) {
-		int jxp[3];
-		for_3 jxp[d] = (jx[d] + nunit) % nunit;
-                int j = getKey(jxp,lev);
-                real dist[3];
-                for_3 dist[d] = (ix[d] - jx[d]) * diameter;
-                real invR2 = 1. / (dist[0] * dist[0] + dist[1] * dist[1] + dist[2] * dist[2]);
-                real invR  = sqrt(invR2);
-                real C[LTERM];
-                getCoef(C,dist,invR2,invR);
-                M2LSum(L,C,Multipole[j]);
-              }
-            }
-          }
-        }
+	for (jx[0]=jxmin[0]; jx[0]<=jxmax[0]; jx[0]++) {
+	  if(jx[0] < ix[0]-numNeighbors || ix[0]+numNeighbors < jx[0]) {
+	    int jxp[3];
+	    for_1 jxp[d] = (jx[d] + nunit) % nunit;
+	    int j = getKey(jxp,lev);
+	    real dist[3] = {0,0,0};
+	    for_1 dist[d] = (ix[d] - jx[d]) * diameter;
+	    real invR2 = 1. / (dist[0] * dist[0] + dist[1] * dist[1] + dist[2] * dist[2]);
+	    real invR  = sqrt(invR2);
+	    real C[LTERM];
+	    getCoef(C,dist,invR2,invR);
+	    M2LSum(L,C,Multipole[j]);
+	  }
+	}
         for_l Local[i+levelOffset][l] += L[l];
       }
     }
@@ -194,8 +183,8 @@ public:
         ix[0] = (i & 1) * 2 - 1;
         ix[1] = ((i / 2) & 1) * 2 - 1;
         ix[2] = ((i / 4) & 1) * 2 - 1;
-        real dist[3];
-        for_3 dist[d] = ix[d] * radius;
+        real dist[3] = {0,0,0};
+        for_1 dist[d] = ix[d] * radius;
         real C[LTERM];
         C[0] = 1;
         powerL(C,dist);
@@ -215,12 +204,12 @@ public:
       real L[LTERM];
       for_l L[l] = Local[i+levelOffset][l];
       for (int j=Leafs[i][0]; j<Leafs[i][1]; j++) {
-        real dist[3];
-        for_3 dist[d] = Jbodies[j][d] - center[d];
+        real dist[3] = {0,0,0};
+        for_1 dist[d] = Jbodies[j][d] - center[d];
         real C[LTERM];
         C[0] = 1;
         powerL(C,dist);
-        for_4 Ibodies[j][d] += L[d];
+        for_2 Ibodies[j][d] += L[d];
         for (int l=1; l<LTERM; l++) Ibodies[j][0] += C[l] * L[l];
         L2PSum(Ibodies[j],C,L);
       }
