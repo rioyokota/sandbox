@@ -36,11 +36,13 @@ public:
     Ibodies2 = new real [numBodies][2]();
     Jbodies = new real [numBodies][2]();
     Multipole = new real [numCells][PP]();
-    Local = new real [numCells][PP+1]();
+    Local = new real [numCells][PP]();
     Leafs = new int [numLeafs][2]();
     for (int i=0; i<numCells; i++) {
-      for_m Multipole[i][m] = 0;
-      for_l Local[i][l] = 0;
+      for (int n=0; n<PP; n++) {
+	Multipole[i][n] = 0;
+	Local[i][n] = 0;
+      }
     }
     for (int i=0; i<numLeafs; i++) {
       Leafs[i][0] = Leafs[i][1] = 0;

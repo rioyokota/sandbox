@@ -3,11 +3,11 @@
 
 int main() {
   Fmm FMM;
-  const int numBodies = 10000;
-  const int ncrit = 100;
+  const int numBodies = 1000000;
+  const int ncrit = 10;
   const int maxLevel = numBodies >= ncrit ? 1 + int(log(numBodies / ncrit)/M_LN2) : 0;
   const int numNeighbors = 1;
-  const real cycle = 10 * M_PI;
+  const real cycle = 2 * M_PI;
   real potDif = 0, potNrm = 0, accDif = 0, accNrm = 0;
 
   logger::verbose = true;

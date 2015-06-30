@@ -18,7 +18,7 @@ public:
   real (*Ibodies2)[2];
   real (*Jbodies)[2];
   real (*Multipole)[PP];
-  real (*Local)[PP+1];
+  real (*Local)[PP];
   int (*Leafs)[2];
 
 private:
@@ -65,7 +65,9 @@ public:
 	for (int m=1; m<PP; m++) {
 	  M[m] = M[m-1] * dx / m;
 	}
-        for_m Multipole[i+levelOffset][m] += M[m];
+	for (int n=0; n<PP; n++) {
+	  Multipole[i+levelOffset][n] += M[n];
+	}
       }
     }
   }
