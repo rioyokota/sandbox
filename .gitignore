@@ -4,6 +4,6 @@
 *.mod
 *.o
 *.so
-*.out
+*.out*
 *.th_o
 .deps

@@ -14,48 +14,46 @@ double get_time() {
 }
 
 int main() {
-  const int nx = 100; // Number of target points
-  const int ny = 100; // Number of source points
-  const int P = 4; // Order of multipole expansions
+  const int N = 40; // Number of points
+  const int P = 10; // Order of multipole expansions
   const int pointsPerLeaf = 4; // Number of points per leaf cell
   const float eps = 1e-6; // Epsilon
   // Allocate memory
-  int * ix = new int [nx]; // Index
-  int * iy = new int [ny]; // Index
-  float * x = new float [nx]; // Target coordinates
-  float * y = new float [ny]; // Source coordinates
-  float * p = new float [nx]; // Target values
-  float * w = new float [ny]; // Source values
+  int * ix = new int [N]; // Index
+  int * iy = new int [N]; // Index
+  float * x = new float [N]; // Target coordinates
+  float * y = new float [N]; // Source coordinates
+  float * p = new float [N]; // Target values
+  float * w = new float [N]; // Source values
   // Initialize variables
-  for (int i=0; i<nx; i++) {
-    x[i] = (i + 0.5) / nx; // Random number [0,1]
+  for (int i=0; i<N; i++) {
+    x[i] = (i + 0.5) / N; // Random number [0,1]
     p[i] = 0;
   }
-  for (int i=0; i<ny; i++) {
-    y[i] = (i + 0.5) / ny; // Random number [0,1]
+  for (int i=0; i<N; i++) {
+    y[i] = (i + 0.5) / N; // Random number [0,1]
     w[i] = 1;
   }
   double tic = get_time();
   // Min and Max of x
   float xmin = x[0], xmax = x[0]; // Initialize xmin, xmax
-  for (int i=1; i<nx; i++) {
+  for (int i=1; i<N; i++) {
     xmin = x[i] < xmin ? x[i] : xmin; // xmin = min(x[i],xmin)
     xmax = x[i] > xmax ? x[i] : xmax; // xmax = max(x[i],xmax)
   }
-  for (int i=1; i<ny; i++) {
+  for (int i=1; i<N; i++) {
     xmin = y[i] < xmin ? y[i] : xmin; // xmin = min(y[i],xmin)
     xmax = y[i] > xmax ? y[i] : xmax; // xmax = max(y[i],xmax)
   }
   xmin -= eps; // Give some leeway to avoid points on boundary
   xmax += eps;
   // Assign cell index to points
-  const int n = std::max(nx,ny); // Larger of the two
-  const int numLevels = log(n/pointsPerLeaf) / M_LN2; // Depth of binary tree
+  const int numLevels = log(N/pointsPerLeaf) / M_LN2; // Depth of binary tree
   const int maxLevel = numLevels - 1; // Level starts from 0
   const int numLeafs = 1 << maxLevel; // Cells at the bottom of binary tree
   const int numCells = 2 * numLeafs; // Total number of cells in binary tree
   const float leafSize = (xmax - xmin) / numLeafs; // Length of the leaf cell
-  for (int i=0; i<nx; i++)
+  for (int i=0; i<N; i++)
     ix[i] = (x[i] - xmin) / leafSize; // Group points according to leaf cell's ix
   // Allocate multipole & local expansions
   float (*m)[P] = new float [numCells][P]; // Multipole expansion coefficients
@@ -64,7 +62,7 @@ int main() {
     for (int n=0; n<P; n++) m[i][n] = l[i][n] = 0;
   // P2M
   int offset = ((1 << maxLevel) - 1);
-  for (int i=0; i<nx; i++) {
+  for (int i=0; i<N; i++) {
     const float xCell = leafSize * (ix[i] + .5) + xmin;
     const float dx = xCell - x[i];
     float M[P] = {0};
@@ -72,7 +70,9 @@ int main() {
     for (int n=1; n<P; n++) {
       M[n] = M[n-1] * dx / n;
     }
-    for (int n=0; n<P; n++) m[ix[i]+offset][n] += M[n];
+    for (int n=0; n<P; n++) {
+      m[ix[i]+offset][n] += M[n];
+    }
   }
   // M2M
   for (int level=maxLevel; level>=3; level--) {
@@ -146,7 +146,7 @@ int main() {
   }
   // L2P
   offset = ((1 << maxLevel) - 1);
-  for (int i=0; i<nx; i++) {
+  for (int i=0; i<N; i++) {
     const float xCell = leafSize * (ix[i] + .5) + xmin;
     const float dx = x[i] - xCell;
     float C[P];
@@ -159,24 +159,27 @@ int main() {
     }
   }
   // P2P
-  for (int i=0; i<nx; i++) {
-    for (int j=0; j<nx; j++) {
-      if(abs(ix[i] - ix[j]) < 2) {
-	const float R = fabs(x[i] - x[j]) + eps;
+  for (int i=0; i<N; i++) {
+    for (int j=0; j<N; j++) {
+      if(abs(ix[i] - ix[j]) < 2 && i != j) {
+	const float R = fabs(x[i] - x[j]);
 	p[i] += w[j] / R;
       }
     }
+    printf("%d %f\n",i,p[i]);
   }
 
   double toc = get_time();
   std::cout << "FMM    : " << toc-tic << std::endl;
   // Direct summation
   double dif = 0, nrm = 0;
-  for (int i=0; i<nx; i++) {
+  for (int i=0; i<N; i++) {
     float pi = 0;
-    for (int j=0; j<nx; j++) {
-      const float R = fabs(x[i] - x[j]) + eps;
-      pi += w[j] / R;
+    for (int j=0; j<N; j++) {
+      if (i != j) {
+	const float R = fabs(x[i] - x[j]);
+	pi += w[j] / R;
+      }
     }
     dif += (p[i] - pi) * (p[i] - pi);
     nrm += pi * pi;
