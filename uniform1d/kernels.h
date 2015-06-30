@@ -74,7 +74,7 @@ public:
       int childOffset = ((1 << lev) - 1);
       int parentOffset = ((1 << (lev - 1)) - 1);
       real radius = R0 / (1 << lev);
-#pragma omp parallel for schedule(static, 4)
+#pragma omp parallel for
       for (int i=0; i<(1 << lev); i++) {
         int c = i + childOffset;
         int p = (i >> 1) + parentOffset;

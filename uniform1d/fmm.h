@@ -104,9 +104,9 @@ public:
     Leafs[ileaf][1] = numBodies;
   }
 
-  void direct() {
+  void direct(int numTargets) {
     real Ibodies3[2], Jbodies2[2];
-    for (int i=0; i<100; i++) {
+    for (int i=0; i<numTargets; i++) {
       for_2 Ibodies3[d] = 0;
       for_2 Jbodies2[d] = Jbodies[i][d];
       for (int j=0; j<numBodies; j++) {

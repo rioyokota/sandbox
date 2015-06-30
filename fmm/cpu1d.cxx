@@ -14,7 +14,7 @@ double get_time() {
 }
 
 int main() {
-  const int N = 40; // Number of points
+  const int N = 1000; // Number of points
   const int P = 10; // Order of multipole expansions
   const int pointsPerLeaf = 4; // Number of points per leaf cell
   const float eps = 1e-6; // Epsilon
@@ -166,7 +166,6 @@ int main() {
 	p[i] += w[j] / R;
       }
     }
-    printf("%d %f\n",i,p[i]);
   }
 
   double toc = get_time();

@@ -3,7 +3,8 @@
 
 int main() {
   Fmm FMM;
-  const int numBodies = 1000000;
+  const int numBodies = 10000;
+  const int numTargets = 10000;
   const int ncrit = 10;
   const int maxLevel = numBodies >= ncrit ? 1 + int(log(numBodies / ncrit)/M_LN2) : 0;
   const int numNeighbors = 1;
@@ -54,8 +55,8 @@ int main() {
   logger::stopTimer("P2P");
 
   logger::startTimer("Verify");
-  FMM.direct();
-  FMM.verify(100, potDif, potNrm, accDif, accNrm);
+  FMM.direct(numTargets);
+  FMM.verify(numTargets, potDif, potNrm, accDif, accNrm);
   logger::stopTimer("Verify");
 
   logger::startTimer("Deallocate");
