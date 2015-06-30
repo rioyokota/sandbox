@@ -139,13 +139,12 @@ public:
         real dx = ((i & 1) * 2 - 1) * radius;
         real C[PP+1];
         C[0] = 1;
-	for (int l=1; l<PP+1; l++) {
+	for (int l=1; l<PP; l++) {
 	  C[l] = C[l-1] * dx / l;
 	}
-        for_l Local[c][l] += Local[p][l];
 	for (int n=0; n<PP; n++) {
-	  for (int k=1; k<PP-n; k++) {
-	    Local[c][n] += C[k] * Local[p][n+k];
+	  for (int k=n; k<PP; k++) {
+	    Local[c][n] += C[k-n] * Local[p][k];
 	  }
 	}
       }
