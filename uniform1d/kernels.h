@@ -63,7 +63,7 @@ public:
       for (int j=Leafs[i][0]; j<Leafs[i][1]; j++) {
         real dist[3] = {0,0,0};
         for_1 dist[d] = center - Jbodies[j][d];
-        real M[MTERM];
+        real M[MTERM] = {0};
         M[0] = Jbodies[j][3];
         powerM(M,dist);
         for_m Multipole[i+levelOffset][m] += M[m];
@@ -82,7 +82,7 @@ public:
         int p = (i >> 1) + parentOffset;
         real dist[3] = {0,0,0};
         dist[0] = (1 - (i & 1) * 2) * radius;
-        real C[LTERM];
+        real C[MTERM] = {0};
         C[0] = 1;
         powerM(C,dist);
         for_m Multipole[p][m] += C[m] * Multipole[c][0];
@@ -129,7 +129,7 @@ public:
         int p = (i >> 1) + parentOffset;
         real dist[3] = {0,0,0};
         for_1 dist[d] = ((i & 1) * 2 - 1) * radius;
-        real C[LTERM];
+        real C[LTERM] = {0};
         C[0] = 1;
         powerL(C,dist);
         for_l Local[c][l] += Local[p][l];
@@ -150,7 +150,7 @@ public:
       for (int j=Leafs[i][0]; j<Leafs[i][1]; j++) {
         real dist[3] = {0,0,0};
         for_1 dist[d] = Jbodies[j][d] - center;
-        real C[LTERM];
+        real C[LTERM] = {0};
         C[0] = 1;
         powerL(C,dist);
         for_2 Ibodies[j][d] += L[d];
