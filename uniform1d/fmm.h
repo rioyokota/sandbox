@@ -35,8 +35,8 @@ public:
     Ibodies = new real [numBodies][4]();
     Ibodies2 = new real [numBodies][4]();
     Jbodies = new real [numBodies][4]();
-    Multipole = new real [numCells][MTERM]();
-    Local = new real [numCells][LTERM]();
+    Multipole = new real [numCells][PP]();
+    Local = new real [numCells][PP+1]();
     Leafs = new int [numLeafs][2]();
     for (int i=0; i<numCells; i++) {
       for_m Multipole[i][m] = 0;

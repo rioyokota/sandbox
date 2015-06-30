@@ -18,8 +18,8 @@ public:
   real (*Ibodies)[4];
   real (*Ibodies2)[4];
   real (*Jbodies)[4];
-  real (*Multipole)[MTERM];
-  real (*Local)[LTERM];
+  real (*Multipole)[PP];
+  real (*Local)[PP+1];
   int (*Leafs)[2];
 
 private:
@@ -63,7 +63,7 @@ public:
       for (int j=Leafs[i][0]; j<Leafs[i][1]; j++) {
         real dist[3] = {0,0,0};
         for_1 dist[d] = center - Jbodies[j][d];
-        real M[MTERM] = {0};
+        real M[PP] = {0};
         M[0] = Jbodies[j][3];
         powerM(M,dist);
         for_m Multipole[i+levelOffset][m] += M[m];
@@ -82,7 +82,7 @@ public:
         int p = (i >> 1) + parentOffset;
         real dist[3] = {0,0,0};
         dist[0] = (1 - (i & 1) * 2) * radius;
-        real C[MTERM] = {0};
+        real C[PP] = {0};
         C[0] = 1;
         powerM(C,dist);
         for_m Multipole[p][m] += C[m] * Multipole[c][0];
@@ -98,7 +98,7 @@ public:
       real diameter = 2 * R0 / (1 << lev);
 #pragma omp parallel for
       for (int i=0; i<(1 << lev); i++) {
-        real L[LTERM];
+        real L[PP+1];
         for_l L[l] = 0;
         int jmin =  MAX(0, (i >> 1) - numNeighbors) << 1;
         int jmax = (MIN((nunit >> 1) - 1, (i >> 1) + numNeighbors) << 1) + 1;
@@ -108,7 +108,7 @@ public:
 	    dist[0] = (i - j) * diameter;
 	    real invR2 = 1. / (dist[0] * dist[0]);
 	    real invR  = sqrt(invR2);
-	    real C[LTERM];
+	    real C[PP+1];
 	    getCoef(C,dist,invR2,invR);
 	    M2LSum(L,C,Multipole[j+levelOffset]);
 	  }
@@ -129,11 +129,11 @@ public:
         int p = (i >> 1) + parentOffset;
         real dist[3] = {0,0,0};
         for_1 dist[d] = ((i & 1) * 2 - 1) * radius;
-        real C[LTERM] = {0};
+        real C[PP+1] = {0};
         C[0] = 1;
         powerL(C,dist);
         for_l Local[c][l] += Local[p][l];
-        for (int l=1; l<LTERM; l++) Local[c][0] += C[l] * Local[p][l];
+        for (int l=1; l<PP+1; l++) Local[c][0] += C[l] * Local[p][l];
         L2LSum(Local[c],C,Local[p]);
       }
     }
@@ -145,16 +145,16 @@ public:
 #pragma omp parallel for
     for (int i=0; i<numLeafs; i++) {
       real center = X0[0] - R0 + (2 * i + 1) * R;
-      real L[LTERM];
+      real L[PP+1];
       for_l L[l] = Local[i+levelOffset][l];
       for (int j=Leafs[i][0]; j<Leafs[i][1]; j++) {
         real dist[3] = {0,0,0};
         for_1 dist[d] = Jbodies[j][d] - center;
-        real C[LTERM] = {0};
+        real C[PP+1] = {0};
         C[0] = 1;
         powerL(C,dist);
         for_2 Ibodies[j][d] += L[d];
-        for (int l=1; l<LTERM; l++) Ibodies[j][0] += C[l] * L[l];
+        for (int l=1; l<PP+1; l++) Ibodies[j][0] += C[l] * L[l];
         L2PSum(Ibodies[j],C,L);
       }
     }
