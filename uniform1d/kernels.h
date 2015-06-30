@@ -26,22 +26,11 @@ private:
   inline void getIndex(int *ix, int index) const {
     for_3 ix[d] = 0;
     ix[0] = index;
-    /*
-    int d = 0, level = 0;
-    while (index != 0) {
-      ix[d] += (index & 1) * (1 << level);
-      index >>= 1;
-      d = (d+1) % 3;
-      if (d == 0) level++;
-    }
-    */
   }
 
   void getCenter(real *dist, int index, int level) const {
     real R = R0 / (1 << level);
-    int ix[3] = {0, 0, 0};
-    getIndex(ix, index);
-    for_1 dist[d] = X0[d] - R0 + (2 * ix[d] + 1) * R;
+    for_1 dist[d] = X0[d] - R0 + (2 * index + 1) * R;
   }
 
   void P2PSum(int ibegin, int iend, int jbegin, int jend) const {
@@ -75,10 +64,8 @@ public:
     int nunit = 1 << maxLevel;
 #pragma omp parallel for
     for (int i=0; i<numLeafs; i++) {
-      int ix[3] = {0, 0, 0};
-      getIndex(ix,i);
-      int jmin = MAX(0, ix[0] - numNeighbors);
-      int jmax = MIN(nunit - 1, ix[0] + numNeighbors);
+      int jmin = MAX(0, i - numNeighbors);
+      int jmax = MIN(nunit - 1, i + numNeighbors);
       for (int j=jmin; j<=jmax; j++) {
 	P2PSum(Leafs[i][0],Leafs[i][1],Leafs[j][0],Leafs[j][1]);
       }
@@ -111,10 +98,8 @@ public:
       for (int i=0; i<(1 << lev); i++) {
         int c = i + childOffset;
         int p = (i >> 1) + parentOffset;
-        int ix[3];
-        ix[0] = 1 - (i & 1) * 2;
         real dist[3] = {0,0,0};
-        for_1 dist[d] = ix[d] * radius;
+        dist[0] = (1 - (i & 1) * 2) * radius;
         real C[LTERM];
         C[0] = 1;
         powerM(C,dist);
@@ -129,31 +114,21 @@ public:
       int levelOffset = ((1 << lev) - 1);
       int nunit = 1 << lev;
       real diameter = 2 * R0 / (1 << lev);
-      int nmin = 0;
-      int nmax = (nunit >> 1) - 1;
 #pragma omp parallel for
       for (int i=0; i<(1 << lev); i++) {
         real L[LTERM];
         for_l L[l] = 0;
-        int ix[3] = {0,0,0};
-        getIndex(ix,i);
-        int jxmin[3];
-        for_1 jxmin[d] =  MAX(nmin, (ix[d] >> 1) - numNeighbors) << 1;
-        int jxmax[3];
-        for_1 jxmax[d] = (MIN(nmax, (ix[d] >> 1) + numNeighbors) << 1) + 1;
-        int jx[3];
-	for (jx[0]=jxmin[0]; jx[0]<=jxmax[0]; jx[0]++) {
-	  if(jx[0] < ix[0]-numNeighbors || ix[0]+numNeighbors < jx[0]) {
-	    int jxp[3];
-	    for_1 jxp[d] = (jx[d] + nunit) % nunit;
-	    int j = getKey(jxp,lev);
+        int jmin =  MAX(0, (i >> 1) - numNeighbors) << 1;
+        int jmax = (MIN((nunit >> 1) - 1, (i >> 1) + numNeighbors) << 1) + 1;
+	for (int j=jmin; j<=jmax; j++) {
+	  if(j < i-numNeighbors || i+numNeighbors < j) {
 	    real dist[3] = {0,0,0};
-	    for_1 dist[d] = (ix[d] - jx[d]) * diameter;
+	    dist[0] = (i - j) * diameter;
 	    real invR2 = 1. / (dist[0] * dist[0]);
 	    real invR  = sqrt(invR2);
 	    real C[LTERM];
 	    getCoef(C,dist,invR2,invR);
-	    M2LSum(L,C,Multipole[j]);
+	    M2LSum(L,C,Multipole[j+levelOffset]);
 	  }
 	}
         for_l Local[i+levelOffset][l] += L[l];
