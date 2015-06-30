@@ -23,16 +23,6 @@ public:
   int (*Leafs)[2];
 
 private:
-  inline void getIndex(int *ix, int index) const {
-    for_3 ix[d] = 0;
-    ix[0] = index;
-  }
-
-  void getCenter(real *dist, int index, int level) const {
-    real R = R0 / (1 << level);
-    for_1 dist[d] = X0[d] - R0 + (2 * index + 1) * R;
-  }
-
   void P2PSum(int ibegin, int iend, int jbegin, int jend) const {
     for (int i=ibegin; i<iend; i++) {
       real Po = 0, Fx = 0;
@@ -51,14 +41,6 @@ private:
     }
   }
   
-protected:
-  inline int getKey(int *ix, int level, bool levelOffset=true) const {
-    int id = 0;
-    if (levelOffset) id = ((1 << level) - 1);
-    for_1 id += ix[0];
-    return id;
-  }
-
 public:
   void P2P() const {
     int nunit = 1 << maxLevel;
@@ -74,13 +56,13 @@ public:
 
   void P2M() const {
     int levelOffset = ((1 << maxLevel) - 1);
+    real R = R0 / (1 << maxLevel);
 #pragma omp parallel for
     for (int i=0; i<numLeafs; i++) {
-      real center[3];
-      getCenter(center,i,maxLevel);
+      real center = X0[0] - R0 + (2 * i + 1) * R;
       for (int j=Leafs[i][0]; j<Leafs[i][1]; j++) {
         real dist[3] = {0,0,0};
-        for_1 dist[d] = center[d] - Jbodies[j][d];
+        for_1 dist[d] = center - Jbodies[j][d];
         real M[MTERM];
         M[0] = Jbodies[j][3];
         powerM(M,dist);
@@ -145,10 +127,8 @@ public:
       for (int i=0; i<(1 << lev); i++) {
         int c = i + childOffset;
         int p = (i >> 1) + parentOffset;
-        int ix[3];
-        ix[0] = (i & 1) * 2 - 1;
         real dist[3] = {0,0,0};
-        for_1 dist[d] = ix[d] * radius;
+        for_1 dist[d] = ((i & 1) * 2 - 1) * radius;
         real C[LTERM];
         C[0] = 1;
         powerL(C,dist);
@@ -161,15 +141,15 @@ public:
 
   void L2P() const {
     int levelOffset = ((1 << maxLevel) - 1);
+    real R = R0 / (1 << maxLevel);
 #pragma omp parallel for
     for (int i=0; i<numLeafs; i++) {
-      real center[3];
-      getCenter(center,i,maxLevel);
+      real center = X0[0] - R0 + (2 * i + 1) * R;
       real L[LTERM];
       for_l L[l] = Local[i+levelOffset][l];
       for (int j=Leafs[i][0]; j<Leafs[i][1]; j++) {
         real dist[3] = {0,0,0};
-        for_1 dist[d] = Jbodies[j][d] - center[d];
+        for_1 dist[d] = Jbodies[j][d] - center;
         real C[LTERM];
         C[0] = 1;
         powerL(C,dist);

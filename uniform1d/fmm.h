@@ -57,13 +57,12 @@ public:
   }
 
   void initBodies(real cycle) {
-    int ix[3] = {0, 0, 0};
     R0 = cycle * .5;
     for_1 X0[d] = R0;
     srand48(0);
     real average = 0;
     for (int i=0; i<numBodies; i++) {
-      Jbodies[i][0] = 2 * R0 * (drand48() + ix[0]);
+      Jbodies[i][0] = 2 * R0 * drand48();
       Jbodies[i][1] = 0;
       Jbodies[i][2] = 0;
       Jbodies[i][3] = (drand48() - .5) / numBodies;
@@ -78,10 +77,8 @@ public:
   void sortBodies() const {
     int *key = new int [numBodies];
     real diameter = 2 * R0 / (1 << maxLevel);
-    int ix[3] = {0, 0, 0};
     for (int i=0; i<numBodies; i++) {
-      for_1 ix[d] = int((Jbodies[i][d] + R0 - X0[d]) / diameter);
-      key[i] = getKey(ix,maxLevel,false);
+      key[i] = int((Jbodies[i][0] + R0 - X0[0]) / diameter);
     }
     sort(Jbodies,Ibodies,key);
     for (int i=0; i<numBodies; i++) {
@@ -93,13 +90,10 @@ public:
 
   void fillLeafs() const {
     real diameter = 2 * R0 / (1 << maxLevel);
-    int ix[3] = {0, 0, 0};
-    for_1 ix[d] = int((Jbodies[0][d] + R0 - X0[d]) / diameter);
-    int ileaf = getKey(ix,maxLevel,false);
+    int ileaf = int((Jbodies[0][0] + R0 - X0[0]) / diameter);
     Leafs[ileaf][0] = 0;
     for (int i=0; i<numBodies; i++) {
-      for_1 ix[d] = int((Jbodies[i][d] + R0 - X0[d]) / diameter);
-      int inew = getKey(ix,maxLevel,false);
+      int inew = int((Jbodies[i][0] + R0 - X0[0]) / diameter);
       if (ileaf != inew) {
         Leafs[ileaf][1] = Leafs[inew][0] = i;
         ileaf = inew;
