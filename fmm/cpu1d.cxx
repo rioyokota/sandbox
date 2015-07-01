@@ -1,198 +1,283 @@
 #include <cmath>
 #include <cstdlib>
-#include <iostream>
+#include <cstdio>
 #include <sys/time.h>
 
-// 1-D Fast Multipole Method code by Rio Yokota Jan. 10 2014
-// Calculates p[i] = sum_{j=0}^{N} q[j]/(x[i]-y[j]) for i=1,N (i!=j)
+const int PP = 7;
+#define for_2 for (int d=0; d<2; d++)
+#define MAX(a,b) (((a) > (b)) ? (a) : (b))
+#define MIN(a,b) (((a) < (b)) ? (a) : (b))
 
-// Get wall clock time
 double get_time() {
   struct timeval tv;
-  gettimeofday(&tv,NULL);
+  gettimeofday(&tv, NULL);
   return double(tv.tv_sec+tv.tv_usec*1e-6);
 }
 
 int main() {
-  const int N = 1000; // Number of points
-  const int P = 10; // Order of multipole expansions
-  const int pointsPerLeaf = 4; // Number of points per leaf cell
-  const float eps = 1e-6; // Epsilon
-  // Allocate memory
-  int * ix = new int [N]; // Index
-  int * iy = new int [N]; // Index
-  float * x = new float [N]; // Target coordinates
-  float * y = new float [N]; // Source coordinates
-  float * p = new float [N]; // Target values
-  float * w = new float [N]; // Source values
-  // Initialize variables
-  for (int i=0; i<N; i++) {
-    x[i] = (i + 0.5) / N; // Random number [0,1]
-    p[i] = 0;
-  }
-  for (int i=0; i<N; i++) {
-    y[i] = (i + 0.5) / N; // Random number [0,1]
-    w[i] = 1;
-  }
+  const int numBodies = 10000;
+  const int numTargets = 10000;
+  const int ncrit = 10;
+  const int maxLevel = numBodies >= ncrit ? 1 + int(log(numBodies / ncrit)/M_LN2) : 0;
+  const int numCells = ((1 << (maxLevel + 1)) - 1);
+  const int numLeafs = 1 << maxLevel;
+  const int numNeighbors = 1;
+  const float cycle = 2 * M_PI;
+
+  printf("--- FMM Profiling ----------------\n");
   double tic = get_time();
-  // Min and Max of x
-  float xmin = x[0], xmax = x[0]; // Initialize xmin, xmax
-  for (int i=1; i<N; i++) {
-    xmin = x[i] < xmin ? x[i] : xmin; // xmin = min(x[i],xmin)
-    xmax = x[i] > xmax ? x[i] : xmax; // xmax = max(x[i],xmax)
-  }
-  for (int i=1; i<N; i++) {
-    xmin = y[i] < xmin ? y[i] : xmin; // xmin = min(y[i],xmin)
-    xmax = y[i] > xmax ? y[i] : xmax; // xmax = max(y[i],xmax)
-  }
-  xmin -= eps; // Give some leeway to avoid points on boundary
-  xmax += eps;
-  // Assign cell index to points
-  const int numLevels = log(N/pointsPerLeaf) / M_LN2; // Depth of binary tree
-  const int maxLevel = numLevels - 1; // Level starts from 0
-  const int numLeafs = 1 << maxLevel; // Cells at the bottom of binary tree
-  const int numCells = 2 * numLeafs; // Total number of cells in binary tree
-  const float leafSize = (xmax - xmin) / numLeafs; // Length of the leaf cell
-  for (int i=0; i<N; i++)
-    ix[i] = (x[i] - xmin) / leafSize; // Group points according to leaf cell's ix
-  // Allocate multipole & local expansions
-  float (*m)[P] = new float [numCells][P]; // Multipole expansion coefficients
-  float (*l)[P] = new float [numCells][P]; // Local expansion coefficients
+  float (*Ibodies)[2] = new float [numBodies][2]();
+  float (*Jbodies)[2] = new float [numBodies][2]();
+  float (*Multipole)[PP] = new float [numCells][PP]();
+  float (*Local)[PP] = new float [numCells][PP]();
+  int (*Leafs)[2] = new int [numLeafs][2]();
   for (int i=0; i<numCells; i++)
-    for (int n=0; n<P; n++) m[i][n] = l[i][n] = 0;
-  // P2M
-  int offset = ((1 << maxLevel) - 1);
-  for (int i=0; i<N; i++) {
-    const float xCell = leafSize * (ix[i] + .5) + xmin;
-    const float dx = xCell - x[i];
-    float M[P] = {0};
-    M[0] = w[i];
-    for (int n=1; n<P; n++) {
-      M[n] = M[n-1] * dx / n;
-    }
-    for (int n=0; n<P; n++) {
-      m[ix[i]+offset][n] += M[n];
+    for (int n=0; n<PP; n++)
+      Multipole[i][n] = Local[i][n] = 0;
+  for (int i=0; i<numLeafs; i++)
+    Leafs[i][0] = Leafs[i][1] = 0;
+  double toc = get_time();
+  printf("Allocate             : %lf s\n",toc-tic);
+
+  float R0 = cycle * .5;
+  float X0 = R0;
+  srand48(0);
+  float average = 0;
+  for (int i=0; i<numBodies; i++) {
+    Jbodies[i][0] = 2 * R0 * drand48();
+    Jbodies[i][1] = (drand48() - .5) / numBodies;
+    average += Jbodies[i][1];
+  }
+  average /= numBodies;
+  for (int i=0; i<numBodies; i++) {
+    Jbodies[i][1] -= average;
+  }
+  tic = get_time();
+  printf("Init bodies          : %lf s\n",tic-toc);
+
+  int *key = new int [numBodies];
+  float diameter = 2 * R0 / (1 << maxLevel);
+  for (int i=0; i<numBodies; i++) {
+    key[i] = int((Jbodies[i][0] + R0 - X0) / diameter);
+  }
+  int Imax = key[0];
+  int Imin = key[0];
+  for( int i=0; i<numBodies; i++ ) {
+    Imax = MAX(Imax,key[i]);
+    Imin = MIN(Imin,key[i]);
+  }
+  int numBucket = Imax - Imin + 1;
+  int *bucket = new int [numBucket];
+  for (int i=0; i<numBucket; i++) bucket[i] = 0;
+  for (int i=0; i<numBodies; i++) bucket[key[i]-Imin]++;
+  for (int i=1; i<numBucket; i++) bucket[i] += bucket[i-1];
+  for (int i=numBodies-1; i>=0; i--) {
+    bucket[key[i]-Imin]--;
+    int inew = bucket[key[i]-Imin];
+    for_2 Ibodies[inew][d] = Jbodies[i][d];
+  }
+  for (int i=0; i<numBodies; i++) {
+    for_2 Jbodies[i][d] = Ibodies[i][d];
+    for_2 Ibodies[i][d] = 0;
+  }
+  delete[] bucket;
+  delete[] key;
+  toc = get_time();
+  printf("Sort bodies          : %lf s\n",toc-tic);
+
+  diameter = 2 * R0 / (1 << maxLevel);
+  int ileaf = int((Jbodies[0][0] + R0 - X0) / diameter);
+  Leafs[ileaf][0] = 0;
+  for (int i=0; i<numBodies; i++) {
+    int inew = int((Jbodies[i][0] + R0 - X0) / diameter);
+    if (ileaf != inew) {
+      Leafs[ileaf][1] = Leafs[inew][0] = i;
+      ileaf = inew;
     }
   }
-  // M2M
-  for (int level=maxLevel; level>=3; level--) {
-    const int joffset = ((1 << level) - 1);
-    const int ioffset = ((1 << (level-1)) - 1);
-    for (int jcell=0; jcell<(1<<level); jcell++) {
-      const int icell = jcell / 2;
-      const float dx = (xmax - xmin) / (1 << (level+1)) * (1 - 2 * (jcell & 1));
-      float C[P];
+  Leafs[ileaf][1] = numBodies;
+  tic = get_time();
+  printf("Fill leafs           : %lf s\n",tic-toc);
+
+  int levelOffset = ((1 << maxLevel) - 1);
+  float R = R0 / (1 << maxLevel);
+#pragma omp parallel for
+  for (int i=0; i<numLeafs; i++) {
+    float center = X0 - R0 + (2 * i + 1) * R;
+    for (int j=Leafs[i][0]; j<Leafs[i][1]; j++) {
+      float dx = center - Jbodies[j][0];
+      float M[PP];
+      M[0] = Jbodies[j][1];
+      for (int n=1; n<PP; n++)
+	M[n] = M[n-1] * dx / n;
+      for (int n=0; n<PP; n++)
+	Multipole[i+levelOffset][n] += M[n];
+    }
+  }
+  toc = get_time();
+  printf("P2M                  : %lf s\n",toc-tic);
+
+  for (int lev=maxLevel; lev>0; lev--) {
+    int childOffset = ((1 << lev) - 1);
+    int parentOffset = ((1 << (lev - 1)) - 1);
+    float radius = R0 / (1 << lev);
+#pragma omp parallel for
+    for (int i=0; i<(1 << lev); i++) {
+      int c = i + childOffset;
+      int p = (i >> 1) + parentOffset;
+      float dx = (1 - (i & 1) * 2) * radius;
+      float C[PP];
       C[0] = 1;
-      for (int n=1; n<P; n++) {
+      for (int n=1; n<PP; n++)
 	C[n] = C[n-1] * dx / n;
-      }
-      for (int n=0; n<P; n++) {
-	for (int k=0; k<=n; k++) {
-	  m[icell+ioffset][n] += C[n-k] * m[jcell+joffset][k];
-	}
-      }
+      for (int n=0; n<PP; n++)
+	for (int k=0; k<=n; k++)
+	  Multipole[p][n] += C[n-k] * Multipole[c][k];
     }
   }
-  // M2L
-  for (int level=2; level<=maxLevel; level++) {
-    const int cellsPerLevel = 1 << level;
-    offset = ((1 << level) - 1);
-    for (int icell=0; icell<cellsPerLevel; icell++) {
-      for (int jcell=0; jcell<cellsPerLevel; jcell++) {
-	if(jcell < icell-1 || icell+1 < jcell) {
-	  const float dx = (icell - jcell) * (xmax - xmin) / cellsPerLevel;
-	  const float invR2 = 1 / (dx * dx);
-	  const float invR = m[jcell+offset][0] * sqrtf(invR2);
-	  float C[P];
+  tic = get_time();
+  printf("M2M                  : %lf s\n",tic-toc);
+
+  for (int lev=1; lev<=maxLevel; lev++) {
+    levelOffset = ((1 << lev) - 1);
+    int nunit = 1 << lev;
+    diameter = 2 * R0 / (1 << lev);
+#pragma omp parallel for
+    for (int i=0; i<(1 << lev); i++) {
+      float L[PP];
+      for (int n=0; n<PP; n++)
+	L[n] = 0;
+      int jmin =  MAX(0, (i >> 1) - numNeighbors) << 1;
+      int jmax = (MIN((nunit >> 1) - 1, (i >> 1) + numNeighbors) << 1) + 1;
+      for (int j=jmin; j<=jmax; j++) {
+	if(j < i-numNeighbors || i+numNeighbors < j) {
+	  float dx = (i - j) * diameter;
+	  float invR2 = 1. / (dx * dx);
+	  float invR  = sqrt(invR2);
+	  float C[PP];
 	  C[0] = invR;
 	  C[1] = -dx * C[0] * invR2;
-	  for (int n=2; n<P; n++) {
+	  for (int n=2; n<PP; n++)
 	    C[n] = ((1 - 2 * n) * dx * C[n-1] + (1 - n) * C[n-2]) / n * invR2;
-	  }
 	  float fact = 1;
-	  for (int n=1; n<P; n++) {
+	  for (int n=1; n<PP; n++) {
 	    fact *= n;
 	    C[n] *= fact;
 	  }
-	  for (int i=0; i<P; i++) l[icell+offset][i] += C[i];
-	  for (int n=0; n<P; n++) {
-	    for (int k=1; k<P-n; k++) {
-	      l[icell+offset][n] += m[jcell+offset][k] * C[n+k];
-	    }
-	  }
+	  for (int k=0; k<PP; k++)
+	    L[0] += Multipole[j+levelOffset][k] * C[k];
+	  for (int n=1; n<PP; n++)
+	    for (int k=0; k<PP-n; k++)
+	      L[n] += Multipole[j+levelOffset][k] * C[n+k];
 	}
       }
+      for (int n=0; n<PP; n++)
+	Local[i+levelOffset][n] += L[n];
     }
   }
-  // L2L
-  for (int level=3; level<=maxLevel; level++) {
-    const int joffset = ((1 << (level-1)) - 1);
-    const int ioffset = ((1 << level) - 1);
-    for (int icell=0; icell<(1<<level); icell++) {
-      const int jcell = icell / 2;
-      const float dx = (xmax - xmin) / (1 << (level+1)) * (2 * (icell & 1) - 1);
-      float C[P];
-      C[0] = 1;
-      for (int n=1; n<P; n++) {
-	C[n] = C[n-1] * dx / n;
-      }
-      for (int n=0; n<P; n++) l[icell+ioffset][n] += l[jcell+joffset][n];
-      for (int n=0; n<P; n++) {
-	for (int k=1; k<P-n; k++) {
-	  l[icell+ioffset][n] += C[k] * l[jcell+joffset][n+k];
-	}
-      }
-    }
-  }
-  // L2P
-  offset = ((1 << maxLevel) - 1);
-  for (int i=0; i<N; i++) {
-    const float xCell = leafSize * (ix[i] + .5) + xmin;
-    const float dx = x[i] - xCell;
-    float C[P];
-    C[0] = 1;
-    for (int n=1; n<P; n++) {
-      C[n] = C[n-1] * dx / n;
-    }
-    for (int n=0; n<P; n++) {
-      p[i] += l[ix[i]+offset][n] * C[n];
-    }
-  }
-  // P2P
-  for (int i=0; i<N; i++) {
-    for (int j=0; j<N; j++) {
-      if(abs(ix[i] - ix[j]) < 2 && i != j) {
-	const float R = fabs(x[i] - x[j]);
-	p[i] += w[j] / R;
-      }
-    }
-  }
+  toc = get_time();
+  printf("M2L                  : %lf s\n",toc-tic);
 
-  double toc = get_time();
-  std::cout << "FMM    : " << toc-tic << std::endl;
-  // Direct summation
-  double dif = 0, nrm = 0;
-  for (int i=0; i<N; i++) {
-    float pi = 0;
-    for (int j=0; j<N; j++) {
-      if (i != j) {
-	const float R = fabs(x[i] - x[j]);
-	pi += w[j] / R;
-      }
+  for (int lev=1; lev<=maxLevel; lev++) {
+    int childOffset = ((1 << lev) - 1);
+    int parentOffset = ((1 << (lev - 1)) - 1);
+    float radius = R0 / (1 << lev);
+#pragma omp parallel for
+    for (int i=0; i<(1 << lev); i++) {
+      int c = i + childOffset;
+      int p = (i >> 1) + parentOffset;
+      float dx = ((i & 1) * 2 - 1) * radius;
+      float C[PP];
+      C[0] = 1;
+      for (int n=1; n<PP; n++)
+	C[n] = C[n-1] * dx / n;
+      for (int n=0; n<PP; n++)
+	for (int k=n; k<PP; k++)
+	  Local[c][n] += C[k-n] * Local[p][k];
     }
-    dif += (p[i] - pi) * (p[i] - pi);
-    nrm += pi * pi;
   }
   tic = get_time();
-  std::cout << "Direct : " << tic-toc << std::endl;
-  std::cout << "Error  : " << sqrt(dif/nrm) << std::endl;
-  // Free memory
-  delete[] ix;
-  delete[] iy;
-  delete[] x;
-  delete[] y;
-  delete[] p;
-  delete[] w;
-  delete[] m;
-  delete[] l;
+  printf("L2L                  : %lf s\n",tic-toc);
+
+  levelOffset = ((1 << maxLevel) - 1);
+  R = R0 / (1 << maxLevel);
+#pragma omp parallel for
+  for (int i=0; i<numLeafs; i++) {
+    float center = X0 - R0 + (2 * i + 1) * R;
+    float L[PP];
+    for (int n=0; n<PP; n++)
+      L[n] = Local[i+levelOffset][n];
+    for (int j=Leafs[i][0]; j<Leafs[i][1]; j++) {
+      float dx = Jbodies[j][0] - center;
+      float C[PP];
+      C[0] = 1;
+      for (int n=1; n<PP; n++) C[n] = C[n-1] * dx / n;
+      for (int n=0; n<PP; n++) Ibodies[j][0] += C[n] * L[n];
+      for (int n=0; n<PP-1; n++) Ibodies[j][1] += C[n] * L[n+1];
+    }
+  }
+  toc = get_time();
+  printf("L2P                  : %lf s\n",toc-tic);
+
+  int nunit = 1 << maxLevel;
+#pragma omp parallel for
+  for (int i=0; i<numLeafs; i++) {
+    int jmin = MAX(0, i - numNeighbors);
+    int jmax = MIN(nunit - 1, i + numNeighbors);
+    for (int j=jmin; j<=jmax; j++) {
+      for (int ii=Leafs[i][0]; ii<Leafs[i][1]; ii++) {
+	float Po = 0, Fx = 0;
+	for (int jj=Leafs[j][0]; jj<Leafs[j][1]; jj++) {
+	  float dx = Jbodies[ii][0] - Jbodies[jj][0];
+	  float R2 = dx * dx;
+	  float invR2 = R2 == 0 ? 0 : 1.0 / R2;
+	  float invR = Jbodies[jj][1] * sqrt(invR2);
+	  float invR3 = invR2 * invR;
+	  Po += invR;
+	  Fx += dx * invR3;
+	}
+	Ibodies[ii][0] += Po;
+	Ibodies[ii][1] -= Fx;
+      }
+    }
+  }
+  tic = get_time();
+  printf("P2P                  : %lf s\n",tic-toc);
+
+  double potSum = 0, potSum2 = 0, potDif = 0, potNrm = 0, accDif = 0, accNrm = 0;
+  float Ibody[2], Jbody[2];
+#pragma omp parallel for
+  for (int i=0; i<numTargets; i++) {
+    for_2 Ibody[d] = 0;
+    for_2 Jbody[d] = Jbodies[i][d];
+    for (int j=0; j<numBodies; j++) {
+      float dx = Jbody[0] - Jbodies[j][0];
+      float R2 = dx * dx;
+      float invR2 = R2 == 0 ? 0 : 1.0 / R2;
+      float invR = Jbodies[j][1] * sqrtf(invR2);
+      dx *= invR2 * invR;
+      Ibody[0] += invR;
+      Ibody[1] -= dx;
+    }
+    potSum += Ibodies[i][0] * Jbodies[i][1];
+    potSum2 += Ibody[0] * Jbodies[i][1];
+    accDif += (Ibodies[i][1] - Ibody[1]) * (Ibodies[i][1] - Ibody[1]);
+    accNrm += (Ibody[1] * Ibody[1]);
+  }
+  potDif = (potSum - potSum2) * (potSum - potSum2);
+  potNrm = potSum2 * potSum2;
+  toc = get_time();
+  printf("Verify               : %lf s\n",toc-tic);
+
+  delete[] Ibodies;
+  delete[] Jbodies;
+  delete[] Multipole;
+  delete[] Local;
+  delete[] Leafs;
+  tic = get_time();
+  printf("Deallocate           : %lf s\n",tic-toc);
+
+  printf("--- FMM vs. direct ---------------\n");
+  printf("Rel. L2 Error (pot)  : %g\n",std::sqrt(potDif/potNrm));
+  printf("Rel. L2 Error (acc)  : %g\n",std::sqrt(accDif/accNrm));
 }
