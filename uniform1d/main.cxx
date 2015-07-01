@@ -1,6 +1,18 @@
 #include <cmath>
-#include "types.h"
-#include "logger.h"
+#include <cstdlib>
+#include <cstdio>
+#include <sys/time.h>
+
+const int PP = 7;
+#define for_2 for (int d=0; d<2; d++)
+#define MAX(a,b) (((a) > (b)) ? (a) : (b))
+#define MIN(a,b) (((a) < (b)) ? (a) : (b))
+
+double get_time() {
+  struct timeval tv;
+  gettimeofday(&tv, NULL);
+  return double(tv.tv_sec+tv.tv_usec*1e-6);
+}
 
 int main() {
   const int numBodies = 10000;
@@ -12,15 +24,13 @@ int main() {
   const int numNeighbors = 1;
   const float cycle = 2 * M_PI;
 
-  logger::verbose = true;
-  logger::printTitle("FMM Profiling");
-
-  logger::startTimer("Allocate");
-  real (*Ibodies)[2] = new real [numBodies][2]();
-  real (*Ibodies2)[2] = new real [numBodies][2]();
-  real (*Jbodies)[2] = new real [numBodies][2]();
-  real (*Multipole)[PP] = new real [numCells][PP]();
-  real (*Local)[PP] = new real [numCells][PP]();
+  printf("--- FMM Profiling ----------------\n");
+  double tic = get_time();
+  float (*Ibodies)[2] = new float [numBodies][2]();
+  float (*Ibodies2)[2] = new float [numBodies][2]();
+  float (*Jbodies)[2] = new float [numBodies][2]();
+  float (*Multipole)[PP] = new float [numCells][PP]();
+  float (*Local)[PP] = new float [numCells][PP]();
   int (*Leafs)[2] = new int [numLeafs][2]();
   for (int i=0; i<numCells; i++) {
     for (int n=0; n<PP; n++) {
@@ -31,13 +41,13 @@ int main() {
   for (int i=0; i<numLeafs; i++) {
     Leafs[i][0] = Leafs[i][1] = 0;
   }
-  logger::stopTimer("Allocate");
+  double toc = get_time();
+  printf("Allocate             : %lf s\n",toc-tic);
 
-  logger::startTimer("Init bodies");
   float R0 = cycle * .5;
   float X0 = R0;
   srand48(0);
-  real average = 0;
+  float average = 0;
   for (int i=0; i<numBodies; i++) {
     Jbodies[i][0] = 2 * R0 * drand48();
     Jbodies[i][1] = (drand48() - .5) / numBodies;
@@ -47,11 +57,11 @@ int main() {
   for (int i=0; i<numBodies; i++) {
     Jbodies[i][1] -= average;
   }
-  logger::stopTimer("Init bodies");
-  
-  logger::startTimer("Sort bodies");
+  tic = get_time();
+  printf("Init bodies          : %lf s\n",tic-toc);
+
   int *key = new int [numBodies];
-  real diameter = 2 * R0 / (1 << maxLevel);
+  float diameter = 2 * R0 / (1 << maxLevel);
   for (int i=0; i<numBodies; i++) {
     key[i] = int((Jbodies[i][0] + R0 - X0) / diameter);
   }
@@ -77,9 +87,9 @@ int main() {
   }
   delete[] bucket;
   delete[] key;
-  logger::stopTimer("Sort bodies");
+  toc = get_time();
+  printf("Sort bodies          : %lf s\n",toc-tic);
 
-  logger::startTimer("Fill leafs");
   diameter = 2 * R0 / (1 << maxLevel);
   int ileaf = int((Jbodies[0][0] + R0 - X0) / diameter);
   Leafs[ileaf][0] = 0;
@@ -91,17 +101,17 @@ int main() {
     }
   }
   Leafs[ileaf][1] = numBodies;
-  logger::stopTimer("Fill leafs");
-  
-  logger::startTimer("P2M");
+  tic = get_time();
+  printf("Fill leafs           : %lf s\n",tic-toc);
+
   int levelOffset = ((1 << maxLevel) - 1);
-  real R = R0 / (1 << maxLevel);
+  float R = R0 / (1 << maxLevel);
 #pragma omp parallel for
   for (int i=0; i<numLeafs; i++) {
-    real center = X0 - R0 + (2 * i + 1) * R;
+    float center = X0 - R0 + (2 * i + 1) * R;
     for (int j=Leafs[i][0]; j<Leafs[i][1]; j++) {
-      real dx = center - Jbodies[j][0];
-      real M[PP];
+      float dx = center - Jbodies[j][0];
+      float M[PP];
       M[0] = Jbodies[j][1];
       for (int n=1; n<PP; n++) {
 	M[n] = M[n-1] * dx / n;
@@ -111,19 +121,19 @@ int main() {
       }
     }
   }
-  logger::stopTimer("P2M");
+  toc = get_time();
+  printf("P2M                  : %lf s\n",toc-tic);
 
-  logger::startTimer("M2M");
   for (int lev=maxLevel; lev>0; lev--) {
     int childOffset = ((1 << lev) - 1);
     int parentOffset = ((1 << (lev - 1)) - 1);
-    real radius = R0 / (1 << lev);
+    float radius = R0 / (1 << lev);
 #pragma omp parallel for
     for (int i=0; i<(1 << lev); i++) {
       int c = i + childOffset;
       int p = (i >> 1) + parentOffset;
-      real dx = (1 - (i & 1) * 2) * radius;
-      real C[PP];
+      float dx = (1 - (i & 1) * 2) * radius;
+      float C[PP];
       C[0] = 1;
       for (int n=1; n<PP; n++) {
 	C[n] = C[n-1] * dx / n;
@@ -135,16 +145,16 @@ int main() {
       }
     }
   }
-  logger::stopTimer("M2M");
+  tic = get_time();
+  printf("M2M                  : %lf s\n",tic-toc);
 
-  logger::startTimer("M2L");
   for (int lev=1; lev<=maxLevel; lev++) {
     levelOffset = ((1 << lev) - 1);
     int nunit = 1 << lev;
     diameter = 2 * R0 / (1 << lev);
 #pragma omp parallel for
     for (int i=0; i<(1 << lev); i++) {
-      real L[PP];
+      float L[PP];
       for (int n=0; n<PP; n++) {
 	L[n] = 0;
       }
@@ -152,10 +162,10 @@ int main() {
       int jmax = (MIN((nunit >> 1) - 1, (i >> 1) + numNeighbors) << 1) + 1;
       for (int j=jmin; j<=jmax; j++) {
 	if(j < i-numNeighbors || i+numNeighbors < j) {
-	  real dx = (i - j) * diameter;
-	  real invR2 = 1. / (dx * dx);
-	  real invR  = sqrt(invR2);
-	  real C[PP];
+	  float dx = (i - j) * diameter;
+	  float invR2 = 1. / (dx * dx);
+	  float invR  = sqrt(invR2);
+	  float C[PP];
 	  C[0] = invR;
 	  C[1] = -dx * C[0] * invR2;
 	  for (int n=2; n<PP; n++) {
@@ -181,19 +191,19 @@ int main() {
       }
     }
   }
-  logger::stopTimer("M2L");
+  toc = get_time();
+  printf("M2L                  : %lf s\n",toc-tic);
 
-  logger::startTimer("L2L");
   for (int lev=1; lev<=maxLevel; lev++) {
     int childOffset = ((1 << lev) - 1);
     int parentOffset = ((1 << (lev - 1)) - 1);
-    real radius = R0 / (1 << lev);
+    float radius = R0 / (1 << lev);
 #pragma omp parallel for
     for (int i=0; i<(1 << lev); i++) {
       int c = i + childOffset;
       int p = (i >> 1) + parentOffset;
-      real dx = ((i & 1) * 2 - 1) * radius;
-      real C[PP];
+      float dx = ((i & 1) * 2 - 1) * radius;
+      float C[PP];
       C[0] = 1;
       for (int n=1; n<PP; n++) {
 	C[n] = C[n-1] * dx / n;
@@ -205,21 +215,21 @@ int main() {
       }
     }
   }
-  logger::stopTimer("L2L");
+  tic = get_time();
+  printf("L2L                  : %lf s\n",tic-toc);
 
-  logger::startTimer("L2P");
   levelOffset = ((1 << maxLevel) - 1);
   R = R0 / (1 << maxLevel);
   #pragma omp parallel for
   for (int i=0; i<numLeafs; i++) {
-    real center = X0 - R0 + (2 * i + 1) * R;
-    real L[PP];
+    float center = X0 - R0 + (2 * i + 1) * R;
+    float L[PP];
     for (int n=0; n<PP; n++) {
       L[n] = Local[i+levelOffset][n];
     }
     for (int j=Leafs[i][0]; j<Leafs[i][1]; j++) {
-      real dx = Jbodies[j][0] - center;
-      real C[PP];
+      float dx = Jbodies[j][0] - center;
+      float C[PP];
       C[0] = 1;
       for (int n=1; n<PP; n++) {
 	C[n] = C[n-1] * dx / n;
@@ -228,9 +238,9 @@ int main() {
       for (int l=0; l<PP-1; l++) Ibodies[j][1] += C[l] * L[l+1];
     }
   }
-  logger::stopTimer("L2P");
+  toc = get_time();
+  printf("L2P                  : %lf s\n",toc-tic);
 
-  logger::startTimer("P2P");
   int nunit = 1 << maxLevel;
 #pragma omp parallel for
   for (int i=0; i<numLeafs; i++) {
@@ -238,13 +248,13 @@ int main() {
     int jmax = MIN(nunit - 1, i + numNeighbors);
     for (int j=jmin; j<=jmax; j++) {
       for (int ii=Leafs[i][0]; ii<Leafs[i][1]; ii++) {
-	real Po = 0, Fx = 0;
+	float Po = 0, Fx = 0;
 	for (int jj=Leafs[j][0]; jj<Leafs[j][1]; jj++) {
-	  real dx = Jbodies[ii][0] - Jbodies[jj][0];
-	  real R2 = dx * dx;
-	  real invR2 = R2 == 0 ? 0 : 1.0 / R2;
-	  real invR = Jbodies[jj][1] * sqrt(invR2);
-	  real invR3 = invR2 * invR;
+	  float dx = Jbodies[ii][0] - Jbodies[jj][0];
+	  float R2 = dx * dx;
+	  float invR2 = R2 == 0 ? 0 : 1.0 / R2;
+	  float invR = Jbodies[jj][1] * sqrt(invR2);
+	  float invR3 = invR2 * invR;
 	  Po += invR;
 	  Fx += dx * invR3;
 	}
@@ -253,18 +263,18 @@ int main() {
       }
     }
   }
-  logger::stopTimer("P2P");
+  tic = get_time();
+  printf("P2P                  : %lf s\n",tic-toc);
 
-  logger::startTimer("Verify");
-  real Ibodies3[2], Jbodies2[2];
+  float Ibodies3[2], Jbodies2[2];
   for (int i=0; i<numTargets; i++) {
     for_2 Ibodies3[d] = 0;
     for_2 Jbodies2[d] = Jbodies[i][d];
     for (int j=0; j<numBodies; j++) {
-      real dx = Jbodies2[0] - Jbodies[j][0];
-      real R2 = dx * dx;
-      real invR2 = R2 == 0 ? 0 : 1.0 / R2;
-      real invR = Jbodies[j][1] * sqrtf(invR2);
+      float dx = Jbodies2[0] - Jbodies[j][0];
+      float R2 = dx * dx;
+      float invR2 = R2 == 0 ? 0 : 1.0 / R2;
+      float invR = Jbodies[j][1] * sqrtf(invR2);
       dx *= invR2 * invR;
       Ibodies3[0] += invR;
       Ibodies3[1] -= dx;
@@ -283,18 +293,19 @@ int main() {
     accDif += (Ibodies[i][1] - Ibodies2[i][1]) * (Ibodies[i][1] - Ibodies2[i][1]);
     accNrm += (Ibodies2[i][1] * Ibodies2[i][1]);
   }
-  logger::stopTimer("Verify");
+  toc = get_time();
+  printf("Verify               : %lf s\n",toc-tic);
 
-  logger::startTimer("Deallocate");
   delete[] Ibodies;
   delete[] Ibodies2;
   delete[] Jbodies;
   delete[] Multipole;
   delete[] Local;
   delete[] Leafs;
-  logger::stopTimer("Deallocate");
+  tic = get_time();
+  printf("Deallocate           : %lf s\n",tic-toc);
 
-  logger::printTitle("FMM vs. direct");
-  logger::printError("Rel. L2 Error (pot)",std::sqrt(potDif/potNrm));
-  logger::printError("Rel. L2 Error (acc)",std::sqrt(accDif/accNrm));
+  printf("--- FMM vs. direct ---------------\n");
+  printf("Rel. L2 Error (pot)  : %g\n",std::sqrt(potDif/potNrm));
+  printf("Rel. L2 Error (acc)  : %g\n",std::sqrt(accDif/accNrm));
 }
