@@ -3,8 +3,7 @@
 #include <cstdio>
 #include <sys/time.h>
 
-const int PP = 7;
-#define for_2 for (int d=0; d<2; d++)
+const int P = 7;
 #define MAX(a,b) (((a) > (b)) ? (a) : (b))
 #define MIN(a,b) (((a) < (b)) ? (a) : (b))
 
@@ -28,11 +27,11 @@ int main() {
   double tic = get_time();
   float (*Ibodies)[2] = new float [numBodies][2]();
   float (*Jbodies)[2] = new float [numBodies][2]();
-  float (*Multipole)[PP] = new float [numCells][PP]();
-  float (*Local)[PP] = new float [numCells][PP]();
+  float (*Multipole)[P] = new float [numCells][P]();
+  float (*Local)[P] = new float [numCells][P]();
   int (*Leafs)[2] = new int [numLeafs][2]();
   for (int i=0; i<numCells; i++)
-    for (int n=0; n<PP; n++)
+    for (int n=0; n<P; n++)
       Multipole[i][n] = Local[i][n] = 0;
   for (int i=0; i<numLeafs; i++)
     Leafs[i][0] = Leafs[i][1] = 0;
@@ -74,11 +73,13 @@ int main() {
   for (int i=numBodies-1; i>=0; i--) {
     bucket[key[i]-Imin]--;
     int inew = bucket[key[i]-Imin];
-    for_2 Ibodies[inew][d] = Jbodies[i][d];
+    for (int d=0; d<2; d++) Ibodies[inew][d] = Jbodies[i][d];
   }
   for (int i=0; i<numBodies; i++) {
-    for_2 Jbodies[i][d] = Ibodies[i][d];
-    for_2 Ibodies[i][d] = 0;
+    for (int d=0; d<2; d++) {
+      Jbodies[i][d] = Ibodies[i][d];
+      Ibodies[i][d] = 0;
+    }
   }
   delete[] bucket;
   delete[] key;
@@ -106,11 +107,11 @@ int main() {
     float center = X0 - R0 + (2 * i + 1) * R;
     for (int j=Leafs[i][0]; j<Leafs[i][1]; j++) {
       float dx = center - Jbodies[j][0];
-      float M[PP];
+      float M[P];
       M[0] = Jbodies[j][1];
-      for (int n=1; n<PP; n++)
+      for (int n=1; n<P; n++)
 	M[n] = M[n-1] * dx / n;
-      for (int n=0; n<PP; n++)
+      for (int n=0; n<P; n++)
 	Multipole[i+levelOffset][n] += M[n];
     }
   }
@@ -126,11 +127,11 @@ int main() {
       int c = i + childOffset;
       int p = (i >> 1) + parentOffset;
       float dx = (1 - (i & 1) * 2) * radius;
-      float C[PP];
+      float C[P];
       C[0] = 1;
-      for (int n=1; n<PP; n++)
+      for (int n=1; n<P; n++)
 	C[n] = C[n-1] * dx / n;
-      for (int n=0; n<PP; n++)
+      for (int n=0; n<P; n++)
 	for (int k=0; k<=n; k++)
 	  Multipole[p][n] += C[n-k] * Multipole[c][k];
     }
@@ -144,8 +145,8 @@ int main() {
     diameter = 2 * R0 / (1 << lev);
 #pragma omp parallel for
     for (int i=0; i<(1 << lev); i++) {
-      float L[PP];
-      for (int n=0; n<PP; n++)
+      float L[P];
+      for (int n=0; n<P; n++)
 	L[n] = 0;
       int jmin =  MAX(0, (i >> 1) - numNeighbors) << 1;
       int jmax = (MIN((nunit >> 1) - 1, (i >> 1) + numNeighbors) << 1) + 1;
@@ -154,24 +155,24 @@ int main() {
 	  float dx = (i - j) * diameter;
 	  float invR2 = 1. / (dx * dx);
 	  float invR  = sqrt(invR2);
-	  float C[PP];
+	  float C[P];
 	  C[0] = invR;
 	  C[1] = -dx * C[0] * invR2;
-	  for (int n=2; n<PP; n++)
+	  for (int n=2; n<P; n++)
 	    C[n] = ((1 - 2 * n) * dx * C[n-1] + (1 - n) * C[n-2]) / n * invR2;
 	  float fact = 1;
-	  for (int n=1; n<PP; n++) {
+	  for (int n=1; n<P; n++) {
 	    fact *= n;
 	    C[n] *= fact;
 	  }
-	  for (int k=0; k<PP; k++)
+	  for (int k=0; k<P; k++)
 	    L[0] += Multipole[j+levelOffset][k] * C[k];
-	  for (int n=1; n<PP; n++)
-	    for (int k=0; k<PP-n; k++)
+	  for (int n=1; n<P; n++)
+	    for (int k=0; k<P-n; k++)
 	      L[n] += Multipole[j+levelOffset][k] * C[n+k];
 	}
       }
-      for (int n=0; n<PP; n++)
+      for (int n=0; n<P; n++)
 	Local[i+levelOffset][n] += L[n];
     }
   }
@@ -187,12 +188,12 @@ int main() {
       int c = i + childOffset;
       int p = (i >> 1) + parentOffset;
       float dx = ((i & 1) * 2 - 1) * radius;
-      float C[PP];
+      float C[P];
       C[0] = 1;
-      for (int n=1; n<PP; n++)
+      for (int n=1; n<P; n++)
 	C[n] = C[n-1] * dx / n;
-      for (int n=0; n<PP; n++)
-	for (int k=n; k<PP; k++)
+      for (int n=0; n<P; n++)
+	for (int k=n; k<P; k++)
 	  Local[c][n] += C[k-n] * Local[p][k];
     }
   }
@@ -204,16 +205,16 @@ int main() {
 #pragma omp parallel for
   for (int i=0; i<numLeafs; i++) {
     float center = X0 - R0 + (2 * i + 1) * R;
-    float L[PP];
-    for (int n=0; n<PP; n++)
+    float L[P];
+    for (int n=0; n<P; n++)
       L[n] = Local[i+levelOffset][n];
     for (int j=Leafs[i][0]; j<Leafs[i][1]; j++) {
       float dx = Jbodies[j][0] - center;
-      float C[PP];
+      float C[P];
       C[0] = 1;
-      for (int n=1; n<PP; n++) C[n] = C[n-1] * dx / n;
-      for (int n=0; n<PP; n++) Ibodies[j][0] += C[n] * L[n];
-      for (int n=0; n<PP-1; n++) Ibodies[j][1] += C[n] * L[n+1];
+      for (int n=1; n<P; n++) C[n] = C[n-1] * dx / n;
+      for (int n=0; n<P; n++) Ibodies[j][0] += C[n] * L[n];
+      for (int n=0; n<P-1; n++) Ibodies[j][1] += C[n] * L[n+1];
     }
   }
   toc = get_time();
@@ -248,8 +249,10 @@ int main() {
   float Ibody[2], Jbody[2];
 #pragma omp parallel for
   for (int i=0; i<numTargets; i++) {
-    for_2 Ibody[d] = 0;
-    for_2 Jbody[d] = Jbodies[i][d];
+    for (int d=0; d<2; d++) {
+      Ibody[d] = 0;
+      Jbody[d] = Jbodies[i][d];
+    }
     for (int j=0; j<numBodies; j++) {
       float dx = Jbody[0] - Jbodies[j][0];
       float R2 = dx * dx;
