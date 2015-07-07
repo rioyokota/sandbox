@@ -15,12 +15,12 @@ double get_time() {
 
 int main() {
   const int numBodies = 10000;
-  const int numTargets = 10000;
+  const int numTargets = 100;
   const int ncrit = 10;
   const int maxLevel = numBodies >= ncrit ? 1 + int(log(numBodies / ncrit)/M_LN2) : 0;
-  const int numCells = ((1 << (maxLevel + 1)) - 1);
+  const int numCells = (1 << (maxLevel + 1)) - 1;
   const int numLeafs = 1 << maxLevel;
-  const int numNeighbors = 1;
+  const int numNeighbors = 2;
   const float cycle = 2 * M_PI;
 
   printf("--- FMM Profiling ----------------\n");
@@ -41,15 +41,9 @@ int main() {
   float R0 = cycle * .5;
   float X0 = R0;
   srand48(0);
-  float average = 0;
   for (int i=0; i<numBodies; i++) {
-    Jbodies[i][0] = 2 * R0 * drand48();
-    Jbodies[i][1] = (drand48() - .5) / numBodies;
-    average += Jbodies[i][1];
-  }
-  average /= numBodies;
-  for (int i=0; i<numBodies; i++) {
-    Jbodies[i][1] -= average;
+    Jbodies[i][0] = cycle * (i + .5) / numBodies;
+    Jbodies[i][1] = 1;
   }
   tic = get_time();
   printf("Init bodies          : %lf s\n",tic-toc);
@@ -119,8 +113,8 @@ int main() {
   printf("P2M                  : %lf s\n",toc-tic);
 
   for (int lev=maxLevel; lev>0; lev--) {
-    int childOffset = ((1 << lev) - 1);
-    int parentOffset = ((1 << (lev - 1)) - 1);
+    int childOffset = (1 << lev) - 1;
+    int parentOffset = (1 << (lev - 1)) - 1;
     float radius = R0 / (1 << lev);
 #pragma omp parallel for
     for (int i=0; i<(1 << lev); i++) {
@@ -134,6 +128,7 @@ int main() {
       for (int n=0; n<P; n++)
 	for (int k=0; k<=n; k++)
 	  Multipole[p][n] += C[n-k] * Multipole[c][k];
+      printf("%d %d %f\n",lev,i,Multipole[p][1]);
     }
   }
   tic = get_time();
@@ -165,8 +160,9 @@ int main() {
 	    fact *= n;
 	    C[n] *= fact;
 	  }
-	  for (int k=0; k<P; k++)
+	  for (int k=0; k<P; k++) {
 	    L[0] += Multipole[j+levelOffset][k] * C[k];
+	  }
 	  for (int n=1; n<P; n++)
 	    for (int k=0; k<P-n; k++)
 	      L[n] += Multipole[j+levelOffset][k] * C[n+k];
@@ -245,7 +241,7 @@ int main() {
   tic = get_time();
   printf("P2P                  : %lf s\n",tic-toc);
 
-  double potSum = 0, potSum2 = 0, potDif = 0, potNrm = 0, accDif = 0, accNrm = 0;
+  double potDif = 0, potNrm = 0, accDif = 0, accNrm = 0;
   float Ibody[2], Jbody[2];
 #pragma omp parallel for
   for (int i=0; i<numTargets; i++) {
@@ -262,13 +258,11 @@ int main() {
       Ibody[0] += invR;
       Ibody[1] -= dx;
     }
-    potSum += Ibodies[i][0] * Jbodies[i][1];
-    potSum2 += Ibody[0] * Jbodies[i][1];
+    potDif += (Ibodies[i][0] - Ibody[0]) * (Ibodies[i][0] - Ibody[0]);
+    potNrm += Ibody[0] * Ibody[0];
     accDif += (Ibodies[i][1] - Ibody[1]) * (Ibodies[i][1] - Ibody[1]);
-    accNrm += (Ibody[1] * Ibody[1]);
+    accNrm += Ibody[1] * Ibody[1];
   }
-  potDif = (potSum - potSum2) * (potSum - potSum2);
-  potNrm = potSum2 * potSum2;
   toc = get_time();
   printf("Verify               : %lf s\n",toc-tic);
 
