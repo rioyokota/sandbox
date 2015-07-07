@@ -1,0 +1,5 @@
+[Build]
+autoreconf --install
+
+[Clean]
+git clean -df
