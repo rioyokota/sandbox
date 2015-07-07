@@ -1,151 +1,119 @@
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
+#include <sys/time.h>
 #include <vector>
+#include "vec.h"
+
+typedef double real_t;
+typedef vec<3,real_t> vec3;
 
 struct Body {
-  double x, y;
-  int group;
+  vec3 X;
+  int IBODY;
 };
 typedef std::vector<Body> Bodies;
-typedef Body* point;
+typedef Bodies::iterator B_iter;
 
-double randf(double m)
-{
-  return m * rand() / (RAND_MAX - 1.);
+double get_time() {
+  struct timeval tv;
+  gettimeofday(&tv, NULL);
+  return double(tv.tv_sec+tv.tv_usec*1e-6);
 }
 
-point gen_xy(int count, double radius)
-{
-  double ang, r;
-  point p, pt = (point) malloc(sizeof(Body) * count);
-
-  /* note: this is not a uniform 2-d distribution */
-  for (p = pt + count; p-- > pt;) {
-    ang = randf(2 * M_PI);
-    r = randf(radius);
-    p->x = r * cos(ang);
-    p->y = r * sin(ang);
+Bodies initBodies(int numBodies, real_t R0) {
+  Bodies bodies(numBodies);
+  for (B_iter B=bodies.begin(); B!=bodies.end(); B++) {
+    real_t R = R0 * drand48();
+    real_t theta = 2 * M_PI * drand48();
+    real_t phi = M_PI * drand48();
+    B->X[0] = R * cos(theta) * sin(phi);
+    B->X[1] = R * sin(theta) * sin(phi);
+    B->X[2] = R * cos(phi);
   }
-
-  return pt;
+  return bodies;
 }
 
-inline double dist2(point a, point b)
-{
-  double x = a->x - b->x, y = a->y - b->y;
-  return x*x + y*y;
-}
-
-inline int
-nearest(point pt, point cent, int n_cluster, double *d2)
-{
-  int i, min_i;
-  point c;
-  double d, min_d;
-
-  for (c = cent, i = 0; i < n_cluster; i++, c++) {
-    min_d = HUGE_VAL;
-    min_i = pt->group;
-    for (c = cent, i = 0; i < n_cluster; i++, c++) {
-      if (min_d > (d = dist2(c, pt))) {
-	min_d = d; min_i = i;
-      }
+inline int nearest(B_iter B, B_iter C0, int numClusters) {
+  int index = B->IBODY;
+  real_t R2min = HUGE_VAL;
+  for (int c=0; c<numClusters; c++) {
+    B_iter C = C0 + c;
+    vec3 dX = B->X - C->X;
+    real_t R2 = norm(dX);
+    if (R2min > R2) {
+      R2min = R2;
+      index = c;
     }
   }
-  if (d2) *d2 = min_d;
-  return min_i;
+  return index;
 }
 
-void kpp(point pts, int len, point cent, int n_cent)
-{
-#define for_len for (j = 0, p = pts; j < len; j++, p++)
-  int i, j;
-  int n_cluster;
-  double sum, *d = (double*) malloc(sizeof(double) * len);
-
-  point p, c;
-  cent[0] = pts[ rand() % len ];
-  for (n_cluster = 1; n_cluster < n_cent; n_cluster++) {
-    sum = 0;
-    for_len {
-      nearest(p, cent, n_cluster, d + j);
-      sum += d[j];
-    }
-    sum = randf(sum);
-    for_len {
-      if ((sum -= d[j]) > 0) continue;
-      cent[n_cluster] = pts[j];
-      break;
-    }
+void initCluster(Bodies & bodies, Bodies & clusters) {
+  for (B_iter C=clusters.begin(); C!=clusters.end(); C++) {
+    *C = bodies[rand() % bodies.size()];
   }
-  for_len p->group = nearest(p, cent, n_cluster, 0);
-  free(d);
+  for (B_iter B=bodies.begin(); B!=bodies.end(); B++) {
+    B->IBODY = nearest(B, clusters.begin(), clusters.size());
+  }
 }
 
-point lloyd(point pts, int len, int n_cluster)
-{
-  int i, j, min_i;
+Bodies setCluster(Bodies & bodies, int numClusters) {
+  Bodies clusters(numClusters);
+  initCluster(bodies, clusters);
+  B_iter C0 = clusters.begin();
   int changed;
-
-  point cent = (point) malloc(sizeof(Body) * n_cluster), p, c;
-
-  /* assign init grouping randomly */
-  //for_len p->group = j % n_cluster;
-
-  /* or call k++ init */
-  kpp(pts, len, cent, n_cluster);
-
   do {
-    /* group element for centroids are used as counters */
-    for (c = cent, i = 0; i < n_cluster; i++, c++) { c->group = 0; c->x = c->y = 0; }
-    for_len {
-      c = cent + p->group;
-      c->group++;
-      c->x += p->x; c->y += p->y;
+    for (B_iter C=clusters.begin(); C!=clusters.end(); C++) {
+      C->IBODY = 0;
+      C->X = 0;
     }
-    for (c = cent, i = 0; i < n_cluster; i++, c++) { c->x /= c->group; c->y /= c->group; }
-
+    for (B_iter B=bodies.begin(); B!=bodies.end(); B++) {
+      B_iter C = C0 + B->IBODY;
+      C->IBODY++;
+      C->X += B->X;
+    }
+    for (B_iter C=clusters.begin(); C!=clusters.end(); C++) {
+      C->X /= C->IBODY;
+      C->IBODY = C-C0;
+    }
     changed = 0;
-    /* find closest centroid of each point */
-    for_len {
-      min_i = nearest(p, cent, n_cluster, 0);
-      if (min_i != p->group) {
+    for (B_iter B=bodies.begin(); B!=bodies.end(); B++) {
+      int index = nearest(B, C0, numClusters);
+      if (index != B->IBODY) {
 	changed++;
-	p->group = min_i;
+	B->IBODY = index;
       }
     }
-  } while (changed > (len >> 10)); /* stop when 99.9% of points are good */
-
-  for (c = cent, i = 0; i < n_cluster; i++, c++) { c->group = i; }
-
-  return cent;
+  } while (changed > (bodies.size() >> 10));
+  return clusters;
 }
 
-void print_eps(point pts, int len, point cent, int n_cluster)
-{
-  int i, j;
-  point p;
-  FILE * fid = fopen("kmeans.dat","w");
-  for (point c = cent; c < cent+n_cluster; c++) {
-    fprintf(fid, "%d %g %g\n", c-cent, c->x, c->y);
-    for_len {
-      if (p->group != c-cent) continue;
-      fprintf(fid, "%d %g %g\n", c-cent, p->x, p->y);
+void writeBodies(Bodies bodies, Bodies clusters) {
+  FILE *fid = fopen("kmeans.dat","w");
+  for (B_iter C=clusters.begin(); C!=clusters.end(); C++) {
+    int index = C - clusters.begin();
+    fprintf(fid, "%d %g %g %g\n", index, C->X[0], C->X[1], C->X[2]);
+    for (B_iter B=bodies.begin(); B!=bodies.end(); B++) {
+      if (B->IBODY != index) continue;
+      fprintf(fid, "%d %g %g %g\n", index, B->X[0], B->X[1], B->X[2]);
     }
   }
   fclose(fid);
-  #undef for_len
 }
 
-#define PTS 100000
-#define K 14
-int main()
-{
-  int i;
-  point v = gen_xy(PTS, 10);
-  point c = lloyd(v, PTS, K);
-  print_eps(v, PTS, c, K);
-  free(v); free(c);
-  return 0;
+int main() {
+  const int numBodies = 100000;
+  const int numClusters = 64;
+  const real_t R0 = 10;
+  double tic = get_time();
+  Bodies bodies = initBodies(numBodies, R0);
+  double toc = get_time();
+  printf("initBodies   : %lf s\n",toc-tic);
+  Bodies clusters = setCluster(bodies, numClusters);
+  tic = get_time();
+  printf("setCluster   : %lf s\n",tic-toc);
+  writeBodies(bodies, clusters);
+  toc = get_time();
+  printf("writeBodies  : %lf s\n",toc-tic);
 }
