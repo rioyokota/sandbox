@@ -2,4 +2,4 @@
 autoreconf --install
 
 [Clean]
-git clean -df
+git clean -dfx
