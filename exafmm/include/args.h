@@ -21,11 +21,11 @@ static struct option long_options[] = {
 class Args {
 public:
   int numBodies;
-  int ncrit;
+  int leafSize;
   int nspawn;
   int threads;
   int images;
-  double theta;
+  double mac;
   int useRmax;
   int useRopt;
   int mutual;
@@ -127,7 +127,7 @@ public:
 		<< std::setw(stringLength)                      //  Set format
 		<< "MAC" << " : " << mac << std::endl           //  Print MAC
 		<< std::setw(stringLength)                      //  Set format
-		<< "leafSize" << " : " << ncrit << std::endl    //  Print leafSize
+		<< "leafSize" << " : " << leafSize << std::endl //  Print leafSize
 		<< std::setw(stringLength)                      //  Set format
 		<< "threads" << " : " << threads << std::endl   //  Print threads
 		<< std::setw(stringLength)                      //  Set format

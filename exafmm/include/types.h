@@ -61,7 +61,7 @@ typedef std::vector<Body> Bodies;                               //!< Vector of b
 //! Structure of fields
 struct Field {
   kreal_t p;                                                    //!< Potential
-  kvec3 X;                                                      //!< Force/acceleration
+  kvec3 F;                                                      //!< Force
 };
 typedef std::vector<Field> Fields;                              //!< Vector of fields
 
