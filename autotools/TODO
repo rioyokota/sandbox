@@ -1,0 +1,5 @@
+[Detect compiler]
+AC_PROG_CC([mpicc gcc])
+
+[Detect flags]
+AC_SUBST([AM_CXXFLAGS], [-O3])
