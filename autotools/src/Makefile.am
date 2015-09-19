@@ -1,5 +1,7 @@
-bin_PROGRAMS = test mpi
+bin_PROGRAMS = test
 test_SOURCES = test.c
-mpi_SOURCES = mpi.c
 
-CC=@MPICC@
+if MPI
+bin_PROGRAMS += mpi
+mpi_SOURCES = mpi.c
+endif

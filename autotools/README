@@ -3,3 +3,6 @@ autoreconf -fiv
 
 [Clean]
 git clean -dfx
+
+[Configure]
+./configure --enable-mpi
