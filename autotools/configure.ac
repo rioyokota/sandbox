@@ -13,7 +13,7 @@ if test "$enable_mpi" = "yes"; then
    ACX_MPI([],[AC_MSG_ERROR([could not find mpi library for --enable-mpi])])
    AC_CHECK_PROG(MPIRUN, mpirun, mpirun)
    AC_SUBST(MPIRUN)
-   CC=$MPICC
+   CXX=$MPICXX
 fi
 AM_CONDITIONAL(MPI, test "$enable_mpi" = "yes")
 
