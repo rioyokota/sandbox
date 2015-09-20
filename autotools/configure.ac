@@ -8,7 +8,7 @@ AM_INIT_AUTOMAKE([foreign -Wall -Werror])
 AC_PROG_CC
 AC_PROG_CXX
 
-AC_ARG_ENABLE(mpi, [AC_HELP_STRING([--enable-mpi],[compile exaFMM MPI library])], enable_mpi=$enableval, enable_mpi=no)
+AC_ARG_ENABLE(mpi, [AC_HELP_STRING([--enable-mpi],[compile MPI library])], enable_mpi=$enableval, enable_mpi=no)
 if test "$enable_mpi" = "yes"; then
    ACX_MPI([],[AC_MSG_ERROR([could not find mpi library for --enable-mpi])])
    AC_CHECK_PROG(MPIRUN, mpirun, mpirun)
