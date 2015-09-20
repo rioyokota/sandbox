@@ -30,9 +30,9 @@ dnl library is found, and ACTION-IF-NOT-FOUND is a list of commands
 dnl to run it if it is not found.  If ACTION-IF-FOUND is not specified,
 dnl the default action will define HAVE_MPI.
 dnl
-dnl @version 2005-09-02
+dnl @version 2015-09-20
 dnl @license GPLWithACException
-dnl @author Steven G. Johnson <stevenj@alum.mit.edu>
+dnl @author Rio Yokota <rioyokota@gsic.titech.ac.jp>
 
 AC_DEFUN([ACX_MPI], [
 AC_PREREQ(2.50) dnl for AC_LANG_CASE
