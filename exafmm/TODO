@@ -1,3 +1,0 @@
-logger.h: get rid of Timer iterator
-args.h: class -> namespace
-vec.h: min, max reduction
