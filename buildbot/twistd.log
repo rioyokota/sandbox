@@ -47,3 +47,16 @@
 2015-11-02 18:28:22+0900 [-] Starting factory <buildbot.status.web.baseweb.RotateLogSite instance at 0x7f34186cf5a8>
 2015-11-02 18:28:22+0900 [-] Setting up http.log rotating 10 files of 10000000 bytes each
 2015-11-02 18:28:22+0900 [-] configuration update complete
+2015-11-02 18:31:51+0900 [-] beginning configuration update
+2015-11-02 18:31:51+0900 [-] Loading configuration from '/home/yokotar/sandbox/buildbot/master.cfg'
+2015-11-02 18:31:51+0900 [-] adding 1 new changesources, removing 1
+2015-11-02 18:31:51+0900 [-] gitpoller: using workdir '/home/yokotar/sandbox/buildbot/gitpoller-workdir'
+2015-11-02 18:31:51+0900 [-] removing scheduler 'force'
+2015-11-02 18:31:51+0900 [-] adding scheduler 'force'
+2015-11-02 18:31:51+0900 [-] (TCP Port 8011 Closed)
+2015-11-02 18:31:51+0900 [-] Stopping factory <buildbot.status.web.baseweb.RotateLogSite instance at 0x7f34186cf5a8>
+2015-11-02 18:31:51+0900 [-] WebStatus using (/home/yokotar/sandbox/buildbot/public_html)
+2015-11-02 18:31:51+0900 [-] RotateLogSite starting on 8011
+2015-11-02 18:31:51+0900 [-] Starting factory <buildbot.status.web.baseweb.RotateLogSite instance at 0x7f341864bcb0>
+2015-11-02 18:31:51+0900 [-] Setting up http.log rotating 10 files of 10000000 bytes each
+2015-11-02 18:31:51+0900 [-] configuration update complete
