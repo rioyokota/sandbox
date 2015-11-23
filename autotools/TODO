@@ -1,4 +1,0 @@
-Switch between optimized and debugging mode
-
-[Useful compiler options]
--fmudflap: Pointer debugging
