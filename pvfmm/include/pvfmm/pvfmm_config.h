@@ -85,7 +85,9 @@
 #endif
 
 /* Define to 1 if you have the `imf' library (-limf). */
-/* #undef HAVE_LIBIMF */
+#ifndef PVFMM_HAVE_LIBIMF
+#define PVFMM_HAVE_LIBIMF 1
+#endif
 
 /* Define to 1 if you have the `m' library (-lm). */
 #ifndef PVFMM_HAVE_LIBM

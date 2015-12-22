@@ -59,7 +59,7 @@ double get_time(){
 int main(int argc, char **argv)
 {
   MKL_INT n, p;
-  MKL_INT size=1000;
+  MKL_INT size=100;
   double alpha=1.2, beta = 2.3;
   double time;
   n = size;
