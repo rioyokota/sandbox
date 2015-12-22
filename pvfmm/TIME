@@ -1,8 +1,12 @@
+[Build]
 ./autogen.sh
 ./configure CXXFLAGS="-mavx -fabi-version=6" --prefix=$PWD
 make -j
 make install
 make -C examples/ all
+
+[Tags]
+find . -name "*.cpp" -o -name "*.hpp" -o -name "*.txx" | xargs etags -f TAGS
 
 [examples/bin/fmm_pts -omp 16 -N 100000 -m 4 -M 32 -ker 2] @ y1
  U-List 0.2168
@@ -20,3 +24,4 @@ make -C examples/ all
  U-List 0.4385
  V-List 0.8440
  Error  1.09e-11
+
