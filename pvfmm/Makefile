@@ -6,10 +6,11 @@ LDFLAGS = -lfftw3 -lfftw3f -lmkl_intel_lp64 -lmkl_sequential -lmkl_core -lpthrea
 %.o: %.cpp
 	$(CXX) -c $< -o $@
 
-build: src/fmm_gll.o src/mat_utils.o src/math_utils.o src/mem_mgr.o src/mortonid.o src/profile.o src/tree_node.o src/fmm_pts.o
+build: src/fmm_gll.o src/mat_utils.o src/mem_mgr.o src/mortonid.o src/profile.o src/tree_node.o src/fmm_pts.o
 	$(CXX) $? $(LDFLAGS) -o ./fmm_pts
 
 clean:
+	rm -f ~/fmm_codes/pvfmm/share/pvfmm/Precomp_laplace_grad_m4_f.data
 	rm -f src/*.o ./fmm_pts
 
 tags:
