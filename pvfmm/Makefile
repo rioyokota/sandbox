@@ -6,7 +6,7 @@ LDFLAGS = -lfftw3 -lfftw3f -lmkl_intel_lp64 -lmkl_sequential -lmkl_core -lpthrea
 %.o: %.cpp
 	$(CXX) -c $< -o $@
 
-build: src/device_wrapper.o src/fmm_gll.o src/legendre_rule.o src/mat_utils.o src/math_utils.o src/mem_mgr.o src/mortonid.o src/profile.o src/tree_node.o src/fmm_pts.o
+build: src/fmm_gll.o src/legendre_rule.o src/mat_utils.o src/math_utils.o src/mem_mgr.o src/mortonid.o src/profile.o src/tree_node.o src/fmm_pts.o
 	$(CXX) $? $(LDFLAGS) -o ./fmm_pts
 
 clean:
@@ -26,4 +26,3 @@ r4:
 
 r16:
 	./fmm_pts -omp 72 -N 1000000 -m 16 -M 320
-

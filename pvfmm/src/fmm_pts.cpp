@@ -19,7 +19,6 @@ void fmm_test(size_t N, size_t M, Real_t b, int dist, int mult_order, int depth,
 
   //Set kernel.
   pvfmm::BoundaryType bndry=pvfmm::FreeSpace;
-
   const pvfmm::Kernel<Real_t>* mykernel = &pvfmm::LaplaceKernel<Real_t>::gradient();
 
   // Find out number of OMP thereads.
@@ -43,28 +42,7 @@ void fmm_test(size_t N, size_t M, Real_t b, int dist, int mult_order, int depth,
     for(size_t i=0;i<src_coord.size()*mykernel->ker_dim[0]/COORD_DIM;i++) src_value.push_back(drand48()-0.5);
     tree_data.pt_coord=src_coord;
     tree_data.pt_value=src_value;
-    //tree_data.src_coord=src_coord;
-    //tree_data.src_value=src_value;
-
-    //Set target coordinates.
-    //tree_data.trg_coord=tree_data.src_coord;
   }
-
-#if 0
-  //Print various parameters.
-  if(!myrank){
-    std::cout<<std::setprecision(2)<<std::scientific;
-    std::cout<<"Number of MPI processes: "<<p<<'\n';
-    std::cout<<"Number of OpenMP threads: "<<omp_p<<'\n';
-    std::cout<<"Order of multipole expansions: "<<mult_order<<'\n';
-    std::cout<<"FMM Kernel name: "<<mykernel->ker_name<<'\n';
-    std::cout<<"Number of point samples: "<<N<<'\n';
-    std::cout<<"Point distribution: "<<(dist==0?"Unif":(dist==1?"Sphere":"Ellipse"))<<'\n';
-    std::cout<<"Maximum points per octant: "<<tree_data.max_pts<<'\n';
-    std::cout<<"Maximum Tree Depth: "<<depth<<'\n';
-    std::cout<<"BoundaryType: "<<(bndry==pvfmm::Periodic?"Periodic":"FreeSpace")<<'\n';
-  }
-#endif
 
   //Initialize FMM_Mat.
   FMM_Mat_t fmm_mat;
@@ -99,10 +77,6 @@ void fmm_test(size_t N, size_t M, Real_t b, int dist, int mult_order, int depth,
     // Setup FMM
     tree.SetupFMM(&fmm_mat);
     tree.RunFMM();
-
-    ////Re-run FMM
-    //tree->ClearFMMData();
-    //tree->RunFMM();
 
     { // Scatter trg values
       pvfmm::Profile::Tic("Scatter",&comm,true);
@@ -143,26 +117,6 @@ void fmm_test(size_t N, size_t M, Real_t b, int dist, int mult_order, int depth,
       }
     }
 
-#if 0
-    if(!myrank) std::cout<<"All  Nodes: ";
-    for(int i=0;i<MAX_DEPTH;i++){
-      int local_size=all_nodes[i];
-      int global_size;
-      MPI_Allreduce(&local_size, &global_size, 1, MPI_INT, MPI_SUM, comm);
-      if(!myrank) std::cout<<global_size<<' ';
-    }
-    if(!myrank) std::cout<<'\n';
-
-    if(!myrank) std::cout<<"Leaf Nodes: ";
-    for(int i=0;i<MAX_DEPTH;i++){
-      int local_size=leaf_nodes[i];
-      int global_size;
-      MPI_Allreduce(&local_size, &global_size, 1, MPI_INT, MPI_SUM, comm);
-      if(!myrank) std::cout<<global_size<<' ';
-    }
-    if(!myrank) std::cout<<'\n';
-#endif
-
     long nleaf_glb=0, maxdepth_glb=0;
     { // MPI_Reduce
       MPI_Allreduce(&nleaf, &nleaf_glb, 1, MPI_INT, MPI_SUM, comm);
@@ -174,9 +128,6 @@ void fmm_test(size_t N, size_t M, Real_t b, int dist, int mult_order, int depth,
 
   //Find error in FMM output.
   CheckFMMOutput<FMM_Mat_t>(&tree, mykernel, "Output");
-
-  //Write2File
-  //tree->Write2File("result/output");
 }
 
 int main(int argc, char **argv){
