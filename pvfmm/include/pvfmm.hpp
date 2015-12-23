@@ -14,7 +14,6 @@
 #include <mpi_node.hpp>
 #include <fmm_tree.hpp>
 #include <fmm_node.hpp>
-#include <fmm_cheb.hpp>
 #include <fmm_pts.hpp>
 #include <vector.hpp>
 #include <parUtils.h>
