@@ -14,9 +14,6 @@
 #ifndef _PVFMM_VECTOR_HPP_
 #define _PVFMM_VECTOR_HPP_
 
-#ifdef __INTEL_OFFLOAD
-#pragma offload_attribute(push,target(mic))
-#endif
 namespace pvfmm{
 
 template <class T>
@@ -90,9 +87,6 @@ class Vector{
 };
 
 }//end namespace
-#ifdef __INTEL_OFFLOAD
-#pragma offload_attribute(pop)
-#endif
 
 #include <vector.txx>
 

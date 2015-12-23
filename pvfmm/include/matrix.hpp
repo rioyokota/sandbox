@@ -14,9 +14,6 @@
 #ifndef _PVFMM_MATRIX_HPP_
 #define _PVFMM_MATRIX_HPP_
 
-#ifdef __INTEL_OFFLOAD
-#pragma offload_attribute(push,target(mic))
-#endif
 namespace pvfmm{
 
 template <class T>
@@ -173,9 +170,6 @@ template <class Y>
 std::ostream& operator<<(std::ostream& output, const Permutation<Y>& P);
 
 }//end namespace
-#ifdef __INTEL_OFFLOAD
-#pragma offload_attribute(pop)
-#endif
 
 #include <matrix.txx>
 

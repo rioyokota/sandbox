@@ -1092,9 +1092,7 @@ void laplace_poten_uKernel(Matrix<Real_t>& src_coord, Matrix<Real_t>& src_value,
   }
 
   { // Add FLOPS
-    #ifndef __MIC__
     Profile::Add_FLOP((long long)trg_cnt_*(long long)src_cnt_*(12+4*(NWTN_ITER)));
-    #endif
   }
   #undef SRC_BLK
 }
@@ -1108,9 +1106,7 @@ void laplace_poten(T* r_src, int src_cnt, T* v_src, int dof, T* r_trg, int trg_c
 
   if(mem::TypeTraits<T>::ID()==mem::TypeTraits<float>::ID()){
     typedef float Real_t;
-    #if defined __MIC__
-      #define Vec_t Real_t
-    #elif defined __AVX__
+    #if defined __AVX__
       #define Vec_t __m256
     #elif defined __SSE3__
       #define Vec_t __m128
@@ -1121,9 +1117,7 @@ void laplace_poten(T* r_src, int src_cnt, T* v_src, int dof, T* r_trg, int trg_c
     #undef Vec_t
   }else if(mem::TypeTraits<T>::ID()==mem::TypeTraits<double>::ID()){
     typedef double Real_t;
-    #if defined __MIC__
-      #define Vec_t Real_t
-    #elif defined __AVX__
+    #if defined __AVX__
       #define Vec_t __m256d
     #elif defined __SSE3__
       #define Vec_t __m128d
@@ -1212,9 +1206,7 @@ void laplace_dbl_uKernel(Matrix<Real_t>& src_coord, Matrix<Real_t>& src_value, M
   }
 
   { // Add FLOPS
-    #ifndef __MIC__
     Profile::Add_FLOP((long long)trg_cnt_*(long long)src_cnt_*(20+4*(NWTN_ITER)));
-    #endif
   }
   #undef SRC_BLK
 }
@@ -1228,9 +1220,7 @@ void laplace_dbl_poten(T* r_src, int src_cnt, T* v_src, int dof, T* r_trg, int t
 
   if(mem::TypeTraits<T>::ID()==mem::TypeTraits<float>::ID()){
     typedef float Real_t;
-    #if defined __MIC__
-      #define Vec_t Real_t
-    #elif defined __AVX__
+    #if defined __AVX__
       #define Vec_t __m256
     #elif defined __SSE3__
       #define Vec_t __m128
@@ -1241,9 +1231,7 @@ void laplace_dbl_poten(T* r_src, int src_cnt, T* v_src, int dof, T* r_trg, int t
     #undef Vec_t
   }else if(mem::TypeTraits<T>::ID()==mem::TypeTraits<double>::ID()){
     typedef double Real_t;
-    #if defined __MIC__
-      #define Vec_t Real_t
-    #elif defined __AVX__
+    #if defined __AVX__
       #define Vec_t __m256d
     #elif defined __SSE3__
       #define Vec_t __m128d
@@ -1324,9 +1312,7 @@ void laplace_grad_uKernel(Matrix<Real_t>& src_coord, Matrix<Real_t>& src_value, 
   }
 
   { // Add FLOPS
-    #ifndef __MIC__
     Profile::Add_FLOP((long long)trg_cnt_*(long long)src_cnt_*(19+4*(NWTN_ITER)));
-    #endif
   }
   #undef SRC_BLK
 }
@@ -1340,9 +1326,7 @@ void laplace_grad(T* r_src, int src_cnt, T* v_src, int dof, T* r_trg, int trg_cn
 
   if(mem::TypeTraits<T>::ID()==mem::TypeTraits<float>::ID()){
     typedef float Real_t;
-    #if defined __MIC__
-      #define Vec_t Real_t
-    #elif defined __AVX__
+    #if defined __AVX__
       #define Vec_t __m256
     #elif defined __SSE3__
       #define Vec_t __m128
@@ -1353,9 +1337,7 @@ void laplace_grad(T* r_src, int src_cnt, T* v_src, int dof, T* r_trg, int trg_cn
     #undef Vec_t
   }else if(mem::TypeTraits<T>::ID()==mem::TypeTraits<double>::ID()){
     typedef double Real_t;
-    #if defined __MIC__
-      #define Vec_t Real_t
-    #elif defined __AVX__
+    #if defined __AVX__
       #define Vec_t __m256d
     #elif defined __SSE3__
       #define Vec_t __m128d
@@ -1481,9 +1463,7 @@ void stokes_vel_uKernel(Matrix<Real_t>& src_coord, Matrix<Real_t>& src_value, Ma
   }
 
   { // Add FLOPS
-    #ifndef __MIC__
     Profile::Add_FLOP((long long)trg_cnt_*(long long)src_cnt_*(29+4*(NWTN_ITER)));
-    #endif
   }
   #undef SRC_BLK
 }
@@ -1497,9 +1477,7 @@ void stokes_vel(T* r_src, int src_cnt, T* v_src, int dof, T* r_trg, int trg_cnt,
 
   if(mem::TypeTraits<T>::ID()==mem::TypeTraits<float>::ID()){
     typedef float Real_t;
-    #if defined __MIC__
-      #define Vec_t Real_t
-    #elif defined __AVX__
+    #if defined __AVX__
       #define Vec_t __m256
     #elif defined __SSE3__
       #define Vec_t __m128
@@ -1510,9 +1488,7 @@ void stokes_vel(T* r_src, int src_cnt, T* v_src, int dof, T* r_trg, int trg_cnt,
     #undef Vec_t
   }else if(mem::TypeTraits<T>::ID()==mem::TypeTraits<double>::ID()){
     typedef double Real_t;
-    #if defined __MIC__
-      #define Vec_t Real_t
-    #elif defined __AVX__
+    #if defined __AVX__
       #define Vec_t __m256d
     #elif defined __SSE3__
       #define Vec_t __m128d
@@ -1548,9 +1524,7 @@ void stokes_vol_poten(const Real_t* coord, int n, Real_t* out){
 
 template <class T>
 void stokes_sym_dip(T* r_src, int src_cnt, T* v_src, int dof, T* r_trg, int trg_cnt, T* k_out, mem::MemoryManager* mem_mgr){
-#ifndef __MIC__
   Profile::Add_FLOP((long long)trg_cnt*(long long)src_cnt*(47*dof));
-#endif
 
   const T mu=1.0;
   const T OOEPMU = -1.0/(8.0*const_pi<T>()*mu);
@@ -1588,9 +1562,7 @@ void stokes_sym_dip(T* r_src, int src_cnt, T* v_src, int dof, T* r_trg, int trg_
 
 template <class T>
 void stokes_press(T* r_src, int src_cnt, T* v_src_, int dof, T* r_trg, int trg_cnt, T* k_out, mem::MemoryManager* mem_mgr){
-#ifndef __MIC__
   Profile::Add_FLOP((long long)trg_cnt*(long long)src_cnt*(17*dof));
-#endif
 
   const T OOFP = 1.0/(4.0*const_pi<T>());
   for(int t=0;t<trg_cnt;t++){
@@ -1621,9 +1593,7 @@ void stokes_press(T* r_src, int src_cnt, T* v_src_, int dof, T* r_trg, int trg_c
 
 template <class T>
 void stokes_stress(T* r_src, int src_cnt, T* v_src_, int dof, T* r_trg, int trg_cnt, T* k_out, mem::MemoryManager* mem_mgr){
-#ifndef __MIC__
   Profile::Add_FLOP((long long)trg_cnt*(long long)src_cnt*(45*dof));
-#endif
 
   const T TOFP = -3.0/(4.0*const_pi<T>());
   for(int t=0;t<trg_cnt;t++){
@@ -1667,9 +1637,7 @@ void stokes_stress(T* r_src, int src_cnt, T* v_src_, int dof, T* r_trg, int trg_
 
 template <class T>
 void stokes_grad(T* r_src, int src_cnt, T* v_src_, int dof, T* r_trg, int trg_cnt, T* k_out, mem::MemoryManager* mem_mgr){
-#ifndef __MIC__
   Profile::Add_FLOP((long long)trg_cnt*(long long)src_cnt*(89*dof));
-#endif
 
   const T mu=1.0;
   const T OOEPMU = 1.0/(8.0*const_pi<T>()*mu);
@@ -1721,7 +1689,6 @@ void stokes_grad(T* r_src, int src_cnt, T* v_src_, int dof, T* r_trg, int trg_cn
   }
 }
 
-#ifndef __MIC__
 #ifdef USE_SSE
 namespace
 {
@@ -2343,7 +2310,6 @@ inline void stokes_grad<double>(double* r_src, int src_cnt, double* v_src_, int 
   stokesGradSSEShuffle(src_cnt, trg_cnt, r_src, r_trg, v_src_, k_out, mu, mem_mgr);
 }
 #endif
-#endif
 
 template<class T> const Kernel<T>& StokesKernel<T>::velocity(){
   static Kernel<T> ker=BuildKernel<T, stokes_vel<T,1>, stokes_sym_dip>("stokes_vel"   , 3, std::pair<int,int>(3,3),
@@ -2439,9 +2405,7 @@ void biot_savart_uKernel(Matrix<Real_t>& src_coord, Matrix<Real_t>& src_value, M
   }
 
   { // Add FLOPS
-    #ifndef __MIC__
     Profile::Add_FLOP((long long)trg_cnt_*(long long)src_cnt_*(29+4*(NWTN_ITER)));
-    #endif
   }
   #undef SRC_BLK
 }
@@ -2455,9 +2419,7 @@ void biot_savart(T* r_src, int src_cnt, T* v_src, int dof, T* r_trg, int trg_cnt
 
   if(mem::TypeTraits<T>::ID()==mem::TypeTraits<float>::ID()){
     typedef float Real_t;
-    #if defined __MIC__
-      #define Vec_t Real_t
-    #elif defined __AVX__
+    #if defined __AVX__
       #define Vec_t __m256
     #elif defined __SSE3__
       #define Vec_t __m128
@@ -2468,9 +2430,7 @@ void biot_savart(T* r_src, int src_cnt, T* v_src, int dof, T* r_trg, int trg_cnt
     #undef Vec_t
   }else if(mem::TypeTraits<T>::ID()==mem::TypeTraits<double>::ID()){
     typedef double Real_t;
-    #if defined __MIC__
-      #define Vec_t Real_t
-    #elif defined __AVX__
+    #if defined __AVX__
       #define Vec_t __m256d
     #elif defined __SSE3__
       #define Vec_t __m128d
@@ -2572,9 +2532,7 @@ void helmholtz_poten_uKernel(Matrix<Real_t>& src_coord, Matrix<Real_t>& src_valu
   }
 
   { // Add FLOPS
-    #ifndef __MIC__
     Profile::Add_FLOP((long long)trg_cnt_*(long long)src_cnt_*(24+4*(NWTN_ITER)));
-    #endif
   }
   #undef SRC_BLK
 }
@@ -2588,9 +2546,7 @@ void helmholtz_poten(T* r_src, int src_cnt, T* v_src, int dof, T* r_trg, int trg
 
   if(mem::TypeTraits<T>::ID()==mem::TypeTraits<float>::ID()){
     typedef float Real_t;
-    #if defined __MIC__
-      #define Vec_t Real_t
-    #elif defined __AVX__
+    #if defined __AVX__
       #define Vec_t __m256
     #elif defined __SSE3__
       #define Vec_t __m128
@@ -2601,9 +2557,7 @@ void helmholtz_poten(T* r_src, int src_cnt, T* v_src, int dof, T* r_trg, int trg
     #undef Vec_t
   }else if(mem::TypeTraits<T>::ID()==mem::TypeTraits<double>::ID()){
     typedef double Real_t;
-    #if defined __MIC__
-      #define Vec_t Real_t
-    #elif defined __AVX__
+    #if defined __AVX__
       #define Vec_t __m256d
     #elif defined __SSE3__
       #define Vec_t __m128d

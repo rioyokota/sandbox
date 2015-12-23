@@ -75,12 +75,6 @@ void FMM_Tree<FMM_Mat_t>::SetupFMM(FMM_Mat_t* fmm_mat_) {
   typedef typename FMM_Mat_t::FMMTree_t MatTree_t;
   bool device=true;
 
-  #ifdef __INTEL_OFFLOAD
-  Profile::Tic("InitLocks",this->Comm(),false,3);
-  MIC_Lock::init();
-  Profile::Toc();
-  #endif
-
   //int omp_p=omp_get_max_threads();
   if(fmm_mat!=fmm_mat_){ // Clear previous setup
     setup_data.clear();
@@ -170,13 +164,6 @@ void FMM_Tree<FMM_Mat_t>::SetupFMM(FMM_Mat_t* fmm_mat_) {
   }
   Profile::Toc();
 
-  #ifdef __INTEL_OFFLOAD
-  int wait_lock_idx=-1;
-  wait_lock_idx=MIC_Lock::curr_lock();
-  #pragma offload target(mic:0)
-  {MIC_Lock::wait_lock(wait_lock_idx);}
-  #endif
-
   ClearFMMData();
 
   }Profile::Toc();
@@ -218,16 +205,6 @@ void FMM_Tree<FMM_Mat_t>::ClearFMMData() {
     if(setup_data[0+MAX_DEPTH*1]. input_data!=NULL) setup_data[0+MAX_DEPTH*1]. input_data->AllocDevice(true);
     if(setup_data[0+MAX_DEPTH*2].output_data!=NULL) setup_data[0+MAX_DEPTH*2].output_data->AllocDevice(true);
     if(setup_data[0+MAX_DEPTH*0].output_data!=NULL) setup_data[0+MAX_DEPTH*0].output_data->AllocDevice(true);
-
-    #ifdef __INTEL_OFFLOAD
-    if(!fmm_mat->ScaleInvar()){ // Wait
-      int wait_lock_idx=-1;
-      wait_lock_idx=MIC_Lock::curr_lock();
-      #pragma offload target(mic:0)
-      {MIC_Lock::wait_lock(wait_lock_idx);}
-    }
-    MIC_Lock::init();
-    #endif
   }
 
   }Profile::Toc();
@@ -632,12 +609,6 @@ void FMM_Tree<FMM_Mat_t>::DownwardPass() {
     }
 
     if(!fmm_mat->ScaleInvar()){ // Wait
-      #ifdef __INTEL_OFFLOAD
-      int wait_lock_idx=-1;
-      if(device) wait_lock_idx=MIC_Lock::curr_lock();
-      #pragma offload if(device) target(mic:0)
-      {if(device) MIC_Lock::wait_lock(wait_lock_idx);}
-      #endif
       Profile::Toc();
     }
   }

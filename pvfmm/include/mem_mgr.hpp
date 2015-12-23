@@ -21,9 +21,6 @@
 #ifndef _PVFMM_MEM_MGR_HPP_
 #define _PVFMM_MEM_MGR_HPP_
 
-#ifdef __INTEL_OFFLOAD
-#pragma offload_attribute(push,target(mic))
-#endif
 namespace pvfmm{
 namespace mem{
 
@@ -161,9 +158,5 @@ inline void * memcopy(void * destination, const void * source, size_t num);
 }//end namespace
 
 #include <mem_mgr.txx>
-
-#ifdef __INTEL_OFFLOAD
-#pragma offload_attribute(pop)
-#endif
 
 #endif //_PVFMM_MEM_MGR_HPP_

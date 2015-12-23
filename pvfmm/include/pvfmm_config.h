@@ -46,11 +46,6 @@
 #define PVFMM_HAVE_FLOOR 1
 #endif
 
-/* Define if you have INTEL_OFFLOAD_PRAGMA. */
-#ifndef PVFMM_HAVE_INTEL_OFFLOAD_PRAGMA
-#define PVFMM_HAVE_INTEL_OFFLOAD_PRAGMA 1
-#endif
-
 /* Define to 1 if you have the <inttypes.h> header file. */
 #ifndef PVFMM_HAVE_INTTYPES_H
 #define PVFMM_HAVE_INTTYPES_H 1

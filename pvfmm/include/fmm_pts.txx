@@ -203,9 +203,6 @@ FMM_Pts<FMMNode>::~FMM_Pts() {
     mat=NULL;
   }
   if(vprecomp_fft_flag) FFTW_t<Real_t>::fft_destroy_plan(vprecomp_fftplan);
-  #ifdef __INTEL_OFFLOAD0
-  #pragma offload target(mic:0)
-  #endif
   {
     if(vlist_fft_flag ) FFTW_t<Real_t>::fft_destroy_plan(vlist_fftplan );
     if(vlist_ifft_flag) FFTW_t<Real_t>::fft_destroy_plan(vlist_ifftplan);
@@ -1743,11 +1740,6 @@ void FMM_Pts<FMMNode>::EvalList(SetupData<Real_t>& setup_data, bool device){
   Profile::Tic("DeviceComp",&this->comm,false,20);
   int lock_idx=-1;
   int wait_lock_idx=-1;
-  if(device) wait_lock_idx=MIC_Lock::curr_lock();
-  if(device) lock_idx=MIC_Lock::get_lock();
-  #ifdef __INTEL_OFFLOAD
-  #pragma offload if(device) target(mic:0) signal(&MIC_Lock::lock_vec[device?lock_idx:0])
-  #endif
   { // Offloaded computation.
 
     // Set interac_data.
@@ -1781,8 +1773,6 @@ void FMM_Pts<FMMNode>::EvalList(SetupData<Real_t>& setup_data, bool device){
       output_perm.ReInit(((size_t*)data_ptr)[0],(size_t*)(data_ptr+sizeof(size_t)),false);
       data_ptr+=sizeof(size_t)+output_perm.Dim()*sizeof(size_t);
     }
-
-    if(device) MIC_Lock::wait_lock(wait_lock_idx);
 
     //Compute interaction from Chebyshev source density.
     { // interactions
@@ -1944,15 +1934,7 @@ void FMM_Pts<FMMNode>::EvalList(SetupData<Real_t>& setup_data, bool device){
       }
     }
 
-    if(device) MIC_Lock::release_lock(lock_idx);
   }
-
-  #ifdef __INTEL_OFFLOAD
-  if(SYNC){
-    #pragma offload if(device) target(mic:0)
-    {if(device) MIC_Lock::wait_lock(lock_idx);}
-  }
-  #endif
 
   Profile::Toc();
 }
@@ -2413,9 +2395,6 @@ void FMM_Pts<FMMNode>::FFT_UpEquiv(size_t dof, size_t m, size_t ker_dim0, Vector
         #ifndef FFTW3_MKL
         double add, mul, fma;
         FFTW_t<Real_t>::fftw_flops(vlist_fftplan, &add, &mul, &fma);
-        #ifndef __INTEL_OFFLOAD0
-        Profile::Add_FLOP((long long)(add+mul+2*fma));
-        #endif
         #endif
 
         for(int i=0;i<ker_dim0*dof;i++)
@@ -2499,9 +2478,6 @@ void FMM_Pts<FMMNode>::FFT_Check2Equiv(size_t dof, size_t m, size_t ker_dim1, Ve
         #ifndef FFTW3_MKL
         double add, mul, fma;
         FFTW_t<Real_t>::fftw_flops(vlist_ifftplan, &add, &mul, &fma);
-        #ifndef __INTEL_OFFLOAD0
-        Profile::Add_FLOP((long long)(add+mul+2*fma)*dof);
-        #endif
         #endif
 
         // Rearrange downward check data.
@@ -3691,11 +3667,6 @@ void FMM_Pts<FMMNode>::EvalListPts(SetupData<Real_t>& setup_data, bool device){
   Profile::Tic("DeviceComp",&this->comm,false,20);
   int lock_idx=-1;
   int wait_lock_idx=-1;
-  if(device) wait_lock_idx=MIC_Lock::curr_lock();
-  if(device) lock_idx=MIC_Lock::get_lock();
-  #ifdef __INTEL_OFFLOAD
-  #pragma offload if(device) target(mic:0) signal(&MIC_Lock::lock_vec[device?lock_idx:0])
-  #endif
   { // Offloaded computation.
     struct PackedData{
       size_t len;
@@ -3812,7 +3783,6 @@ void FMM_Pts<FMMNode>::EvalListPts(SetupData<Real_t>& setup_data, bool device){
       }
     }
 
-    if(device) MIC_Lock::wait_lock(wait_lock_idx);
     { // Compute interactions
       InteracData& intdata=data.interac_data;
       typename Kernel<Real_t>::Ker_t single_layer_kernel=(typename Kernel<Real_t>::Ker_t)ptr_single_layer_kernel;
@@ -4087,14 +4057,7 @@ void FMM_Pts<FMMNode>::EvalListPts(SetupData<Real_t>& setup_data, bool device){
         }
       }
     }
-    if(device) MIC_Lock::release_lock(lock_idx);
   }
-  #ifdef __INTEL_OFFLOAD
-  if(SYNC){
-    #pragma offload if(device) target(mic:0)
-    {if(device) MIC_Lock::wait_lock(lock_idx);}
-  }
-  #endif
   Profile::Toc();
 }
 

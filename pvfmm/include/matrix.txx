@@ -52,9 +52,6 @@ Matrix<T>::Matrix(size_t dim1, size_t dim2, T* data_, bool own_data_){
   if(own_data){
     if(dim[0]*dim[1]>0){
       data_ptr=mem::aligned_new<T>(dim[0]*dim[1]);
-#if !defined(__MIC__) || !defined(__INTEL_OFFLOAD)
-      Profile::Add_MEM(dim[0]*dim[1]*sizeof(T));
-#endif
       if(data_!=NULL) mem::memcopy(data_ptr,data_,dim[0]*dim[1]*sizeof(T));
     }else data_ptr=NULL;
   }else
@@ -69,9 +66,6 @@ Matrix<T>::Matrix(const Matrix<T>& M){
   own_data=true;
   if(dim[0]*dim[1]>0){
     data_ptr=mem::aligned_new<T>(dim[0]*dim[1]);
-#if !defined(__MIC__) || !defined(__INTEL_OFFLOAD)
-    Profile::Add_MEM(dim[0]*dim[1]*sizeof(T));
-#endif
     mem::memcopy(data_ptr,M.data_ptr,dim[0]*dim[1]*sizeof(T));
   }else
     data_ptr=NULL;
@@ -84,9 +78,6 @@ Matrix<T>::~Matrix(){
   if(own_data){
     if(data_ptr!=NULL){
       mem::aligned_delete(data_ptr);
-#if !defined(__MIC__) || !defined(__INTEL_OFFLOAD)
-      Profile::Add_MEM(-dim[0]*dim[1]*sizeof(T));
-#endif
     }
   }
   data_ptr=NULL;
@@ -299,9 +290,6 @@ void Matrix<T>::GEMM(Matrix<T>& M_r, const Matrix<T>& A, const Matrix<T>& B, T b
   assert(A.dim[1]==B.dim[0]);
   assert(M_r.dim[0]==A.dim[0]);
   assert(M_r.dim[1]==B.dim[1]);
-#if !defined(__MIC__) || !defined(__INTEL_OFFLOAD)
-  Profile::Add_FLOP(2*(((long long)A.dim[0])*A.dim[1])*B.dim[1]);
-#endif
   mat::gemm<T>('N','N',B.dim[1],A.dim[0],A.dim[1],
       1.0,B.data_ptr,B.dim[1],A.data_ptr,A.dim[1],beta,M_r.data_ptr,M_r.dim[1]);
 }
