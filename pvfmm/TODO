@@ -1,5 +1,6 @@
 Simplify Output
-Simplify directory structure
 Remove unused files
+ - in src
+ - in include
 Remove unused functions
  - Use macro to detect dead code
