@@ -6,8 +6,6 @@ LDFLAGS = -lfftw3 -lfftw3f -lmkl_intel_lp64 -lmkl_sequential -lmkl_core -lpthrea
 %.o: %.cpp
 	$(CXX) -c $< -o $@
 
-# src/cheb_utils.o
-
 build: src/device_wrapper.o src/fmm_gll.o src/legendre_rule.o src/mat_utils.o src/math_utils.o src/mem_mgr.o src/mortonid.o src/profile.o src/tree_node.o src/fmm_pts.o
 	$(CXX) $? $(LDFLAGS) -o ./fmm_pts
 
@@ -18,14 +16,14 @@ tags:
 	find . -name "*.cpp" -o -name "*.hpp" -o -name "*.txx" | xargs etags -f TAGS
 
 y4:
-	./fmm_pts -omp 16 -N 100000 -m 4 -M 32 -ker 2
+	./fmm_pts -omp 16 -N 100000 -m 4 -M 32 -sp 1
 
 y16:
-	./fmm_pts -omp 16 -N 100000 -m 16 -M 320 -ker 2
+	./fmm_pts -omp 16 -N 100000 -m 16 -M 320
 
 r4:
-	./fmm_pts -omp 72 -N 1000000 -m 4 -M 32 -ker 2
+	./fmm_pts -omp 72 -N 1000000 -m 4 -M 32 -sp 1
 
 r16:
-	./fmm_pts -omp 72 -N 1000000 -m 16 -M 320 -ker 2
+	./fmm_pts -omp 72 -N 1000000 -m 16 -M 320
 

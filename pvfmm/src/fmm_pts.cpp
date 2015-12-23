@@ -12,31 +12,15 @@
 #include <utils.hpp>
 
 template <class Real_t>
-void fmm_test(int ker, size_t N, size_t M, Real_t b, int dist, int mult_order, int depth, MPI_Comm comm){
+void fmm_test(size_t N, size_t M, Real_t b, int dist, int mult_order, int depth, MPI_Comm comm){
   typedef pvfmm::FMM_Node<pvfmm::MPI_Node<Real_t> > FMMNode_t;
   typedef pvfmm::FMM_Pts<FMMNode_t> FMM_Mat_t;
   typedef pvfmm::FMM_Tree<FMM_Mat_t> FMM_Tree_t;
 
   //Set kernel.
-  const pvfmm::Kernel<Real_t>* mykernel=NULL;
   pvfmm::BoundaryType bndry=pvfmm::FreeSpace;
 
-  switch (ker){
-    case 1:
-      mykernel     =&pvfmm::LaplaceKernel<Real_t>::potential();
-      break;
-    case 2:
-      mykernel     =&pvfmm::LaplaceKernel<Real_t>::gradient();
-      break;
-    case 3:
-      mykernel     =&pvfmm::StokesKernel<Real_t>::velocity();
-      break;
-    case 4:
-      mykernel     =&pvfmm::HelmholtzKernel<Real_t>::potential();
-      break;
-    default:
-      break;
-  }
+  const pvfmm::Kernel<Real_t>* mykernel = &pvfmm::LaplaceKernel<Real_t>::gradient();
 
   // Find out number of OMP thereads.
   int omp_p=omp_get_max_threads();
@@ -210,18 +194,13 @@ int main(int argc, char **argv){
   int      d=       strtoul(commandline_option(argc, argv,    "-d",    "15", false, "-d    <int> = (15)   : Maximum tree depth."                ),NULL,10);
   bool    sp=   (1==strtoul(commandline_option(argc, argv,   "-sp",     "0", false, "-sp   <0/1> =  (0)   : Single Precision."                  ),NULL,10));
   int   dist=       strtoul(commandline_option(argc, argv, "-dist",     "0", false, "-dist <int> =  (0)   : 0) Unif 1) Sphere 2) Ellipse"       ),NULL,10);
-  int    ker=       strtoul(commandline_option(argc, argv,  "-ker",     "1", false,
-       "-ker  <int> =  (1)   : 1) Laplace potential\n\
-                               2) Laplace gradient\n\
-                               3) Stokes velocity\n\
-                               4) Helmholtz"),NULL,10);
   commandline_option_end(argc, argv);
   pvfmm::Profile::Enable(true);
 
   // Run FMM with above options.
   pvfmm::Profile::Tic("FMM_Test",&comm,true);
-  if(sp) fmm_test<float >(ker, N,M,b, dist,m,d,comm);
-  else   fmm_test<double>(ker, N,M,b, dist,m,d,comm);
+  if(sp) fmm_test<float >(N, M, b, dist, m, d, comm);
+  else   fmm_test<double>(N, M, b, dist, m, d, comm);
   pvfmm::Profile::Toc();
 
   //Output Profiling results.
