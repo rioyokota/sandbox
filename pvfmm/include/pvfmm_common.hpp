@@ -57,8 +57,6 @@
 #define ASSERT_WITH_MSG(cond, msg)
 #endif
 
-#include <stacktrace.h>
-
 #include <math_utils.hpp>
 
 #endif //_PVFMM_COMMON_HPP_
