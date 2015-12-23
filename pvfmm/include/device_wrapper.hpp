@@ -23,16 +23,6 @@ namespace DeviceWrapper{
 
   void host_free(void*);
 
-  uintptr_t alloc_device(char* dev_handle, size_t len);
-
-  void free_device(char* dev_handle, uintptr_t dev_ptr);
-
-  template <int SYNC=__DEVICE_SYNC__>
-  int host2device(char* host_ptr, char* dev_handle, uintptr_t dev_ptr, size_t len);
-
-  template <int SYNC=__DEVICE_SYNC__>
-  int device2host(char* dev_handle, uintptr_t dev_ptr, char* host_ptr, size_t len);
-
   void wait(int lock_idx);
 
 }//end namespace

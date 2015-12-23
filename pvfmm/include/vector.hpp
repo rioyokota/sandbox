@@ -55,10 +55,6 @@ class Vector{
 
   void ReInit(size_t dim_, T* data_=NULL, bool own_data_=true);
 
-  Device& AllocDevice(bool copy);
-
-  void Device2Host();
-
   void FreeDevice(bool copy);
 
   void Write(const char* fname);

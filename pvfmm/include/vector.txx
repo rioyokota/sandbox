@@ -122,27 +122,8 @@ void Vector<T>::ReInit(size_t dim_, T* data_, bool own_data_){
 }
 
 template <class T>
-typename Vector<T>::Device& Vector<T>::AllocDevice(bool copy){
-  if(dev.dev_ptr==(uintptr_t)NULL && dim>0) // Allocate data on device.
-    dev.dev_ptr=DeviceWrapper::alloc_device((char*)data_ptr, dim*sizeof(T));
-  if(dev.dev_ptr!=(uintptr_t)NULL && copy) // Copy data to device
-    DeviceWrapper::host2device((char*)data_ptr,(char*)data_ptr,dev.dev_ptr,dim*sizeof(T));
-
-  dev.dim=dim;
-  return dev;
-}
-
-template <class T>
-void Vector<T>::Device2Host(){
-  if(dev.dev_ptr==(uintptr_t)NULL) return;
-  DeviceWrapper::device2host((char*)data_ptr,dev.dev_ptr,(char*)data_ptr,dim*sizeof(T));
-}
-
-template <class T>
 void Vector<T>::FreeDevice(bool copy){
   if(dev.dev_ptr==(uintptr_t)NULL) return;
-  if(copy) DeviceWrapper::device2host((char*)data_ptr,dev.dev_ptr,(char*)data_ptr,dim*sizeof(T));
-  DeviceWrapper::free_device((char*)data_ptr,dev.dev_ptr);
   dev.dev_ptr=(uintptr_t)NULL;
   dev.dim=0;
 }

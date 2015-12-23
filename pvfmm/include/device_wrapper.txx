@@ -32,34 +32,6 @@ namespace DeviceWrapper{
     return free(p);
   }
 
-  inline uintptr_t alloc_device(char* dev_handle, size_t len){
-    UNUSED(len);
-    uintptr_t dev_ptr=(uintptr_t)NULL;
-    {dev_ptr=(uintptr_t)dev_handle;}
-    return dev_ptr;
-  }
-
-  inline void free_device(char* dev_handle, uintptr_t dev_ptr){
-    UNUSED(dev_handle);
-    UNUSED(dev_ptr);
-  }
-
-  template <int SYNC>
-  inline int host2device(char* host_ptr, char* dev_handle, uintptr_t dev_ptr, size_t len){
-    int lock_idx=-1;
-    return lock_idx;
-  }
-
-  template <int SYNC>
-  inline int device2host(char* dev_handle, uintptr_t dev_ptr, char* host_ptr, size_t len){
-    int lock_idx=-1;
-    UNUSED(dev_handle);
-    UNUSED(host_ptr);
-    UNUSED(dev_ptr);
-    UNUSED(len);
-    return lock_idx;
-  }
-
   inline void wait(int lock_idx){
     UNUSED(lock_idx);
   }

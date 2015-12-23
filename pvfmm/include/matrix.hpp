@@ -59,12 +59,6 @@ class Matrix{
 
   void ReInit(size_t dim1, size_t dim2, T* data_=NULL, bool own_data_=true);
 
-  Device& AllocDevice(bool copy);
-
-  void Device2Host(T* host_ptr=NULL);
-
-  void Device2HostWait();
-
   void FreeDevice(bool copy);
 
   void Write(const char* fname);

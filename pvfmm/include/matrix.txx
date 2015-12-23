@@ -121,34 +121,8 @@ void Matrix<T>::ReInit(size_t dim1, size_t dim2, T* data_, bool own_data_){
 }
 
 template <class T>
-typename Matrix<T>::Device& Matrix<T>::AllocDevice(bool copy){
-  size_t len=dim[0]*dim[1];
-  if(dev.dev_ptr==(uintptr_t)NULL && len>0) // Allocate data on device.
-    dev.dev_ptr=DeviceWrapper::alloc_device((char*)data_ptr, len*sizeof(T));
-  if(dev.dev_ptr!=(uintptr_t)NULL && copy) // Copy data to device
-    dev.lock_idx=DeviceWrapper::host2device((char*)data_ptr,(char*)data_ptr,dev.dev_ptr,len*sizeof(T));
-
-  dev.dim[0]=dim[0];
-  dev.dim[1]=dim[1];
-  return dev;
-}
-
-template <class T>
-void Matrix<T>::Device2Host(T* host_ptr){
-  dev.lock_idx=DeviceWrapper::device2host((char*)data_ptr,dev.dev_ptr,(char*)(host_ptr==NULL?data_ptr:host_ptr),dim[0]*dim[1]*sizeof(T));
-}
-
-template <class T>
-void Matrix<T>::Device2HostWait(){
-  DeviceWrapper::wait(dev.lock_idx);
-  dev.lock_idx=-1;
-}
-
-template <class T>
 void Matrix<T>::FreeDevice(bool copy){
   if(dev.dev_ptr==(uintptr_t)NULL) return;
-  if(copy) DeviceWrapper::device2host((char*)data_ptr,dev.dev_ptr,(char*)data_ptr,dim[0]*dim[1]*sizeof(T));
-  DeviceWrapper::free_device((char*)data_ptr, dev.dev_ptr);
   dev.dev_ptr=(uintptr_t)NULL;
   dev.dim[0]=0;
   dev.dim[1]=0;

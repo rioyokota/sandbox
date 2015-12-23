@@ -41,10 +41,6 @@
 #define V_BLK_CACHE 25 //in KB
 #define GLOBAL_MEM_BUFF 1024LL*0LL //in MB
 
-#ifndef __DEVICE_SYNC__
-#define __DEVICE_SYNC__ 0 // No device synchronization by default.
-#endif
-
 #define UNUSED(x) (void)(x) // to ignore unused variable warning.
 
 #include <math_utils.hpp>

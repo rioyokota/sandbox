@@ -1450,7 +1450,7 @@ void FMM_Pts<FMMNode>::CollectNodeData(FMMTree_t* tree, std::vector<FMMNode*>& n
 
 
 template <class FMMNode>
-void FMM_Pts<FMMNode>::SetupPrecomp(SetupData<Real_t>& setup_data, bool device){
+void FMM_Pts<FMMNode>::SetupPrecomp(SetupData<Real_t>& setup_data){
   if(setup_data.precomp_data==NULL || setup_data.level>MAX_DEPTH) return;
 
   Profile::Tic("SetupPrecomp",&this->comm,true,25);
@@ -1467,15 +1467,10 @@ void FMM_Pts<FMMNode>::SetupPrecomp(SetupData<Real_t>& setup_data, bool device){
   }
   Profile::Toc();
 
-  if(device){ // Host2Device
-    Profile::Tic("Host2Device",&this->comm,false,25);
-    setup_data.precomp_data->AllocDevice(true);
-    Profile::Toc();
-  }
 }
 
 template <class FMMNode>
-void FMM_Pts<FMMNode>::SetupInterac(SetupData<Real_t>& setup_data, bool device){
+void FMM_Pts<FMMNode>::SetupInterac(SetupData<Real_t>& setup_data){
   int level=setup_data.level;
   std::vector<Mat_Type>& interac_type_lst=setup_data.interac_type;
 
@@ -1490,7 +1485,7 @@ void FMM_Pts<FMMNode>::SetupInterac(SetupData<Real_t>& setup_data, bool device){
   size_t n_out=nodes_out.size();
 
   // Setup precomputed data.
-  if(setup_data.precomp_data->Dim(0)*setup_data.precomp_data->Dim(1)==0) SetupPrecomp(setup_data,device);
+  if(setup_data.precomp_data->Dim(0)*setup_data.precomp_data->Dim(1)==0) SetupPrecomp(setup_data);
 
   // Build interac_data
   Profile::Tic("Interac-Data",&this->comm,true,25);
@@ -1693,21 +1688,10 @@ void FMM_Pts<FMMNode>::SetupInterac(SetupData<Real_t>& setup_data, bool device){
   }
   Profile::Toc();
 
-  if(device){ // Host2Device
-    Profile::Tic("Host2Device",&this->comm,false,25);
-    setup_data.interac_data .AllocDevice(true);
-    if(staging_buffer.Dim()<sizeof(Real_t)*output_data.Dim(0)*output_data.Dim(1)){
-      staging_buffer.ReInit(sizeof(Real_t)*output_data.Dim(0)*output_data.Dim(1));
-      staging_buffer.SetZero();
-      staging_buffer.AllocDevice(true);
-    }
-    Profile::Toc();
-  }
 }
 
 template <class FMMNode>
-template <int SYNC>
-void FMM_Pts<FMMNode>::EvalList(SetupData<Real_t>& setup_data, bool device){
+void FMM_Pts<FMMNode>::EvalList(SetupData<Real_t>& setup_data){
   if(setup_data.interac_data.Dim(0)==0 || setup_data.interac_data.Dim(1)==0){
     Profile::Tic("Host2Device",&this->comm,false,25);
     Profile::Toc();
@@ -1722,19 +1706,13 @@ void FMM_Pts<FMMNode>::EvalList(SetupData<Real_t>& setup_data, bool device){
   typename Matrix<char>::Device  interac_data;
   typename Matrix<Real_t>::Device  input_data;
   typename Matrix<Real_t>::Device output_data;
-  if(device){
-    buff        =       this-> dev_buffer. AllocDevice(false);
-    precomp_data= setup_data.precomp_data->AllocDevice(false);
-    interac_data= setup_data.interac_data. AllocDevice(false);
-    input_data  = setup_data.  input_data->AllocDevice(false);
-    output_data = setup_data. output_data->AllocDevice(false);
-  }else{
-    buff        =       this-> dev_buffer;
-    precomp_data=*setup_data.precomp_data;
-    interac_data= setup_data.interac_data;
-    input_data  =*setup_data.  input_data;
-    output_data =*setup_data. output_data;
-  }
+
+  buff        =       this-> dev_buffer;
+  precomp_data=*setup_data.precomp_data;
+  interac_data= setup_data.interac_data;
+  input_data  =*setup_data.  input_data;
+  output_data =*setup_data. output_data;
+
   Profile::Toc();
 
   Profile::Tic("DeviceComp",&this->comm,false,20);
@@ -1942,7 +1920,7 @@ void FMM_Pts<FMMNode>::EvalList(SetupData<Real_t>& setup_data, bool device){
 
 
 template <class FMMNode>
-void FMM_Pts<FMMNode>::Source2UpSetup(SetupData<Real_t>&  setup_data, FMMTree_t* tree, std::vector<Matrix<Real_t> >& buff, std::vector<Vector<FMMNode_t*> >& n_list, int level, bool device){
+void FMM_Pts<FMMNode>::Source2UpSetup(SetupData<Real_t>&  setup_data, FMMTree_t* tree, std::vector<Matrix<Real_t> >& buff, std::vector<Vector<FMMNode_t*> >& n_list, int level){
   if(!this->MultipoleOrder()) return;
   { // Set setup_data
     setup_data. level=level;
@@ -2261,15 +2239,15 @@ void FMM_Pts<FMMNode>::Source2UpSetup(SetupData<Real_t>&  setup_data, FMMTree_t*
 }
 
 template <class FMMNode>
-void FMM_Pts<FMMNode>::Source2Up(SetupData<Real_t>&  setup_data, bool device){
+void FMM_Pts<FMMNode>::Source2Up(SetupData<Real_t>&  setup_data){
   if(!this->MultipoleOrder()) return;
   //Add Source2Up contribution.
-  this->EvalListPts(setup_data, device);
+  this->EvalListPts(setup_data);
 }
 
 
 template <class FMMNode>
-void FMM_Pts<FMMNode>::Up2UpSetup(SetupData<Real_t>& setup_data, FMMTree_t* tree, std::vector<Matrix<Real_t> >& buff, std::vector<Vector<FMMNode_t*> >& n_list, int level, bool device){
+void FMM_Pts<FMMNode>::Up2UpSetup(SetupData<Real_t>& setup_data, FMMTree_t* tree, std::vector<Matrix<Real_t> >& buff, std::vector<Vector<FMMNode_t*> >& n_list, int level){
   if(!this->MultipoleOrder()) return;
   { // Set setup_data
     setup_data.level=level;
@@ -2295,14 +2273,14 @@ void FMM_Pts<FMMNode>::Up2UpSetup(SetupData<Real_t>& setup_data, FMMTree_t* tree
   for(size_t i=0;i<nodes_in .size();i++)  input_vector.push_back(&((FMMData*)((FMMNode*)nodes_in [i])->FMMData())->upward_equiv);
   for(size_t i=0;i<nodes_out.size();i++) output_vector.push_back(&((FMMData*)((FMMNode*)nodes_out[i])->FMMData())->upward_equiv);
 
-  SetupInterac(setup_data,device);
+  SetupInterac(setup_data);
 }
 
 template <class FMMNode>
-void FMM_Pts<FMMNode>::Up2Up     (SetupData<Real_t>& setup_data, bool device){
+void FMM_Pts<FMMNode>::Up2Up     (SetupData<Real_t>& setup_data){
   if(!this->MultipoleOrder()) return;
   //Add Up2Up contribution.
-  EvalList(setup_data, device);
+  EvalList(setup_data);
 }
 
 
@@ -2431,7 +2409,6 @@ void FMM_Pts<FMMNode>::FFT_Check2Equiv(size_t dof, size_t m, size_t ker_dim1, Ve
       map.Resize(surf.Dim()/COORD_DIM);
       for(size_t i=0;i<map.Dim();i++)
         map[i]=((size_t)(m*2-0.5-surf[i*3]))+((size_t)(m*2-0.5-surf[i*3+1]))*n1+((size_t)(m*2-0.5-surf[i*3+2]))*n2;
-      //map;//.AllocDevice(true);
     }
   }
   { // Build FFTW plan.
@@ -2980,7 +2957,7 @@ void VListHadamard(size_t dof, size_t M_dim, size_t ker_dim0, size_t ker_dim1, V
 }
 
 template <class FMMNode>
-void FMM_Pts<FMMNode>::V_ListSetup(SetupData<Real_t>&  setup_data, FMMTree_t* tree, std::vector<Matrix<Real_t> >& buff, std::vector<Vector<FMMNode_t*> >& n_list, int level, bool device){
+void FMM_Pts<FMMNode>::V_ListSetup(SetupData<Real_t>&  setup_data, FMMTree_t* tree, std::vector<Matrix<Real_t> >& buff, std::vector<Vector<FMMNode_t*> >& n_list, int level){
   if(!this->MultipoleOrder()) return;
   if(level==0) return;
   { // Set setup_data
@@ -3011,9 +2988,6 @@ void FMM_Pts<FMMNode>::V_ListSetup(SetupData<Real_t>&  setup_data, FMMTree_t* tr
 
   size_t n_in =nodes_in .size();
   size_t n_out=nodes_out.size();
-
-  // Setup precomputed data.
-  //if(setup_data.precomp_data->Dim(0)*setup_data.precomp_data->Dim(1)==0) SetupPrecomp(setup_data,device);
 
   // Build interac_data
   Profile::Tic("Interac-Data",&this->comm,true,25);
@@ -3224,17 +3198,11 @@ void FMM_Pts<FMMNode>::V_ListSetup(SetupData<Real_t>&  setup_data, FMMTree_t* tr
   }
   Profile::Toc();
 
-  if(device){ // Host2Device
-    Profile::Tic("Host2Device",&this->comm,false,25);
-    setup_data.interac_data. AllocDevice(true);
-    Profile::Toc();
-  }
 }
 
 template <class FMMNode>
-void FMM_Pts<FMMNode>::V_List     (SetupData<Real_t>&  setup_data, bool device){
+void FMM_Pts<FMMNode>::V_List     (SetupData<Real_t>&  setup_data){
   if(!this->MultipoleOrder()) return;
-  assert(!device); //Can not run on accelerator yet.
 
   int np;
   MPI_Comm_size(comm,&np);
@@ -3253,21 +3221,13 @@ void FMM_Pts<FMMNode>::V_List     (SetupData<Real_t>&  setup_data, bool device){
   typename Matrix<Real_t>::Device  input_data;
   typename Matrix<Real_t>::Device output_data;
 
-  if(device){
-    if(this->dev_buffer.Dim()<buff_size) this->dev_buffer.ReInit(buff_size);
-    buff        =       this-> dev_buffer. AllocDevice(false);
-    //precomp_data= setup_data.precomp_data->AllocDevice(false);
-    interac_data= setup_data.interac_data. AllocDevice(false);
-    input_data  = setup_data.  input_data->AllocDevice(false);
-    output_data = setup_data. output_data->AllocDevice(false);
-  }else{
-    if(this->dev_buffer.Dim()<buff_size) this->dev_buffer.ReInit(buff_size);
-    buff        =       this-> dev_buffer;
-    //precomp_data=*setup_data.precomp_data;
-    interac_data= setup_data.interac_data;
-    input_data  =*setup_data.  input_data;
-    output_data =*setup_data. output_data;
-  }
+  if(this->dev_buffer.Dim()<buff_size) this->dev_buffer.ReInit(buff_size);
+  buff        =       this-> dev_buffer;
+  //precomp_data=*setup_data.precomp_data;
+  interac_data= setup_data.interac_data;
+  input_data  =*setup_data.  input_data;
+  output_data =*setup_data. output_data;
+
   Profile::Toc();
 
   { // Offloaded computation.
@@ -3397,7 +3357,7 @@ void FMM_Pts<FMMNode>::V_List     (SetupData<Real_t>&  setup_data, bool device){
 
 
 template <class FMMNode>
-void FMM_Pts<FMMNode>::Down2DownSetup(SetupData<Real_t>& setup_data, FMMTree_t* tree, std::vector<Matrix<Real_t> >& buff, std::vector<Vector<FMMNode_t*> >& n_list, int level, bool device){
+void FMM_Pts<FMMNode>::Down2DownSetup(SetupData<Real_t>& setup_data, FMMTree_t* tree, std::vector<Matrix<Real_t> >& buff, std::vector<Vector<FMMNode_t*> >& n_list, int level){
   if(!this->MultipoleOrder()) return;
   { // Set setup_data
     setup_data.level=level;
@@ -3423,14 +3383,14 @@ void FMM_Pts<FMMNode>::Down2DownSetup(SetupData<Real_t>& setup_data, FMMTree_t* 
   for(size_t i=0;i<nodes_in .size();i++)  input_vector.push_back(&((FMMData*)((FMMNode*)nodes_in [i])->FMMData())->dnward_equiv);
   for(size_t i=0;i<nodes_out.size();i++) output_vector.push_back(&((FMMData*)((FMMNode*)nodes_out[i])->FMMData())->dnward_equiv);
 
-  SetupInterac(setup_data,device);
+  SetupInterac(setup_data);
 }
 
 template <class FMMNode>
-void FMM_Pts<FMMNode>::Down2Down     (SetupData<Real_t>& setup_data, bool device){
+void FMM_Pts<FMMNode>::Down2Down     (SetupData<Real_t>& setup_data){
   if(!this->MultipoleOrder()) return;
   //Add Down2Down contribution.
-  EvalList(setup_data, device);
+  EvalList(setup_data);
 }
 
 
@@ -3624,8 +3584,7 @@ void FMM_Pts<FMMNode>::PtSetup(SetupData<Real_t>& setup_data, void* data_){
 }
 
 template <class FMMNode>
-template <int SYNC>
-void FMM_Pts<FMMNode>::EvalListPts(SetupData<Real_t>& setup_data, bool device){
+void FMM_Pts<FMMNode>::EvalListPts(SetupData<Real_t>& setup_data){
   if(setup_data.kernel->ker_dim[0]*setup_data.kernel->ker_dim[1]==0) return;
   if(setup_data.interac_data.Dim(0)==0 || setup_data.interac_data.Dim(1)==0){
     Profile::Tic("Host2Device",&this->comm,false,25);
@@ -3645,23 +3604,14 @@ void FMM_Pts<FMMNode>::EvalListPts(SetupData<Real_t>& setup_data, bool device){
   typename Matrix<Real_t>::Device output_data;
   size_t ptr_single_layer_kernel=(size_t)NULL;
   size_t ptr_double_layer_kernel=(size_t)NULL;
-  if(device && !have_gpu){
-    dev_buff    =       this-> dev_buffer. AllocDevice(false);
-    interac_data= setup_data.interac_data. AllocDevice(false);
-    if(setup_data.  coord_data!=NULL) coord_data  = setup_data.  coord_data->AllocDevice(false);
-    if(setup_data.  input_data!=NULL) input_data  = setup_data.  input_data->AllocDevice(false);
-    if(setup_data. output_data!=NULL) output_data = setup_data. output_data->AllocDevice(false);
-    ptr_single_layer_kernel=setup_data.kernel->dev_ker_poten;
-    ptr_double_layer_kernel=setup_data.kernel->dev_dbl_layer_poten;
-  }else{
-    dev_buff    =       this-> dev_buffer;
-    interac_data= setup_data.interac_data;
-    if(setup_data.  coord_data!=NULL) coord_data  =*setup_data.  coord_data;
-    if(setup_data.  input_data!=NULL) input_data  =*setup_data.  input_data;
-    if(setup_data. output_data!=NULL) output_data =*setup_data. output_data;
-    ptr_single_layer_kernel=(size_t)setup_data.kernel->ker_poten;
-    ptr_double_layer_kernel=(size_t)setup_data.kernel->dbl_layer_poten;
-  }
+  dev_buff    =       this-> dev_buffer;
+  interac_data= setup_data.interac_data;
+  if(setup_data.  coord_data!=NULL) coord_data  =*setup_data.  coord_data;
+  if(setup_data.  input_data!=NULL) input_data  =*setup_data.  input_data;
+  if(setup_data. output_data!=NULL) output_data =*setup_data. output_data;
+  ptr_single_layer_kernel=(size_t)setup_data.kernel->ker_poten;
+  ptr_double_layer_kernel=(size_t)setup_data.kernel->dbl_layer_poten;
+
   Profile::Toc();
 
   Profile::Tic("DeviceComp",&this->comm,false,20);
@@ -4063,7 +4013,7 @@ void FMM_Pts<FMMNode>::EvalListPts(SetupData<Real_t>& setup_data, bool device){
 
 
 template <class FMMNode>
-void FMM_Pts<FMMNode>::X_ListSetup(SetupData<Real_t>&  setup_data, FMMTree_t* tree, std::vector<Matrix<Real_t> >& buff, std::vector<Vector<FMMNode_t*> >& n_list, int level, bool device){
+void FMM_Pts<FMMNode>::X_ListSetup(SetupData<Real_t>&  setup_data, FMMTree_t* tree, std::vector<Matrix<Real_t> >& buff, std::vector<Vector<FMMNode_t*> >& n_list, int level){
   if(!this->MultipoleOrder()) return;
   { // Set setup_data
     setup_data. level=level;
@@ -4357,15 +4307,15 @@ void FMM_Pts<FMMNode>::X_ListSetup(SetupData<Real_t>&  setup_data, FMMTree_t* tr
 }
 
 template <class FMMNode>
-void FMM_Pts<FMMNode>::X_List     (SetupData<Real_t>&  setup_data, bool device){
+void FMM_Pts<FMMNode>::X_List     (SetupData<Real_t>&  setup_data){
   if(!this->MultipoleOrder()) return;
   //Add X_List contribution.
-  this->EvalListPts(setup_data, device);
+  this->EvalListPts(setup_data);
 }
 
 
 template <class FMMNode>
-void FMM_Pts<FMMNode>::W_ListSetup(SetupData<Real_t>&  setup_data, FMMTree_t* tree, std::vector<Matrix<Real_t> >& buff, std::vector<Vector<FMMNode_t*> >& n_list, int level, bool device){
+void FMM_Pts<FMMNode>::W_ListSetup(SetupData<Real_t>&  setup_data, FMMTree_t* tree, std::vector<Matrix<Real_t> >& buff, std::vector<Vector<FMMNode_t*> >& n_list, int level){
   if(!this->MultipoleOrder()) return;
   { // Set setup_data
     setup_data. level=level;
@@ -4643,15 +4593,15 @@ void FMM_Pts<FMMNode>::W_ListSetup(SetupData<Real_t>&  setup_data, FMMTree_t* tr
 }
 
 template <class FMMNode>
-void FMM_Pts<FMMNode>::W_List     (SetupData<Real_t>&  setup_data, bool device){
+void FMM_Pts<FMMNode>::W_List     (SetupData<Real_t>&  setup_data){
   if(!this->MultipoleOrder()) return;
   //Add W_List contribution.
-  this->EvalListPts(setup_data, device);
+  this->EvalListPts(setup_data);
 }
 
 
 template <class FMMNode>
-void FMM_Pts<FMMNode>::U_ListSetup(SetupData<Real_t>& setup_data, FMMTree_t* tree, std::vector<Matrix<Real_t> >& buff, std::vector<Vector<FMMNode_t*> >& n_list, int level, bool device){
+void FMM_Pts<FMMNode>::U_ListSetup(SetupData<Real_t>& setup_data, FMMTree_t* tree, std::vector<Matrix<Real_t> >& buff, std::vector<Vector<FMMNode_t*> >& n_list, int level){
   { // Set setup_data
     setup_data. level=level;
     setup_data.kernel=kernel->k_s2t;
@@ -5039,14 +4989,14 @@ void FMM_Pts<FMMNode>::U_ListSetup(SetupData<Real_t>& setup_data, FMMTree_t* tre
 }
 
 template <class FMMNode>
-void FMM_Pts<FMMNode>::U_List     (SetupData<Real_t>&  setup_data, bool device){
+void FMM_Pts<FMMNode>::U_List     (SetupData<Real_t>&  setup_data){
   //Add U_List contribution.
-  this->EvalListPts(setup_data, device);
+  this->EvalListPts(setup_data);
 }
 
 
 template <class FMMNode>
-void FMM_Pts<FMMNode>::Down2TargetSetup(SetupData<Real_t>&  setup_data, FMMTree_t* tree, std::vector<Matrix<Real_t> >& buff, std::vector<Vector<FMMNode_t*> >& n_list, int level, bool device){
+void FMM_Pts<FMMNode>::Down2TargetSetup(SetupData<Real_t>&  setup_data, FMMTree_t* tree, std::vector<Matrix<Real_t> >& buff, std::vector<Vector<FMMNode_t*> >& n_list, int level){
   if(!this->MultipoleOrder()) return;
   { // Set setup_data
     setup_data. level=level;
@@ -5351,10 +5301,10 @@ void FMM_Pts<FMMNode>::Down2TargetSetup(SetupData<Real_t>&  setup_data, FMMTree_
 }
 
 template <class FMMNode>
-void FMM_Pts<FMMNode>::Down2Target(SetupData<Real_t>&  setup_data, bool device){
+void FMM_Pts<FMMNode>::Down2Target(SetupData<Real_t>&  setup_data){
   if(!this->MultipoleOrder()) return;
   //Add Down2Target contribution.
-  this->EvalListPts(setup_data, device);
+  this->EvalListPts(setup_data);
 }
 
 

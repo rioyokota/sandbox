@@ -843,9 +843,9 @@ void FMM_Cheb<FMMNode>::CollectNodeData(FMMTree_t* tree, std::vector<FMMNode*>& 
 
 
 template <class FMMNode>
-void FMM_Cheb<FMMNode>::Source2UpSetup(SetupData<Real_t>& setup_data, FMMTree_t* tree, std::vector<Matrix<Real_t> >& buff, std::vector<Vector<FMMNode_t*> >& n_list, int level, bool device){
+void FMM_Cheb<FMMNode>::Source2UpSetup(SetupData<Real_t>& setup_data, FMMTree_t* tree, std::vector<Matrix<Real_t> >& buff, std::vector<Vector<FMMNode_t*> >& n_list, int level){
   if(!this->MultipoleOrder()) return;
-  FMM_Pts<FMMNode>::Source2UpSetup(setup_data, tree, buff, n_list, level, device);
+  FMM_Pts<FMMNode>::Source2UpSetup(setup_data, tree, buff, n_list, level);
 
   { // Set setup_data
     setup_data.level=level;
@@ -871,23 +871,23 @@ void FMM_Cheb<FMMNode>::Source2UpSetup(SetupData<Real_t>& setup_data, FMMTree_t*
   for(size_t i=0;i<nodes_in .size();i++)  input_vector.push_back(&(          ((FMMNode*)nodes_in [i])           )->ChebData()  );
   for(size_t i=0;i<nodes_out.size();i++) output_vector.push_back(&((FMMData*)((FMMNode*)nodes_out[i])->FMMData())->upward_equiv);
 
-  this->SetupInterac(setup_data,device);
+  this->SetupInterac(setup_data);
 }
 
 template <class FMMNode>
-void FMM_Cheb<FMMNode>::Source2Up     (SetupData<Real_t>& setup_data, bool device){
+void FMM_Cheb<FMMNode>::Source2Up     (SetupData<Real_t>& setup_data){
   if(!this->MultipoleOrder()) return;
   //Add Source2Up contribution.
-  FMM_Pts<FMMNode>::Source2Up(setup_data, device);
-  this->EvalList(setup_data, device);
+  FMM_Pts<FMMNode>::Source2Up(setup_data);
+  this->EvalList(setup_data);
 }
 
 
 
 template <class FMMNode>
-void FMM_Cheb<FMMNode>::X_ListSetup(SetupData<Real_t>& setup_data, FMMTree_t* tree, std::vector<Matrix<Real_t> >& buff, std::vector<Vector<FMMNode_t*> >& n_list, int level, bool device){
+void FMM_Cheb<FMMNode>::X_ListSetup(SetupData<Real_t>& setup_data, FMMTree_t* tree, std::vector<Matrix<Real_t> >& buff, std::vector<Vector<FMMNode_t*> >& n_list, int level){
   if(!this->MultipoleOrder()) return;
-  FMM_Pts<FMMNode>::X_ListSetup(setup_data, tree, buff, n_list, level, device);
+  FMM_Pts<FMMNode>::X_ListSetup(setup_data, tree, buff, n_list, level);
 
   { // Set setup_data
     setup_data.level=level;
@@ -913,7 +913,7 @@ void FMM_Cheb<FMMNode>::X_ListSetup(SetupData<Real_t>& setup_data, FMMTree_t* tr
   for(size_t i=0;i<nodes_in .size();i++)  input_vector.push_back(&(          ((FMMNode*)nodes_in [i])           )->ChebData()  );
   for(size_t i=0;i<nodes_out.size();i++) output_vector.push_back(&((FMMData*)((FMMNode*)nodes_out[i])->FMMData())->dnward_equiv);
 
-  this->SetupInterac(setup_data,device);
+  this->SetupInterac(setup_data);
   { // Resize device buffer
     size_t n=setup_data.output_data->Dim(0)*setup_data.output_data->Dim(1)*sizeof(Real_t);
     if(this->dev_buffer.Dim()<n) this->dev_buffer.ReInit(n);
@@ -921,17 +921,17 @@ void FMM_Cheb<FMMNode>::X_ListSetup(SetupData<Real_t>& setup_data, FMMTree_t* tr
 }
 
 template <class FMMNode>
-void FMM_Cheb<FMMNode>::X_List     (SetupData<Real_t>& setup_data, bool device){
+void FMM_Cheb<FMMNode>::X_List     (SetupData<Real_t>& setup_data){
   if(!this->MultipoleOrder()) return;
   //Add X_List contribution.
-  FMM_Pts<FMMNode>::X_List(setup_data, device);
-  this->EvalList(setup_data, device);
+  FMM_Pts<FMMNode>::X_List(setup_data);
+  this->EvalList(setup_data);
 }
 
 
 
 template <class FMMNode>
-void FMM_Cheb<FMMNode>::W_ListSetup(SetupData<Real_t>& setup_data, FMMTree_t* tree, std::vector<Matrix<Real_t> >& buff, std::vector<Vector<FMMNode_t*> >& n_list, int level, bool device){
+void FMM_Cheb<FMMNode>::W_ListSetup(SetupData<Real_t>& setup_data, FMMTree_t* tree, std::vector<Matrix<Real_t> >& buff, std::vector<Vector<FMMNode_t*> >& n_list, int level){
   if(!this->MultipoleOrder()) return;
   { // Set setup_data
     setup_data.level=level;
@@ -957,7 +957,7 @@ void FMM_Cheb<FMMNode>::W_ListSetup(SetupData<Real_t>& setup_data, FMMTree_t* tr
   for(size_t i=0;i<nodes_in .size();i++)  input_vector.push_back(&((FMMData*)((FMMNode*)nodes_in [i])->FMMData())->upward_equiv);
   for(size_t i=0;i<nodes_out.size();i++) output_vector.push_back(&((FMMData*)((FMMNode*)nodes_out[i])->FMMData())->cheb_out    );
 
-  this->SetupInterac(setup_data,device);
+  this->SetupInterac(setup_data);
   { // Resize device buffer
     size_t n=setup_data.output_data->Dim(0)*setup_data.output_data->Dim(1)*sizeof(Real_t);
     if(this->dev_buffer.Dim()<n) this->dev_buffer.ReInit(n);
@@ -965,17 +965,17 @@ void FMM_Cheb<FMMNode>::W_ListSetup(SetupData<Real_t>& setup_data, FMMTree_t* tr
 }
 
 template <class FMMNode>
-void FMM_Cheb<FMMNode>::W_List     (SetupData<Real_t>& setup_data, bool device){
+void FMM_Cheb<FMMNode>::W_List     (SetupData<Real_t>& setup_data){
   if(!this->MultipoleOrder()) return;
   //Add W_List contribution.
-  this->EvalList(setup_data, device);
+  this->EvalList(setup_data);
 }
 
 
 
 template <class FMMNode>
-void FMM_Cheb<FMMNode>::U_ListSetup(SetupData<Real_t>& setup_data, FMMTree_t* tree, std::vector<Matrix<Real_t> >& buff, std::vector<Vector<FMMNode_t*> >& n_list, int level, bool device){
-  FMM_Pts<FMMNode>::U_ListSetup(setup_data, tree, buff, n_list, level, device);
+void FMM_Cheb<FMMNode>::U_ListSetup(SetupData<Real_t>& setup_data, FMMTree_t* tree, std::vector<Matrix<Real_t> >& buff, std::vector<Vector<FMMNode_t*> >& n_list, int level){
+  FMM_Pts<FMMNode>::U_ListSetup(setup_data, tree, buff, n_list, level);
 
   { // Set setup_data
     setup_data.level=level;
@@ -1003,7 +1003,7 @@ void FMM_Cheb<FMMNode>::U_ListSetup(SetupData<Real_t>& setup_data, FMMTree_t* tr
   for(size_t i=0;i<nodes_in .size();i++)  input_vector.push_back(&(          ((FMMNode*)nodes_in [i])           )->ChebData());
   for(size_t i=0;i<nodes_out.size();i++) output_vector.push_back(&((FMMData*)((FMMNode*)nodes_out[i])->FMMData())->cheb_out  );
 
-  this->SetupInterac(setup_data,device);
+  this->SetupInterac(setup_data);
   { // Resize device buffer
     size_t n=setup_data.output_data->Dim(0)*setup_data.output_data->Dim(1)*sizeof(Real_t);
     if(this->dev_buffer.Dim()<n) this->dev_buffer.ReInit(n);
@@ -1011,16 +1011,16 @@ void FMM_Cheb<FMMNode>::U_ListSetup(SetupData<Real_t>& setup_data, FMMTree_t* tr
 }
 
 template <class FMMNode>
-void FMM_Cheb<FMMNode>::U_List     (SetupData<Real_t>& setup_data, bool device){
+void FMM_Cheb<FMMNode>::U_List     (SetupData<Real_t>& setup_data){
   //Add U_List contribution.
-  FMM_Pts<FMMNode>::U_List(setup_data, device);
-  this->EvalList(setup_data, device);
+  FMM_Pts<FMMNode>::U_List(setup_data);
+  this->EvalList(setup_data);
 }
 
 
 
 template <class FMMNode>
-void FMM_Cheb<FMMNode>::Down2TargetSetup(SetupData<Real_t>& setup_data, FMMTree_t* tree, std::vector<Matrix<Real_t> >& buff, std::vector<Vector<FMMNode_t*> >& n_list, int level, bool device){
+void FMM_Cheb<FMMNode>::Down2TargetSetup(SetupData<Real_t>& setup_data, FMMTree_t* tree, std::vector<Matrix<Real_t> >& buff, std::vector<Vector<FMMNode_t*> >& n_list, int level){
   if(!this->MultipoleOrder()) return;
   { // Set setup_data
     setup_data.level=level;
@@ -1046,14 +1046,14 @@ void FMM_Cheb<FMMNode>::Down2TargetSetup(SetupData<Real_t>& setup_data, FMMTree_
   for(size_t i=0;i<nodes_in .size();i++)  input_vector.push_back(&((FMMData*)((FMMNode*)nodes_in [i])->FMMData())->dnward_equiv);
   for(size_t i=0;i<nodes_out.size();i++) output_vector.push_back(&((FMMData*)((FMMNode*)nodes_out[i])->FMMData())->cheb_out    );
 
-  this->SetupInterac(setup_data,device);
+  this->SetupInterac(setup_data);
 }
 
 template <class FMMNode>
-void FMM_Cheb<FMMNode>::Down2Target     (SetupData<Real_t>& setup_data, bool device){
+void FMM_Cheb<FMMNode>::Down2Target     (SetupData<Real_t>& setup_data){
   if(!this->MultipoleOrder()) return;
   //Add Down2Target contribution.
-  this->EvalList(setup_data, device);
+  this->EvalList(setup_data);
 }
 
 template <class FMMNode>
