@@ -1,27 +1,21 @@
-[Build]
-./autogen.sh
-./configure CXXFLAGS="-mavx -fabi-version=6" --prefix=$PWD
-make -j
-make install
-make -C examples/ all
-
 [Tags]
 find . -name "*.cpp" -o -name "*.hpp" -o -name "*.txx" | xargs etags -f TAGS
 
-[examples/bin/fmm_pts -omp 16 -N 100000 -m 4 -M 32 -ker 2] @ y1
+[./fmm_pts -omp 16 -N 100000 -m 4 -M 32 -ker 2] @ y1
  U-List 0.2168
  V-List 0.1105
  Error  8.18e-03
-[examples/bin/fmm_pts -omp 16 -N 100000 -m 16 -M 320 -ker 2] @ y1
+[./fmm_pts -omp 16 -N 100000 -m 16 -M 320 -ker 2] @ y1
  U-List 1.2496
  V-List 0.5600
  Error  5.37e-11
-[examples/bin/fmm_pts -omp 72 -N 1000000 -m 4 -M 32 -ker 2] @ r2
+[./fmm_pts -omp 72 -N 1000000 -m 4 -M 32 -ker 2] @ r2
  U-List 0.4259
  V-List 0.2139
  Error  5.53e-03
-[examples/bin/fmm_pts -omp 72 -N 1000000 -m 16 -M 320 -ker 2] @ r2
+[./fmm_pts -omp 72 -N 1000000 -m 16 -M 320 -ker 2] @ r2
  U-List 0.4385
  V-List 0.8440
  Error  1.09e-11
 
+bin/fmm_pts -omp 16 -N 100000 -m 4 -M 32 -ker 2
