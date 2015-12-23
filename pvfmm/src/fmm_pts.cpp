@@ -66,6 +66,7 @@ void fmm_test(int ker, size_t N, size_t M, Real_t b, int dist, int mult_order, i
     //tree_data.trg_coord=tree_data.src_coord;
   }
 
+#if 0
   //Print various parameters.
   if(!myrank){
     std::cout<<std::setprecision(2)<<std::scientific;
@@ -79,6 +80,7 @@ void fmm_test(int ker, size_t N, size_t M, Real_t b, int dist, int mult_order, i
     std::cout<<"Maximum Tree Depth: "<<depth<<'\n';
     std::cout<<"BoundaryType: "<<(bndry==pvfmm::Periodic?"Periodic":"FreeSpace")<<'\n';
   }
+#endif
 
   //Initialize FMM_Mat.
   FMM_Mat_t fmm_mat;
@@ -157,6 +159,7 @@ void fmm_test(int ker, size_t N, size_t M, Real_t b, int dist, int mult_order, i
       }
     }
 
+#if 0
     if(!myrank) std::cout<<"All  Nodes: ";
     for(int i=0;i<MAX_DEPTH;i++){
       int local_size=all_nodes[i];
@@ -174,14 +177,15 @@ void fmm_test(int ker, size_t N, size_t M, Real_t b, int dist, int mult_order, i
       if(!myrank) std::cout<<global_size<<' ';
     }
     if(!myrank) std::cout<<'\n';
+#endif
 
     long nleaf_glb=0, maxdepth_glb=0;
     { // MPI_Reduce
       MPI_Allreduce(&nleaf, &nleaf_glb, 1, MPI_INT, MPI_SUM, comm);
       MPI_Allreduce(&maxdepth, &maxdepth_glb, 1, MPI_INT, MPI_MAX, comm);
     }
-    if(!myrank) std::cout<<"Number of Leaf Nodes: "<<nleaf_glb<<'\n';
-    if(!myrank) std::cout<<"Tree Depth: "<<maxdepth_glb<<'\n';
+    if(!myrank) std::cout<<"Leaf Nodes : "<<nleaf_glb<<'\n';
+    if(!myrank) std::cout<<"Tree Depth : "<<maxdepth_glb<<'\n';
   }
 
   //Find error in FMM output.

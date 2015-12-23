@@ -141,6 +141,7 @@ void Profile::print(const MPI_Comm* comm_){
   std::stack<long long> mm;
   int width=10;
   size_t level=0;
+#ifdef __VERBOSE__
   if(!rank && e_log.size()>0){
     std::cout<<"\n"<<std::setw(width*3-2*level)<<" ";
     std::cout<<"  "<<std::setw(width)<<"t_min";
@@ -158,6 +159,7 @@ void Profile::print(const MPI_Comm* comm_){
     std::cout<<"  "<<std::setw(width)<<"m_max";
     std::cout<<"  "<<std::setw(width)<<"m_final"<<'\n';
   }
+#endif
 
   std::stack<std::string> out_stack;
   std::string s;
@@ -198,9 +200,10 @@ void Profile::print(const MPI_Comm* comm_){
       f_avg=f_sum/np;
       //fs_avg=f_avg/t_max;
       fs_sum=f_sum/t_max;
-
+ 
       if(!rank){
-        std::string s0=out_stack.top();out_stack.pop();
+#ifdef __VERBOSE__
+	std::string s0=out_stack.top();out_stack.pop();
         std::string s1=out_stack.top();out_stack.pop();
         std::stringstream ss(std::stringstream::in | std::stringstream::out);
         ss<<setiosflags(std::ios::fixed)<<std::setprecision(4)<<std::setiosflags(std::ios::left);
@@ -252,6 +255,9 @@ void Profile::print(const MPI_Comm* comm_){
           s1+="\n";
         }// */
         out_stack.push(s1);
+#else
+	if(i==167||i==169) std::cout << n_log[i] << "     : " << setiosflags(std::ios::fixed) << std::setprecision(4) << t_avg << std::endl;
+#endif
       }
       level--;
     }

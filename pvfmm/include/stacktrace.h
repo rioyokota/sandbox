@@ -24,30 +24,6 @@ inline void print_stacktrace(FILE *out = stderr, int skip=1){
   size_t fname_len = ::readlink("/proc/self/exe", fname, sizeof(fname)-1);
   fname[fname_len]='\0';
 
-  // Print
-  for(int i = skip; i < addrlen; i++) {
-    // Get command
-    char cmd[10240];
-    sprintf(cmd, "addr2line -f -C -i -e  %s  %016p", fname, addrlist[i]);
-
-    // Execute command
-    FILE* pipe = popen(cmd, "r");
-    if (!pipe) continue;
-    char buffer0[10240];
-    char buffer1[10240];
-    fgets(buffer0, sizeof(buffer0)-1, pipe);
-    fgets(buffer1, sizeof(buffer1)-1, pipe);
-    for(size_t j=0;j<sizeof(buffer0)-1;j++){if(buffer0[j]=='\n') buffer0[j]=' ';}
-    for(size_t j=0;j<sizeof(buffer1)-1;j++){if(buffer1[j]=='\n') buffer1[j]=' ';}
-    pclose(pipe);
-
-    // Print output
-    if(buffer0[0]!='?'){
-      fprintf(out, "[%d] %s: %s\n", i-skip, buffer1, buffer0);
-    }else{
-      fprintf(out, "[%d] %016p: %s\n", i-skip, addrlist[i], symbollist[i]);
-    }
-  }
   fprintf( stderr, "\n");
 }
 
