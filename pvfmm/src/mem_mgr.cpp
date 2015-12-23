@@ -12,6 +12,7 @@
 #include <omp.h>
 #include <iostream>
 #include <cassert>
+#include <cstdlib>
 #include <cmath>
 
 namespace pvfmm{
@@ -22,7 +23,7 @@ MemoryManager::MemoryManager(size_t N){
   { // Allocate buff
     assert(MEM_ALIGN <= 0x8000);
     size_t alignment=MEM_ALIGN-1;
-    char* base_ptr=(char*)DeviceWrapper::host_malloc(N+2+alignment); assert(base_ptr);
+    char* base_ptr=(char*)std::malloc(N+2+alignment); assert(base_ptr);
     buff=(char*)((uintptr_t)(base_ptr+2+alignment) & ~(uintptr_t)alignment);
     ((uint16_t*)buff)[-1] = (uint16_t)(buff-base_ptr);
   }
@@ -75,7 +76,7 @@ MemoryManager::~MemoryManager(){
   }
   { // free buff
     assert(buff);
-    DeviceWrapper::host_free(buff-((uint16_t*)buff)[-1]);
+    std::free(buff-((uint16_t*)buff)[-1]);
   }
 }
 
@@ -124,7 +125,7 @@ void* MemoryManager::malloc(const size_t n_elem, const size_t type_size) const{
   omp_unset_lock(&omp_lock);
   if(!base){ // Use system malloc
     size+=2+alignment;
-    char* p = (char*)DeviceWrapper::host_malloc(size);
+    char* p = (char*)std::malloc(size);
     base = (char*)((uintptr_t)(p+2+alignment) & ~(uintptr_t)alignment);
     ((uint16_t*)base)[-1] = (uint16_t)(base-p);
   }
@@ -168,7 +169,7 @@ void MemoryManager::free(void* p) const{
 
   if(base<&buff[0] || base>=&buff[buff_size]){ // Use system free
     char* p_=(char*)((uintptr_t)base-((uint16_t*)base)[-1]);
-    return DeviceWrapper::host_free(p_);
+    return std::free(p_);
   }
 
   size_t n_indx=mem_head->n_indx;
@@ -276,13 +277,13 @@ void MemoryManager::test(){
 
     std::cout<<"Without memory manager: ";
     for(size_t j=0;j<3;j++){
-      tmp=(double*)DeviceWrapper::host_malloc(M*sizeof(double)); assert(tmp);
+      tmp=(double*)std::malloc(M*sizeof(double)); assert(tmp);
       tt=omp_get_wtime();
       #pragma omp parallel for
       for(size_t i=0;i<M;i+=64) tmp[i]=(double)i;
       tt=omp_get_wtime()-tt;
       std::cout<<tt<<' ';
-      DeviceWrapper::host_free(tmp);
+      std::free(tmp);
     }
     std::cout<<'\n';
   }

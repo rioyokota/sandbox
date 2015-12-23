@@ -14,7 +14,6 @@
 #include <vector>
 
 #include <matrix.hpp>
-#include <device_wrapper.hpp>
 
 namespace pvfmm{
 namespace mat{

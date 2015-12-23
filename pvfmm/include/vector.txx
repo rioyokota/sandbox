@@ -9,7 +9,6 @@
 #include <iostream>
 #include <iomanip>
 
-#include <device_wrapper.hpp>
 #include <mem_mgr.hpp>
 #include <profile.hpp>
 

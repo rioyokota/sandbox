@@ -17,9 +17,6 @@
 #ifdef __AVX__
 #include <immintrin.h>
 #endif
-#if defined(__MIC__)
-#include <immintrin.h>
-#endif
 
 #ifndef _PVFMM_INTRIN_WRAPPER_HPP_
 #define _PVFMM_INTRIN_WRAPPER_HPP_

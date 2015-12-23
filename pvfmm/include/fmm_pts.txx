@@ -29,9 +29,6 @@
 #ifdef __AVX__
 #include <immintrin.h>
 #endif
-#if defined(__MIC__)
-#include <immintrin.h>
-#endif
 
 #include <profile.hpp>
 #include <cheb_utils.hpp>
@@ -1781,42 +1778,9 @@ void FMM_Pts<FMMNode>::EvalList(SetupData<Real_t>& setup_data){
             const     Real_t* v_in =(    Real_t*)(  input_data[0]+input_perm[(interac_indx+i)*4+3]);
             Real_t*           v_out=(    Real_t*)(     buff_in   +input_perm[(interac_indx+i)*4+2]);
 
-            // TODO: Fix for dof>1
-            #ifdef __MIC__
-            {
-              __m512d v8;
-              size_t j_start=(((uintptr_t)(v_out       ) + (uintptr_t)(MEM_ALIGN-1)) & ~ (uintptr_t)(MEM_ALIGN-1))-((uintptr_t)v_out);
-              size_t j_end  =(((uintptr_t)(v_out+M_dim0)                           ) & ~ (uintptr_t)(MEM_ALIGN-1))-((uintptr_t)v_out);
-              j_start/=sizeof(Real_t);
-              j_end  /=sizeof(Real_t);
-              assert(((uintptr_t)(v_out))%sizeof(Real_t)==0);
-              assert(((uintptr_t)(v_out+j_start))%64==0);
-              assert(((uintptr_t)(v_out+j_end  ))%64==0);
-              size_t j=0;
-              for(;j<j_start;j++ ){
-                v_out[j]=v_in[perm[j]]*scal[j];
-              }
-              for(;j<j_end  ;j+=8){
-                v8=_mm512_setr_pd(
-                    v_in[perm[j+0]]*scal[j+0],
-                    v_in[perm[j+1]]*scal[j+1],
-                    v_in[perm[j+2]]*scal[j+2],
-                    v_in[perm[j+3]]*scal[j+3],
-                    v_in[perm[j+4]]*scal[j+4],
-                    v_in[perm[j+5]]*scal[j+5],
-                    v_in[perm[j+6]]*scal[j+6],
-                    v_in[perm[j+7]]*scal[j+7]);
-                _mm512_storenrngo_pd(v_out+j,v8);
-              }
-              for(;j<M_dim0 ;j++ ){
-                v_out[j]=v_in[perm[j]]*scal[j];
-              }
-            }
-            #else
             for(size_t j=0;j<M_dim0;j++ ){
               v_out[j]=v_in[perm[j]]*scal[j];
             }
-            #endif
           }
         }
 
@@ -1826,13 +1790,6 @@ void FMM_Pts<FMMNode>::EvalList(SetupData<Real_t>& setup_data){
           size_t interac_mat0=interac_mat[j];
           for(;j<interac_blk_dsp+interac_blk[k] && interac_mat[j]==interac_mat0;j++) vec_cnt1+=interac_cnt[j];
           Matrix<Real_t> M(M_dim0, M_dim1, (Real_t*)(precomp_data[0]+interac_mat0), false);
-          #ifdef __MIC__
-          {
-            Matrix<Real_t> Ms(dof*vec_cnt1, M_dim0, (Real_t*)(buff_in +M_dim0*vec_cnt0*dof*sizeof(Real_t)), false);
-            Matrix<Real_t> Mt(dof*vec_cnt1, M_dim1, (Real_t*)(buff_out+M_dim1*vec_cnt0*dof*sizeof(Real_t)), false);
-            Matrix<Real_t>::GEMM(Mt,Ms,M);
-          }
-          #else
           #pragma omp parallel for
           for(int tid=0;tid<omp_p;tid++){
             size_t a=(dof*vec_cnt1*(tid  ))/omp_p;
@@ -1841,7 +1798,6 @@ void FMM_Pts<FMMNode>::EvalList(SetupData<Real_t>& setup_data){
             Matrix<Real_t> Mt(b-a, M_dim1, (Real_t*)(buff_out+M_dim1*vec_cnt0*dof*sizeof(Real_t))+M_dim1*a, false);
             Matrix<Real_t>::GEMM(Mt,Ms,M);
           }
-          #endif
           vec_cnt0+=vec_cnt1;
         }
 
@@ -1865,45 +1821,9 @@ void FMM_Pts<FMMNode>::EvalList(SetupData<Real_t>& setup_data){
             const     Real_t* v_in =(    Real_t*)(    buff_out   +output_perm[(interac_indx+i)*4+2]);
             Real_t*           v_out=(    Real_t*)( output_data[0]+output_perm[(interac_indx+i)*4+3]);
 
-            // TODO: Fix for dof>1
-            #ifdef __MIC__
-            {
-              __m512d v8;
-              __m512d v_old;
-              size_t j_start=(((uintptr_t)(v_out       ) + (uintptr_t)(MEM_ALIGN-1)) & ~ (uintptr_t)(MEM_ALIGN-1))-((uintptr_t)v_out);
-              size_t j_end  =(((uintptr_t)(v_out+M_dim1)                           ) & ~ (uintptr_t)(MEM_ALIGN-1))-((uintptr_t)v_out);
-              j_start/=sizeof(Real_t);
-              j_end  /=sizeof(Real_t);
-              assert(((uintptr_t)(v_out))%sizeof(Real_t)==0);
-              assert(((uintptr_t)(v_out+j_start))%64==0);
-              assert(((uintptr_t)(v_out+j_end  ))%64==0);
-              size_t j=0;
-              for(;j<j_start;j++ ){
-                v_out[j]+=v_in[perm[j]]*scal[j];
-              }
-              for(;j<j_end  ;j+=8){
-                v_old=_mm512_load_pd(v_out+j);
-                v8=_mm512_setr_pd(
-                    v_in[perm[j+0]]*scal[j+0],
-                    v_in[perm[j+1]]*scal[j+1],
-                    v_in[perm[j+2]]*scal[j+2],
-                    v_in[perm[j+3]]*scal[j+3],
-                    v_in[perm[j+4]]*scal[j+4],
-                    v_in[perm[j+5]]*scal[j+5],
-                    v_in[perm[j+6]]*scal[j+6],
-                    v_in[perm[j+7]]*scal[j+7]);
-                v_old=_mm512_add_pd(v_old, v8);
-                _mm512_storenrngo_pd(v_out+j,v_old);
-              }
-              for(;j<M_dim1 ;j++ ){
-                v_out[j]+=v_in[perm[j]]*scal[j];
-              }
-            }
-            #else
             for(size_t j=0;j<M_dim1;j++ ){
               v_out[j]+=v_in[perm[j]]*scal[j];
             }
-            #endif
           }
         }
 
