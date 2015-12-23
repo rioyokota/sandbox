@@ -570,15 +570,6 @@ void FMM_Tree<FMM_Mat_t>::DownwardPass() {
   }
   Profile::Toc();
 
-  #if defined(__INTEL_OFFLOAD) || defined(PVFMM_HAVE_CUDA)
-  if(device){ // Host2Device:Src
-    Profile::Tic("Host2Device:Src",this->Comm(),false,5);
-    if(setup_data[0+MAX_DEPTH*2]. coord_data!=NULL) setup_data[0+MAX_DEPTH*2]. coord_data->AllocDevice(true);
-    if(setup_data[0+MAX_DEPTH*2]. input_data!=NULL) setup_data[0+MAX_DEPTH*2]. input_data->AllocDevice(true);
-    Profile::Toc();
-  }
-  #endif
-
   if(bndry==Periodic){ //Add contribution from periodic infinite tiling.
     Profile::Tic("BoundaryCondition",this->Comm(),false,5);
     fmm_mat->PeriodicBC(dynamic_cast<Node_t*>(this->RootNode()));
@@ -622,24 +613,6 @@ void FMM_Tree<FMM_Mat_t>::DownwardPass() {
       Profile::Toc();
     }
 
-    #if defined(__INTEL_OFFLOAD) || defined(PVFMM_HAVE_CUDA)
-    if(i==0 && device){ // Host2Device:Mult
-      Profile::Tic("Host2Device:Mult",this->Comm(),false,5);
-      if(setup_data[0+MAX_DEPTH*1]. input_data!=NULL) setup_data[0+MAX_DEPTH*1]. input_data->AllocDevice(true);
-      Profile::Toc();
-    }
-
-    if(device) if(i==(fmm_mat->ScaleInvar()?0:max_depth)){ // Device2Host: LocalExp
-      Profile::Tic("Device2Host:LocExp",this->Comm(),false,5);
-      if(setup_data[0+MAX_DEPTH*2].output_data!=NULL){
-        Matrix<Real_t>& output_data=*setup_data[0+MAX_DEPTH*2].output_data;
-        assert(fmm_mat->staging_buffer.Dim()*sizeof(Real_t)>=output_data.Dim(0)*output_data.Dim(1));
-        output_data.Device2Host((Real_t*)&fmm_mat->staging_buffer[0]);
-      }
-      Profile::Toc();
-    }
-    #endif
-
     {// W-List
       Profile::Tic("W-List",this->Comm(),false,5);
       fmm_mat->W_List(setup_data[i+MAX_DEPTH*1], device);
@@ -669,31 +642,6 @@ void FMM_Tree<FMM_Mat_t>::DownwardPass() {
     }
   }
 
-  #if defined(__INTEL_OFFLOAD) || defined(PVFMM_HAVE_CUDA)
-  Profile::Tic("D2H_Wait:LocExp",this->Comm(),false,5);
-  if(device) if(setup_data[0+MAX_DEPTH*2].output_data!=NULL){
-    Real_t* dev_ptr=(Real_t*)&fmm_mat->staging_buffer[0];
-    Matrix<Real_t>& output_data=*setup_data[0+MAX_DEPTH*2].output_data;
-    size_t n=output_data.Dim(0)*output_data.Dim(1);
-    Real_t* host_ptr=output_data[0];
-    output_data.Device2HostWait();
-
-    #pragma omp parallel for
-    for(size_t i=0;i<n;i++){
-      host_ptr[i]+=dev_ptr[i];
-    }
-  }
-  Profile::Toc();
-
-  Profile::Tic("Device2Host:Trg",this->Comm(),false,5);
-  if(device) if(setup_data[0+MAX_DEPTH*0].output_data!=NULL){ // Device2Host: Target
-    Matrix<Real_t>& output_data=*setup_data[0+MAX_DEPTH*0].output_data;
-    assert(fmm_mat->staging_buffer.Dim()>=sizeof(Real_t)*output_data.Dim(0)*output_data.Dim(1));
-    output_data.Device2Host((Real_t*)&fmm_mat->staging_buffer[0]);
-  }
-  Profile::Toc();
-  #endif
-
   Profile::Tic("D2D",this->Comm(),false,5);
   for(size_t i=0; i<=max_depth; i++){ // Down2Down
     if(!fmm_mat->ScaleInvar()) fmm_mat->SetupPrecomp(setup_data[i+MAX_DEPTH*4],/*device*/ false);
@@ -707,23 +655,6 @@ void FMM_Tree<FMM_Mat_t>::DownwardPass() {
     fmm_mat->Down2Target(setup_data[i+MAX_DEPTH*5]);
   }
   Profile::Toc();
-
-  #if defined(__INTEL_OFFLOAD) || defined(PVFMM_HAVE_CUDA)
-  Profile::Tic("D2H_Wait:Trg",this->Comm(),false,5);
-  if(device) if(setup_data[0+MAX_DEPTH*0].output_data!=NULL){
-    Real_t* dev_ptr=(Real_t*)&fmm_mat->staging_buffer[0];
-    Matrix<Real_t>& output_data=*setup_data[0+MAX_DEPTH*0].output_data;
-    size_t n=output_data.Dim(0)*output_data.Dim(1);
-    Real_t* host_ptr=output_data[0];
-    output_data.Device2HostWait();
-
-    #pragma omp parallel for
-    for(size_t i=0;i<n;i++){
-      host_ptr[i]+=dev_ptr[i];
-    }
-  }
-  Profile::Toc();
-  #endif
 
   Profile::Tic("PostProc",this->Comm(),false,5);
   typedef typename FMM_Mat_t::FMMTree_t MatTree_t;

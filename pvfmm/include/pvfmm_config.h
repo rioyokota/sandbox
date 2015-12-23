@@ -25,8 +25,6 @@
 #define PVFMM_HAVE_CSTDLIB 1
 #endif
 
-/* Define if we have CUDA */
-/* #undef HAVE_CUDA */
 
 /* Define to 1 if you have the <dlfcn.h> header file. */
 #ifndef PVFMM_HAVE_DLFCN_H
@@ -48,36 +46,15 @@
 #define PVFMM_HAVE_FLOOR 1
 #endif
 
-/* Define if you have INTEL_OFFLOAD. */
-/* #undef HAVE_INTEL_NOFFLOAD_FLAG */
-
-/* Define if you have INTEL_OFFLOAD. */
-/* #undef HAVE_INTEL_OFFLOAD */
-
 /* Define if you have INTEL_OFFLOAD_PRAGMA. */
 #ifndef PVFMM_HAVE_INTEL_OFFLOAD_PRAGMA
 #define PVFMM_HAVE_INTEL_OFFLOAD_PRAGMA 1
 #endif
 
-/* Define if SVL library is available */
-/* #undef HAVE_INTEL_SVML */
-
 /* Define to 1 if you have the <inttypes.h> header file. */
 #ifndef PVFMM_HAVE_INTTYPES_H
 #define PVFMM_HAVE_INTTYPES_H 1
 #endif
-
-/* Define if you have LAPACK library. */
-/* #undef HAVE_LAPACK */
-
-/* Define to 1 if you have the `cublas' library (-lcublas). */
-/* #undef HAVE_LIBCUBLAS */
-
-/* Define to 1 if you have the `cuda' library (-lcuda). */
-/* #undef HAVE_LIBCUDA */
-
-/* Define to 1 if you have the `cudart' library (-lcudart). */
-/* #undef HAVE_LIBCUDART */
 
 /* Define to 1 if you have the `dl' library (-ldl). */
 #ifndef PVFMM_HAVE_LIBDL
@@ -185,11 +162,7 @@
 #define PVFMM_HAVE_UNISTD_H 1
 #endif
 
-/* Define to 1 if the system has the type `_Bool'. */
-/* #undef HAVE__BOOL */
-
-/* Define to the sub-directory in which libtool stores uninstalled libraries.
-   */
+/* Define to the sub-directory in which libtool stores uninstalled libraries. */
 #ifndef PVFMM_LT_OBJDIR
 #define PVFMM_LT_OBJDIR ".libs/"
 #endif
@@ -234,42 +207,9 @@
 #define PVFMM_QUAD_T __float128
 #endif
 
-/* Define to 1 if the `S_IS*' macros in <sys/stat.h> do not work properly. */
-/* #undef STAT_MACROS_BROKEN */
-
 /* Define to 1 if you have the ANSI C header files. */
 #ifndef PVFMM_STDC_HEADERS
 #define PVFMM_STDC_HEADERS 1
 #endif
 
-/* Define for Solaris 2.5.1 so the uint8_t typedef from <sys/synch.h>,
-   <pthread.h>, or <semaphore.h> is not used. If the typedef were allowed, the
-   #define below would cause a syntax error. */
-/* #undef _UINT8_T */
-
-/* Define to `__inline__' or `__inline' if that's what the C compiler
-   calls it, or to nothing if 'inline' is not supported under any name.  */
-#ifndef __cplusplus
-/* #undef inline */
-#endif
-
-/* Define to the type of a signed integer type of width exactly 32 bits if
-   such a type exists and the standard includes do not define it. */
-/* #undef int32_t */
-
-/* Define to rpl_malloc if the replacement function should be used. */
-/* #undef malloc */
-
-/* Define to `unsigned int' if <sys/types.h> does not define. */
-/* #undef size_t */
-
-/* Define to the type of an unsigned integer type of width exactly 16 bits if
-   such a type exists and the standard includes do not define it. */
-/* #undef uint16_t */
-
-/* Define to the type of an unsigned integer type of width exactly 8 bits if
-   such a type exists and the standard includes do not define it. */
-/* #undef uint8_t */
- 
-/* once: _INCLUDE_PVFMM_CONFIG_H */
 #endif
