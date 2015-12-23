@@ -85,9 +85,7 @@ void Profile::Tic(const char* name_, const MPI_Comm* comm_,bool sync_, int verbo
 void Profile::Toc(){
 #if __PROFILE__ >= 0
   if(!enable_state) return;
-  ASSERT_WITH_MSG(!verb_level.empty(),"Unbalanced extra Toc()");
   if(verb_level.top()<=__PROFILE__ && verb_level.size()==enable_depth){
-    ASSERT_WITH_MSG(!name.empty() && !comm.empty() && !sync.empty() && !max_mem.empty(),"Unbalanced extra Toc()");
     std::string name_=name.top();
     MPI_Comm* comm_=comm.top();
     bool sync_=sync.top();
@@ -126,8 +124,6 @@ void Profile::Toc(){
 
 void Profile::print(const MPI_Comm* comm_){
 #if __PROFILE__ >= 0
-  ASSERT_WITH_MSG(name.empty(),"Missing balancing Toc()");
-
   int np, rank;
   MPI_Comm c_self=MPI_COMM_SELF;
   if(comm_==NULL) comm_=&c_self;

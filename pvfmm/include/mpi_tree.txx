@@ -1260,7 +1260,7 @@ bool MPI_Tree<TreeNode>::CheckTree(){
   while(n!=NULL){
     if(n->IsLeaf() && !n->IsGhost()){
       st<<"non-ghost leaf node "<<n->GetMortonId()<<"; after last node.";
-      str=st.str(); ASSERT_WITH_MSG(false,str.c_str());
+      str=st.str();
     }
     n=this->PostorderNxt(n);
   }
@@ -2262,7 +2262,6 @@ const std::vector<MortonId>& MPI_Tree<TreeNode>::GetMins(){
     if(!n->IsGhost() && n->IsLeaf()) break;
     n=this->PreorderNxt(n);
   }
-  ASSERT_WITH_MSG(n!=NULL,"No non-ghost nodes found on this process.");
 
   MortonId my_min;
   my_min=n->GetMortonId();

@@ -47,16 +47,6 @@
 
 #define UNUSED(x) (void)(x) // to ignore unused variable warning.
 
-#ifndef NDEBUG
-#include <cassert>
-#include <iostream>
-#define ASSERT_WITH_MSG(cond, msg) do \
-{ if (!(cond)) { std::cerr<<"Error: "<<msg<<'\n'; assert(cond); } \
-} while(0)
-#else
-#define ASSERT_WITH_MSG(cond, msg)
-#endif
-
 #include <math_utils.hpp>
 
 #endif //_PVFMM_COMMON_HPP_
