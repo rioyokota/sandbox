@@ -1,6 +1,3 @@
-Suppress Output
-Remove unused files
- - in src
- - in include
-Remove unused functions
- - Use macro to detect dead code
+Use macro to detect dead code
+Remove MIC routines
+Remove unused instantiations top down
