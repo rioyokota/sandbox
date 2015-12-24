@@ -265,9 +265,7 @@ void PrecompMat<T>::LoadFile(const char* fname, MPI_Comm comm){
   Profile::Tic("ReadFile",&comm,true,4);
   size_t f_size=0;
   char* f_data=NULL;
-  int np, myrank;
-  MPI_Comm_size(comm,&np);
-  MPI_Comm_rank(comm,&myrank);
+  int np=1, myrank=0;
   if(myrank==0){
     FILE* f=fopen(fname,"rb");
     if(f==NULL){
@@ -290,7 +288,6 @@ void PrecompMat<T>::LoadFile(const char* fname, MPI_Comm comm){
   Profile::Toc();
 
   Profile::Tic("Broadcast",&comm,true,4);
-  MPI_Bcast( &f_size, sizeof(size_t), MPI_BYTE, 0, comm );
   if(f_size==0){
     Profile::Toc();
     Profile::Toc();
@@ -302,11 +299,9 @@ void PrecompMat<T>::LoadFile(const char* fname, MPI_Comm comm){
   int max_send_size=1000000000;
   while(f_size>0){
     if(f_size>(size_t)max_send_size){
-      MPI_Bcast( f_ptr, max_send_size, MPI_BYTE, 0, comm );
       f_size-=max_send_size;
       f_ptr+=max_send_size;
     }else{
-      MPI_Bcast( f_ptr, f_size, MPI_BYTE, 0, comm );
       f_size=0;
     }
   }

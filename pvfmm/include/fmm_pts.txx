@@ -193,9 +193,6 @@ void FMM_Data<Real_t>::InitMultipole(PackedData p0, bool own_data){
 template <class FMMNode>
 FMM_Pts<FMMNode>::~FMM_Pts() {
   if(mat!=NULL){
-//    int rank;
-//    MPI_Comm_rank(comm,&rank);
-//    if(rank==0) mat->Save2File("Precomp.data");
     delete mat;
     mat=NULL;
   }
@@ -214,8 +211,7 @@ template <class FMMNode>
 void FMM_Pts<FMMNode>::Initialize(int mult_order, const MPI_Comm& comm_, const Kernel<Real_t>* kernel_){
   Profile::Tic("InitFMM_Pts",&comm_,true);{
 
-  int rank;
-  MPI_Comm_rank(comm_,&rank);
+  int rank=0;
   bool verbose=false;
   #ifndef NDEBUG
   #ifdef __VERBOSE__
@@ -3124,8 +3120,7 @@ template <class FMMNode>
 void FMM_Pts<FMMNode>::V_List     (SetupData<Real_t>&  setup_data){
   if(!this->MultipoleOrder()) return;
 
-  int np;
-  MPI_Comm_size(comm,&np);
+  int np=1;
   if(setup_data.interac_data.Dim(0)==0 || setup_data.interac_data.Dim(1)==0){
     if(np>1) Profile::Tic("Host2Device",&this->comm,false,25);
     if(np>1) Profile::Toc();

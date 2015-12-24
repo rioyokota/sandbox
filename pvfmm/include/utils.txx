@@ -12,10 +12,7 @@ void CheckFMMOutput(pvfmm::FMM_Tree<FMM_Mat_t>* mytree, const pvfmm::Kernel<type
   int np=omp_get_max_threads();
 
   // Find out my identity in the default communicator
-  int myrank, p;
-  MPI_Comm c1=MPI_COMM_WORLD;
-  MPI_Comm_rank(c1, &myrank);
-  MPI_Comm_size(c1,&p);
+  int myrank=0, p=1;
 
   typedef typename FMM_Mat_t::FMMData FMM_Data_t;
   typedef typename FMM_Mat_t::FMMNode_t FMMNode_t;
@@ -34,20 +31,18 @@ void CheckFMMOutput(pvfmm::FMM_Tree<FMM_Mat_t>* mytree, const pvfmm::Kernel<type
     }
     n=static_cast<FMMNode_t*>(mytree->PreorderNxt(n));
   }
-  long long glb_src_cnt=0, src_cnt=src_coord.size()/3;
-  MPI_Allreduce(&src_cnt, &glb_src_cnt, 1, MPI_LONG_LONG, MPI_SUM, c1);
-  long long glb_val_cnt=0, val_cnt=src_value.size();
-  MPI_Allreduce(&val_cnt, &glb_val_cnt, 1, MPI_LONG_LONG, MPI_SUM, c1);
-  if(glb_src_cnt==0) return;
+  long long src_cnt=src_coord.size()/3;
+  long long val_cnt=src_value.size();
+  if(src_cnt==0) return;
 
-  int dof=glb_val_cnt/glb_src_cnt/mykernel->ker_dim[0];
+  int dof=val_cnt/src_cnt/mykernel->ker_dim[0];
   int trg_dof=dof*mykernel->ker_dim[1];
 
   // Read target data.
   std::vector<Real_t> trg_coord;
   std::vector<Real_t> trg_poten_fmm;
   long long trg_iter=0;
-  size_t step_size=1+glb_src_cnt*glb_src_cnt*1e-9/p;
+  size_t step_size=1+src_cnt*src_cnt*1e-9/p;
   n=static_cast<FMMNode_t*>(mytree->PreorderFirst());
   while(n!=NULL){
     if(n->IsLeaf() && !n->IsGhost()){
@@ -64,28 +59,18 @@ void CheckFMMOutput(pvfmm::FMM_Tree<FMM_Mat_t>* mytree, const pvfmm::Kernel<type
     n=static_cast<FMMNode_t*>(mytree->PreorderNxt(n));
   }
   int trg_cnt=trg_coord.size()/3;
-  int send_cnt=trg_cnt*3;
-  std::vector<int> recv_cnts(p), recv_disp(p,0);
-  MPI_Allgather(&send_cnt    , 1, MPI_INT,
-                &recv_cnts[0], 1, MPI_INT, c1);
-  pvfmm::omp_par::scan(&recv_cnts[0], &recv_disp[0], p);
-  int glb_trg_cnt=(recv_disp[p-1]+recv_cnts[p-1])/3;
-  std::vector<Real_t> glb_trg_coord(glb_trg_cnt*3);
-  MPI_Allgatherv(&trg_coord[0]    , send_cnt                    , pvfmm::par::Mpi_datatype<Real_t>::value(),
-                 &glb_trg_coord[0], &recv_cnts[0], &recv_disp[0], pvfmm::par::Mpi_datatype<Real_t>::value(), c1);
-  if(glb_trg_cnt==0) return;
+  if(trg_cnt==0) return;
 
   //Direct N-Body.
-  std::vector<Real_t> trg_poten_dir(glb_trg_cnt*trg_dof ,0);
-  std::vector<Real_t> glb_trg_poten_dir(glb_trg_cnt*trg_dof ,0);
-  pvfmm::Profile::Tic("N-Body Direct",&c1,false,1);
+  std::vector<Real_t> trg_poten_dir(trg_cnt*trg_dof ,0);
+  MPI_Comm comm=MPI_COMM_WORLD;
+  pvfmm::Profile::Tic("N-Body Direct",&comm,false,1);
   #pragma omp parallel for
   for(int i=0;i<np;i++){
-    size_t a=(i*glb_trg_cnt)/np;
-    size_t b=((i+1)*glb_trg_cnt)/np;
-    mykernel->ker_poten(&src_coord[0], src_cnt, &src_value[0], dof, &glb_trg_coord[a*3], b-a, &trg_poten_dir[a*trg_dof  ],NULL);
+    size_t a=(i*trg_cnt)/np;
+    size_t b=((i+1)*trg_cnt)/np;
+    mykernel->ker_poten(&src_coord[0], src_cnt, &src_value[0], dof, &trg_coord[a*3], b-a, &trg_poten_dir[a*trg_dof  ],NULL);
   }
-  MPI_Allreduce(&trg_poten_dir[0], &glb_trg_poten_dir[0], trg_poten_dir.size(), pvfmm::par::Mpi_datatype<Real_t>::value(), pvfmm::par::Mpi_datatype<Real_t>::sum(), c1);
   pvfmm::Profile::Toc();
 
   //Compute error.
@@ -93,20 +78,17 @@ void CheckFMMOutput(pvfmm::FMM_Tree<FMM_Mat_t>* mytree, const pvfmm::Kernel<type
     Real_t max_=0;
     Real_t max_err=0;
     for(size_t i=0;i<trg_poten_fmm.size();i++){
-      Real_t err=fabs(glb_trg_poten_dir[i+(recv_disp[myrank]/3)*trg_dof]-trg_poten_fmm[i]);
-      Real_t max=fabs(glb_trg_poten_dir[i+(recv_disp[myrank]/3)*trg_dof]);
+      Real_t err=fabs(trg_poten_dir[i]-trg_poten_fmm[i]);
+      Real_t max=fabs(trg_poten_dir[i]);
       if(err>max_err) max_err=err;
       if(max>max_) max_=max;
     }
-    Real_t glb_max, glb_max_err;
-    MPI_Reduce(&max_   , &glb_max    , 1, pvfmm::par::Mpi_datatype<Real_t>::value(), pvfmm::par::Mpi_datatype<Real_t>::max(), 0, c1);
-    MPI_Reduce(&max_err, &glb_max_err, 1, pvfmm::par::Mpi_datatype<Real_t>::value(), pvfmm::par::Mpi_datatype<Real_t>::max(), 0, c1);
     if(!myrank){
 #ifdef __VERBOSE__
-      std::cout<<"Maximum Absolute Error ["<<t_name<<"] :  "<<std::scientific<<glb_max_err<<'\n';
-      std::cout<<"Maximum Relative Error ["<<t_name<<"] :  "<<std::scientific<<glb_max_err/glb_max<<'\n';
+      std::cout<<"Maximum Absolute Error ["<<t_name<<"] :  "<<std::scientific<<max_err<<'\n';
+      std::cout<<"Maximum Relative Error ["<<t_name<<"] :  "<<std::scientific<<max_err/max_<<'\n';
 #else
-      std::cout<<"Error      : "<<std::scientific<<glb_max_err/glb_max<<'\n';
+      std::cout<<"Error      : "<<std::scientific<<max_err/max_<<'\n';
 #endif
     }
   }
@@ -117,11 +99,10 @@ template <class FMMTree_t>
 void CheckChebOutput(FMMTree_t* mytree, typename TestFn<typename FMMTree_t::Real_t>::Fn_t fn_poten, int fn_dof, std::string t_name){
   typedef typename FMMTree_t::Node_t FMMNode_t;
   typedef typename FMMTree_t::Real_t Real_t;
+  MPI_Comm comm=MPI_COMM_WORLD;
+  pvfmm::Profile::Tic((std::string("Compute Error ")+t_name).c_str(),&comm,true,1);
 
-  MPI_Comm c1=*mytree->Comm();
-  pvfmm::Profile::Tic((std::string("Compute Error ")+t_name).c_str(),&c1,true,1);
-
-  int myrank; MPI_Comm_rank(c1, &myrank);
+  int myrank=0;
   FMMNode_t* r_node=static_cast<FMMNode_t*>(mytree->RootNode());
   int dof=r_node->DataDOF()/fn_dof;
   std::vector<FMMNode_t*> nodes;
@@ -141,41 +122,37 @@ void CheckChebOutput(FMMTree_t* mytree, typename TestFn<typename FMMTree_t::Real
   int n_pts=cheb_pts.size()/COORD_DIM;
   int omp_p=omp_get_max_threads();
 
-  std::vector<Real_t> glb_err_avg(dof*fn_dof,0);
-  { // Determine glb_err_avg.
-    std::vector<Real_t> err_avg(omp_p*dof*fn_dof,0);
-    #pragma omp parallel for
-    for(size_t tid=0;tid<omp_p;tid++){
-      pvfmm::Vector<Real_t> out; out.SetZero();
-      pvfmm::Vector<Real_t> fn_out(dof*fn_dof);
-      for(size_t i=(nodes.size()*tid)/omp_p;i<(nodes.size()*(tid+1))/omp_p;i++){
-        pvfmm::Vector<Real_t>& cheb_coeff=nodes[i]->ChebData();
-        cheb_eval(cheb_coeff, cheb_deg, cheb_nds, cheb_nds, cheb_nds, out);
+  std::vector<Real_t> err_avg(omp_p*dof*fn_dof,0);
+#pragma omp parallel for
+  for(size_t tid=0;tid<omp_p;tid++){
+    pvfmm::Vector<Real_t> out; out.SetZero();
+    pvfmm::Vector<Real_t> fn_out(dof*fn_dof);
+    for(size_t i=(nodes.size()*tid)/omp_p;i<(nodes.size()*(tid+1))/omp_p;i++){
+      pvfmm::Vector<Real_t>& cheb_coeff=nodes[i]->ChebData();
+      cheb_eval(cheb_coeff, cheb_deg, cheb_nds, cheb_nds, cheb_nds, out);
 
-        Real_t* c=nodes[i]->Coord();
-        Real_t s=pow(2.0,-nodes[i]->Depth());
-        Real_t s3=s*s*s;
-        for(size_t j=0;j<n_pts;j++){
-          Real_t coord[3]={c[0]+s*cheb_pts[j*COORD_DIM+0],
-                           c[1]+s*cheb_pts[j*COORD_DIM+1],
-                           c[2]+s*cheb_pts[j*COORD_DIM+2]};
-          fn_out.SetZero();
-          for(size_t k=0;k<dof;k++)
-            fn_poten(coord,1,&fn_out[k*fn_dof]);
-          for(size_t k=0;k<dof*fn_dof;k++){
-            Real_t err=out[n_pts*k+j]-fn_out[k];
-            err_avg[tid*dof*fn_dof+k]+=err*s3;
-          }
-        }
+      Real_t* c=nodes[i]->Coord();
+      Real_t s=pow(2.0,-nodes[i]->Depth());
+      Real_t s3=s*s*s;
+      for(size_t j=0;j<n_pts;j++){
+	Real_t coord[3]={c[0]+s*cheb_pts[j*COORD_DIM+0],
+			 c[1]+s*cheb_pts[j*COORD_DIM+1],
+			 c[2]+s*cheb_pts[j*COORD_DIM+2]};
+	fn_out.SetZero();
+	for(size_t k=0;k<dof;k++)
+	  fn_poten(coord,1,&fn_out[k*fn_dof]);
+	for(size_t k=0;k<dof*fn_dof;k++){
+	  Real_t err=out[n_pts*k+j]-fn_out[k];
+	  err_avg[tid*dof*fn_dof+k]+=err*s3;
+	}
       }
-      for(size_t k=0;k<dof*fn_dof;k++)
-        err_avg[tid*dof*fn_dof+k]/=n_pts;
     }
-    for(size_t tid=1;tid<omp_p;tid++)
-      for(size_t k=0;k<dof*fn_dof;k++)
-        err_avg[k]+=err_avg[tid*dof*fn_dof+k];
-    MPI_Allreduce(&err_avg[0], &glb_err_avg[0], dof*fn_dof, pvfmm::par::Mpi_datatype<Real_t>::value(), pvfmm::par::Mpi_datatype<Real_t>::sum(), c1);
+    for(size_t k=0;k<dof*fn_dof;k++)
+      err_avg[tid*dof*fn_dof+k]/=n_pts;
   }
+  for(size_t tid=1;tid<omp_p;tid++)
+    for(size_t k=0;k<dof*fn_dof;k++)
+      err_avg[k]+=err_avg[tid*dof*fn_dof+k];
   if(0){ // Write error to file.
     int nn_x=1;
     int nn_y=201;
@@ -207,21 +184,16 @@ void CheckChebOutput(FMMTree_t* mytree, typename TestFn<typename FMMTree_t::Real
       Real_t cheb_val=M_out[k+l*nn_z][i+j*nn_x];
       if(fabs(cheb_val)>1.0e-20){
         fn_poten(ch_coord,1,fn_out);
-        Real_t err=(cheb_val-fn_out[l])-glb_err_avg[l];
+        Real_t err=(cheb_val-fn_out[l])-err_avg[l];
         M_out_err[k+l*nn_z][i+j*nn_x]=err;
       }
     }
     delete[] fn_out;
-    pvfmm::Matrix<Real_t> M_global    (nn_z*fn_dof*dof,nn_y*nn_x,NULL,true);
-    pvfmm::Matrix<Real_t> M_global_err(nn_z*fn_dof*dof,nn_y*nn_x,NULL,true);
-    MPI_Reduce(&M_out    [0][0], &M_global    [0][0], nn_x*nn_y*nn_z*fn_dof*dof, pvfmm::par::Mpi_datatype<Real_t>::value(), pvfmm::par::Mpi_datatype<Real_t>::sum(), 0, c1);
-    MPI_Reduce(&M_out_err[0][0], &M_global_err[0][0], nn_x*nn_y*nn_z*fn_dof*dof, pvfmm::par::Mpi_datatype<Real_t>::value(), pvfmm::par::Mpi_datatype<Real_t>::sum(), 0, c1);
-
     std::string fname;
     fname=std::string("result/"    )+t_name+std::string(".mat");
-    if(!myrank) M_global    .Write(fname.c_str());
+    if(!myrank) M_out    .Write(fname.c_str());
     fname=std::string("result/err_")+t_name+std::string(".mat");
-    if(!myrank) M_global_err.Write(fname.c_str());
+    if(!myrank) M_out_err.Write(fname.c_str());
   }
   std::vector<Real_t> max    (omp_p,0), l2    (omp_p,0);
   std::vector<Real_t> max_err(omp_p,0), l2_err(omp_p,0);
@@ -244,7 +216,7 @@ void CheckChebOutput(FMMTree_t* mytree, typename TestFn<typename FMMTree_t::Real
         for(size_t k=0;k<dof;k++)
           fn_poten(coord,1,&fn_out[k*fn_dof]);
         for(size_t k=0;k<dof*fn_dof;k++){
-          Real_t err=out[n_pts*k+j]-fn_out[k]-glb_err_avg[k];
+          Real_t err=out[n_pts*k+j]-fn_out[k]-err_avg[k];
           if(fabs(fn_out[k])>max    [tid]) max    [tid]=fabs(fn_out[k]);
           if(fabs(err      )>max_err[tid]) max_err[tid]=fabs(err      );
           l2[tid]+=fn_out[k]*fn_out[k]*s3;
@@ -262,17 +234,11 @@ void CheckChebOutput(FMMTree_t* mytree, typename TestFn<typename FMMTree_t::Real
     l2_err[0]+=l2_err[tid];
   }
 
-  Real_t global_l2, global_l2_err;
-  Real_t global_max, global_max_err;
-  MPI_Reduce(&l2     [0], &global_l2     , 1, pvfmm::par::Mpi_datatype<Real_t>::value(), pvfmm::par::Mpi_datatype<Real_t>::sum(), 0, c1);
-  MPI_Reduce(&l2_err [0], &global_l2_err , 1, pvfmm::par::Mpi_datatype<Real_t>::value(), pvfmm::par::Mpi_datatype<Real_t>::sum(), 0, c1);
-  MPI_Reduce(&max    [0], &global_max    , 1, pvfmm::par::Mpi_datatype<Real_t>::value(), pvfmm::par::Mpi_datatype<Real_t>::max(), 0, c1);
-  MPI_Reduce(&max_err[0], &global_max_err, 1, pvfmm::par::Mpi_datatype<Real_t>::value(), pvfmm::par::Mpi_datatype<Real_t>::max(), 0, c1);
   if(!myrank){
-    std::cout<<"Absolute L2 Error ["<<t_name<<"]     :  "<<std::scientific<<sqrt(global_l2_err)<<'\n';
-    std::cout<<"Relative L2 Error ["<<t_name<<"]     :  "<<std::scientific<<sqrt(global_l2_err/global_l2)<<'\n';
-    std::cout<<"Maximum Absolute Error ["<<t_name<<"]:  "<<std::scientific<<global_max_err<<'\n';
-    std::cout<<"Maximum Relative Error ["<<t_name<<"]:  "<<std::scientific<<global_max_err/global_max<<'\n';
+    std::cout<<"Absolute L2 Error ["<<t_name<<"]     :  "<<std::scientific<<sqrt(l2_err)<<'\n';
+    std::cout<<"Relative L2 Error ["<<t_name<<"]     :  "<<std::scientific<<sqrt(l2_err/l2)<<'\n';
+    std::cout<<"Maximum Absolute Error ["<<t_name<<"]:  "<<std::scientific<<max_err<<'\n';
+    std::cout<<"Maximum Relative Error ["<<t_name<<"]:  "<<std::scientific<<max_err/max<<'\n';
   }
   pvfmm::Profile::Toc();
 }
@@ -280,9 +246,7 @@ void CheckChebOutput(FMMTree_t* mytree, typename TestFn<typename FMMTree_t::Real
 
 template <class Real_t>
 std::vector<Real_t> point_distrib(DistribType dist_type, size_t N, MPI_Comm comm){
-  int np, myrank;
-  MPI_Comm_size(comm, &np);
-  MPI_Comm_rank(comm, &myrank);
+  int np=1, myrank=0;
   static size_t seed=myrank+1; seed+=np;
   srand48(seed);
 

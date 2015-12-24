@@ -214,15 +214,8 @@ void FMM_Tree<FMM_Mat_t>::RunFMM() {
 
   //Multipole Reduce Broadcast.
   Profile::Tic("ReduceBcast",this->Comm(),true,2);
-  MultipoleReduceBcast();
+  //  MultipoleReduceBcast();
   Profile::Toc();
-
-  //Local 2:1 Balancing.
-  //This can cause load imbalance, always use global 2:1 balance instead.
-  //Profile::Tic("2:1Balance(local)",this->Comm(),false,3);
-  //this->Balance21_local(bndry);
-  //UpwardPass(true);
-  //Profile::Toc();
 
   //Downward Pass
   Profile::Tic("DownwardPass",this->Comm(),true,2);
@@ -244,7 +237,7 @@ void FMM_Tree<FMM_Mat_t>::UpwardPass() {
       Node_t* n=nodes[i];
       if(n->Depth()>max_depth_loc) max_depth_loc=n->Depth();
     }
-    MPI_Allreduce(&max_depth_loc, &max_depth, 1, MPI_INT, MPI_MAX, *this->Comm());
+    max_depth = max_depth_loc;
   }
 
   //Upward Pass (initialize all leaf nodes)
@@ -319,206 +312,6 @@ void FMM_Tree<FMM_Mat_t>::BuildInteracLists() {
   }
 }
 
-
-template <class FMM_Mat_t>
-void FMM_Tree<FMM_Mat_t>::MultipoleReduceBcast() {
-  int num_p,rank;
-  MPI_Comm_size(*this->Comm(),&num_p);
-  MPI_Comm_rank(*this->Comm(),&rank );
-  if(num_p==1) return;
-
-  Profile::Tic("Reduce",this->Comm(),true,3);
-  std::vector<MortonId> mins=this->GetMins();
-
-  size_t bit_mask=1;
-  size_t max_child=(1UL<<this->Dim());
-
-  //Initialize initial send nodes.
-  std::vector<Node_t*> send_nodes[2];
-
-  //Initialize send_node[0]
-  Node_t* tmp_node=static_cast<Node_t*>(this->RootNode());
-  assert(!tmp_node->IsGhost());
-  while(!tmp_node->IsLeaf()){
-    Node_t* tmp_node_=NULL;
-    for(size_t i=0;i<max_child;i++){
-      tmp_node_=static_cast<Node_t*>(tmp_node->Child(i));
-      if(tmp_node_!=NULL) if(!tmp_node_->IsGhost()) break;
-    }
-    tmp_node=tmp_node_; assert(tmp_node!=NULL);
-  }
-  int n[2];
-  n[0]=tmp_node->Depth()+1;
-  send_nodes[0].resize(n[0]);
-  send_nodes[0][n[0]-1]=tmp_node;
-  for(int i=n[0]-1;i>0;i--)
-    send_nodes[0][i-1]=static_cast<Node_t*>(send_nodes[0][i]->Parent());
-
-  //Initialize send_node[1]
-  tmp_node=static_cast<Node_t*>(this->RootNode());
-  while(!tmp_node->IsLeaf()){
-    Node_t* tmp_node_=NULL;
-    for(int i=max_child-1;i>=0;i--){
-      tmp_node_=static_cast<Node_t*>(tmp_node->Child(i));
-      if(tmp_node_!=NULL) if(!tmp_node_->IsGhost()) break;
-    }
-    tmp_node=tmp_node_; assert(tmp_node!=NULL);
-  }
-  n[1]=tmp_node->Depth()+1;
-  send_nodes[1].resize(n[1]);
-  send_nodes[1][n[1]-1]=tmp_node;
-  for(int i=n[1]-1;i>0;i--)
-    send_nodes[1][i-1]=static_cast<Node_t*>(send_nodes[1][i]->Parent());
-
-  //Hypercube reduction.
-  while(bit_mask<(size_t)num_p){
-    size_t partner=rank^bit_mask; //Partner process id
-    int merge_indx=((bit_mask & rank)==0?1:0);
-    bit_mask=bit_mask<<1;
-    //if(rank >= num_p - (num_p % bit_mask)) break;
-
-    //Initialize send data.
-    size_t s_node_cnt[2]={send_nodes[0].size(),send_nodes[1].size()};
-    int send_size=2*sizeof(size_t)+(s_node_cnt[0]+s_node_cnt[1])*sizeof(MortonId);
-    std::vector<PackedData> send_data(s_node_cnt[0]+s_node_cnt[1]);
-
-    size_t s_iter=0;
-    for(int i=0;i<2;i++)
-    for(size_t j=0;j<s_node_cnt[i];j++){
-      assert(send_nodes[i][j]!=NULL);
-      send_data[s_iter]=send_nodes[i][j]->PackMultipole();
-      send_size+=send_data[s_iter].length+sizeof(size_t);
-      s_iter++;
-    }
-
-    char* send_buff=mem::aligned_new<char>(send_size);
-    char* buff_iter=send_buff;
-    ((size_t*)buff_iter)[0]=s_node_cnt[0];
-    ((size_t*)buff_iter)[1]=s_node_cnt[1];
-    buff_iter+=2*sizeof(size_t);
-
-    s_iter=0;
-    for(int i=0;i<2;i++)
-    for(size_t j=0;j<s_node_cnt[i];j++){
-      ((MortonId*)buff_iter)[0]=send_nodes[i][j]->GetMortonId();
-      buff_iter+=sizeof(MortonId);
-
-      ((size_t*)buff_iter)[0]=send_data[s_iter].length;
-      buff_iter+=sizeof(size_t);
-
-      mem::memcopy((void*)buff_iter,send_data[s_iter].data,send_data[s_iter].length);
-      buff_iter+=send_data[s_iter].length;
-
-      s_iter++;
-    }
-
-    //Exchange send and recv sizes
-    int recv_size=0;
-    MPI_Status status;
-    char* recv_buff=NULL;
-    if(partner<(size_t)num_p){
-      MPI_Sendrecv(&send_size,        1,  MPI_INT, partner, 0, &recv_size,         1,  MPI_INT, partner, 0, *this->Comm(), &status);
-      recv_buff=mem::aligned_new<char>(recv_size);
-      MPI_Sendrecv(send_buff, send_size, MPI_BYTE, partner, 0,  recv_buff, recv_size, MPI_BYTE, partner, 0, *this->Comm(), &status);
-    }
-
-    //Need an extra broadcast for incomplete hypercubes.
-    size_t p0_start=num_p - (num_p % (bit_mask   ));
-    size_t p0_end  =num_p - (num_p % (bit_mask>>1));
-    if(((size_t)rank >= p0_start) && ((size_t)num_p>p0_end) && ((size_t)rank < p0_end) ){
-      size_t bit_mask0=1;
-      size_t num_p0=p0_end-p0_start;
-      while( bit_mask0 < num_p0 ){
-        if( (bit_mask0<<1) > (num_p - p0_end) ){
-          size_t partner0=rank^bit_mask0;
-          if( rank-p0_start < bit_mask0 ){
-            //Send
-            MPI_Send(&recv_size,         1, MPI_INT , partner0, 0, *this->Comm());
-            MPI_Send( recv_buff, recv_size, MPI_BYTE, partner0, 0, *this->Comm());
-          }else if( rank-p0_start < (bit_mask0<<1) ){
-            //Receive
-            if(recv_size>0) mem::aligned_delete<char>(recv_buff);
-            MPI_Recv(&recv_size,         1, MPI_INT , partner0, 0, *this->Comm(), &status);
-            recv_buff=mem::aligned_new<char>(recv_size);
-            MPI_Recv( recv_buff, recv_size, MPI_BYTE, partner0, 0, *this->Comm(), &status);
-          }
-        }
-        bit_mask0=bit_mask0<<1;
-      }
-    }
-
-    //Construct nodes from received data.
-    if(recv_size>0){
-      buff_iter=recv_buff;
-      size_t r_node_cnt[2]={((size_t*)buff_iter)[0],((size_t*)buff_iter)[1]};
-      buff_iter+=2*sizeof(size_t);
-      std::vector<MortonId> r_mid[2];
-      r_mid[0].resize(r_node_cnt[0]);
-      r_mid[1].resize(r_node_cnt[1]);
-      std::vector<Node_t*> recv_nodes[2];
-      recv_nodes[0].resize(r_node_cnt[0]);
-      recv_nodes[1].resize(r_node_cnt[1]);
-      std::vector<PackedData> recv_data[2];
-      recv_data[0].resize(r_node_cnt[0]);
-      recv_data[1].resize(r_node_cnt[1]);
-      for(int i=0;i<2;i++)
-      for(size_t j=0;j<r_node_cnt[i];j++){
-        r_mid[i][j]=((MortonId*)buff_iter)[0];
-        buff_iter+=sizeof(MortonId);
-
-        recv_data[i][j].length=((size_t*)buff_iter)[0];
-        buff_iter+=sizeof(size_t);
-
-        recv_data[i][j].data=(void*)buff_iter;
-        buff_iter+=recv_data[i][j].length;
-      }
-
-      // Add multipole expansion to existing nodes.
-      for(size_t i=0;i<r_node_cnt[1-merge_indx];i++){
-        if(i<send_nodes[merge_indx].size()){
-          if(r_mid[1-merge_indx][i]==send_nodes[merge_indx][i]->GetMortonId()){
-            send_nodes[merge_indx][i]->AddMultipole(recv_data[1-merge_indx][i]);
-          }else break;
-        }else break;
-      }
-
-      bool new_branch=false;
-      for(size_t i=0;i<r_node_cnt[merge_indx];i++){
-        if(i<send_nodes[merge_indx].size() && !new_branch){
-          if(r_mid[merge_indx][i]==send_nodes[merge_indx][i]->GetMortonId()){
-            recv_nodes[merge_indx][i]=send_nodes[merge_indx][i];
-          }else{
-            new_branch=true;
-            size_t n_=(i<(size_t)n[merge_indx]?n[merge_indx]:i);
-            for(size_t j=n_;j<send_nodes[merge_indx].size();j++)
-              mem::aligned_delete(send_nodes[merge_indx][j]);
-            if(i<(size_t)n[merge_indx]) n[merge_indx]=i;
-          }
-        }
-        if(i>=send_nodes[merge_indx].size() || new_branch){
-            recv_nodes[merge_indx][i]=static_cast<Node_t*>(this->NewNode());
-            recv_nodes[merge_indx][i]->SetCoord(r_mid[merge_indx][i]);
-            recv_nodes[merge_indx][i]->InitMultipole(recv_data[merge_indx][i]);
-        }
-      }
-      send_nodes[merge_indx]=recv_nodes[merge_indx];
-    }
-    mem::aligned_delete<char>(send_buff);
-    mem::aligned_delete<char>(recv_buff);
-  }
-
-  for(int i=0;i<2;i++)
-  for(size_t j=n[i];j<send_nodes[i].size();j++)
-    mem::aligned_delete(send_nodes[i][j]);
-  Profile::Toc();
-
-  //Now Broadcast nodes to build LET.
-  Profile::Tic("Broadcast",this->Comm(),true,4);
-  this->ConstructLET(bndry);
-  Profile::Toc();
-}
-
-
 template <class FMM_Mat_t>
 void FMM_Tree<FMM_Mat_t>::DownwardPass() {
   Profile::Tic("Setup",this->Comm(),true,3);
@@ -532,7 +325,7 @@ void FMM_Tree<FMM_Mat_t>::DownwardPass() {
       if(!n->IsGhost() && n->IsLeaf()) leaf_nodes.push_back(n);
       if(n->Depth()>max_depth_loc) max_depth_loc=n->Depth();
     }
-    MPI_Allreduce(&max_depth_loc, &max_depth, 1, MPI_INT, MPI_MAX, *this->Comm());
+    max_depth = max_depth_loc;
   }
   Profile::Toc();
 

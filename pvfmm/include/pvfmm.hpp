@@ -32,10 +32,7 @@ inline PtFMM_Tree* PtFMM_CreateTree(std::vector<double>&  src_coord, std::vector
                                     std::vector<double>& surf_coord, std::vector<double>& surf_value,
                                     std::vector<double>& trg_coord, MPI_Comm& comm, int max_pts=100,
                                     BoundaryType bndry=FreeSpace, int init_depth=0){
-  int np, myrank;
-  MPI_Comm_size(comm, &np);
-  MPI_Comm_rank(comm, &myrank);
-
+  int np=1, myrank=0;
   PtFMM_Data tree_data;
   bool adap=true;
 

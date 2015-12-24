@@ -27,7 +27,7 @@ class FMM_Node: public Node{
 
  public:
 
-  typedef Node Node_t; //Type of base node class (MPI_Node / Cheb_Node)
+  typedef Node Node_t; //Type of base node class
   typedef typename Node_t::Real_t Real_t;
 
   /**
@@ -67,7 +67,7 @@ class FMM_Node: public Node{
 
   /**
    * \brief Returns list of coordinate and value vectors which need to be
-   * sorted and partitioned across MPI processes and the scatter index is
+   * sorted and partitioned across processes and the scatter index is
    * saved.
    */
   virtual void NodeDataVec(std::vector<Vector<Real_t>*>& coord,
@@ -125,7 +125,7 @@ class FMM_Node: public Node{
   virtual void Truncate() ;
 
   /**
-   * \brief Pack node for transmission using MPI.
+   * \brief Pack node for transmission
    */
   virtual PackedData Pack(bool ghost=false, void* buff_ptr=NULL, size_t offset=0);
 

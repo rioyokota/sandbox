@@ -51,13 +51,10 @@ bool Profile::Enable(bool state){
 
 void Profile::Tic(const char* name_, const MPI_Comm* comm_,bool sync_, int verbose){
 #if __PROFILE__ >= 0
-  //sync_=true;
   if(!enable_state) return;
   if(verbose<=__PROFILE__ && verb_level.size()==enable_depth){
-    if(comm_!=NULL && sync_) MPI_Barrier(*comm_);
     #ifdef __VERBOSE__
     int rank=0;
-    if(comm_!=NULL) MPI_Comm_rank(*comm_,&rank);
     if(!rank){
       for(size_t i=0;i<name.size();i++) std::cout<<"    ";
       std::cout << "\033[1;31m"<<name_<<"\033[0m {\n";
@@ -100,9 +97,6 @@ void Profile::Toc(){
     m_log.push_back(MEM);
     max_m_log.push_back(max_mem.back());
 
-    #ifndef NDEBUG
-    if(comm_!=NULL && sync_) MPI_Barrier(*comm_);
-    #endif
     name.pop();
     comm.pop();
     sync.pop();
@@ -110,7 +104,6 @@ void Profile::Toc(){
 
     #ifdef __VERBOSE__
     int rank=0;
-    if(comm_!=NULL) MPI_Comm_rank(*comm_,&rank);
     if(!rank){
       for(size_t i=0;i<name.size();i++) std::cout<<"    ";
       std::cout<<"}\n";
@@ -124,13 +117,9 @@ void Profile::Toc(){
 
 void Profile::print(const MPI_Comm* comm_){
 #if __PROFILE__ >= 0
-  int np, rank;
+  int np=1, rank=0;
   MPI_Comm c_self=MPI_COMM_SELF;
   if(comm_==NULL) comm_=&c_self;
-  MPI_Barrier(*comm_);
-
-  MPI_Comm_size(*comm_,&np);
-  MPI_Comm_rank(*comm_,&rank);
 
   std::stack<double> tt;
   std::stack<long long> ff;
@@ -173,20 +162,10 @@ void Profile::print(const MPI_Comm* comm_){
       double t0=t_log[i]-tt.top();tt.pop();
       double f0=(double)(f_log[i]-ff.top())*1e-9;ff.pop();
       double fs0=f0/t0;
-      double t_max, t_min, t_sum, t_avg;
-      double f_max, f_min, f_sum, f_avg;
-      double fs_max, fs_min, fs_sum;//, fs_avg;
+      double t_max=t0, t_min=t0, t_sum=t0, t_avg=t0;
+      double f_max=f0, f_min=f0, f_sum=f0, f_avg=f0;
+      double fs_max=fs0, fs_min=fs0, fs_sum=fs0;//, fs_avg;
       double m_init, m_max, m_final;
-      MPI_Reduce(&t0, &t_max, 1, MPI_DOUBLE, MPI_MAX, 0, *comm_);
-      MPI_Reduce(&f0, &f_max, 1, MPI_DOUBLE, MPI_MAX, 0, *comm_);
-      MPI_Reduce(&fs0, &fs_max, 1, MPI_DOUBLE, MPI_MAX, 0, *comm_);
-
-      MPI_Reduce(&t0, &t_min, 1, MPI_DOUBLE, MPI_MIN, 0, *comm_);
-      MPI_Reduce(&f0, &f_min, 1, MPI_DOUBLE, MPI_MIN, 0, *comm_);
-      MPI_Reduce(&fs0, &fs_min, 1, MPI_DOUBLE, MPI_MIN, 0, *comm_);
-
-      MPI_Reduce(&t0, &t_sum, 1, MPI_DOUBLE, MPI_SUM, 0, *comm_);
-      MPI_Reduce(&f0, &f_sum, 1, MPI_DOUBLE, MPI_SUM, 0, *comm_);
 
       m_final=(double)m_log[i]*1e-9;
       m_init =(double)mm.top()*1e-9; mm.pop();

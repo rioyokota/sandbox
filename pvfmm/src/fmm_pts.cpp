@@ -25,9 +25,7 @@ void fmm_test(size_t N, size_t M, Real_t b, int dist, int mult_order, int depth,
   int omp_p=omp_get_max_threads();
 
   // Find out my identity in the default communicator
-  int myrank, p;
-  MPI_Comm_rank(comm, &myrank);
-  MPI_Comm_size(comm,&p);
+  int myrank=0, p=1;
 
   //Various parameters.
   typename FMMNode_t::NodeData tree_data;
@@ -116,14 +114,8 @@ void fmm_test(size_t N, size_t M, Real_t b, int dist, int mult_order, int depth,
         nleaf++;
       }
     }
-
-    long nleaf_glb=0, maxdepth_glb=0;
-    { // MPI_Reduce
-      MPI_Allreduce(&nleaf, &nleaf_glb, 1, MPI_INT, MPI_SUM, comm);
-      MPI_Allreduce(&maxdepth, &maxdepth_glb, 1, MPI_INT, MPI_MAX, comm);
-    }
-    if(!myrank) std::cout<<"Leaf Nodes : "<<nleaf_glb<<'\n';
-    if(!myrank) std::cout<<"Tree Depth : "<<maxdepth_glb<<'\n';
+    if(!myrank) std::cout<<"Leaf Nodes : "<<nleaf<<'\n';
+    if(!myrank) std::cout<<"Tree Depth : "<<maxdepth<<'\n';
   }
 
   //Find error in FMM output.
