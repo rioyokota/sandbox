@@ -209,7 +209,7 @@ FMM_Pts<FMMNode>::~FMM_Pts() {
 
 template <class FMMNode>
 void FMM_Pts<FMMNode>::Initialize(int mult_order, const MPI_Comm& comm_, const Kernel<Real_t>* kernel_){
-  Profile::Tic("InitFMM_Pts",&comm_,true);{
+  Profile::Tic("InitFMM_Pts",true);{
 
   int rank=0;
   bool verbose=false;
@@ -259,17 +259,17 @@ void FMM_Pts<FMMNode>::Initialize(int mult_order, const MPI_Comm& comm_, const K
 
   interac_list.Initialize(COORD_DIM, this->mat);
 
-  Profile::Tic("PrecompUC2UE",&comm,false,4);
+  Profile::Tic("PrecompUC2UE",false,4);
   this->PrecompAll(UC2UE0_Type);
   this->PrecompAll(UC2UE1_Type);
   Profile::Toc();
 
-  Profile::Tic("PrecompDC2DE",&comm,false,4);
+  Profile::Tic("PrecompDC2DE",false,4);
   this->PrecompAll(DC2DE0_Type);
   this->PrecompAll(DC2DE1_Type);
   Profile::Toc();
 
-  Profile::Tic("PrecompBC",&comm,false,4);
+  Profile::Tic("PrecompBC",false,4);
   { /*
     int type=BC_Type;
     for(int l=0;l<MAX_DEPTH;l++)
@@ -281,16 +281,16 @@ void FMM_Pts<FMMNode>::Initialize(int mult_order, const MPI_Comm& comm_, const K
   this->PrecompAll(BC_Type,0);
   Profile::Toc();
 
-  Profile::Tic("PrecompU2U",&comm,false,4);
+  Profile::Tic("PrecompU2U",false,4);
   this->PrecompAll(U2U_Type);
   Profile::Toc();
 
-  Profile::Tic("PrecompD2D",&comm,false,4);
+  Profile::Tic("PrecompD2D",false,4);
   this->PrecompAll(D2D_Type);
   Profile::Toc();
 
   if(save_precomp){
-    Profile::Tic("Save2File",&this->comm,false,4);
+    Profile::Tic("Save2File",false,4);
     if(!rank){
       FILE* f=fopen(this->mat_fname.c_str(),"r");
       if(f==NULL) { //File does not exists.
@@ -300,10 +300,10 @@ void FMM_Pts<FMMNode>::Initialize(int mult_order, const MPI_Comm& comm_, const K
     Profile::Toc();
   }
 
-  Profile::Tic("PrecompV",&comm,false,4);
+  Profile::Tic("PrecompV",false,4);
   this->PrecompAll(V_Type);
   Profile::Toc();
-  Profile::Tic("PrecompV1",&comm,false,4);
+  Profile::Tic("PrecompV1",false,4);
   this->PrecompAll(V1_Type);
   Profile::Toc();
 
@@ -1446,7 +1446,7 @@ template <class FMMNode>
 void FMM_Pts<FMMNode>::SetupPrecomp(SetupData<Real_t>& setup_data){
   if(setup_data.precomp_data==NULL || setup_data.level>MAX_DEPTH) return;
 
-  Profile::Tic("SetupPrecomp",&this->comm,true,25);
+  Profile::Tic("SetupPrecomp",true,25);
   { // Build precomp_data
     size_t precomp_offset=0;
     int level=setup_data.level;
@@ -1481,7 +1481,7 @@ void FMM_Pts<FMMNode>::SetupInterac(SetupData<Real_t>& setup_data){
   if(setup_data.precomp_data->Dim(0)*setup_data.precomp_data->Dim(1)==0) SetupPrecomp(setup_data);
 
   // Build interac_data
-  Profile::Tic("Interac-Data",&this->comm,true,25);
+  Profile::Tic("Interac-Data",true,25);
   Matrix<char>& interac_data=setup_data.interac_data;
   { // Build precomp_data, interac_data
     std::vector<size_t> interac_mat;
@@ -1686,14 +1686,14 @@ void FMM_Pts<FMMNode>::SetupInterac(SetupData<Real_t>& setup_data){
 template <class FMMNode>
 void FMM_Pts<FMMNode>::EvalList(SetupData<Real_t>& setup_data){
   if(setup_data.interac_data.Dim(0)==0 || setup_data.interac_data.Dim(1)==0){
-    Profile::Tic("Host2Device",&this->comm,false,25);
+    Profile::Tic("Host2Device",false,25);
     Profile::Toc();
-    Profile::Tic("DeviceComp",&this->comm,false,20);
+    Profile::Tic("DeviceComp",false,20);
     Profile::Toc();
     return;
   }
 
-  Profile::Tic("Host2Device",&this->comm,false,25);
+  Profile::Tic("Host2Device",false,25);
   typename Vector<char>::Device          buff;
   typename Matrix<char>::Device  precomp_data;
   typename Matrix<char>::Device  interac_data;
@@ -1708,7 +1708,7 @@ void FMM_Pts<FMMNode>::EvalList(SetupData<Real_t>& setup_data){
 
   Profile::Toc();
 
-  Profile::Tic("DeviceComp",&this->comm,false,20);
+  Profile::Tic("DeviceComp",false,20);
   int lock_idx=-1;
   int wait_lock_idx=-1;
   { // Offloaded computation.
@@ -2906,7 +2906,7 @@ void FMM_Pts<FMMNode>::V_ListSetup(SetupData<Real_t>&  setup_data, FMMTree_t* tr
   size_t n_out=nodes_out.size();
 
   // Build interac_data
-  Profile::Tic("Interac-Data",&this->comm,true,25);
+  Profile::Tic("Interac-Data",true,25);
   Matrix<char>& interac_data=setup_data.interac_data;
   if(n_out>0 && n_in >0){ // Build precomp_data, interac_data
 
@@ -3122,12 +3122,12 @@ void FMM_Pts<FMMNode>::V_List     (SetupData<Real_t>&  setup_data){
 
   int np=1;
   if(setup_data.interac_data.Dim(0)==0 || setup_data.interac_data.Dim(1)==0){
-    if(np>1) Profile::Tic("Host2Device",&this->comm,false,25);
+    if(np>1) Profile::Tic("Host2Device",false,25);
     if(np>1) Profile::Toc();
     return;
   }
 
-  Profile::Tic("Host2Device",&this->comm,false,25);
+  Profile::Tic("Host2Device",false,25);
   int level=setup_data.level;
   size_t buff_size=*((size_t*)&setup_data.interac_data[0][0]);
   typename Vector<char>::Device          buff;
@@ -3238,7 +3238,7 @@ void FMM_Pts<FMMNode>::V_List     (SetupData<Real_t>&  setup_data){
       Vector<Real_t>  buffer(buffer_dim, (Real_t*)&buff[(input_dim+output_dim)*sizeof(Real_t)],false);
 
       { //  FFT
-        if(np==1) Profile::Tic("FFT",&comm,false,100);
+        if(np==1) Profile::Tic("FFT",false,100);
         Vector<Real_t>  input_data_( input_data.dim[0]* input_data.dim[1],  input_data[0], false);
         FFT_UpEquiv(dof, m, ker_dim0,  fft_vec[blk0],  fft_scl[blk0],  input_data_, fft_in, buffer);
         if(np==1) Profile::Toc();
@@ -3250,7 +3250,7 @@ void FMM_Pts<FMMNode>::V_List     (SetupData<Real_t>&  setup_data){
         if (PAPI_start(EventSet) != PAPI_OK) std::cout << "handle_error3" << std::endl;
 #endif
 #endif
-        if(np==1) Profile::Tic("HadamardProduct",&comm,false,100);
+        if(np==1) Profile::Tic("HadamardProduct",false,100);
         VListHadamard<Real_t>(dof, M_dim, ker_dim0, ker_dim1, interac_dsp[blk0], interac_vec[blk0], precomp_mat, fft_in, fft_out);
         if(np==1) Profile::Toc();
 #ifdef PVFMM_HAVE_PAPI
@@ -3261,7 +3261,7 @@ void FMM_Pts<FMMNode>::V_List     (SetupData<Real_t>&  setup_data){
 #endif
       }
       { // IFFT
-        if(np==1) Profile::Tic("IFFT",&comm,false,100);
+        if(np==1) Profile::Tic("IFFT",false,100);
         Vector<Real_t> output_data_(output_data.dim[0]*output_data.dim[1], output_data[0], false);
         FFT_Check2Equiv(dof, m, ker_dim1, ifft_vec[blk0], ifft_scl[blk0], fft_out, output_data_, buffer);
         if(np==1) Profile::Toc();
@@ -3502,16 +3502,16 @@ template <class FMMNode>
 void FMM_Pts<FMMNode>::EvalListPts(SetupData<Real_t>& setup_data){
   if(setup_data.kernel->ker_dim[0]*setup_data.kernel->ker_dim[1]==0) return;
   if(setup_data.interac_data.Dim(0)==0 || setup_data.interac_data.Dim(1)==0){
-    Profile::Tic("Host2Device",&this->comm,false,25);
+    Profile::Tic("Host2Device",false,25);
     Profile::Toc();
-    Profile::Tic("DeviceComp",&this->comm,false,20);
+    Profile::Tic("DeviceComp",false,20);
     Profile::Toc();
     return;
   }
 
   bool have_gpu=false;
 
-  Profile::Tic("Host2Device",&this->comm,false,25);
+  Profile::Tic("Host2Device",false,25);
   typename Vector<char>::Device      dev_buff;
   typename Matrix<char>::Device  interac_data;
   typename Matrix<Real_t>::Device  coord_data;
@@ -3529,7 +3529,7 @@ void FMM_Pts<FMMNode>::EvalListPts(SetupData<Real_t>& setup_data){
 
   Profile::Toc();
 
-  Profile::Tic("DeviceComp",&this->comm,false,20);
+  Profile::Tic("DeviceComp",false,20);
   int lock_idx=-1;
   int wait_lock_idx=-1;
   { // Offloaded computation.

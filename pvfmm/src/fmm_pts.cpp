@@ -51,13 +51,13 @@ void fmm_test(size_t N, size_t M, Real_t b, int dist, int mult_order, int depth,
 
   pvfmm::Vector<Real_t> trg_value;
   for(size_t i=0;i<2;i++){ // Compute potential
-    pvfmm::Profile::Tic("TotalTime",&comm,true);
+    pvfmm::Profile::Tic("TotalTime",true);
 
     //Initialize tree with input data.
     tree.Initialize(&tree_data);
 
     //Initialize FMM Tree
-    pvfmm::Profile::Tic("SetSrcTrg",&comm,true);
+    pvfmm::Profile::Tic("SetSrcTrg",true);
     { // Set src and trg points
       std::vector<FMMNode_t*>& node=tree.GetNodeList();
       #pragma omp parallel for
@@ -77,7 +77,7 @@ void fmm_test(size_t N, size_t M, Real_t b, int dist, int mult_order, int depth,
     tree.RunFMM();
 
     { // Scatter trg values
-      pvfmm::Profile::Tic("Scatter",&comm,true);
+      pvfmm::Profile::Tic("Scatter",true);
       pvfmm::Vector<size_t> trg_scatter;
       { // build trg_scatter
         std::vector<Real_t> trg_value_;
@@ -141,7 +141,7 @@ int main(int argc, char **argv){
   pvfmm::Profile::Enable(true);
 
   // Run FMM with above options.
-  pvfmm::Profile::Tic("FMM_Test",&comm,true);
+  pvfmm::Profile::Tic("FMM_Test",true);
   if(sp) fmm_test<float >(N, M, b, dist, m, d, comm);
   else   fmm_test<double>(N, M, b, dist, m, d, comm);
   pvfmm::Profile::Toc();

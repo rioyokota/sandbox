@@ -30,7 +30,7 @@ class Profile{
 
     static bool Enable(bool state);
 
-    static void Tic(const char* name_, const MPI_Comm* comm_=NULL,bool sync_=false, int level=0);
+    static void Tic(const char* name_, bool sync_=false, int level=0);
 
     static void Toc();
 

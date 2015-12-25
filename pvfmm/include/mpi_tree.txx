@@ -101,7 +101,7 @@ inline int points2Octree(const Vector<MortonId>& pt_mid, Vector<MortonId>& nodes
   MPI_Comm_size(comm, &np);
 
   // Sort morton id of points.
-  Profile::Tic("SortMortonId", &comm, true, 10);
+  Profile::Tic("SortMortonId", true, 10);
   Vector<MortonId> pt_sorted;
   //par::partitionW<MortonId>(pt_mid, NULL, comm);
   par::HyperQuickSort(pt_mid, pt_sorted, comm);
@@ -109,7 +109,7 @@ inline int points2Octree(const Vector<MortonId>& pt_mid, Vector<MortonId>& nodes
   Profile::Toc();
 
   // Add last few points from next process, to get the boundary octant right.
-  Profile::Tic("Comm", &comm, true, 10);
+  Profile::Tic("Comm", true, 10);
   {
     { // Adjust maxNumPts
       size_t glb_pt_cnt=0;
@@ -146,13 +146,13 @@ inline int points2Octree(const Vector<MortonId>& pt_mid, Vector<MortonId>& nodes
   Profile::Toc();
 
   // Construct local octree.
-  Profile::Tic("p2o_local", &comm, false, 10);
+  Profile::Tic("p2o_local", false, 10);
   Vector<MortonId> nodes_local(1); nodes_local[0]=MortonId();
   p2oLocal(pt_sorted, nodes_local, maxNumPts, maxDepth, myrank==np-1);
   Profile::Toc();
 
   // Remove duplicate nodes on adjacent processors.
-  Profile::Tic("RemoveDuplicates", &comm, true, 10);
+  Profile::Tic("RemoveDuplicates", true, 10);
   {
     size_t node_cnt=nodes_local.Dim();
     MortonId first_node;
@@ -187,7 +187,7 @@ inline int points2Octree(const Vector<MortonId>& pt_mid, Vector<MortonId>& nodes
   Profile::Toc();
 
   // Repartition nodes.
-  Profile::Tic("partitionW", &comm, false, 10);
+  Profile::Tic("partitionW", false, 10);
   par::partitionW<MortonId>(nodes, NULL , comm);
   Profile::Toc();
 
@@ -197,13 +197,13 @@ inline int points2Octree(const Vector<MortonId>& pt_mid, Vector<MortonId>& nodes
 template <class TreeNode>
 void MPI_Tree<TreeNode>::Initialize(typename Node_t::NodeData* init_data){
   //Initialize root node.
-  Profile::Tic("InitRoot",Comm(),false,5);
+  Profile::Tic("InitRoot",false,5);
   Tree<TreeNode>::Initialize(init_data);
   TreeNode* rnode=this->RootNode();
   assert(this->dim==COORD_DIM);
   Profile::Toc();
 
-  Profile::Tic("Points2Octee",Comm(),true,5);
+  Profile::Tic("Points2Octee",true,5);
   Vector<MortonId> lin_oct;
   { //Get the linear tree.
     // Compute MortonId from pt_coord.
@@ -221,7 +221,7 @@ void MPI_Tree<TreeNode>::Initialize(typename Node_t::NodeData* init_data){
   }
   Profile::Toc();
 
-  Profile::Tic("ScatterPoints",Comm(),true,5);
+  Profile::Tic("ScatterPoints",true,5);
   { // Sort and partition point coordinates and values.
     std::vector<Vector<Real_t>*> coord_lst;
     std::vector<Vector<Real_t>*> value_lst;
@@ -258,7 +258,7 @@ void MPI_Tree<TreeNode>::Initialize(typename Node_t::NodeData* init_data){
   Profile::Toc();
 
   //Initialize the pointer based tree from the linear tree.
-  Profile::Tic("PointerTree",Comm(),false,5);
+  Profile::Tic("PointerTree",false,5);
   { // Construct the pointer tree from lin_oct
     int omp_p=omp_get_max_threads();
 
@@ -445,7 +445,7 @@ void MPI_Tree<TreeNode>::RefineTree(){
     //RedistNodes if needed.
     if(global_max*np>4*global_sum){
       #ifndef NDEBUG
-      Profile::Tic("RedistNodes",Comm(),true,4);
+      Profile::Tic("RedistNodes",true,4);
       #endif
       RedistNodes();
       #ifndef NDEBUG
@@ -956,7 +956,7 @@ void MPI_Tree<TreeNode>::Balance21(BoundaryType bndry) {
   }
 
   //2:1 balance
-  Profile::Tic("ot::balanceOctree",Comm(),true,10);
+  Profile::Tic("ot::balanceOctree",true,10);
   std::vector<MortonId> out;
   balanceOctree(in, out, this->Dim(), this->max_depth, (bndry==Periodic), *Comm());
   if(!redist){ // Use original partitioning
@@ -1004,7 +1004,7 @@ void MPI_Tree<TreeNode>::Balance21(BoundaryType bndry) {
   }
 
   //Redist nodes using new_mins.
-  Profile::Tic("RedistNodes",Comm(),true,10);
+  Profile::Tic("RedistNodes",true,10);
   if(redist) RedistNodes(&out[0]);
   #ifndef NDEBUG
   std::vector<MortonId> mins=GetMins();
@@ -1013,7 +1013,7 @@ void MPI_Tree<TreeNode>::Balance21(BoundaryType bndry) {
   Profile::Toc();
 
   //Now subdivide the current tree as necessary to make it balanced.
-  Profile::Tic("LocalSubdivide",Comm(),false,10);
+  Profile::Tic("LocalSubdivide",false,10);
   int omp_p=omp_get_max_threads();
   for(int i=0;i<omp_p;i++){
     size_t a=(out.size()*i)/omp_p;
@@ -1347,14 +1347,7 @@ inline void IsShared(std::vector<PackedData>& nodes, MortonId* m1, MortonId* m2,
  */
 template <class TreeNode>
 void MPI_Tree<TreeNode>::ConstructLET(BoundaryType bndry){
-  //Profile::Tic("LET_Hypercube", &comm, true, 5);
-  //ConstructLET_Hypercube(bndry);
-  //Profile::Toc();
-
-  //Profile::Tic("LET_Sparse", &comm, true, 5);
   ConstructLET_Sparse(bndry);
-  //Profile::Toc();
-
 #ifndef NDEBUG
   CheckTree();
 #endif
@@ -1588,7 +1581,6 @@ void MPI_Tree<TreeNode>::ConstructLET_Sparse(BoundaryType bndry){
   static std::vector<char> send_buff;
   static std::vector<char> recv_buff;
 
-  //Profile::Tic("SharedNodes", &comm, false, 5);
   CommData* node_comm_data=NULL; // CommData for all nodes.
   std::vector<void*> shared_data; // CommData for shared nodes.
   std::vector<par::SortPair<size_t,size_t> > pid_node_pair; // <pid, shared_data index> list
@@ -1659,11 +1651,8 @@ void MPI_Tree<TreeNode>::ConstructLET_Sparse(BoundaryType bndry){
       }
     }
     omp_par::merge_sort(&pid_node_pair[0], &pid_node_pair[pid_node_pair.size()]);
-    //std::cout<<rank<<' '<<shared_data.size()<<' '<<pid_node_pair.size()<<'\n';
   }
-  //Profile::Toc();
 
-  //Profile::Tic("PackNodes", &comm, false, 5);
   { // Pack shared nodes.
     #pragma omp parallel for
     for(size_t tid=0;tid<omp_p;tid++){
@@ -1691,9 +1680,7 @@ void MPI_Tree<TreeNode>::ConstructLET_Sparse(BoundaryType bndry){
     this->memgr.free(node_comm_data);
     node_comm_data=NULL;
   }
-  //Profile::Toc();
 
-  //Profile::Tic("SendBuff", &comm, false, 5);
   std::vector<MPI_size_t> send_size(num_p,0);
   std::vector<MPI_size_t> send_disp(num_p,0);
   if(pid_node_pair.size()){ // Build send_buff.
@@ -1741,9 +1728,7 @@ void MPI_Tree<TreeNode>::ConstructLET_Sparse(BoundaryType bndry){
       omp_par::scan(&send_size[0],&send_disp[0],num_p);
     }
   }
-  //Profile::Toc();
 
-  //Profile::Tic("A2A_Sparse", &comm, true, 5);
   size_t recv_length=0;
   { // Allocate recv_buff.
     std::vector<MPI_size_t> recv_size(num_p,0);
@@ -1758,9 +1743,7 @@ void MPI_Tree<TreeNode>::ConstructLET_Sparse(BoundaryType bndry){
     par::Mpi_Alltoallv_sparse(&send_buff[0], &send_size[0], &send_disp[0],
                               &recv_buff[0], &recv_size[0], &recv_disp[0], *Comm());
   }
-  //Profile::Toc();
 
-  //Profile::Tic("Unpack", &comm, false, 5);
   std::vector<void*> recv_data; // CommData for received nodes.
   { // Unpack received octants.
     std::vector<par::SortPair<MortonId,size_t> > mid_indx_pair;
@@ -1851,9 +1834,7 @@ void MPI_Tree<TreeNode>::ConstructLET_Sparse(BoundaryType bndry){
       recv_nodes[i]->Unpack(p);
     }
   }
-  //Profile::Toc();
 
-  //Profile::Tic("Broadcast", &comm, true, 5);
   { // Broadcast octants.
     std::vector<MortonId> shrd_mid;
     if(rank+1<num_p){ // Set shrd_mid.
@@ -2105,12 +2086,8 @@ void MPI_Tree<TreeNode>::ConstructLET_Sparse(BoundaryType bndry){
       }
     }
 
-    // Free data
-    //Profile::Tic("Free", &comm, false, 5);
     for(size_t i=0;i<shrd_data.size();i++) this->memgr.free(shrd_data[i]);
-    //Profile::Toc();
   }
-  //Profile::Toc();
 }
 
 

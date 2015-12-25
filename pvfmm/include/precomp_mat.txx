@@ -260,9 +260,9 @@ void PrecompMat<T>::Save2File(const char* fname, bool replace){
 
 template <class T>
 void PrecompMat<T>::LoadFile(const char* fname, MPI_Comm comm){
-  Profile::Tic("LoadMatrices",&comm,true,3);
+  Profile::Tic("LoadMatrices",true,3);
 
-  Profile::Tic("ReadFile",&comm,true,4);
+  Profile::Tic("ReadFile",true,4);
   size_t f_size=0;
   char* f_data=NULL;
   int np=1, myrank=0;
@@ -287,7 +287,7 @@ void PrecompMat<T>::LoadFile(const char* fname, MPI_Comm comm){
   }
   Profile::Toc();
 
-  Profile::Tic("Broadcast",&comm,true,4);
+  Profile::Tic("Broadcast",true,4);
   if(f_size==0){
     Profile::Toc();
     Profile::Toc();

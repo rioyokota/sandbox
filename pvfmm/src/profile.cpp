@@ -49,7 +49,7 @@ bool Profile::Enable(bool state){
   return orig_val;
 }
 
-void Profile::Tic(const char* name_, const MPI_Comm* comm_,bool sync_, int verbose){
+void Profile::Tic(const char* name_, bool sync_, int verbose){
 #if __PROFILE__ >= 0
   if(!enable_state) return;
   if(verbose<=__PROFILE__ && verb_level.size()==enable_depth){
@@ -61,7 +61,6 @@ void Profile::Tic(const char* name_, const MPI_Comm* comm_,bool sync_, int verbo
     }
     #endif
     name.push(name_);
-    comm.push((MPI_Comm*)comm_);
     sync.push(sync_);
     max_mem.push_back(MEM);
 
@@ -84,9 +83,7 @@ void Profile::Toc(){
   if(!enable_state) return;
   if(verb_level.top()<=__PROFILE__ && verb_level.size()==enable_depth){
     std::string name_=name.top();
-    MPI_Comm* comm_=comm.top();
     bool sync_=sync.top();
-    //sync_=true;
 
     e_log.push_back(false);
     s_log.push_back(sync_);
@@ -98,7 +95,6 @@ void Profile::Toc(){
     max_m_log.push_back(max_mem.back());
 
     name.pop();
-    comm.pop();
     sync.pop();
     max_mem.pop_back();
 
@@ -248,7 +244,6 @@ void Profile::reset(){
   FLOP=0;
   while(!sync.empty())sync.pop();
   while(!name.empty())name.pop();
-  while(!comm.empty())comm.pop();
 
   e_log.clear();
   s_log.clear();
@@ -264,7 +259,6 @@ long long Profile::MEM=0;
 bool Profile::enable_state=false;
 std::stack<bool> Profile::sync;
 std::stack<std::string> Profile::name;
-std::stack<MPI_Comm*> Profile::comm;
 std::vector<long long> Profile::max_mem;
 
 unsigned int Profile::enable_depth=0;
