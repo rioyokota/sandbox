@@ -77,7 +77,6 @@ T* aligned_new(size_t n_elem, const MemoryManager* mem_mgr){
   T* A=(T*)mem_mgr->malloc(n_elem, sizeof(T));
 
   if(!TypeTraits<T>::IsPOD()){ // Call constructors
-    //printf("%s\n", __PRETTY_FUNCTION__);
     #pragma omp parallel for
     for(size_t i=0;i<n_elem;i++){
       T* Ai=new(A+i) T();
@@ -101,7 +100,6 @@ void aligned_delete(T* A, const MemoryManager* mem_mgr){
   if (!A) return;
 
   if(!TypeTraits<T>::IsPOD()){ // Call destructors
-    //printf("%s\n", __PRETTY_FUNCTION__);
     MemoryManager::MemHead* mem_head=MemoryManager::GetMemHead(A);
     size_t type_size=mem_head->type_size;
     size_t n_elem=mem_head->n_elem;

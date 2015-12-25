@@ -111,12 +111,9 @@ void Profile::Toc(){
 #endif
 }
 
-void Profile::print(const MPI_Comm* comm_){
+void Profile::print(){
 #if __PROFILE__ >= 0
   int np=1, rank=0;
-  MPI_Comm c_self=MPI_COMM_SELF;
-  if(comm_==NULL) comm_=&c_self;
-
   std::stack<double> tt;
   std::stack<long long> ff;
   std::stack<long long> mm;

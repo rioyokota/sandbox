@@ -291,7 +291,6 @@ void MemoryManager::test(){
 
 void MemoryManager::Check() const{
   #ifndef NDEBUG
-  //print();
   omp_set_lock(&omp_lock);
   MemNode* curr_node=&node_buff[n_dummy_indx-1];
   while(curr_node->next){

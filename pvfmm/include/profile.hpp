@@ -34,7 +34,7 @@ class Profile{
 
     static void Toc();
 
-    static void print(const MPI_Comm* comm_=NULL);
+    static void print();
 
     static void reset();
   private:

@@ -208,7 +208,7 @@ FMM_Pts<FMMNode>::~FMM_Pts() {
 
 
 template <class FMMNode>
-void FMM_Pts<FMMNode>::Initialize(int mult_order, const MPI_Comm& comm_, const Kernel<Real_t>* kernel_){
+void FMM_Pts<FMMNode>::Initialize(int mult_order, const Kernel<Real_t>* kernel_){
   Profile::Tic("InitFMM_Pts",true);{
 
   int rank=0;
@@ -221,7 +221,6 @@ void FMM_Pts<FMMNode>::Initialize(int mult_order, const MPI_Comm& comm_, const K
   if(kernel_) kernel_->Initialize(verbose);
 
   multipole_order=mult_order;
-  comm=comm_;
   kernel=kernel_;
   assert(kernel!=NULL);
 
@@ -255,7 +254,7 @@ void FMM_Pts<FMMNode>::Initialize(int mult_order, const MPI_Comm& comm_, const K
     this->mat_fname=st.str();
     save_precomp=true;
   }
-  this->mat->LoadFile(mat_fname.c_str(), this->comm);
+  this->mat->LoadFile(mat_fname.c_str());
 
   interac_list.Initialize(COORD_DIM, this->mat);
 
@@ -270,14 +269,6 @@ void FMM_Pts<FMMNode>::Initialize(int mult_order, const MPI_Comm& comm_, const K
   Profile::Toc();
 
   Profile::Tic("PrecompBC",false,4);
-  { /*
-    int type=BC_Type;
-    for(int l=0;l<MAX_DEPTH;l++)
-    for(size_t indx=0;indx<this->interac_list.ListCount((Mat_Type)type);indx++){
-      Matrix<Real_t>& M=this->mat->Mat(l, (Mat_Type)type, indx);
-      M.Resize(0,0);
-    } // */
-  }
   this->PrecompAll(BC_Type,0);
   Profile::Toc();
 

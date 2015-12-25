@@ -12,7 +12,7 @@
 #include <utils.hpp>
 
 template <class Real_t>
-void fmm_test(size_t N, size_t M, Real_t b, int dist, int mult_order, int depth, MPI_Comm comm){
+void fmm_test(size_t N, size_t M, Real_t b, int dist, int mult_order, int depth){
   typedef pvfmm::FMM_Node<pvfmm::MPI_Node<Real_t> > FMMNode_t;
   typedef pvfmm::FMM_Pts<FMMNode_t> FMM_Mat_t;
   typedef pvfmm::FMM_Tree<FMM_Mat_t> FMM_Tree_t;
@@ -35,7 +35,7 @@ void fmm_test(size_t N, size_t M, Real_t b, int dist, int mult_order, int depth,
 
   { //Set particle coordinates and values.
     std::vector<Real_t> src_coord, src_value;
-    src_coord=point_distrib<Real_t>((dist==0?UnifGrid:(dist==1?RandSphr:RandElps)),N,comm);
+    src_coord=point_distrib<Real_t>((dist==0?UnifGrid:(dist==1?RandSphr:RandElps)),N);
     for(size_t i=0;i<src_coord.size();i++) src_coord[i]*=b;
     for(size_t i=0;i<src_coord.size()*mykernel->ker_dim[0]/COORD_DIM;i++) src_value.push_back(drand48()-0.5);
     tree_data.pt_coord=src_coord;
@@ -44,9 +44,10 @@ void fmm_test(size_t N, size_t M, Real_t b, int dist, int mult_order, int depth,
 
   //Initialize FMM_Mat.
   FMM_Mat_t fmm_mat;
-  fmm_mat.Initialize(mult_order,comm,mykernel);
+  fmm_mat.Initialize(mult_order,mykernel);
 
   //Create Tree.
+  MPI_Comm comm=MPI_COMM_WORLD;
   FMM_Tree_t tree(comm);
 
   pvfmm::Vector<Real_t> trg_value;
@@ -125,8 +126,6 @@ void fmm_test(size_t N, size_t M, Real_t b, int dist, int mult_order, int depth,
 int main(int argc, char **argv){
   MPI_Init(&argc, &argv);
 
-  MPI_Comm comm=MPI_COMM_WORLD;
-
   // Read command line options.
   commandline_option_start(argc, argv);
   omp_set_num_threads( atoi(commandline_option(argc, argv,  "-omp",     "1", false, "-omp  <int> =  (1)   : Number of OpenMP threads."          )));
@@ -142,12 +141,12 @@ int main(int argc, char **argv){
 
   // Run FMM with above options.
   pvfmm::Profile::Tic("FMM_Test",true);
-  if(sp) fmm_test<float >(N, M, b, dist, m, d, comm);
-  else   fmm_test<double>(N, M, b, dist, m, d, comm);
+  if(sp) fmm_test<float >(N, M, b, dist, m, d);
+  else   fmm_test<double>(N, M, b, dist, m, d);
   pvfmm::Profile::Toc();
 
   //Output Profiling results.
-  pvfmm::Profile::print(&comm);
+  pvfmm::Profile::print();
 
   // Shut down MPI
   MPI_Finalize();

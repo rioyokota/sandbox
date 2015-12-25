@@ -63,7 +63,6 @@ void CheckFMMOutput(pvfmm::FMM_Tree<FMM_Mat_t>* mytree, const pvfmm::Kernel<type
 
   //Direct N-Body.
   std::vector<Real_t> trg_poten_dir(trg_cnt*trg_dof ,0);
-  MPI_Comm comm=MPI_COMM_WORLD;
   pvfmm::Profile::Tic("N-Body Direct",false,1);
   #pragma omp parallel for
   for(int i=0;i<np;i++){
@@ -99,7 +98,6 @@ template <class FMMTree_t>
 void CheckChebOutput(FMMTree_t* mytree, typename TestFn<typename FMMTree_t::Real_t>::Fn_t fn_poten, int fn_dof, std::string t_name){
   typedef typename FMMTree_t::Node_t FMMNode_t;
   typedef typename FMMTree_t::Real_t Real_t;
-  MPI_Comm comm=MPI_COMM_WORLD;
   pvfmm::Profile::Tic((std::string("Compute Error ")+t_name).c_str(),true,1);
 
   int myrank=0;
@@ -245,7 +243,7 @@ void CheckChebOutput(FMMTree_t* mytree, typename TestFn<typename FMMTree_t::Real
 
 
 template <class Real_t>
-std::vector<Real_t> point_distrib(DistribType dist_type, size_t N, MPI_Comm comm){
+std::vector<Real_t> point_distrib(DistribType dist_type, size_t N){
   int np=1, myrank=0;
   static size_t seed=myrank+1; seed+=np;
   srand48(seed);

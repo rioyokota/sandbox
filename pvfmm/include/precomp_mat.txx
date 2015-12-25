@@ -259,7 +259,7 @@ void PrecompMat<T>::Save2File(const char* fname, bool replace){
   } }
 
 template <class T>
-void PrecompMat<T>::LoadFile(const char* fname, MPI_Comm comm){
+void PrecompMat<T>::LoadFile(const char* fname){
   Profile::Tic("LoadMatrices",true,3);
 
   Profile::Tic("ReadFile",true,4);

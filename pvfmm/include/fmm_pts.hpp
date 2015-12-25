@@ -125,7 +125,7 @@ class FMM_Pts{
    * \param[in] mult_order Order of multipole expansion.
    * \param[in] kernel Kernel functions and related data.
    */
-  void Initialize(int mult_order, const MPI_Comm& comm, const Kernel<Real_t>* kernel);
+  void Initialize(int mult_order, const Kernel<Real_t>* kernel);
 
   /**
    * \brief Order for the multipole expansion.
@@ -230,7 +230,6 @@ class FMM_Pts{
   PrecompMat<Real_t>* mat;   //Handles storage of matrices.
   std::string mat_fname;
   int multipole_order;       //Order of multipole expansion.
-  MPI_Comm comm;
 
 };
 
