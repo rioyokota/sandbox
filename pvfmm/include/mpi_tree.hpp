@@ -67,11 +67,6 @@ class MPI_Tree: public Tree<TreeNode>{
   virtual void CoarsenTree();
 
   /**
-   * \brief Adaptive refinement of distributed tree.
-   */
-  virtual void RefineTree();
-
-  /**
    * \brief Redistribute the tree among the processes.
    */
   void RedistNodes(MortonId* loc_min=NULL);

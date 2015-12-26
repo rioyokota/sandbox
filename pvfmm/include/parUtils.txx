@@ -115,146 +115,6 @@ namespace par{
     }
 
 
-  template <typename T>
-    int Mpi_Alltoallv_dense(T* sbuff_, int* s_cnt_, int* sdisp_,
-        T* rbuff_, int* r_cnt_, int* rdisp_, const MPI_Comm& comm){
-
-#ifndef ALLTOALLV_FIX
-      return MPI_Alltoallv(sbuff_, s_cnt_, sdisp_, par::Mpi_datatype<T>::value(),
-                           rbuff_, r_cnt_, rdisp_, par::Mpi_datatype<T>::value(), comm);
-#else
-      int np, pid;
-      MPI_Comm_size(comm,&np);
-      MPI_Comm_rank(comm,&pid);
-      int range[2]={0,np-1};
-      int split_id, partner;
-
-      std::vector<int> s_cnt(np);
-      #pragma omp parallel for
-      for(int i=0;i<np;i++){
-        s_cnt[i]=s_cnt_[i]*sizeof(T)+2*sizeof(int);
-      }
-      std::vector<int> sdisp(np); sdisp[0]=0;
-      omp_par::scan(&s_cnt[0],&sdisp[0],np);
-
-      char* sbuff=mem::aligned_new<char>(sdisp[np-1]+s_cnt[np-1]);
-      #pragma omp parallel for
-      for(int i=0;i<np;i++){
-        ((int*)&sbuff[sdisp[i]])[0]=s_cnt[i];
-        ((int*)&sbuff[sdisp[i]])[1]=pid;
-        memcpy(&sbuff[sdisp[i]]+2*sizeof(int),&sbuff_[sdisp_[i]],s_cnt[i]-2*sizeof(int));
-      }
-
-      while(range[0]<range[1]){
-        split_id=(range[0]+range[1])/2;
-
-        int new_range[2]={(pid<=split_id?range[0]:split_id+1),
-          (pid<=split_id?split_id:range[1]  )};
-        int cmp_range[2]={(pid> split_id?range[0]:split_id+1),
-          (pid> split_id?split_id:range[1]  )};
-        int new_np=new_range[1]-new_range[0]+1;
-        int cmp_np=cmp_range[1]-cmp_range[0]+1;
-
-        partner=pid+cmp_range[0]-new_range[0];
-        if(partner>range[1]) partner=range[1];
-        assert(partner>=range[0]);
-        bool extra_partner=( (range[1]-range[0])%2==0  &&
-            range[1]            ==pid  );
-
-        //Communication.
-        {
-          int* s_lengths=&s_cnt[cmp_range[0]-range[0]];
-          std::vector<int> s_len_ext(cmp_np,0);
-          std::vector<int> r_cnt    (new_np,0);
-          std::vector<int> r_cnt_ext(new_np,0);
-          MPI_Status status;
-
-          //Exchange send sizes.
-          MPI_Sendrecv                  (&s_lengths[0],cmp_np,MPI_INT, partner,0,   &r_cnt    [0],new_np,MPI_INT, partner,   0,comm,&status);
-          if(extra_partner) MPI_Sendrecv(&s_len_ext[0],cmp_np,MPI_INT,split_id,0,   &r_cnt_ext[0],new_np,MPI_INT,split_id,   0,comm,&status);
-
-          //Allocate receive buffer.
-          std::vector<int> rdisp    (new_np,0);
-          std::vector<int> rdisp_ext(new_np,0);
-          omp_par::scan(&r_cnt    [0],&rdisp    [0],new_np);
-          omp_par::scan(&r_cnt_ext[0],&rdisp_ext[0],new_np);
-          int rbuff_size    =rdisp    [new_np-1]+r_cnt    [new_np-1];
-          int rbuff_size_ext=rdisp_ext[new_np-1]+r_cnt_ext[new_np-1];
-          char* rbuff   =                mem::aligned_new<char>(rbuff_size    );
-          char* rbuffext=(extra_partner? mem::aligned_new<char>(rbuff_size_ext): NULL);
-
-          //Sendrecv data.
-          {
-            int * s_cnt_tmp=&s_cnt[cmp_range[0]-range[0]] ;
-            int * sdisp_tmp=&sdisp[cmp_range[0]-range[0]];
-            char* sbuff_tmp=&sbuff[sdisp_tmp[0]];
-            int  sbuff_size=sdisp_tmp[cmp_np-1]+s_cnt_tmp[cmp_np-1]-sdisp_tmp[0];
-            MPI_Sendrecv                  (sbuff_tmp,sbuff_size,MPI_BYTE, partner,0,   &rbuff   [0],rbuff_size    ,MPI_BYTE, partner,   0,comm,&status);
-            if(extra_partner) MPI_Sendrecv(     NULL,         0,MPI_BYTE,split_id,0,   &rbuffext[0],rbuff_size_ext,MPI_BYTE,split_id,   0,comm,&status);
-          }
-
-          //Rearrange received data.
-          {
-            //assert(!extra_partner);
-            int * s_cnt_old=&s_cnt[new_range[0]-range[0]];
-            int * sdisp_old=&sdisp[new_range[0]-range[0]];
-
-            std::vector<int> s_cnt_new(&s_cnt_old[0],&s_cnt_old[new_np]);
-            std::vector<int> sdisp_new(new_np       ,0                 );
-            #pragma omp parallel for
-            for(int i=0;i<new_np;i++){
-              s_cnt_new[i]+=r_cnt[i]+r_cnt_ext[i];
-            }
-            omp_par::scan(&s_cnt_new[0],&sdisp_new[0],new_np);
-
-            //Copy data to sbuff_new.
-            char* sbuff_new=mem::aligned_new<char>(sdisp_new[new_np-1]+s_cnt_new[new_np-1]);
-            #pragma omp parallel for
-            for(int i=0;i<new_np;i++){
-              memcpy(&sbuff_new[sdisp_new[i]                      ],&sbuff   [sdisp_old[i]],s_cnt_old[i]);
-              memcpy(&sbuff_new[sdisp_new[i]+s_cnt_old[i]         ],&rbuff   [rdisp    [i]],r_cnt    [i]);
-              memcpy(&sbuff_new[sdisp_new[i]+s_cnt_old[i]+r_cnt[i]],&rbuffext[rdisp_ext[i]],r_cnt_ext[i]);
-            }
-
-            //Free memory.
-            if(sbuff   !=NULL) mem::aligned_delete(sbuff   );
-            if(rbuff   !=NULL) mem::aligned_delete(rbuff   );
-            if(rbuffext!=NULL) mem::aligned_delete(rbuffext);
-
-            //Substitute data for next iteration.
-            s_cnt=s_cnt_new;
-            sdisp=sdisp_new;
-            sbuff=sbuff_new;
-          }
-        }
-
-        range[0]=new_range[0];
-        range[1]=new_range[1];
-      }
-
-      //Copy data to rbuff_.
-      std::vector<char*> buff_ptr(np);
-      char* tmp_ptr=sbuff;
-      for(int i=0;i<np;i++){
-        int& blk_size=((int*)tmp_ptr)[0];
-        buff_ptr[i]=tmp_ptr;
-        tmp_ptr+=blk_size;
-      }
-      #pragma omp parallel for
-      for(int i=0;i<np;i++){
-        int& blk_size=((int*)buff_ptr[i])[0];
-        int& src_pid=((int*)buff_ptr[i])[1];
-        assert(blk_size-2*sizeof(int)<=r_cnt_[src_pid]*sizeof(T));
-        memcpy(&rbuff_[rdisp_[src_pid]],buff_ptr[i]+2*sizeof(int),blk_size-2*sizeof(int));
-      }
-
-      //Free memory.
-      if(sbuff   !=NULL) mem::aligned_delete(sbuff);
-      return 0;
-#endif
-    }
-
-
   template<typename T>
     int partitionW(Vector<T>& nodeList, long long* wts, const MPI_Comm& comm){
 
@@ -337,16 +197,6 @@ namespace par{
       // new value of nlSize, ie the local nodes.
       long long nn = recvSz[npesLong-1] + recvOff[npes-1];
 
-      // allocate memory for the new arrays ...
-      Vector<T> newNodes(nn);
-
-      // perform All2All  ...
-      par::Mpi_Alltoallv_sparse<T>(&nodeList[0], &sendSz[0], &sendOff[0],
-          &newNodes[0], &recvSz[0], &recvOff[0], comm);
-
-      // reset the pointer ...
-      nodeList=newNodes;
-
       return 0;
     }//end function
 
@@ -361,10 +211,7 @@ namespace par{
 
 
   template<typename T>
-    int HyperQuickSort(const Vector<T>& arr_, Vector<T>& SortedElem, const MPI_Comm& comm_){ // O( ((N/p)+log(p))*(log(N/p)+log(p)) )
-
-      // Copy communicator.
-      MPI_Comm comm=comm_;
+    int HyperQuickSort(const Vector<T>& arr_, Vector<T>& SortedElem){
 
       // Get comm size and rank.
       int npes=1, myrank=0;
@@ -373,34 +220,30 @@ namespace par{
 
       // Local and global sizes. O(log p)
       long long totSize, nelem = arr_.Dim();
-      //assert(nelem); // TODO: Check if this is needed.
       totSize = nelem;
-      //MPI_Allreduce(&nelem, &totSize, 1, par::Mpi_datatype<long long>::value(), par::Mpi_datatype<long long>::sum(), comm);
 
       // Local sort.
       Vector<T> arr=arr_;
       omp_par::merge_sort(&arr[0], &arr[0]+nelem);
 
       // Allocate memory.
-      Vector<T> nbuff;
-      Vector<T> nbuff_ext;
-      Vector<T> rbuff    ;
-      Vector<T> rbuff_ext;
+      //Vector<T> nbuff;
+      //Vector<T> nbuff_ext;
+      //Vector<T> rbuff    ;
+      //Vector<T> rbuff_ext;
 
-      bool free_comm=false; // Flag to free comm.
       SortedElem.Resize(nelem);
       memcpy(&SortedElem[0], &arr[0], nelem*sizeof(T));
 
-      par::partitionW<T>(SortedElem, NULL , comm_);
       return 0;
     }//end function
 
   template<typename T>
-    int HyperQuickSort(const std::vector<T>& arr_, std::vector<T>& SortedElem_, const MPI_Comm& comm_){
+    int HyperQuickSort(const std::vector<T>& arr_, std::vector<T>& SortedElem_){
       Vector<T> SortedElem;
       const Vector<T> arr(arr_.size(),(T*)&arr_[0],false);
 
-      int ret = HyperQuickSort(arr, SortedElem, comm_);
+      int ret = HyperQuickSort(arr, SortedElem);
       SortedElem_.assign(&SortedElem[0],&SortedElem[0]+SortedElem.Dim());
       return ret;
     }
@@ -426,7 +269,7 @@ namespace par{
       }
 
       Vector<Pair_t> psorted;
-      HyperQuickSort(parray, psorted, comm);
+      HyperQuickSort(parray, psorted);
 
       if(split_key_!=NULL){ // Partition data
         Vector<T> split_key(npesLong);

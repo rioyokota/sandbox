@@ -42,14 +42,6 @@ class Tree{
    */
   virtual void Initialize(typename Node_t::NodeData* init_data) ;
 
-  /**
-   * \brief Subdivide or truncate nodes based on SubdivCond().
-   */
-  virtual void RefineTree();
-
-  /**
-   * \brief Returns a pointer to the root node.
-   */
   Node_t* RootNode() {return root_node;}
 
   /**

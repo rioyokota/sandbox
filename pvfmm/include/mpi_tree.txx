@@ -104,7 +104,7 @@ inline int points2Octree(const Vector<MortonId>& pt_mid, Vector<MortonId>& nodes
   Profile::Tic("SortMortonId", true, 10);
   Vector<MortonId> pt_sorted;
   //par::partitionW<MortonId>(pt_mid, NULL, comm);
-  par::HyperQuickSort(pt_mid, pt_sorted, comm);
+  par::HyperQuickSort(pt_mid, pt_sorted);
   size_t pt_cnt=pt_sorted.Dim();
   Profile::Toc();
 
@@ -330,7 +330,7 @@ void MPI_Tree<TreeNode>::CoarsenTree(){
       n=n_;
     }
     MortonId loc_min=n->GetMortonId();
-    RedistNodes(&loc_min);
+    //RedistNodes(&loc_min);
   }
 
   //Truncate ghost nodes and build node list
@@ -392,99 +392,6 @@ void MPI_Tree<TreeNode>::CoarsenTree(){
     }
   }
 }
-
-
-template <class TreeNode>
-void MPI_Tree<TreeNode>::RefineTree(){
-  int np, myrank;
-  MPI_Comm_size(*Comm(),&np);
-  MPI_Comm_rank(*Comm(),&myrank);
-  int omp_p=omp_get_max_threads();
-  int n_child=1UL<<this->Dim();
-
-  //Coarsen tree.
-  MPI_Tree<TreeNode>::CoarsenTree();
-
-  //Build node list.
-  std::vector<Node_t*> leaf_nodes;
-  {
-    Node_t* n=this->PostorderFirst();
-    while(n!=NULL){
-      if(n->IsLeaf() && !n->IsGhost())
-        leaf_nodes.push_back(n);
-      n=this->PostorderNxt(n);
-    }
-  }
-  size_t tree_node_cnt=leaf_nodes.size();
-
-  //Adaptive subdivision of leaf nodes with load balancing.
-  for(int l=0;l<this->max_depth;l++){
-    //Subdivide nodes.
-    std::vector<std::vector<Node_t*> > leaf_nodes_(omp_p);
-    #pragma omp parallel for
-    for(int i=0;i<omp_p;i++){
-      size_t a=(leaf_nodes.size()* i   )/omp_p;
-      size_t b=(leaf_nodes.size()*(i+1))/omp_p;
-      for(size_t j=a;j<b;j++){
-        if(leaf_nodes[j]->IsLeaf() && !leaf_nodes[j]->IsGhost()){
-          if(leaf_nodes[j]->SubdivCond()) leaf_nodes[j]->Subdivide();
-          if(!leaf_nodes[j]->IsLeaf())
-            for(int k=0;k<n_child;k++)
-              leaf_nodes_[i].push_back((Node_t*)leaf_nodes[j]->Child(k));
-        }
-      }
-    }
-    for(int i=0;i<omp_p;i++)
-      tree_node_cnt+=(leaf_nodes_[i].size()/n_child)*(n_child-1);
-
-    //Determine load imbalance.
-    size_t global_max, global_sum;
-    MPI_Allreduce(&tree_node_cnt, &global_max, 1, par::Mpi_datatype<size_t>::value(), par::Mpi_datatype<size_t>::max(), *Comm());
-    MPI_Allreduce(&tree_node_cnt, &global_sum, 1, par::Mpi_datatype<size_t>::value(), par::Mpi_datatype<size_t>::sum(), *Comm());
-
-    //RedistNodes if needed.
-    if(global_max*np>4*global_sum){
-      #ifndef NDEBUG
-      Profile::Tic("RedistNodes",true,4);
-      #endif
-      RedistNodes();
-      #ifndef NDEBUG
-      Profile::Toc();
-      #endif
-
-      //Rebuild node list.
-      leaf_nodes.clear();
-      Node_t* n=this->PostorderFirst();
-      while(n!=NULL){
-        if(n->IsLeaf() && !n->IsGhost())
-          leaf_nodes.push_back(n);
-        n=this->PostorderNxt(n);
-      }
-      tree_node_cnt=leaf_nodes.size();
-    }else{
-      //Combine partial list of nodes.
-      int node_cnt=0;
-      for(int j=0;j<omp_p;j++)
-        node_cnt+=leaf_nodes_[j].size();
-      leaf_nodes.resize(node_cnt);
-      #pragma omp parallel for
-      for(int i=0;i<omp_p;i++){
-        int offset=0;
-        for(int j=0;j<i;j++)
-          offset+=leaf_nodes_[j].size();
-        for(size_t j=0;j<leaf_nodes_[i].size();j++)
-          leaf_nodes[offset+j]=leaf_nodes_[i][j];
-      }
-    }
-  }
-
-  RedistNodes();
-  MPI_Tree<TreeNode>::CoarsenTree();
-  RedistNodes();
-  MPI_Tree<TreeNode>::CoarsenTree();
-  RedistNodes();
-}
-
 
 template <class TreeNode>
 void MPI_Tree<TreeNode>::RedistNodes(MortonId* loc_min) {
@@ -844,7 +751,7 @@ inline int balanceOctree (std::vector<MortonId > &in, std::vector<MortonId > &ou
   //TODO The following might work better as it reduces the comm bandwidth:
   //Split comm into sqrt(np) processes and sort, linearise for each comm group.
   //Then do the global sort, linearise with the original comm.
-  par::HyperQuickSort(in, out, comm);
+  par::HyperQuickSort(in, out);
   lineariseList(out, comm);
   par::partitionW<MortonId>(out, NULL , comm);
   { // Add children
@@ -935,197 +842,6 @@ inline int balanceOctree (std::vector<MortonId > &in, std::vector<MortonId > &ou
 #endif
   return 0;
 }//end function
-
-template <class TreeNode>
-void MPI_Tree<TreeNode>::Balance21(BoundaryType bndry) {
-  bool redist=true;
-
-  int num_proc,myrank;
-  MPI_Comm_rank(*Comm(),&myrank);
-  MPI_Comm_size(*Comm(),&num_proc);
-
-  //Using Dendro for balancing
-  //Create a linear tree in dendro format.
-  Node_t* curr_node=this->PreorderFirst();
-  std::vector<MortonId> in;
-  while(curr_node!=NULL){
-    if(curr_node->IsLeaf() && !curr_node->IsGhost()){
-      in.push_back(curr_node->GetMortonId());
-    }
-    curr_node=this->PreorderNxt(curr_node);
-  }
-
-  //2:1 balance
-  Profile::Tic("ot::balanceOctree",true,10);
-  std::vector<MortonId> out;
-  balanceOctree(in, out, this->Dim(), this->max_depth, (bndry==Periodic), *Comm());
-  if(!redist){ // Use original partitioning
-    std::vector<int> cnt(num_proc,0);
-    std::vector<int> dsp(num_proc+1,out.size());
-    std::vector<MortonId> mins=GetMins();
-    for(size_t i=0;i<num_proc;i++){
-      size_t indx=std::lower_bound(&out[0],&out[0]+out.size(),mins[i],std::less<MortonId>())-&out[0];
-      dsp[i]=indx;
-    }
-    for(size_t i=0;i<num_proc;i++){
-      cnt[i]=dsp[i+1]-dsp[i];
-    }
-
-    std::vector<int> recv_cnt(num_proc);
-    std::vector<int> recv_dsp(num_proc);
-    MPI_Alltoall(&     cnt[0], 1, MPI_INT,
-                 &recv_cnt[0], 1, MPI_INT, *Comm());
-    omp_par::scan(&recv_cnt[0],&recv_dsp[0],num_proc);
-
-    in.resize(recv_cnt[num_proc-1]+recv_dsp[num_proc-1]);
-    par::Mpi_Alltoallv_sparse(&out[0], &     cnt[0], &     dsp[0],
-                              & in[0], &recv_cnt[0], &recv_dsp[0], *Comm());
-    in.swap(out);
-  }
-  Profile::Toc();
-
-  //Get new_mins.
-  std::vector<MortonId> new_mins(num_proc);
-  MPI_Allgather(&out[0]     , 1, par::Mpi_datatype<MortonId>::value(),
-                &new_mins[0], 1, par::Mpi_datatype<MortonId>::value(), *Comm());
-
-
-  // Refine to new_mins in my range of octants
-  // or else RedistNodes(...) will not work correctly.
-  if(redist){
-    int i=0;
-    std::vector<MortonId> mins=GetMins();
-    while(new_mins[i]<mins[myrank] && i<num_proc) i++; //TODO: Use binary search.
-    for(;i<num_proc;i++){
-      Node_t* n=FindNode(new_mins[i], true);
-      if(n->IsGhost()) break;
-      else assert(n->GetMortonId()==new_mins[i]);
-    }
-  }
-
-  //Redist nodes using new_mins.
-  Profile::Tic("RedistNodes",true,10);
-  if(redist) RedistNodes(&out[0]);
-  #ifndef NDEBUG
-  std::vector<MortonId> mins=GetMins();
-  assert(mins[myrank].getDFD()==out[0].getDFD());
-  #endif
-  Profile::Toc();
-
-  //Now subdivide the current tree as necessary to make it balanced.
-  Profile::Tic("LocalSubdivide",false,10);
-  int omp_p=omp_get_max_threads();
-  for(int i=0;i<omp_p;i++){
-    size_t a=(out.size()*i)/omp_p;
-    Node_t* n=FindNode(out[a], true);
-    assert(n->GetMortonId()==out[a]);
-    UNUSED(n);
-  }
-  #pragma omp parallel for
-  for(int i=0;i<omp_p;i++){
-    size_t a=(out.size()* i   )/omp_p;
-    size_t b=(out.size()*(i+1))/omp_p;
-
-    MortonId dn;
-    size_t node_iter=a;
-    Node_t* n=FindNode(out[node_iter], false);
-    while(n!=NULL && node_iter<b){
-      n->SetGhost(false);
-      dn=n->GetMortonId();
-      if(dn.isAncestor(out[node_iter]) && dn!=out[node_iter]){
-        if(n->IsLeaf()) n->Subdivide();
-      }else if(dn==out[node_iter]){
-        assert(n->IsLeaf());
-        //if(!n->IsLeaf()){ //This should never happen
-        //  n->Truncate();
-        //  n->SetGhost(false);
-        //}
-        assert(n->IsLeaf());
-        node_iter++;
-      }else{
-        n->Truncate(); //This node does not belong to this process.
-        n->SetGhost(true);
-      }
-      n=this->PreorderNxt(n);
-    }
-    if(i==omp_p-1){
-      while(n!=NULL){
-        n->Truncate();
-        n->SetGhost(true);
-        n=this->PreorderNxt(n);
-      }
-    }
-  }
-  Profile::Toc();
-}
-
-
-template <class TreeNode>
-void MPI_Tree<TreeNode>::Balance21_local(BoundaryType bndry){
-  //SetColleagues(bndry);
-
-  std::vector<std::vector<Node_t*> > node_lst(this->max_depth+1);
-  Node_t* curr_node=this->PreorderFirst();
-  while(curr_node!=NULL){
-    node_lst[curr_node->Depth()].push_back(curr_node);
-    curr_node=this->PreorderNxt(curr_node);
-  }
-
-  int n1=pvfmm::pow<unsigned int>(3,this->Dim());
-  int n2=pvfmm::pow<unsigned int>(2,this->Dim());
-  for(int i=this->max_depth;i>0;i--){
-    Real_t s=pvfmm::pow<Real_t>(0.5,i);
-    for(size_t j=0;j<node_lst[i].size();j++){
-      curr_node=node_lst[i][j];
-      Real_t* coord=curr_node->Coord();
-      if(!curr_node->IsLeaf()) for(int k=0;k<n1;k++){
-        if(curr_node->Colleague(k)==NULL){
-          Real_t c0[3]={coord[0]+((k/1)%3-1)*s+s*0.5,
-                        coord[1]+((k/3)%3-1)*s+s*0.5,
-                        coord[2]+((k/9)%3-1)*s+s*0.5};
-          if(bndry==Periodic){
-            c0[0]=c0[0]-floor(c0[0]);
-            c0[1]=c0[1]-floor(c0[1]);
-            c0[2]=c0[2]-floor(c0[2]);
-          }
-
-          if(c0[0]>0 && c0[0]<1)
-          if(c0[1]>0 && c0[1]<1)
-          if(c0[2]>0 && c0[2]<1){
-            Node_t* node=this->RootNode();
-            while(node->Depth()<i){
-              if(node->IsLeaf()){
-                node->Subdivide();
-                for(int l=0;l<n2;l++){
-                  node_lst[node->Depth()+1].push_back((Node_t*)node->Child(l));
-                  /*
-                  SetColleagues(bndry,(Node_t*)node->Child(l));
-                  for(int i_=0;i_<n1;i_++){
-                    Node_t* coll=(Node_t*)((Node_t*)node->Child(l))->Colleague(i_);
-                    if(coll!=NULL) SetColleagues(bndry,coll);
-                  }// */
-                }
-              }
-              Real_t s1=pvfmm::pow<Real_t>(0.5,node->Depth()+1);
-              Real_t* c1=node->Coord();
-              int c_id=((c0[0]-c1[0])>s1?1:0)+
-                       ((c0[1]-c1[1])>s1?2:0)+
-                       ((c0[2]-c1[2])>s1?4:0);
-              node=(Node_t*)node->Child(c_id);
-              /*if(node->Depth()==i){
-                c1=node->Coord();
-                std::cout<<(c0[0]-c1[0])-s1/2<<' '
-                std::cout<<(c0[1]-c1[1])-s1/2<<' '
-                std::cout<<(c0[2]-c1[2])-s1/2<<'\n';
-              }// */
-            }
-          }
-        }
-      }
-    }
-  }
-}
-
 
 template <class TreeNode>
 void MPI_Tree<TreeNode>::SetColleagues(BoundaryType bndry, Node_t* node){

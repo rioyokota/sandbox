@@ -33,26 +33,6 @@ namespace par{
     int Mpi_Alltoallv_sparse(T* sendbuf, int* sendcnts, int* sdispls,
         T* recvbuf, int* recvcnts, int* rdispls, const MPI_Comm& comm);
 
-  /**
-    @author Rahul S. Sampath
-    */
-  template <typename T>
-    int Mpi_Alltoallv_dense(T* sendbuf, int* sendcnts, int* sdispls,
-        T* recvbuf, int* recvcnts, int* rdispls, const MPI_Comm& comm);
-
-  /**
-    @brief A parallel weighted partitioning function. In our implementation, we
-    do not pose any restriction on the input or the number of processors. This
-    function can be used with an odd number of processors as well.  Some
-    processors can pass an empty vector as input. The relative ordering of the
-    elements is preserved.
-    @author Hari Sundar
-    @author Rahul Sampath
-    @param[in,out] vec       the input vector
-    @param[in]     getWeight function pointer to compute the weight of each
-    element. If you pass NULL, then every element will get a weight equal to 1.
-    @param[in]     comm      the communicator
-    */
   template<typename T>
     int partitionW(Vector<T>& vec,
         long long* wts, const MPI_Comm& comm);
@@ -68,9 +48,9 @@ namespace par{
     @param[in]  comm the communicator
     */
   template<typename T>
-    int HyperQuickSort(const Vector<T>& in, Vector<T> & out, const MPI_Comm& comm);
+    int HyperQuickSort(const Vector<T>& in, Vector<T> & out);
   template<typename T>
-    int HyperQuickSort(const std::vector<T>& in, std::vector<T> & out, const MPI_Comm& comm);
+    int HyperQuickSort(const std::vector<T>& in, std::vector<T> & out);
 
   template<typename A, typename B>
     struct SortPair{

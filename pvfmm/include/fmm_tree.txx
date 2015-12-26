@@ -49,21 +49,12 @@ void FMM_Tree<FMM_Mat_t>::InitFMM_Tree(bool refine, BoundaryType bndry_) {
   bndry=bndry_;
 
   if(refine){
-    //RefineTree
     Profile::Tic("RefineTree",true,5);
-    this->RefineTree();
     Profile::Toc();
   }
 
-  //2:1 Balancing
   Profile::Tic("2:1Balance",true,5);
-  this->Balance21(bndry);
   Profile::Toc();
-
-  //Redistribute nodes.
-//  Profile::Tic("Redistribute",true,5);
-//  this->RedistNodes();
-//  Profile::Toc();
 
   }Profile::Toc();
 }
@@ -214,7 +205,6 @@ void FMM_Tree<FMM_Mat_t>::RunFMM() {
 
   //Multipole Reduce Broadcast.
   Profile::Tic("ReduceBcast",true,2);
-  //  MultipoleReduceBcast();
   Profile::Toc();
 
   //Downward Pass

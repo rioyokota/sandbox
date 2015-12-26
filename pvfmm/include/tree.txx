@@ -26,26 +26,6 @@ void Tree<TreeNode>::Initialize(typename Node_t::NodeData* init_data_){
 }
 
 template <class TreeNode>
-void Tree<TreeNode>::RefineTree(){
-  Node_t* curr_node;
-
-  curr_node=PostorderFirst();
-  while(curr_node!=NULL){
-    if(!curr_node->IsLeaf())
-      if(!curr_node->SubdivCond()) curr_node->Truncate();
-    curr_node=PostorderNxt(curr_node);
-  }
-
-  curr_node=PreorderFirst();
-  while(curr_node!=NULL){
-    if(curr_node->IsLeaf())
-      if(curr_node->SubdivCond())
-        curr_node->Subdivide();
-    curr_node=PreorderNxt(curr_node);
-  }
-}
-
-template <class TreeNode>
 TreeNode* Tree<TreeNode>::PreorderFirst(){
   return root_node;
 }
