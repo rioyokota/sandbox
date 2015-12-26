@@ -77,7 +77,6 @@ inline void PtFMM_Evaluate(PtFMM_Tree* tree, std::vector<double>& trg_val, size_
 
     Vector<double> src_value=*src_val;
     Vector<size_t> src_scatter=src_scatter_;
-    par::ScatterForward(src_value,src_scatter,*tree->Comm());
 
     size_t indx=0;
     for(size_t i=0;i<nodes.size();i++){
@@ -102,7 +101,6 @@ inline void PtFMM_Evaluate(PtFMM_Tree* tree, std::vector<double>& trg_val, size_
 
     Vector<double> surf_value=*surf_val;
     Vector<size_t> surf_scatter=surf_scatter_;
-    par::ScatterForward(surf_value,surf_scatter,*tree->Comm());
 
     size_t indx=0;
     for(size_t i=0;i<nodes.size();i++){
@@ -133,7 +131,6 @@ inline void PtFMM_Evaluate(PtFMM_Tree* tree, std::vector<double>& trg_val, size_
     trg_value=trg_value_;
     trg_scatter=trg_scatter_;
   }
-  par::ScatterReverse(trg_value,trg_scatter,*tree->Comm(),loc_size);
   trg_val.assign(&trg_value[0],&trg_value[0]+trg_value.Dim());;
 }
 

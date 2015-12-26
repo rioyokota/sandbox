@@ -103,18 +103,6 @@ namespace par{
     int ScatterForward(Vector<T>& data, const Vector<size_t>& scatter_index,
         const MPI_Comm& comm);
 
-  /**
-    @brief Reverse scatter data based on scatter index.
-    @author Dhairya Malhotra
-    @param[in,out] data          the data to scatter
-    @param[in]     scatter_index the index vector for the scatter mapping
-    @param[in]     comm          the MPI communicator
-    @param[in]     loc_size      the local array size after scatter, optional
-    */
-  template<typename T>
-    int ScatterReverse(Vector<T>& data, const Vector<size_t>& scatter_index,
-        const MPI_Comm& comm, size_t loc_size=0);
-
 }//end namespace
 }//end namespace
 

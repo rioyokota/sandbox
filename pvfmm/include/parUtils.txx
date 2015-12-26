@@ -627,9 +627,7 @@ namespace par{
     int ScatterForward(Vector<T>& data_, const Vector<size_t>& scatter_index, const MPI_Comm& comm){
       typedef SortPair<size_t,size_t> Pair_t;
 
-      int npes, rank;
-      MPI_Comm_size(comm, &npes);
-      MPI_Comm_rank(comm, &rank);
+      int npes=1, rank=0;
       long long npesLong = npes;
 
       size_t data_dim=0;
@@ -640,7 +638,8 @@ namespace par{
 
         long long glb_size[2]={0,0};
         long long loc_size[2]={(long long)(data_.Dim()*sizeof(T)), recv_size};
-        MPI_Allreduce(&loc_size, &glb_size, 2, par::Mpi_datatype<long long>::value(), par::Mpi_datatype<long long>::sum(), comm);
+        glb_size[0]=loc_size[0];
+        glb_size[1]=loc_size[1];
         if(glb_size[0]==0 || glb_size[1]==0) return 0; //Nothing to be done.
         data_dim=glb_size[0]/glb_size[1];
         assert(glb_size[0]==data_dim*glb_size[1]);
@@ -650,17 +649,6 @@ namespace par{
 
       Vector<char> recv_buff(recv_size*data_dim);
       Vector<char> send_buff(send_size*data_dim);
-
-      // Global scan of data size.
-      Vector<long long> glb_scan(npesLong);
-      {
-        long long glb_rank=0;
-        MPI_Scan(&send_size, &glb_rank, 1, par::Mpi_datatype<long long>::value(), par::Mpi_datatype<long long>::sum(), comm);
-        glb_rank-=send_size;
-
-        MPI_Allgather(&glb_rank   , 1, par::Mpi_datatype<long long>::value(),
-                      &glb_scan[0], 1, par::Mpi_datatype<long long>::value(), comm);
-      }
 
       // Sort scatter_index.
       Vector<Pair_t> psorted(recv_size);
@@ -673,65 +661,18 @@ namespace par{
         omp_par::merge_sort(&psorted[0], &psorted[0]+recv_size);
       }
 
-      // Exchange send, recv indices.
-      Vector<size_t> recv_indx(recv_size);
-      Vector<size_t> send_indx(send_size);
-      Vector<int> sendSz(npesLong);
-      Vector<int> sendOff(npesLong);
-      Vector<int> recvSz(npesLong);
-      Vector<int> recvOff(npesLong);
-      {
-        #pragma omp parallel for
-        for(size_t i=0;i<recv_size;i++){
-          recv_indx[i]=psorted[i].key;
-        }
-
-        #pragma omp parallel for
-        for(size_t i=0;i<npesLong;i++){
-          size_t start=              std::lower_bound(&recv_indx[0], &recv_indx[0]+recv_size, glb_scan[  i])-&recv_indx[0];
-          size_t end  =(i+1<npesLong?std::lower_bound(&recv_indx[0], &recv_indx[0]+recv_size, glb_scan[i+1])-&recv_indx[0]:recv_size);
-          recvSz[i]=end-start;
-          recvOff[i]=start;
-        }
-
-        MPI_Alltoall(&recvSz[0], 1, par::Mpi_datatype<int>::value(),
-                     &sendSz[0], 1, par::Mpi_datatype<int>::value(), comm);
-        sendOff[0] = 0; omp_par::scan(&sendSz[0],&sendOff[0],npesLong);
-        assert(sendOff[npesLong-1]+sendSz[npesLong-1]==send_size);
-
-        par::Mpi_Alltoallv_dense<size_t>(&recv_indx[0], &recvSz[0], &recvOff[0],
-                                         &send_indx[0], &sendSz[0], &sendOff[0], comm);
-        #pragma omp parallel for
-        for(size_t i=0;i<send_size;i++){
-          assert(send_indx[i]>=glb_scan[rank]);
-          send_indx[i]-=glb_scan[rank];
-          assert(send_indx[i]<send_size);
-        }
-      }
-
-      // Prepare send buffer
+       // Prepare send buffer
       {
         char* data=(char*)&data_[0];
         #pragma omp parallel for
         for(size_t i=0;i<send_size;i++){
-          size_t src_indx=send_indx[i]*data_dim;
+          size_t src_indx=psorted[i].key*data_dim;
           size_t trg_indx=i*data_dim;
-          for(size_t j=0;j<data_dim;j++)
+          for(size_t j=0;j<data_dim;j++) {
             send_buff[trg_indx+j]=data[src_indx+j];
+            recv_buff[trg_indx+j]=data[src_indx+j];
+	  }
         }
-      }
-
-      // All2Allv
-      {
-        #pragma omp parallel for
-        for(size_t i=0;i<npesLong;i++){
-          sendSz [i]*=data_dim;
-          sendOff[i]*=data_dim;
-          recvSz [i]*=data_dim;
-          recvOff[i]*=data_dim;
-        }
-        par::Mpi_Alltoallv_dense<char>(&send_buff[0], &sendSz[0], &sendOff[0],
-                                       &recv_buff[0], &recvSz[0], &recvOff[0], comm);
       }
 
       // Build output data.
@@ -746,210 +687,6 @@ namespace par{
             data[trg_indx+j]=recv_buff[src_indx+j];
         }
       }
-
-      return 0;
-    }
-
-  template<typename T>
-    int ScatterReverse(Vector<T>& data_, const Vector<size_t>& scatter_index_, const MPI_Comm& comm, size_t loc_size){
-      typedef SortPair<size_t,size_t> Pair_t;
-
-      int npes, rank;
-      MPI_Comm_size(comm, &npes);
-      MPI_Comm_rank(comm, &rank);
-      long long npesLong = npes;
-
-      size_t data_dim=0;
-      long long send_size=0;
-      long long recv_size=0;
-      {
-        recv_size=loc_size;
-        long long glb_size[3]={0,0,0};
-        long long loc_size[3]={(long long)(data_.Dim()*sizeof(T)), (long long)scatter_index_.Dim(),recv_size};
-        MPI_Allreduce(&loc_size, &glb_size, 3, par::Mpi_datatype<long long>::value(), par::Mpi_datatype<long long>::sum(), comm);
-        if(glb_size[0]==0 || glb_size[1]==0) return 0; //Nothing to be done.
-
-        assert(glb_size[0]%glb_size[1]==0);
-        data_dim=glb_size[0]/glb_size[1];
-
-        assert(loc_size[0]%data_dim==0);
-        send_size=loc_size[0]/data_dim;
-
-        if(glb_size[0]!=glb_size[2]*data_dim){
-          recv_size=(((rank+1)*(glb_size[0]/data_dim))/npesLong)-
-                    (( rank   *(glb_size[0]/data_dim))/npesLong);
-        }
-      }
-
-      Vector<size_t> scatter_index;
-      {
-        long long glb_rank[2]={0,0};
-        long long glb_size[3]={0,0};
-        long long loc_size[2]={(long long)(data_.Dim()*sizeof(T)/data_dim), (long long)scatter_index_.Dim()};
-        MPI_Scan(&loc_size, &glb_rank, 2, par::Mpi_datatype<long long>::value(), par::Mpi_datatype<long long>::sum(), comm);
-        MPI_Allreduce(&loc_size, &glb_size, 2, par::Mpi_datatype<long long>::value(), par::Mpi_datatype<long long>::sum(), comm);
-        assert(glb_size[0]==glb_size[1]);
-        glb_rank[0]-=loc_size[0];
-        glb_rank[1]-=loc_size[1];
-
-        Matrix<long long> glb_scan(2,npesLong+1);
-        MPI_Allgather(&glb_rank[0], 1, par::Mpi_datatype<long long>::value(),
-                       glb_scan[0], 1, par::Mpi_datatype<long long>::value(), comm);
-        MPI_Allgather(&glb_rank[1], 1, par::Mpi_datatype<long long>::value(),
-                       glb_scan[1], 1, par::Mpi_datatype<long long>::value(), comm);
-        glb_scan[0][npesLong]=glb_size[0];
-        glb_scan[1][npesLong]=glb_size[1];
-
-        if(loc_size[0]!=loc_size[1] || glb_rank[0]!=glb_rank[1]){ // Repartition scatter_index
-          scatter_index.ReInit(loc_size[0]);
-
-          Vector<int> send_dsp(npesLong+1);
-          Vector<int> recv_dsp(npesLong+1);
-          #pragma omp parallel for
-          for(size_t i=0;i<=npesLong;i++){
-            send_dsp[i]=std::min(std::max(glb_scan[0][i],glb_rank[1]),glb_rank[1]+loc_size[1])-glb_rank[1];
-            recv_dsp[i]=std::min(std::max(glb_scan[1][i],glb_rank[0]),glb_rank[0]+loc_size[0])-glb_rank[0];
-          }
-
-          size_t commCnt=0;
-          Vector<int> send_cnt(npesLong+0);
-          Vector<int> recv_cnt(npesLong+0);
-          #pragma omp parallel for reduction(+:commCnt)
-          for(size_t i=0;i<npesLong;i++){
-            send_cnt[i]=send_dsp[i+1]-send_dsp[i];
-            recv_cnt[i]=recv_dsp[i+1]-recv_dsp[i];
-            if(send_cnt[i] && i!=rank) commCnt++;
-            if(recv_cnt[i] && i!=rank) commCnt++;
-          }
-
-          pvfmm::Vector<MPI_Request> requests(commCnt);
-          pvfmm::Vector<MPI_Status> statuses(commCnt);
-
-          commCnt=0;
-          for(int i=0;i<npesLong;i++){ // post all receives
-            if(recv_cnt[i] && i!=rank){
-              MPI_Irecv(&scatter_index[0]+recv_dsp[i], recv_cnt[i], par::Mpi_datatype<size_t>::value(), i, 1,
-                  comm, &requests[commCnt]);
-              commCnt++;
-            }
-          }
-          for(int i=0;i<npesLong;i++){ // send data
-            if(send_cnt[i] && i!=rank){
-              MPI_Issend(&scatter_index_[0]+send_dsp[i], send_cnt[i], par::Mpi_datatype<size_t>::value(), i, 1,
-                  comm, &requests[commCnt]);
-              commCnt++;
-            }
-          }
-          assert(send_cnt[rank]==recv_cnt[rank]);
-          if(send_cnt[rank]){
-            memcpy(&scatter_index[0]+recv_dsp[rank], &scatter_index_[0]+send_dsp[rank], send_cnt[rank]*sizeof(size_t));
-          }
-          if(commCnt) MPI_Waitall(commCnt, &requests[0], &statuses[0]);
-
-        }else{
-          scatter_index.ReInit(scatter_index_.Dim(), &scatter_index_[0],false);
-        }
-      }
-
-      Vector<char> recv_buff(recv_size*data_dim);
-      Vector<char> send_buff(send_size*data_dim);
-
-      // Global data size.
-      Vector<long long> glb_scan(npesLong);
-      {
-        long long glb_rank=0;
-        MPI_Scan(&recv_size, &glb_rank, 1, par::Mpi_datatype<long long>::value(), par::Mpi_datatype<long long>::sum(), comm);
-        glb_rank-=recv_size;
-
-        MPI_Allgather(&glb_rank   , 1, par::Mpi_datatype<long long>::value(),
-                      &glb_scan[0], 1, par::Mpi_datatype<long long>::value(), comm);
-      }
-
-      // Sort scatter_index.
-      Vector<Pair_t> psorted(send_size);
-      {
-        #pragma omp parallel for
-        for(size_t i=0;i<send_size;i++){
-          psorted[i].key=scatter_index[i];
-          psorted[i].data=i;
-        }
-        omp_par::merge_sort(&psorted[0], &psorted[0]+send_size);
-      }
-
-      // Exchange send, recv indices.
-      Vector<size_t> recv_indx(recv_size);
-      Vector<size_t> send_indx(send_size);
-      Vector<int> sendSz(npesLong);
-      Vector<int> sendOff(npesLong);
-      Vector<int> recvSz(npesLong);
-      Vector<int> recvOff(npesLong);
-      {
-        #pragma omp parallel for
-        for(size_t i=0;i<send_size;i++){
-          send_indx[i]=psorted[i].key;
-        }
-
-        #pragma omp parallel for
-        for(size_t i=0;i<npesLong;i++){
-          size_t start=              std::lower_bound(&send_indx[0], &send_indx[0]+send_size, glb_scan[  i])-&send_indx[0];
-          size_t end  =(i+1<npesLong?std::lower_bound(&send_indx[0], &send_indx[0]+send_size, glb_scan[i+1])-&send_indx[0]:send_size);
-          sendSz[i]=end-start;
-          sendOff[i]=start;
-        }
-
-        MPI_Alltoall(&sendSz[0], 1, par::Mpi_datatype<int>::value(),
-                     &recvSz[0], 1, par::Mpi_datatype<int>::value(), comm);
-        recvOff[0] = 0; omp_par::scan(&recvSz[0],&recvOff[0],npesLong);
-        assert(recvOff[npesLong-1]+recvSz[npesLong-1]==recv_size);
-
-        par::Mpi_Alltoallv_dense<size_t>(&send_indx[0], &sendSz[0], &sendOff[0],
-                                         &recv_indx[0], &recvSz[0], &recvOff[0], comm);
-        #pragma omp parallel for
-        for(size_t i=0;i<recv_size;i++){
-          assert(recv_indx[i]>=glb_scan[rank]);
-          recv_indx[i]-=glb_scan[rank];
-          assert(recv_indx[i]<recv_size);
-        }
-      }
-
-      // Prepare send buffer
-      {
-        char* data=(char*)&data_[0];
-        #pragma omp parallel for
-        for(size_t i=0;i<send_size;i++){
-          size_t src_indx=psorted[i].data*data_dim;
-          size_t trg_indx=i*data_dim;
-          for(size_t j=0;j<data_dim;j++)
-            send_buff[trg_indx+j]=data[src_indx+j];
-        }
-      }
-
-      // All2Allv
-      {
-        #pragma omp parallel for
-        for(size_t i=0;i<npesLong;i++){
-          sendSz [i]*=data_dim;
-          sendOff[i]*=data_dim;
-          recvSz [i]*=data_dim;
-          recvOff[i]*=data_dim;
-        }
-        par::Mpi_Alltoallv_dense<char>(&send_buff[0], &sendSz[0], &sendOff[0],
-                                       &recv_buff[0], &recvSz[0], &recvOff[0], comm);
-      }
-
-      // Build output data.
-      {
-        data_.Resize(recv_size*data_dim/sizeof(T));
-        char* data=(char*)&data_[0];
-        #pragma omp parallel for
-        for(size_t i=0;i<recv_size;i++){
-          size_t src_indx=i*data_dim;
-          size_t trg_indx=recv_indx[i]*data_dim;
-          for(size_t j=0;j<data_dim;j++)
-            data[trg_indx+j]=recv_buff[src_indx+j];
-        }
-      }
-
       return 0;
     }
 

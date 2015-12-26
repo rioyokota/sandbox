@@ -79,23 +79,6 @@ void fmm_test(size_t N, size_t M, Real_t b, int dist, int mult_order, int depth)
 
     { // Scatter trg values
       pvfmm::Profile::Tic("Scatter",true);
-      pvfmm::Vector<size_t> trg_scatter;
-      { // build trg_scatter
-        std::vector<Real_t> trg_value_;
-        std::vector<size_t> trg_scatter_;
-        std::vector<FMMNode_t*>& nodes=tree.GetNodeList();
-        for(size_t i=0;i<nodes.size();i++){
-          if(nodes[i]->IsLeaf() && !nodes[i]->IsGhost()){
-            pvfmm::Vector<Real_t>& trg_value=nodes[i]->trg_value;
-            pvfmm::Vector<size_t>& trg_scatter=nodes[i]->trg_scatter;
-            for(size_t j=0;j<trg_value.Dim();j++) trg_value_.push_back(trg_value[j]);
-            for(size_t j=0;j<trg_scatter.Dim();j++) trg_scatter_.push_back(trg_scatter[j]);
-          }
-        }
-        trg_value=trg_value_;
-        trg_scatter=trg_scatter_;
-      }
-      pvfmm::par::ScatterReverse(trg_value,trg_scatter,*tree.Comm(),tree_data.trg_coord.Dim()*mykernel->ker_dim[1]/COORD_DIM);
       pvfmm::Profile::Toc();
     }
     pvfmm::Profile::Toc();
