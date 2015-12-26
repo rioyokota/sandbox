@@ -244,10 +244,10 @@ void MPI_Tree<TreeNode>::Initialize(typename Node_t::NodeData* init_data){
         }
       }
       par::SortScatterIndex(pt_mid  , scatter_index, comm, &lin_oct[0]);
-      par::ScatterForward  (pt_coord, scatter_index, comm);
+      par::ScatterForward  (pt_coord, scatter_index);
       if(value_lst[i]!=NULL){
         Vector<Real_t>& pt_value=*value_lst[i];
-        par::ScatterForward(pt_value, scatter_index, comm);
+        par::ScatterForward(pt_value, scatter_index);
       }
       if(scatter_lst[i]!=NULL){
         Vector<size_t>& pt_scatter=*scatter_lst[i];

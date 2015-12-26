@@ -367,16 +367,15 @@ namespace par{
       MPI_Comm comm=comm_;
 
       // Get comm size and rank.
-      int npes, myrank;
-      MPI_Comm_size(comm, &npes);
-      MPI_Comm_rank(comm, &myrank);
+      int npes=1, myrank=0;
       int omp_p=omp_get_max_threads();
       srand(myrank);
 
       // Local and global sizes. O(log p)
       long long totSize, nelem = arr_.Dim();
       //assert(nelem); // TODO: Check if this is needed.
-      MPI_Allreduce(&nelem, &totSize, 1, par::Mpi_datatype<long long>::value(), par::Mpi_datatype<long long>::sum(), comm);
+      totSize = nelem;
+      //MPI_Allreduce(&nelem, &totSize, 1, par::Mpi_datatype<long long>::value(), par::Mpi_datatype<long long>::sum(), comm);
 
       // Local sort.
       Vector<T> arr=arr_;
@@ -389,120 +388,6 @@ namespace par{
       Vector<T> rbuff_ext;
 
       bool free_comm=false; // Flag to free comm.
-
-      // Binary split and merge in each iteration.
-      while(npes>1 && totSize>0){ // O(log p) iterations.
-
-        //Determine splitters. O( log(N/p) + log(p) )
-        T split_key;
-        long long totSize_new;
-        //while(true)
-        {
-          // Take random splitters. O( 1 ) -- Let p * splt_count = glb_splt_count = const = 100~1000
-          int splt_count=(1000*nelem)/totSize;
-          if(npes>1000) splt_count=(((float)rand()/(float)RAND_MAX)*totSize<(1000*nelem)?1:0);
-          if(splt_count>nelem) splt_count=nelem;
-          std::vector<T> splitters(splt_count);
-          for(int i=0;i<splt_count;i++)
-            splitters[i]=arr[rand()%nelem];
-
-          // Gather all splitters. O( log(p) )
-          int glb_splt_count;
-          std::vector<int> glb_splt_cnts(npes);
-          std::vector<int> glb_splt_disp(npes,0);
-          MPI_Allgather(&splt_count      , 1, par::Mpi_datatype<int>::value(),
-              &glb_splt_cnts[0], 1, par::Mpi_datatype<int>::value(), comm);
-
-          omp_par::scan(&glb_splt_cnts[0],&glb_splt_disp[0],npes);
-          glb_splt_count=glb_splt_cnts[npes-1]+glb_splt_disp[npes-1];
-          std::vector<T> glb_splitters(glb_splt_count);
-          MPI_Allgatherv(&    splitters[0], splt_count, par::Mpi_datatype<T>::value(),
-              &glb_splitters[0], &glb_splt_cnts[0], &glb_splt_disp[0],
-              par::Mpi_datatype<T>::value(), comm);
-
-          // Determine split key. O( log(N/p) + log(p) )
-          std::vector<long long> disp(glb_splt_count,0);
-          if(nelem>0){
-            #pragma omp parallel for
-            for(int i=0;i<glb_splt_count;i++){
-              disp[i]=std::lower_bound(&arr[0], &arr[0]+nelem, glb_splitters[i])-&arr[0];
-            }
-          }
-          std::vector<long long> glb_disp(glb_splt_count,0);
-          MPI_Allreduce(&disp[0], &glb_disp[0], glb_splt_count, par::Mpi_datatype<long long>::value(), par::Mpi_datatype<long long>::sum(), comm);
-
-          long long* split_disp=&glb_disp[0];
-          for(int i=0;i<glb_splt_count;i++)
-            if(labs(glb_disp[i]-totSize/2)<labs(*split_disp-totSize/2)) split_disp=&glb_disp[i];
-          split_key=glb_splitters[split_disp-&glb_disp[0]];
-
-          totSize_new=(myrank<=(npes-1)/2?*split_disp:totSize-*split_disp);
-          //double err=(((double)*split_disp)/(totSize/2))-1.0;
-          //if(pvfmm::fabs<double>(err)<0.01 || npes<=16) break;
-          //else if(!myrank) std::cout<<err<<'\n';
-        }
-
-        // Split problem into two. O( N/p )
-        int split_id=(npes-1)/2;
-        {
-          int new_p0=(myrank<=split_id?0:split_id+1);
-          int cmp_p0=(myrank> split_id?0:split_id+1);
-
-          int partner = myrank+cmp_p0-new_p0;
-          if(partner>=npes) partner=npes-1;
-          assert(partner>=0);
-
-          bool extra_partner=( npes%2==1  && npes-1==myrank );
-
-          // Exchange send sizes.
-          char *sbuff, *lbuff;
-          int     rsize=0,     ssize=0, lsize=0;
-          int ext_rsize=0, ext_ssize=0;
-          size_t split_indx=(nelem>0?std::lower_bound(&arr[0], &arr[0]+nelem, split_key)-&arr[0]:0);
-          ssize=       (myrank> split_id? split_indx: nelem  -split_indx)*sizeof(T);
-          sbuff=(char*)(myrank> split_id? &arr[0]   : &arr[0]+split_indx);
-          lsize=       (myrank<=split_id? split_indx: nelem  -split_indx)*sizeof(T);
-          lbuff=(char*)(myrank<=split_id? &arr[0]   : &arr[0]+split_indx);
-
-          MPI_Status status;
-          MPI_Sendrecv                  (&    ssize,1,MPI_INT, partner,0,   &    rsize,1,MPI_INT, partner,   0,comm,&status);
-          if(extra_partner) MPI_Sendrecv(&ext_ssize,1,MPI_INT,split_id,0,   &ext_rsize,1,MPI_INT,split_id,   0,comm,&status);
-
-          // Exchange data.
-          rbuff    .Resize(    rsize/sizeof(T));
-          rbuff_ext.Resize(ext_rsize/sizeof(T));
-          MPI_Sendrecv                  (sbuff,ssize,MPI_BYTE, partner,0,   &rbuff    [0],    rsize,MPI_BYTE, partner,   0,comm,&status);
-          if(extra_partner) MPI_Sendrecv( NULL,    0,MPI_BYTE,split_id,0,   &rbuff_ext[0],ext_rsize,MPI_BYTE,split_id,   0,comm,&status);
-
-          int nbuff_size=lsize+rsize+ext_rsize;
-          nbuff.Resize(nbuff_size/sizeof(T));
-          omp_par::merge<T*>((T*)lbuff, (T*)(lbuff+lsize), &rbuff[0], &rbuff[0]+(rsize/sizeof(T)), &nbuff[0], omp_p, std::less<T>());
-          if(ext_rsize>0 && nbuff.Dim()>0){
-            nbuff_ext.Resize(nbuff_size/sizeof(T));
-            omp_par::merge<T*>(&nbuff[0], &nbuff[0]+((lsize+rsize)/sizeof(T)), &rbuff_ext[0], &rbuff_ext[0]+(ext_rsize/sizeof(T)), &nbuff_ext[0], omp_p, std::less<T>());
-            nbuff.Swap(nbuff_ext);
-            nbuff_ext.Resize(0);
-          }
-
-          // Copy new data.
-          totSize=totSize_new;
-          nelem = nbuff_size/sizeof(T);
-          arr.Swap(nbuff);
-          nbuff.Resize(0);
-        }
-
-        {// Split comm.  O( log(p) ) ??
-          MPI_Comm scomm;
-          MPI_Comm_split(comm, myrank<=split_id, myrank, &scomm );
-          if(free_comm) MPI_Comm_free(&comm);
-          comm=scomm; free_comm=true;
-
-          npes  =(myrank<=split_id? split_id+1: npes  -split_id-1);
-          myrank=(myrank<=split_id? myrank    : myrank-split_id-1);
-        }
-      }
-      if(free_comm) MPI_Comm_free(&comm);
-
       SortedElem.Resize(nelem);
       memcpy(&SortedElem[0], &arr[0], nelem*sizeof(T));
 
@@ -525,17 +410,14 @@ namespace par{
     int SortScatterIndex(const Vector<T>& key, Vector<size_t>& scatter_index, const MPI_Comm& comm, const T* split_key_){
       typedef SortPair<T,size_t> Pair_t;
 
-      int npes, rank;
-      MPI_Comm_size(comm, &npes);
-      MPI_Comm_rank(comm, &rank);
+      int npes=1, rank=0;
       long long npesLong = npes;
 
       Vector<Pair_t> parray(key.Dim());
       { // Build global index.
         long long glb_dsp=0;
         long long loc_size=key.Dim();
-        MPI_Scan(&loc_size, &glb_dsp, 1, par::Mpi_datatype<long long>::value(), par::Mpi_datatype<long long>::sum(), comm);
-        glb_dsp-=loc_size;
+        glb_dsp=0;
         #pragma omp parallel for
         for(size_t i=0;i<loc_size;i++){
           parray[i].key=key[i];
@@ -544,17 +426,11 @@ namespace par{
       }
 
       Vector<Pair_t> psorted;
-      { // Allocate memory
-        //if(buff.Dim()>0){
-        //  psorted.ReInit(buff.Dim()/sizeof(Pair_t), (Pair_t*)&buff[0], false);
-        //}
-      }
       HyperQuickSort(parray, psorted, comm);
 
       if(split_key_!=NULL){ // Partition data
         Vector<T> split_key(npesLong);
-        MPI_Allgather((void*)split_key_  , 1, par::Mpi_datatype<T>::value(),
-                            &split_key[0], 1, par::Mpi_datatype<T>::value(), comm);
+	split_key[0]=split_key_[0];
 
         Vector<int> int_buff(npesLong*4);
         Vector<int> sendSz (npesLong,&int_buff[0]+npesLong*0,false);
@@ -624,7 +500,7 @@ namespace par{
     }
 
   template<typename T>
-    int ScatterForward(Vector<T>& data_, const Vector<size_t>& scatter_index, const MPI_Comm& comm){
+    int ScatterForward(Vector<T>& data_, const Vector<size_t>& scatter_index){
       typedef SortPair<size_t,size_t> Pair_t;
 
       int npes=1, rank=0;
@@ -635,20 +511,13 @@ namespace par{
       long long recv_size=0;
       {
         recv_size=scatter_index.Dim();
-
-        long long glb_size[2]={0,0};
         long long loc_size[2]={(long long)(data_.Dim()*sizeof(T)), recv_size};
-        glb_size[0]=loc_size[0];
-        glb_size[1]=loc_size[1];
-        if(glb_size[0]==0 || glb_size[1]==0) return 0; //Nothing to be done.
-        data_dim=glb_size[0]/glb_size[1];
-        assert(glb_size[0]==data_dim*glb_size[1]);
-
+        if(loc_size[0]==0 || loc_size[1]==0) return 0; //Nothing to be done.
+        data_dim=loc_size[0]/loc_size[1];
         send_size=(data_.Dim()*sizeof(T))/data_dim;
       }
 
       Vector<char> recv_buff(recv_size*data_dim);
-      Vector<char> send_buff(send_size*data_dim);
 
       // Sort scatter_index.
       Vector<Pair_t> psorted(recv_size);
@@ -669,7 +538,6 @@ namespace par{
           size_t src_indx=psorted[i].key*data_dim;
           size_t trg_indx=i*data_dim;
           for(size_t j=0;j<data_dim;j++) {
-            send_buff[trg_indx+j]=data[src_indx+j];
             recv_buff[trg_indx+j]=data[src_indx+j];
 	  }
         }
@@ -677,7 +545,6 @@ namespace par{
 
       // Build output data.
       {
-        data_.Resize(recv_size*data_dim/sizeof(T));
         char* data=(char*)&data_[0];
         #pragma omp parallel for
         for(size_t i=0;i<recv_size;i++){

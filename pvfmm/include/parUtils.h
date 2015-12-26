@@ -100,8 +100,7 @@ namespace par{
     @param[in]     comm          the MPI communicator
     */
   template<typename T>
-    int ScatterForward(Vector<T>& data, const Vector<size_t>& scatter_index,
-        const MPI_Comm& comm);
+    int ScatterForward(Vector<T>& data, const Vector<size_t>& scatter_index);
 
 }//end namespace
 }//end namespace
