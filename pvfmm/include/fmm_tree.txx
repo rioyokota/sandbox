@@ -74,7 +74,6 @@ void FMM_Tree<FMM_Mat_t>::SetupFMM(FMM_Mat_t* fmm_mat_) {
 
   //Construct LET
   Profile::Tic("ConstructLET",false,2);
-  this->ConstructLET(bndry);
   Profile::Toc();
 
   //Set Colleagues (Needed to build U, V, W and X lists.)

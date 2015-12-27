@@ -62,42 +62,11 @@ class MPI_Tree: public Tree<TreeNode>{
   TreeNode* FindNode(MortonId& key, bool subdiv, TreeNode* start=NULL);
 
   /**
-   * \brief Adaptive coarsening of distributed tree.
-   */
-  virtual void CoarsenTree();
-
-  /**
-   * \brief Redistribute the tree among the processes.
-   */
-  void RedistNodes(MortonId* loc_min=NULL);
-
-  /**
-   * \brief Performs global 2:1 balancing of the tree.
-   */
-  void Balance21(BoundaryType bndry=FreeSpace);
-
-  /**
-   * \brief Performs 2:1 balancing of the tree.
-   */
-  void Balance21_local(BoundaryType bndry=FreeSpace);
-
-  /**
    * \brief Determines and sets colleagues for each node in the tree.
    * Two nodes are colleagues if they are at the same depth in the tree and
    * share either a face, edge or a vertex.
    */
   void SetColleagues(BoundaryType bndry=FreeSpace, Node_t* node=NULL) ;
-
-  /**
-   * \brief Checks if everything is okay with the distributed tree. Only needed
-   * for debugging purposes.
-   */
-  bool CheckTree();
-
-  /**
-   * \brief Construct the LET by exchanging ghost octants.
-   */
-  void ConstructLET(BoundaryType bndry=FreeSpace);
 
   template <class VTKReal>
   struct VTUData_t{
@@ -133,9 +102,6 @@ class MPI_Tree: public Tree<TreeNode>{
   const std::vector<MortonId>& GetMins();
 
  private:
-
-  void ConstructLET_Hypercube(BoundaryType bndry=FreeSpace);
-  void ConstructLET_Sparse(BoundaryType bndry=FreeSpace);
 
   MPI_Comm comm;
   std::vector<MortonId> mins;
