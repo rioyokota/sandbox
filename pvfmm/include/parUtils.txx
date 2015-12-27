@@ -250,7 +250,7 @@ namespace par{
 
 
   template<typename T>
-    int SortScatterIndex(const Vector<T>& key, Vector<size_t>& scatter_index, const MPI_Comm& comm, const T* split_key_){
+    int SortScatterIndex(const Vector<T>& key, Vector<size_t>& scatter_index, const T* split_key_){
       typedef SortPair<T,size_t> Pair_t;
 
       int npes=1, rank=0;
@@ -271,69 +271,8 @@ namespace par{
       Vector<Pair_t> psorted;
       HyperQuickSort(parray, psorted);
 
-      if(split_key_!=NULL){ // Partition data
-        Vector<T> split_key(npesLong);
-	split_key[0]=split_key_[0];
-
-        Vector<int> int_buff(npesLong*4);
-        Vector<int> sendSz (npesLong,&int_buff[0]+npesLong*0,false);
-        Vector<int> recvSz (npesLong,&int_buff[0]+npesLong*1,false);
-        Vector<int> sendOff(npesLong,&int_buff[0]+npesLong*2,false);
-        Vector<int> recvOff(npesLong,&int_buff[0]+npesLong*3,false);
-        long long nlSize = psorted.Dim();
-
-        // compute the partition offsets and sizes so that All2Allv can be performed.
-        // initialize ...
-
-        #pragma omp parallel for
-        for (size_t i = 0; i < npesLong; i++) {
-          sendSz[i] = 0;
-        }
-
-        //The Heart of the algorithm....
-        if(nlSize>0) {
-          // Determine processor range.
-          long long pid1=std::lower_bound(&split_key[0], &split_key[0]+npesLong, psorted[       0].key)-&split_key[0]-1;
-          long long pid2=std::upper_bound(&split_key[0], &split_key[0]+npesLong, psorted[nlSize-1].key)-&split_key[0]+1;
-          pid1=(pid1<       0?       0:pid1);
-          pid2=(pid2>npesLong?npesLong:pid2);
-
-          #pragma omp parallel for
-          for(int i=pid1;i<pid2;i++){
-            Pair_t p1; p1.key=split_key[                 i];
-            Pair_t p2; p2.key=split_key[i+1<npesLong?i+1:i];
-            long long start = std::lower_bound(&psorted[0], &psorted[0]+nlSize, p1, std::less<Pair_t>())-&psorted[0];
-            long long end   = std::lower_bound(&psorted[0], &psorted[0]+nlSize, p2, std::less<Pair_t>())-&psorted[0];
-            if(i==         0) start=0     ;
-            if(i==npesLong-1) end  =nlSize;
-            sendSz[i]=end-start;
-          }
-        }
-
-        // communicate with other procs how many you shall be sending and get how
-        // many to recieve from whom.
-        MPI_Alltoall(&sendSz[0], 1, par::Mpi_datatype<int>::value(),
-            &recvSz[0], 1, par::Mpi_datatype<int>::value(), comm);
-
-        // compute offsets ...
-        sendOff[0] = 0; omp_par::scan(&sendSz[0],&sendOff[0],npesLong);
-        recvOff[0] = 0; omp_par::scan(&recvSz[0],&recvOff[0],npesLong);
-
-        // new value of nlSize, ie the local nodes.
-        long long nn = recvSz[npesLong-1] + recvOff[npesLong-1];
-
-        // allocate memory for the new arrays ...
-        Vector<Pair_t> newNodes(nn);
-
-        // perform All2All  ...
-        par::Mpi_Alltoallv_sparse<Pair_t>(&psorted[0], &sendSz[0], &sendOff[0],
-            &newNodes[0], &recvSz[0], &recvOff[0], comm);
-
-        // reset the pointer ...
-        psorted.Swap(newNodes);
-      }
-
       scatter_index.Resize(psorted.Dim());
+
       #pragma omp parallel for
       for(size_t i=0;i<psorted.Dim();i++){
         scatter_index[i]=psorted[i].data;

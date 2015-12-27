@@ -47,7 +47,7 @@ void fmm_test(size_t N, size_t M, Real_t b, int dist, int mult_order, int depth)
   fmm_mat.Initialize(mult_order,mykernel);
 
   //Create Tree.
-  MPI_Comm comm=MPI_COMM_WORLD;
+  MPI_Comm comm;
   FMM_Tree_t tree(comm);
 
   pvfmm::Vector<Real_t> trg_value;
