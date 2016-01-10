@@ -27,11 +27,6 @@ namespace par{
     int Mpi_Alltoallv_sparse(T* sendbuf, int* sendcnts, int* sdispls,
         T* recvbuf, int* recvcnts, int* rdispls, const MPI_Comm &comm) {
 
-#ifndef ALLTOALLV_FIX
-      return MPI_Alltoallv(sendbuf, sendcnts, sdispls, par::Mpi_datatype<T>::value(),
-                           recvbuf, recvcnts, rdispls, par::Mpi_datatype<T>::value(), comm);
-#else
-
       int npes, rank;
       MPI_Comm_size(comm, &npes);
       MPI_Comm_rank(comm, &rank);
@@ -111,7 +106,6 @@ namespace par{
       mem::aligned_delete(requests);
       mem::aligned_delete(statuses);
       return 0;
-#endif
     }
 
 

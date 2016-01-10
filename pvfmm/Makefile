@@ -1,6 +1,6 @@
 .SUFFIXES: .cpp
 
-CXX = mpic++ -mavx -fabi-version=6 -std=gnu++11 -fopenmp -DALLTOALLV_FIX -I./include
+CXX = mpic++ -mavx -fabi-version=6 -std=gnu++11 -fopenmp -I./include
 LDFLAGS = -lfftw3 -lfftw3f -lmkl_intel_lp64 -lmkl_sequential -lmkl_core -lpthread -ldl -lstdc++ -limf -lgfortran -lm -lquadmath
 
 %.o: %.cpp

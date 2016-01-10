@@ -1,3 +1,4 @@
-Remove unused instantiations top down
+Remove MPI routines
 Remove MIC routines
-Branch repo when removing MPI
+Remove unused instantiations top down
+Remove unused functions top down
