@@ -1,11 +1,3 @@
-/**
- * \file tree_node.cpp
- * \author Dhairya Malhotra, dhairya.malhotra@gmail.com
- * \date 12-10-2010
- * \brief This file contains the implementation of the class TreeNode.
- */
-
-#include <mpi.h>
 #include <tree_node.hpp>
 #include <assert.h>
 #include <iostream>

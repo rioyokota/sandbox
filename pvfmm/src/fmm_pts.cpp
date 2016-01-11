@@ -1,4 +1,3 @@
-#include <mpi.h>
 #include <pvfmm_common.hpp>
 #include <cstdlib>
 #include <iostream>
@@ -47,8 +46,7 @@ void fmm_test(size_t N, size_t M, Real_t b, int dist, int mult_order, int depth)
   fmm_mat.Initialize(mult_order,mykernel);
 
   //Create Tree.
-  MPI_Comm comm;
-  FMM_Tree_t tree(comm);
+  FMM_Tree_t tree;
 
   pvfmm::Vector<Real_t> trg_value;
   for(size_t i=0;i<2;i++){ // Compute potential
@@ -107,8 +105,6 @@ void fmm_test(size_t N, size_t M, Real_t b, int dist, int mult_order, int depth)
 }
 
 int main(int argc, char **argv){
-  MPI_Init(&argc, &argv);
-
   // Read command line options.
   commandline_option_start(argc, argv);
   omp_set_num_threads( atoi(commandline_option(argc, argv,  "-omp",     "1", false, "-omp  <int> =  (1)   : Number of OpenMP threads."          )));
@@ -132,7 +128,6 @@ int main(int argc, char **argv){
   pvfmm::Profile::print();
 
   // Shut down MPI
-  MPI_Finalize();
   return 0;
 }
 

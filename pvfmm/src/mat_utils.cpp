@@ -1,11 +1,3 @@
-/**
- * \file mat_utils.cpp
- * \author Dhairya Malhotra, dhairya.malhotra@gmail.com
- * \date November, 2014
- * \brief This file contains implementation of BLAS and LAPACK wrapper functions.
- */
-
-#include <mpi.h>
 #include <blas.h>
 #include <lapack.h>
 #include <mat_utils.hpp>

@@ -10,7 +10,6 @@ build: src/mat_utils.o src/mem_mgr.o src/mortonid.o src/profile.o src/tree_node.
 	$(CXX) $? $(LDFLAGS) -o ./fmm_pts
 
 clean:
-	rm -f ~/fmm_codes/pvfmm/share/pvfmm/Precomp_laplace_grad_m4_f.data
 	rm -f src/*.o ./fmm_pts
 
 tags:

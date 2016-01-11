@@ -1,12 +1,3 @@
-/**
- * \file mem_mgr.cpp
- * \author Dhairya Malhotra, dhairya.malhotra@gmail.com
- * \date 9-21-2014
- * \brief This file contains the definition of a simple memory manager which
- * uses a pre-allocated buffer of size defined in call to the constructor.
- */
-
-#include <mpi.h>
 #include <mem_mgr.hpp>
 
 #include <omp.h>

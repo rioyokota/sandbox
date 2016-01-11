@@ -1,4 +1,3 @@
-rm dtypes.h
 Remove comm
 Remove MPI routines
 Remove MIC routines

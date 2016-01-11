@@ -1,11 +1,3 @@
-/**
- * \file profile.cpp
- * \author Dhairya Malhotra, dhairya.malhotra@gmail.com
- * \date 2-11-2011
- * \brief This file contains implementation of the class Profile.
- */
-
-#include <mpi.h>
 #include <omp.h>
 #include <iostream>
 #include <sstream>
