@@ -26,7 +26,7 @@ class MPI_Tree: public Tree<TreeNode>{
   typedef TreeNode Node_t;
   typedef typename Node_t::Real_t Real_t;
 
-  MPI_Tree(MPI_Comm c): Tree<Node_t>() {}
+  MPI_Tree(): Tree<Node_t>() {}
   virtual ~MPI_Tree() {}
   virtual void Initialize(typename Node_t::NodeData* data_);
   TreeNode* FindNode(MortonId& key, bool subdiv, TreeNode* start=NULL);

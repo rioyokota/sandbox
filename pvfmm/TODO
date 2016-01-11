@@ -1,7 +1,3 @@
-./include/pvfmm.hpp:                                    std::vector<double>& trg_coord, MPI_Comm& comm, int max_pts=100,
-./include/pvfmm.hpp:                                    std::vector<double>& trg_coord, MPI_Comm& comm, int max_pts=100,
-./include/utils.hpp:std::vector<Real_t> point_distrib(DistribType, size_t N, MPI_Comm comm);
-./include/mpi_tree.hpp:  MPI_Tree(MPI_Comm c): Tree<Node_t>() {}
 rm dtypes.h
 Remove comm
 Remove MPI routines
