@@ -1,14 +1,3 @@
-/**
-  @file parUtils.h
-  @brief A set of parallel utilities.
-  @author Rahul S. Sampath, rahul.sampath@gmail.com
-  @author Hari Sundar, hsundar@gmail.com
-  @author Shravan Veerapaneni, shravan@seas.upenn.edu
-  @author Santi Swaroop Adavani, santis@gmail.com
-  @author Dhairya Malhotra, dhairya.malhotra@gmail.com
-  */
-
-//#include <mpi.h>
 #include <vector>
 #include <cstdlib>
 

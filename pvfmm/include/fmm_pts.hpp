@@ -1,12 +1,3 @@
-/**
- * \file fmm_pts.hpp
- * \author Dhairya Malhotra, dhairya.malhotra@gmail.com
- * \date 3-07-2011
- * \brief This file contains the definition of the FMM_Pts class.
- * This handles all the translations for point sources and targets.
- */
-
-#include <mpi.h>
 #include <string>
 #include <vector>
 #include <cstdlib>

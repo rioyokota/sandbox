@@ -1,13 +1,4 @@
-/**
- * \file fmm_tree.hpp
- * \author Dhairya Malhotra, dhairya.malhotra@gmail.com
- * \date 12-11-2010
- * \brief This file contains the definition of the FMM_Tree class.
- */
-
-#include <mpi.h>
 #include <vector>
-
 #include <pvfmm_common.hpp>
 #include <interac_list.hpp>
 #include <fmm_node.hpp>

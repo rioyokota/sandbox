@@ -1,11 +1,11 @@
-[./fmm_pts -omp 16 -N 100000 -m 4 -M 32 -sp 1] @ y1
- Error  8.18e-03
- U-List 0.1273
- V-List 0.09056
-[./fmm_pts -omp 16 -N 100000 -m 16 -M 320] @ y1
- Error  5.37e-11
- U-List 1.2496
- V-List 0.5600
+[./fmm_pts -omp 16 -N 1000000 -m 4 -M 64 -sp 1] @ y1
+ Error  4.45e-03
+ U-List 0.1233
+ V-List 0.0999
+[./fmm_pts -omp 16 -N 1000000 -m 16 -M 320] @ y1
+ Error  1.09e-11
+ U-List 1.135
+ V-List 3.115
 [./fmm_pts -omp 72 -N 1000000 -m 4 -M 32 -sp 1] @ r2
  Error  5.53e-03
  U-List 0.3995

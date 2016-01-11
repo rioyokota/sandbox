@@ -1,12 +1,3 @@
-/**
- * \file mpi_tree.hpp
- * \author Dhairya Malhotra, dhairya.malhotra@gmail.com
- * \date 12-11-2010
- * \brief This file contains the definition of a base class for a distributed
- * MPI tree.
- */
-
-#include <mpi.h>
 #include <vector>
 #include <string>
 

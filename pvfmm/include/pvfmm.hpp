@@ -1,11 +1,3 @@
-/**
- * \file pvfmm.hpp
- * \author Dhairya Malhotra, dhairya.malhotra@gmail.com
- * \date 1-2-2014
- * \brief This file contains wrapper functions for PvFMM.
- */
-
-#include <mpi.h>
 #include <vector>
 #include <cstdlib>
 #include <cmath>

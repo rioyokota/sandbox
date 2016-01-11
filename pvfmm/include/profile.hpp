@@ -1,11 +1,3 @@
-/**
- * \file profile.hpp
- * \author Dhairya Malhotra, dhairya.malhotra@gmail.com
- * \date 2-11-2011
- * \brief This file contains definition of the class Profile.
- */
-
-#include <mpi.h>
 #include <string>
 #include <vector>
 #include <stack>
@@ -44,7 +36,6 @@ class Profile{
   static bool enable_state;
   static std::stack<bool> sync;
   static std::stack<std::string> name;
-  static std::stack<MPI_Comm*> comm;
   static std::vector<long long> max_mem;
 
   static unsigned int enable_depth;

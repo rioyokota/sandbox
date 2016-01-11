@@ -17,10 +17,10 @@ tags:
 	find . -name "*.cpp" -o -name "*.hpp" -o -name "*.txx" | xargs etags -f TAGS
 
 y4:
-	./fmm_pts -omp 16 -N 100000 -m 4 -M 32 -sp 1
+	./fmm_pts -omp 16 -N 1000000 -m 4 -M 64 -sp 1
 
 y16:
-	./fmm_pts -omp 16 -N 100000 -m 16 -M 320
+	./fmm_pts -omp 16 -N 1000000 -m 16 -M 320
 
 r4:
 	./fmm_pts -omp 72 -N 1000000 -m 4 -M 32 -sp 1

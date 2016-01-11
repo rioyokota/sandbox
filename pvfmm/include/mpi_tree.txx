@@ -17,8 +17,6 @@
 #include <algorithm>
 #include <stdint.h>
 #include <set>
-
-#include <dtypes.h>
 #include <ompUtils.h>
 #include <parUtils.h>
 #include <mem_mgr.hpp>

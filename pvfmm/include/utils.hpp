@@ -1,14 +1,7 @@
-/**
- * \file utils.hpp
- * \author Dhairya Malhotra, dhairya.malhotra@gmail.com
- * \date 1-1-2011
- */
-
 #ifndef _UTILS_
 #define _UTILS_
 
 #include <vector>
-#include <mpi.h>
 #include <cheb_utils.hpp>
 #include <fmm_tree.hpp>
 
