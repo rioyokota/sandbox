@@ -1,5 +1,3 @@
-Remove comm
-Remove MPI routines
 Remove MIC routines
 Remove unused instantiations top down
 Remove unused functions top down

@@ -24,12 +24,6 @@ template <class T>
 T cheb_err(T* cheb_coeff, int deg, int dof);
 
 /**
- * \brief Computes Chebyshev approximation from function values at cheb node points.
- */
-template <class T, class Y>
-T cheb_approx(T* fn_v, int d, int dof, T* out, mem::MemoryManager* mem_mgr=NULL);
-
-/**
  * \brief Evaluates polynomial values from input coefficients at points on
  * a regular grid defined by in_x, in_y, in_z the values in the input vector.
  */

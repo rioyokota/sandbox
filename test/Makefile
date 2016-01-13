@@ -8,6 +8,10 @@ NVCC = nvcc -O3 -use_fast_math -arch=sm_35 -Xcompiler "-Wall -fopenmp -O3 -ffast
 .cu.o	:
 	$(NVCC) -c $? -o $@
 
+cilk: cilk.cxx
+	icpc $? -lcilkrts
+	./a.out 1
+	./a.out 4
 device: device.o
 	$(CXX) $? -lcudart
 	./a.out
