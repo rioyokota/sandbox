@@ -198,9 +198,9 @@
 #endif
 
 /* Define if compiler supports quadruple precision */
-#ifndef PVFMM_QUAD_T
-#define PVFMM_QUAD_T __float128
-#endif
+//#ifndef PVFMM_QUAD_T
+//#define PVFMM_QUAD_T __float128
+//#endif
 
 /* Define to 1 if you have the ANSI C header files. */
 #ifndef PVFMM_STDC_HEADERS

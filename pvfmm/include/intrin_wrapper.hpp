@@ -140,7 +140,7 @@ inline __m128 set_intrin(const float& a){
 
 template <>
 inline __m128d set_intrin(const double& a){
-  return _mm_set_pd1(a);
+  return _mm_set1_pd(a);
 }
 
 template <>
