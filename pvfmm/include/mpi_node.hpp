@@ -165,12 +165,6 @@ class MPI_Node: public TreeNode{
    */
   virtual void ReadVal(std::vector<Real_t> x,std::vector<Real_t> y, std::vector<Real_t> z, Real_t* val, bool show_ghost=true);
 
-  /**
-   * \brief Append node VTU data to vectors.
-   */
-  template <class VTUData_t, class Node_t>
-  static void VTU_Data(VTUData_t& vtu_data, std::vector<Node_t*>& nodes, int lod);
-
   Vector<Real_t> pt_coord;   //coordinates of points
   Vector<Real_t> pt_value;   //value at points
   Vector<size_t> pt_scatter; //scatter index mapping original data.

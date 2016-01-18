@@ -32,21 +32,6 @@ class MPI_Tree: public Tree<TreeNode>{
   TreeNode* FindNode(MortonId& key, bool subdiv, TreeNode* start=NULL);
   void SetColleagues(BoundaryType bndry=FreeSpace, Node_t* node=NULL) ;
 
-  template <class VTKReal>
-  struct VTUData_t{
-    typedef VTKReal VTKReal_t;
-
-    // Point data
-    std::vector<VTKReal_t> coord;
-    std::vector<std::vector<VTKReal_t> > value;
-    std::vector<std::string> name;
-
-    // Cell data
-    std::vector<int32_t> connect;
-    std::vector<int32_t> offset;
-    std::vector<uint8_t> types;
-  };
-
  private:
 
   std::vector<MortonId> mins;
