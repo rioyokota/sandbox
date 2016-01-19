@@ -133,20 +133,9 @@ class MPI_Node: public TreeNode{
   virtual TreeNode* NewNode(TreeNode* n_=NULL);
 
   /**
-   * \brief Evaluates and returns the subdivision condition for this node.
-   * 'true' if node requires further subdivision.
-   */
-  virtual bool SubdivCond();
-
-  /**
    * \brief Create child nodes and Initialize them.
    */
   virtual void Subdivide();
-
-  /**
-   * \brief Truncates the tree i.e. makes this a leaf node.
-   */
-  virtual void Truncate();
 
   virtual void ReadVal(std::vector<Real_t> x,std::vector<Real_t> y, std::vector<Real_t> z, Real_t* val, bool show_ghost=true);
 

@@ -77,34 +77,6 @@ TreeNode* MPI_Node<T>::NewNode(TreeNode* n_){
 }
 
 template <class T>
-bool MPI_Node<T>::SubdivCond(){
-  int n=(1UL<<this->Dim());
-  // Do not subdivide beyond max_depth
-  if(this->Depth()>=this->max_depth-1) return false;
-  if(!this->IsLeaf()){ // If has non-leaf children, then return true.
-    for(int i=0;i<n;i++){
-      MPI_Node<Real_t>* ch=static_cast<MPI_Node<Real_t>*>(this->Child(i));
-      assert(ch); //ch==NULL should never happen
-      if(!ch->IsLeaf() || ch->IsGhost()) return true;
-    }
-  }
-  else{ // Do not refine ghost leaf nodes.
-    if(this->IsGhost()) return false;
-  }
-
-  if(!this->IsLeaf()){
-    size_t pt_vec_size=0;
-    for(int i=0;i<n;i++){
-      MPI_Node<Real_t>* ch=static_cast<MPI_Node<Real_t>*>(this->Child(i));
-      pt_vec_size+=ch->pt_coord.Dim();
-    }
-    return pt_vec_size/Dim()>max_pts;
-  }else{
-    return pt_coord.Dim()/Dim()>max_pts;
-  }
-}
-
-template <class T>
 void MPI_Node<T>::Subdivide(){
   if(!this->IsLeaf()) return;
   TreeNode::Subdivide();
@@ -177,90 +149,6 @@ void MPI_Node<T>::Subdivide(){
     }
   }
 };
-
-template <class T>
-void MPI_Node<T>::Truncate(){
-  if(!this->IsLeaf()){
-    int nchld=(1UL<<this->Dim());
-    for(size_t i=0;i<nchld;i++){
-      if(!this->Child(i)->IsLeaf()){
-        this->Child(i)->Truncate();
-      }
-    }
-
-    std::vector<Vector<Real_t>*> pt_coord;
-    std::vector<Vector<Real_t>*> pt_value;
-    std::vector<Vector<size_t>*> pt_scatter;
-    this->NodeDataVec(pt_coord, pt_value, pt_scatter);
-
-    std::vector<std::vector<Vector<Real_t>*> > chld_pt_coord(nchld);
-    std::vector<std::vector<Vector<Real_t>*> > chld_pt_value(nchld);
-    std::vector<std::vector<Vector<size_t>*> > chld_pt_scatter(nchld);
-    for(size_t i=0;i<nchld;i++){
-      static_cast<MPI_Node<Real_t>*>((MPI_Node<T>*)this->Child(i))
-        ->NodeDataVec(chld_pt_coord[i], chld_pt_value[i], chld_pt_scatter[i]);
-    }
-
-    for(size_t j=0;j<pt_coord.size();j++){
-      if(!pt_coord[j]) continue;
-      if(pt_coord[j]){
-        size_t vec_size=0;
-        for(size_t i=0;i<nchld;i++){
-          Vector<Real_t>& chld_vec=*chld_pt_coord[i][j];
-          vec_size+=chld_vec.Dim();
-        }
-        Vector<Real_t>& vec=*pt_coord[j];
-        vec.ReInit(vec_size);
-
-        vec_size=0;
-        for(size_t i=0;i<nchld;i++){
-          Vector<Real_t>& chld_vec=*chld_pt_coord[i][j];
-          if(chld_vec.Dim()>0){
-            mem::memcopy(&vec[vec_size],&chld_vec[0],chld_vec.Dim()*sizeof(Real_t));
-            vec_size+=chld_vec.Dim();
-          }
-        }
-      }
-      if(pt_value[j]){
-        size_t vec_size=0;
-        for(size_t i=0;i<nchld;i++){
-          Vector<Real_t>& chld_vec=*chld_pt_value[i][j];
-          vec_size+=chld_vec.Dim();
-        }
-        Vector<Real_t>& vec=*pt_value[j];
-        vec.ReInit(vec_size);
-
-        vec_size=0;
-        for(size_t i=0;i<nchld;i++){
-          Vector<Real_t>& chld_vec=*chld_pt_value[i][j];
-          if(chld_vec.Dim()>0){
-            mem::memcopy(&vec[vec_size],&chld_vec[0],chld_vec.Dim()*sizeof(Real_t));
-            vec_size+=chld_vec.Dim();
-          }
-        }
-      }
-      if(pt_scatter[j]){
-        size_t vec_size=0;
-        for(size_t i=0;i<nchld;i++){
-          Vector<size_t>& chld_vec=*chld_pt_scatter[i][j];
-          vec_size+=chld_vec.Dim();
-        }
-        Vector<size_t>& vec=*pt_scatter[j];
-        vec.ReInit(vec_size);
-
-        vec_size=0;
-        for(size_t i=0;i<nchld;i++){
-          Vector<size_t>& chld_vec=*chld_pt_scatter[i][j];
-          if(chld_vec.Dim()>0){
-            mem::memcopy(&vec[vec_size],&chld_vec[0],chld_vec.Dim()*sizeof(Real_t));
-            vec_size+=chld_vec.Dim();
-          }
-        }
-      }
-    }
-  }
-  TreeNode::Truncate();
-}
 
 template <class T>
 void MPI_Node<T>::ReadVal(std::vector<Real_t> x,std::vector<Real_t> y, std::vector<Real_t> z, Real_t* val, bool show_ghost){

@@ -109,12 +109,6 @@ class FMM_Node: public Node{
   virtual TreeNode* NewNode(TreeNode* n_=NULL);
 
   /**
-   * \brief Evaluates and returns the subdivision condition for this node.
-   * 'true' if node requires further subdivision.
-   */
-  virtual bool SubdivCond();
-
-  /**
    * \brief Create child nodes and Initialize them.
    */
   virtual void Subdivide() ;

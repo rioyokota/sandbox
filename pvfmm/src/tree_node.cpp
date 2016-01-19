@@ -56,22 +56,6 @@ TreeNode* TreeNode::NewNode(TreeNode* n_){
   return n_;
 }
 
-bool TreeNode::SubdivCond(){
-  if(!IsLeaf()){
-    int n=(1UL<<dim);
-    for(int i=0;i<n;i++){
-      TreeNode* ch=this->Child(i);
-      assert(ch!=NULL); //This should never happen
-      if(!ch->IsLeaf()) return true;
-    }
-    if(Depth()>=max_depth) return false;
-    return true;
-  }else{
-    if(this->Depth()>=max_depth) return false;
-    return false;
-  }
-}
-
 void TreeNode::Subdivide() {
   if(child) return;
   SetStatus(1);

@@ -50,42 +50,6 @@ TreeNode* FMM_Node<Node>::NewNode(TreeNode* n_){
   return Node_t::NewNode(n);
 }
 
-
-template <class Node>
-bool FMM_Node<Node>::SubdivCond(){
-  int n=(1UL<<this->Dim());
-  // Do not subdivide beyond max_depth
-  if(this->Depth()>=this->max_depth-1) return false;
-  if(!this->IsLeaf()){ // If has non-leaf children, then return true.
-    for(int i=0;i<n;i++){
-      MPI_Node<Real_t>* ch=static_cast<MPI_Node<Real_t>*>(this->Child(i));
-      assert(ch!=NULL); //This should never happen
-      if(!ch->IsLeaf() || ch->IsGhost()) return true;
-    }
-  }
-  else{ // Do not refine ghost leaf nodes.
-    if(this->IsGhost()) return false;
-  }
-  if(Node::SubdivCond()) return true;
-
-  if(!this->IsLeaf()){
-    size_t pt_vec_size=0;
-    for(int i=0;i<n;i++){
-      FMM_Node<Node>* ch=static_cast<FMM_Node<Node>*>(this->Child(i));
-      pt_vec_size+=ch->src_coord.Dim();
-      pt_vec_size+=ch->surf_coord.Dim();
-      pt_vec_size+=ch->trg_coord.Dim();
-    }
-    return pt_vec_size/this->Dim()>this->max_pts;
-  }else{
-    size_t pt_vec_size=0;
-    pt_vec_size+=src_coord.Dim();
-    pt_vec_size+=surf_coord.Dim();
-    pt_vec_size+=trg_coord.Dim();
-    return pt_vec_size/this->Dim()>this->max_pts;
-  }
-}
-
 template <class Node>
 void FMM_Node<Node>::Subdivide(){
   if(!this->IsLeaf()) return;
