@@ -192,7 +192,6 @@ void Profile::print(){
         ss<<"  "<<std::setw(width)<<f_max;
 
         ss<<"  "<<std::setw(width)<<fs_min;
-        //ss<<"  "<<std::setw(width)<<fs_avg;
         ss<<"  "<<std::setw(width)<<fs_max;
         ss<<"  "<<std::setw(width)<<fs_sum;
 
@@ -216,7 +215,8 @@ void Profile::print(){
         }// */
         out_stack.push(s1);
 #else
-	if(i==167||i==169) std::cout << i << " " << n_log[i] << "     : " << std::setiosflags(std::ios::fixed) << std::setprecision(4) << t_avg << std::endl;
+	if(i==153||i==155)
+	  std::cout << n_log[i] << "     : " << std::setiosflags(std::ios::fixed) << std::setprecision(4) << t_avg << std::endl;
 #endif
       }
       level--;
