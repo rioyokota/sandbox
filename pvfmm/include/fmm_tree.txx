@@ -48,14 +48,6 @@ void FMM_Tree<FMM_Mat_t>::InitFMM_Tree(bool refine, BoundaryType bndry_) {
   interac_list.Initialize(this->Dim());
   bndry=bndry_;
 
-  if(refine){
-    Profile::Tic("RefineTree",true,5);
-    Profile::Toc();
-  }
-
-  Profile::Tic("2:1Balance",true,5);
-  Profile::Toc();
-
   }Profile::Toc();
 }
 
@@ -71,10 +63,6 @@ void FMM_Tree<FMM_Mat_t>::SetupFMM(FMM_Mat_t* fmm_mat_) {
     precomp_lst.clear();
     fmm_mat=fmm_mat_;
   }
-
-  //Construct LET
-  Profile::Tic("ConstructLET",false,2);
-  Profile::Toc();
 
   //Set Colleagues (Needed to build U, V, W and X lists.)
   Profile::Tic("SetColleagues",false,3);
@@ -200,10 +188,6 @@ void FMM_Tree<FMM_Mat_t>::RunFMM() {
   //Upward Pass
   Profile::Tic("UpwardPass",false,2);
   UpwardPass();
-  Profile::Toc();
-
-  //Multipole Reduce Broadcast.
-  Profile::Tic("ReduceBcast",true,2);
   Profile::Toc();
 
   //Downward Pass

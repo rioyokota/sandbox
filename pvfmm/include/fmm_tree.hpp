@@ -64,14 +64,9 @@ class FMM_Tree: public MPI_Tree<typename FMM_Mat_t::FMMNode_t>{
   void BuildInteracLists();
 
   /**
-   * \brief Upward FMM pass (Including MultipoleReduceBcast).
+   * \brief Upward FMM pass.
    */
   void UpwardPass();
-
-  /**
-   * \brief Reduction and broadcast of multipole expansions.
-   */
-  void MultipoleReduceBcast() ;
 
   /**
    * \brief Downward FMM pass.

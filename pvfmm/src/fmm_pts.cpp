@@ -49,7 +49,7 @@ void fmm_test(size_t N, size_t M, Real_t b, int dist, int mult_order, int depth)
   FMM_Tree_t tree;
 
   pvfmm::Vector<Real_t> trg_value;
-  for(size_t i=0;i<2;i++){ // Compute potential
+  for(size_t it=0;it<2;it++){ // Compute potential
     pvfmm::Profile::Tic("TotalTime",true);
 
     //Initialize tree with input data.
@@ -75,10 +75,6 @@ void fmm_test(size_t N, size_t M, Real_t b, int dist, int mult_order, int depth)
     tree.SetupFMM(&fmm_mat);
     tree.RunFMM();
 
-    { // Scatter trg values
-      pvfmm::Profile::Tic("Scatter",true);
-      pvfmm::Profile::Toc();
-    }
     pvfmm::Profile::Toc();
   }
 

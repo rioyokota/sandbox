@@ -216,7 +216,7 @@ void Profile::print(){
         }// */
         out_stack.push(s1);
 #else
-	if(i==167||i==169) std::cout << n_log[i] << "     : " << std::setiosflags(std::ios::fixed) << std::setprecision(4) << t_avg << std::endl;
+	if(i==167||i==169) std::cout << i << " " << n_log[i] << "     : " << std::setiosflags(std::ios::fixed) << std::setprecision(4) << t_avg << std::endl;
 #endif
       }
       level--;
