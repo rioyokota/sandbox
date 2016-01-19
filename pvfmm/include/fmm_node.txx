@@ -1,12 +1,4 @@
-/**
- * \file fmm_node.txx
- * \author Dhairya Malhotra, dhairya.malhotra@gmail.com
- * \date 12-11-2010
- * \brief This file contains the implementation of the FMM_Node class.
- */
-
 #include <cassert>
-
 #include <mem_mgr.hpp>
 #include <mpi_node.hpp>
 
@@ -105,86 +97,5 @@ template <class Node>
 void FMM_Node<Node>::Truncate(){
   Node::Truncate();
 }
-
-
-template <class Node>
-PackedData FMM_Node<Node>::Pack(bool ghost, void* buff_ptr, size_t offset){
-  PackedData p0,p1,p2;
-  if(buff_ptr==NULL){
-    p2=PackMultipole();
-  }else{
-    char* data_ptr=(char*)buff_ptr+offset;
-    p2=PackMultipole(data_ptr+2*sizeof(size_t));
-  }
-
-  p0.length =sizeof(size_t);
-  p0.length+=sizeof(size_t)+p2.length;
-  p1=Node_t::Pack(ghost,buff_ptr,p0.length+offset);
-  p0.length+=p1.length;
-  p0.data=p1.data;
-
-  char* data_ptr=(char*)p0.data;
-  data_ptr+=offset;
-
-  // Header
-  ((size_t*)data_ptr)[0]=p0.length;
-  data_ptr+=sizeof(size_t);
-
-  // Copy multipole data.
-  ((size_t*)data_ptr)[0]=p2.length; data_ptr+=sizeof(size_t);
-  mem::memcopy(data_ptr,p2.data,p2.length);
-
-  return p0;
-}
-
-template <class Node>
-void FMM_Node<Node>::Unpack(PackedData p0, bool own_data){
-  char* data_ptr=(char*)p0.data;
-
-  // Check header
-  assert(((size_t*)data_ptr)[0]==p0.length);
-  data_ptr+=sizeof(size_t);
-
-  PackedData p2;
-  p2.length=(((size_t*)data_ptr)[0]); data_ptr+=sizeof(size_t);
-  p2.data=(void*)data_ptr; data_ptr+=p2.length;
-  InitMultipole(p2,own_data);
-
-  PackedData p1;
-  p1.data=data_ptr;
-  p1.length=((size_t*)data_ptr)[0];
-  Node::Unpack(p1, own_data);
-}
-
-
-template <class Node>
-PackedData FMM_Node<Node>::PackMultipole(void* buff_ptr){
-  if(fmm_data!=NULL)
-    return fmm_data->PackMultipole(buff_ptr);
-  else{
-    PackedData pkd;
-    pkd.length=0;
-    pkd.data=buff_ptr;
-    return pkd;
-  }
-};
-
-
-template <class Node>
-void FMM_Node<Node>::AddMultipole(PackedData data){
-  if(data.length>0){
-    assert(fmm_data!=NULL);
-    fmm_data->AddMultipole(data);
-  }
-};
-
-
-template <class Node>
-void FMM_Node<Node>::InitMultipole(PackedData data, bool own_data){
-  if(data.length>0){
-    assert(fmm_data!=NULL);
-    fmm_data->InitMultipole(data, own_data);
-  }
-};
 
 }//end namespace

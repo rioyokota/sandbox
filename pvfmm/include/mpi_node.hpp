@@ -148,21 +148,6 @@ class MPI_Node: public TreeNode{
    */
   virtual void Truncate();
 
-  /**
-   * \brief Pack this node to be transmitted to another process. The node
-   * is responsible for allocating and freeing the memory for the actual data.
-   */
-  virtual PackedData Pack(bool ghost=false, void* buff_ptr=NULL, size_t offset=0);
-
-  /**
-   * \brief Initialize the node with data from another process.
-   */
-  virtual void Unpack(PackedData data, bool own_data=true);
-
-  /**
-   * \brief Read source distribution at points on a grid defined by array of x,
-   * y and z coordinates.
-   */
   virtual void ReadVal(std::vector<Real_t> x,std::vector<Real_t> y, std::vector<Real_t> z, Real_t* val, bool show_ghost=true);
 
   Vector<Real_t> pt_coord;   //coordinates of points

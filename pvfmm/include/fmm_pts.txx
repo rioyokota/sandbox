@@ -1,10 +1,3 @@
-/**
- * \file fmm_pts.txx
- * \author Dhairya Malhotra, dhairya.malhotra@gmail.com
- * \date 3-07-2011
- * \brief This file contains the implementation of the FMM_Pts class.
- */
-
 #include <omp.h>
 #include <cmath>
 #include <cstdlib>
@@ -155,39 +148,6 @@ std::vector<Real_t> conv_grid(int p, Real_t* c, int depth){
 template <class Real_t>
 void FMM_Data<Real_t>::Clear(){
   upward_equiv.Resize(0);
-}
-
-template <class Real_t>
-PackedData FMM_Data<Real_t>::PackMultipole(void* buff_ptr){
-  PackedData p0; p0.data=buff_ptr;
-  p0.length=upward_equiv.Dim()*sizeof(Real_t);
-  if(p0.length==0) return p0;
-
-  if(p0.data==NULL) p0.data=(char*)&upward_equiv[0];
-  else mem::memcopy(p0.data,&upward_equiv[0],p0.length);
-  return p0;
-}
-
-template <class Real_t>
-void FMM_Data<Real_t>::AddMultipole(PackedData p0){
-  Real_t* data=(Real_t*)p0.data;
-  size_t n=p0.length/sizeof(Real_t);
-  assert(upward_equiv.Dim()==n);
-  Matrix<Real_t> v0(1,n,&upward_equiv[0],false);
-  Matrix<Real_t> v1(1,n,data,false);
-  v0+=v1;
-}
-
-template <class Real_t>
-void FMM_Data<Real_t>::InitMultipole(PackedData p0, bool own_data){
-  Real_t* data=(Real_t*)p0.data;
-  size_t n=p0.length/sizeof(Real_t);
-  if(n==0) return;
-  if(own_data){
-    upward_equiv=Vector<Real_t>(n, &data[0], false);
-  }else{
-    upward_equiv.ReInit(n, &data[0], false);
-  }
 }
 
 template <class FMMNode>
@@ -5245,11 +5205,6 @@ void FMM_Pts<FMMNode>::PostProcessing(FMMTree_t* tree, std::vector<FMMNode_t*>& 
       M_trg-=avg_density*M_vol;
     }
   }
-}
-
-
-template <class FMMNode>
-void FMM_Pts<FMMNode>::CopyOutput(FMMNode** nodes, size_t n){
 }
 
 }//end namespace

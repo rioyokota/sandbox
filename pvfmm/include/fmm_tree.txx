@@ -405,21 +405,4 @@ void FMM_Tree<FMM_Mat_t>::DownwardPass() {
 }
 
 
-template <class FMM_Mat_t>
-void FMM_Tree<FMM_Mat_t>::Copy_FMMOutput() {
-  std::vector<Node_t*>& all_nodes=this->GetNodeList();
-  int omp_p=omp_get_max_threads();
-
-  // Copy output to the tree.
-  {
-    size_t k=all_nodes.size();
-    #pragma omp parallel for
-    for(int j=0;j<omp_p;j++){
-      size_t a=(k*j)/omp_p;
-      size_t b=(k*(j+1))/omp_p;
-      fmm_mat->CopyOutput(&(all_nodes[a]),b-a);
-    }
-  }
-}
-
 }//end namespace

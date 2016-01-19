@@ -31,28 +31,8 @@ class FMM_Data{
 
   virtual FMM_Data* NewData(){return mem::aligned_new<FMM_Data>();}
 
-  /**
-   * \brief Clear all data.
-   */
   virtual void Clear();
 
-  /**
-   * \brief Pack multipole expansion.
-   */
-  virtual PackedData PackMultipole(void* buff_ptr=NULL);
-
-  /**
-   * \brief Add the multipole expansion from p0 to the current multipole
-   * expansion.
-   */
-  virtual void AddMultipole(PackedData p0);
-
-  /**
-   * \brief Initialize multipole expansion using p0.
-   */
-  virtual void InitMultipole(PackedData p0, bool own_data=true);
-
-  //FMM specific node data.
   Vector<Real_t> upward_equiv;
   Vector<Real_t> dnward_equiv;
 };
@@ -189,11 +169,6 @@ class FMM_Pts{
   virtual void U_List     (SetupData<Real_t>&  setup_data);
 
   virtual void PostProcessing(FMMTree_t* tree, std::vector<FMMNode_t*>& nodes, BoundaryType bndry=FreeSpace);
-
-  /**
-   * \brief For each node, copy FMM output from FMM_Data to the node.
-   */
-  virtual void CopyOutput(FMMNode** nodes, size_t n);
 
   Vector<char> dev_buffer;
   Vector<char> staging_buffer;

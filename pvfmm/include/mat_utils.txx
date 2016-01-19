@@ -1,10 +1,3 @@
-/**
- * \file mat_utils.txx
- * \author Dhairya Malhotra, dhairya.malhotra@gmail.com
- * \date 2-11-2011
- * \brief This file contains BLAS and LAPACK wrapper functions.
- */
-
 #include <omp.h>
 #include <cmath>
 #include <cassert>

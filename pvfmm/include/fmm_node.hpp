@@ -124,34 +124,6 @@ class FMM_Node: public Node{
    */
   virtual void Truncate() ;
 
-  /**
-   * \brief Pack node for transmission
-   */
-  virtual PackedData Pack(bool ghost=false, void* buff_ptr=NULL, size_t offset=0);
-
-  /**
-   * \brief Unpack node.
-   */
-  virtual void Unpack(PackedData p0, bool own_data=true);
-
-  /**
-   * \brief Pack the multipole expansion data to be transmitted to another
-   * process. This is done during the reduction step at the end of the local
-   * upward pass.
-   */
-  virtual PackedData PackMultipole(void* buff_ptr=NULL);
-
-  /**
-   * \brief Add to the multipole expansion of this node during reduction step.
-   */
-  virtual void AddMultipole(PackedData data);
-
-  /**
-   * \brief Initialize the multipole expansion with data from another process.
-   * Used during broadcast step.
-   */
-  virtual void InitMultipole(PackedData data, bool own_data=true);
-
   Vector<Real_t> src_coord;  //Point sources.
   Vector<Real_t> src_value;
   Vector<size_t> src_scatter;

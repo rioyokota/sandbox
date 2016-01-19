@@ -78,11 +78,6 @@ class FMM_Tree: public MPI_Tree<typename FMM_Mat_t::FMMNode_t>{
    */
   void DownwardPass();
 
-  /**
-   * \brief Copy FMM output to the tree.
-   */
-  void Copy_FMMOutput();
-
  protected:
 
   std::vector<Matrix<Real_t> > node_data_buff;
