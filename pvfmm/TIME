@@ -1,7 +1,7 @@
 [./fmm_pts -omp 16 -N 1000000 -m 4 -M 64 -sp 1] @ y1
  Error  4.45e-03
- U-List 0.1233
- V-List 0.0999
+ U-List 0.145
+ V-List 0.1012
 [./fmm_pts -omp 16 -N 1000000 -m 16 -M 320] @ y1
  Error  1.09e-11
  U-List 1.135

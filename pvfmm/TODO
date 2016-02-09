@@ -1,2 +1,5 @@
-Use profile to eliminate unused functions
+Look at header files and think of organization
+ - fmm_node, mpi_node, fmm_pts -> flatten
+Separate files and put more into src
+ - Shorten compile time
 Remove class hierarchy
