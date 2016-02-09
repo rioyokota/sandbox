@@ -8,8 +8,8 @@
  V-List 3.115
 [./fmm_pts -omp 72 -N 1000000 -m 4 -M 64 -sp 1] @ r2
  Error  4.44e-03
- U-List 0.1263
- V-List 0.1072
+ U-List 0.08351
+ V-List 0.05408
 [./fmm_pts -omp 72 -N 1000000 -m 16 -M 320] @ r2
  Error  1.09e-11
  U-List 0.4385

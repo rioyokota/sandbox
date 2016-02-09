@@ -23,7 +23,7 @@ y16:
 	./fmm_pts -omp 16 -N 1000000 -m 16 -M 320
 
 r4:
-	./fmm_pts -omp 72 -N 1000000 -m 4 -M 32 -sp 1
+	./fmm_pts -omp 72 -N 1000000 -m 4 -M 64 -sp 1
 
 r16:
 	./fmm_pts -omp 72 -N 1000000 -m 16 -M 320
