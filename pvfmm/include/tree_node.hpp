@@ -22,6 +22,8 @@ class TreeNode{
   size_t max_pts;
   long long weight;
 
+  Real_t coord[COORD_DIM];
+
  public:
 
   class NodeData{
@@ -38,7 +40,7 @@ class TreeNode{
      Vector<Real_t> pt_value;
   };
 
-  TreeNode(): dim(0), depth(0), max_depth(MAX_DEPTH), parent(NULL), child(NULL), status(1) { }
+  TreeNode(): dim(0), depth(0), max_depth(MAX_DEPTH), parent(NULL), child(NULL), status(1) {ghost=false; weight=1;}
 
   virtual ~TreeNode();
 

@@ -16,17 +16,15 @@ class MPI_Node: public TreeNode{
 
  protected:
 
-  Real_t coord[COORD_DIM];
   MPI_Node * colleague[COLLEAGUE_COUNT];
-  Vector<char> packed_data;
 
  public:
 
-  Vector<Real_t> pt_coord;   //coordinates of points
-  Vector<Real_t> pt_value;   //value at points
-  Vector<size_t> pt_scatter; //scatter index mapping original data.
+  Vector<Real_t> pt_coord;
+  Vector<Real_t> pt_value;
+  Vector<size_t> pt_scatter;
 
-  MPI_Node(): TreeNode(){ghost=false; weight=1;}
+  MPI_Node(): TreeNode() {}
 
   virtual ~MPI_Node();
 
