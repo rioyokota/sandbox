@@ -1,4 +1,5 @@
 #include <pvfmm_common.hpp>
+#include <vector.hpp>
 
 #ifndef _PVFMM_TREE_NODE_HPP_
 #define _PVFMM_TREE_NODE_HPP_
@@ -17,6 +18,10 @@ class TreeNode{
   TreeNode** child;      //Pointer child nodes
   int status;
 
+  bool ghost;
+  size_t max_pts;
+  long long weight;
+
  public:
 
   class NodeData{
@@ -28,6 +33,9 @@ class TreeNode{
 
      int max_depth;
      int dim;
+     size_t max_pts;
+     Vector<Real_t> pt_coord;
+     Vector<Real_t> pt_value;
   };
 
   TreeNode(): dim(0), depth(0), max_depth(MAX_DEPTH), parent(NULL), child(NULL), status(1) { }

@@ -6,7 +6,6 @@
 #include <pvfmm_common.hpp>
 #include <tree_node.hpp>
 #include <mortonid.hpp>
-#include <vector.hpp>
 
 #ifndef _PVFMM_MPI_NODE_HPP_
 #define _PVFMM_MPI_NODE_HPP_
@@ -16,10 +15,6 @@ namespace pvfmm{
 class MPI_Node: public TreeNode{
 
  protected:
-
-  bool ghost;
-  size_t max_pts;
-  long long weight;
 
   Real_t coord[COORD_DIM];
   MPI_Node * colleague[COLLEAGUE_COUNT];
@@ -31,16 +26,8 @@ class MPI_Node: public TreeNode{
   Vector<Real_t> pt_value;   //value at points
   Vector<size_t> pt_scatter; //scatter index mapping original data.
 
-  class NodeData: public TreeNode::NodeData{
-
-   public:
-
-     size_t max_pts;
-     Vector<Real_t> pt_coord;
-     Vector<Real_t> pt_value;
-  };
-
   MPI_Node(): TreeNode(){ghost=false; weight=1;}
+
   virtual ~MPI_Node();
 
   virtual void Initialize(TreeNode* parent_, int path2node_, TreeNode::NodeData*) ;
