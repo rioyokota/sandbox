@@ -13,14 +13,23 @@
 
 namespace pvfmm{
 
-struct PackedData{
-  size_t length;//Length of data
-  void* data;   //Pointer to data
-};
-
 class MPI_Node: public TreeNode{
 
+ protected:
+
+  bool ghost;
+  size_t max_pts;
+  long long weight;
+
+  Real_t coord[COORD_DIM];
+  MPI_Node * colleague[COLLEAGUE_COUNT];
+  Vector<char> packed_data;
+
  public:
+
+  Vector<Real_t> pt_coord;   //coordinates of points
+  Vector<Real_t> pt_value;   //value at points
+  Vector<size_t> pt_scatter; //scatter index mapping original data.
 
   class NodeData: public TreeNode::NodeData{
 
@@ -68,19 +77,6 @@ class MPI_Node: public TreeNode{
 
   virtual void ReadVal(std::vector<Real_t> x,std::vector<Real_t> y, std::vector<Real_t> z, Real_t* val, bool show_ghost=true);
 
-  Vector<Real_t> pt_coord;   //coordinates of points
-  Vector<Real_t> pt_value;   //value at points
-  Vector<size_t> pt_scatter; //scatter index mapping original data.
-
- protected:
-
-  bool ghost;
-  size_t max_pts;
-  long long weight;
-
-  Real_t coord[COORD_DIM];
-  MPI_Node * colleague[COLLEAGUE_COUNT];
-  Vector<char> packed_data;
 };
 
 }//end namespace
