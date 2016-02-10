@@ -14,10 +14,6 @@ namespace pvfmm{
 
 class MPI_Node: public TreeNode{
 
- protected:
-
-  MPI_Node * colleague[COLLEAGUE_COUNT];
-
  public:
 
   Vector<Real_t> pt_coord;
@@ -40,9 +36,9 @@ class MPI_Node: public TreeNode{
 
   virtual void ClearData();
 
-  MPI_Node * Colleague(int index){return colleague[index];}
+  MPI_Node * Colleague(int index){return (MPI_Node*)colleague[index];}
 
-  void SetColleague(MPI_Node * node_, int index){colleague[index]=node_;}
+  void SetColleague(MPI_Node * node_, int index){colleague[index]=(TreeNode*)node_;}
 
   virtual long long& NodeCost(){return weight;}
 

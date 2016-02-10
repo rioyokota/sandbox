@@ -23,6 +23,7 @@ class TreeNode{
   long long weight;
 
   Real_t coord[COORD_DIM];
+  TreeNode * colleague[COLLEAGUE_COUNT];
 
  public:
 
