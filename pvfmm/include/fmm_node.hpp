@@ -28,7 +28,6 @@ class FMM_Node: public Node{
  public:
 
   typedef Node Node_t; //Type of base node class
-  typedef typename Node_t::Real_t Real_t;
 
   /**
    * \brief Base class for node data. Contains initialization data for the node.

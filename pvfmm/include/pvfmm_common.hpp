@@ -1,10 +1,3 @@
-/**
- * \file pvfmm_common.hpp
- * \author Dhairya Malhotra, dhairya.malhotra@gmail.com
- * \date 12-10-2010
- * \brief This file contains common definitions.
- */
-
 #include "pvfmm_config.h"
 
 #ifndef _PVFMM_COMMON_HPP_
@@ -42,6 +35,12 @@
 #define GLOBAL_MEM_BUFF 1024LL*0LL //in MB
 
 #define UNUSED(x) (void)(x) // to ignore unused variable warning.
+
+#if FLOAT
+typedef float Real_t;
+#else
+typedef double Real_t;
+#endif
 
 #include <math_utils.hpp>
 

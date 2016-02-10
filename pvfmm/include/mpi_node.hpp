@@ -1,11 +1,3 @@
-/**
- * \file mpi_node.hpp
- * \author Dhairya Malhotra, dhairya.malhotra@gmail.com
- * \date 12-10-2010
- * \brief This file contains the definition of a virtual base class for a
- * locally essential tree node.
- */
-
 #include <vector>
 #include <cassert>
 #include <cstdlib>
@@ -21,28 +13,15 @@
 
 namespace pvfmm{
 
-/**
- * \brief A structure for storing packed data for transmitting a node to
- * another MPI process.
- */
 struct PackedData{
   size_t length;//Length of data
   void* data;   //Pointer to data
 };
 
-/**
- * \brief Virtual base class for a locally essential tree node.
- */
-template <class T>
 class MPI_Node: public TreeNode{
 
  public:
 
-  typedef T Real_t;
-
-  /**
-   * \brief Base class for node data. Contains initialization data for the node.
-   */
   class NodeData: public TreeNode::NodeData{
 
    public:
@@ -52,26 +31,11 @@ class MPI_Node: public TreeNode{
      Vector<Real_t> pt_value;
   };
 
-  /**
-   * \brief Initialize.
-   */
   MPI_Node(): TreeNode(){ghost=false; weight=1;}
-
-  /**
-   * \brief Virtual destructor.
-   */
   virtual ~MPI_Node();
 
-  /**
-   * \brief Initialize the node with relevant data.
-   */
   virtual void Initialize(TreeNode* parent_, int path2node_, TreeNode::NodeData*) ;
 
-  /**
-   * \brief Returns list of coordinate and value vectors which need to be
-   * sorted and partitioned across MPI processes and the scatter index is
-   * saved.
-   */
   virtual void NodeDataVec(std::vector<Vector<Real_t>*>& coord,
                            std::vector<Vector<Real_t>*>& value,
                            std::vector<Vector<size_t>*>& scatter){
@@ -80,61 +44,26 @@ class MPI_Node: public TreeNode{
     scatter.push_back(&pt_scatter);
   }
 
-  /**
-   * \brief Clear node data.
-   */
   virtual void ClearData();
 
-  /**
-   * \brief Returns the colleague corresponding to the input index.
-   */
-  MPI_Node<Real_t>* Colleague(int index){return colleague[index];}
+  MPI_Node * Colleague(int index){return colleague[index];}
 
-  /**
-   * \brief Set the colleague corresponding to the input index.
-   */
-  void SetColleague(MPI_Node<Real_t>* node_, int index){colleague[index]=node_;}
+  void SetColleague(MPI_Node * node_, int index){colleague[index]=node_;}
 
-  /**
-   * \brief Returns the cost of this node. Used for load balancing.
-   */
   virtual long long& NodeCost(){return weight;}
 
-  /**
-   * \brief Returns an array of size dim containing the coordinates of the
-   * node.
-   */
   Real_t* Coord(){assert(coord!=NULL); return coord;}
 
-  /**
-   * \brief Determines if the node is a Ghost node or not.
-   */
   bool IsGhost(){return ghost;}
 
-  /**
-   * \brief Sets the ghost flag of this node.
-   */
   void SetGhost(bool x){ghost=x;}
 
-  /**
-   * \brief Gets Morton Id of this node.
-   */
   inline MortonId GetMortonId();
 
-  /**
-   * \brief Sets the coordinates of this node using the given Morton Id.
-   */
   inline void SetCoord(MortonId& mid);
 
-  /**
-   * \brief Allocate a new object of the same type (as the derived class) and
-   * return a pointer to it type cast as (TreeNode*).
-   */
   virtual TreeNode* NewNode(TreeNode* n_=NULL);
 
-  /**
-   * \brief Create child nodes and Initialize them.
-   */
   virtual void Subdivide();
 
   virtual void ReadVal(std::vector<Real_t> x,std::vector<Real_t> y, std::vector<Real_t> z, Real_t* val, bool show_ghost=true);
@@ -150,7 +79,7 @@ class MPI_Node: public TreeNode{
   long long weight;
 
   Real_t coord[COORD_DIM];
-  MPI_Node<Real_t>* colleague[COLLEAGUE_COUNT];
+  MPI_Node * colleague[COLLEAGUE_COUNT];
   Vector<char> packed_data;
 };
 

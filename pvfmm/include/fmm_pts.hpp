@@ -67,7 +67,6 @@ class FMM_Pts{
  public:
 
   typedef FMM_Tree<FMM_Pts<FMMNode> > FMMTree_t;
-  typedef typename FMMNode::Real_t Real_t;
   typedef FMMNode FMMNode_t;
 
   class FMMData: public FMM_Data<Real_t>{

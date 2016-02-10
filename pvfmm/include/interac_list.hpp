@@ -21,9 +21,6 @@ namespace pvfmm{
 
 template <class Node_t>
 class InteracList{
-
-  typedef typename Node_t::Real_t Real_t;
-
   public:
 
     /**

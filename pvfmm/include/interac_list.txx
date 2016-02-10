@@ -278,13 +278,13 @@ void InteracList<Node_t>::BuildList(Node_t* n, Mat_Type t){
 }
 
 template <class Node_t>
-Matrix<typename Node_t::Real_t>& InteracList<Node_t>::ClassMat(int l, Mat_Type type, size_t indx){
+Matrix<Real_t>& InteracList<Node_t>::ClassMat(int l, Mat_Type type, size_t indx){
   size_t indx0=InteracClass(type, indx);
   return mat->Mat(l, type, indx0);
 }
 
 template <class Node_t>
-Permutation<typename Node_t::Real_t>& InteracList<Node_t>::Perm_R(int l, Mat_Type type, size_t indx){
+Permutation<Real_t>& InteracList<Node_t>::Perm_R(int l, Mat_Type type, size_t indx){
   size_t indx0=InteracClass(type, indx);
   Matrix     <Real_t>& M0      =mat->Mat   (l, type, indx0);
   Permutation<Real_t>& row_perm=mat->Perm_R(l, type, indx );
@@ -312,7 +312,7 @@ Permutation<typename Node_t::Real_t>& InteracList<Node_t>::Perm_R(int l, Mat_Typ
 }
 
 template <class Node_t>
-Permutation<typename Node_t::Real_t>& InteracList<Node_t>::Perm_C(int l, Mat_Type type, size_t indx){
+Permutation<Real_t>& InteracList<Node_t>::Perm_C(int l, Mat_Type type, size_t indx){
   size_t indx0=InteracClass(type, indx);
   Matrix     <Real_t>& M0      =mat->Mat   (l, type, indx0);
   Permutation<Real_t>& col_perm=mat->Perm_C(l, type, indx );

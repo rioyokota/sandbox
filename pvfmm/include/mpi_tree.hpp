@@ -24,7 +24,6 @@ class MPI_Tree: public Tree<TreeNode>{
  public:
 
   typedef TreeNode Node_t;
-  typedef typename Node_t::Real_t Real_t;
 
   MPI_Tree(): Tree<Node_t>() {}
   virtual ~MPI_Tree() {}

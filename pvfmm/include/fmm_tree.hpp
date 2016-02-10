@@ -20,7 +20,6 @@ class FMM_Tree: public MPI_Tree<typename FMM_Mat_t::FMMNode_t>{
  public:
 
   typedef typename FMM_Mat_t::FMMNode_t Node_t;
-  typedef typename FMM_Mat_t::Real_t Real_t;
 
   /**
    * \brief Constructor.

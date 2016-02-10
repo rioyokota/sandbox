@@ -6,7 +6,7 @@
 #include <fmm_tree.hpp>
 
 template <class FMM_Mat_t>
-void CheckFMMOutput(pvfmm::FMM_Tree<FMM_Mat_t>* mytree, const pvfmm::Kernel<typename FMM_Mat_t::Real_t>* mykernel);
+void CheckFMMOutput(pvfmm::FMM_Tree<FMM_Mat_t>* mytree, const pvfmm::Kernel<Real_t>* mykernel);
 
 template <class Real_t>
 struct TestFn{
@@ -14,7 +14,7 @@ struct TestFn{
 };
 
 template <class FMMTree_t>
-void CheckChebOutput(FMMTree_t* mytree, typename TestFn<typename FMMTree_t::Real_t>::Fn_t fn_poten, int fn_dof, std::string t_name="");
+void CheckChebOutput(FMMTree_t* mytree, typename TestFn<Real_t>::Fn_t fn_poten, int fn_dof, std::string t_name="");
 
 enum DistribType{
   UnifGrid,

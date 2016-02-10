@@ -5,7 +5,7 @@
  */
 
 template <class FMM_Mat_t>
-void CheckFMMOutput(pvfmm::FMM_Tree<FMM_Mat_t>* mytree, const pvfmm::Kernel<typename FMM_Mat_t::Real_t>* mykernel, std::string t_name){
+void CheckFMMOutput(pvfmm::FMM_Tree<FMM_Mat_t>* mytree, const pvfmm::Kernel<Real_t>* mykernel, std::string t_name){
   if(mykernel==NULL) return;
 
   // Find out number of OMP thereads.
@@ -16,7 +16,6 @@ void CheckFMMOutput(pvfmm::FMM_Tree<FMM_Mat_t>* mytree, const pvfmm::Kernel<type
 
   typedef typename FMM_Mat_t::FMMData FMM_Data_t;
   typedef typename FMM_Mat_t::FMMNode_t FMMNode_t;
-  typedef typename FMM_Mat_t::Real_t Real_t;
 
   // Read source data.
   std::vector<Real_t> src_coord;
@@ -95,9 +94,8 @@ void CheckFMMOutput(pvfmm::FMM_Tree<FMM_Mat_t>* mytree, const pvfmm::Kernel<type
 
 
 template <class FMMTree_t>
-void CheckChebOutput(FMMTree_t* mytree, typename TestFn<typename FMMTree_t::Real_t>::Fn_t fn_poten, int fn_dof, std::string t_name){
+void CheckChebOutput(FMMTree_t* mytree, typename TestFn<Real_t>::Fn_t fn_poten, int fn_dof, std::string t_name){
   typedef typename FMMTree_t::Node_t FMMNode_t;
-  typedef typename FMMTree_t::Real_t Real_t;
   pvfmm::Profile::Tic((std::string("Compute Error ")+t_name).c_str(),true,1);
 
   int myrank=0;
@@ -233,10 +231,10 @@ void CheckChebOutput(FMMTree_t* mytree, typename TestFn<typename FMMTree_t::Real
   }
 
   if(!myrank){
-    std::cout<<"Absolute L2 Error ["<<t_name<<"]     :  "<<std::scientific<<sqrt(l2_err)<<'\n';
-    std::cout<<"Relative L2 Error ["<<t_name<<"]     :  "<<std::scientific<<sqrt(l2_err/l2)<<'\n';
-    std::cout<<"Maximum Absolute Error ["<<t_name<<"]:  "<<std::scientific<<max_err<<'\n';
-    std::cout<<"Maximum Relative Error ["<<t_name<<"]:  "<<std::scientific<<max_err/max<<'\n';
+    std::cout<<"Absolute L2 Error ["<<t_name<<"]     :  "<<std::scientific<<sqrt(l2_err[0])<<'\n';
+    std::cout<<"Relative L2 Error ["<<t_name<<"]     :  "<<std::scientific<<sqrt(l2_err[0]/l2[0])<<'\n';
+    std::cout<<"Maximum Absolute Error ["<<t_name<<"]:  "<<std::scientific<<max_err[0]<<'\n';
+    std::cout<<"Maximum Relative Error ["<<t_name<<"]:  "<<std::scientific<<max_err[0]/max[0]<<'\n';
   }
   pvfmm::Profile::Toc();
 }

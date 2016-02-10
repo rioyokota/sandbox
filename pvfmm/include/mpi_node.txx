@@ -12,12 +12,10 @@
 
 namespace pvfmm{
 
-template <class T>
-MPI_Node<T>::~MPI_Node(){
+MPI_Node::~MPI_Node(){
 }
 
-template <class T>
-void MPI_Node<T>::Initialize(TreeNode* parent_,int path2node_, TreeNode::NodeData* data_){
+void MPI_Node::Initialize(TreeNode* parent_,int path2node_, TreeNode::NodeData* data_){
   TreeNode::Initialize(parent_,path2node_,data_);
 
   //Set node coordinates.
@@ -27,7 +25,7 @@ void MPI_Node<T>::Initialize(TreeNode* parent_,int path2node_, TreeNode::NodeDat
   }else if(parent_){
     int flag=1;
     for(int j=0;j<dim;j++){
-      coord[j]=((MPI_Node<Real_t>*)parent_)->coord[j]+
+      coord[j]=((MPI_Node*)parent_)->coord[j]+
                ((Path2Node() & flag)?coord_offset:0.0f);
       flag=flag<<1;
     }
@@ -38,46 +36,41 @@ void MPI_Node<T>::Initialize(TreeNode* parent_,int path2node_, TreeNode::NodeDat
   for(int i=0;i<n;i++) colleague[i]=NULL;
 
   //Set MPI_Node specific data.
-  typename MPI_Node<Real_t>::NodeData* mpi_data=dynamic_cast<typename MPI_Node<Real_t>::NodeData*>(data_);
+  typename MPI_Node::NodeData* mpi_data=dynamic_cast<typename MPI_Node::NodeData*>(data_);
   if(data_){
     max_pts =mpi_data->max_pts;
     pt_coord=mpi_data->pt_coord;
     pt_value=mpi_data->pt_value;
   }else if(parent){
-    max_pts =((MPI_Node<T>*)parent)->max_pts;
-    SetGhost(((MPI_Node<T>*)parent)->IsGhost());
+    max_pts =((MPI_Node*)parent)->max_pts;
+    SetGhost(((MPI_Node*)parent)->IsGhost());
   }
 }
 
-template <class T>
-void MPI_Node<T>::ClearData(){
+void MPI_Node::ClearData(){
   pt_coord.ReInit(0);
   pt_value.ReInit(0);
 }
 
-template <class T>
-MortonId MPI_Node<T>::GetMortonId(){
+MortonId MPI_Node::GetMortonId(){
   assert(coord);
   Real_t s=0.25/(1UL<<MAX_DEPTH);
   return MortonId(coord[0]+s,coord[1]+s,coord[2]+s, Depth()); // TODO: Use interger coordinates instead of floating point.
 }
 
-template <class T>
-void MPI_Node<T>::SetCoord(MortonId& mid){
+void MPI_Node::SetCoord(MortonId& mid){
   assert(coord);
   mid.GetCoord(coord);
   depth=mid.GetDepth();
 }
 
-template <class T>
-TreeNode* MPI_Node<T>::NewNode(TreeNode* n_){
-  MPI_Node<Real_t>* n=(n_?static_cast<MPI_Node<Real_t>*>(n_):mem::aligned_new<MPI_Node<Real_t> >());
+TreeNode* MPI_Node::NewNode(TreeNode* n_){
+  MPI_Node * n=(n_?static_cast<MPI_Node*>(n_):mem::aligned_new<MPI_Node>());
   n->max_pts=max_pts;
   return TreeNode::NewNode(n);
 }
 
-template <class T>
-void MPI_Node<T>::Subdivide(){
+void MPI_Node::Subdivide(){
   if(!this->IsLeaf()) return;
   TreeNode::Subdivide();
   int nchld=(1UL<<this->Dim());
@@ -92,7 +85,7 @@ void MPI_Node<T>::Subdivide(){
     std::vector<std::vector<Vector<Real_t>*> > chld_pt_value(nchld);
     std::vector<std::vector<Vector<size_t>*> > chld_pt_scatter(nchld);
     for(size_t i=0;i<nchld;i++){
-      static_cast<MPI_Node<Real_t>*>((MPI_Node<T>*)this->Child(i))
+      static_cast<MPI_Node*>((MPI_Node*)this->Child(i))
         ->NodeDataVec(chld_pt_coord[i], chld_pt_value[i], chld_pt_scatter[i]);
     }
 
@@ -150,8 +143,7 @@ void MPI_Node<T>::Subdivide(){
   }
 };
 
-template <class T>
-void MPI_Node<T>::ReadVal(std::vector<Real_t> x,std::vector<Real_t> y, std::vector<Real_t> z, Real_t* val, bool show_ghost){
+void MPI_Node::ReadVal(std::vector<Real_t> x,std::vector<Real_t> y, std::vector<Real_t> z, Real_t* val, bool show_ghost){
   if(!pt_coord.Dim()) return;
   size_t n_pts=pt_coord.Dim()/dim;
   size_t data_dof=pt_value.Dim()/n_pts;

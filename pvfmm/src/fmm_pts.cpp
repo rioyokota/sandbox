@@ -10,9 +10,8 @@
 #include <fmm_tree.hpp>
 #include <utils.hpp>
 
-template <class Real_t>
 void fmm_test(size_t N, size_t M, Real_t b, int dist, int mult_order, int depth){
-  typedef pvfmm::FMM_Node<pvfmm::MPI_Node<Real_t> > FMMNode_t;
+  typedef pvfmm::FMM_Node<pvfmm::MPI_Node> FMMNode_t;
   typedef pvfmm::FMM_Pts<FMMNode_t> FMM_Mat_t;
   typedef pvfmm::FMM_Tree<FMM_Mat_t> FMM_Tree_t;
 
@@ -115,11 +114,7 @@ int main(int argc, char **argv){
 
   // Run FMM with above options.
   pvfmm::Profile::Tic("FMM_Test",true);
-#if FLOAT
-  fmm_test<float >(N, M, b, dist, m, d);
-#else
-  fmm_test<double>(N, M, b, dist, m, d);
-#endif
+  fmm_test(N, M, b, dist, m, d);
   pvfmm::Profile::Toc();
 
   //Output Profiling results.

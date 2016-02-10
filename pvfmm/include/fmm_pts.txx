@@ -325,7 +325,7 @@ Permutation<Real_t> equiv_surf_perm(size_t m, size_t p_indx, const Permutation<R
 }
 
 template <class FMMNode>
-Permutation<typename FMMNode::Real_t>& FMM_Pts<FMMNode>::PrecompPerm(Mat_Type type, Perm_Type perm_indx){
+Permutation<Real_t>& FMM_Pts<FMMNode>::PrecompPerm(Mat_Type type, Perm_Type perm_indx){
 
   //Check if the matrix already exists.
   Permutation<Real_t>& P_ = mat->Perm((Mat_Type)type, perm_indx);
@@ -382,7 +382,7 @@ Permutation<typename FMMNode::Real_t>& FMM_Pts<FMMNode>::PrecompPerm(Mat_Type ty
 }
 
 template <class FMMNode>
-Matrix<typename FMMNode::Real_t>& FMM_Pts<FMMNode>::Precomp(int level, Mat_Type type, size_t mat_indx){
+Matrix<Real_t>& FMM_Pts<FMMNode>::Precomp(int level, Mat_Type type, size_t mat_indx){
   if(this->ScaleInvar()) level=0;
 
   //Check if the matrix already exists.
