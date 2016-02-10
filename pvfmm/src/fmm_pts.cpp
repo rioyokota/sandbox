@@ -109,15 +109,17 @@ int main(int argc, char **argv){
   double   b=        strtod(commandline_option(argc, argv,    "-b",     "1", false, "-b    <int> =  (1)   : Bounding-box length (0 < b <= 1)"   ),NULL);
   int      m=       strtoul(commandline_option(argc, argv,    "-m",    "10", false, "-m    <int> = (10)   : Multipole order (+ve even integer)."),NULL,10);
   int      d=       strtoul(commandline_option(argc, argv,    "-d",    "15", false, "-d    <int> = (15)   : Maximum tree depth."                ),NULL,10);
-  bool    sp=   (1==strtoul(commandline_option(argc, argv,   "-sp",     "0", false, "-sp   <0/1> =  (0)   : Single Precision."                  ),NULL,10));
   int   dist=       strtoul(commandline_option(argc, argv, "-dist",     "0", false, "-dist <int> =  (0)   : 0) Unif 1) Sphere 2) Ellipse"       ),NULL,10);
   commandline_option_end(argc, argv);
   pvfmm::Profile::Enable(true);
 
   // Run FMM with above options.
   pvfmm::Profile::Tic("FMM_Test",true);
-  if(sp) fmm_test<float >(N, M, b, dist, m, d);
-  else   fmm_test<double>(N, M, b, dist, m, d);
+#if FLOAT
+  fmm_test<float >(N, M, b, dist, m, d);
+#else
+  fmm_test<double>(N, M, b, dist, m, d);
+#endif
   pvfmm::Profile::Toc();
 
   //Output Profiling results.

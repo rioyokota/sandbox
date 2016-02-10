@@ -1,5 +1,8 @@
 Look at header files and think of organization
  - fmm_node, mpi_node, fmm_pts -> flatten
+ - draw a graph of the PVFMM structure
+ - compare with exaFMM structure
+ - gradually make them similar (what do we need to change on the exaFMM side?)
 Separate files and put more into src
  - Shorten compile time
 Remove class hierarchy
