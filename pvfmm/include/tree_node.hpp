@@ -50,7 +50,7 @@ class TreeNode{
 
   TreeNode(): dim(0), depth(0), max_depth(MAX_DEPTH), parent(NULL), child(NULL), status(1) {ghost=false; weight=1;}
 
-  virtual ~TreeNode();
+  ~TreeNode();
 
   virtual void Initialize(TreeNode* parent_, int path2node_, TreeNode::NodeData* data_) ;
 
@@ -76,7 +76,7 @@ class TreeNode{
     depth=mid.GetDepth();
   }
 
-  int Path2Node();
+  virtual int Path2Node();
 
   virtual TreeNode* NewNode(TreeNode* n_=NULL);
 

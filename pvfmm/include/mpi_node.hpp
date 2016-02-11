@@ -15,12 +15,11 @@ class MPI_Node: public TreeNode{
 
   MPI_Node(): TreeNode() {}
 
-  virtual ~MPI_Node() {}
+  ~MPI_Node() {}
 
-  virtual void Initialize(TreeNode* parent_, int path2node_, NodeData* data_) {
+  void Initialize(TreeNode* parent_, int path2node_, NodeData* data_) {
     TreeNode::Initialize(parent_,path2node_,data_);
 
-    //Set node coordinates.
     Real_t coord_offset=((Real_t)1.0)/((Real_t)(((uint64_t)1)<<Depth()));
     if(!parent_){
       for(int j=0;j<dim;j++) coord[j]=0;
@@ -49,20 +48,20 @@ class MPI_Node: public TreeNode{
     }
   }
 
-  virtual void ClearData() {
+  void ClearData() {
     pt_coord.ReInit(0);
     pt_value.ReInit(0);
   }
 
-  virtual void NodeDataVec(std::vector<Vector<Real_t>*>& coord,
-                           std::vector<Vector<Real_t>*>& value,
-                           std::vector<Vector<size_t>*>& scatter){
+  void NodeDataVec(std::vector<Vector<Real_t>*>& coord,
+		   std::vector<Vector<Real_t>*>& value,
+		   std::vector<Vector<size_t>*>& scatter){
     coord  .push_back(&pt_coord  );
     value  .push_back(&pt_value  );
     scatter.push_back(&pt_scatter);
   }
 
-  virtual void Subdivide() {
+  void Subdivide() {
     if(!this->IsLeaf()) return;
     TreeNode::Subdivide();
     int nchld=(1UL<<this->Dim());
@@ -133,7 +132,7 @@ class MPI_Node: public TreeNode{
     }
   };
 
-  virtual void ReadVal(std::vector<Real_t> x,std::vector<Real_t> y, std::vector<Real_t> z, Real_t* val, bool show_ghost=true) {
+  void ReadVal(std::vector<Real_t> x,std::vector<Real_t> y, std::vector<Real_t> z, Real_t* val, bool show_ghost=true) {
     if(!pt_coord.Dim()) return;
     size_t n_pts=pt_coord.Dim()/dim;
     size_t data_dof=pt_value.Dim()/n_pts;

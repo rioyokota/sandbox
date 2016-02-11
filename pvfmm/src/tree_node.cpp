@@ -32,7 +32,6 @@ void TreeNode::Initialize(TreeNode* parent_, int path2node_, NodeData* data_){
   assert(path2node_>=0 && path2node_<(int)(1U<<dim));
   path2node=path2node_;
 
-  //assert(parent_==NULL?true:parent_->Child(path2node_)==this);
 }
 
 TreeNode* TreeNode::Child(int id){
