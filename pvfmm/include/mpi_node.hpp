@@ -15,11 +15,20 @@ class MPI_Node: public TreeNode{
 
   MPI_Node(): TreeNode() {}
 
-  ~MPI_Node() {}
+  ~MPI_Node() {
+    if(!child) return;
+    int n=(1UL<<dim);
+    for(int i=0;i<n;i++){
+      if(child[i]!=NULL)
+	mem::aligned_delete(child[i]);
+    }
+    mem::aligned_delete(child);
+    child=NULL;
+  }
 
   void Initialize(TreeNode* parent_, int path2node_, NodeData* data_) {
     parent=parent_;
-    depth=(parent==NULL?0:parent->Depth()+1);
+    depth=(parent==NULL?0:((MPI_Node*)parent)->Depth()+1);
     if(data_!=NULL){
       dim=data_->dim;
       max_depth=data_->max_depth;
@@ -55,7 +64,7 @@ class MPI_Node: public TreeNode{
       pt_value=mpi_data->value;
     }else if(parent){
       max_pts =parent->max_pts;
-      SetGhost(parent->IsGhost());
+      SetGhost(((MPI_Node*)parent)->IsGhost());
     }
   }
 
@@ -79,7 +88,7 @@ class MPI_Node: public TreeNode{
     int n=(1UL<<dim);
     child=mem::aligned_new<TreeNode*>(n);
     for(int i=0;i<n;i++){
-      child[i]=this->NewNode();
+      child[i]=NewNode();
       child[i]->parent=this;
       ((MPI_Node*)child[i])->Initialize(this,i,NULL);
     }
@@ -164,6 +173,88 @@ class MPI_Node: public TreeNode{
     for(size_t i=0;i<x.size()*y.size()*z.size()*data_dof;i++){
       val[i]=v[i%data_dof];
     }
+  }
+
+  void Truncate() {
+    if(!child) return;
+    SetStatus(1);
+    int n=(1UL<<dim);
+    for(int i=0;i<n;i++){
+      if(child[i]!=NULL)
+	mem::aligned_delete(child[i]);
+    }
+    mem::aligned_delete(child);
+    child=NULL;
+  }
+
+  int Dim(){return dim;}
+
+  int Depth(){return depth;}
+
+  bool IsLeaf(){return child == NULL;}
+
+  bool IsGhost(){return ghost;}
+
+  TreeNode* Child(int id){
+    assert(id<(1<<dim));
+    if(child==NULL) return NULL;
+    return child[id];
+  }
+
+  TreeNode* Parent(){
+    return parent;
+  }
+
+  inline MortonId GetMortonId() {
+    assert(coord);
+    Real_t s=0.25/(1UL<<MAX_DEPTH);
+    return MortonId(coord[0]+s,coord[1]+s,coord[2]+s, Depth());
+  }
+
+  inline void SetCoord(MortonId& mid){
+    assert(coord);
+    mid.GetCoord(coord);
+    depth=mid.GetDepth();
+  }
+
+  virtual int Path2Node(){
+    return path2node;
+  }
+
+  void SetParent(TreeNode* p, int path2node_) {
+    assert(path2node_>=0 && path2node_<(1<<dim));
+    assert(p==NULL?true:p->Child(path2node_)==this);
+
+    parent=p;
+    path2node=path2node_;
+    depth=(parent==NULL?0:((MPI_Node*)parent)->Depth()+1);
+    if(parent!=NULL) max_depth=parent->max_depth;
+  }
+
+  void SetChild(TreeNode* c, int id) {
+    assert(id<(1<<dim));
+    child[id]=c;
+    if(c!=NULL) ((MPI_Node*)child[id])->SetParent(this,id);
+  }
+
+  TreeNode * Colleague(int index){return colleague[index];}
+
+  void SetColleague(TreeNode * node_, int index){colleague[index]=node_;}
+
+  virtual long long& NodeCost(){return weight;}
+
+  Real_t* Coord(){assert(coord!=NULL); return coord;}
+
+  void SetGhost(bool x){ghost=x;}
+
+  int& GetStatus(){
+    return status;
+  }
+
+  void SetStatus(int flag){
+    status=(status|flag);
+    if(parent && !(((MPI_Node*)parent)->GetStatus() & flag))
+      ((MPI_Node*)parent)->SetStatus(flag);
   }
 
 };
