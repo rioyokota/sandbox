@@ -11,7 +11,6 @@
 #include <cassert>
 #include <cstdlib>
 
-#include <mpi_node.hpp>
 #include <fmm_node.hpp>
 #include <mem_mgr.hpp>
 #include <mortonid.hpp>

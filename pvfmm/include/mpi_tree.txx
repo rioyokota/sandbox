@@ -20,7 +20,7 @@
 #include <ompUtils.h>
 #include <parUtils.h>
 #include <mem_mgr.hpp>
-#include <mpi_node.hpp>
+#include <fmm_node.hpp>
 #include <profile.hpp>
 
 namespace pvfmm{

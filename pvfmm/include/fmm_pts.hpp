@@ -7,7 +7,7 @@
 #include <precomp_mat.hpp>
 #include <fft_wrapper.hpp>
 #include <mpi_tree.hpp>
-#include <mpi_node.hpp>
+#include <fmm_node.hpp>
 #include <mem_mgr.hpp>
 #include <vector.hpp>
 #include <matrix.hpp>
@@ -22,21 +22,6 @@ namespace pvfmm{
  * \brief This class contains FMM specific data that each node contains
  * along with the functions for manipulating the data.
  */
-template <class Real_t>
-class FMM_Data{
-
- public:
-
-  virtual ~FMM_Data(){}
-
-  virtual FMM_Data* NewData(){return mem::aligned_new<FMM_Data>();}
-
-  virtual void Clear();
-
-  Vector<Real_t> upward_equiv;
-  Vector<Real_t> dnward_equiv;
-};
-
 
 template <class Real_t>
 struct SetupData{

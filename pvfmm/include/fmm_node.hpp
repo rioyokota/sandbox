@@ -1,18 +1,62 @@
-#include <mpi_node.hpp>
-//#include <fmm_pts.hpp>
+#include <cmath>
+#include <vector>
+#include <cassert>
+#include <cstdlib>
+#include <stdint.h>
+
+#include <pvfmm_common.hpp>
+#include <matrix.hpp>
+#include <mem_mgr.hpp>
+#include <mortonid.hpp>
+#include <vector.hpp>
 
 #ifndef _PVFMM_FMM_NODE_HPP_
 #define _PVFMM_FMM_NODE_HPP_
 
 namespace pvfmm{
 
-class FMM_Node: public MPI_Node {
+template <class Real_t>
+class FMM_Data{
+
+ public:
+
+  virtual ~FMM_Data(){}
+
+  virtual FMM_Data* NewData(){return mem::aligned_new<FMM_Data>();}
+
+  virtual void Clear();
+
+  Vector<Real_t> upward_equiv;
+  Vector<Real_t> dnward_equiv;
+};
+
+class FMM_Node {
 
  private:
 
   FMM_Data<Real_t>* fmm_data;
 
  public:
+
+  int dim;
+  int depth;
+  int max_depth;
+  int path2node;
+  FMM_Node* parent;
+  FMM_Node** child;
+  int status;
+
+  bool ghost;
+  size_t max_pts;
+  size_t node_id;
+  long long weight;
+
+  Real_t coord[COORD_DIM];
+  FMM_Node * colleague[COLLEAGUE_COUNT];
+
+  Vector<Real_t> pt_coord;
+  Vector<Real_t> pt_value;
+  Vector<size_t> pt_scatter;
 
   Vector<Real_t> src_coord;
   Vector<Real_t> src_value;
@@ -26,8 +70,15 @@ class FMM_Node: public MPI_Node {
   size_t pt_cnt[2]; // Number of source, target pts.
   Vector<FMM_Node*> interac_list[Type_Count];
 
-  class NodeData: public MPI_Node::NodeData{
+  class NodeData {
     public:
+     virtual ~NodeData(){};
+     virtual void Clear(){}
+     int max_depth;
+     int dim;
+     size_t max_pts;
+     Vector<Real_t> coord;
+     Vector<Real_t> value;
      Vector<Real_t> src_coord;
      Vector<Real_t> src_value;
      Vector<Real_t> surf_coord;
@@ -36,17 +87,25 @@ class FMM_Node: public MPI_Node {
      Vector<Real_t> trg_value;
   };
 
-  FMM_Node(){
-    MPI_Node();
+  FMM_Node() : dim(0), depth(0), max_depth(MAX_DEPTH), parent(NULL), child(NULL), status(1),
+	       ghost(false), weight(1) {
     fmm_data=NULL;
   }
 
   virtual ~FMM_Node(){
     if(fmm_data!=NULL) mem::aligned_delete(fmm_data);
     fmm_data=NULL;
+    if(!child) return;
+    int n=(1UL<<dim);
+    for(int i=0;i<n;i++){
+      if(child[i]!=NULL)
+	mem::aligned_delete(child[i]);
+    }
+    mem::aligned_delete(child);
+    child=NULL;
   }
 
-  virtual void Initialize(MPI_Node* parent_, int path2node_, MPI_Node::NodeData* data_){
+  virtual void Initialize(FMM_Node* parent_, int path2node_, FMM_Node::NodeData* data_){
     parent=parent_;
     depth=(parent==NULL?0:parent->depth+1);
     if(data_!=NULL){
@@ -140,7 +199,7 @@ class FMM_Node: public MPI_Node {
     return fmm_data;
   }
 
-  MPI_Node* NewNode(MPI_Node* n_=NULL) {
+  FMM_Node* NewNode(FMM_Node* n_=NULL) {
     FMM_Node* n=(n_==NULL?mem::aligned_new<FMM_Node>():static_cast<FMM_Node*>(n_));
     if(fmm_data!=NULL) n->fmm_data=fmm_data->NewData();
     n->dim=dim;
@@ -154,7 +213,7 @@ class FMM_Node: public MPI_Node {
     if(child) return;
     SetStatus(1);
     int n=(1UL<<dim);
-    child=mem::aligned_new<MPI_Node*>(n);
+    child=mem::aligned_new<FMM_Node*>(n);
     for(int i=0;i<n;i++){
       child[i]=NewNode();
       child[i]->parent=this;
@@ -270,13 +329,13 @@ class FMM_Node: public MPI_Node {
   }
 
 
-  MPI_Node* Child(int id){
+  FMM_Node* Child(int id){
     assert(id<(1<<dim));
     if(child==NULL) return NULL;
     return child[id];
   }
 
-  MPI_Node* Parent(){
+  FMM_Node* Parent(){
     return parent;
   }
 
@@ -296,7 +355,7 @@ class FMM_Node: public MPI_Node {
     return path2node;
   }
 
-  void SetParent(MPI_Node* p, int path2node_) {
+  void SetParent(FMM_Node* p, int path2node_) {
     assert(path2node_>=0 && path2node_<(1<<dim));
     assert(p==NULL?true:p->Child(path2node_)==this);
     parent=p;
@@ -305,17 +364,17 @@ class FMM_Node: public MPI_Node {
     if(parent!=NULL) max_depth=parent->max_depth;
   }
 
-  void SetChild(MPI_Node* c, int id) {
+  void SetChild(FMM_Node* c, int id) {
     assert(id<(1<<dim));
     child[id]=c;
     if(c!=NULL) ((FMM_Node*)child[id])->SetParent(this,id);
   }
 
-  MPI_Node * Colleague(int index) {
+  FMM_Node * Colleague(int index) {
     return colleague[index];
   }
 
-  void SetColleague(MPI_Node * node_, int index) {
+  void SetColleague(FMM_Node * node_, int index) {
     colleague[index]=node_;
   }
 
