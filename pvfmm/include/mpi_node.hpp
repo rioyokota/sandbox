@@ -53,7 +53,7 @@ class MPI_Node {
   MPI_Node(): dim(0), depth(0), max_depth(MAX_DEPTH), parent(NULL), child(NULL), status(1),
               ghost(false), weight(1) {}
 
-  ~MPI_Node() {
+  virtual ~MPI_Node() {
     if(!child) return;
     int n=(1UL<<dim);
     for(int i=0;i<n;i++){
@@ -90,11 +90,9 @@ class MPI_Node {
       }
     }
 
-    //Initialize colleagues array.
     int n=pvfmm::pow<unsigned int>(3,Dim());
     for(int i=0;i<n;i++) colleague[i]=NULL;
 
-    //Set MPI_Node specific data.
     NodeData* mpi_data=dynamic_cast<NodeData*>(data_);
     if(data_){
       max_pts =mpi_data->max_pts;
@@ -146,11 +144,32 @@ class MPI_Node {
     child=NULL;
   }
 
-  int Dim(){return dim;}
+  int Dim() {
+    return dim;
+  }
 
-  bool IsLeaf(){return child == NULL;}
+  bool IsLeaf() {
+    return child == NULL;
+  }
 
-  bool IsGhost(){return ghost;}
+  bool IsGhost() {
+    return ghost;
+  }
+
+  void SetGhost(bool x) {
+    ghost=x;
+  }
+
+  int& GetStatus() {
+    return status;
+  }
+
+  void SetStatus(int flag) {
+    status=(status|flag);
+    if(parent && !(parent->GetStatus() & flag))
+      parent->SetStatus(flag);
+  }
+
 
   MPI_Node* Child(int id){
     assert(id<(1<<dim));
@@ -168,7 +187,7 @@ class MPI_Node {
     return MortonId(coord[0]+s,coord[1]+s,coord[2]+s, depth);
   }
 
-  inline void SetCoord(MortonId& mid){
+  inline void SetCoord(MortonId& mid) {
     assert(coord);
     mid.GetCoord(coord);
     depth=mid.GetDepth();
@@ -181,7 +200,6 @@ class MPI_Node {
   void SetParent(MPI_Node* p, int path2node_) {
     assert(path2node_>=0 && path2node_<(1<<dim));
     assert(p==NULL?true:p->Child(path2node_)==this);
-
     parent=p;
     path2node=path2node_;
     depth=(parent==NULL?0:parent->depth+1);
@@ -194,24 +212,17 @@ class MPI_Node {
     if(c!=NULL) child[id]->SetParent(this,id);
   }
 
-  MPI_Node * Colleague(int index){return colleague[index];}
-
-  void SetColleague(MPI_Node * node_, int index){colleague[index]=node_;}
-
-  virtual long long& NodeCost(){return weight;}
-
-  Real_t* Coord(){assert(coord!=NULL); return coord;}
-
-  void SetGhost(bool x){ghost=x;}
-
-  int& GetStatus(){
-    return status;
+  MPI_Node * Colleague(int index) {
+    return colleague[index];
   }
 
-  void SetStatus(int flag){
-    status=(status|flag);
-    if(parent && !(parent->GetStatus() & flag))
-      parent->SetStatus(flag);
+  void SetColleague(MPI_Node * node_, int index) {
+    colleague[index]=node_;
+  }
+
+  Real_t* Coord() {
+    assert(coord!=NULL);
+    return coord;
   }
 
 };

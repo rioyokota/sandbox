@@ -1,33 +1,38 @@
-#include <vector>
-#include <cstdlib>
-
-#include <pvfmm_common.hpp>
 #include <mpi_node.hpp>
-#include <fmm_pts.hpp>
+//#include <fmm_pts.hpp>
 
 #ifndef _PVFMM_FMM_NODE_HPP_
 #define _PVFMM_FMM_NODE_HPP_
 
 namespace pvfmm{
 
-/**
- * \brief Base class for node of FMM_Node.
- */
 class FMM_Node: public MPI_Node {
+
+ private:
+
+  FMM_Data<Real_t>* fmm_data;
 
  public:
 
+  Vector<Real_t> src_coord;
+  Vector<Real_t> src_value;
+  Vector<size_t> src_scatter;
+  Vector<Real_t> surf_coord;
+  Vector<Real_t> surf_value;
+  Vector<size_t> surf_scatter;
+  Vector<Real_t> trg_coord;
+  Vector<Real_t> trg_value;
+  Vector<size_t> trg_scatter;
+  size_t pt_cnt[2]; // Number of source, target pts.
+  Vector<FMM_Node*> interac_list[Type_Count];
+
   class NodeData: public MPI_Node::NodeData{
-
     public:
-
-     Vector<Real_t> src_coord; //Point sources.
+     Vector<Real_t> src_coord;
      Vector<Real_t> src_value;
-
-     Vector<Real_t> surf_coord; //Surface sources.
+     Vector<Real_t> surf_coord;
      Vector<Real_t> surf_value;
-
-     Vector<Real_t> trg_coord; //Target coordinates.
+     Vector<Real_t> trg_coord;
      Vector<Real_t> trg_value;
   };
 
@@ -173,25 +178,6 @@ class FMM_Node: public MPI_Node {
     }
   }
 
-  Vector<Real_t> src_coord;  //Point sources.
-  Vector<Real_t> src_value;
-  Vector<size_t> src_scatter;
-
-  Vector<Real_t> surf_coord; //Surface sources.
-  Vector<Real_t> surf_value; //Normal and src strength.
-  Vector<size_t> surf_scatter;
-
-  Vector<Real_t> trg_coord;  //Target coordinates.
-  Vector<Real_t> trg_value;
-  Vector<size_t> trg_scatter;
-
-  size_t pt_cnt[2]; // Number of source, target pts.
-  Vector<FMM_Node*> interac_list[Type_Count];
-
- private:
-
-  FMM_Data<Real_t>* fmm_data; //FMM specific data.
-  Vector<char> pkd_data; //Temporary variable for storing packed data.
 };
 
 }//end namespace
