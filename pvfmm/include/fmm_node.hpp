@@ -1,13 +1,19 @@
-#include <cmath>
-#include <vector>
 #include <cassert>
+#include <cmath>
 #include <cstdlib>
 #include <stdint.h>
+#include <string>
+#include <vector>
 
-#include <pvfmm_common.hpp>
+#include <fft_wrapper.hpp>
+#include <interac_list.hpp>
+#include <kernel.hpp>
 #include <matrix.hpp>
 #include <mem_mgr.hpp>
 #include <mortonid.hpp>
+#include <mpi_tree.hpp>
+#include <precomp_mat.hpp>
+#include <pvfmm_common.hpp>
 #include <vector.hpp>
 
 #ifndef _PVFMM_FMM_NODE_HPP_
