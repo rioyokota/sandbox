@@ -29,6 +29,17 @@ class MPI_Node: public TreeNode{
   Vector<Real_t> pt_value;
   Vector<size_t> pt_scatter;
 
+  class NodeData{
+   public:
+     virtual ~NodeData(){};
+     virtual void Clear(){}
+     int max_depth;
+     int dim;
+     size_t max_pts;
+     Vector<Real_t> coord;
+     Vector<Real_t> value;
+  };
+
   MPI_Node(): dim(0), depth(0), max_depth(MAX_DEPTH), parent(NULL), child(NULL), status(1),
               ghost(false), weight(1) {}
 
@@ -74,7 +85,7 @@ class MPI_Node: public TreeNode{
     for(int i=0;i<n;i++) colleague[i]=NULL;
 
     //Set MPI_Node specific data.
-    typename TreeNode::NodeData* mpi_data=dynamic_cast<typename TreeNode::NodeData*>(data_);
+    NodeData* mpi_data=dynamic_cast<NodeData*>(data_);
     if(data_){
       max_pts =mpi_data->max_pts;
       pt_coord=mpi_data->coord;

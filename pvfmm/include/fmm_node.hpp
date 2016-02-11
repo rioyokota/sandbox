@@ -38,7 +38,7 @@ class FMM_Node: public MPI_Node {
 
   virtual ~FMM_Node();
 
-  virtual void Initialize(TreeNode* parent_, int path2node_, TreeNode::NodeData*) ;
+  virtual void Initialize(TreeNode* parent_, int path2node_, MPI_Node::NodeData*) ;
 
   virtual void NodeDataVec(std::vector<Vector<Real_t>*>& coord,
                            std::vector<Vector<Real_t>*>& value,

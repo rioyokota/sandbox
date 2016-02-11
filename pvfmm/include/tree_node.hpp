@@ -19,17 +19,6 @@ class TreeNode{
 
  public:
 
-  class NodeData{
-   public:
-     virtual ~NodeData(){};
-     virtual void Clear(){}
-     int max_depth;
-     int dim;
-     size_t max_pts;
-     Vector<Real_t> coord;
-     Vector<Real_t> value;
-  };
-
   virtual TreeNode* NewNode(TreeNode* n_=NULL){
     TreeNode* n=(n_==NULL?mem::aligned_new<TreeNode>():n_);
     return n;
