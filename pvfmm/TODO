@@ -6,3 +6,5 @@ Look at header files and think of organization
 Separate files and put more into src
  - Shorten compile time
 Remove class hierarchy
+
+Put ReadVal in utils.hpp

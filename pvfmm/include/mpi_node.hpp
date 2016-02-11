@@ -64,46 +64,6 @@ class MPI_Node {
     child=NULL;
   }
 
-  void ClearData() {
-    pt_coord.ReInit(0);
-    pt_value.ReInit(0);
-  }
-
-  void NodeDataVec(std::vector<Vector<Real_t>*>& coord,
-		   std::vector<Vector<Real_t>*>& value,
-		   std::vector<Vector<size_t>*>& scatter){
-    coord  .push_back(&pt_coord  );
-    value  .push_back(&pt_value  );
-    scatter.push_back(&pt_scatter);
-  }
-
-  void ReadVal(std::vector<Real_t> x,std::vector<Real_t> y, std::vector<Real_t> z, Real_t* val, bool show_ghost=true) {
-    if(!pt_coord.Dim()) return;
-    size_t n_pts=pt_coord.Dim()/dim;
-    size_t data_dof=pt_value.Dim()/n_pts;
-    std::vector<Real_t> v(data_dof,0);
-    for(size_t i=0;i<n_pts;i++)
-      for(int j=0;j<data_dof;j++)
-	v[j]+=pt_value[i*data_dof+j];
-    for(int j=0;j<data_dof;j++)
-      v[j]=v[j]/n_pts;
-    for(size_t i=0;i<x.size()*y.size()*z.size()*data_dof;i++){
-      val[i]=v[i%data_dof];
-    }
-  }
-
-  void Truncate() {
-    if(!child) return;
-    SetStatus(1);
-    int n=(1UL<<dim);
-    for(int i=0;i<n;i++){
-      if(child[i]!=NULL)
-	mem::aligned_delete(child[i]);
-    }
-    mem::aligned_delete(child);
-    child=NULL;
-  }
-
   int Dim() {
     return dim;
   }
