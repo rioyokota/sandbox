@@ -21,7 +21,7 @@ class TreeNode{
 
   virtual TreeNode* NewNode(TreeNode* n_=NULL){
     TreeNode* n=(n_==NULL?mem::aligned_new<TreeNode>():n_);
-    return n;
+    return NULL;
   }
 
 };

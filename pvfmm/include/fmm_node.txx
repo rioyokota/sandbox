@@ -39,21 +39,6 @@ void FMM_Node::ClearFMMData(){
 }
 
 
-TreeNode* FMM_Node::NewNode(TreeNode* n_){
-  FMM_Node* n=(n_==NULL?mem::aligned_new<FMM_Node>():static_cast<FMM_Node*>(n_));
-  if(fmm_data!=NULL) n->fmm_data=fmm_data->NewData();
-  n->dim=dim;
-  n->max_depth=max_depth;
-  n->max_pts=max_pts;
-  return n;
-}
-
-void FMM_Node::Subdivide(){
-  if(!this->IsLeaf()) return;
-  MPI_Node::Subdivide();
-}
-
-
 void FMM_Node::Truncate(){
   MPI_Node::Truncate();
 }
