@@ -12,7 +12,7 @@ void MPI_Node::Initialize(TreeNode* parent_,int path2node_, TreeNode::NodeData* 
   }else if(parent_){
     int flag=1;
     for(int j=0;j<dim;j++){
-      coord[j]=((MPI_Node*)parent_)->coord[j]+
+      coord[j]=(parent_)->coord[j]+
                ((Path2Node() & flag)?coord_offset:0.0f);
       flag=flag<<1;
     }
@@ -23,20 +23,15 @@ void MPI_Node::Initialize(TreeNode* parent_,int path2node_, TreeNode::NodeData* 
   for(int i=0;i<n;i++) colleague[i]=NULL;
 
   //Set MPI_Node specific data.
-  typename MPI_Node::NodeData* mpi_data=dynamic_cast<typename MPI_Node::NodeData*>(data_);
+  typename TreeNode::NodeData* mpi_data=dynamic_cast<typename TreeNode::NodeData*>(data_);
   if(data_){
     max_pts =mpi_data->max_pts;
     pt_coord=mpi_data->coord;
     pt_value=mpi_data->value;
   }else if(parent){
-    max_pts =((MPI_Node*)parent)->max_pts;
-    SetGhost(((MPI_Node*)parent)->IsGhost());
+    max_pts =parent->max_pts;
+    SetGhost(parent->IsGhost());
   }
-}
-
-void MPI_Node::ClearData(){
-  pt_coord.ReInit(0);
-  pt_value.ReInit(0);
 }
 
 void MPI_Node::Subdivide(){
@@ -53,8 +48,7 @@ void MPI_Node::Subdivide(){
     std::vector<std::vector<Vector<Real_t>*> > chld_pt_v(nchld);
     std::vector<std::vector<Vector<size_t>*> > chld_pt_s(nchld);
     for(size_t i=0;i<nchld;i++){
-      static_cast<MPI_Node*>((MPI_Node*)this->Child(i))
-        ->NodeDataVec(chld_pt_c[i], chld_pt_v[i], chld_pt_s[i]);
+      ((MPI_Node*)this->Child(i))->NodeDataVec(chld_pt_c[i], chld_pt_v[i], chld_pt_s[i]);
     }
 
     Real_t* c=this->Coord();

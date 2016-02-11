@@ -17,7 +17,7 @@ namespace pvfmm{
 
 class TreeNode{
 
- protected:
+ public:
 
   int dim;               //Dimension of the tree
   int depth;             //Depth of the node (root -> 0)
@@ -33,8 +33,6 @@ class TreeNode{
 
   Real_t coord[COORD_DIM];
   TreeNode * colleague[COLLEAGUE_COUNT];
-
- public:
 
   class NodeData{
 
@@ -55,8 +53,6 @@ class TreeNode{
   virtual ~TreeNode();
 
   virtual void Initialize(TreeNode* parent_, int path2node_, TreeNode::NodeData* data_) ;
-
-  virtual void ClearData(){}
 
   int Dim(){return dim;}
 

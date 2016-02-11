@@ -19,7 +19,10 @@ class MPI_Node: public TreeNode{
 
   virtual void Initialize(TreeNode* parent_, int path2node_, NodeData* data_) ;
 
-  virtual void ClearData();
+  virtual void ClearData() {
+    pt_coord.ReInit(0);
+    pt_value.ReInit(0);
+  }
 
   virtual void NodeDataVec(std::vector<Vector<Real_t>*>& coord,
                            std::vector<Vector<Real_t>*>& value,

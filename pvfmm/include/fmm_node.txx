@@ -32,7 +32,7 @@ void FMM_Node<Node>::Initialize(TreeNode* parent_,int path2node_, TreeNode::Node
 template <class Node>
 void FMM_Node<Node>::ClearData(){
   ClearFMMData();
-  TreeNode::ClearData();
+  Node::ClearData();
 }
 
 
