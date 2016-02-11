@@ -47,7 +47,44 @@ class FMM_Node: public MPI_Node {
   }
 
   virtual void Initialize(MPI_Node* parent_, int path2node_, MPI_Node::NodeData* data_){
-    MPI_Node::Initialize(parent_,path2node_,data_);
+    parent=parent_;
+    depth=(parent==NULL?0:parent->depth+1);
+    if(data_!=NULL){
+      dim=data_->dim;
+      max_depth=data_->max_depth;
+      if(max_depth>MAX_DEPTH) max_depth=MAX_DEPTH;
+    }else if(parent!=NULL){
+      dim=parent->Dim();
+      max_depth=parent->max_depth;
+    }
+    assert(path2node_>=0 && path2node_<(int)(1U<<dim));
+    path2node=path2node_;
+
+    Real_t coord_offset=((Real_t)1.0)/((Real_t)(((uint64_t)1)<<depth));
+    if(!parent_){
+      for(int j=0;j<dim;j++) coord[j]=0;
+    }else if(parent_){
+      int flag=1;
+      for(int j=0;j<dim;j++){
+	coord[j]=parent_->coord[j]+
+	  ((Path2Node() & flag)?coord_offset:0.0f);
+	flag=flag<<1;
+      }
+    }
+
+    int n=pvfmm::pow<unsigned int>(3,Dim());
+    for(int i=0;i<n;i++) colleague[i]=NULL;
+
+    NodeData* mpi_data=dynamic_cast<NodeData*>(data_);
+    if(data_){
+      max_pts =mpi_data->max_pts;
+      pt_coord=mpi_data->coord;
+      pt_value=mpi_data->value;
+    }else if(parent){
+      max_pts =parent->max_pts;
+      SetGhost(parent->IsGhost());
+    }
+
     typename FMM_Node::NodeData* data=dynamic_cast<typename FMM_Node::NodeData*>(data_);
     if(data_!=NULL){
       src_coord=data->src_coord;
@@ -107,8 +144,8 @@ class FMM_Node: public MPI_Node {
     child=mem::aligned_new<MPI_Node*>(n);
     for(int i=0;i<n;i++){
       child[i]=NewNode();
-      ((MPI_Node*)child[i])->parent=this;
-      ((MPI_Node*)child[i])->Initialize(this,i,NULL);
+      child[i]->parent=this;
+      ((FMM_Node*)child[i])->Initialize(this,i,NULL);
     }
     int nchld=(1UL<<this->Dim());
     if(!IsGhost()){ // Partition point coordinates and values.
