@@ -23,13 +23,11 @@ class MPI_Tree: public Tree<TreeNode>{
 
  public:
 
-  typedef TreeNode Node_t;
-
-  MPI_Tree(): Tree<Node_t>() {}
+  MPI_Tree(): Tree<TreeNode>() {}
   virtual ~MPI_Tree() {}
-  virtual void Initialize(typename Node_t::NodeData* data_);
+  virtual void Initialize(typename TreeNode::NodeData* data_);
   TreeNode* FindNode(MortonId& key, bool subdiv, TreeNode* start=NULL);
-  void SetColleagues(BoundaryType bndry=FreeSpace, Node_t* node=NULL) ;
+  void SetColleagues(BoundaryType bndry=FreeSpace, TreeNode* node=NULL) ;
 
  private:
 

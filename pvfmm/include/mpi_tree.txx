@@ -146,7 +146,7 @@ inline int points2Octree(const Vector<MortonId>& pt_mid, Vector<MortonId>& nodes
 }
 
 template <class TreeNode>
-void MPI_Tree<TreeNode>::Initialize(typename Node_t::NodeData* init_data){
+void MPI_Tree<TreeNode>::Initialize(typename TreeNode::NodeData* init_data){
   //Initialize root node.
   Profile::Tic("InitRoot",false,5);
   Tree<TreeNode>::Initialize(init_data);
@@ -214,7 +214,7 @@ void MPI_Tree<TreeNode>::Initialize(typename Node_t::NodeData* init_data){
     rnode->SetGhost(false);
     for(int i=0;i<omp_p;i++){
       size_t idx=(lin_oct.Dim()*i)/omp_p;
-      Node_t* n=FindNode(lin_oct[idx], true);
+      TreeNode* n=FindNode(lin_oct[idx], true);
       assert(n->GetMortonId()==lin_oct[idx]);
       UNUSED(n);
     }
@@ -225,7 +225,7 @@ void MPI_Tree<TreeNode>::Initialize(typename Node_t::NodeData* init_data){
       size_t b=(lin_oct.Dim()*(i+1))/omp_p;
 
       size_t idx=a;
-      Node_t* n=FindNode(lin_oct[idx], false);
+      TreeNode* n=FindNode(lin_oct[idx], false);
       if(a==0) n=rnode;
       while(n!=NULL && (idx<b || i==omp_p-1)){
         n->SetGhost(false);
@@ -252,14 +252,14 @@ void MPI_Tree<TreeNode>::Initialize(typename Node_t::NodeData* init_data){
 template <class TreeNode>
 TreeNode* MPI_Tree<TreeNode>::FindNode(MortonId& key, bool subdiv,  TreeNode* start){
   int num_child=1UL<<this->Dim();
-  Node_t* n=start;
+  TreeNode* n=start;
   if(n==NULL) n=this->RootNode();
   while(n->GetMortonId()<key && (!n->IsLeaf()||subdiv)){
     if(n->IsLeaf() && !n->IsGhost()) n->Subdivide();
     if(n->IsLeaf()) break;
     for(int j=0;j<num_child;j++){
-      if(((Node_t*)n->Child(j))->GetMortonId().NextId()>key){
-        n=(Node_t*)n->Child(j);
+      if(((TreeNode*)n->Child(j))->GetMortonId().NextId()>key){
+        n=(TreeNode*)n->Child(j);
         break;
       }
     }
@@ -270,12 +270,12 @@ TreeNode* MPI_Tree<TreeNode>::FindNode(MortonId& key, bool subdiv,  TreeNode* st
 
 
 template <class TreeNode>
-void MPI_Tree<TreeNode>::SetColleagues(BoundaryType bndry, Node_t* node){
+void MPI_Tree<TreeNode>::SetColleagues(BoundaryType bndry, TreeNode* node){
   int n1=(int)pvfmm::pow<unsigned int>(3,this->Dim());
   int n2=(int)pvfmm::pow<unsigned int>(2,this->Dim());
 
   if(node==NULL){
-    Node_t* curr_node=this->PreorderFirst();
+    TreeNode* curr_node=this->PreorderFirst();
     if(curr_node!=NULL){
       if(bndry==Periodic){
         for(int i=0;i<n1;i++)
@@ -286,14 +286,14 @@ void MPI_Tree<TreeNode>::SetColleagues(BoundaryType bndry, Node_t* node){
       curr_node=this->PreorderNxt(curr_node);
     }
 
-    Vector<std::vector<Node_t*> > nodes(MAX_DEPTH);
+    Vector<std::vector<TreeNode*> > nodes(MAX_DEPTH);
     while(curr_node!=NULL){
       nodes[curr_node->depth].push_back(curr_node);
       curr_node=this->PreorderNxt(curr_node);
     }
     for(size_t i=0;i<MAX_DEPTH;i++){
       size_t j0=nodes[i].size();
-      Node_t** nodes_=&nodes[i][0];
+      TreeNode** nodes_=&nodes[i][0];
       #pragma omp parallel for
       for(size_t j=0;j<j0;j++){
         SetColleagues(bndry, nodes_[j]);
@@ -301,21 +301,21 @@ void MPI_Tree<TreeNode>::SetColleagues(BoundaryType bndry, Node_t* node){
     }
 
   }else{
-    Node_t* parent_node;
-    Node_t* tmp_node1;
-    Node_t* tmp_node2;
+    TreeNode* parent_node;
+    TreeNode* tmp_node1;
+    TreeNode* tmp_node2;
 
     for(int i=0;i<n1;i++)node->SetColleague(NULL,i);
-    parent_node=(Node_t*)node->Parent();
+    parent_node=(TreeNode*)node->Parent();
     if(parent_node==NULL) return;
 
     int l=node->Path2Node();
     for(int i=0;i<n1;i++){ //For each coll of the parent
-      tmp_node1=(Node_t*)parent_node->Colleague(i);
+      tmp_node1=(TreeNode*)parent_node->Colleague(i);
       if(tmp_node1!=NULL)
       if(!tmp_node1->IsLeaf()){
         for(int j=0;j<n2;j++){ //For each child
-          tmp_node2=(Node_t*)tmp_node1->Child(j);
+          tmp_node2=(TreeNode*)tmp_node1->Child(j);
           if(tmp_node2!=NULL){
 
             bool flag=true;
