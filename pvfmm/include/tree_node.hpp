@@ -68,6 +68,18 @@ class TreeNode{
 
   TreeNode* Parent();
 
+  inline MortonId GetMortonId() {
+    assert(coord);
+    Real_t s=0.25/(1UL<<MAX_DEPTH);
+    return MortonId(coord[0]+s,coord[1]+s,coord[2]+s, Depth());
+  }
+
+  inline void SetCoord(MortonId& mid){
+    assert(coord);
+    mid.GetCoord(coord);
+    depth=mid.GetDepth();
+  }
+
   int Path2Node();
 
   virtual TreeNode* NewNode(TreeNode* n_=NULL);

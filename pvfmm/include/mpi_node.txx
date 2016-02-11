@@ -39,18 +39,6 @@ void MPI_Node::ClearData(){
   pt_value.ReInit(0);
 }
 
-MortonId MPI_Node::GetMortonId(){
-  assert(coord);
-  Real_t s=0.25/(1UL<<MAX_DEPTH);
-  return MortonId(coord[0]+s,coord[1]+s,coord[2]+s, Depth()); // TODO: Use interger coordinates instead of floating point.
-}
-
-void MPI_Node::SetCoord(MortonId& mid){
-  assert(coord);
-  mid.GetCoord(coord);
-  depth=mid.GetDepth();
-}
-
 void MPI_Node::Subdivide(){
   if(!this->IsLeaf()) return;
   TreeNode::Subdivide();
