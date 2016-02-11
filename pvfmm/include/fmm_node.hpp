@@ -1,9 +1,32 @@
+#include <profile.hpp>
+#include <cheb_utils.hpp>
 #include <cassert>
 #include <cmath>
 #include <cstdlib>
+#include <iostream>
+#include <omp.h>
+#include <set>
+#include <sstream>
 #include <stdint.h>
 #include <string>
 #include <vector>
+
+#ifdef PVFMM_HAVE_SYS_STAT_H
+#include <sys/stat.h>
+#endif
+
+#ifdef __SSE__
+#include <xmmintrin.h>
+#endif
+#ifdef __SSE2__
+#include <emmintrin.h>
+#endif
+#ifdef __SSE3__
+#include <pmmintrin.h>
+#endif
+#ifdef __AVX__
+#include <immintrin.h>
+#endif
 
 #include <fft_wrapper.hpp>
 #include <interac_list.hpp>

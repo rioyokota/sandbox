@@ -1,30 +1,3 @@
-#include <omp.h>
-#include <cmath>
-#include <cstdlib>
-#include <cassert>
-#include <sstream>
-#include <iostream>
-#include <stdint.h>
-#include <set>
-#ifdef PVFMM_HAVE_SYS_STAT_H
-#include <sys/stat.h>
-#endif
-
-#ifdef __SSE__
-#include <xmmintrin.h>
-#endif
-#ifdef __SSE2__
-#include <emmintrin.h>
-#endif
-#ifdef __SSE3__
-#include <pmmintrin.h>
-#endif
-#ifdef __AVX__
-#include <immintrin.h>
-#endif
-
-#include <profile.hpp>
-#include <cheb_utils.hpp>
 
 namespace pvfmm{
 
@@ -150,8 +123,8 @@ void FMM_Data<Real_t>::Clear(){
   upward_equiv.Resize(0);
 }
 
-template <class FMMNode>
-FMM_Pts<FMMNode>::~FMM_Pts() {
+template <class FMMNode_t>
+FMM_Pts<FMMNode_t>::~FMM_Pts() {
   if(mat!=NULL){
     delete mat;
     mat=NULL;
@@ -167,8 +140,8 @@ FMM_Pts<FMMNode>::~FMM_Pts() {
 
 
 
-template <class FMMNode>
-void FMM_Pts<FMMNode>::Initialize(int mult_order, const Kernel<Real_t>* kernel_){
+template <class FMMNode_t>
+void FMM_Pts<FMMNode_t>::Initialize(int mult_order, const Kernel<Real_t>* kernel_){
   Profile::Tic("InitFMM_Pts",true);{
 
   int rank=0;
@@ -324,8 +297,8 @@ Permutation<Real_t> equiv_surf_perm(size_t m, size_t p_indx, const Permutation<R
   return P;
 }
 
-template <class FMMNode>
-Permutation<Real_t>& FMM_Pts<FMMNode>::PrecompPerm(Mat_Type type, Perm_Type perm_indx){
+template <class FMMNode_t>
+Permutation<Real_t>& FMM_Pts<FMMNode_t>::PrecompPerm(Mat_Type type, Perm_Type perm_indx){
 
   //Check if the matrix already exists.
   Permutation<Real_t>& P_ = mat->Perm((Mat_Type)type, perm_indx);
@@ -381,8 +354,8 @@ Permutation<Real_t>& FMM_Pts<FMMNode>::PrecompPerm(Mat_Type type, Perm_Type perm
   return P_;
 }
 
-template <class FMMNode>
-Matrix<Real_t>& FMM_Pts<FMMNode>::Precomp(int level, Mat_Type type, size_t mat_indx){
+template <class FMMNode_t>
+Matrix<Real_t>& FMM_Pts<FMMNode_t>::Precomp(int level, Mat_Type type, size_t mat_indx){
   if(this->ScaleInvar()) level=0;
 
   //Check if the matrix already exists.
@@ -1019,8 +992,8 @@ Matrix<Real_t>& FMM_Pts<FMMNode>::Precomp(int level, Mat_Type type, size_t mat_i
   return M_;
 }
 
-template <class FMMNode>
-void FMM_Pts<FMMNode>::PrecompAll(Mat_Type type, int level){
+template <class FMMNode_t>
+void FMM_Pts<FMMNode_t>::PrecompAll(Mat_Type type, int level){
   if(level==-1){
     for(int l=0;l<MAX_DEPTH;l++){
       PrecompAll(type, l);
@@ -1061,8 +1034,8 @@ void FMM_Pts<FMMNode>::PrecompAll(Mat_Type type, int level){
   }
 }
 
-template <class FMMNode>
-void FMM_Pts<FMMNode>::CollectNodeData(FMMTree_t* tree, std::vector<FMMNode*>& node, std::vector<Matrix<Real_t> >& buff_list, std::vector<Vector<FMMNode_t*> >& n_list, std::vector<std::vector<Vector<Real_t>* > > vec_list){
+template <class FMMNode_t>
+void FMM_Pts<FMMNode_t>::CollectNodeData(FMMTree_t* tree, std::vector<FMMNode_t*>& node, std::vector<Matrix<Real_t> >& buff_list, std::vector<Vector<FMMNode_t*> >& n_list, std::vector<std::vector<Vector<Real_t>* > > vec_list){
   if(buff_list.size()<7) buff_list.resize(7);
   if(   n_list.size()<7)    n_list.resize(7);
   if( vec_list.size()<7)  vec_list.resize(7);
@@ -1078,10 +1051,10 @@ void FMM_Pts<FMMNode>::CollectNodeData(FMMTree_t* tree, std::vector<FMMNode*>& n
       vec_sz=M_uc2ue.Dim(1);
     }
 
-    std::vector< FMMNode* > node_lst;
+    std::vector< FMMNode_t* > node_lst;
     {// Construct node_lst
       node_lst.clear();
-      std::vector<std::vector< FMMNode* > > node_lst_(MAX_DEPTH+1);
+      std::vector<std::vector< FMMNode_t* > > node_lst_(MAX_DEPTH+1);
       FMMNode_t* r_node=NULL;
       for(size_t i=0;i<node.size();i++){
         if(!node[i]->IsLeaf()){
@@ -1132,10 +1105,10 @@ void FMM_Pts<FMMNode>::CollectNodeData(FMMTree_t* tree, std::vector<FMMNode*>& n
       vec_sz=M_dc2de0.Dim(0);
     }
 
-    std::vector< FMMNode* > node_lst;
+    std::vector< FMMNode_t* > node_lst;
     {// Construct node_lst
       node_lst.clear();
-      std::vector<std::vector< FMMNode* > > node_lst_(MAX_DEPTH+1);
+      std::vector<std::vector< FMMNode_t* > > node_lst_(MAX_DEPTH+1);
       FMMNode_t* r_node=NULL;
       for(size_t i=0;i<node.size();i++){
         if(!node[i]->IsLeaf()){
@@ -1177,9 +1150,9 @@ void FMM_Pts<FMMNode>::CollectNodeData(FMMTree_t* tree, std::vector<FMMNode*>& n
   }
   {// 2. upward_equiv_fft
     int indx=2;
-    std::vector< FMMNode* > node_lst;
+    std::vector< FMMNode_t* > node_lst;
     {
-      std::vector<std::vector< FMMNode* > > node_lst_(MAX_DEPTH+1);
+      std::vector<std::vector< FMMNode_t* > > node_lst_(MAX_DEPTH+1);
       for(size_t i=0;i<node.size();i++)
         if(!node[i]->IsLeaf())
           node_lst_[node[i]->depth].push_back(node[i]);
@@ -1191,9 +1164,9 @@ void FMM_Pts<FMMNode>::CollectNodeData(FMMTree_t* tree, std::vector<FMMNode*>& n
   }
   {// 3. dnward_check_fft
     int indx=3;
-    std::vector< FMMNode* > node_lst;
+    std::vector< FMMNode_t* > node_lst;
     {
-      std::vector<std::vector< FMMNode* > > node_lst_(MAX_DEPTH+1);
+      std::vector<std::vector< FMMNode_t* > > node_lst_(MAX_DEPTH+1);
       for(size_t i=0;i<node.size();i++)
         if(!node[i]->IsLeaf() && !node[i]->IsGhost())
           node_lst_[node[i]->depth].push_back(node[i]);
@@ -1208,7 +1181,7 @@ void FMM_Pts<FMMNode>::CollectNodeData(FMMTree_t* tree, std::vector<FMMNode*>& n
     int src_dof=kernel->ker_dim[0];
     int surf_dof=COORD_DIM+src_dof;
 
-    std::vector< FMMNode* > node_lst;
+    std::vector< FMMNode_t* > node_lst;
     for(size_t i=0;i<node.size();i++){// Construct node_lst
       if(node[i]->IsLeaf()){
         node_lst.push_back(node[i]);
@@ -1240,7 +1213,7 @@ void FMM_Pts<FMMNode>::CollectNodeData(FMMTree_t* tree, std::vector<FMMNode*>& n
     int indx=5;
     int trg_dof=kernel->ker_dim[1];
 
-    std::vector< FMMNode* > node_lst;
+    std::vector< FMMNode_t* > node_lst;
     for(size_t i=0;i<node.size();i++){// Construct node_lst
       if(node[i]->IsLeaf() && !node[i]->IsGhost()){
         node_lst.push_back(node[i]);
@@ -1264,7 +1237,7 @@ void FMM_Pts<FMMNode>::CollectNodeData(FMMTree_t* tree, std::vector<FMMNode*>& n
   {// 6. pts_coord
     int indx=6;
 
-    std::vector< FMMNode* > node_lst;
+    std::vector< FMMNode_t* > node_lst;
     for(size_t i=0;i<node.size();i++){// Construct node_lst
       if(node[i]->IsLeaf()){
         node_lst.push_back(node[i]);
@@ -1393,8 +1366,8 @@ void FMM_Pts<FMMNode>::CollectNodeData(FMMTree_t* tree, std::vector<FMMNode*>& n
 
 
 
-template <class FMMNode>
-void FMM_Pts<FMMNode>::SetupPrecomp(SetupData<Real_t>& setup_data){
+template <class FMMNode_t>
+void FMM_Pts<FMMNode_t>::SetupPrecomp(SetupData<Real_t>& setup_data){
   if(setup_data.precomp_data==NULL || setup_data.level>MAX_DEPTH) return;
 
   Profile::Tic("SetupPrecomp",true,25);
@@ -1413,8 +1386,8 @@ void FMM_Pts<FMMNode>::SetupPrecomp(SetupData<Real_t>& setup_data){
 
 }
 
-template <class FMMNode>
-void FMM_Pts<FMMNode>::SetupInterac(SetupData<Real_t>& setup_data){
+template <class FMMNode_t>
+void FMM_Pts<FMMNode_t>::SetupInterac(SetupData<Real_t>& setup_data){
   int level=setup_data.level;
   std::vector<Mat_Type>& interac_type_lst=setup_data.interac_type;
 
@@ -1463,14 +1436,14 @@ void FMM_Pts<FMMNode>::SetupInterac(SetupData<Real_t>& setup_data){
         precomp_offset+=header.total_size;
       }
 
-      Matrix<FMMNode*> src_interac_list(n_in ,mat_cnt); src_interac_list.SetZero();
-      Matrix<FMMNode*> trg_interac_list(n_out,mat_cnt); trg_interac_list.SetZero();
+      Matrix<FMMNode_t*> src_interac_list(n_in ,mat_cnt); src_interac_list.SetZero();
+      Matrix<FMMNode_t*> trg_interac_list(n_out,mat_cnt); trg_interac_list.SetZero();
       { // Build trg_interac_list
         #pragma omp parallel for
         for(size_t i=0;i<n_out;i++){
-          if(!((FMMNode*)nodes_out[i])->IsGhost() && (level==-1 || ((FMMNode*)nodes_out[i])->depth==level)){
-            Vector<FMMNode*>& lst=((FMMNode*)nodes_out[i])->interac_list[interac_type];
-            mem::memcopy(&trg_interac_list[i][0], &lst[0], lst.Dim()*sizeof(FMMNode*));
+          if(!((FMMNode_t*)nodes_out[i])->IsGhost() && (level==-1 || ((FMMNode_t*)nodes_out[i])->depth==level)){
+            Vector<FMMNode_t*>& lst=((FMMNode_t*)nodes_out[i])->interac_list[interac_type];
+            mem::memcopy(&trg_interac_list[i][0], &lst[0], lst.Dim()*sizeof(FMMNode_t*));
             assert(lst.Dim()==mat_cnt);
           }
         }
@@ -1484,7 +1457,7 @@ void FMM_Pts<FMMNode>::SetupInterac(SetupData<Real_t>& setup_data){
           }
         }
         #pragma omp parallel for
-        for(size_t i=0;i<n_in ;i++) ((FMMNode*)nodes_in [i])->node_id=i;
+        for(size_t i=0;i<n_in ;i++) ((FMMNode_t*)nodes_in [i])->node_id=i;
         #pragma omp parallel for
         for(size_t i=0;i<n_out;i++){
           for(size_t j=0;j<mat_cnt;j++){
@@ -1492,7 +1465,7 @@ void FMM_Pts<FMMNode>::SetupInterac(SetupData<Real_t>& setup_data){
               if(trg_interac_list[i][j]->node_id==n_in){
                 trg_interac_list[i][j]=NULL;
               }else{
-                src_interac_list[trg_interac_list[i][j]->node_id][j]=(FMMNode*)nodes_out[i];
+                src_interac_list[trg_interac_list[i][j]->node_id][j]=(FMMNode_t*)nodes_out[i];
               }
             }
           }
@@ -1543,7 +1516,7 @@ void FMM_Pts<FMMNode>::SetupInterac(SetupData<Real_t>& setup_data){
 
       { // Determine input_perm.
         size_t vec_size=M_dim0*dof;
-        for(size_t i=0;i<n_out;i++) ((FMMNode*)nodes_out[i])->node_id=i;
+        for(size_t i=0;i<n_out;i++) ((FMMNode_t*)nodes_out[i])->node_id=i;
         for(size_t k=1;k<interac_blk_dsp.size();k++){
           for(size_t i=0;i<n_in ;i++){
             for(size_t j=interac_blk_dsp[k-1];j<interac_blk_dsp[k];j++){
@@ -1566,7 +1539,7 @@ void FMM_Pts<FMMNode>::SetupInterac(SetupData<Real_t>& setup_data){
           for(size_t i=0;i<n_out;i++){
             for(size_t j=interac_blk_dsp[k-1];j<interac_blk_dsp[k];j++){
               if(trg_interac_list[i][j]!=NULL){
-                size_t depth=(this->ScaleInvar()?((FMMNode*)nodes_out[i])->depth:0);
+                size_t depth=(this->ScaleInvar()?((FMMNode_t*)nodes_out[i])->depth:0);
                 output_perm.push_back(precomp_data_offset[j][1+4*depth+2]); // prem
                 output_perm.push_back(precomp_data_offset[j][1+4*depth+3]); // scal
                 output_perm.push_back(interac_dsp[               i ][j]*vec_size*sizeof(Real_t)); // src_ptr
@@ -1634,8 +1607,8 @@ void FMM_Pts<FMMNode>::SetupInterac(SetupData<Real_t>& setup_data){
 
 }
 
-template <class FMMNode>
-void FMM_Pts<FMMNode>::EvalList(SetupData<Real_t>& setup_data){
+template <class FMMNode_t>
+void FMM_Pts<FMMNode_t>::EvalList(SetupData<Real_t>& setup_data){
   if(setup_data.interac_data.Dim(0)==0 || setup_data.interac_data.Dim(1)==0){
     Profile::Tic("Host2Device",false,25);
     Profile::Toc();
@@ -1786,8 +1759,8 @@ void FMM_Pts<FMMNode>::EvalList(SetupData<Real_t>& setup_data){
 
 
 
-template <class FMMNode>
-void FMM_Pts<FMMNode>::Source2UpSetup(SetupData<Real_t>&  setup_data, FMMTree_t* tree, std::vector<Matrix<Real_t> >& buff, std::vector<Vector<FMMNode_t*> >& n_list, int level){
+template <class FMMNode_t>
+void FMM_Pts<FMMNode_t>::Source2UpSetup(SetupData<Real_t>&  setup_data, FMMTree_t* tree, std::vector<Matrix<Real_t> >& buff, std::vector<Vector<FMMNode_t*> >& n_list, int level){
   if(!this->MultipoleOrder()) return;
   { // Set setup_data
     setup_data. level=level;
@@ -1858,8 +1831,8 @@ void FMM_Pts<FMMNode>::Source2UpSetup(SetupData<Real_t>&  setup_data, FMMTree_t*
     #pragma omp parallel for
     for(size_t i=0;i<nodes.size();i++){
       ((FMMNode_t*)nodes[i])->node_id=i;
-      Vector<Real_t>& coord_vec=((FMMNode*)nodes[i])->src_coord;
-      Vector<Real_t>& value_vec=((FMMNode*)nodes[i])->src_value;
+      Vector<Real_t>& coord_vec=((FMMNode_t*)nodes[i])->src_coord;
+      Vector<Real_t>& value_vec=((FMMNode_t*)nodes[i])->src_value;
       if(coord_vec.Dim()){
         coord.dsp[i]=&coord_vec[0]-coord.ptr[0][0];
         assert(coord.dsp[i]<coord.len);
@@ -1895,8 +1868,8 @@ void FMM_Pts<FMMNode>::Source2UpSetup(SetupData<Real_t>&  setup_data, FMMTree_t*
 
     #pragma omp parallel for
     for(size_t i=0;i<nodes.size();i++){
-      Vector<Real_t>& coord_vec=((FMMNode*)nodes[i])->surf_coord;
-      Vector<Real_t>& value_vec=((FMMNode*)nodes[i])->surf_value;
+      Vector<Real_t>& coord_vec=((FMMNode_t*)nodes[i])->surf_coord;
+      Vector<Real_t>& value_vec=((FMMNode_t*)nodes[i])->surf_value;
       if(coord_vec.Dim()){
         coord.dsp[i]=&coord_vec[0]-coord.ptr[0][0];
         assert(coord.dsp[i]<coord.len);
@@ -1932,8 +1905,8 @@ void FMM_Pts<FMMNode>::Source2UpSetup(SetupData<Real_t>&  setup_data, FMMTree_t*
 
     #pragma omp parallel for
     for(size_t i=0;i<nodes.size();i++){
-      Vector<Real_t>& coord_vec=tree->upwd_check_surf[((FMMNode*)nodes[i])->depth];
-      Vector<Real_t>& value_vec=((FMMData*)((FMMNode*)nodes[i])->FMMData())->upward_equiv;
+      Vector<Real_t>& coord_vec=tree->upwd_check_surf[((FMMNode_t*)nodes[i])->depth];
+      Vector<Real_t>& value_vec=((FMMData*)((FMMNode_t*)nodes[i])->FMMData())->upward_equiv;
       if(coord_vec.Dim()){
         coord.dsp[i]=&coord_vec[0]-coord.ptr[0][0];
         assert(coord.dsp[i]<coord.len);
@@ -2105,16 +2078,16 @@ void FMM_Pts<FMMNode>::Source2UpSetup(SetupData<Real_t>&  setup_data, FMMTree_t*
   PtSetup(setup_data, &data);
 }
 
-template <class FMMNode>
-void FMM_Pts<FMMNode>::Source2Up(SetupData<Real_t>&  setup_data){
+template <class FMMNode_t>
+void FMM_Pts<FMMNode_t>::Source2Up(SetupData<Real_t>&  setup_data){
   if(!this->MultipoleOrder()) return;
   //Add Source2Up contribution.
   this->EvalListPts(setup_data);
 }
 
 
-template <class FMMNode>
-void FMM_Pts<FMMNode>::Up2UpSetup(SetupData<Real_t>& setup_data, FMMTree_t* tree, std::vector<Matrix<Real_t> >& buff, std::vector<Vector<FMMNode_t*> >& n_list, int level){
+template <class FMMNode_t>
+void FMM_Pts<FMMNode_t>::Up2UpSetup(SetupData<Real_t>& setup_data, FMMTree_t* tree, std::vector<Matrix<Real_t> >& buff, std::vector<Vector<FMMNode_t*> >& n_list, int level){
   if(!this->MultipoleOrder()) return;
   { // Set setup_data
     setup_data.level=level;
@@ -2137,14 +2110,14 @@ void FMM_Pts<FMMNode>::Up2UpSetup(SetupData<Real_t>& setup_data, FMMTree_t* tree
   std::vector<void*>& nodes_out=setup_data.nodes_out;
   std::vector<Vector<Real_t>*>&  input_vector=setup_data. input_vector;  input_vector.clear();
   std::vector<Vector<Real_t>*>& output_vector=setup_data.output_vector; output_vector.clear();
-  for(size_t i=0;i<nodes_in .size();i++)  input_vector.push_back(&((FMMData*)((FMMNode*)nodes_in [i])->FMMData())->upward_equiv);
-  for(size_t i=0;i<nodes_out.size();i++) output_vector.push_back(&((FMMData*)((FMMNode*)nodes_out[i])->FMMData())->upward_equiv);
+  for(size_t i=0;i<nodes_in .size();i++)  input_vector.push_back(&((FMMData*)((FMMNode_t*)nodes_in [i])->FMMData())->upward_equiv);
+  for(size_t i=0;i<nodes_out.size();i++) output_vector.push_back(&((FMMData*)((FMMNode_t*)nodes_out[i])->FMMData())->upward_equiv);
 
   SetupInterac(setup_data);
 }
 
-template <class FMMNode>
-void FMM_Pts<FMMNode>::Up2Up     (SetupData<Real_t>& setup_data){
+template <class FMMNode_t>
+void FMM_Pts<FMMNode_t>::Up2Up     (SetupData<Real_t>& setup_data){
   if(!this->MultipoleOrder()) return;
   //Add Up2Up contribution.
   EvalList(setup_data);
@@ -2152,8 +2125,8 @@ void FMM_Pts<FMMNode>::Up2Up     (SetupData<Real_t>& setup_data){
 
 
 
-template <class FMMNode>
-void FMM_Pts<FMMNode>::PeriodicBC(FMMNode* node){
+template <class FMMNode_t>
+void FMM_Pts<FMMNode_t>::PeriodicBC(FMMNode_t* node){
   if(!this->ScaleInvar() || this->MultipoleOrder()==0) return;
   Matrix<Real_t>& M = Precomp(0, BC_Type, 0);
 
@@ -2171,8 +2144,8 @@ void FMM_Pts<FMMNode>::PeriodicBC(FMMNode* node){
 
 
 
-template <class FMMNode>
-void FMM_Pts<FMMNode>::FFT_UpEquiv(size_t dof, size_t m, size_t ker_dim0, Vector<size_t>& fft_vec, Vector<Real_t>& fft_scal,
+template <class FMMNode_t>
+void FMM_Pts<FMMNode_t>::FFT_UpEquiv(size_t dof, size_t m, size_t ker_dim0, Vector<size_t>& fft_vec, Vector<Real_t>& fft_scal,
     Vector<Real_t>& input_data, Vector<Real_t>& output_data, Vector<Real_t>& buffer_){
 
   size_t n1=m*2;
@@ -2253,8 +2226,8 @@ void FMM_Pts<FMMNode>::FFT_UpEquiv(size_t dof, size_t m, size_t ker_dim0, Vector
   }
 }
 
-template <class FMMNode>
-void FMM_Pts<FMMNode>::FFT_Check2Equiv(size_t dof, size_t m, size_t ker_dim1, Vector<size_t>& ifft_vec, Vector<Real_t>& ifft_scal,
+template <class FMMNode_t>
+void FMM_Pts<FMMNode_t>::FFT_Check2Equiv(size_t dof, size_t m, size_t ker_dim1, Vector<size_t>& ifft_vec, Vector<Real_t>& ifft_scal,
     Vector<Real_t>& input_data, Vector<Real_t>& output_data, Vector<Real_t>& buffer_){
 
   size_t n1=m*2;
@@ -2823,8 +2796,8 @@ void VListHadamard(size_t dof, size_t M_dim, size_t ker_dim0, size_t ker_dim1, V
   mem::aligned_delete<Real_t>(zero_vec1);
 }
 
-template <class FMMNode>
-void FMM_Pts<FMMNode>::V_ListSetup(SetupData<Real_t>&  setup_data, FMMTree_t* tree, std::vector<Matrix<Real_t> >& buff, std::vector<Vector<FMMNode_t*> >& n_list, int level){
+template <class FMMNode_t>
+void FMM_Pts<FMMNode_t>::V_ListSetup(SetupData<Real_t>&  setup_data, FMMTree_t* tree, std::vector<Matrix<Real_t> >& buff, std::vector<Vector<FMMNode_t*> >& n_list, int level){
   if(!this->MultipoleOrder()) return;
   if(level==0) return;
   { // Set setup_data
@@ -2847,8 +2820,8 @@ void FMM_Pts<FMMNode>::V_ListSetup(SetupData<Real_t>&  setup_data, FMMTree_t* tr
   std::vector<void*>& nodes_out=setup_data.nodes_out;
   std::vector<Vector<Real_t>*>&  input_vector=setup_data. input_vector;  input_vector.clear();
   std::vector<Vector<Real_t>*>& output_vector=setup_data.output_vector; output_vector.clear();
-  for(size_t i=0;i<nodes_in .size();i++)  input_vector.push_back(&((FMMData*)((FMMNode*)((FMMNode*)nodes_in [i])->Child(0))->FMMData())->upward_equiv);
-  for(size_t i=0;i<nodes_out.size();i++) output_vector.push_back(&((FMMData*)((FMMNode*)((FMMNode*)nodes_out[i])->Child(0))->FMMData())->dnward_equiv);
+  for(size_t i=0;i<nodes_in .size();i++)  input_vector.push_back(&((FMMData*)((FMMNode_t*)((FMMNode_t*)nodes_in [i])->Child(0))->FMMData())->upward_equiv);
+  for(size_t i=0;i<nodes_out.size();i++) output_vector.push_back(&((FMMData*)((FMMNode_t*)((FMMNode_t*)nodes_out[i])->Child(0))->FMMData())->dnward_equiv);
 
   /////////////////////////////////////////////////////////////////////////////
   Real_t eps=1e-10;
@@ -2923,28 +2896,28 @@ void FMM_Pts<FMMNode>::V_ListSetup(SetupData<Real_t>&  setup_data, FMMTree_t* tr
     {
       Matrix<Real_t>&  input_data=*setup_data. input_data;
       Matrix<Real_t>& output_data=*setup_data.output_data;
-      std::vector<std::vector<FMMNode*> > nodes_blk_in (n_blk0);
-      std::vector<std::vector<FMMNode*> > nodes_blk_out(n_blk0);
+      std::vector<std::vector<FMMNode_t*> > nodes_blk_in (n_blk0);
+      std::vector<std::vector<FMMNode_t*> > nodes_blk_out(n_blk0);
 
       Vector<Real_t> src_scal=this->kernel->k_m2l->src_scal;
       Vector<Real_t> trg_scal=this->kernel->k_m2l->trg_scal;
 
-      for(size_t i=0;i<n_in;i++) ((FMMNode*)nodes_in[i])->node_id=i;
+      for(size_t i=0;i<n_in;i++) ((FMMNode_t*)nodes_in[i])->node_id=i;
       for(size_t blk0=0;blk0<n_blk0;blk0++){
         size_t blk0_start=(n_out* blk0   )/n_blk0;
         size_t blk0_end  =(n_out*(blk0+1))/n_blk0;
 
-        std::vector<FMMNode*>& nodes_in_ =nodes_blk_in [blk0];
-        std::vector<FMMNode*>& nodes_out_=nodes_blk_out[blk0];
+        std::vector<FMMNode_t*>& nodes_in_ =nodes_blk_in [blk0];
+        std::vector<FMMNode_t*>& nodes_out_=nodes_blk_out[blk0];
         { // Build node list for blk0.
           std::set<void*> nodes_in;
           for(size_t i=blk0_start;i<blk0_end;i++){
-            nodes_out_.push_back((FMMNode*)nodes_out[i]);
-            Vector<FMMNode*>& lst=((FMMNode*)nodes_out[i])->interac_list[interac_type];
+            nodes_out_.push_back((FMMNode_t*)nodes_out[i]);
+            Vector<FMMNode_t*>& lst=((FMMNode_t*)nodes_out[i])->interac_list[interac_type];
             for(size_t k=0;k<mat_cnt;k++) if(lst[k]!=NULL && lst[k]->pt_cnt[0]) nodes_in.insert(lst[k]);
           }
           for(std::set<void*>::iterator node=nodes_in.begin(); node != nodes_in.end(); node++){
-            nodes_in_.push_back((FMMNode*)*node);
+            nodes_in_.push_back((FMMNode_t*)*node);
           }
 
           size_t  input_dim=nodes_in_ .size()*ker_dim0*dof*fftsize;
@@ -2978,8 +2951,8 @@ void FMM_Pts<FMMNode>::V_ListSetup(SetupData<Real_t>&  setup_data, FMMTree_t* tr
       }
 
       for(size_t blk0=0;blk0<n_blk0;blk0++){ // Hadamard interactions.
-        std::vector<FMMNode*>& nodes_in_ =nodes_blk_in [blk0];
-        std::vector<FMMNode*>& nodes_out_=nodes_blk_out[blk0];
+        std::vector<FMMNode_t*>& nodes_in_ =nodes_blk_in [blk0];
+        std::vector<FMMNode_t*>& nodes_out_=nodes_blk_out[blk0];
         for(size_t i=0;i<nodes_in_.size();i++) nodes_in_[i]->node_id=i;
         { // Next blocking level.
           size_t n_blk1=nodes_out_.size()*(2)*sizeof(Real_t)/(64*V_BLK_CACHE);
@@ -2991,7 +2964,7 @@ void FMM_Pts<FMMNode>::V_ListSetup(SetupData<Real_t>&  setup_data, FMMTree_t* tr
             size_t blk1_end  =(nodes_out_.size()*(blk1+1))/n_blk1;
             for(size_t k=0;k<mat_cnt;k++){
               for(size_t i=blk1_start;i<blk1_end;i++){
-                Vector<FMMNode*>& lst=((FMMNode*)nodes_out_[i])->interac_list[interac_type];
+                Vector<FMMNode_t*>& lst=((FMMNode_t*)nodes_out_[i])->interac_list[interac_type];
                 if(lst[k]!=NULL && lst[k]->pt_cnt[0]){
                   interac_vec[blk0].push_back(lst[k]->node_id*fftsize*ker_dim0*dof);
                   interac_vec[blk0].push_back(    i          *fftsize*ker_dim1*dof);
@@ -3067,8 +3040,8 @@ void FMM_Pts<FMMNode>::V_ListSetup(SetupData<Real_t>&  setup_data, FMMTree_t* tr
 
 }
 
-template <class FMMNode>
-void FMM_Pts<FMMNode>::V_List     (SetupData<Real_t>&  setup_data){
+template <class FMMNode_t>
+void FMM_Pts<FMMNode_t>::V_List     (SetupData<Real_t>&  setup_data){
   if(!this->MultipoleOrder()) return;
 
   int np=1;
@@ -3222,8 +3195,8 @@ void FMM_Pts<FMMNode>::V_List     (SetupData<Real_t>&  setup_data){
 }
 
 
-template <class FMMNode>
-void FMM_Pts<FMMNode>::Down2DownSetup(SetupData<Real_t>& setup_data, FMMTree_t* tree, std::vector<Matrix<Real_t> >& buff, std::vector<Vector<FMMNode_t*> >& n_list, int level){
+template <class FMMNode_t>
+void FMM_Pts<FMMNode_t>::Down2DownSetup(SetupData<Real_t>& setup_data, FMMTree_t* tree, std::vector<Matrix<Real_t> >& buff, std::vector<Vector<FMMNode_t*> >& n_list, int level){
   if(!this->MultipoleOrder()) return;
   { // Set setup_data
     setup_data.level=level;
@@ -3246,22 +3219,22 @@ void FMM_Pts<FMMNode>::Down2DownSetup(SetupData<Real_t>& setup_data, FMMTree_t* 
   std::vector<void*>& nodes_out=setup_data.nodes_out;
   std::vector<Vector<Real_t>*>&  input_vector=setup_data. input_vector;  input_vector.clear();
   std::vector<Vector<Real_t>*>& output_vector=setup_data.output_vector; output_vector.clear();
-  for(size_t i=0;i<nodes_in .size();i++)  input_vector.push_back(&((FMMData*)((FMMNode*)nodes_in [i])->FMMData())->dnward_equiv);
-  for(size_t i=0;i<nodes_out.size();i++) output_vector.push_back(&((FMMData*)((FMMNode*)nodes_out[i])->FMMData())->dnward_equiv);
+  for(size_t i=0;i<nodes_in .size();i++)  input_vector.push_back(&((FMMData*)((FMMNode_t*)nodes_in [i])->FMMData())->dnward_equiv);
+  for(size_t i=0;i<nodes_out.size();i++) output_vector.push_back(&((FMMData*)((FMMNode_t*)nodes_out[i])->FMMData())->dnward_equiv);
 
   SetupInterac(setup_data);
 }
 
-template <class FMMNode>
-void FMM_Pts<FMMNode>::Down2Down     (SetupData<Real_t>& setup_data){
+template <class FMMNode_t>
+void FMM_Pts<FMMNode_t>::Down2Down     (SetupData<Real_t>& setup_data){
   if(!this->MultipoleOrder()) return;
   //Add Down2Down contribution.
   EvalList(setup_data);
 }
 
 
-template <class FMMNode>
-void FMM_Pts<FMMNode>::PtSetup(SetupData<Real_t>& setup_data, void* data_){
+template <class FMMNode_t>
+void FMM_Pts<FMMNode_t>::PtSetup(SetupData<Real_t>& setup_data, void* data_){
   struct PackedData{
     size_t len;
     Matrix<Real_t>* ptr;
@@ -3449,8 +3422,8 @@ void FMM_Pts<FMMNode>::PtSetup(SetupData<Real_t>& setup_data, void* data_){
   }
 }
 
-template <class FMMNode>
-void FMM_Pts<FMMNode>::EvalListPts(SetupData<Real_t>& setup_data){
+template <class FMMNode_t>
+void FMM_Pts<FMMNode_t>::EvalListPts(SetupData<Real_t>& setup_data){
   if(setup_data.kernel->ker_dim[0]*setup_data.kernel->ker_dim[1]==0) return;
   if(setup_data.interac_data.Dim(0)==0 || setup_data.interac_data.Dim(1)==0){
     Profile::Tic("Host2Device",false,25);
@@ -3878,8 +3851,8 @@ void FMM_Pts<FMMNode>::EvalListPts(SetupData<Real_t>& setup_data){
 }
 
 
-template <class FMMNode>
-void FMM_Pts<FMMNode>::X_ListSetup(SetupData<Real_t>&  setup_data, FMMTree_t* tree, std::vector<Matrix<Real_t> >& buff, std::vector<Vector<FMMNode_t*> >& n_list, int level){
+template <class FMMNode_t>
+void FMM_Pts<FMMNode_t>::X_ListSetup(SetupData<Real_t>&  setup_data, FMMTree_t* tree, std::vector<Matrix<Real_t> >& buff, std::vector<Vector<FMMNode_t*> >& n_list, int level){
   if(!this->MultipoleOrder()) return;
   { // Set setup_data
     setup_data. level=level;
@@ -4024,8 +3997,8 @@ void FMM_Pts<FMMNode>::X_ListSetup(SetupData<Real_t>&  setup_data, FMMTree_t* tr
 
     #pragma omp parallel for
     for(size_t i=0;i<nodes.size();i++){
-      Vector<Real_t>& coord_vec=tree->dnwd_check_surf[((FMMNode*)nodes[i])->depth];
-      Vector<Real_t>& value_vec=((FMMData*)((FMMNode*)nodes[i])->FMMData())->dnward_equiv;
+      Vector<Real_t>& coord_vec=tree->dnwd_check_surf[((FMMNode_t*)nodes[i])->depth];
+      Vector<Real_t>& value_vec=((FMMData*)((FMMNode_t*)nodes[i])->FMMData())->dnward_equiv;
       if(coord_vec.Dim()){
         coord.dsp[i]=&coord_vec[0]-coord.ptr[0][0];
         assert(coord.dsp[i]<coord.len);
@@ -4172,16 +4145,16 @@ void FMM_Pts<FMMNode>::X_ListSetup(SetupData<Real_t>&  setup_data, FMMTree_t* tr
   PtSetup(setup_data, &data);
 }
 
-template <class FMMNode>
-void FMM_Pts<FMMNode>::X_List     (SetupData<Real_t>&  setup_data){
+template <class FMMNode_t>
+void FMM_Pts<FMMNode_t>::X_List     (SetupData<Real_t>&  setup_data){
   if(!this->MultipoleOrder()) return;
   //Add X_List contribution.
   this->EvalListPts(setup_data);
 }
 
 
-template <class FMMNode>
-void FMM_Pts<FMMNode>::W_ListSetup(SetupData<Real_t>&  setup_data, FMMTree_t* tree, std::vector<Matrix<Real_t> >& buff, std::vector<Vector<FMMNode_t*> >& n_list, int level){
+template <class FMMNode_t>
+void FMM_Pts<FMMNode_t>::W_ListSetup(SetupData<Real_t>&  setup_data, FMMTree_t* tree, std::vector<Matrix<Real_t> >& buff, std::vector<Vector<FMMNode_t*> >& n_list, int level){
   if(!this->MultipoleOrder()) return;
   { // Set setup_data
     setup_data. level=level;
@@ -4252,8 +4225,8 @@ void FMM_Pts<FMMNode>::W_ListSetup(SetupData<Real_t>&  setup_data, FMMTree_t* tr
     #pragma omp parallel for
     for(size_t i=0;i<nodes.size();i++){
       ((FMMNode_t*)nodes[i])->node_id=i;
-      Vector<Real_t>& coord_vec=tree->upwd_equiv_surf[((FMMNode*)nodes[i])->depth];
-      Vector<Real_t>& value_vec=((FMMData*)((FMMNode*)nodes[i])->FMMData())->upward_equiv;
+      Vector<Real_t>& coord_vec=tree->upwd_equiv_surf[((FMMNode_t*)nodes[i])->depth];
+      Vector<Real_t>& value_vec=((FMMData*)((FMMNode_t*)nodes[i])->FMMData())->upward_equiv;
       if(coord_vec.Dim()){
         coord.dsp[i]=&coord_vec[0]-coord.ptr[0][0];
         assert(coord.dsp[i]<coord.len);
@@ -4458,16 +4431,16 @@ void FMM_Pts<FMMNode>::W_ListSetup(SetupData<Real_t>&  setup_data, FMMTree_t* tr
   PtSetup(setup_data, &data);
 }
 
-template <class FMMNode>
-void FMM_Pts<FMMNode>::W_List     (SetupData<Real_t>&  setup_data){
+template <class FMMNode_t>
+void FMM_Pts<FMMNode_t>::W_List     (SetupData<Real_t>&  setup_data){
   if(!this->MultipoleOrder()) return;
   //Add W_List contribution.
   this->EvalListPts(setup_data);
 }
 
 
-template <class FMMNode>
-void FMM_Pts<FMMNode>::U_ListSetup(SetupData<Real_t>& setup_data, FMMTree_t* tree, std::vector<Matrix<Real_t> >& buff, std::vector<Vector<FMMNode_t*> >& n_list, int level){
+template <class FMMNode_t>
+void FMM_Pts<FMMNode_t>::U_ListSetup(SetupData<Real_t>& setup_data, FMMTree_t* tree, std::vector<Matrix<Real_t> >& buff, std::vector<Vector<FMMNode_t*> >& n_list, int level){
   { // Set setup_data
     setup_data. level=level;
     setup_data.kernel=kernel->k_s2t;
@@ -4854,15 +4827,15 @@ void FMM_Pts<FMMNode>::U_ListSetup(SetupData<Real_t>& setup_data, FMMTree_t* tre
   PtSetup(setup_data, &data);
 }
 
-template <class FMMNode>
-void FMM_Pts<FMMNode>::U_List     (SetupData<Real_t>&  setup_data){
+template <class FMMNode_t>
+void FMM_Pts<FMMNode_t>::U_List     (SetupData<Real_t>&  setup_data){
   //Add U_List contribution.
   this->EvalListPts(setup_data);
 }
 
 
-template <class FMMNode>
-void FMM_Pts<FMMNode>::Down2TargetSetup(SetupData<Real_t>&  setup_data, FMMTree_t* tree, std::vector<Matrix<Real_t> >& buff, std::vector<Vector<FMMNode_t*> >& n_list, int level){
+template <class FMMNode_t>
+void FMM_Pts<FMMNode_t>::Down2TargetSetup(SetupData<Real_t>&  setup_data, FMMTree_t* tree, std::vector<Matrix<Real_t> >& buff, std::vector<Vector<FMMNode_t*> >& n_list, int level){
   if(!this->MultipoleOrder()) return;
   { // Set setup_data
     setup_data. level=level;
@@ -4933,8 +4906,8 @@ void FMM_Pts<FMMNode>::Down2TargetSetup(SetupData<Real_t>&  setup_data, FMMTree_
     #pragma omp parallel for
     for(size_t i=0;i<nodes.size();i++){
       ((FMMNode_t*)nodes[i])->node_id=i;
-      Vector<Real_t>& coord_vec=tree->dnwd_equiv_surf[((FMMNode*)nodes[i])->depth];
-      Vector<Real_t>& value_vec=((FMMData*)((FMMNode*)nodes[i])->FMMData())->dnward_equiv;
+      Vector<Real_t>& coord_vec=tree->dnwd_equiv_surf[((FMMNode_t*)nodes[i])->depth];
+      Vector<Real_t>& value_vec=((FMMData*)((FMMNode_t*)nodes[i])->FMMData())->dnward_equiv;
       if(coord_vec.Dim()){
         coord.dsp[i]=&coord_vec[0]-coord.ptr[0][0];
         assert(coord.dsp[i]<coord.len);
@@ -5166,16 +5139,16 @@ void FMM_Pts<FMMNode>::Down2TargetSetup(SetupData<Real_t>&  setup_data, FMMTree_
   PtSetup(setup_data, &data);
 }
 
-template <class FMMNode>
-void FMM_Pts<FMMNode>::Down2Target(SetupData<Real_t>&  setup_data){
+template <class FMMNode_t>
+void FMM_Pts<FMMNode_t>::Down2Target(SetupData<Real_t>&  setup_data){
   if(!this->MultipoleOrder()) return;
   //Add Down2Target contribution.
   this->EvalListPts(setup_data);
 }
 
 
-template <class FMMNode>
-void FMM_Pts<FMMNode>::PostProcessing(FMMTree_t* tree, std::vector<FMMNode_t*>& nodes, BoundaryType bndry){
+template <class FMMNode_t>
+void FMM_Pts<FMMNode_t>::PostProcessing(FMMTree_t* tree, std::vector<FMMNode_t*>& nodes, BoundaryType bndry){
   if(kernel->k_m2l->vol_poten && bndry==Periodic){ // Add analytical near-field to target potential
     const Kernel<Real_t>& k_m2t=*kernel->k_m2t;
     int ker_dim[2]={k_m2t.ker_dim[0],k_m2t.ker_dim[1]};

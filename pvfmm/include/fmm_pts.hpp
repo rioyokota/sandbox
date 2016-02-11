@@ -29,8 +29,8 @@ class FMM_Pts{
 
  public:
 
-  typedef FMM_Tree<FMM_Pts<FMMNode> > FMMTree_t;
   typedef FMMNode FMMNode_t;
+  typedef FMM_Tree<FMM_Pts<FMMNode_t> > FMMTree_t;
 
   class FMMData: public FMM_Data<Real_t>{
    public:
@@ -50,7 +50,7 @@ class FMM_Pts{
 
   bool ScaleInvar(){return kernel->scale_invar;}
 
-  virtual void CollectNodeData(FMMTree_t* tree, std::vector<FMMNode*>& nodes, std::vector<Matrix<Real_t> >& buff, std::vector<Vector<FMMNode_t*> >& n_list,
+  virtual void CollectNodeData(FMMTree_t* tree, std::vector<FMMNode_t*>& nodes, std::vector<Matrix<Real_t> >& buff, std::vector<Vector<FMMNode_t*> >& n_list,
 std::vector<std::vector<Vector<Real_t>* > > vec_list = std::vector<std::vector<Vector<Real_t>* > >(0));
 
   void SetupPrecomp(SetupData<Real_t>& setup_data);
@@ -63,7 +63,7 @@ std::vector<std::vector<Vector<Real_t>* > > vec_list = std::vector<std::vector<V
   virtual void Source2Up     (SetupData<Real_t>&  setup_data);
   virtual void Up2UpSetup(SetupData<Real_t>&  setup_data, FMMTree_t* tree, std::vector<Matrix<Real_t> >& node_data, std::vector<Vector<FMMNode_t*> >& n_list, int level);
   virtual void Up2Up     (SetupData<Real_t>&  setup_data);
-  virtual void PeriodicBC(FMMNode* node);
+  virtual void PeriodicBC(FMMNode_t* node);
   virtual void V_ListSetup(SetupData<Real_t>&  setup_data, FMMTree_t* tree, std::vector<Matrix<Real_t> >& node_data, std::vector<Vector<FMMNode_t*> >& n_list, int level);
   virtual void V_List     (SetupData<Real_t>&  setup_data);
   virtual void X_ListSetup(SetupData<Real_t>&  setup_data, FMMTree_t* tree, std::vector<Matrix<Real_t> >& node_data, std::vector<Vector<FMMNode_t*> >& n_list, int level);
@@ -94,7 +94,7 @@ std::vector<std::vector<Vector<Real_t>* > > vec_list = std::vector<std::vector<V
       Vector<Real_t>& input_data, Vector<Real_t>& output_data, Vector<Real_t>& buffer_);
   typename FFTW_t<Real_t>::plan vlist_ifftplan; bool vlist_ifft_flag;
   mem::MemoryManager* mem_mgr;
-  InteracList<FMMNode> interac_list;
+  InteracList<FMMNode_t> interac_list;
   const Kernel<Real_t>* kernel;
   PrecompMat<Real_t>* mat;
   std::string mat_fname;
