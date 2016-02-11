@@ -1,4 +1,5 @@
 #include <pvfmm_common.hpp>
+#include <mortonid.hpp>
 #include <vector.hpp>
 
 #ifndef _PVFMM_TREE_NODE_HPP_
@@ -70,6 +71,18 @@ class TreeNode{
   void SetParent(TreeNode* p, int path2node_) ;
 
   void SetChild(TreeNode* c, int id) ;
+
+  TreeNode * Colleague(int index){return colleague[index];}
+
+  void SetColleague(TreeNode * node_, int index){colleague[index]=node_;}
+
+  virtual long long& NodeCost(){return weight;}
+
+  Real_t* Coord(){assert(coord!=NULL); return coord;}
+
+  bool IsGhost(){return ghost;}
+
+  void SetGhost(bool x){ghost=x;}
 
   int& GetStatus();
 

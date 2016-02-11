@@ -53,6 +53,7 @@ TreeNode* TreeNode::NewNode(TreeNode* n_){
   TreeNode* n=(n_==NULL?mem::aligned_new<TreeNode>():n_);
   n->dim=dim;
   n->max_depth=max_depth;
+  n->max_pts=max_pts;
   return n_;
 }
 

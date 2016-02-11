@@ -5,7 +5,6 @@
 
 #include <pvfmm_common.hpp>
 #include <tree_node.hpp>
-#include <mortonid.hpp>
 
 #ifndef _PVFMM_MPI_NODE_HPP_
 #define _PVFMM_MPI_NODE_HPP_
@@ -36,25 +35,11 @@ class MPI_Node: public TreeNode{
     scatter.push_back(&pt_scatter);
   }
 
-  MPI_Node * Colleague(int index){return (MPI_Node*)colleague[index];}
-
-  void SetColleague(MPI_Node * node_, int index){colleague[index]=(TreeNode*)node_;}
-
-  virtual long long& NodeCost(){return weight;}
-
-  Real_t* Coord(){assert(coord!=NULL); return coord;}
-
-  bool IsGhost(){return ghost;}
-
-  void SetGhost(bool x){ghost=x;}
-
   inline MortonId GetMortonId();
 
   inline void SetCoord(MortonId& mid);
 
-  virtual TreeNode* NewNode(TreeNode* n_=NULL);
-
-  virtual void Subdivide();
+  virtual void Subdivide() ;
 
   virtual void ReadVal(std::vector<Real_t> x,std::vector<Real_t> y, std::vector<Real_t> z, Real_t* val, bool show_ghost=true);
 

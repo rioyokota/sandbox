@@ -63,17 +63,10 @@ void MPI_Node::SetCoord(MortonId& mid){
   depth=mid.GetDepth();
 }
 
-TreeNode* MPI_Node::NewNode(TreeNode* n_){
-  MPI_Node * n=(n_?static_cast<MPI_Node*>(n_):mem::aligned_new<MPI_Node>());
-  n->max_pts=max_pts;
-  return TreeNode::NewNode(n);
-}
-
 void MPI_Node::Subdivide(){
   if(!this->IsLeaf()) return;
   TreeNode::Subdivide();
   int nchld=(1UL<<this->Dim());
-
   if(!IsGhost()){ // Partition point coordinates and values.
     std::vector<Vector<Real_t>*> pt_c;
     std::vector<Vector<Real_t>*> pt_v;
