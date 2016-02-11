@@ -37,8 +37,8 @@ class TreeNode{
      int max_depth;
      int dim;
      size_t max_pts;
-     Vector<Real_t> pt_coord;
-     Vector<Real_t> pt_value;
+     Vector<Real_t> coord;
+     Vector<Real_t> value;
   };
 
   TreeNode(): dim(0), depth(0), max_depth(MAX_DEPTH), parent(NULL), child(NULL), status(1) {ghost=false; weight=1;}

@@ -910,13 +910,13 @@ Matrix<Real_t>& FMM_Pts<FMMNode>::Precomp(int level, Mat_Type type, size_t mat_i
               for(int j0=-1;j0<=1;j0++)
               for(int j1=-1;j1<=1;j1++)
               for(int j2=-1;j2<=1;j2++){
-                Real_t pt_coord[3]={corner_pts[k*COORD_DIM+0]-j0,
+                Real_t pt_c[3]={corner_pts[k*COORD_DIM+0]-j0,
                                     corner_pts[k*COORD_DIM+1]-j1,
                                     corner_pts[k*COORD_DIM+2]-j2};
-                if(pvfmm::fabs<Real_t>(pt_coord[0]-0.5)>1.0 || pvfmm::fabs<Real_t>(pt_coord[1]-0.5)>1.0 || pvfmm::fabs<Real_t>(pt_coord[2]-0.5)>1.0){
+                if(pvfmm::fabs<Real_t>(pt_c[0]-0.5)>1.0 || pvfmm::fabs<Real_t>(pt_c[1]-0.5)>1.0 || pvfmm::fabs<Real_t>(pt_c[2]-0.5)>1.0){
                   Matrix<Real_t> M_e2pt(n_surf*ker_dim[0],ker_dim[1]);
                   kernel->k_m2l->BuildMatrix(&up_equiv_surf[0], n_surf,
-                                                  &pt_coord[0], 1, &(M_e2pt[0][0]));
+                                                  &pt_c[0], 1, &(M_e2pt[0][0]));
                   for(size_t i=0;i<M_e2pt.Dim(0);i++)
                     for(size_t j=0;j<M_e2pt.Dim(1);j++)
                       M_err[i][k*ker_dim[1]+j]+=M_e2pt[i][j];

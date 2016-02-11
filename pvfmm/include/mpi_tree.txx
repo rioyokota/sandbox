@@ -157,14 +157,13 @@ void MPI_Tree<TreeNode>::Initialize(typename Node_t::NodeData* init_data){
   Profile::Tic("Points2Octee",true,5);
   Vector<MortonId> lin_oct;
   { //Get the linear tree.
-    // Compute MortonId from pt_coord.
     Vector<MortonId> pt_mid;
-    Vector<Real_t>& pt_coord=rnode->pt_coord;
-    size_t pt_cnt=pt_coord.Dim()/this->dim;
+    Vector<Real_t>& pt_c=rnode->pt_coord;
+    size_t pt_cnt=pt_c.Dim()/this->dim;
     pt_mid.Resize(pt_cnt);
     #pragma omp parallel for
     for(size_t i=0;i<pt_cnt;i++){
-      pt_mid[i]=MortonId(pt_coord[i*COORD_DIM+0],pt_coord[i*COORD_DIM+1],pt_coord[i*COORD_DIM+2],this->max_depth);
+      pt_mid[i]=MortonId(pt_c[i*COORD_DIM+0],pt_c[i*COORD_DIM+1],pt_c[i*COORD_DIM+2],this->max_depth);
     }
     points2Octree(pt_mid,lin_oct,this->max_depth,init_data->max_pts);
   }
@@ -183,24 +182,24 @@ void MPI_Tree<TreeNode>::Initialize(typename Node_t::NodeData* init_data){
     Vector<size_t> scatter_index;
     for(size_t i=0;i<coord_lst.size();i++){
       if(!coord_lst[i]) continue;
-      Vector<Real_t>& pt_coord=*coord_lst[i];
-      { // Compute MortonId from pt_coord.
-        size_t pt_cnt=pt_coord.Dim()/this->dim;
+      Vector<Real_t>& pt_c=*coord_lst[i];
+      { // Compute MortonId from pt_c.
+        size_t pt_cnt=pt_c.Dim()/this->dim;
         pt_mid.Resize(pt_cnt);
         #pragma omp parallel for
         for(size_t i=0;i<pt_cnt;i++){
-          pt_mid[i]=MortonId(pt_coord[i*COORD_DIM+0],pt_coord[i*COORD_DIM+1],pt_coord[i*COORD_DIM+2],this->max_depth);
+          pt_mid[i]=MortonId(pt_c[i*COORD_DIM+0],pt_c[i*COORD_DIM+1],pt_c[i*COORD_DIM+2],this->max_depth);
         }
       }
       par::SortScatterIndex(pt_mid  , scatter_index, &lin_oct[0]);
-      par::ScatterForward  (pt_coord, scatter_index);
+      par::ScatterForward  (pt_c, scatter_index);
       if(value_lst[i]!=NULL){
-        Vector<Real_t>& pt_value=*value_lst[i];
-        par::ScatterForward(pt_value, scatter_index);
+        Vector<Real_t>& pt_v=*value_lst[i];
+        par::ScatterForward(pt_v, scatter_index);
       }
       if(scatter_lst[i]!=NULL){
-        Vector<size_t>& pt_scatter=*scatter_lst[i];
-        pt_scatter=scatter_index;
+        Vector<size_t>& pt_s=*scatter_lst[i];
+        pt_s=scatter_index;
       }
     }
   }

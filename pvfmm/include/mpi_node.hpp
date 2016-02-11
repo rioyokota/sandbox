@@ -26,6 +26,8 @@ class MPI_Node: public TreeNode{
 
   virtual void Initialize(TreeNode* parent_, int path2node_, TreeNode::NodeData*) ;
 
+  virtual void ClearData();
+
   virtual void NodeDataVec(std::vector<Vector<Real_t>*>& coord,
                            std::vector<Vector<Real_t>*>& value,
                            std::vector<Vector<size_t>*>& scatter){
@@ -33,8 +35,6 @@ class MPI_Node: public TreeNode{
     value  .push_back(&pt_value  );
     scatter.push_back(&pt_scatter);
   }
-
-  virtual void ClearData();
 
   MPI_Node * Colleague(int index){return (MPI_Node*)colleague[index];}
 

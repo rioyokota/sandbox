@@ -12,8 +12,7 @@
 
 namespace pvfmm{
 
-MPI_Node::~MPI_Node(){
-}
+MPI_Node::~MPI_Node(){}
 
 void MPI_Node::Initialize(TreeNode* parent_,int path2node_, TreeNode::NodeData* data_){
   TreeNode::Initialize(parent_,path2node_,data_);
@@ -39,8 +38,8 @@ void MPI_Node::Initialize(TreeNode* parent_,int path2node_, TreeNode::NodeData* 
   typename MPI_Node::NodeData* mpi_data=dynamic_cast<typename MPI_Node::NodeData*>(data_);
   if(data_){
     max_pts =mpi_data->max_pts;
-    pt_coord=mpi_data->pt_coord;
-    pt_value=mpi_data->pt_value;
+    pt_coord=mpi_data->coord;
+    pt_value=mpi_data->value;
   }else if(parent){
     max_pts =((MPI_Node*)parent)->max_pts;
     SetGhost(((MPI_Node*)parent)->IsGhost());
@@ -76,24 +75,24 @@ void MPI_Node::Subdivide(){
   int nchld=(1UL<<this->Dim());
 
   if(!IsGhost()){ // Partition point coordinates and values.
-    std::vector<Vector<Real_t>*> pt_coord;
-    std::vector<Vector<Real_t>*> pt_value;
-    std::vector<Vector<size_t>*> pt_scatter;
-    this->NodeDataVec(pt_coord, pt_value, pt_scatter);
+    std::vector<Vector<Real_t>*> pt_c;
+    std::vector<Vector<Real_t>*> pt_v;
+    std::vector<Vector<size_t>*> pt_s;
+    this->NodeDataVec(pt_c, pt_v, pt_s);
 
-    std::vector<std::vector<Vector<Real_t>*> > chld_pt_coord(nchld);
-    std::vector<std::vector<Vector<Real_t>*> > chld_pt_value(nchld);
-    std::vector<std::vector<Vector<size_t>*> > chld_pt_scatter(nchld);
+    std::vector<std::vector<Vector<Real_t>*> > chld_pt_c(nchld);
+    std::vector<std::vector<Vector<Real_t>*> > chld_pt_v(nchld);
+    std::vector<std::vector<Vector<size_t>*> > chld_pt_s(nchld);
     for(size_t i=0;i<nchld;i++){
       static_cast<MPI_Node*>((MPI_Node*)this->Child(i))
-        ->NodeDataVec(chld_pt_coord[i], chld_pt_value[i], chld_pt_scatter[i]);
+        ->NodeDataVec(chld_pt_c[i], chld_pt_v[i], chld_pt_s[i]);
     }
 
     Real_t* c=this->Coord();
     Real_t s=pvfmm::pow<Real_t>(0.5,this->Depth()+1);
-    for(size_t j=0;j<pt_coord.size();j++){
-      if(!pt_coord[j] || !pt_coord[j]->Dim()) continue;
-      Vector<Real_t>& coord=*pt_coord[j];
+    for(size_t j=0;j<pt_c.size();j++){
+      if(!pt_c[j] || !pt_c[j]->Dim()) continue;
+      Vector<Real_t>& coord=*pt_c[j];
       size_t npts=coord.Dim()/this->dim;
 
       Vector<size_t> cdata(nchld+1);
@@ -112,29 +111,29 @@ void MPI_Node::Subdivide(){
         cdata[i]=pt2;
       }
 
-      if(pt_coord[j]){
-        Vector<Real_t>& vec=*pt_coord[j];
+      if(pt_c[j]){
+        Vector<Real_t>& vec=*pt_c[j];
         size_t dof=vec.Dim()/npts;
         if(dof>0) for(size_t i=0;i<nchld;i++){
-          Vector<Real_t>& chld_vec=*chld_pt_coord[i][j];
+          Vector<Real_t>& chld_vec=*chld_pt_c[i][j];
           chld_vec.ReInit((cdata[i+1]-cdata[i])*dof, &vec[0]+cdata[i]*dof);
         }
         vec.ReInit(0);
       }
-      if(pt_value[j]){
-        Vector<Real_t>& vec=*pt_value[j];
+      if(pt_v[j]){
+        Vector<Real_t>& vec=*pt_v[j];
         size_t dof=vec.Dim()/npts;
         if(dof>0) for(size_t i=0;i<nchld;i++){
-          Vector<Real_t>& chld_vec=*chld_pt_value[i][j];
+          Vector<Real_t>& chld_vec=*chld_pt_v[i][j];
           chld_vec.ReInit((cdata[i+1]-cdata[i])*dof, &vec[0]+cdata[i]*dof);
         }
         vec.ReInit(0);
       }
-      if(pt_scatter[j]){
-        Vector<size_t>& vec=*pt_scatter[j];
+      if(pt_s[j]){
+        Vector<size_t>& vec=*pt_s[j];
         size_t dof=vec.Dim()/npts;
         if(dof>0) for(size_t i=0;i<nchld;i++){
-          Vector<size_t>& chld_vec=*chld_pt_scatter[i][j];
+          Vector<size_t>& chld_vec=*chld_pt_s[i][j];
           chld_vec.ReInit((cdata[i+1]-cdata[i])*dof, &vec[0]+cdata[i]*dof);
         }
         vec.ReInit(0);
