@@ -18,7 +18,18 @@ class MPI_Node: public TreeNode{
   ~MPI_Node() {}
 
   void Initialize(TreeNode* parent_, int path2node_, NodeData* data_) {
-    TreeNode::Initialize(parent_,path2node_,data_);
+    parent=parent_;
+    depth=(parent==NULL?0:parent->Depth()+1);
+    if(data_!=NULL){
+      dim=data_->dim;
+      max_depth=data_->max_depth;
+      if(max_depth>MAX_DEPTH) max_depth=MAX_DEPTH;
+    }else if(parent!=NULL){
+      dim=parent->dim;
+      max_depth=parent->max_depth;
+    }
+    assert(path2node_>=0 && path2node_<(int)(1U<<dim));
+    path2node=path2node_;
 
     Real_t coord_offset=((Real_t)1.0)/((Real_t)(((uint64_t)1)<<Depth()));
     if(!parent_){
@@ -63,7 +74,15 @@ class MPI_Node: public TreeNode{
 
   void Subdivide() {
     if(!this->IsLeaf()) return;
-    TreeNode::Subdivide();
+    if(child) return;
+    SetStatus(1);
+    int n=(1UL<<dim);
+    child=mem::aligned_new<TreeNode*>(n);
+    for(int i=0;i<n;i++){
+      child[i]=this->NewNode();
+      child[i]->parent=this;
+      ((MPI_Node*)child[i])->Initialize(this,i,NULL);
+    }
     int nchld=(1UL<<this->Dim());
     if(!IsGhost()){ // Partition point coordinates and values.
       std::vector<Vector<Real_t>*> pt_c;

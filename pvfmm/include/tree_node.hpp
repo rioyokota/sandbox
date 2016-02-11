@@ -29,18 +29,16 @@ class TreeNode{
 
   bool ghost;
   size_t max_pts;
+  size_t node_id;
   long long weight;
 
   Real_t coord[COORD_DIM];
   TreeNode * colleague[COLLEAGUE_COUNT];
 
   class NodeData{
-
    public:
      virtual ~NodeData(){};
-
      virtual void Clear(){}
-
      int max_depth;
      int dim;
      size_t max_pts;
@@ -48,11 +46,21 @@ class TreeNode{
      Vector<Real_t> value;
   };
 
-  TreeNode(): dim(0), depth(0), max_depth(MAX_DEPTH), parent(NULL), child(NULL), status(1) {ghost=false; weight=1;}
+  TreeNode(): dim(0), depth(0), max_depth(MAX_DEPTH), parent(NULL), child(NULL), status(1) {
+    ghost=false;
+    weight=1;
+  }
 
-  ~TreeNode();
-
-  virtual void Initialize(TreeNode* parent_, int path2node_, TreeNode::NodeData* data_) ;
+  ~TreeNode() {
+    if(!child) return;
+    int n=(1UL<<dim);
+    for(int i=0;i<n;i++){
+      if(child[i]!=NULL)
+	mem::aligned_delete(child[i]);
+    }
+    mem::aligned_delete(child);
+    child=NULL;
+  }
 
   int Dim(){return dim;}
 
@@ -60,9 +68,15 @@ class TreeNode{
 
   bool IsLeaf(){return child == NULL;}
 
-  TreeNode* Child(int id);
+  TreeNode* Child(int id){
+    assert(id<(1<<dim));
+    if(child==NULL) return NULL;
+    return child[id];
+  }
 
-  TreeNode* Parent();
+  TreeNode* Parent(){
+    return parent;
+  }
 
   inline MortonId GetMortonId() {
     assert(coord);
@@ -76,17 +90,55 @@ class TreeNode{
     depth=mid.GetDepth();
   }
 
-  virtual int Path2Node();
+  virtual int Path2Node(){
+    return path2node;
+  }
 
-  virtual TreeNode* NewNode(TreeNode* n_=NULL);
+  virtual TreeNode* NewNode(TreeNode* n_=NULL){
+    TreeNode* n=(n_==NULL?mem::aligned_new<TreeNode>():n_);
+    n->dim=dim;
+    n->max_depth=max_depth;
+    n->max_pts=max_pts;
+    return n_;
+  }
 
-  virtual void Subdivide() ;
+  virtual void Truncate() {
+    if(!child) return;
+    SetStatus(1);
+    int n=(1UL<<dim);
+    for(int i=0;i<n;i++){
+      if(child[i]!=NULL)
+	mem::aligned_delete(child[i]);
+    }
+    mem::aligned_delete(child);
+    child=NULL;
+  }
 
-  virtual void Truncate() ;
+  void SetParent(TreeNode* p, int path2node_) {
+    assert(path2node_>=0 && path2node_<(1<<dim));
+    assert(p==NULL?true:p->Child(path2node_)==this);
 
-  void SetParent(TreeNode* p, int path2node_) ;
+    parent=p;
+    path2node=path2node_;
+    depth=(parent==NULL?0:parent->Depth()+1);
+    if(parent!=NULL) max_depth=parent->max_depth;
+  }
 
-  void SetChild(TreeNode* c, int id) ;
+  void SetChild(TreeNode* c, int id) {
+    assert(id<(1<<dim));
+    child[id]=c;
+    if(c!=NULL) child[id]->SetParent(this,id);
+  }
+
+  int& GetStatus(){
+    return status;
+  }
+
+  void SetStatus(int flag){
+    status=(status|flag);
+    if(parent && !(parent->GetStatus() & flag))
+      parent->SetStatus(flag);
+  }
 
   TreeNode * Colleague(int index){return colleague[index];}
 
@@ -100,11 +152,6 @@ class TreeNode{
 
   void SetGhost(bool x){ghost=x;}
 
-  int& GetStatus();
-
-  void SetStatus(int flag);
-
-  size_t node_id; //For translating node pointer to index.
 
 };
 
