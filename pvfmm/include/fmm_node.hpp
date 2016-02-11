@@ -36,9 +36,23 @@ class FMM_Node: public MPI_Node {
     fmm_data=NULL;
   }
 
-  virtual ~FMM_Node();
+  virtual ~FMM_Node(){
+    if(fmm_data!=NULL) mem::aligned_delete(fmm_data);
+    fmm_data=NULL;
+  }
 
-  virtual void Initialize(MPI_Node* parent_, int path2node_, MPI_Node::NodeData*) ;
+  virtual void Initialize(MPI_Node* parent_, int path2node_, MPI_Node::NodeData* data_){
+    MPI_Node::Initialize(parent_,path2node_,data_);
+    typename FMM_Node::NodeData* data=dynamic_cast<typename FMM_Node::NodeData*>(data_);
+    if(data_!=NULL){
+      src_coord=data->src_coord;
+      src_value=data->src_value;
+      surf_coord=data->surf_coord;
+      surf_value=data->surf_value;
+      trg_coord=data->trg_coord;
+      trg_value=data->trg_value;
+    }
+  }
 
   virtual void NodeDataVec(std::vector<Vector<Real_t>*>& coord,
                            std::vector<Vector<Real_t>*>& value,
@@ -47,19 +61,27 @@ class FMM_Node: public MPI_Node {
     coord  .push_back(&src_coord  );
     value  .push_back(&src_value  );
     scatter.push_back(&src_scatter);
-
     coord  .push_back(&surf_coord  );
     value  .push_back(&surf_value  );
     scatter.push_back(&surf_scatter);
-
     coord  .push_back(&trg_coord  );
     value  .push_back(&trg_value  );
     scatter.push_back(&trg_scatter);
   }
 
-  virtual void ClearData();
+  virtual void ClearData(){
+    ClearFMMData();
+    MPI_Node::ClearData();
+  }
 
-  void ClearFMMData();
+  virtual void ClearFMMData(){
+    if(fmm_data!=NULL)
+      fmm_data->Clear();
+  }
+
+  virtual void Truncate(){
+    MPI_Node::Truncate();
+  }
 
   FMM_Data<Real_t>*& FMMData(){return fmm_data;}
 
@@ -151,8 +173,6 @@ class FMM_Node: public MPI_Node {
     }
   }
 
-  virtual void Truncate() ;
-
   Vector<Real_t> src_coord;  //Point sources.
   Vector<Real_t> src_value;
   Vector<size_t> src_scatter;
@@ -175,7 +195,5 @@ class FMM_Node: public MPI_Node {
 };
 
 }//end namespace
-
-#include <fmm_node.txx>
 
 #endif //_PVFMM_FMM_NODE_HPP_
