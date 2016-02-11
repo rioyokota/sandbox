@@ -288,7 +288,7 @@ void MPI_Tree<TreeNode>::SetColleagues(BoundaryType bndry, Node_t* node){
 
     Vector<std::vector<Node_t*> > nodes(MAX_DEPTH);
     while(curr_node!=NULL){
-      nodes[curr_node->Depth()].push_back(curr_node);
+      nodes[curr_node->depth].push_back(curr_node);
       curr_node=this->PreorderNxt(curr_node);
     }
     for(size_t i=0;i<MAX_DEPTH;i++){
@@ -301,39 +301,6 @@ void MPI_Tree<TreeNode>::SetColleagues(BoundaryType bndry, Node_t* node){
     }
 
   }else{
-    /* //This is slower
-    Node_t* root_node=this->RootNode();
-    int d=node->Depth();
-    Real_t* c0=node->Coord();
-    Real_t s=pvfmm::pow<Real_t>(0.5,d);
-    Real_t c[COORD_DIM];
-    int idx=0;
-    for(int i=-1;i<=1;i++)
-    for(int j=-1;j<=1;j++)
-    for(int k=-1;k<=1;k++){
-      c[0]=c0[0]+s*0.5+s*k;
-      c[1]=c0[1]+s*0.5+s*j;
-      c[2]=c0[2]+s*0.5+s*i;
-      if(bndry==Periodic){
-        if(c[0]<0.0) c[0]+=1.0;
-        if(c[0]>1.0) c[0]-=1.0;
-        if(c[1]<1.0) c[1]+=1.0;
-        if(c[1]>1.0) c[1]-=1.0;
-        if(c[2]<1.0) c[2]+=1.0;
-        if(c[2]>1.0) c[2]-=1.0;
-      }
-      node->SetColleague(NULL,idx);
-      if(c[0]<1.0 && c[0]>0.0)
-      if(c[1]<1.0 && c[1]>0.0)
-      if(c[2]<1.0 && c[2]>0.0){
-        MortonId m(c,d);
-        Node_t* nbr=FindNode(m,false,root_node);
-        while(nbr->Depth()>d) nbr=(Node_t*)nbr->Parent();
-        if(nbr->Depth()==d) node->SetColleague(nbr,idx);
-      }
-      idx++;
-    }
-    /*/
     Node_t* parent_node;
     Node_t* tmp_node1;
     Node_t* tmp_node2;

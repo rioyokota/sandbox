@@ -208,7 +208,7 @@ void FMM_Tree<FMM_Mat_t>::UpwardPass() {
     std::vector<Node_t*>& nodes=this->GetNodeList();
     for(size_t i=0;i<nodes.size();i++){
       Node_t* n=nodes[i];
-      if(n->Depth()>max_depth_loc) max_depth_loc=n->Depth();
+      if(n->depth>max_depth_loc) max_depth_loc=n->depth;
     }
     max_depth = max_depth_loc;
   }
@@ -296,7 +296,7 @@ void FMM_Tree<FMM_Mat_t>::DownwardPass() {
     for(size_t i=0;i<nodes.size();i++){
       Node_t* n=nodes[i];
       if(!n->IsGhost() && n->IsLeaf()) leaf_nodes.push_back(n);
-      if(n->Depth()>max_depth_loc) max_depth_loc=n->Depth();
+      if(n->depth>max_depth_loc) max_depth_loc=n->depth;
     }
     max_depth = max_depth_loc;
   }

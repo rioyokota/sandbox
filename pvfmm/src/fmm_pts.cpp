@@ -84,10 +84,10 @@ void fmm_test(size_t N, size_t M, Real_t b, int dist, int mult_order, int depth)
     std::vector<FMMNode_t*>& nodes=tree.GetNodeList();
     for(size_t i=0;i<nodes.size();i++){
       FMMNode_t* n=nodes[i];
-      if(!n->IsGhost()) all_nodes[n->Depth()]++;
+      if(!n->IsGhost()) all_nodes[n->depth]++;
       if(!n->IsGhost() && n->IsLeaf()){
-        leaf_nodes[n->Depth()]++;
-        if(maxdepth<n->Depth()) maxdepth=n->Depth();
+        leaf_nodes[n->depth]++;
+        if(maxdepth<n->depth) maxdepth=n->depth;
         nleaf++;
       }
     }

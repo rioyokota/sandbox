@@ -1085,13 +1085,13 @@ void FMM_Pts<FMMNode>::CollectNodeData(FMMTree_t* tree, std::vector<FMMNode*>& n
       FMMNode_t* r_node=NULL;
       for(size_t i=0;i<node.size();i++){
         if(!node[i]->IsLeaf()){
-          node_lst_[node[i]->Depth()].push_back(node[i]);
+          node_lst_[node[i]->depth].push_back(node[i]);
         }else{
           node[i]->pt_cnt[0]+=node[i]-> src_coord.Dim()/COORD_DIM;
           node[i]->pt_cnt[0]+=node[i]->surf_coord.Dim()/COORD_DIM;
           if(node[i]->IsGhost()) node[i]->pt_cnt[0]++; // TODO: temporary fix, pt_cnt not known for ghost nodes
         }
-        if(node[i]->Depth()==0) r_node=node[i];
+        if(node[i]->depth==0) r_node=node[i];
       }
       size_t chld_cnt=1UL<<COORD_DIM;
       for(int i=MAX_DEPTH;i>=0;i--){
@@ -1139,11 +1139,11 @@ void FMM_Pts<FMMNode>::CollectNodeData(FMMTree_t* tree, std::vector<FMMNode*>& n
       FMMNode_t* r_node=NULL;
       for(size_t i=0;i<node.size();i++){
         if(!node[i]->IsLeaf()){
-          node_lst_[node[i]->Depth()].push_back(node[i]);
+          node_lst_[node[i]->depth].push_back(node[i]);
         }else{
           node[i]->pt_cnt[1]+=node[i]->trg_coord.Dim()/COORD_DIM;
         }
-        if(node[i]->Depth()==0) r_node=node[i];
+        if(node[i]->depth==0) r_node=node[i];
       }
       size_t chld_cnt=1UL<<COORD_DIM;
       for(int i=MAX_DEPTH;i>=0;i--){
@@ -1182,7 +1182,7 @@ void FMM_Pts<FMMNode>::CollectNodeData(FMMTree_t* tree, std::vector<FMMNode*>& n
       std::vector<std::vector< FMMNode* > > node_lst_(MAX_DEPTH+1);
       for(size_t i=0;i<node.size();i++)
         if(!node[i]->IsLeaf())
-          node_lst_[node[i]->Depth()].push_back(node[i]);
+          node_lst_[node[i]->depth].push_back(node[i]);
       for(int i=0;i<=MAX_DEPTH;i++)
         for(size_t j=0;j<node_lst_[i].size();j++)
           node_lst.push_back(node_lst_[i][j]);
@@ -1196,7 +1196,7 @@ void FMM_Pts<FMMNode>::CollectNodeData(FMMTree_t* tree, std::vector<FMMNode*>& n
       std::vector<std::vector< FMMNode* > > node_lst_(MAX_DEPTH+1);
       for(size_t i=0;i<node.size();i++)
         if(!node[i]->IsLeaf() && !node[i]->IsGhost())
-          node_lst_[node[i]->Depth()].push_back(node[i]);
+          node_lst_[node[i]->depth].push_back(node[i]);
       for(int i=0;i<=MAX_DEPTH;i++)
         for(size_t j=0;j<node_lst_[i].size();j++)
           node_lst.push_back(node_lst_[i][j]);
@@ -1468,7 +1468,7 @@ void FMM_Pts<FMMNode>::SetupInterac(SetupData<Real_t>& setup_data){
       { // Build trg_interac_list
         #pragma omp parallel for
         for(size_t i=0;i<n_out;i++){
-          if(!((FMMNode*)nodes_out[i])->IsGhost() && (level==-1 || ((FMMNode*)nodes_out[i])->Depth()==level)){
+          if(!((FMMNode*)nodes_out[i])->IsGhost() && (level==-1 || ((FMMNode*)nodes_out[i])->depth==level)){
             Vector<FMMNode*>& lst=((FMMNode*)nodes_out[i])->interac_list[interac_type];
             mem::memcopy(&trg_interac_list[i][0], &lst[0], lst.Dim()*sizeof(FMMNode*));
             assert(lst.Dim()==mat_cnt);
@@ -1549,7 +1549,7 @@ void FMM_Pts<FMMNode>::SetupInterac(SetupData<Real_t>& setup_data){
             for(size_t j=interac_blk_dsp[k-1];j<interac_blk_dsp[k];j++){
               FMMNode_t* trg_node=src_interac_list[i][j];
               if(trg_node!=NULL && trg_node->node_id<n_out){
-                size_t depth=(this->ScaleInvar()?trg_node->Depth():0);
+                size_t depth=(this->ScaleInvar()?trg_node->depth:0);
                 input_perm .push_back(precomp_data_offset[j][1+4*depth+0]); // prem
                 input_perm .push_back(precomp_data_offset[j][1+4*depth+1]); // scal
                 input_perm .push_back(interac_dsp[trg_node->node_id][j]*vec_size*sizeof(Real_t)); // trg_ptr
@@ -1566,7 +1566,7 @@ void FMM_Pts<FMMNode>::SetupInterac(SetupData<Real_t>& setup_data){
           for(size_t i=0;i<n_out;i++){
             for(size_t j=interac_blk_dsp[k-1];j<interac_blk_dsp[k];j++){
               if(trg_interac_list[i][j]!=NULL){
-                size_t depth=(this->ScaleInvar()?((FMMNode*)nodes_out[i])->Depth():0);
+                size_t depth=(this->ScaleInvar()?((FMMNode*)nodes_out[i])->depth:0);
                 output_perm.push_back(precomp_data_offset[j][1+4*depth+2]); // prem
                 output_perm.push_back(precomp_data_offset[j][1+4*depth+3]); // scal
                 output_perm.push_back(interac_dsp[               i ][j]*vec_size*sizeof(Real_t)); // src_ptr
@@ -1800,8 +1800,8 @@ void FMM_Pts<FMMNode>::Source2UpSetup(SetupData<Real_t>&  setup_data, FMMTree_t*
 
     setup_data.nodes_in .clear();
     setup_data.nodes_out.clear();
-    for(size_t i=0;i<nodes_in .Dim();i++) if((nodes_in [i]->Depth()==level || level==-1) && (nodes_in [i]->src_coord.Dim() || nodes_in [i]->surf_coord.Dim()) && nodes_in [i]->IsLeaf() && !nodes_in [i]->IsGhost()) setup_data.nodes_in .push_back(nodes_in [i]);
-    for(size_t i=0;i<nodes_out.Dim();i++) if((nodes_out[i]->Depth()==level || level==-1) && (nodes_out[i]->src_coord.Dim() || nodes_out[i]->surf_coord.Dim()) && nodes_out[i]->IsLeaf() && !nodes_out[i]->IsGhost()) setup_data.nodes_out.push_back(nodes_out[i]);
+    for(size_t i=0;i<nodes_in .Dim();i++) if((nodes_in [i]->depth==level || level==-1) && (nodes_in [i]->src_coord.Dim() || nodes_in [i]->surf_coord.Dim()) && nodes_in [i]->IsLeaf() && !nodes_in [i]->IsGhost()) setup_data.nodes_in .push_back(nodes_in [i]);
+    for(size_t i=0;i<nodes_out.Dim();i++) if((nodes_out[i]->depth==level || level==-1) && (nodes_out[i]->src_coord.Dim() || nodes_out[i]->surf_coord.Dim()) && nodes_out[i]->IsLeaf() && !nodes_out[i]->IsGhost()) setup_data.nodes_out.push_back(nodes_out[i]);
   }
 
   struct PackedData{
@@ -1932,7 +1932,7 @@ void FMM_Pts<FMMNode>::Source2UpSetup(SetupData<Real_t>&  setup_data, FMMTree_t*
 
     #pragma omp parallel for
     for(size_t i=0;i<nodes.size();i++){
-      Vector<Real_t>& coord_vec=tree->upwd_check_surf[((FMMNode*)nodes[i])->Depth()];
+      Vector<Real_t>& coord_vec=tree->upwd_check_surf[((FMMNode*)nodes[i])->depth];
       Vector<Real_t>& value_vec=((FMMData*)((FMMNode*)nodes[i])->FMMData())->upward_equiv;
       if(coord_vec.Dim()){
         coord.dsp[i]=&coord_vec[0]-coord.ptr[0][0];
@@ -1989,7 +1989,7 @@ void FMM_Pts<FMMNode>::Source2UpSetup(SetupData<Real_t>&  setup_data, FMMTree_t*
       size_t b=(nodes_out.size()*(tid+1))/omp_p;
       for(size_t i=a;i<b;i++){
         FMMNode_t* tnode=(FMMNode_t*)nodes_out[i];
-        Real_t s=pvfmm::pow<Real_t>(0.5,tnode->Depth());
+        Real_t s=pvfmm::pow<Real_t>(0.5,tnode->depth);
 
         size_t interac_cnt_=0;
         { // S2U_Type
@@ -2000,7 +2000,7 @@ void FMM_Pts<FMMNode>::Source2UpSetup(SetupData<Real_t>&  setup_data, FMMTree_t*
             size_t snode_id=snode->node_id;
             if(snode_id>=nodes_in.size() || nodes_in[snode_id]!=snode) continue;
             in_node.push_back(snode_id);
-            scal_idx.push_back(snode->Depth());
+            scal_idx.push_back(snode->depth);
             { // set coord_shift
               const int* rel_coord=interac_list.RelativeCoord(type,j);
               const Real_t* scoord=snode->Coord();
@@ -2129,8 +2129,8 @@ void FMM_Pts<FMMNode>::Up2UpSetup(SetupData<Real_t>& setup_data, FMMTree_t* tree
 
     setup_data.nodes_in .clear();
     setup_data.nodes_out.clear();
-    for(size_t i=0;i<nodes_in .Dim();i++) if((nodes_in [i]->Depth()==level+1) && nodes_in [i]->pt_cnt[0]) setup_data.nodes_in .push_back(nodes_in [i]);
-    for(size_t i=0;i<nodes_out.Dim();i++) if((nodes_out[i]->Depth()==level  ) && nodes_out[i]->pt_cnt[0]) setup_data.nodes_out.push_back(nodes_out[i]);
+    for(size_t i=0;i<nodes_in .Dim();i++) if((nodes_in [i]->depth==level+1) && nodes_in [i]->pt_cnt[0]) setup_data.nodes_in .push_back(nodes_in [i]);
+    for(size_t i=0;i<nodes_out.Dim();i++) if((nodes_out[i]->depth==level  ) && nodes_out[i]->pt_cnt[0]) setup_data.nodes_out.push_back(nodes_out[i]);
   }
 
   std::vector<void*>& nodes_in =setup_data.nodes_in ;
@@ -2840,8 +2840,8 @@ void FMM_Pts<FMMNode>::V_ListSetup(SetupData<Real_t>&  setup_data, FMMTree_t* tr
 
     setup_data.nodes_in .clear();
     setup_data.nodes_out.clear();
-    for(size_t i=0;i<nodes_in .Dim();i++) if((nodes_in [i]->Depth()==level-1 || level==-1) && nodes_in [i]->pt_cnt[0]) setup_data.nodes_in .push_back(nodes_in [i]);
-    for(size_t i=0;i<nodes_out.Dim();i++) if((nodes_out[i]->Depth()==level-1 || level==-1) && nodes_out[i]->pt_cnt[1]) setup_data.nodes_out.push_back(nodes_out[i]);
+    for(size_t i=0;i<nodes_in .Dim();i++) if((nodes_in [i]->depth==level-1 || level==-1) && nodes_in [i]->pt_cnt[0]) setup_data.nodes_in .push_back(nodes_in [i]);
+    for(size_t i=0;i<nodes_out.Dim();i++) if((nodes_out[i]->depth==level-1 || level==-1) && nodes_out[i]->pt_cnt[1]) setup_data.nodes_out.push_back(nodes_out[i]);
   }
   std::vector<void*>& nodes_in =setup_data.nodes_in ;
   std::vector<void*>& nodes_out=setup_data.nodes_out;
@@ -2963,13 +2963,13 @@ void FMM_Pts<FMMNode>::V_ListSetup(SetupData<Real_t>&  setup_data, FMMTree_t* tr
           fft_scl [blk0].resize(nodes_in_ .size()*scal_dim0);
           ifft_scl[blk0].resize(nodes_out_.size()*scal_dim1);
           for(size_t i=0;i<nodes_in_ .size();i++){
-            size_t depth=nodes_in_[i]->Depth()+1;
+            size_t depth=nodes_in_[i]->depth+1;
             for(size_t j=0;j<scal_dim0;j++){
               fft_scl[blk0][i*scal_dim0+j]=pvfmm::pow<Real_t>(2.0, src_scal[j]*depth);
             }
           }
           for(size_t i=0;i<nodes_out_.size();i++){
-            size_t depth=nodes_out_[i]->Depth()+1;
+            size_t depth=nodes_out_[i]->depth+1;
             for(size_t j=0;j<scal_dim1;j++){
               ifft_scl[blk0][i*scal_dim1+j]=pvfmm::pow<Real_t>(2.0, trg_scal[j]*depth);
             }
@@ -3238,8 +3238,8 @@ void FMM_Pts<FMMNode>::Down2DownSetup(SetupData<Real_t>& setup_data, FMMTree_t* 
 
     setup_data.nodes_in .clear();
     setup_data.nodes_out.clear();
-    for(size_t i=0;i<nodes_in .Dim();i++) if((nodes_in [i]->Depth()==level-1) && nodes_in [i]->pt_cnt[1]) setup_data.nodes_in .push_back(nodes_in [i]);
-    for(size_t i=0;i<nodes_out.Dim();i++) if((nodes_out[i]->Depth()==level  ) && nodes_out[i]->pt_cnt[1]) setup_data.nodes_out.push_back(nodes_out[i]);
+    for(size_t i=0;i<nodes_in .Dim();i++) if((nodes_in [i]->depth==level-1) && nodes_in [i]->pt_cnt[1]) setup_data.nodes_in .push_back(nodes_in [i]);
+    for(size_t i=0;i<nodes_out.Dim();i++) if((nodes_out[i]->depth==level  ) && nodes_out[i]->pt_cnt[1]) setup_data.nodes_out.push_back(nodes_out[i]);
   }
 
   std::vector<void*>& nodes_in =setup_data.nodes_in ;
@@ -4024,7 +4024,7 @@ void FMM_Pts<FMMNode>::X_ListSetup(SetupData<Real_t>&  setup_data, FMMTree_t* tr
 
     #pragma omp parallel for
     for(size_t i=0;i<nodes.size();i++){
-      Vector<Real_t>& coord_vec=tree->dnwd_check_surf[((FMMNode*)nodes[i])->Depth()];
+      Vector<Real_t>& coord_vec=tree->dnwd_check_surf[((FMMNode*)nodes[i])->depth];
       Vector<Real_t>& value_vec=((FMMData*)((FMMNode*)nodes[i])->FMMData())->dnward_equiv;
       if(coord_vec.Dim()){
         coord.dsp[i]=&coord_vec[0]-coord.ptr[0][0];
@@ -4068,7 +4068,7 @@ void FMM_Pts<FMMNode>::X_ListSetup(SetupData<Real_t>&  setup_data, FMMTree_t* tr
           interac_cnt.push_back(0);
           continue;
         }
-        Real_t s=pvfmm::pow<Real_t>(0.5,tnode->Depth());
+        Real_t s=pvfmm::pow<Real_t>(0.5,tnode->depth);
 
         size_t interac_cnt_=0;
         { // X_Type
@@ -4079,7 +4079,7 @@ void FMM_Pts<FMMNode>::X_ListSetup(SetupData<Real_t>&  setup_data, FMMTree_t* tr
             size_t snode_id=snode->node_id;
             if(snode_id>=nodes_in.size() || nodes_in[snode_id]!=snode) continue;
             in_node.push_back(snode_id);
-            scal_idx.push_back(snode->Depth());
+            scal_idx.push_back(snode->depth);
             { // set coord_shift
               const int* rel_coord=interac_list.RelativeCoord(type,j);
               const Real_t* scoord=snode->Coord();
@@ -4252,7 +4252,7 @@ void FMM_Pts<FMMNode>::W_ListSetup(SetupData<Real_t>&  setup_data, FMMTree_t* tr
     #pragma omp parallel for
     for(size_t i=0;i<nodes.size();i++){
       ((FMMNode_t*)nodes[i])->node_id=i;
-      Vector<Real_t>& coord_vec=tree->upwd_equiv_surf[((FMMNode*)nodes[i])->Depth()];
+      Vector<Real_t>& coord_vec=tree->upwd_equiv_surf[((FMMNode*)nodes[i])->depth];
       Vector<Real_t>& value_vec=((FMMData*)((FMMNode*)nodes[i])->FMMData())->upward_equiv;
       if(coord_vec.Dim()){
         coord.dsp[i]=&coord_vec[0]-coord.ptr[0][0];
@@ -4352,7 +4352,7 @@ void FMM_Pts<FMMNode>::W_ListSetup(SetupData<Real_t>&  setup_data, FMMTree_t* tr
       size_t b=(nodes_out.size()*(tid+1))/omp_p;
       for(size_t i=a;i<b;i++){
         FMMNode_t* tnode=(FMMNode_t*)nodes_out[i];
-        Real_t s=pvfmm::pow<Real_t>(0.5,tnode->Depth());
+        Real_t s=pvfmm::pow<Real_t>(0.5,tnode->depth);
 
         size_t interac_cnt_=0;
         { // W_Type
@@ -4365,7 +4365,7 @@ void FMM_Pts<FMMNode>::W_ListSetup(SetupData<Real_t>&  setup_data, FMMTree_t* tr
             if(snode->IsGhost() && snode->src_coord.Dim()+snode->surf_coord.Dim()==0){ // Is non-leaf ghost node
             }else if(snode->IsLeaf() && snode->pt_cnt[0]<=Nsrf) continue; // skip: handled in U-list
             in_node.push_back(snode_id);
-            scal_idx.push_back(snode->Depth());
+            scal_idx.push_back(snode->depth);
             { // set coord_shift
               const int* rel_coord=interac_list.RelativeCoord(type,j);
               const Real_t* scoord=snode->Coord();
@@ -4651,7 +4651,7 @@ void FMM_Pts<FMMNode>::U_ListSetup(SetupData<Real_t>& setup_data, FMMTree_t* tre
       size_t b=(nodes_out.size()*(tid+1))/omp_p;
       for(size_t i=a;i<b;i++){
         FMMNode_t* tnode=(FMMNode_t*)nodes_out[i];
-        Real_t s=pvfmm::pow<Real_t>(0.5,tnode->Depth());
+        Real_t s=pvfmm::pow<Real_t>(0.5,tnode->depth);
 
         size_t interac_cnt_=0;
         { // U0_Type
@@ -4662,7 +4662,7 @@ void FMM_Pts<FMMNode>::U_ListSetup(SetupData<Real_t>& setup_data, FMMTree_t* tre
             size_t snode_id=snode->node_id;
             if(snode_id>=nodes_in.size() || nodes_in[snode_id]!=snode) continue;
             in_node.push_back(snode_id);
-            scal_idx.push_back(snode->Depth());
+            scal_idx.push_back(snode->depth);
             { // set coord_shift
               const int* rel_coord=interac_list.RelativeCoord(type,j);
               const Real_t* scoord=snode->Coord();
@@ -4686,7 +4686,7 @@ void FMM_Pts<FMMNode>::U_ListSetup(SetupData<Real_t>& setup_data, FMMTree_t* tre
             size_t snode_id=snode->node_id;
             if(snode_id>=nodes_in.size() || nodes_in[snode_id]!=snode) continue;
             in_node.push_back(snode_id);
-            scal_idx.push_back(snode->Depth());
+            scal_idx.push_back(snode->depth);
             { // set coord_shift
               const int* rel_coord=interac_list.RelativeCoord(type,j);
               const Real_t* scoord=snode->Coord();
@@ -4710,7 +4710,7 @@ void FMM_Pts<FMMNode>::U_ListSetup(SetupData<Real_t>& setup_data, FMMTree_t* tre
             size_t snode_id=snode->node_id;
             if(snode_id>=nodes_in.size() || nodes_in[snode_id]!=snode) continue;
             in_node.push_back(snode_id);
-            scal_idx.push_back(snode->Depth());
+            scal_idx.push_back(snode->depth);
             { // set coord_shift
               const int* rel_coord=interac_list.RelativeCoord(type,j);
               const Real_t* scoord=snode->Coord();
@@ -4735,7 +4735,7 @@ void FMM_Pts<FMMNode>::U_ListSetup(SetupData<Real_t>& setup_data, FMMTree_t* tre
             size_t snode_id=snode->node_id;
             if(snode_id>=nodes_in.size() || nodes_in[snode_id]!=snode) continue;
             in_node.push_back(snode_id);
-            scal_idx.push_back(snode->Depth());
+            scal_idx.push_back(snode->depth);
             { // set coord_shift
               const int* rel_coord=interac_list.RelativeCoord(type,j);
               const Real_t* scoord=snode->Coord();
@@ -4761,7 +4761,7 @@ void FMM_Pts<FMMNode>::U_ListSetup(SetupData<Real_t>& setup_data, FMMTree_t* tre
             if(snode->IsGhost() && snode->src_coord.Dim()+snode->surf_coord.Dim()==0) continue; // Is non-leaf ghost node
             if(snode->pt_cnt[0]> Nsrf) continue;
             in_node.push_back(snode_id);
-            scal_idx.push_back(snode->Depth());
+            scal_idx.push_back(snode->depth);
             { // set coord_shift
               const int* rel_coord=interac_list.RelativeCoord(type,j);
               const Real_t* scoord=snode->Coord();
@@ -4875,8 +4875,8 @@ void FMM_Pts<FMMNode>::Down2TargetSetup(SetupData<Real_t>&  setup_data, FMMTree_
 
     setup_data.nodes_in .clear();
     setup_data.nodes_out.clear();
-    for(size_t i=0;i<nodes_in .Dim();i++) if((nodes_in [i]->Depth()==level || level==-1) && nodes_in [i]->trg_coord.Dim() && nodes_in [i]->IsLeaf() && !nodes_in [i]->IsGhost()) setup_data.nodes_in .push_back(nodes_in [i]);
-    for(size_t i=0;i<nodes_out.Dim();i++) if((nodes_out[i]->Depth()==level || level==-1) && nodes_out[i]->trg_coord.Dim() && nodes_out[i]->IsLeaf() && !nodes_out[i]->IsGhost()) setup_data.nodes_out.push_back(nodes_out[i]);
+    for(size_t i=0;i<nodes_in .Dim();i++) if((nodes_in [i]->depth==level || level==-1) && nodes_in [i]->trg_coord.Dim() && nodes_in [i]->IsLeaf() && !nodes_in [i]->IsGhost()) setup_data.nodes_in .push_back(nodes_in [i]);
+    for(size_t i=0;i<nodes_out.Dim();i++) if((nodes_out[i]->depth==level || level==-1) && nodes_out[i]->trg_coord.Dim() && nodes_out[i]->IsLeaf() && !nodes_out[i]->IsGhost()) setup_data.nodes_out.push_back(nodes_out[i]);
   }
 
   struct PackedData{
@@ -4933,7 +4933,7 @@ void FMM_Pts<FMMNode>::Down2TargetSetup(SetupData<Real_t>&  setup_data, FMMTree_
     #pragma omp parallel for
     for(size_t i=0;i<nodes.size();i++){
       ((FMMNode_t*)nodes[i])->node_id=i;
-      Vector<Real_t>& coord_vec=tree->dnwd_equiv_surf[((FMMNode*)nodes[i])->Depth()];
+      Vector<Real_t>& coord_vec=tree->dnwd_equiv_surf[((FMMNode*)nodes[i])->depth];
       Vector<Real_t>& value_vec=((FMMData*)((FMMNode*)nodes[i])->FMMData())->dnward_equiv;
       if(coord_vec.Dim()){
         coord.dsp[i]=&coord_vec[0]-coord.ptr[0][0];
@@ -5050,7 +5050,7 @@ void FMM_Pts<FMMNode>::Down2TargetSetup(SetupData<Real_t>&  setup_data, FMMTree_
       size_t b=(nodes_out.size()*(tid+1))/omp_p;
       for(size_t i=a;i<b;i++){
         FMMNode_t* tnode=(FMMNode_t*)nodes_out[i];
-        Real_t s=pvfmm::pow<Real_t>(0.5,tnode->Depth());
+        Real_t s=pvfmm::pow<Real_t>(0.5,tnode->depth);
 
         size_t interac_cnt_=0;
         { // D2T_Type
@@ -5061,7 +5061,7 @@ void FMM_Pts<FMMNode>::Down2TargetSetup(SetupData<Real_t>&  setup_data, FMMTree_
             size_t snode_id=snode->node_id;
             if(snode_id>=nodes_in.size() || nodes_in[snode_id]!=snode) continue;
             in_node.push_back(snode_id);
-            scal_idx.push_back(snode->Depth());
+            scal_idx.push_back(snode->depth);
             { // set coord_shift
               const int* rel_coord=interac_list.RelativeCoord(type,j);
               const Real_t* scoord=snode->Coord();

@@ -56,7 +56,7 @@ class MPI_Node: public TreeNode{
 
   void Initialize(TreeNode* parent_, int path2node_, NodeData* data_) {
     parent=parent_;
-    depth=(parent==NULL?0:((MPI_Node*)parent)->Depth()+1);
+    depth=(parent==NULL?0:((MPI_Node*)parent)->depth+1);
     if(data_!=NULL){
       dim=data_->dim;
       max_depth=data_->max_depth;
@@ -68,7 +68,7 @@ class MPI_Node: public TreeNode{
     assert(path2node_>=0 && path2node_<(int)(1U<<dim));
     path2node=path2node_;
 
-    Real_t coord_offset=((Real_t)1.0)/((Real_t)(((uint64_t)1)<<Depth()));
+    Real_t coord_offset=((Real_t)1.0)/((Real_t)(((uint64_t)1)<<depth));
     if(!parent_){
       for(int j=0;j<dim;j++) coord[j]=0;
     }else if(parent_){
@@ -135,7 +135,7 @@ class MPI_Node: public TreeNode{
       }
 
       Real_t* c=this->Coord();
-      Real_t s=pvfmm::pow<Real_t>(0.5,this->Depth()+1);
+      Real_t s=pvfmm::pow<Real_t>(0.5,depth+1);
       for(size_t j=0;j<pt_c.size();j++){
 	if(!pt_c[j] || !pt_c[j]->Dim()) continue;
 	Vector<Real_t>& coord=*pt_c[j];
@@ -217,8 +217,6 @@ class MPI_Node: public TreeNode{
 
   int Dim(){return dim;}
 
-  int Depth(){return depth;}
-
   bool IsLeaf(){return child == NULL;}
 
   bool IsGhost(){return ghost;}
@@ -236,7 +234,7 @@ class MPI_Node: public TreeNode{
   inline MortonId GetMortonId() {
     assert(coord);
     Real_t s=0.25/(1UL<<MAX_DEPTH);
-    return MortonId(coord[0]+s,coord[1]+s,coord[2]+s, Depth());
+    return MortonId(coord[0]+s,coord[1]+s,coord[2]+s, depth);
   }
 
   inline void SetCoord(MortonId& mid){
@@ -255,7 +253,7 @@ class MPI_Node: public TreeNode{
 
     parent=p;
     path2node=path2node_;
-    depth=(parent==NULL?0:((MPI_Node*)parent)->Depth()+1);
+    depth=(parent==NULL?0:((MPI_Node*)parent)->depth+1);
     if(parent!=NULL) max_depth=((MPI_Node*)parent)->max_depth;
   }
 
