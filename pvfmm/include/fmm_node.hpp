@@ -38,7 +38,7 @@ class FMM_Node: public MPI_Node {
 
   virtual ~FMM_Node();
 
-  virtual void Initialize(TreeNode* parent_, int path2node_, MPI_Node::NodeData*) ;
+  virtual void Initialize(MPI_Node* parent_, int path2node_, MPI_Node::NodeData*) ;
 
   virtual void NodeDataVec(std::vector<Vector<Real_t>*>& coord,
                            std::vector<Vector<Real_t>*>& value,
@@ -63,7 +63,7 @@ class FMM_Node: public MPI_Node {
 
   FMM_Data<Real_t>*& FMMData(){return fmm_data;}
 
-  virtual TreeNode* NewNode(TreeNode* n_=NULL) {
+  MPI_Node* NewNode(MPI_Node* n_=NULL) {
     FMM_Node* n=(n_==NULL?mem::aligned_new<FMM_Node>():static_cast<FMM_Node*>(n_));
     if(fmm_data!=NULL) n->fmm_data=fmm_data->NewData();
     n->dim=dim;
@@ -77,7 +77,7 @@ class FMM_Node: public MPI_Node {
     if(child) return;
     SetStatus(1);
     int n=(1UL<<dim);
-    child=mem::aligned_new<TreeNode*>(n);
+    child=mem::aligned_new<MPI_Node*>(n);
     for(int i=0;i<n;i++){
       child[i]=NewNode();
       ((MPI_Node*)child[i])->parent=this;

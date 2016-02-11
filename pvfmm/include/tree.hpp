@@ -2,7 +2,6 @@
 #include <vector>
 
 #include <pvfmm_common.hpp>
-#include <tree_node.hpp>
 #include <mem_mgr.hpp>
 
 #ifndef _PVFMM_TREE_HPP_

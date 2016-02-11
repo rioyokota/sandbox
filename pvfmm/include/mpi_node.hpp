@@ -1,11 +1,21 @@
-#include <tree_node.hpp>
+#include <cmath>
+#include <vector>
+#include <cassert>
+#include <cstdlib>
+#include <stdint.h>
+
+#include <pvfmm_common.hpp>
+#include <matrix.hpp>
+#include <mem_mgr.hpp>
+#include <mortonid.hpp>
+#include <vector.hpp>
 
 #ifndef _PVFMM_MPI_NODE_HPP_
 #define _PVFMM_MPI_NODE_HPP_
 
 namespace pvfmm{
 
-class MPI_Node: public TreeNode{
+class MPI_Node {
 
  public:
 
@@ -13,8 +23,8 @@ class MPI_Node: public TreeNode{
   int depth;
   int max_depth;
   int path2node;
-  TreeNode* parent;
-  TreeNode** child;
+  MPI_Node* parent;
+  MPI_Node** child;
   int status;
 
   bool ghost;
@@ -23,7 +33,7 @@ class MPI_Node: public TreeNode{
   long long weight;
 
   Real_t coord[COORD_DIM];
-  TreeNode * colleague[COLLEAGUE_COUNT];
+  MPI_Node * colleague[COLLEAGUE_COUNT];
 
   Vector<Real_t> pt_coord;
   Vector<Real_t> pt_value;
@@ -54,7 +64,7 @@ class MPI_Node: public TreeNode{
     child=NULL;
   }
 
-  void Initialize(TreeNode* parent_, int path2node_, NodeData* data_) {
+  void Initialize(MPI_Node* parent_, int path2node_, NodeData* data_) {
     parent=parent_;
     depth=(parent==NULL?0:((MPI_Node*)parent)->depth+1);
     if(data_!=NULL){
@@ -142,13 +152,13 @@ class MPI_Node: public TreeNode{
 
   bool IsGhost(){return ghost;}
 
-  TreeNode* Child(int id){
+  MPI_Node* Child(int id){
     assert(id<(1<<dim));
     if(child==NULL) return NULL;
     return child[id];
   }
 
-  TreeNode* Parent(){
+  MPI_Node* Parent(){
     return parent;
   }
 
@@ -168,7 +178,7 @@ class MPI_Node: public TreeNode{
     return path2node;
   }
 
-  void SetParent(TreeNode* p, int path2node_) {
+  void SetParent(MPI_Node* p, int path2node_) {
     assert(path2node_>=0 && path2node_<(1<<dim));
     assert(p==NULL?true:p->Child(path2node_)==this);
 
@@ -178,15 +188,15 @@ class MPI_Node: public TreeNode{
     if(parent!=NULL) max_depth=((MPI_Node*)parent)->max_depth;
   }
 
-  void SetChild(TreeNode* c, int id) {
+  void SetChild(MPI_Node* c, int id) {
     assert(id<(1<<dim));
     child[id]=c;
     if(c!=NULL) ((MPI_Node*)child[id])->SetParent(this,id);
   }
 
-  TreeNode * Colleague(int index){return colleague[index];}
+  MPI_Node * Colleague(int index){return colleague[index];}
 
-  void SetColleague(TreeNode * node_, int index){colleague[index]=node_;}
+  void SetColleague(MPI_Node * node_, int index){colleague[index]=node_;}
 
   virtual long long& NodeCost(){return weight;}
 

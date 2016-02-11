@@ -9,7 +9,7 @@ FMM_Node::~FMM_Node(){
   fmm_data=NULL;
 }
 
-void FMM_Node::Initialize(TreeNode* parent_,int path2node_, MPI_Node::NodeData* data_){
+void FMM_Node::Initialize(MPI_Node* parent_,int path2node_, MPI_Node::NodeData* data_){
   MPI_Node::Initialize(parent_,path2node_,data_);
 
   //Set FMM_Node specific data.
