@@ -1,9 +1,3 @@
-#include <vector>
-#include <cassert>
-#include <cstdlib>
-#include <stdint.h>
-
-#include <pvfmm_common.hpp>
 #include <tree_node.hpp>
 
 #ifndef _PVFMM_MPI_NODE_HPP_
@@ -23,7 +17,7 @@ class MPI_Node: public TreeNode{
 
   virtual ~MPI_Node();
 
-  virtual void Initialize(TreeNode* parent_, int path2node_, TreeNode::NodeData*) ;
+  virtual void Initialize(TreeNode* parent_, int path2node_, NodeData* data_) ;
 
   virtual void ClearData();
 

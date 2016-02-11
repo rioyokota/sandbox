@@ -1,4 +1,12 @@
+#include <cmath>
+#include <vector>
+#include <cassert>
+#include <cstdlib>
+#include <stdint.h>
+
 #include <pvfmm_common.hpp>
+#include <matrix.hpp>
+#include <mem_mgr.hpp>
 #include <mortonid.hpp>
 #include <vector.hpp>
 
@@ -46,7 +54,7 @@ class TreeNode{
 
   virtual ~TreeNode();
 
-  virtual void Initialize(TreeNode* parent_, int path2node_, NodeData* data_) ;
+  virtual void Initialize(TreeNode* parent_, int path2node_, TreeNode::NodeData* data_) ;
 
   virtual void ClearData(){}
 
