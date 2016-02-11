@@ -4,18 +4,16 @@
 
 namespace pvfmm{
 
-template <class Node>
-FMM_Node<Node>::~FMM_Node(){
+FMM_Node::~FMM_Node(){
   if(fmm_data!=NULL) mem::aligned_delete(fmm_data);
   fmm_data=NULL;
 }
 
-template <class Node>
-void FMM_Node<Node>::Initialize(TreeNode* parent_,int path2node_, TreeNode::NodeData* data_){
-  Node::Initialize(parent_,path2node_,data_);
+void FMM_Node::Initialize(TreeNode* parent_,int path2node_, TreeNode::NodeData* data_){
+  MPI_Node::Initialize(parent_,path2node_,data_);
 
   //Set FMM_Node specific data.
-  typename FMM_Node<Node>::NodeData* data=dynamic_cast<typename FMM_Node<Node>::NodeData*>(data_);
+  typename FMM_Node::NodeData* data=dynamic_cast<typename FMM_Node::NodeData*>(data_);
   if(data_!=NULL){
     src_coord=data->src_coord;
     src_value=data->src_value;
@@ -29,37 +27,32 @@ void FMM_Node<Node>::Initialize(TreeNode* parent_,int path2node_, TreeNode::Node
 }
 
 
-template <class Node>
-void FMM_Node<Node>::ClearData(){
+void FMM_Node::ClearData(){
   ClearFMMData();
-  Node::ClearData();
+  MPI_Node::ClearData();
 }
 
 
-template <class Node>
-void FMM_Node<Node>::ClearFMMData(){
+void FMM_Node::ClearFMMData(){
   if(fmm_data!=NULL)
     fmm_data->Clear();
 }
 
 
-template <class Node>
-TreeNode* FMM_Node<Node>::NewNode(TreeNode* n_){
-  FMM_Node<Node>* n=(n_==NULL?mem::aligned_new<FMM_Node<Node> >():static_cast<FMM_Node<Node>*>(n_));
+TreeNode* FMM_Node::NewNode(TreeNode* n_){
+  FMM_Node* n=(n_==NULL?mem::aligned_new<FMM_Node>():static_cast<FMM_Node*>(n_));
   if(fmm_data!=NULL) n->fmm_data=fmm_data->NewData();
-  return Node_t::NewNode(n);
+  return MPI_Node::NewNode(n);
 }
 
-template <class Node>
-void FMM_Node<Node>::Subdivide(){
+void FMM_Node::Subdivide(){
   if(!this->IsLeaf()) return;
-  Node::Subdivide();
+  MPI_Node::Subdivide();
 }
 
 
-template <class Node>
-void FMM_Node<Node>::Truncate(){
-  Node::Truncate();
+void FMM_Node::Truncate(){
+  MPI_Node::Truncate();
 }
 
 }//end namespace

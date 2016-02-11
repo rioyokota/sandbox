@@ -11,7 +11,7 @@
 #include <utils.hpp>
 
 void fmm_test(size_t N, size_t M, Real_t b, int dist, int mult_order, int depth){
-  typedef pvfmm::FMM_Node<pvfmm::MPI_Node> FMMNode_t;
+  typedef pvfmm::FMM_Node FMMNode_t;
   typedef pvfmm::FMM_Pts<FMMNode_t> FMM_Mat_t;
   typedef pvfmm::FMM_Tree<FMM_Mat_t> FMM_Tree_t;
 
