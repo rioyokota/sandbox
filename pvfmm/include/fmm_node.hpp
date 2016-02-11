@@ -54,8 +54,8 @@ class FMM_Node: public MPI_Node {
       max_depth=data_->max_depth;
       if(max_depth>MAX_DEPTH) max_depth=MAX_DEPTH;
     }else if(parent!=NULL){
-      dim=parent->Dim();
-      max_depth=parent->max_depth;
+      dim=((FMM_Node*)parent)->Dim();
+      max_depth=((FMM_Node*)parent)->max_depth;
     }
     assert(path2node_>=0 && path2node_<(int)(1U<<dim));
     path2node=path2node_;
@@ -66,7 +66,7 @@ class FMM_Node: public MPI_Node {
     }else if(parent_){
       int flag=1;
       for(int j=0;j<dim;j++){
-	coord[j]=parent_->coord[j]+
+	coord[j]=((FMM_Node*)parent_)->coord[j]+
 	  ((Path2Node() & flag)?coord_offset:0.0f);
 	flag=flag<<1;
       }
@@ -82,7 +82,7 @@ class FMM_Node: public MPI_Node {
       pt_value=mpi_data->value;
     }else if(parent){
       max_pts =parent->max_pts;
-      SetGhost(parent->IsGhost());
+      SetGhost(((FMM_Node*)parent)->IsGhost());
     }
 
     typename FMM_Node::NodeData* data=dynamic_cast<typename FMM_Node::NodeData*>(data_);
@@ -241,6 +241,87 @@ class FMM_Node: public MPI_Node {
     for(size_t i=0;i<x.size()*y.size()*z.size()*data_dof;i++){
       val[i]=v[i%data_dof];
     }
+  }
+
+  int Dim() {
+    return dim;
+  }
+
+  bool IsLeaf() {
+    return child == NULL;
+  }
+
+  bool IsGhost() {
+    return ghost;
+  }
+
+  void SetGhost(bool x) {
+    ghost=x;
+  }
+
+  int& GetStatus() {
+    return status;
+  }
+
+  void SetStatus(int flag) {
+    status=(status|flag);
+    if(parent && !(((FMM_Node*)parent)->GetStatus() & flag))
+      ((FMM_Node*)parent)->SetStatus(flag);
+  }
+
+
+  MPI_Node* Child(int id){
+    assert(id<(1<<dim));
+    if(child==NULL) return NULL;
+    return child[id];
+  }
+
+  MPI_Node* Parent(){
+    return parent;
+  }
+
+  inline MortonId GetMortonId() {
+    assert(coord);
+    Real_t s=0.25/(1UL<<MAX_DEPTH);
+    return MortonId(coord[0]+s,coord[1]+s,coord[2]+s, depth);
+  }
+
+  inline void SetCoord(MortonId& mid) {
+    assert(coord);
+    mid.GetCoord(coord);
+    depth=mid.GetDepth();
+  }
+
+  virtual int Path2Node(){
+    return path2node;
+  }
+
+  void SetParent(MPI_Node* p, int path2node_) {
+    assert(path2node_>=0 && path2node_<(1<<dim));
+    assert(p==NULL?true:p->Child(path2node_)==this);
+    parent=p;
+    path2node=path2node_;
+    depth=(parent==NULL?0:parent->depth+1);
+    if(parent!=NULL) max_depth=parent->max_depth;
+  }
+
+  void SetChild(MPI_Node* c, int id) {
+    assert(id<(1<<dim));
+    child[id]=c;
+    if(c!=NULL) ((FMM_Node*)child[id])->SetParent(this,id);
+  }
+
+  MPI_Node * Colleague(int index) {
+    return colleague[index];
+  }
+
+  void SetColleague(MPI_Node * node_, int index) {
+    colleague[index]=node_;
+  }
+
+  Real_t* Coord() {
+    assert(coord!=NULL);
+    return coord;
   }
 
 };
