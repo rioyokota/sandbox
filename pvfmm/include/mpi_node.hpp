@@ -9,11 +9,28 @@ class MPI_Node: public TreeNode{
 
  public:
 
+  int dim;
+  int depth;
+  int max_depth;
+  int path2node;
+  TreeNode* parent;
+  TreeNode** child;
+  int status;
+
+  bool ghost;
+  size_t max_pts;
+  size_t node_id;
+  long long weight;
+
+  Real_t coord[COORD_DIM];
+  TreeNode * colleague[COLLEAGUE_COUNT];
+
   Vector<Real_t> pt_coord;
   Vector<Real_t> pt_value;
   Vector<size_t> pt_scatter;
 
-  MPI_Node(): TreeNode() {}
+  MPI_Node(): dim(0), depth(0), max_depth(MAX_DEPTH), parent(NULL), child(NULL), status(1),
+              ghost(false), weight(1) {}
 
   ~MPI_Node() {
     if(!child) return;
@@ -34,8 +51,8 @@ class MPI_Node: public TreeNode{
       max_depth=data_->max_depth;
       if(max_depth>MAX_DEPTH) max_depth=MAX_DEPTH;
     }else if(parent!=NULL){
-      dim=parent->dim;
-      max_depth=parent->max_depth;
+      dim=((MPI_Node*)parent)->Dim();
+      max_depth=((MPI_Node*)parent)->max_depth;
     }
     assert(path2node_>=0 && path2node_<(int)(1U<<dim));
     path2node=path2node_;
@@ -46,7 +63,7 @@ class MPI_Node: public TreeNode{
     }else if(parent_){
       int flag=1;
       for(int j=0;j<dim;j++){
-	coord[j]=(parent_)->coord[j]+
+	coord[j]=((MPI_Node*)parent_)->coord[j]+
 	  ((Path2Node() & flag)?coord_offset:0.0f);
 	flag=flag<<1;
       }
@@ -63,7 +80,7 @@ class MPI_Node: public TreeNode{
       pt_coord=mpi_data->coord;
       pt_value=mpi_data->value;
     }else if(parent){
-      max_pts =parent->max_pts;
+      max_pts =((MPI_Node*)parent)->max_pts;
       SetGhost(((MPI_Node*)parent)->IsGhost());
     }
   }
@@ -89,7 +106,7 @@ class MPI_Node: public TreeNode{
     child=mem::aligned_new<TreeNode*>(n);
     for(int i=0;i<n;i++){
       child[i]=NewNode();
-      child[i]->parent=this;
+      ((MPI_Node*)child[i])->parent=this;
       ((MPI_Node*)child[i])->Initialize(this,i,NULL);
     }
     int nchld=(1UL<<this->Dim());
@@ -228,7 +245,7 @@ class MPI_Node: public TreeNode{
     parent=p;
     path2node=path2node_;
     depth=(parent==NULL?0:((MPI_Node*)parent)->Depth()+1);
-    if(parent!=NULL) max_depth=parent->max_depth;
+    if(parent!=NULL) max_depth=((MPI_Node*)parent)->max_depth;
   }
 
   void SetChild(TreeNode* c, int id) {
