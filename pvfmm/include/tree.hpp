@@ -14,23 +14,21 @@ class Tree{
 
  public:
 
-   typedef TreeNode Node_t;
-
   Tree(): dim(0), root_node(NULL), max_depth(MAX_DEPTH), memgr(0) { };
 
   virtual ~Tree();
 
-  virtual void Initialize(typename Node_t::NodeData* init_data) ;
+  virtual void Initialize(typename TreeNode::NodeData* init_data) ;
 
-  Node_t* RootNode() {return root_node;}
+  TreeNode* RootNode() {return root_node;}
 
-  Node_t* PreorderFirst();
+  TreeNode* PreorderFirst();
 
-  Node_t* PreorderNxt(Node_t* curr_node);
+  TreeNode* PreorderNxt(TreeNode* curr_node);
 
-  Node_t* PostorderFirst();
+  TreeNode* PostorderFirst();
 
-  Node_t* PostorderNxt(Node_t* curr_node);
+  TreeNode* PostorderNxt(TreeNode* curr_node);
 
   std::vector<TreeNode*>& GetNodeList();
 
@@ -39,7 +37,7 @@ class Tree{
  protected:
 
   int dim;              // dimension of the tree
-  Node_t* root_node;    // pointer to root node
+  TreeNode* root_node;    // pointer to root node
   int max_depth;        // maximum tree depth
   std::vector<TreeNode*> node_lst;
   mem::MemoryManager memgr;
