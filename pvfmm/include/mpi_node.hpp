@@ -66,14 +66,14 @@ class MPI_Node {
 
   void Initialize(MPI_Node* parent_, int path2node_, NodeData* data_) {
     parent=parent_;
-    depth=(parent==NULL?0:((MPI_Node*)parent)->depth+1);
+    depth=(parent==NULL?0:parent->depth+1);
     if(data_!=NULL){
       dim=data_->dim;
       max_depth=data_->max_depth;
       if(max_depth>MAX_DEPTH) max_depth=MAX_DEPTH;
     }else if(parent!=NULL){
-      dim=((MPI_Node*)parent)->Dim();
-      max_depth=((MPI_Node*)parent)->max_depth;
+      dim=parent->Dim();
+      max_depth=parent->max_depth;
     }
     assert(path2node_>=0 && path2node_<(int)(1U<<dim));
     path2node=path2node_;
@@ -84,7 +84,7 @@ class MPI_Node {
     }else if(parent_){
       int flag=1;
       for(int j=0;j<dim;j++){
-	coord[j]=((MPI_Node*)parent_)->coord[j]+
+	coord[j]=parent_->coord[j]+
 	  ((Path2Node() & flag)?coord_offset:0.0f);
 	flag=flag<<1;
       }
@@ -101,8 +101,8 @@ class MPI_Node {
       pt_coord=mpi_data->coord;
       pt_value=mpi_data->value;
     }else if(parent){
-      max_pts =((MPI_Node*)parent)->max_pts;
-      SetGhost(((MPI_Node*)parent)->IsGhost());
+      max_pts =parent->max_pts;
+      SetGhost(parent->IsGhost());
     }
   }
 
@@ -184,14 +184,14 @@ class MPI_Node {
 
     parent=p;
     path2node=path2node_;
-    depth=(parent==NULL?0:((MPI_Node*)parent)->depth+1);
-    if(parent!=NULL) max_depth=((MPI_Node*)parent)->max_depth;
+    depth=(parent==NULL?0:parent->depth+1);
+    if(parent!=NULL) max_depth=parent->max_depth;
   }
 
   void SetChild(MPI_Node* c, int id) {
     assert(id<(1<<dim));
     child[id]=c;
-    if(c!=NULL) ((MPI_Node*)child[id])->SetParent(this,id);
+    if(c!=NULL) child[id]->SetParent(this,id);
   }
 
   MPI_Node * Colleague(int index){return colleague[index];}
@@ -210,8 +210,8 @@ class MPI_Node {
 
   void SetStatus(int flag){
     status=(status|flag);
-    if(parent && !(((MPI_Node*)parent)->GetStatus() & flag))
-      ((MPI_Node*)parent)->SetStatus(flag);
+    if(parent && !(parent->GetStatus() & flag))
+      parent->SetStatus(flag);
   }
 
 };
