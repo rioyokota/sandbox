@@ -1353,7 +1353,19 @@ public:
              vprecomp_fft_flag(false), vlist_fft_flag(false),
                vlist_ifft_flag(false), mat(NULL), kernel(NULL){};
 
-  virtual ~FMM_Pts();
+  virtual ~FMM_Pts() {
+    if(mat!=NULL){
+      delete mat;
+      mat=NULL;
+    }
+    if(vprecomp_fft_flag) FFTW_t<Real_t>::fft_destroy_plan(vprecomp_fftplan);
+    {
+      if(vlist_fft_flag ) FFTW_t<Real_t>::fft_destroy_plan(vlist_fftplan );
+      if(vlist_ifft_flag) FFTW_t<Real_t>::fft_destroy_plan(vlist_ifftplan);
+      vlist_fft_flag =false;
+      vlist_ifft_flag=false;
+    }
+  }
 
   void Initialize(int mult_order, const Kernel<Real_t>* kernel_) {
     Profile::Tic("InitFMM_Pts",true);{
@@ -4534,8 +4546,6 @@ public:
 };
 
 }//end namespace
-
-#include <fmm_pts.txx>
 
 #endif //_PVFMM_FMM_PTS_HPP_
 
