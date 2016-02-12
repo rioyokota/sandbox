@@ -963,8 +963,84 @@ public:
 
   virtual ~FMM_Pts();
 
-  void Initialize(int mult_order, const Kernel<Real_t>* kernel);
-
+  void Initialize(int mult_order, const Kernel<Real_t>* kernel_) {
+    Profile::Tic("InitFMM_Pts",true);{
+    int rank=0;
+    bool verbose=false;
+#ifndef NDEBUG
+#ifdef __VERBOSE__
+    if(!rank) verbose=true;
+#endif
+#endif
+    if(kernel_) kernel_->Initialize(verbose);
+    multipole_order=mult_order;
+    kernel=kernel_;
+    assert(kernel!=NULL);
+    bool save_precomp=false;
+    mat=new PrecompMat<Real_t>(ScaleInvar());
+    if(this->mat_fname.size()==0){
+      std::stringstream st;
+      st<<PVFMM_PRECOMP_DATA_PATH;
+      if(!st.str().size()){
+        char* pvfmm_dir = getenv ("PVFMM_DIR");
+        if(pvfmm_dir) st<<pvfmm_dir;
+      }
+#ifndef STAT_MACROS_BROKEN
+      if(st.str().size()){
+        struct stat stat_buff;
+        if(stat(st.str().c_str(), &stat_buff) || !S_ISDIR(stat_buff.st_mode)){
+          std::cout<<"error: path not found: "<<st.str()<<'\n';
+          exit(0);
+        }
+      }
+#endif
+      if(st.str().size()) st<<'/';
+      st<<"Precomp_"<<kernel->ker_name.c_str()<<"_m"<<mult_order;
+      if(sizeof(Real_t)==8) st<<"";
+      else if(sizeof(Real_t)==4) st<<"_f";
+      else st<<"_t"<<sizeof(Real_t);
+      st<<".data";
+      this->mat_fname=st.str();
+      save_precomp=true;
+    }
+    this->mat->LoadFile(mat_fname.c_str());
+    interac_list.Initialize(COORD_DIM, this->mat);
+    Profile::Tic("PrecompUC2UE",false,4);
+    this->PrecompAll(UC2UE0_Type);
+    this->PrecompAll(UC2UE1_Type);
+    Profile::Toc();
+    Profile::Tic("PrecompDC2DE",false,4);
+    this->PrecompAll(DC2DE0_Type);
+    this->PrecompAll(DC2DE1_Type);
+    Profile::Toc();
+    Profile::Tic("PrecompBC",false,4);
+    this->PrecompAll(BC_Type,0);
+    Profile::Toc();
+    Profile::Tic("PrecompU2U",false,4);
+    this->PrecompAll(U2U_Type);
+    Profile::Toc();
+    Profile::Tic("PrecompD2D",false,4);
+    this->PrecompAll(D2D_Type);
+    Profile::Toc();
+    if(save_precomp){
+      Profile::Tic("Save2File",false,4);
+      if(!rank){
+        FILE* f=fopen(this->mat_fname.c_str(),"r");
+        if(f==NULL) { //File does not exists.
+          this->mat->Save2File(this->mat_fname.c_str());
+        }else fclose(f);
+      }
+      Profile::Toc();
+    }
+    Profile::Tic("PrecompV",false,4);
+    this->PrecompAll(V_Type);
+    Profile::Toc();
+    Profile::Tic("PrecompV1",false,4);
+    this->PrecompAll(V1_Type);
+    Profile::Toc();
+    }Profile::Toc();
+  }
+  
   int MultipoleOrder(){return multipole_order;}
 
   bool ScaleInvar(){return kernel->scale_invar;}
