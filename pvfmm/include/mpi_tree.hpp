@@ -1,12 +1,28 @@
-#include <vector>
-#include <string>
-
-#include <pvfmm_common.hpp>
-#include <mortonid.hpp>
-#include <tree.hpp>
-
 #ifndef _PVFMM_MPI_TREE_HPP_
 #define _PVFMM_MPI_TREE_HPP_
+
+#include <algorithm>
+#include <cassert>
+#include <cmath>
+#include <cstdlib>
+#include <fstream>
+#include <iomanip>
+#include <iostream>
+#include <omp.h>
+#include <set>
+#include <sstream>
+#include <stdint.h>
+#include <string>
+#include <vector>
+
+#include <fmm_node.hpp>
+#include <mem_mgr.hpp>
+#include <mortonid.hpp>
+#include <ompUtils.h>
+#include <parUtils.h>
+#include <profile.hpp>
+#include <pvfmm_common.hpp>
+#include <tree.hpp>
 
 namespace pvfmm{
 
@@ -15,9 +31,6 @@ enum BoundaryType{
   Periodic
 };
 
-/**
- * \brief Base class for distributed tree.
- */
 template <class TreeNode>
 class MPI_Tree: public Tree<TreeNode>{
 

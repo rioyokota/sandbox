@@ -1,15 +1,5 @@
-
 namespace pvfmm{
 
-/**
- * \brief Returns the coordinates of points on the surface of a cube.
- * \param[in] p Number of points on an edge of the cube is (n+1)
- * \param[in] c Coordinates to the centre of the cube (3D array).
- * \param[in] alpha Scaling factor for the size of the cube.
- * \param[in] depth Depth of the cube in the octree.
- * \return Vector with coordinates of points on the surface of the cube in the
- * format [x0 y0 z0 x1 y1 z1 .... ].
- */
 template <class Real_t>
 std::vector<Real_t> surface(int p, Real_t* c, Real_t alpha, int depth){
   size_t n_=(6*(p-1)*(p-1)+2);  //Total number of points.
@@ -1610,10 +1600,6 @@ void FMM_Pts<FMMNode_t>::SetupInterac(SetupData<Real_t>& setup_data){
 template <class FMMNode_t>
 void FMM_Pts<FMMNode_t>::EvalList(SetupData<Real_t>& setup_data){
   if(setup_data.interac_data.Dim(0)==0 || setup_data.interac_data.Dim(1)==0){
-    Profile::Tic("Host2Device",false,25);
-    Profile::Toc();
-    Profile::Tic("DeviceComp",false,20);
-    Profile::Toc();
     return;
   }
 
@@ -3046,8 +3032,6 @@ void FMM_Pts<FMMNode_t>::V_List     (SetupData<Real_t>&  setup_data){
 
   int np=1;
   if(setup_data.interac_data.Dim(0)==0 || setup_data.interac_data.Dim(1)==0){
-    if(np>1) Profile::Tic("Host2Device",false,25);
-    if(np>1) Profile::Toc();
     return;
   }
 
@@ -3426,10 +3410,6 @@ template <class FMMNode_t>
 void FMM_Pts<FMMNode_t>::EvalListPts(SetupData<Real_t>& setup_data){
   if(setup_data.kernel->ker_dim[0]*setup_data.kernel->ker_dim[1]==0) return;
   if(setup_data.interac_data.Dim(0)==0 || setup_data.interac_data.Dim(1)==0){
-    Profile::Tic("Host2Device",false,25);
-    Profile::Toc();
-    Profile::Tic("DeviceComp",false,20);
-    Profile::Toc();
     return;
   }
 

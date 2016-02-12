@@ -1,34 +1,6 @@
-/**
- * \file mpi_tree.txx
- * \author Dhairya Malhotra, dhairya.malhotra@gmail.com
- * \date 12-11-2010
- * \brief This file contains the implementation of the class MPI_Tree.
- */
-
-#include <omp.h>
-#include <cmath>
-#include <cstdlib>
-#include <cassert>
-#include <string>
-#include <sstream>
-#include <iostream>
-#include <iomanip>
-#include <fstream>
-#include <algorithm>
-#include <stdint.h>
-#include <set>
-#include <ompUtils.h>
-#include <parUtils.h>
-#include <mem_mgr.hpp>
-#include <fmm_node.hpp>
-#include <profile.hpp>
-
 namespace pvfmm{
 
-/**
- * @author Dhairya Malhotra, dhairya.malhotra@gmail.com
- * @date 08 Feb 2011
- */
+
 inline int p2oLocal(Vector<MortonId> & nodes, Vector<MortonId>& leaves,
     unsigned int maxNumPts, unsigned int maxDepth, bool complete) {
   assert(maxDepth<=MAX_DEPTH);
@@ -55,8 +27,6 @@ inline int p2oLocal(Vector<MortonId> & nodes, Vector<MortonId>& leaves,
 
     unsigned int inc=maxNumPts;
     while(next_pt < num_pts && curr_node > nodes[next_pt]){
-      // We have more than maxNumPts points per octant because the node can
-      // not be refined any further.
       inc=inc<<1;
       next_pt+=inc;
       if(next_pt > num_pts){
@@ -96,24 +66,17 @@ inline int points2Octree(const Vector<MortonId>& pt_mid, Vector<MortonId>& nodes
 
   int myrank=0, np=1;
 
-  // Sort morton id of points.
   Profile::Tic("SortMortonId", true, 10);
   Vector<MortonId> pt_sorted;
   par::HyperQuickSort(pt_mid, pt_sorted);
   size_t pt_cnt=pt_sorted.Dim();
   Profile::Toc();
 
-  // Add last few points from next process, to get the boundary octant right.
-  Profile::Tic("Comm", true, 10);
-  Profile::Toc();
-
-  // Construct local octree.
   Profile::Tic("p2o_local", false, 10);
   Vector<MortonId> nodes_local(1); nodes_local[0]=MortonId();
   p2oLocal(pt_sorted, nodes_local, maxNumPts, maxDepth, myrank==np-1);
   Profile::Toc();
 
-  // Remove duplicate nodes on adjacent processors.
   Profile::Tic("RemoveDuplicates", true, 10);
   {
     size_t node_cnt=nodes_local.Dim();
@@ -123,9 +86,9 @@ inline int points2Octree(const Vector<MortonId>& pt_mid, Vector<MortonId>& nodes
     std::vector<MortonId> node_lst;
     if(myrank){
       while(i<node_cnt && nodes_local[i].getDFD(maxDepth)<first_node) i++; assert(i);
-      last_node=nodes_local[i>0?i-1:0].NextId(); // Next MortonId in the tree after first_node.
+      last_node=nodes_local[i>0?i-1:0].NextId();
 
-      while(first_node<last_node){ // Complete nodes between first_node and last_node.
+      while(first_node<last_node){
         while(first_node.isAncestor(last_node))
           first_node=first_node.getDFD(first_node.GetDepth()+1);
         if(first_node==last_node) break;
@@ -136,10 +99,6 @@ inline int points2Octree(const Vector<MortonId>& pt_mid, Vector<MortonId>& nodes
     for(;i<node_cnt-(myrank==np-1?0:1);i++) node_lst.push_back(nodes_local[i]);
     nodes=node_lst;
   }
-  Profile::Toc();
-
-  // Repartition nodes.
-  Profile::Tic("partitionW", false, 10);
   Profile::Toc();
 
   return 0;
