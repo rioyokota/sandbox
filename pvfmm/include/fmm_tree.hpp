@@ -551,8 +551,7 @@ class FMM_Tree {
     }
     Profile::Toc();
   }
-  
-  
+    
   void UpwardPass() {
     int max_depth=0;
     {
