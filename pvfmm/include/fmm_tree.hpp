@@ -151,13 +151,13 @@ class FMM_Tree {
 
   FMM_Tree(): dim(0), root_node(NULL), max_depth(MAX_DEPTH), memgr(0), fmm_mat(NULL), bndry(FreeSpace) { };
 
-  virtual ~FMM_Tree(){
+  ~FMM_Tree(){
     if(RootNode()!=NULL){
       mem::aligned_delete(root_node);
     }
   }
 
-  virtual void Initialize(typename TreeNode::NodeData* init_data) {
+  void Initialize(typename TreeNode::NodeData* init_data) {
     Profile::Tic("InitTree",true);{
       Profile::Tic("InitRoot",false,5);
       dim=init_data->dim;

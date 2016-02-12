@@ -51,9 +51,9 @@ enum BoundaryType{
 template <class Real_t>
 class FMM_Data{
  public:
-  virtual ~FMM_Data(){}
-  virtual FMM_Data* NewData(){return mem::aligned_new<FMM_Data>();}
-  virtual void Clear() {
+  ~FMM_Data(){}
+  FMM_Data* NewData(){return mem::aligned_new<FMM_Data>();}
+  void Clear() {
     upward_equiv.Resize(0);
   }
   Vector<Real_t> upward_equiv;
@@ -102,8 +102,8 @@ class FMM_Node {
 
   class NodeData {
     public:
-     virtual ~NodeData(){};
-     virtual void Clear(){}
+     ~NodeData(){};
+     void Clear(){}
      int max_depth;
      int dim;
      size_t max_pts;
@@ -122,7 +122,7 @@ class FMM_Node {
     fmm_data=NULL;
   }
 
-  virtual ~FMM_Node(){
+  ~FMM_Node(){
     if(fmm_data!=NULL) mem::aligned_delete(fmm_data);
     fmm_data=NULL;
     if(!child) return;
@@ -135,7 +135,7 @@ class FMM_Node {
     child=NULL;
   }
 
-  virtual void Initialize(FMM_Node* parent_, int path2node_, FMM_Node::NodeData* data_){
+  void Initialize(FMM_Node* parent_, int path2node_, FMM_Node::NodeData* data_){
     parent=parent_;
     depth=(parent==NULL?0:parent->depth+1);
     if(data_!=NULL){
@@ -181,7 +181,7 @@ class FMM_Node {
     }
   }
 
-  virtual void NodeDataVec(std::vector<Vector<Real_t>*>& coord,
+  void NodeDataVec(std::vector<Vector<Real_t>*>& coord,
                            std::vector<Vector<Real_t>*>& value,
                            std::vector<Vector<size_t>*>& scatter){
     coord  .push_back(&pt_coord  );
@@ -198,18 +198,18 @@ class FMM_Node {
     scatter.push_back(&trg_scatter);
   }
 
-  virtual void ClearData(){
+  void ClearData(){
     ClearFMMData();
     pt_coord.ReInit(0);
     pt_value.ReInit(0);
   }
 
-  virtual void ClearFMMData(){
+  void ClearFMMData(){
     if(fmm_data!=NULL)
       fmm_data->Clear();
   }
 
-  virtual void Truncate() {
+  void Truncate() {
     if(!child) return;
     SetStatus(1);
     int n=(1UL<<dim);
@@ -234,7 +234,7 @@ class FMM_Node {
     return n;
   }
 
-  virtual void Subdivide(){
+  void Subdivide(){
     if(!this->IsLeaf()) return;
     if(child) return;
     SetStatus(1);
@@ -377,7 +377,7 @@ class FMM_Node {
     depth=mid.GetDepth();
   }
 
-  virtual int Path2Node(){
+  int Path2Node(){
     return path2node;
   }
 

@@ -587,7 +587,7 @@ public:
     return P;
   }
   
-  virtual void PrecompAll(Mat_Type type, int level=-1) {
+  void PrecompAll(Mat_Type type, int level=-1) {
     if(level==-1) {
       for(int l=0;l<MAX_DEPTH;l++) {
         PrecompAll(type, l);
@@ -616,7 +616,7 @@ public:
     }
   }
   
-  virtual Permutation<Real_t>& PrecompPerm(Mat_Type type, Perm_Type perm_indx) {
+  Permutation<Real_t>& PrecompPerm(Mat_Type type, Perm_Type perm_indx) {
     Permutation<Real_t>& P_ = mat->Perm((Mat_Type)type, perm_indx);
     if(P_.Dim()!=0) return P_;
     size_t m=this->MultipoleOrder();
@@ -663,7 +663,7 @@ public:
     return P_;
   }
   
-  virtual Matrix<Real_t>& Precomp(int level, Mat_Type type, size_t mat_indx) {
+  Matrix<Real_t>& Precomp(int level, Mat_Type type, size_t mat_indx) {
     if(this->ScaleInvar()) level=0;
     Matrix<Real_t>& M_ = this->mat->Mat(level, type, mat_indx);
     if(M_.Dim(0)!=0 && M_.Dim(1)!=0) return M_;
@@ -1342,8 +1342,8 @@ public:
 
   class FMMData: public FMM_Data<Real_t>{
    public:
-    virtual ~FMMData(){}
-    virtual FMM_Data<Real_t>* NewData(){return mem::aligned_new<FMMData>();}
+    ~FMMData(){}
+    FMM_Data<Real_t>* NewData(){return mem::aligned_new<FMMData>();}
   };
 
   Vector<char> dev_buffer;
@@ -1353,7 +1353,7 @@ public:
              vprecomp_fft_flag(false), vlist_fft_flag(false),
                vlist_ifft_flag(false), mat(NULL), kernel(NULL){};
 
-  virtual ~FMM_Pts() {
+  ~FMM_Pts() {
     if(mat!=NULL){
       delete mat;
       mat=NULL;
@@ -1449,7 +1449,7 @@ public:
 
   bool ScaleInvar(){return kernel->scale_invar;}
 
-  virtual void CollectNodeData(FMMTree_t* tree, std::vector<FMMNode_t*>& node, std::vector<Matrix<Real_t> >& buff_list, std::vector<Vector<FMMNode_t*> >& n_list,
+  void CollectNodeData(FMMTree_t* tree, std::vector<FMMNode_t*>& node, std::vector<Matrix<Real_t> >& buff_list, std::vector<Vector<FMMNode_t*> >& n_list,
 			       std::vector<std::vector<Vector<Real_t>* > > vec_list = std::vector<std::vector<Vector<Real_t>* > >(0)) {
     if(buff_list.size()<7) buff_list.resize(7);
     if(   n_list.size()<7)    n_list.resize(7);
@@ -2630,7 +2630,7 @@ public:
     Profile::Toc();
   }
   
-  virtual void Source2UpSetup(SetupData<Real_t>& setup_data, FMMTree_t* tree, std::vector<Matrix<Real_t> >& buff, std::vector<Vector<FMMNode_t*> >& n_list, int level) {
+  void Source2UpSetup(SetupData<Real_t>& setup_data, FMMTree_t* tree, std::vector<Matrix<Real_t> >& buff, std::vector<Vector<FMMNode_t*> >& n_list, int level) {
     if(!this->MultipoleOrder()) return;
     {
       setup_data. level=level;
@@ -2931,12 +2931,12 @@ public:
     PtSetup(setup_data, &data);
   }
 
-  virtual void Source2Up(SetupData<Real_t>&  setup_data) {
+  void Source2Up(SetupData<Real_t>&  setup_data) {
     if(!this->MultipoleOrder()) return;
     this->EvalListPts(setup_data);
   }
   
-  virtual void Up2UpSetup(SetupData<Real_t>& setup_data, FMMTree_t* tree, std::vector<Matrix<Real_t> >& buff, std::vector<Vector<FMMNode_t*> >& n_list, int level){
+  void Up2UpSetup(SetupData<Real_t>& setup_data, FMMTree_t* tree, std::vector<Matrix<Real_t> >& buff, std::vector<Vector<FMMNode_t*> >& n_list, int level){
     if(!this->MultipoleOrder()) return;
     {
       setup_data.level=level;
@@ -2961,12 +2961,12 @@ public:
     SetupInterac(setup_data);
   }
   
-  virtual void Up2Up(SetupData<Real_t>& setup_data){
+  void Up2Up(SetupData<Real_t>& setup_data){
     if(!this->MultipoleOrder()) return;
     EvalList(setup_data);
   }
   
-  virtual void PeriodicBC(FMMNode_t* node){
+  void PeriodicBC(FMMNode_t* node){
     if(!this->ScaleInvar() || this->MultipoleOrder()==0) return;
     Matrix<Real_t>& M = Precomp(0, BC_Type, 0);
     assert(node->FMMData()->upward_equiv.Dim()>0);
@@ -2980,7 +2980,7 @@ public:
     Matrix<Real_t>::GEMM(d_equiv,u_equiv,M);
   }
 
-  virtual void V_ListSetup(SetupData<Real_t>&  setup_data, FMMTree_t* tree, std::vector<Matrix<Real_t> >& buff, std::vector<Vector<FMMNode_t*> >& n_list, int level){
+  void V_ListSetup(SetupData<Real_t>&  setup_data, FMMTree_t* tree, std::vector<Matrix<Real_t> >& buff, std::vector<Vector<FMMNode_t*> >& n_list, int level){
     if(!this->MultipoleOrder()) return;
     if(level==0) return;
     {
@@ -3173,7 +3173,7 @@ public:
     Profile::Toc();
   }
   
-  virtual void V_List(SetupData<Real_t>&  setup_data){
+  void V_List(SetupData<Real_t>&  setup_data){
     if(!this->MultipoleOrder()) return;
     int np=1;
     if(setup_data.interac_data.Dim(0)==0 || setup_data.interac_data.Dim(1)==0){
@@ -3292,7 +3292,7 @@ public:
     }
   }
 
-  virtual void Down2DownSetup(SetupData<Real_t>& setup_data, FMMTree_t* tree, std::vector<Matrix<Real_t> >& buff, std::vector<Vector<FMMNode_t*> >& n_list, int level){
+  void Down2DownSetup(SetupData<Real_t>& setup_data, FMMTree_t* tree, std::vector<Matrix<Real_t> >& buff, std::vector<Vector<FMMNode_t*> >& n_list, int level){
     if(!this->MultipoleOrder()) return;
     {
       setup_data.level=level;
@@ -3317,12 +3317,12 @@ public:
     SetupInterac(setup_data);
   }
   
-  virtual void Down2Down(SetupData<Real_t>& setup_data){
+  void Down2Down(SetupData<Real_t>& setup_data){
     if(!this->MultipoleOrder()) return;
     EvalList(setup_data);
   }
   
-  virtual void X_ListSetup(SetupData<Real_t>&  setup_data, FMMTree_t* tree, std::vector<Matrix<Real_t> >& buff, std::vector<Vector<FMMNode_t*> >& n_list, int level){
+  void X_ListSetup(SetupData<Real_t>&  setup_data, FMMTree_t* tree, std::vector<Matrix<Real_t> >& buff, std::vector<Vector<FMMNode_t*> >& n_list, int level){
     if(!this->MultipoleOrder()) return;
     {
       setup_data. level=level;
@@ -3592,12 +3592,12 @@ public:
     PtSetup(setup_data, &data);
   }
   
-  virtual void X_List(SetupData<Real_t>&  setup_data){
+  void X_List(SetupData<Real_t>&  setup_data){
     if(!this->MultipoleOrder()) return;
     this->EvalListPts(setup_data);
   }
   
-  virtual void W_ListSetup(SetupData<Real_t>&  setup_data, FMMTree_t* tree, std::vector<Matrix<Real_t> >& buff, std::vector<Vector<FMMNode_t*> >& n_list, int level){
+  void W_ListSetup(SetupData<Real_t>&  setup_data, FMMTree_t* tree, std::vector<Matrix<Real_t> >& buff, std::vector<Vector<FMMNode_t*> >& n_list, int level){
     if(!this->MultipoleOrder()) return;
     {
       setup_data. level=level;
@@ -3851,12 +3851,12 @@ public:
     PtSetup(setup_data, &data);
   }
   
-  virtual void W_List(SetupData<Real_t>&  setup_data){
+  void W_List(SetupData<Real_t>&  setup_data){
     if(!this->MultipoleOrder()) return;
     this->EvalListPts(setup_data);
   }
   
-  virtual void U_ListSetup(SetupData<Real_t>& setup_data, FMMTree_t* tree, std::vector<Matrix<Real_t> >& buff, std::vector<Vector<FMMNode_t*> >& n_list, int level){
+  void U_ListSetup(SetupData<Real_t>& setup_data, FMMTree_t* tree, std::vector<Matrix<Real_t> >& buff, std::vector<Vector<FMMNode_t*> >& n_list, int level){
     {
       setup_data. level=level;
       setup_data.kernel=kernel->k_s2t;
@@ -4226,11 +4226,11 @@ public:
     PtSetup(setup_data, &data);
   }
   
-  virtual void U_List(SetupData<Real_t>&  setup_data){
+  void U_List(SetupData<Real_t>&  setup_data){
     this->EvalListPts(setup_data);
   }
   
-  virtual void Down2TargetSetup(SetupData<Real_t>&  setup_data, FMMTree_t* tree, std::vector<Matrix<Real_t> >& buff, std::vector<Vector<FMMNode_t*> >& n_list, int level){
+  void Down2TargetSetup(SetupData<Real_t>&  setup_data, FMMTree_t* tree, std::vector<Matrix<Real_t> >& buff, std::vector<Vector<FMMNode_t*> >& n_list, int level){
     if(!this->MultipoleOrder()) return;
     {
       setup_data. level=level;
@@ -4511,12 +4511,12 @@ public:
     PtSetup(setup_data, &data);
   }
   
-  virtual void Down2Target(SetupData<Real_t>&  setup_data){
+  void Down2Target(SetupData<Real_t>&  setup_data){
     if(!this->MultipoleOrder()) return;
     this->EvalListPts(setup_data);
   }
     
-  virtual void PostProcessing(FMMTree_t* tree, std::vector<FMMNode_t*>& nodes, BoundaryType bndry=FreeSpace){
+  void PostProcessing(FMMTree_t* tree, std::vector<FMMNode_t*>& nodes, BoundaryType bndry=FreeSpace){
     if(kernel->k_m2l->vol_poten && bndry==Periodic){
       const Kernel<Real_t>& k_m2t=*kernel->k_m2t;
       int ker_dim[2]={k_m2t.ker_dim[0],k_m2t.ker_dim[1]};
