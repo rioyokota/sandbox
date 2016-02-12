@@ -13,3 +13,4 @@ Check if all the headers are necessary
 Remove virtual
 Remove unnecessary "{}"
 "){" -> ") {"
+Remove Duplicate data structures in fmm_pts.txx

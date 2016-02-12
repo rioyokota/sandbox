@@ -2109,15 +2109,13 @@ void FMM_Pts<FMMNode_t>::U_ListSetup(SetupData<Real_t>& setup_data, FMMTree_t* t
 
 template <class FMMNode_t>
 void FMM_Pts<FMMNode_t>::U_List     (SetupData<Real_t>&  setup_data){
-  //Add U_List contribution.
   this->EvalListPts(setup_data);
 }
-
 
 template <class FMMNode_t>
 void FMM_Pts<FMMNode_t>::Down2TargetSetup(SetupData<Real_t>&  setup_data, FMMTree_t* tree, std::vector<Matrix<Real_t> >& buff, std::vector<Vector<FMMNode_t*> >& n_list, int level){
   if(!this->MultipoleOrder()) return;
-  { // Set setup_data
+  {
     setup_data. level=level;
     setup_data.kernel=kernel->k_l2t;
     setup_data. input_data=&buff[1];
@@ -2125,13 +2123,11 @@ void FMM_Pts<FMMNode_t>::Down2TargetSetup(SetupData<Real_t>&  setup_data, FMMTre
     setup_data. coord_data=&buff[6];
     Vector<FMMNode_t*>& nodes_in =n_list[1];
     Vector<FMMNode_t*>& nodes_out=n_list[5];
-
     setup_data.nodes_in .clear();
     setup_data.nodes_out.clear();
     for(size_t i=0;i<nodes_in .Dim();i++) if((nodes_in [i]->depth==level || level==-1) && nodes_in [i]->trg_coord.Dim() && nodes_in [i]->IsLeaf() && !nodes_in [i]->IsGhost()) setup_data.nodes_in .push_back(nodes_in [i]);
     for(size_t i=0;i<nodes_out.Dim();i++) if((nodes_out[i]->depth==level || level==-1) && nodes_out[i]->trg_coord.Dim() && nodes_out[i]->IsLeaf() && !nodes_out[i]->IsGhost()) setup_data.nodes_out.push_back(nodes_out[i]);
   }
-
   struct PackedData{
     size_t len;
     Matrix<Real_t>* ptr;
@@ -2151,39 +2147,32 @@ void FMM_Pts<FMMNode_t>::Down2TargetSetup(SetupData<Real_t>&  setup_data, FMMTre
   struct ptSetupData{
     int level;
     const Kernel<Real_t>* kernel;
-
-    PackedData src_coord; // Src coord
-    PackedData src_value; // Src density
-    PackedData srf_coord; // Srf coord
-    PackedData srf_value; // Srf density
-    PackedData trg_coord; // Trg coord
-    PackedData trg_value; // Trg potential
-
+    PackedData src_coord;
+    PackedData src_value;
+    PackedData srf_coord;
+    PackedData srf_value;
+    PackedData trg_coord;
+    PackedData trg_value;
     InteracData interac_data;
   };
-
   ptSetupData data;
   data. level=setup_data. level;
   data.kernel=setup_data.kernel;
   std::vector<void*>& nodes_in =setup_data.nodes_in ;
   std::vector<void*>& nodes_out=setup_data.nodes_out;
-
-  { // Set src data
+  {
     std::vector<void*>& nodes=nodes_in;
     PackedData& coord=data.src_coord;
     PackedData& value=data.src_value;
     coord.ptr=setup_data. coord_data;
     value.ptr=setup_data. input_data;
-
     coord.len=coord.ptr->Dim(0)*coord.ptr->Dim(1);
     value.len=value.ptr->Dim(0)*value.ptr->Dim(1);
-
     coord.cnt.ReInit(nodes.size());
     coord.dsp.ReInit(nodes.size());
     value.cnt.ReInit(nodes.size());
     value.dsp.ReInit(nodes.size());
-
-    #pragma omp parallel for
+#pragma omp parallel for
     for(size_t i=0;i<nodes.size();i++){
       ((FMMNode_t*)nodes[i])->node_id=i;
       Vector<Real_t>& coord_vec=tree->dnwd_equiv_surf[((FMMNode_t*)nodes[i])->depth];
@@ -2206,22 +2195,19 @@ void FMM_Pts<FMMNode_t>::Down2TargetSetup(SetupData<Real_t>&  setup_data, FMMTre
       }
     }
   }
-  { // Set srf data
+  {
     std::vector<void*>& nodes=nodes_in;
     PackedData& coord=data.srf_coord;
     PackedData& value=data.srf_value;
     coord.ptr=setup_data. coord_data;
     value.ptr=setup_data. input_data;
-
     coord.len=coord.ptr->Dim(0)*coord.ptr->Dim(1);
     value.len=value.ptr->Dim(0)*value.ptr->Dim(1);
-
     coord.cnt.ReInit(nodes.size());
     coord.dsp.ReInit(nodes.size());
     value.cnt.ReInit(nodes.size());
     value.dsp.ReInit(nodes.size());
-
-    #pragma omp parallel for
+#pragma omp parallel for
     for(size_t i=0;i<nodes.size();i++){
       coord.dsp[i]=0;
       coord.cnt[i]=0;
@@ -2229,22 +2215,19 @@ void FMM_Pts<FMMNode_t>::Down2TargetSetup(SetupData<Real_t>&  setup_data, FMMTre
       value.cnt[i]=0;
     }
   }
-  { // Set trg data
+  {
     std::vector<void*>& nodes=nodes_out;
     PackedData& coord=data.trg_coord;
     PackedData& value=data.trg_value;
     coord.ptr=setup_data. coord_data;
     value.ptr=setup_data.output_data;
-
     coord.len=coord.ptr->Dim(0)*coord.ptr->Dim(1);
     value.len=value.ptr->Dim(0)*value.ptr->Dim(1);
-
     coord.cnt.ReInit(nodes.size());
     coord.dsp.ReInit(nodes.size());
     value.cnt.ReInit(nodes.size());
     value.dsp.ReInit(nodes.size());
-
-    #pragma omp parallel for
+#pragma omp parallel for
     for(size_t i=0;i<nodes.size();i++){
       Vector<Real_t>& coord_vec=((FMMNode_t*)nodes[i])->trg_coord;
       Vector<Real_t>& value_vec=((FMMNode_t*)nodes[i])->trg_value;
@@ -2266,15 +2249,15 @@ void FMM_Pts<FMMNode_t>::Down2TargetSetup(SetupData<Real_t>&  setup_data, FMMTre
       }
     }
   }
-  { // Set interac_data
+  {
     int omp_p=omp_get_max_threads();
     std::vector<std::vector<size_t> > in_node_(omp_p);
     std::vector<std::vector<size_t> > scal_idx_(omp_p);
     std::vector<std::vector<Real_t> > coord_shift_(omp_p);
     std::vector<std::vector<size_t> > interac_cnt_(omp_p);
-    if(this->ScaleInvar()){ // Set scal
+    if(this->ScaleInvar()){
       const Kernel<Real_t>* ker=kernel->k_l2l;
-      for(size_t l=0;l<MAX_DEPTH;l++){ // scal[l*4+0]
+      for(size_t l=0;l<MAX_DEPTH;l++){
         Vector<Real_t>& scal=data.interac_data.scal[l*4+0];
         Vector<Real_t>& scal_exp=ker->trg_scal;
         scal.ReInit(scal_exp.Dim());
@@ -2282,7 +2265,7 @@ void FMM_Pts<FMMNode_t>::Down2TargetSetup(SetupData<Real_t>&  setup_data, FMMTre
           scal[i]=pvfmm::pow<Real_t>(2.0,-scal_exp[i]*l);
         }
       }
-      for(size_t l=0;l<MAX_DEPTH;l++){ // scal[l*4+1]
+      for(size_t l=0;l<MAX_DEPTH;l++){
         Vector<Real_t>& scal=data.interac_data.scal[l*4+1];
         Vector<Real_t>& scal_exp=ker->src_scal;
         scal.ReInit(scal_exp.Dim());
@@ -2291,22 +2274,19 @@ void FMM_Pts<FMMNode_t>::Down2TargetSetup(SetupData<Real_t>&  setup_data, FMMTre
         }
       }
     }
-
-    #pragma omp parallel for
+#pragma omp parallel for
     for(size_t tid=0;tid<omp_p;tid++){
       std::vector<size_t>& in_node    =in_node_[tid]    ;
       std::vector<size_t>& scal_idx   =scal_idx_[tid]   ;
       std::vector<Real_t>& coord_shift=coord_shift_[tid];
       std::vector<size_t>& interac_cnt=interac_cnt_[tid];
-
       size_t a=(nodes_out.size()*(tid+0))/omp_p;
       size_t b=(nodes_out.size()*(tid+1))/omp_p;
       for(size_t i=a;i<b;i++){
         FMMNode_t* tnode=(FMMNode_t*)nodes_out[i];
         Real_t s=pvfmm::pow<Real_t>(0.5,tnode->depth);
-
         size_t interac_cnt_=0;
-        { // D2T_Type
+        {
           Mat_Type type=D2T_Type;
           Vector<FMMNode_t*>& intlst=tnode->interac_list[type];
           for(size_t j=0;j<intlst.Dim();j++) if(intlst[j]){
@@ -2315,7 +2295,7 @@ void FMM_Pts<FMMNode_t>::Down2TargetSetup(SetupData<Real_t>&  setup_data, FMMTre
             if(snode_id>=nodes_in.size() || nodes_in[snode_id]!=snode) continue;
             in_node.push_back(snode_id);
             scal_idx.push_back(snode->depth);
-            { // set coord_shift
+            {
               const int* rel_coord=interac_list.RelativeCoord(type,j);
               const Real_t* scoord=snode->Coord();
               const Real_t* tcoord=tnode->Coord();
@@ -2333,76 +2313,72 @@ void FMM_Pts<FMMNode_t>::Down2TargetSetup(SetupData<Real_t>&  setup_data, FMMTre
         interac_cnt.push_back(interac_cnt_);
       }
     }
-    { // Combine interac data
+    {
       InteracData& interac_data=data.interac_data;
-      { // in_node
+      {
         typedef size_t ElemType;
         std::vector<std::vector<ElemType> >& vec_=in_node_;
         pvfmm::Vector<ElemType>& vec=interac_data.in_node;
-
         std::vector<size_t> vec_dsp(omp_p+1,0);
         for(size_t tid=0;tid<omp_p;tid++){
           vec_dsp[tid+1]=vec_dsp[tid]+vec_[tid].size();
         }
         vec.ReInit(vec_dsp[omp_p]);
-        #pragma omp parallel for
+#pragma omp parallel for
         for(size_t tid=0;tid<omp_p;tid++){
           memcpy(&vec[0]+vec_dsp[tid],&vec_[tid][0],vec_[tid].size()*sizeof(ElemType));
         }
       }
-      { // scal_idx
+      {
         typedef size_t ElemType;
         std::vector<std::vector<ElemType> >& vec_=scal_idx_;
         pvfmm::Vector<ElemType>& vec=interac_data.scal_idx;
-
         std::vector<size_t> vec_dsp(omp_p+1,0);
         for(size_t tid=0;tid<omp_p;tid++){
           vec_dsp[tid+1]=vec_dsp[tid]+vec_[tid].size();
         }
         vec.ReInit(vec_dsp[omp_p]);
-        #pragma omp parallel for
+#pragma omp parallel for
         for(size_t tid=0;tid<omp_p;tid++){
           memcpy(&vec[0]+vec_dsp[tid],&vec_[tid][0],vec_[tid].size()*sizeof(ElemType));
         }
       }
-      { // coord_shift
+      {
         typedef Real_t ElemType;
         std::vector<std::vector<ElemType> >& vec_=coord_shift_;
         pvfmm::Vector<ElemType>& vec=interac_data.coord_shift;
-
         std::vector<size_t> vec_dsp(omp_p+1,0);
         for(size_t tid=0;tid<omp_p;tid++){
           vec_dsp[tid+1]=vec_dsp[tid]+vec_[tid].size();
         }
         vec.ReInit(vec_dsp[omp_p]);
-        #pragma omp parallel for
+#pragma omp parallel for
         for(size_t tid=0;tid<omp_p;tid++){
           memcpy(&vec[0]+vec_dsp[tid],&vec_[tid][0],vec_[tid].size()*sizeof(ElemType));
         }
       }
-      { // interac_cnt
+      {
         typedef size_t ElemType;
         std::vector<std::vector<ElemType> >& vec_=interac_cnt_;
         pvfmm::Vector<ElemType>& vec=interac_data.interac_cnt;
-
         std::vector<size_t> vec_dsp(omp_p+1,0);
         for(size_t tid=0;tid<omp_p;tid++){
           vec_dsp[tid+1]=vec_dsp[tid]+vec_[tid].size();
         }
         vec.ReInit(vec_dsp[omp_p]);
-        #pragma omp parallel for
+#pragma omp parallel for
         for(size_t tid=0;tid<omp_p;tid++){
           memcpy(&vec[0]+vec_dsp[tid],&vec_[tid][0],vec_[tid].size()*sizeof(ElemType));
         }
       }
-      { // interac_dsp
+      {
         pvfmm::Vector<size_t>& cnt=interac_data.interac_cnt;
         pvfmm::Vector<size_t>& dsp=interac_data.interac_dsp;
         dsp.ReInit(cnt.Dim()); if(dsp.Dim()) dsp[0]=0;
         omp_par::scan(&cnt[0],&dsp[0],dsp.Dim());
       }
     }
-    { // Set M[0], M[1]
+    {
       InteracData& interac_data=data.interac_data;
       pvfmm::Vector<size_t>& cnt=interac_data.interac_cnt;
       pvfmm::Vector<size_t>& dsp=interac_data.interac_dsp;
@@ -2415,24 +2391,21 @@ void FMM_Pts<FMMNode_t>::Down2TargetSetup(SetupData<Real_t>&  setup_data, FMMTre
       }
     }
   }
-
   PtSetup(setup_data, &data);
 }
 
 template <class FMMNode_t>
 void FMM_Pts<FMMNode_t>::Down2Target(SetupData<Real_t>&  setup_data){
   if(!this->MultipoleOrder()) return;
-  //Add Down2Target contribution.
   this->EvalListPts(setup_data);
 }
 
 
 template <class FMMNode_t>
 void FMM_Pts<FMMNode_t>::PostProcessing(FMMTree_t* tree, std::vector<FMMNode_t*>& nodes, BoundaryType bndry){
-  if(kernel->k_m2l->vol_poten && bndry==Periodic){ // Add analytical near-field to target potential
+  if(kernel->k_m2l->vol_poten && bndry==Periodic){
     const Kernel<Real_t>& k_m2t=*kernel->k_m2t;
     int ker_dim[2]={k_m2t.ker_dim[0],k_m2t.ker_dim[1]};
-
     Vector<Real_t>& up_equiv=((FMMData*)tree->RootNode()->FMMData())->upward_equiv;
     Matrix<Real_t> avg_density(1,ker_dim[0]); avg_density.SetZero();
     for(size_t i0=0;i0<up_equiv.Dim();i0+=ker_dim[0]){
@@ -2440,20 +2413,17 @@ void FMM_Pts<FMMNode_t>::PostProcessing(FMMTree_t* tree, std::vector<FMMNode_t*>
         avg_density[0][i1]+=up_equiv[i0+i1];
       }
     }
-
     int omp_p=omp_get_max_threads();
     std::vector<Matrix<Real_t> > M_tmp(omp_p);
-    #pragma omp parallel for
+#pragma omp parallel for
     for(size_t i=0;i<nodes.size();i++)
     if(nodes[i]->IsLeaf() && !nodes[i]->IsGhost()){
       Vector<Real_t>& trg_coord=nodes[i]->trg_coord;
       Vector<Real_t>& trg_value=nodes[i]->trg_value;
       size_t n_trg=trg_coord.Dim()/COORD_DIM;
-
       Matrix<Real_t>& M_vol=M_tmp[omp_get_thread_num()];
       M_vol.ReInit(ker_dim[0],n_trg*ker_dim[1]); M_vol.SetZero();
       k_m2t.vol_poten(&trg_coord[0],n_trg,&M_vol[0][0]);
-
       Matrix<Real_t> M_trg(1,n_trg*ker_dim[1],&trg_value[0],false);
       M_trg-=avg_density*M_vol;
     }
