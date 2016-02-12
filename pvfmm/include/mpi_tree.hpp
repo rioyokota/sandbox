@@ -22,7 +22,6 @@
 #include <parUtils.h>
 #include <profile.hpp>
 #include <pvfmm_common.hpp>
-#include <tree.hpp>
 
 namespace pvfmm{
 
@@ -32,7 +31,7 @@ enum BoundaryType{
 };
 
 template <class TreeNode>
-class MPI_Tree: public Tree<TreeNode>{
+class MPI_Tree {
 
  private:
 
@@ -133,14 +132,18 @@ class MPI_Tree: public Tree<TreeNode>{
     return 0;
   }
 
+ protected:
+
+  int dim;
+  TreeNode* root_node;
+  int max_depth;
+  std::vector<TreeNode*> node_lst;
+  mem::MemoryManager memgr;
+
  public:
 
-  using Tree<TreeNode>::dim;
-  using Tree<TreeNode>::max_depth;
-  using Tree<TreeNode>::root_node;
-  using Tree<TreeNode>::node_lst;
+  MPI_Tree(): dim(0), root_node(NULL), max_depth(MAX_DEPTH), memgr(0) {}
 
-  MPI_Tree(): Tree<TreeNode>() {}
   virtual ~MPI_Tree() {
     if(RootNode()!=NULL){
       mem::aligned_delete(root_node);
