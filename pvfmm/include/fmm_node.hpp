@@ -1,6 +1,12 @@
+#ifndef _PVFMM_FMM_NODE_HPP_
+#define _PVFMM_FMM_NODE_HPP_
+
+#include <algorithm>
 #include <cassert>
 #include <cmath>
 #include <cstdlib>
+#include <fstream>
+#include <iomanip>
 #include <iostream>
 #include <omp.h>
 #include <set>
@@ -33,13 +39,12 @@
 #include <matrix.hpp>
 #include <mem_mgr.hpp>
 #include <mortonid.hpp>
+#include <ompUtils.h>
+#include <parUtils.h>
 #include <precomp_mat.hpp>
 #include <profile.hpp>
 #include <pvfmm_common.hpp>
 #include <vector.hpp>
-
-#ifndef _PVFMM_FMM_NODE_HPP_
-#define _PVFMM_FMM_NODE_HPP_
 
 namespace pvfmm{
 

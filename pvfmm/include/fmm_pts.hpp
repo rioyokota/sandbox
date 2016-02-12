@@ -336,7 +336,7 @@ template <class FMM_Mat_t>
 class FMM_Tree;
 
 template <class FMMNode>
-class FMM_Pts{
+class FMM_Pts {
 
 public:
 

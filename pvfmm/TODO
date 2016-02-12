@@ -8,7 +8,6 @@ Separate files and put more into src
 Remove class hierarchy
 
 Put ReadVal in utils.hpp
-Remove "using"
 Check if all the headers are necessary
 Remove unnecessary "{}"
 "){" -> ") {"
