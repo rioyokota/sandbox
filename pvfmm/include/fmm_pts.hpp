@@ -1,7 +1,7 @@
-#include <fmm_node.hpp>
-
 #ifndef _PVFMM_FMM_PTS_HPP_
 #define _PVFMM_FMM_PTS_HPP_
+
+#include <fmm_node.hpp>
 
 namespace pvfmm{
 
@@ -341,7 +341,7 @@ class FMM_Pts{
 public:
 
   typedef FMMNode FMMNode_t;
-  typedef FMM_Tree<FMM_Pts<FMMNode_t> > FMMTree_t;
+  typedef FMM_Tree<FMM_Pts<FMMNode> > FMMTree_t;
 
  private:
 

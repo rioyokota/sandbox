@@ -97,7 +97,7 @@ class FMM_Node {
   Vector<Real_t> trg_coord;
   Vector<Real_t> trg_value;
   Vector<size_t> trg_scatter;
-  size_t pt_cnt[2]; // Number of source, target pts.
+  size_t pt_cnt[2];
   Vector<FMM_Node*> interac_list[Type_Count];
 
   class NodeData {
@@ -148,7 +148,6 @@ class FMM_Node {
     }
     assert(path2node_>=0 && path2node_<(int)(1U<<dim));
     path2node=path2node_;
-
     Real_t coord_offset=((Real_t)1.0)/((Real_t)(((uint64_t)1)<<depth));
     if(!parent_){
       for(int j=0;j<dim;j++) coord[j]=0;
@@ -160,10 +159,8 @@ class FMM_Node {
 	flag=flag<<1;
       }
     }
-
     int n=pvfmm::pow<unsigned int>(3,Dim());
     for(int i=0;i<n;i++) colleague[i]=NULL;
-
     NodeData* mpi_data=dynamic_cast<NodeData*>(data_);
     if(data_){
       max_pts =mpi_data->max_pts;
@@ -173,7 +170,6 @@ class FMM_Node {
       max_pts =parent->max_pts;
       SetGhost(((FMM_Node*)parent)->IsGhost());
     }
-
     typename FMM_Node::NodeData* data=dynamic_cast<typename FMM_Node::NodeData*>(data_);
     if(data_!=NULL){
       src_coord=data->src_coord;
@@ -250,7 +246,7 @@ class FMM_Node {
       ((FMM_Node*)child[i])->Initialize(this,i,NULL);
     }
     int nchld=(1UL<<this->Dim());
-    if(!IsGhost()){ // Partition point coordinates and values.
+    if(!IsGhost()){
       std::vector<Vector<Real_t>*> pt_c;
       std::vector<Vector<Real_t>*> pt_v;
       std::vector<Vector<size_t>*> pt_s;
@@ -273,7 +269,7 @@ class FMM_Node {
 	Vector<size_t> cdata(nchld+1);
 	for(size_t i=0;i<nchld+1;i++){
 	  long long pt1=-1, pt2=npts;
-	  while(pt2-pt1>1){ // binary search
+	  while(pt2-pt1>1){
 	    long long pt3=(pt1+pt2)/2;
 	    assert(pt3<npts);
 	    if(pt3<0) pt3=0;
