@@ -10,11 +10,11 @@ class FMM_Tree: public MPI_Tree<typename FMM_Mat_t::FMMNode_t>{
 
  public:
 
-  typedef typename FMM_Mat_t::FMMNode_t Node_t;
+  typedef typename FMM_Mat_t::FMMNode_t TreeNode;
 
   std::vector<Matrix<Real_t> > node_data_buff;
-  pvfmm::Matrix<Node_t*> node_interac_lst;
-  InteracList<Node_t> interac_list;
+  pvfmm::Matrix<TreeNode*> node_interac_lst;
+  InteracList<TreeNode> interac_list;
   FMM_Mat_t* fmm_mat;
   BoundaryType bndry;
   std::vector<Matrix<char> > precomp_lst;
@@ -24,15 +24,15 @@ class FMM_Tree: public MPI_Tree<typename FMM_Mat_t::FMMNode_t>{
   std::vector<Vector<Real_t> > dnwd_check_surf;
   std::vector<Vector<Real_t> > dnwd_equiv_surf;
 
-  FMM_Tree(): MPI_Tree<Node_t>(), fmm_mat(NULL), bndry(FreeSpace) { };
+  FMM_Tree(): MPI_Tree<TreeNode>(), fmm_mat(NULL), bndry(FreeSpace) { };
 
   virtual ~FMM_Tree(){}
 
-  virtual void Initialize(typename Node_t::NodeData* init_data) {
+  virtual void Initialize(typename TreeNode::NodeData* init_data) {
     Profile::Tic("InitTree",true);{
-      MPI_Tree<Node_t>::Initialize(init_data);
+      MPI_Tree<TreeNode>::Initialize(init_data);
       Profile::Tic("InitFMMData",true,5);{
-	std::vector<Node_t*>& nodes=this->GetNodeList();
+	std::vector<TreeNode*>& nodes=this->GetNodeList();
 #pragma omp parallel for
 	for(size_t i=0;i<nodes.size();i++){
 	  if(nodes[i]->FMMData()==NULL) nodes[i]->FMMData()=mem::aligned_new<typename FMM_Mat_t::FMMData>();
@@ -41,11 +41,11 @@ class FMM_Tree: public MPI_Tree<typename FMM_Mat_t::FMMNode_t>{
     }Profile::Toc();
   }
 
-  void SetColleagues(BoundaryType bndry=FreeSpace, Node_t* node=NULL) {
+  void SetColleagues(BoundaryType bndry=FreeSpace, TreeNode* node=NULL) {
     int n1=(int)pvfmm::pow<unsigned int>(3,this->Dim());
     int n2=(int)pvfmm::pow<unsigned int>(2,this->Dim());
     if(node==NULL){
-      Node_t* curr_node=this->PreorderFirst();
+      TreeNode* curr_node=this->PreorderFirst();
       if(curr_node!=NULL){
         if(bndry==Periodic){
           for(int i=0;i<n1;i++)
@@ -55,33 +55,33 @@ class FMM_Tree: public MPI_Tree<typename FMM_Mat_t::FMMNode_t>{
         }
         curr_node=this->PreorderNxt(curr_node);
       }
-      Vector<std::vector<Node_t*> > nodes(MAX_DEPTH);
+      Vector<std::vector<TreeNode*> > nodes(MAX_DEPTH);
       while(curr_node!=NULL){
         nodes[curr_node->depth].push_back(curr_node);
         curr_node=this->PreorderNxt(curr_node);
       }
       for(size_t i=0;i<MAX_DEPTH;i++){
         size_t j0=nodes[i].size();
-        Node_t** nodes_=&nodes[i][0];
+        TreeNode** nodes_=&nodes[i][0];
 #pragma omp parallel for
         for(size_t j=0;j<j0;j++){
           SetColleagues(bndry, nodes_[j]);
         }
       }
     }else{
-      Node_t* parent_node;
-      Node_t* tmp_node1;
-      Node_t* tmp_node2;
+      TreeNode* parent_node;
+      TreeNode* tmp_node1;
+      TreeNode* tmp_node2;
       for(int i=0;i<n1;i++)node->SetColleague(NULL,i);
-      parent_node=(Node_t*)node->Parent();
+      parent_node=(TreeNode*)node->Parent();
       if(parent_node==NULL) return;
       int l=node->Path2Node();
       for(int i=0;i<n1;i++){
-        tmp_node1=(Node_t*)parent_node->Colleague(i);
+        tmp_node1=(TreeNode*)parent_node->Colleague(i);
         if(tmp_node1!=NULL)
         if(!tmp_node1->IsLeaf()){
           for(int j=0;j<n2;j++){
-            tmp_node2=(Node_t*)tmp_node1->Child(j);
+            tmp_node2=(TreeNode*)tmp_node1->Child(j);
             if(tmp_node2!=NULL){
 
               bool flag=true;
@@ -121,15 +121,15 @@ class FMM_Tree: public MPI_Tree<typename FMM_Mat_t::FMMNode_t>{
     this->SetColleagues(bndry);
     Profile::Toc();
     Profile::Tic("CollectNodeData",false,3);
-    Node_t* n=dynamic_cast<Node_t*>(this->PostorderFirst());
-    std::vector<Node_t*> all_nodes;
+    TreeNode* n=dynamic_cast<TreeNode*>(this->PostorderFirst());
+    std::vector<TreeNode*> all_nodes;
     while(n!=NULL){
       n->pt_cnt[0]=0;
       n->pt_cnt[1]=0;
       all_nodes.push_back(n);
-      n=static_cast<Node_t*>(this->PostorderNxt(n));
+      n=static_cast<TreeNode*>(this->PostorderNxt(n));
     }
-    std::vector<Vector<Node_t*> > node_lists; // TODO: Remove this parameter, not really needed
+    std::vector<Vector<TreeNode*> > node_lists; // TODO: Remove this parameter, not really needed
     fmm_mat->CollectNodeData((MatTree_t*)this,all_nodes, node_data_buff, node_lists);
     Profile::Toc();
   
@@ -237,9 +237,9 @@ class FMM_Tree: public MPI_Tree<typename FMM_Mat_t::FMMNode_t>{
     int max_depth=0;
     {
       int max_depth_loc=0;
-      std::vector<Node_t*>& nodes=this->GetNodeList();
+      std::vector<TreeNode*>& nodes=this->GetNodeList();
       for(size_t i=0;i<nodes.size();i++){
-        Node_t* n=nodes[i];
+        TreeNode* n=nodes[i];
         if(n->depth>max_depth_loc) max_depth_loc=n->depth;
       }
       max_depth = max_depth_loc;
@@ -259,10 +259,10 @@ class FMM_Tree: public MPI_Tree<typename FMM_Mat_t::FMMNode_t>{
   }
   
   void BuildInteracLists() {
-    std::vector<Node_t*> n_list_src;
-    std::vector<Node_t*> n_list_trg;
+    std::vector<TreeNode*> n_list_src;
+    std::vector<TreeNode*> n_list_trg;
     {
-      std::vector<Node_t*>& nodes=this->GetNodeList();
+      std::vector<TreeNode*>& nodes=this->GetNodeList();
       for(size_t i=0;i<nodes.size();i++){
         if(!nodes[i]->IsGhost() && nodes[i]->pt_cnt[0]){
           n_list_src.push_back(nodes[i]);
@@ -274,7 +274,7 @@ class FMM_Tree: public MPI_Tree<typename FMM_Mat_t::FMMNode_t>{
     }
     size_t node_cnt=std::max(n_list_src.size(),n_list_trg.size());
     std::vector<Mat_Type> type_lst;
-    std::vector<std::vector<Node_t*>*> type_node_lst;
+    std::vector<std::vector<TreeNode*>*> type_node_lst;
     type_lst.push_back(S2U_Type); type_node_lst.push_back(&n_list_src);
     type_lst.push_back(U2U_Type); type_node_lst.push_back(&n_list_src);
     type_lst.push_back(D2D_Type); type_node_lst.push_back(&n_list_trg);
@@ -296,11 +296,11 @@ class FMM_Tree: public MPI_Tree<typename FMM_Mat_t::FMMNode_t>{
   #pragma omp parallel for
     for(int j=0;j<omp_p;j++){
       for(size_t k=0;k<type_lst.size();k++){
-        std::vector<Node_t*>& n_list=*type_node_lst[k];
+        std::vector<TreeNode*>& n_list=*type_node_lst[k];
         size_t a=(n_list.size()*(j  ))/omp_p;
         size_t b=(n_list.size()*(j+1))/omp_p;
         for(size_t i=a;i<b;i++){
-          Node_t* n=n_list[i];
+          TreeNode* n=n_list[i];
           n->interac_list[type_lst[k]].ReInit(interac_cnt[k],&node_interac_lst[i][interac_dsp[k]],false);
           interac_list.BuildList(n,type_lst[k]);
         }
@@ -310,13 +310,13 @@ class FMM_Tree: public MPI_Tree<typename FMM_Mat_t::FMMNode_t>{
   
   void DownwardPass() {
     Profile::Tic("Setup",true,3);
-    std::vector<Node_t*> leaf_nodes;
+    std::vector<TreeNode*> leaf_nodes;
     int max_depth=0;
     {
       int max_depth_loc=0;
-      std::vector<Node_t*>& nodes=this->GetNodeList();
+      std::vector<TreeNode*>& nodes=this->GetNodeList();
       for(size_t i=0;i<nodes.size();i++){
-        Node_t* n=nodes[i];
+        TreeNode* n=nodes[i];
         if(!n->IsGhost() && n->IsLeaf()) leaf_nodes.push_back(n);
         if(n->depth>max_depth_loc) max_depth_loc=n->depth;
       }
@@ -325,7 +325,7 @@ class FMM_Tree: public MPI_Tree<typename FMM_Mat_t::FMMNode_t>{
     Profile::Toc();
     if(bndry==Periodic) {
       Profile::Tic("BoundaryCondition",false,5);
-      fmm_mat->PeriodicBC(dynamic_cast<Node_t*>(this->RootNode()));
+      fmm_mat->PeriodicBC(dynamic_cast<TreeNode*>(this->RootNode()));
       Profile::Toc();
     }
     for(size_t i=0; i<=(fmm_mat->ScaleInvar()?0:max_depth); i++) {
