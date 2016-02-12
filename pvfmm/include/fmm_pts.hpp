@@ -27,16 +27,44 @@ class FMM_Tree;
 template <class FMMNode>
 class FMM_Pts{
 
- public:
+public:
 
   typedef FMMNode FMMNode_t;
   typedef FMM_Tree<FMM_Pts<FMMNode_t> > FMMTree_t;
+
+ private:
+
+  mem::MemoryManager* mem_mgr;
+  InteracList<FMMNode_t> interac_list;
+  const Kernel<Real_t>* kernel;
+  PrecompMat<Real_t>* mat;
+  std::string mat_fname;
+  int multipole_order;
+  typename FFTW_t<Real_t>::plan vprecomp_fftplan;
+  bool vprecomp_fft_flag;
+  typename FFTW_t<Real_t>::plan vlist_fftplan;
+  bool vlist_fft_flag;
+  typename FFTW_t<Real_t>::plan vlist_ifftplan;
+  bool vlist_ifft_flag;
+
+  virtual void PrecompAll(Mat_Type type, int level=-1);
+  virtual Permutation<Real_t>& PrecompPerm(Mat_Type type, Perm_Type perm_indx);
+  virtual Matrix<Real_t>& Precomp(int level, Mat_Type type, size_t mat_indx);
+  void FFT_UpEquiv(size_t dof, size_t m, size_t ker_dim0, Vector<size_t>& fft_vec, Vector<Real_t>& fft_scl,
+      Vector<Real_t>& input_data, Vector<Real_t>& output_data, Vector<Real_t>& buffer_);
+  void FFT_Check2Equiv(size_t dof, size_t m, size_t ker_dim0, Vector<size_t>& ifft_vec, Vector<Real_t>& ifft_scl,
+      Vector<Real_t>& input_data, Vector<Real_t>& output_data, Vector<Real_t>& buffer_);
+
+ public:
 
   class FMMData: public FMM_Data<Real_t>{
    public:
     virtual ~FMMData(){}
     virtual FMM_Data<Real_t>* NewData(){return mem::aligned_new<FMMData>();}
   };
+
+  Vector<char> dev_buffer;
+  Vector<char> staging_buffer;
 
   FMM_Pts(mem::MemoryManager* mem_mgr_=NULL): mem_mgr(mem_mgr_),
              vprecomp_fft_flag(false), vlist_fft_flag(false),
@@ -77,29 +105,6 @@ std::vector<std::vector<Vector<Real_t>* > > vec_list = std::vector<std::vector<V
   virtual void U_ListSetup(SetupData<Real_t>&  setup_data, FMMTree_t* tree, std::vector<Matrix<Real_t> >& node_data, std::vector<Vector<FMMNode_t*> >& n_list, int level);
   virtual void U_List     (SetupData<Real_t>&  setup_data);
   virtual void PostProcessing(FMMTree_t* tree, std::vector<FMMNode_t*>& nodes, BoundaryType bndry=FreeSpace);
-
-  Vector<char> dev_buffer;
-  Vector<char> staging_buffer;
-
- protected:
-
-  virtual void PrecompAll(Mat_Type type, int level=-1);
-  virtual Permutation<Real_t>& PrecompPerm(Mat_Type type, Perm_Type perm_indx);
-  virtual Matrix<Real_t>& Precomp(int level, Mat_Type type, size_t mat_indx);
-  typename FFTW_t<Real_t>::plan vprecomp_fftplan; bool vprecomp_fft_flag;
-  void FFT_UpEquiv(size_t dof, size_t m, size_t ker_dim0, Vector<size_t>& fft_vec, Vector<Real_t>& fft_scl,
-      Vector<Real_t>& input_data, Vector<Real_t>& output_data, Vector<Real_t>& buffer_);
-  typename FFTW_t<Real_t>::plan vlist_fftplan; bool vlist_fft_flag;
-  void FFT_Check2Equiv(size_t dof, size_t m, size_t ker_dim0, Vector<size_t>& ifft_vec, Vector<Real_t>& ifft_scl,
-      Vector<Real_t>& input_data, Vector<Real_t>& output_data, Vector<Real_t>& buffer_);
-  typename FFTW_t<Real_t>::plan vlist_ifftplan; bool vlist_ifft_flag;
-  mem::MemoryManager* mem_mgr;
-  InteracList<FMMNode_t> interac_list;
-  const Kernel<Real_t>* kernel;
-  PrecompMat<Real_t>* mat;
-  std::string mat_fname;
-  int multipole_order;
-
 };
 
 }//end namespace
