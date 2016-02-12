@@ -1,4 +1,0 @@
-namespace pvfmm{
-
-
-}//end namespace
