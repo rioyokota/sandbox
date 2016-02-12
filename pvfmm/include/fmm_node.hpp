@@ -50,15 +50,10 @@ enum BoundaryType{
 
 template <class Real_t>
 class FMM_Data{
-
  public:
-
   virtual ~FMM_Data(){}
-
   virtual FMM_Data* NewData(){return mem::aligned_new<FMM_Data>();}
-
   virtual void Clear();
-
   Vector<Real_t> upward_equiv;
   Vector<Real_t> dnward_equiv;
 };
