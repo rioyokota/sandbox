@@ -1,5 +1,3 @@
-#include <profile.hpp>
-#include <cheb_utils.hpp>
 #include <cassert>
 #include <cmath>
 #include <cstdlib>
@@ -28,14 +26,15 @@
 #include <immintrin.h>
 #endif
 
+#include <cheb_utils.hpp>
 #include <fft_wrapper.hpp>
 #include <interac_list.hpp>
 #include <kernel.hpp>
 #include <matrix.hpp>
 #include <mem_mgr.hpp>
 #include <mortonid.hpp>
-#include <mpi_tree.hpp>
 #include <precomp_mat.hpp>
+#include <profile.hpp>
 #include <pvfmm_common.hpp>
 #include <vector.hpp>
 
@@ -43,6 +42,11 @@
 #define _PVFMM_FMM_NODE_HPP_
 
 namespace pvfmm{
+
+enum BoundaryType{
+  FreeSpace,
+  Periodic
+};
 
 template <class Real_t>
 class FMM_Data{

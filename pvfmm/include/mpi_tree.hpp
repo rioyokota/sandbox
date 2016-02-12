@@ -24,13 +24,9 @@
 #include <parUtils.h>
 #include <profile.hpp>
 #include <pvfmm_common.hpp>
+#include <vector.hpp>
 
 namespace pvfmm{
-
-enum BoundaryType{
-  FreeSpace,
-  Periodic
-};
 
 template <class TreeNode>
 class MPI_Tree {

@@ -1,43 +1,4 @@
-#include <omp.h>
-#include <sstream>
-#include <iomanip>
-#include <cassert>
-#include <cstdlib>
-
-#include <fmm_node.hpp>
-#include <mem_mgr.hpp>
-#include <mortonid.hpp>
-#include <profile.hpp>
-#include <vector.hpp>
-
 namespace pvfmm{
-
-template <class FMM_Mat_t>
-void FMM_Tree<FMM_Mat_t>::Initialize(typename Node_t::NodeData* init_data) {
-  Profile::Tic("InitTree",true);{
-  MPI_Tree<Node_t>::Initialize(init_data);
-  Profile::Tic("InitFMMData",true,5);
-  {
-    std::vector<Node_t*>& nodes=this->GetNodeList();
-#pragma omp parallel for
-    for(size_t i=0;i<nodes.size();i++){
-      if(nodes[i]->FMMData()==NULL) nodes[i]->FMMData()=mem::aligned_new<typename FMM_Mat_t::FMMData>();
-    }
-  }
-  Profile::Toc();
-
-  }Profile::Toc();
-}
-
-
-template <class FMM_Mat_t>
-void FMM_Tree<FMM_Mat_t>::InitFMM_Tree(bool refine, BoundaryType bndry_) {
-  Profile::Tic("InitFMM_Tree",true);{
-  interac_list.Initialize(this->Dim());
-  bndry=bndry_;
-  }Profile::Toc();
-}
-
 
 template <class FMM_Mat_t>
 void FMM_Tree<FMM_Mat_t>::SetupFMM(FMM_Mat_t* fmm_mat_) {
@@ -233,7 +194,7 @@ void FMM_Tree<FMM_Mat_t>::BuildInteracLists() {
   omp_par::scan(&interac_cnt[0],&interac_dsp[0],type_lst.size());
   node_interac_lst.ReInit(node_cnt,interac_cnt.back()+interac_dsp.back());
   int omp_p=omp_get_max_threads();
-  #pragma omp parallel for
+#pragma omp parallel for
   for(int j=0;j<omp_p;j++){
     for(size_t k=0;k<type_lst.size();k++){
       std::vector<Node_t*>& n_list=*type_node_lst[k];

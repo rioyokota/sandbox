@@ -28,9 +28,25 @@ class FMM_Tree: public MPI_Tree<typename FMM_Mat_t::FMMNode_t>{
 
   virtual ~FMM_Tree(){}
 
-  virtual void Initialize(typename Node_t::NodeData* data_) ;
+  virtual void Initialize(typename Node_t::NodeData* init_data) {
+    Profile::Tic("InitTree",true);{
+      MPI_Tree<Node_t>::Initialize(init_data);
+      Profile::Tic("InitFMMData",true,5);{
+	std::vector<Node_t*>& nodes=this->GetNodeList();
+#pragma omp parallel for
+	for(size_t i=0;i<nodes.size();i++){
+	  if(nodes[i]->FMMData()==NULL) nodes[i]->FMMData()=mem::aligned_new<typename FMM_Mat_t::FMMData>();
+	}
+      }Profile::Toc();   
+    }Profile::Toc();
+  }
 
-  void InitFMM_Tree(bool refine, BoundaryType bndry=FreeSpace);
+  void InitFMM_Tree(bool refine, BoundaryType bndry_=FreeSpace) {
+    Profile::Tic("InitFMM_Tree",true);{
+      interac_list.Initialize(this->Dim());
+      bndry=bndry_;
+    }Profile::Toc();
+  }
 
   void SetupFMM(FMM_Mat_t* fmm_mat_);
 
