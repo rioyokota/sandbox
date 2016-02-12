@@ -1,10 +1,3 @@
-/**
- * \file fmm_tree.txx
- * \author Dhairya Malhotra, dhairya.malhotra@gmail.com
- * \date 12-11-2010
- * \brief This file contains the implementation of the class FMM_Tree.
- */
-
 #include <omp.h>
 #include <sstream>
 #include <iomanip>
@@ -22,14 +15,11 @@ namespace pvfmm{
 template <class FMM_Mat_t>
 void FMM_Tree<FMM_Mat_t>::Initialize(typename Node_t::NodeData* init_data) {
   Profile::Tic("InitTree",true);{
-
-  //Build octree from points.
   MPI_Tree<Node_t>::Initialize(init_data);
-
   Profile::Tic("InitFMMData",true,5);
-  { //Initialize FMM data.
+  {
     std::vector<Node_t*>& nodes=this->GetNodeList();
-    #pragma omp parallel for
+#pragma omp parallel for
     for(size_t i=0;i<nodes.size();i++){
       if(nodes[i]->FMMData()==NULL) nodes[i]->FMMData()=mem::aligned_new<typename FMM_Mat_t::FMMData>();
     }
@@ -43,10 +33,8 @@ void FMM_Tree<FMM_Mat_t>::Initialize(typename Node_t::NodeData* init_data) {
 template <class FMM_Mat_t>
 void FMM_Tree<FMM_Mat_t>::InitFMM_Tree(bool refine, BoundaryType bndry_) {
   Profile::Tic("InitFMM_Tree",true);{
-
   interac_list.Initialize(this->Dim());
   bndry=bndry_;
-
   }Profile::Toc();
 }
 
@@ -55,21 +43,17 @@ template <class FMM_Mat_t>
 void FMM_Tree<FMM_Mat_t>::SetupFMM(FMM_Mat_t* fmm_mat_) {
   Profile::Tic("SetupFMM",true);{
   typedef typename FMM_Mat_t::FMMTree_t MatTree_t;
-
-  //int omp_p=omp_get_max_threads();
-  if(fmm_mat!=fmm_mat_){ // Clear previous setup
+  if(fmm_mat!=fmm_mat_) {
     setup_data.clear();
     precomp_lst.clear();
     fmm_mat=fmm_mat_;
   }
 
-  //Set Colleagues (Needed to build U, V, W and X lists.)
   Profile::Tic("SetColleagues",false,3);
   this->SetColleagues(bndry);
   Profile::Toc();
 
   Profile::Tic("CollectNodeData",false,3);
-  //Build node list.
   Node_t* n=dynamic_cast<Node_t*>(this->PostorderFirst());
   std::vector<Node_t*> all_nodes;
   while(n!=NULL){
@@ -78,7 +62,6 @@ void FMM_Tree<FMM_Mat_t>::SetupFMM(FMM_Mat_t* fmm_mat_) {
     all_nodes.push_back(n);
     n=static_cast<Node_t*>(this->PostorderNxt(n));
   }
-  //Collect node data into continuous array.
   std::vector<Vector<Node_t*> > node_lists; // TODO: Remove this parameter, not really needed
   fmm_mat->CollectNodeData((MatTree_t*)this,all_nodes, node_data_buff, node_lists);
   Profile::Toc();
@@ -86,10 +69,8 @@ void FMM_Tree<FMM_Mat_t>::SetupFMM(FMM_Mat_t* fmm_mat_) {
   Profile::Tic("BuildLists",false,3);
   BuildInteracLists();
   Profile::Toc();
-
   setup_data.resize(8*MAX_DEPTH);
   precomp_lst.resize(8);
-
   Profile::Tic("UListSetup",false,3);
   for(size_t i=0;i<MAX_DEPTH;i++){
     setup_data[i+MAX_DEPTH*0].precomp_data=&precomp_lst[0];
@@ -139,35 +120,29 @@ void FMM_Tree<FMM_Mat_t>::SetupFMM(FMM_Mat_t* fmm_mat_) {
     fmm_mat->Up2UpSetup(setup_data[i+MAX_DEPTH*7],(MatTree_t*)this,node_data_buff,node_lists,i);
   }
   Profile::Toc();
-
   ClearFMMData();
-
   }Profile::Toc();
 }
 
 template <class FMM_Mat_t>
 void FMM_Tree<FMM_Mat_t>::ClearFMMData() {
   Profile::Tic("ClearFMMData",true);{
-
   int omp_p=omp_get_max_threads();
-  #pragma omp parallel for
+#pragma omp parallel for
   for(int j=0;j<omp_p;j++){
     Matrix<Real_t>* mat;
-
     mat=setup_data[0+MAX_DEPTH*1]. input_data;
     if(mat && mat->Dim(0)*mat->Dim(1)){
       size_t a=(mat->Dim(0)*mat->Dim(1)*(j+0))/omp_p;
       size_t b=(mat->Dim(0)*mat->Dim(1)*(j+1))/omp_p;
       memset(&(*mat)[0][a],0,(b-a)*sizeof(Real_t));
     }
-
     mat=setup_data[0+MAX_DEPTH*2].output_data;
     if(mat && mat->Dim(0)*mat->Dim(1)){
       size_t a=(mat->Dim(0)*mat->Dim(1)*(j+0))/omp_p;
       size_t b=(mat->Dim(0)*mat->Dim(1)*(j+1))/omp_p;
       memset(&(*mat)[0][a],0,(b-a)*sizeof(Real_t));
     }
-
     mat=setup_data[0+MAX_DEPTH*0].output_data;
     if(mat && mat->Dim(0)*mat->Dim(1)){
       size_t a=(mat->Dim(0)*mat->Dim(1)*(j+0))/omp_p;
@@ -175,34 +150,30 @@ void FMM_Tree<FMM_Mat_t>::ClearFMMData() {
       memset(&(*mat)[0][a],0,(b-a)*sizeof(Real_t));
     }
   }
-
-  }Profile::Toc();
+  }
+  Profile::Toc();
 }
 
 
 template <class FMM_Mat_t>
 void FMM_Tree<FMM_Mat_t>::RunFMM() {
-  Profile::Tic("RunFMM",true);{
-
-  //Upward Pass
-  Profile::Tic("UpwardPass",false,2);
-  UpwardPass();
+  Profile::Tic("RunFMM",true);
+  {
+    Profile::Tic("UpwardPass",false,2);
+    UpwardPass();
+    Profile::Toc();
+    Profile::Tic("DownwardPass",true,2);
+    DownwardPass();
+    Profile::Toc();
+  }
   Profile::Toc();
-
-  //Downward Pass
-  Profile::Tic("DownwardPass",true,2);
-  DownwardPass();
-  Profile::Toc();
-
-  }Profile::Toc();
 }
 
 
 template <class FMM_Mat_t>
 void FMM_Tree<FMM_Mat_t>::UpwardPass() {
-
   int max_depth=0;
-  { // Get max_depth
+  {
     int max_depth_loc=0;
     std::vector<Node_t*>& nodes=this->GetNodeList();
     for(size_t i=0;i<nodes.size();i++){
@@ -211,18 +182,14 @@ void FMM_Tree<FMM_Mat_t>::UpwardPass() {
     }
     max_depth = max_depth_loc;
   }
-
-  //Upward Pass (initialize all leaf nodes)
   Profile::Tic("S2U",false,5);
-  for(int i=0; i<=(fmm_mat->ScaleInvar()?0:max_depth); i++){ // Source2Up
+  for(int i=0; i<=(fmm_mat->ScaleInvar()?0:max_depth); i++){
     if(!fmm_mat->ScaleInvar()) fmm_mat->SetupPrecomp(setup_data[i+MAX_DEPTH*6]);
     fmm_mat->Source2Up(setup_data[i+MAX_DEPTH*6]);
   }
   Profile::Toc();
-
-  //Upward Pass (level by level)
   Profile::Tic("U2U",false,5);
-  for(int i=max_depth-1; i>=0; i--){ // Up2Up
+  for(int i=max_depth-1; i>=0; i--){
     if(!fmm_mat->ScaleInvar()) fmm_mat->SetupPrecomp(setup_data[i+MAX_DEPTH*7]);
     fmm_mat->Up2Up(setup_data[i+MAX_DEPTH*7]);
   }
@@ -234,7 +201,7 @@ template <class FMM_Mat_t>
 void FMM_Tree<FMM_Mat_t>::BuildInteracLists() {
   std::vector<Node_t*> n_list_src;
   std::vector<Node_t*> n_list_trg;
-  { // Build n_list
+  {
     std::vector<Node_t*>& nodes=this->GetNodeList();
     for(size_t i=0;i<nodes.size();i++){
       if(!nodes[i]->IsGhost() && nodes[i]->pt_cnt[0]){
@@ -246,7 +213,6 @@ void FMM_Tree<FMM_Mat_t>::BuildInteracLists() {
     }
   }
   size_t node_cnt=std::max(n_list_src.size(),n_list_trg.size());
-
   std::vector<Mat_Type> type_lst;
   std::vector<std::vector<Node_t*>*> type_node_lst;
   type_lst.push_back(S2U_Type); type_node_lst.push_back(&n_list_src);
@@ -266,8 +232,6 @@ void FMM_Tree<FMM_Mat_t>::BuildInteracLists() {
   }
   omp_par::scan(&interac_cnt[0],&interac_dsp[0],type_lst.size());
   node_interac_lst.ReInit(node_cnt,interac_cnt.back()+interac_dsp.back());
-
-  // Build interaction lists.
   int omp_p=omp_get_max_threads();
   #pragma omp parallel for
   for(int j=0;j<omp_p;j++){
@@ -289,7 +253,7 @@ void FMM_Tree<FMM_Mat_t>::DownwardPass() {
   Profile::Tic("Setup",true,3);
   std::vector<Node_t*> leaf_nodes;
   int max_depth=0;
-  { // Build leaf node list
+  {
     int max_depth_loc=0;
     std::vector<Node_t*>& nodes=this->GetNodeList();
     for(size_t i=0;i<nodes.size();i++){
@@ -300,87 +264,75 @@ void FMM_Tree<FMM_Mat_t>::DownwardPass() {
     max_depth = max_depth_loc;
   }
   Profile::Toc();
-
-  if(bndry==Periodic){ //Add contribution from periodic infinite tiling.
+  if(bndry==Periodic) {
     Profile::Tic("BoundaryCondition",false,5);
     fmm_mat->PeriodicBC(dynamic_cast<Node_t*>(this->RootNode()));
     Profile::Toc();
   }
-
-  for(size_t i=0; i<=(fmm_mat->ScaleInvar()?0:max_depth); i++){ // U,V,W,X-lists
-
-    if(!fmm_mat->ScaleInvar()){ // Precomp
+  for(size_t i=0; i<=(fmm_mat->ScaleInvar()?0:max_depth); i++) {
+    if(!fmm_mat->ScaleInvar()) {
       std::stringstream level_str;
       level_str<<"Level-"<<std::setfill('0')<<std::setw(2)<<i<<"\0";
       Profile::Tic(level_str.str().c_str(),false,5);
-
       Profile::Tic("Precomp",false,5);
-      {// Precomp U
+      {
         Profile::Tic("Precomp-U",false,10);
         fmm_mat->SetupPrecomp(setup_data[i+MAX_DEPTH*0]);
         Profile::Toc();
       }
-      {// Precomp W
+      {
         Profile::Tic("Precomp-W",false,10);
         fmm_mat->SetupPrecomp(setup_data[i+MAX_DEPTH*1]);
         Profile::Toc();
       }
-      {// Precomp X
+      {
         Profile::Tic("Precomp-X",false,10);
         fmm_mat->SetupPrecomp(setup_data[i+MAX_DEPTH*2]);
         Profile::Toc();
       }
-      if(0){// Precomp V
+      if(0){
         Profile::Tic("Precomp-V",false,10);
         fmm_mat->SetupPrecomp(setup_data[i+MAX_DEPTH*3]);
         Profile::Toc();
       }
       Profile::Toc();
     }
-
-    {// X-List
+    {
       Profile::Tic("X-List",false,5);
       fmm_mat->X_List(setup_data[i+MAX_DEPTH*2]);
       Profile::Toc();
     }
-
-    {// W-List
+    {
       Profile::Tic("W-List",false,5);
       fmm_mat->W_List(setup_data[i+MAX_DEPTH*1]);
       Profile::Toc();
     }
-
-    {// U-List
+    {
       Profile::Tic("U-List",false,5);
       fmm_mat->U_List(setup_data[i+MAX_DEPTH*0]);
       Profile::Toc();
     }
-
-    {// V-List
+    {
       Profile::Tic("V-List",false,5);
       fmm_mat->V_List(setup_data[i+MAX_DEPTH*3]);
       Profile::Toc();
     }
-
-    if(!fmm_mat->ScaleInvar()){ // Wait
+    if(!fmm_mat->ScaleInvar()){
       Profile::Toc();
     }
   }
-
   Profile::Tic("D2D",false,5);
-  for(size_t i=0; i<=max_depth; i++){ // Down2Down
+  for(size_t i=0; i<=max_depth; i++) {
     if(!fmm_mat->ScaleInvar()) fmm_mat->SetupPrecomp(setup_data[i+MAX_DEPTH*4]);
     fmm_mat->Down2Down(setup_data[i+MAX_DEPTH*4]);
   }
   Profile::Toc();
-
   Profile::Tic("D2T",false,5);
-  for(int i=0; i<=(fmm_mat->ScaleInvar()?0:max_depth); i++){ // Down2Target
+  for(int i=0; i<=(fmm_mat->ScaleInvar()?0:max_depth); i++) {
     if(!fmm_mat->ScaleInvar()) fmm_mat->SetupPrecomp(setup_data[i+MAX_DEPTH*5]);
     fmm_mat->Down2Target(setup_data[i+MAX_DEPTH*5]);
   }
   Profile::Toc();
-
   Profile::Tic("PostProc",false,5);
   typedef typename FMM_Mat_t::FMMTree_t MatTree_t;
   fmm_mat->PostProcessing((MatTree_t*)this, leaf_nodes, bndry);
