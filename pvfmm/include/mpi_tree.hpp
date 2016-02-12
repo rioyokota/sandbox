@@ -16,6 +16,8 @@
 #include <vector>
 
 #include <fmm_node.hpp>
+#include <interac_list.hpp>
+#include <matrix.hpp>
 #include <mem_mgr.hpp>
 #include <mortonid.hpp>
 #include <ompUtils.h>
