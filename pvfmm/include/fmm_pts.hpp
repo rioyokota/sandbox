@@ -1353,13 +1353,802 @@ public:
     }
   }
   
-  void SetupPrecomp(SetupData<Real_t>& setup_data);
-  void SetupInterac(SetupData<Real_t>& setup_data);
-  void EvalList    (SetupData<Real_t>& setup_data);
-  void PtSetup(SetupData<Real_t>&  setup_data, void* data_);
+  void SetupPrecomp(SetupData<Real_t>& setup_data){
+    if(setup_data.precomp_data==NULL || setup_data.level>MAX_DEPTH) return;
+    Profile::Tic("SetupPrecomp",true,25);
+    {
+      size_t precomp_offset=0;
+      int level=setup_data.level;
+      Matrix<char>& precomp_data=*setup_data.precomp_data;
+      std::vector<Mat_Type>& interac_type_lst=setup_data.interac_type;
+      for(size_t type_indx=0; type_indx<interac_type_lst.size(); type_indx++){
+        Mat_Type& interac_type=interac_type_lst[type_indx];
+        this->PrecompAll(interac_type, level);
+        precomp_offset=this->mat->CompactData(level, interac_type, precomp_data, precomp_offset);
+      }
+    }
+    Profile::Toc();
+  }
+  
+  void SetupInterac(SetupData<Real_t>& setup_data){
+    int level=setup_data.level;
+    std::vector<Mat_Type>& interac_type_lst=setup_data.interac_type;
+    std::vector<void*>& nodes_in =setup_data.nodes_in ;
+    std::vector<void*>& nodes_out=setup_data.nodes_out;
+    Matrix<Real_t>&  input_data=*setup_data. input_data;
+    Matrix<Real_t>& output_data=*setup_data.output_data;
+    std::vector<Vector<Real_t>*>&  input_vector=setup_data. input_vector;
+    std::vector<Vector<Real_t>*>& output_vector=setup_data.output_vector;
+    size_t n_in =nodes_in .size();
+    size_t n_out=nodes_out.size();
+    if(setup_data.precomp_data->Dim(0)*setup_data.precomp_data->Dim(1)==0) SetupPrecomp(setup_data);
+    Profile::Tic("Interac-Data",true,25);
+    Matrix<char>& interac_data=setup_data.interac_data;
+    {
+      std::vector<size_t> interac_mat;
+      std::vector<size_t> interac_cnt;
+      std::vector<size_t> interac_blk;
+      std::vector<size_t>  input_perm;
+      std::vector<size_t> output_perm;
+      size_t dof=0, M_dim0=0, M_dim1=0;
+      size_t precomp_offset=0;
+      size_t buff_size=DEVICE_BUFFER_SIZE*1024l*1024l;
+      if(n_out && n_in) for(size_t type_indx=0; type_indx<interac_type_lst.size(); type_indx++){
+        Mat_Type& interac_type=interac_type_lst[type_indx];
+        size_t mat_cnt=this->interac_list.ListCount(interac_type);
+        Matrix<size_t> precomp_data_offset;
+        {
+          struct HeaderData{
+            size_t total_size;
+            size_t      level;
+            size_t   mat_cnt ;
+            size_t  max_depth;
+          };
+          Matrix<char>& precomp_data=*setup_data.precomp_data;
+          char* indx_ptr=precomp_data[0]+precomp_offset;
+          HeaderData& header=*(HeaderData*)indx_ptr;indx_ptr+=sizeof(HeaderData);
+          precomp_data_offset.ReInit(header.mat_cnt,(1+(2+2)*header.max_depth), (size_t*)indx_ptr, false);
+          precomp_offset+=header.total_size;
+        }
+        Matrix<FMMNode_t*> src_interac_list(n_in ,mat_cnt); src_interac_list.SetZero();
+        Matrix<FMMNode_t*> trg_interac_list(n_out,mat_cnt); trg_interac_list.SetZero();
+        {
+#pragma omp parallel for
+          for(size_t i=0;i<n_out;i++){
+            if(!((FMMNode_t*)nodes_out[i])->IsGhost() && (level==-1 || ((FMMNode_t*)nodes_out[i])->depth==level)){
+              Vector<FMMNode_t*>& lst=((FMMNode_t*)nodes_out[i])->interac_list[interac_type];
+              mem::memcopy(&trg_interac_list[i][0], &lst[0], lst.Dim()*sizeof(FMMNode_t*));
+              assert(lst.Dim()==mat_cnt);
+            }
+          }
+        }
+        {
+#pragma omp parallel for
+          for(size_t i=0;i<n_out;i++){
+            for(size_t j=0;j<mat_cnt;j++)
+            if(trg_interac_list[i][j]!=NULL){
+              trg_interac_list[i][j]->node_id=n_in;
+            }
+          }
+#pragma omp parallel for
+          for(size_t i=0;i<n_in ;i++) ((FMMNode_t*)nodes_in [i])->node_id=i;
+#pragma omp parallel for
+          for(size_t i=0;i<n_out;i++){
+            for(size_t j=0;j<mat_cnt;j++){
+              if(trg_interac_list[i][j]!=NULL){
+                if(trg_interac_list[i][j]->node_id==n_in){
+                  trg_interac_list[i][j]=NULL;
+                }else{
+                  src_interac_list[trg_interac_list[i][j]->node_id][j]=(FMMNode_t*)nodes_out[i];
+                }
+              }
+            }
+          }
+        }
+        Matrix<size_t> interac_dsp(n_out,mat_cnt);
+        std::vector<size_t> interac_blk_dsp(1,0);
+        {
+          dof=1;
+          Matrix<Real_t>& M0 = this->interac_list.ClassMat(level, interac_type_lst[0], 0);
+          M_dim0=M0.Dim(0); M_dim1=M0.Dim(1);
+        }
+        {
+          size_t vec_size=(M_dim0+M_dim1)*sizeof(Real_t)*dof;
+          for(size_t j=0;j<mat_cnt;j++){
+            size_t vec_cnt=0;
+            for(size_t i=0;i<n_out;i++){
+              if(trg_interac_list[i][j]!=NULL) vec_cnt++;
+            }
+            if(buff_size<vec_cnt*vec_size)
+              buff_size=vec_cnt*vec_size;
+          }
+          size_t interac_dsp_=0;
+          for(size_t j=0;j<mat_cnt;j++){
+            for(size_t i=0;i<n_out;i++){
+              interac_dsp[i][j]=interac_dsp_;
+              if(trg_interac_list[i][j]!=NULL) interac_dsp_++;
+            }
+            if(interac_dsp_*vec_size>buff_size) {
+              interac_blk.push_back(j-interac_blk_dsp.back());
+              interac_blk_dsp.push_back(j);
+  
+              size_t offset=interac_dsp[0][j];
+              for(size_t i=0;i<n_out;i++) interac_dsp[i][j]-=offset;
+              interac_dsp_-=offset;
+              assert(interac_dsp_*vec_size<=buff_size);
+            }
+            interac_mat.push_back(precomp_data_offset[this->interac_list.InteracClass(interac_type,j)][0]);
+            interac_cnt.push_back(interac_dsp_-interac_dsp[0][j]);
+          }
+          interac_blk.push_back(mat_cnt-interac_blk_dsp.back());
+          interac_blk_dsp.push_back(mat_cnt);
+        }
+        {
+          size_t vec_size=M_dim0*dof;
+          for(size_t i=0;i<n_out;i++) ((FMMNode_t*)nodes_out[i])->node_id=i;
+          for(size_t k=1;k<interac_blk_dsp.size();k++){
+            for(size_t i=0;i<n_in ;i++){
+              for(size_t j=interac_blk_dsp[k-1];j<interac_blk_dsp[k];j++){
+                FMMNode_t* trg_node=src_interac_list[i][j];
+                if(trg_node!=NULL && trg_node->node_id<n_out){
+                  size_t depth=(this->ScaleInvar()?trg_node->depth:0);
+                  input_perm .push_back(precomp_data_offset[j][1+4*depth+0]);
+                  input_perm .push_back(precomp_data_offset[j][1+4*depth+1]);
+                  input_perm .push_back(interac_dsp[trg_node->node_id][j]*vec_size*sizeof(Real_t));
+                  input_perm .push_back((size_t)(& input_vector[i][0][0]- input_data[0]));
+                  assert(input_vector[i]->Dim()==vec_size);
+                }
+              }
+            }
+          }
+        }
+        {
+          size_t vec_size=M_dim1*dof;
+          for(size_t k=1;k<interac_blk_dsp.size();k++){
+            for(size_t i=0;i<n_out;i++){
+              for(size_t j=interac_blk_dsp[k-1];j<interac_blk_dsp[k];j++){
+                if(trg_interac_list[i][j]!=NULL){
+                  size_t depth=(this->ScaleInvar()?((FMMNode_t*)nodes_out[i])->depth:0);
+                  output_perm.push_back(precomp_data_offset[j][1+4*depth+2]);
+                  output_perm.push_back(precomp_data_offset[j][1+4*depth+3]);
+                  output_perm.push_back(interac_dsp[               i ][j]*vec_size*sizeof(Real_t));
+                  output_perm.push_back((size_t)(&output_vector[i][0][0]-output_data[0]));
+                  assert(output_vector[i]->Dim()==vec_size);
+                }
+              }
+            }
+          }
+        }
+      }
+      if(this->dev_buffer.Dim()<buff_size) this->dev_buffer.ReInit(buff_size);
+      {
+        size_t data_size=sizeof(size_t)*4;
+        data_size+=sizeof(size_t)+interac_blk.size()*sizeof(size_t);
+        data_size+=sizeof(size_t)+interac_cnt.size()*sizeof(size_t);
+        data_size+=sizeof(size_t)+interac_mat.size()*sizeof(size_t);
+        data_size+=sizeof(size_t)+ input_perm.size()*sizeof(size_t);
+        data_size+=sizeof(size_t)+output_perm.size()*sizeof(size_t);
+        if(interac_data.Dim(0)*interac_data.Dim(1)<sizeof(size_t)){
+          data_size+=sizeof(size_t);
+          interac_data.ReInit(1,data_size);
+          ((size_t*)&interac_data[0][0])[0]=sizeof(size_t);
+        }else{
+          size_t pts_data_size=*((size_t*)&interac_data[0][0]);
+          assert(interac_data.Dim(0)*interac_data.Dim(1)>=pts_data_size);
+          data_size+=pts_data_size;
+          if(data_size>interac_data.Dim(0)*interac_data.Dim(1)){
+            Matrix< char> pts_interac_data=interac_data;
+            interac_data.ReInit(1,data_size);
+            mem::memcopy(&interac_data[0][0],&pts_interac_data[0][0],pts_data_size);
+          }
+        }
+        char* data_ptr=&interac_data[0][0];
+        data_ptr+=((size_t*)data_ptr)[0];
+        ((size_t*)data_ptr)[0]=data_size; data_ptr+=sizeof(size_t);
+        ((size_t*)data_ptr)[0]=   M_dim0; data_ptr+=sizeof(size_t);
+        ((size_t*)data_ptr)[0]=   M_dim1; data_ptr+=sizeof(size_t);
+        ((size_t*)data_ptr)[0]=      dof; data_ptr+=sizeof(size_t);
+        ((size_t*)data_ptr)[0]=interac_blk.size(); data_ptr+=sizeof(size_t);
+        mem::memcopy(data_ptr, &interac_blk[0], interac_blk.size()*sizeof(size_t));
+        data_ptr+=interac_blk.size()*sizeof(size_t);
+        ((size_t*)data_ptr)[0]=interac_cnt.size(); data_ptr+=sizeof(size_t);
+        mem::memcopy(data_ptr, &interac_cnt[0], interac_cnt.size()*sizeof(size_t));
+        data_ptr+=interac_cnt.size()*sizeof(size_t);
+        ((size_t*)data_ptr)[0]=interac_mat.size(); data_ptr+=sizeof(size_t);
+        mem::memcopy(data_ptr, &interac_mat[0], interac_mat.size()*sizeof(size_t));
+        data_ptr+=interac_mat.size()*sizeof(size_t);
+        ((size_t*)data_ptr)[0]= input_perm.size(); data_ptr+=sizeof(size_t);
+        mem::memcopy(data_ptr, & input_perm[0],  input_perm.size()*sizeof(size_t));
+        data_ptr+= input_perm.size()*sizeof(size_t);
+        ((size_t*)data_ptr)[0]=output_perm.size(); data_ptr+=sizeof(size_t);
+        mem::memcopy(data_ptr, &output_perm[0], output_perm.size()*sizeof(size_t));
+        data_ptr+=output_perm.size()*sizeof(size_t);
+      }
+    }
+    Profile::Toc();
+  }
+  
+  void EvalList(SetupData<Real_t>& setup_data){
+    if(setup_data.interac_data.Dim(0)==0 || setup_data.interac_data.Dim(1)==0){
+      return;
+    }
+    Profile::Tic("Host2Device",false,25);
+    typename Vector<char>::Device          buff;
+    typename Matrix<char>::Device  precomp_data;
+    typename Matrix<char>::Device  interac_data;
+    typename Matrix<Real_t>::Device  input_data;
+    typename Matrix<Real_t>::Device output_data;
+    buff        =       this-> dev_buffer;
+    precomp_data=*setup_data.precomp_data;
+    interac_data= setup_data.interac_data;
+    input_data  =*setup_data.  input_data;
+    output_data =*setup_data. output_data;
+    Profile::Toc();
+    Profile::Tic("DeviceComp",false,20);
+    int lock_idx=-1;
+    int wait_lock_idx=-1;
+    {
+      size_t data_size, M_dim0, M_dim1, dof;
+      Vector<size_t> interac_blk;
+      Vector<size_t> interac_cnt;
+      Vector<size_t> interac_mat;
+      Vector<size_t>  input_perm;
+      Vector<size_t> output_perm;
+      {
+        char* data_ptr=&interac_data[0][0];
+        data_size=((size_t*)data_ptr)[0]; data_ptr+=data_size;
+        data_size=((size_t*)data_ptr)[0]; data_ptr+=sizeof(size_t);
+        M_dim0   =((size_t*)data_ptr)[0]; data_ptr+=sizeof(size_t);
+        M_dim1   =((size_t*)data_ptr)[0]; data_ptr+=sizeof(size_t);
+        dof      =((size_t*)data_ptr)[0]; data_ptr+=sizeof(size_t);
+        interac_blk.ReInit(((size_t*)data_ptr)[0],(size_t*)(data_ptr+sizeof(size_t)),false);
+        data_ptr+=sizeof(size_t)+interac_blk.Dim()*sizeof(size_t);
+        interac_cnt.ReInit(((size_t*)data_ptr)[0],(size_t*)(data_ptr+sizeof(size_t)),false);
+        data_ptr+=sizeof(size_t)+interac_cnt.Dim()*sizeof(size_t);
+        interac_mat.ReInit(((size_t*)data_ptr)[0],(size_t*)(data_ptr+sizeof(size_t)),false);
+        data_ptr+=sizeof(size_t)+interac_mat.Dim()*sizeof(size_t);
+        input_perm .ReInit(((size_t*)data_ptr)[0],(size_t*)(data_ptr+sizeof(size_t)),false);
+        data_ptr+=sizeof(size_t)+ input_perm.Dim()*sizeof(size_t);
+        output_perm.ReInit(((size_t*)data_ptr)[0],(size_t*)(data_ptr+sizeof(size_t)),false);
+        data_ptr+=sizeof(size_t)+output_perm.Dim()*sizeof(size_t);
+      }
+      {
+        int omp_p=omp_get_max_threads();
+        size_t interac_indx=0;
+        size_t interac_blk_dsp=0;
+        for(size_t k=0;k<interac_blk.Dim();k++){
+          size_t vec_cnt=0;
+          for(size_t j=interac_blk_dsp;j<interac_blk_dsp+interac_blk[k];j++) vec_cnt+=interac_cnt[j];
+          if(vec_cnt==0){
+            interac_blk_dsp += interac_blk[k];
+            continue;
+          }
+          char* buff_in =&buff[0];
+          char* buff_out=&buff[vec_cnt*dof*M_dim0*sizeof(Real_t)];
+#pragma omp parallel for
+          for(int tid=0;tid<omp_p;tid++){
+            size_t a=( tid   *vec_cnt)/omp_p;
+            size_t b=((tid+1)*vec_cnt)/omp_p;
+            for(size_t i=a;i<b;i++){
+              const PERM_INT_T*  perm=(PERM_INT_T*)(precomp_data[0]+input_perm[(interac_indx+i)*4+0]);
+              const     Real_t*  scal=(    Real_t*)(precomp_data[0]+input_perm[(interac_indx+i)*4+1]);
+              const     Real_t* v_in =(    Real_t*)(  input_data[0]+input_perm[(interac_indx+i)*4+3]);
+              Real_t*           v_out=(    Real_t*)(     buff_in   +input_perm[(interac_indx+i)*4+2]);
+              for(size_t j=0;j<M_dim0;j++ ){
+                v_out[j]=v_in[perm[j]]*scal[j];
+              }
+            }
+          }
+          size_t vec_cnt0=0;
+          for(size_t j=interac_blk_dsp;j<interac_blk_dsp+interac_blk[k];){
+            size_t vec_cnt1=0;
+            size_t interac_mat0=interac_mat[j];
+            for(;j<interac_blk_dsp+interac_blk[k] && interac_mat[j]==interac_mat0;j++) vec_cnt1+=interac_cnt[j];
+            Matrix<Real_t> M(M_dim0, M_dim1, (Real_t*)(precomp_data[0]+interac_mat0), false);
+            #pragma omp parallel for
+            for(int tid=0;tid<omp_p;tid++){
+              size_t a=(dof*vec_cnt1*(tid  ))/omp_p;
+              size_t b=(dof*vec_cnt1*(tid+1))/omp_p;
+              Matrix<Real_t> Ms(b-a, M_dim0, (Real_t*)(buff_in +M_dim0*vec_cnt0*dof*sizeof(Real_t))+M_dim0*a, false);
+              Matrix<Real_t> Mt(b-a, M_dim1, (Real_t*)(buff_out+M_dim1*vec_cnt0*dof*sizeof(Real_t))+M_dim1*a, false);
+              Matrix<Real_t>::GEMM(Mt,Ms,M);
+            }
+            vec_cnt0+=vec_cnt1;
+          }
+#pragma omp parallel for
+          for(int tid=0;tid<omp_p;tid++){
+            size_t a=( tid   *vec_cnt)/omp_p;
+            size_t b=((tid+1)*vec_cnt)/omp_p;
+            if(tid>      0 && a<vec_cnt){
+              size_t out_ptr=output_perm[(interac_indx+a)*4+3];
+              if(tid>      0) while(a<vec_cnt && out_ptr==output_perm[(interac_indx+a)*4+3]) a++;
+            }
+            if(tid<omp_p-1 && b<vec_cnt){
+              size_t out_ptr=output_perm[(interac_indx+b)*4+3];
+              if(tid<omp_p-1) while(b<vec_cnt && out_ptr==output_perm[(interac_indx+b)*4+3]) b++;
+            }
+            for(size_t i=a;i<b;i++){ // Compute permutations.
+              const PERM_INT_T*  perm=(PERM_INT_T*)(precomp_data[0]+output_perm[(interac_indx+i)*4+0]);
+              const     Real_t*  scal=(    Real_t*)(precomp_data[0]+output_perm[(interac_indx+i)*4+1]);
+              const     Real_t* v_in =(    Real_t*)(    buff_out   +output_perm[(interac_indx+i)*4+2]);
+              Real_t*           v_out=(    Real_t*)( output_data[0]+output_perm[(interac_indx+i)*4+3]);
+              for(size_t j=0;j<M_dim1;j++ ){
+                v_out[j]+=v_in[perm[j]]*scal[j];
+              }
+            }
+          }
+          interac_indx+=vec_cnt;
+          interac_blk_dsp+=interac_blk[k];
+        }
+      }
+    }
+    Profile::Toc();
+  }
+  
+  void PtSetup(SetupData<Real_t>& setup_data, void* data_){
+    struct PackedData{
+      size_t len;
+      Matrix<Real_t>* ptr;
+      Vector<size_t> cnt;
+      Vector<size_t> dsp;
+    };
+    struct InteracData{
+      Vector<size_t> in_node;
+      Vector<size_t> scal_idx;
+      Vector<Real_t> coord_shift;
+      Vector<size_t> interac_cnt;
+      Vector<size_t> interac_dsp;
+      Vector<size_t> interac_cst;
+      Vector<Real_t> scal[4*MAX_DEPTH];
+      Matrix<Real_t> M[4];
+    };
+    struct ptSetupData{
+      int level;
+      const Kernel<Real_t>* kernel;
+      PackedData src_coord;
+      PackedData src_value;
+      PackedData srf_coord;
+      PackedData srf_value;
+      PackedData trg_coord;
+      PackedData trg_value;
+      InteracData interac_data;
+    };
+    ptSetupData& data=*(ptSetupData*)data_;
+    if(data.interac_data.interac_cnt.Dim()){
+      InteracData& intdata=data.interac_data;
+      Vector<size_t>  cnt;
+      Vector<size_t>& dsp=intdata.interac_cst;
+      cnt.ReInit(intdata.interac_cnt.Dim());
+      dsp.ReInit(intdata.interac_dsp.Dim());
+  #pragma omp parallel for
+      for(size_t trg=0;trg<cnt.Dim();trg++){
+        size_t trg_cnt=data.trg_coord.cnt[trg];
+        cnt[trg]=0;
+        for(size_t i=0;i<intdata.interac_cnt[trg];i++){
+          size_t int_id=intdata.interac_dsp[trg]+i;
+          size_t src=intdata.in_node[int_id];
+          size_t src_cnt=data.src_coord.cnt[src];
+          size_t srf_cnt=data.srf_coord.cnt[src];
+          cnt[trg]+=(src_cnt+srf_cnt)*trg_cnt;
+        }
+      }
+      dsp[0]=cnt[0];
+      omp_par::scan(&cnt[0],&dsp[0],dsp.Dim());
+    }
+    {
+      struct PackedSetupData{
+        size_t size;
+        int level;
+        const Kernel<Real_t>* kernel;
+        Matrix<Real_t>* src_coord;
+        Matrix<Real_t>* src_value;
+        Matrix<Real_t>* srf_coord;
+        Matrix<Real_t>* srf_value;
+        Matrix<Real_t>* trg_coord;
+        Matrix<Real_t>* trg_value;
+        size_t src_coord_cnt_size; size_t src_coord_cnt_offset;
+        size_t src_coord_dsp_size; size_t src_coord_dsp_offset;
+        size_t src_value_cnt_size; size_t src_value_cnt_offset;
+        size_t src_value_dsp_size; size_t src_value_dsp_offset;
+        size_t srf_coord_cnt_size; size_t srf_coord_cnt_offset;
+        size_t srf_coord_dsp_size; size_t srf_coord_dsp_offset;
+        size_t srf_value_cnt_size; size_t srf_value_cnt_offset;
+        size_t srf_value_dsp_size; size_t srf_value_dsp_offset;
+        size_t trg_coord_cnt_size; size_t trg_coord_cnt_offset;
+        size_t trg_coord_dsp_size; size_t trg_coord_dsp_offset;
+        size_t trg_value_cnt_size; size_t trg_value_cnt_offset;
+        size_t trg_value_dsp_size; size_t trg_value_dsp_offset;
+        size_t          in_node_size; size_t           in_node_offset;
+        size_t         scal_idx_size; size_t          scal_idx_offset;
+        size_t      coord_shift_size; size_t       coord_shift_offset;
+        size_t      interac_cnt_size; size_t       interac_cnt_offset;
+        size_t      interac_dsp_size; size_t       interac_dsp_offset;
+        size_t      interac_cst_size; size_t       interac_cst_offset;
+        size_t scal_dim[4*MAX_DEPTH]; size_t scal_offset[4*MAX_DEPTH];
+        size_t            Mdim[4][2]; size_t              M_offset[4];
+      };
+      PackedSetupData pkd_data;
+      {
+        size_t offset=mem::align_ptr(sizeof(PackedSetupData));
+        pkd_data. level=data. level;
+        pkd_data.kernel=data.kernel;
+        pkd_data.src_coord=data.src_coord.ptr;
+        pkd_data.src_value=data.src_value.ptr;
+        pkd_data.srf_coord=data.srf_coord.ptr;
+        pkd_data.srf_value=data.srf_value.ptr;
+        pkd_data.trg_coord=data.trg_coord.ptr;
+        pkd_data.trg_value=data.trg_value.ptr;
+        pkd_data.src_coord_cnt_offset=offset; pkd_data.src_coord_cnt_size=data.src_coord.cnt.Dim(); offset+=mem::align_ptr(sizeof(size_t)*pkd_data.src_coord_cnt_size);
+        pkd_data.src_coord_dsp_offset=offset; pkd_data.src_coord_dsp_size=data.src_coord.dsp.Dim(); offset+=mem::align_ptr(sizeof(size_t)*pkd_data.src_coord_dsp_size);
+        pkd_data.src_value_cnt_offset=offset; pkd_data.src_value_cnt_size=data.src_value.cnt.Dim(); offset+=mem::align_ptr(sizeof(size_t)*pkd_data.src_value_cnt_size);
+        pkd_data.src_value_dsp_offset=offset; pkd_data.src_value_dsp_size=data.src_value.dsp.Dim(); offset+=mem::align_ptr(sizeof(size_t)*pkd_data.src_value_dsp_size);
+        pkd_data.srf_coord_cnt_offset=offset; pkd_data.srf_coord_cnt_size=data.srf_coord.cnt.Dim(); offset+=mem::align_ptr(sizeof(size_t)*pkd_data.srf_coord_cnt_size);
+        pkd_data.srf_coord_dsp_offset=offset; pkd_data.srf_coord_dsp_size=data.srf_coord.dsp.Dim(); offset+=mem::align_ptr(sizeof(size_t)*pkd_data.srf_coord_dsp_size);
+        pkd_data.srf_value_cnt_offset=offset; pkd_data.srf_value_cnt_size=data.srf_value.cnt.Dim(); offset+=mem::align_ptr(sizeof(size_t)*pkd_data.srf_value_cnt_size);
+        pkd_data.srf_value_dsp_offset=offset; pkd_data.srf_value_dsp_size=data.srf_value.dsp.Dim(); offset+=mem::align_ptr(sizeof(size_t)*pkd_data.srf_value_dsp_size);
+        pkd_data.trg_coord_cnt_offset=offset; pkd_data.trg_coord_cnt_size=data.trg_coord.cnt.Dim(); offset+=mem::align_ptr(sizeof(size_t)*pkd_data.trg_coord_cnt_size);
+        pkd_data.trg_coord_dsp_offset=offset; pkd_data.trg_coord_dsp_size=data.trg_coord.dsp.Dim(); offset+=mem::align_ptr(sizeof(size_t)*pkd_data.trg_coord_dsp_size);
+        pkd_data.trg_value_cnt_offset=offset; pkd_data.trg_value_cnt_size=data.trg_value.cnt.Dim(); offset+=mem::align_ptr(sizeof(size_t)*pkd_data.trg_value_cnt_size);
+        pkd_data.trg_value_dsp_offset=offset; pkd_data.trg_value_dsp_size=data.trg_value.dsp.Dim(); offset+=mem::align_ptr(sizeof(size_t)*pkd_data.trg_value_dsp_size);
+        InteracData& intdata=data.interac_data;
+        pkd_data.    in_node_offset=offset; pkd_data.    in_node_size=intdata.    in_node.Dim(); offset+=mem::align_ptr(sizeof(size_t)*pkd_data.    in_node_size);
+        pkd_data.   scal_idx_offset=offset; pkd_data.   scal_idx_size=intdata.   scal_idx.Dim(); offset+=mem::align_ptr(sizeof(size_t)*pkd_data.   scal_idx_size);
+        pkd_data.coord_shift_offset=offset; pkd_data.coord_shift_size=intdata.coord_shift.Dim(); offset+=mem::align_ptr(sizeof(Real_t)*pkd_data.coord_shift_size);
+        pkd_data.interac_cnt_offset=offset; pkd_data.interac_cnt_size=intdata.interac_cnt.Dim(); offset+=mem::align_ptr(sizeof(size_t)*pkd_data.interac_cnt_size);
+        pkd_data.interac_dsp_offset=offset; pkd_data.interac_dsp_size=intdata.interac_dsp.Dim(); offset+=mem::align_ptr(sizeof(size_t)*pkd_data.interac_dsp_size);
+        pkd_data.interac_cst_offset=offset; pkd_data.interac_cst_size=intdata.interac_cst.Dim(); offset+=mem::align_ptr(sizeof(size_t)*pkd_data.interac_cst_size);
+        for(size_t i=0;i<4*MAX_DEPTH;i++){
+          pkd_data.scal_offset[i]=offset; pkd_data.scal_dim[i]=intdata.scal[i].Dim(); offset+=mem::align_ptr(sizeof(Real_t)*pkd_data.scal_dim[i]);
+        }
+        for(size_t i=0;i<4;i++){
+          size_t& Mdim0=pkd_data.Mdim[i][0];
+          size_t& Mdim1=pkd_data.Mdim[i][1];
+          pkd_data.M_offset[i]=offset; Mdim0=intdata.M[i].Dim(0); Mdim1=intdata.M[i].Dim(1); offset+=mem::align_ptr(sizeof(Real_t)*Mdim0*Mdim1);
+        }
+        pkd_data.size=offset;
+      }
+      {
+        Matrix<char>& buff=setup_data.interac_data;
+        if(pkd_data.size>buff.Dim(0)*buff.Dim(1)){
+          buff.ReInit(1,pkd_data.size);
+        }
+        ((PackedSetupData*)buff[0])[0]=pkd_data;
+        if(pkd_data.src_coord_cnt_size) memcpy(&buff[0][pkd_data.src_coord_cnt_offset], &data.src_coord.cnt[0], pkd_data.src_coord_cnt_size*sizeof(size_t));
+        if(pkd_data.src_coord_dsp_size) memcpy(&buff[0][pkd_data.src_coord_dsp_offset], &data.src_coord.dsp[0], pkd_data.src_coord_dsp_size*sizeof(size_t));
+        if(pkd_data.src_value_cnt_size) memcpy(&buff[0][pkd_data.src_value_cnt_offset], &data.src_value.cnt[0], pkd_data.src_value_cnt_size*sizeof(size_t));
+        if(pkd_data.src_value_dsp_size) memcpy(&buff[0][pkd_data.src_value_dsp_offset], &data.src_value.dsp[0], pkd_data.src_value_dsp_size*sizeof(size_t));
+        if(pkd_data.srf_coord_cnt_size) memcpy(&buff[0][pkd_data.srf_coord_cnt_offset], &data.srf_coord.cnt[0], pkd_data.srf_coord_cnt_size*sizeof(size_t));
+        if(pkd_data.srf_coord_dsp_size) memcpy(&buff[0][pkd_data.srf_coord_dsp_offset], &data.srf_coord.dsp[0], pkd_data.srf_coord_dsp_size*sizeof(size_t));
+        if(pkd_data.srf_value_cnt_size) memcpy(&buff[0][pkd_data.srf_value_cnt_offset], &data.srf_value.cnt[0], pkd_data.srf_value_cnt_size*sizeof(size_t));
+        if(pkd_data.srf_value_dsp_size) memcpy(&buff[0][pkd_data.srf_value_dsp_offset], &data.srf_value.dsp[0], pkd_data.srf_value_dsp_size*sizeof(size_t));
+        if(pkd_data.trg_coord_cnt_size) memcpy(&buff[0][pkd_data.trg_coord_cnt_offset], &data.trg_coord.cnt[0], pkd_data.trg_coord_cnt_size*sizeof(size_t));
+        if(pkd_data.trg_coord_dsp_size) memcpy(&buff[0][pkd_data.trg_coord_dsp_offset], &data.trg_coord.dsp[0], pkd_data.trg_coord_dsp_size*sizeof(size_t));
+        if(pkd_data.trg_value_cnt_size) memcpy(&buff[0][pkd_data.trg_value_cnt_offset], &data.trg_value.cnt[0], pkd_data.trg_value_cnt_size*sizeof(size_t));
+        if(pkd_data.trg_value_dsp_size) memcpy(&buff[0][pkd_data.trg_value_dsp_offset], &data.trg_value.dsp[0], pkd_data.trg_value_dsp_size*sizeof(size_t));
+        InteracData& intdata=data.interac_data;
+        if(pkd_data.    in_node_size) memcpy(&buff[0][pkd_data.    in_node_offset], &intdata.    in_node[0], pkd_data.    in_node_size*sizeof(size_t));
+        if(pkd_data.   scal_idx_size) memcpy(&buff[0][pkd_data.   scal_idx_offset], &intdata.   scal_idx[0], pkd_data.   scal_idx_size*sizeof(size_t));
+        if(pkd_data.coord_shift_size) memcpy(&buff[0][pkd_data.coord_shift_offset], &intdata.coord_shift[0], pkd_data.coord_shift_size*sizeof(Real_t));
+        if(pkd_data.interac_cnt_size) memcpy(&buff[0][pkd_data.interac_cnt_offset], &intdata.interac_cnt[0], pkd_data.interac_cnt_size*sizeof(size_t));
+        if(pkd_data.interac_dsp_size) memcpy(&buff[0][pkd_data.interac_dsp_offset], &intdata.interac_dsp[0], pkd_data.interac_dsp_size*sizeof(size_t));
+        if(pkd_data.interac_cst_size) memcpy(&buff[0][pkd_data.interac_cst_offset], &intdata.interac_cst[0], pkd_data.interac_cst_size*sizeof(size_t));
+        for(size_t i=0;i<4*MAX_DEPTH;i++){
+          if(intdata.scal[i].Dim()) memcpy(&buff[0][pkd_data.scal_offset[i]], &intdata.scal[i][0], intdata.scal[i].Dim()*sizeof(Real_t));
+        }
+        for(size_t i=0;i<4;i++){
+          if(intdata.M[i].Dim(0)*intdata.M[i].Dim(1)) memcpy(&buff[0][pkd_data.M_offset[i]], &intdata.M[i][0][0], intdata.M[i].Dim(0)*intdata.M[i].Dim(1)*sizeof(Real_t));
+        }
+      }
+    }
+    {
+      size_t n=setup_data.output_data->Dim(0)*setup_data.output_data->Dim(1)*sizeof(Real_t);
+      if(this->dev_buffer.Dim()<n) this->dev_buffer.ReInit(n);
+    }
+  }
+  
   void EvalListPts(SetupData<Real_t>& setup_data);
 
-  virtual void Source2UpSetup(SetupData<Real_t>&  setup_data, FMMTree_t* tree, std::vector<Matrix<Real_t> >& node_data, std::vector<Vector<FMMNode_t*> >& n_list, int level);
+  virtual void Source2UpSetup(SetupData<Real_t>& setup_data, FMMTree_t* tree, std::vector<Matrix<Real_t> >& buff, std::vector<Vector<FMMNode_t*> >& n_list, int level) {
+    if(!this->MultipoleOrder()) return;
+    {
+      setup_data. level=level;
+      setup_data.kernel=kernel->k_s2m;
+      setup_data. input_data=&buff[4];
+      setup_data.output_data=&buff[0];
+      setup_data. coord_data=&buff[6];
+      Vector<FMMNode_t*>& nodes_in =n_list[4];
+      Vector<FMMNode_t*>& nodes_out=n_list[0];
+      setup_data.nodes_in .clear();
+      setup_data.nodes_out.clear();
+      for(size_t i=0;i<nodes_in .Dim();i++)
+        if((nodes_in [i]->depth==level || level==-1)
+  	 && (nodes_in [i]->src_coord.Dim() || nodes_in [i]->surf_coord.Dim())
+  	 && nodes_in [i]->IsLeaf() && !nodes_in [i]->IsGhost()) setup_data.nodes_in .push_back(nodes_in [i]);
+      for(size_t i=0;i<nodes_out.Dim();i++)
+        if((nodes_out[i]->depth==level || level==-1)
+  	 && (nodes_out[i]->src_coord.Dim() || nodes_out[i]->surf_coord.Dim())
+  	 && nodes_out[i]->IsLeaf() && !nodes_out[i]->IsGhost()) setup_data.nodes_out.push_back(nodes_out[i]);
+    }
+    struct PackedData{
+      size_t len;
+      Matrix<Real_t>* ptr;
+      Vector<size_t> cnt;
+      Vector<size_t> dsp;
+    };
+    struct InteracData{
+      Vector<size_t> in_node;
+      Vector<size_t> scal_idx;
+      Vector<Real_t> coord_shift;
+      Vector<size_t> interac_cnt;
+      Vector<size_t> interac_dsp;
+      Vector<size_t> interac_cst;
+      Vector<Real_t> scal[4*MAX_DEPTH];
+      Matrix<Real_t> M[4];
+    };
+    struct ptSetupData{
+      int level;
+      const Kernel<Real_t>* kernel;
+      PackedData src_coord;
+      PackedData src_value;
+      PackedData srf_coord;
+      PackedData srf_value;
+      PackedData trg_coord;
+      PackedData trg_value;
+      InteracData interac_data;
+    };
+    ptSetupData data;
+    data. level=setup_data. level;
+    data.kernel=setup_data.kernel;
+    std::vector<void*>& nodes_in =setup_data.nodes_in ;
+    std::vector<void*>& nodes_out=setup_data.nodes_out;
+    {
+      std::vector<void*>& nodes=nodes_in;
+      PackedData& coord=data.src_coord;
+      PackedData& value=data.src_value;
+      coord.ptr=setup_data. coord_data;
+      value.ptr=setup_data. input_data;
+      coord.len=coord.ptr->Dim(0)*coord.ptr->Dim(1);
+      value.len=value.ptr->Dim(0)*value.ptr->Dim(1);
+      coord.cnt.ReInit(nodes.size());
+      coord.dsp.ReInit(nodes.size());
+      value.cnt.ReInit(nodes.size());
+      value.dsp.ReInit(nodes.size());
+#pragma omp parallel for
+      for(size_t i=0;i<nodes.size();i++){
+        ((FMMNode_t*)nodes[i])->node_id=i;
+        Vector<Real_t>& coord_vec=((FMMNode_t*)nodes[i])->src_coord;
+        Vector<Real_t>& value_vec=((FMMNode_t*)nodes[i])->src_value;
+        if(coord_vec.Dim()){
+          coord.dsp[i]=&coord_vec[0]-coord.ptr[0][0];
+          assert(coord.dsp[i]<coord.len);
+          coord.cnt[i]=coord_vec.Dim();
+        }else{
+          coord.dsp[i]=0;
+          coord.cnt[i]=0;
+        }
+        if(value_vec.Dim()){
+          value.dsp[i]=&value_vec[0]-value.ptr[0][0];
+          assert(value.dsp[i]<value.len);
+          value.cnt[i]=value_vec.Dim();
+        }else{
+          value.dsp[i]=0;
+          value.cnt[i]=0;
+        }
+      }
+    }
+    {
+      std::vector<void*>& nodes=nodes_in;
+      PackedData& coord=data.srf_coord;
+      PackedData& value=data.srf_value;
+      coord.ptr=setup_data. coord_data;
+      value.ptr=setup_data. input_data;
+      coord.len=coord.ptr->Dim(0)*coord.ptr->Dim(1);
+      value.len=value.ptr->Dim(0)*value.ptr->Dim(1);
+      coord.cnt.ReInit(nodes.size());
+      coord.dsp.ReInit(nodes.size());
+      value.cnt.ReInit(nodes.size());
+      value.dsp.ReInit(nodes.size());
+#pragma omp parallel for
+      for(size_t i=0;i<nodes.size();i++){
+        Vector<Real_t>& coord_vec=((FMMNode_t*)nodes[i])->surf_coord;
+        Vector<Real_t>& value_vec=((FMMNode_t*)nodes[i])->surf_value;
+        if(coord_vec.Dim()){
+          coord.dsp[i]=&coord_vec[0]-coord.ptr[0][0];
+          assert(coord.dsp[i]<coord.len);
+          coord.cnt[i]=coord_vec.Dim();
+        }else{
+          coord.dsp[i]=0;
+          coord.cnt[i]=0;
+        }
+        if(value_vec.Dim()){
+          value.dsp[i]=&value_vec[0]-value.ptr[0][0];
+          assert(value.dsp[i]<value.len);
+          value.cnt[i]=value_vec.Dim();
+        }else{
+          value.dsp[i]=0;
+          value.cnt[i]=0;
+        }
+      }
+    }
+    {
+      std::vector<void*>& nodes=nodes_out;
+      PackedData& coord=data.trg_coord;
+      PackedData& value=data.trg_value;
+      coord.ptr=setup_data. coord_data;
+      value.ptr=setup_data.output_data;
+      coord.len=coord.ptr->Dim(0)*coord.ptr->Dim(1);
+      value.len=value.ptr->Dim(0)*value.ptr->Dim(1);
+      coord.cnt.ReInit(nodes.size());
+      coord.dsp.ReInit(nodes.size());
+      value.cnt.ReInit(nodes.size());
+      value.dsp.ReInit(nodes.size());
+#pragma omp parallel for
+      for(size_t i=0;i<nodes.size();i++){
+        Vector<Real_t>& coord_vec=tree->upwd_check_surf[((FMMNode_t*)nodes[i])->depth];
+        Vector<Real_t>& value_vec=((FMMData*)((FMMNode_t*)nodes[i])->FMMData())->upward_equiv;
+        if(coord_vec.Dim()){
+          coord.dsp[i]=&coord_vec[0]-coord.ptr[0][0];
+          assert(coord.dsp[i]<coord.len);
+          coord.cnt[i]=coord_vec.Dim();
+        }else{
+          coord.dsp[i]=0;
+          coord.cnt[i]=0;
+        }
+        if(value_vec.Dim()){
+          value.dsp[i]=&value_vec[0]-value.ptr[0][0];
+          assert(value.dsp[i]<value.len);
+          value.cnt[i]=value_vec.Dim();
+        }else{
+          value.dsp[i]=0;
+          value.cnt[i]=0;
+        }
+      }
+    }
+    {
+      int omp_p=omp_get_max_threads();
+      std::vector<std::vector<size_t> > in_node_(omp_p);
+      std::vector<std::vector<size_t> > scal_idx_(omp_p);
+      std::vector<std::vector<Real_t> > coord_shift_(omp_p);
+      std::vector<std::vector<size_t> > interac_cnt_(omp_p);
+      if(this->ScaleInvar()){
+        const Kernel<Real_t>* ker=kernel->k_m2m;
+        for(size_t l=0;l<MAX_DEPTH;l++){
+          Vector<Real_t>& scal=data.interac_data.scal[l*4+2];
+          Vector<Real_t>& scal_exp=ker->trg_scal;
+          scal.ReInit(scal_exp.Dim());
+          for(size_t i=0;i<scal.Dim();i++){
+            scal[i]=pvfmm::pow<Real_t>(2.0,-scal_exp[i]*l);
+          }
+        }
+        for(size_t l=0;l<MAX_DEPTH;l++){
+          Vector<Real_t>& scal=data.interac_data.scal[l*4+3];
+          Vector<Real_t>& scal_exp=ker->src_scal;
+          scal.ReInit(scal_exp.Dim());
+          for(size_t i=0;i<scal.Dim();i++){
+            scal[i]=pvfmm::pow<Real_t>(2.0,-scal_exp[i]*l);
+          }
+        }
+      }
+#pragma omp parallel for
+      for(size_t tid=0;tid<omp_p;tid++){
+        std::vector<size_t>& in_node    =in_node_[tid]    ;
+        std::vector<size_t>& scal_idx   =scal_idx_[tid]   ;
+        std::vector<Real_t>& coord_shift=coord_shift_[tid];
+        std::vector<size_t>& interac_cnt=interac_cnt_[tid];
+        size_t a=(nodes_out.size()*(tid+0))/omp_p;
+        size_t b=(nodes_out.size()*(tid+1))/omp_p;
+        for(size_t i=a;i<b;i++){
+          FMMNode_t* tnode=(FMMNode_t*)nodes_out[i];
+          Real_t s=pvfmm::pow<Real_t>(0.5,tnode->depth);
+          size_t interac_cnt_=0;
+          {
+            Mat_Type type=S2U_Type;
+            Vector<FMMNode_t*>& intlst=tnode->interac_list[type];
+            for(size_t j=0;j<intlst.Dim();j++) if(intlst[j]){
+              FMMNode_t* snode=intlst[j];
+              size_t snode_id=snode->node_id;
+              if(snode_id>=nodes_in.size() || nodes_in[snode_id]!=snode) continue;
+              in_node.push_back(snode_id);
+              scal_idx.push_back(snode->depth);
+              {
+                const int* rel_coord=interac_list.RelativeCoord(type,j);
+                const Real_t* scoord=snode->Coord();
+                const Real_t* tcoord=tnode->Coord();
+                Real_t shift[COORD_DIM];
+                shift[0]=rel_coord[0]*0.5*s-(scoord[0]+0.5*s)+(0+0.5*s);
+                shift[1]=rel_coord[1]*0.5*s-(scoord[1]+0.5*s)+(0+0.5*s);
+                shift[2]=rel_coord[2]*0.5*s-(scoord[2]+0.5*s)+(0+0.5*s);
+                coord_shift.push_back(shift[0]);
+                coord_shift.push_back(shift[1]);
+                coord_shift.push_back(shift[2]);
+              }
+              interac_cnt_++;
+            }
+          }
+          interac_cnt.push_back(interac_cnt_);
+        }
+      }
+      {
+        InteracData& interac_data=data.interac_data;
+        {
+          typedef size_t ElemType;
+          std::vector<std::vector<ElemType> >& vec_=in_node_;
+          pvfmm::Vector<ElemType>& vec=interac_data.in_node;
+          std::vector<size_t> vec_dsp(omp_p+1,0);
+          for(size_t tid=0;tid<omp_p;tid++){
+            vec_dsp[tid+1]=vec_dsp[tid]+vec_[tid].size();
+          }
+          vec.ReInit(vec_dsp[omp_p]);
+          #pragma omp parallel for
+          for(size_t tid=0;tid<omp_p;tid++){
+            memcpy(&vec[0]+vec_dsp[tid],&vec_[tid][0],vec_[tid].size()*sizeof(ElemType));
+          }
+        }
+        {
+          typedef size_t ElemType;
+          std::vector<std::vector<ElemType> >& vec_=scal_idx_;
+          pvfmm::Vector<ElemType>& vec=interac_data.scal_idx;
+          std::vector<size_t> vec_dsp(omp_p+1,0);
+          for(size_t tid=0;tid<omp_p;tid++){
+            vec_dsp[tid+1]=vec_dsp[tid]+vec_[tid].size();
+          }
+          vec.ReInit(vec_dsp[omp_p]);
+#pragma omp parallel for
+          for(size_t tid=0;tid<omp_p;tid++){
+            memcpy(&vec[0]+vec_dsp[tid],&vec_[tid][0],vec_[tid].size()*sizeof(ElemType));
+          }
+        }
+        {
+          typedef Real_t ElemType;
+          std::vector<std::vector<ElemType> >& vec_=coord_shift_;
+          pvfmm::Vector<ElemType>& vec=interac_data.coord_shift;
+          std::vector<size_t> vec_dsp(omp_p+1,0);
+          for(size_t tid=0;tid<omp_p;tid++){
+            vec_dsp[tid+1]=vec_dsp[tid]+vec_[tid].size();
+          }
+          vec.ReInit(vec_dsp[omp_p]);
+#pragma omp parallel for
+          for(size_t tid=0;tid<omp_p;tid++){
+            memcpy(&vec[0]+vec_dsp[tid],&vec_[tid][0],vec_[tid].size()*sizeof(ElemType));
+          }
+        }
+        {
+          typedef size_t ElemType;
+          std::vector<std::vector<ElemType> >& vec_=interac_cnt_;
+          pvfmm::Vector<ElemType>& vec=interac_data.interac_cnt;
+          std::vector<size_t> vec_dsp(omp_p+1,0);
+          for(size_t tid=0;tid<omp_p;tid++){
+            vec_dsp[tid+1]=vec_dsp[tid]+vec_[tid].size();
+          }
+          vec.ReInit(vec_dsp[omp_p]);
+#pragma omp parallel for
+          for(size_t tid=0;tid<omp_p;tid++){
+            memcpy(&vec[0]+vec_dsp[tid],&vec_[tid][0],vec_[tid].size()*sizeof(ElemType));
+          }
+        }
+        {
+          pvfmm::Vector<size_t>& cnt=interac_data.interac_cnt;
+          pvfmm::Vector<size_t>& dsp=interac_data.interac_dsp;
+          dsp.ReInit(cnt.Dim()); if(dsp.Dim()) dsp[0]=0;
+          omp_par::scan(&cnt[0],&dsp[0],dsp.Dim());
+        }
+      }
+      {
+        InteracData& interac_data=data.interac_data;
+        pvfmm::Vector<size_t>& cnt=interac_data.interac_cnt;
+        pvfmm::Vector<size_t>& dsp=interac_data.interac_dsp;
+        if(cnt.Dim() && cnt[cnt.Dim()-1]+dsp[dsp.Dim()-1]){
+          data.interac_data.M[2]=this->mat->Mat(level, UC2UE0_Type, 0);
+          data.interac_data.M[3]=this->mat->Mat(level, UC2UE1_Type, 0);
+        }else{
+          data.interac_data.M[2].ReInit(0,0);
+          data.interac_data.M[3].ReInit(0,0);
+        }
+      }
+    }
+    PtSetup(setup_data, &data);
+  }
+  
   virtual void Source2Up     (SetupData<Real_t>&  setup_data);
   virtual void Up2UpSetup(SetupData<Real_t>&  setup_data, FMMTree_t* tree, std::vector<Matrix<Real_t> >& node_data, std::vector<Vector<FMMNode_t*> >& n_list, int level);
   virtual void Up2Up     (SetupData<Real_t>&  setup_data);
