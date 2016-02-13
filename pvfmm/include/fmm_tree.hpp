@@ -108,6 +108,8 @@ class FMM_Tree : public FMM_Pts<FMMNode_t> {
  public:
 
   typedef typename FMM_Pts<FMMNode_t>::FMMData FMMData_t;
+  typedef FMM_Tree FMMTree_t;
+  using FMM_Pts<FMMNode_t>::kernel;
 
   int dim;
   FMMNode_t* root_node;
@@ -596,21 +598,52 @@ class FMM_Tree : public FMM_Pts<FMMNode_t> {
       }
     }
   }
+
+  void Down2Target(SetupData<Real_t,FMMNode_t>&  setup_data){
+    if(!this->MultipoleOrder()) return;
+    this->EvalListPts(setup_data);
+  }
+    
+  void PostProcessing(FMMTree_t* tree, std::vector<FMMNode_t*>& nodes, BoundaryType bndry=FreeSpace){
+    if(kernel->k_m2l->vol_poten && bndry==Periodic){
+      const Kernel<Real_t>& k_m2t=*kernel->k_m2t;
+      int ker_dim[2]={k_m2t.ker_dim[0],k_m2t.ker_dim[1]};
+      Vector<Real_t>& up_equiv=(tree->RootNode()->FMMData())->upward_equiv;
+      Matrix<Real_t> avg_density(1,ker_dim[0]); avg_density.SetZero();
+      for(size_t i0=0;i0<up_equiv.Dim();i0+=ker_dim[0]){
+        for(size_t i1=0;i1<ker_dim[0];i1++){
+          avg_density[0][i1]+=up_equiv[i0+i1];
+        }
+      }
+      int omp_p=omp_get_max_threads();
+      std::vector<Matrix<Real_t> > M_tmp(omp_p);
+#pragma omp parallel for
+      for(size_t i=0;i<nodes.size();i++)
+      if(nodes[i]->IsLeaf() && !nodes[i]->IsGhost()){
+        Vector<Real_t>& trg_coord=nodes[i]->trg_coord;
+        Vector<Real_t>& trg_value=nodes[i]->trg_value;
+        size_t n_trg=trg_coord.Dim()/COORD_DIM;
+        Matrix<Real_t>& M_vol=M_tmp[omp_get_thread_num()];
+        M_vol.ReInit(ker_dim[0],n_trg*ker_dim[1]); M_vol.SetZero();
+        k_m2t.vol_poten(&trg_coord[0],n_trg,&M_vol[0][0]);
+        Matrix<Real_t> M_trg(1,n_trg*ker_dim[1],&trg_value[0],false);
+        M_trg-=avg_density*M_vol;
+      }
+    }
+  }      
   
   void DownwardPass() {
     Profile::Tic("Setup",true,3);
     std::vector<FMMNode_t*> leaf_nodes;
     int max_depth=0;
-    {
-      int max_depth_loc=0;
-      std::vector<FMMNode_t*>& nodes=this->GetNodeList();
-      for(size_t i=0;i<nodes.size();i++){
-        FMMNode_t* n=nodes[i];
-        if(!n->IsGhost() && n->IsLeaf()) leaf_nodes.push_back(n);
-        if(n->depth>max_depth_loc) max_depth_loc=n->depth;
-      }
-      max_depth = max_depth_loc;
+    int max_depth_loc=0;
+    std::vector<FMMNode_t*>& nodes=this->GetNodeList();
+    for(size_t i=0;i<nodes.size();i++){
+      FMMNode_t* n=nodes[i];
+      if(!n->IsGhost() && n->IsLeaf()) leaf_nodes.push_back(n);
+      if(n->depth>max_depth_loc) max_depth_loc=n->depth;
     }
+    max_depth = max_depth_loc;
     Profile::Toc();
     if(bndry==Periodic) {
       Profile::Tic("BoundaryCondition",false,5);
@@ -623,48 +656,34 @@ class FMM_Tree : public FMM_Pts<FMMNode_t> {
         level_str<<"Level-"<<std::setfill('0')<<std::setw(2)<<i<<"\0";
         Profile::Tic(level_str.str().c_str(),false,5);
         Profile::Tic("Precomp",false,5);
-        {
-          Profile::Tic("Precomp-U",false,10);
-          this->SetupPrecomp(setup_data[i+MAX_DEPTH*0]);
-          Profile::Toc();
-        }
-        {
-          Profile::Tic("Precomp-W",false,10);
-          this->SetupPrecomp(setup_data[i+MAX_DEPTH*1]);
-          Profile::Toc();
-        }
-        {
-          Profile::Tic("Precomp-X",false,10);
-          this->SetupPrecomp(setup_data[i+MAX_DEPTH*2]);
-          Profile::Toc();
-        }
+	{Profile::Tic("Precomp-U",false,10);
+        this->SetupPrecomp(setup_data[i+MAX_DEPTH*0]);
+        Profile::Toc();}
+        {Profile::Tic("Precomp-W",false,10);
+        this->SetupPrecomp(setup_data[i+MAX_DEPTH*1]);
+        Profile::Toc();}
+        {Profile::Tic("Precomp-X",false,10);
+        this->SetupPrecomp(setup_data[i+MAX_DEPTH*2]);
+        Profile::Toc();}
         if(0){
           Profile::Tic("Precomp-V",false,10);
           this->SetupPrecomp(setup_data[i+MAX_DEPTH*3]);
           Profile::Toc();
         }
-        Profile::Toc();
+	Profile::Toc();
       }
-      {
-        Profile::Tic("X-List",false,5);
-        this->X_List(setup_data[i+MAX_DEPTH*2]);
-        Profile::Toc();
-      }
-      {
-        Profile::Tic("W-List",false,5);
-        this->W_List(setup_data[i+MAX_DEPTH*1]);
-        Profile::Toc();
-      }
-      {
-        Profile::Tic("U-List",false,5);
-        this->U_List(setup_data[i+MAX_DEPTH*0]);
-        Profile::Toc();
-      }
-      {
-        Profile::Tic("V-List",false,5);
-        this->V_List(setup_data[i+MAX_DEPTH*3]);
-        Profile::Toc();
-      }
+      {Profile::Tic("X-List",false,5);
+      this->X_List(setup_data[i+MAX_DEPTH*2]);
+      Profile::Toc();}
+      {Profile::Tic("W-List",false,5);
+      this->W_List(setup_data[i+MAX_DEPTH*1]);
+      Profile::Toc();}
+      {Profile::Tic("U-List",false,5);
+      this->U_List(setup_data[i+MAX_DEPTH*0]);
+      Profile::Toc();}
+      {Profile::Tic("V-List",false,5);
+      this->V_List(setup_data[i+MAX_DEPTH*3]);
+      Profile::Toc();}
       if(!this->ScaleInvar()){
         Profile::Toc();
       }

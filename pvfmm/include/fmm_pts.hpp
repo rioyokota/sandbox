@@ -2603,6 +2603,20 @@ class FMM_Pts {
     }
     Profile::Toc();
   }
+
+  template<typename ElemType>
+  void CopyVec(std::vector<std::vector<ElemType> >& vec_, pvfmm::Vector<ElemType>& vec) {
+    int omp_p=omp_get_max_threads();
+    std::vector<size_t> vec_dsp(omp_p+1,0);
+    for(size_t tid=0;tid<omp_p;tid++){
+      vec_dsp[tid+1]=vec_dsp[tid]+vec_[tid].size();
+    }
+    vec.ReInit(vec_dsp[omp_p]);
+#pragma omp parallel for
+    for(size_t tid=0;tid<omp_p;tid++){
+      memcpy(&vec[0]+vec_dsp[tid],&vec_[tid][0],vec_[tid].size()*sizeof(ElemType));
+    }
+  }
   
   void Source2UpSetup(SetupData<Real_t,FMMNode_t>& setup_data, FMMTree_t* tree, std::vector<Matrix<Real_t> >& buff, std::vector<Vector<FMMNode_t*> >& n_list, int level) {
     if(!this->MultipoleOrder()) return;
@@ -2799,62 +2813,10 @@ class FMM_Pts {
       }
       {
         InteracData& interac_data=data.interac_data;
-        {
-          typedef size_t ElemType;
-          std::vector<std::vector<ElemType> >& vec_=in_node_;
-          pvfmm::Vector<ElemType>& vec=interac_data.in_node;
-          std::vector<size_t> vec_dsp(omp_p+1,0);
-          for(size_t tid=0;tid<omp_p;tid++){
-            vec_dsp[tid+1]=vec_dsp[tid]+vec_[tid].size();
-          }
-          vec.ReInit(vec_dsp[omp_p]);
-#pragma omp parallel for
-          for(size_t tid=0;tid<omp_p;tid++){
-            memcpy(&vec[0]+vec_dsp[tid],&vec_[tid][0],vec_[tid].size()*sizeof(ElemType));
-          }
-        }
-        {
-          typedef size_t ElemType;
-          std::vector<std::vector<ElemType> >& vec_=scal_idx_;
-          pvfmm::Vector<ElemType>& vec=interac_data.scal_idx;
-          std::vector<size_t> vec_dsp(omp_p+1,0);
-          for(size_t tid=0;tid<omp_p;tid++){
-            vec_dsp[tid+1]=vec_dsp[tid]+vec_[tid].size();
-          }
-          vec.ReInit(vec_dsp[omp_p]);
-#pragma omp parallel for
-          for(size_t tid=0;tid<omp_p;tid++){
-            memcpy(&vec[0]+vec_dsp[tid],&vec_[tid][0],vec_[tid].size()*sizeof(ElemType));
-          }
-        }
-        {
-          typedef Real_t ElemType;
-          std::vector<std::vector<ElemType> >& vec_=coord_shift_;
-          pvfmm::Vector<ElemType>& vec=interac_data.coord_shift;
-          std::vector<size_t> vec_dsp(omp_p+1,0);
-          for(size_t tid=0;tid<omp_p;tid++){
-            vec_dsp[tid+1]=vec_dsp[tid]+vec_[tid].size();
-          }
-          vec.ReInit(vec_dsp[omp_p]);
-#pragma omp parallel for
-          for(size_t tid=0;tid<omp_p;tid++){
-            memcpy(&vec[0]+vec_dsp[tid],&vec_[tid][0],vec_[tid].size()*sizeof(ElemType));
-          }
-        }
-        {
-          typedef size_t ElemType;
-          std::vector<std::vector<ElemType> >& vec_=interac_cnt_;
-          pvfmm::Vector<ElemType>& vec=interac_data.interac_cnt;
-          std::vector<size_t> vec_dsp(omp_p+1,0);
-          for(size_t tid=0;tid<omp_p;tid++){
-            vec_dsp[tid+1]=vec_dsp[tid]+vec_[tid].size();
-          }
-          vec.ReInit(vec_dsp[omp_p]);
-#pragma omp parallel for
-          for(size_t tid=0;tid<omp_p;tid++){
-            memcpy(&vec[0]+vec_dsp[tid],&vec_[tid][0],vec_[tid].size()*sizeof(ElemType));
-          }
-        }
+	CopyVec(in_node_,interac_data.in_node);
+	CopyVec(scal_idx_,interac_data.scal_idx);
+	CopyVec(coord_shift_,interac_data.coord_shift);
+	CopyVec(interac_cnt_,interac_data.interac_cnt);
         {
           pvfmm::Vector<size_t>& cnt=interac_data.interac_cnt;
           pvfmm::Vector<size_t>& dsp=interac_data.interac_dsp;
@@ -3445,62 +3407,10 @@ class FMM_Pts {
       }
       {
         InteracData& interac_data=data.interac_data;
-        {
-          typedef size_t ElemType;
-          std::vector<std::vector<ElemType> >& vec_=in_node_;
-          pvfmm::Vector<ElemType>& vec=interac_data.in_node;
-          std::vector<size_t> vec_dsp(omp_p+1,0);
-          for(size_t tid=0;tid<omp_p;tid++){
-            vec_dsp[tid+1]=vec_dsp[tid]+vec_[tid].size();
-          }
-          vec.ReInit(vec_dsp[omp_p]);
-#pragma omp parallel for
-          for(size_t tid=0;tid<omp_p;tid++){
-            memcpy(&vec[0]+vec_dsp[tid],&vec_[tid][0],vec_[tid].size()*sizeof(ElemType));
-          }
-        }
-        {
-          typedef size_t ElemType;
-          std::vector<std::vector<ElemType> >& vec_=scal_idx_;
-          pvfmm::Vector<ElemType>& vec=interac_data.scal_idx;
-          std::vector<size_t> vec_dsp(omp_p+1,0);
-          for(size_t tid=0;tid<omp_p;tid++){
-            vec_dsp[tid+1]=vec_dsp[tid]+vec_[tid].size();
-          }
-          vec.ReInit(vec_dsp[omp_p]);
-#pragma omp parallel for
-          for(size_t tid=0;tid<omp_p;tid++){
-            memcpy(&vec[0]+vec_dsp[tid],&vec_[tid][0],vec_[tid].size()*sizeof(ElemType));
-          }
-        }
-        {
-          typedef Real_t ElemType;
-          std::vector<std::vector<ElemType> >& vec_=coord_shift_;
-          pvfmm::Vector<ElemType>& vec=interac_data.coord_shift;
-          std::vector<size_t> vec_dsp(omp_p+1,0);
-          for(size_t tid=0;tid<omp_p;tid++){
-            vec_dsp[tid+1]=vec_dsp[tid]+vec_[tid].size();
-          }
-          vec.ReInit(vec_dsp[omp_p]);
-#pragma omp parallel for
-          for(size_t tid=0;tid<omp_p;tid++){
-            memcpy(&vec[0]+vec_dsp[tid],&vec_[tid][0],vec_[tid].size()*sizeof(ElemType));
-          }
-        }
-        {
-          typedef size_t ElemType;
-          std::vector<std::vector<ElemType> >& vec_=interac_cnt_;
-          pvfmm::Vector<ElemType>& vec=interac_data.interac_cnt;
-          std::vector<size_t> vec_dsp(omp_p+1,0);
-          for(size_t tid=0;tid<omp_p;tid++){
-            vec_dsp[tid+1]=vec_dsp[tid]+vec_[tid].size();
-          }
-          vec.ReInit(vec_dsp[omp_p]);
-#pragma omp parallel for
-          for(size_t tid=0;tid<omp_p;tid++){
-            memcpy(&vec[0]+vec_dsp[tid],&vec_[tid][0],vec_[tid].size()*sizeof(ElemType));
-          }
-        }
+	CopyVec(in_node_,interac_data.in_node);
+	CopyVec(scal_idx_,interac_data.scal_idx);
+	CopyVec(coord_shift_,interac_data.coord_shift);
+	CopyVec(interac_cnt_,interac_data.interac_cnt);
         {
           pvfmm::Vector<size_t>& cnt=interac_data.interac_cnt;
           pvfmm::Vector<size_t>& dsp=interac_data.interac_dsp;
@@ -3677,62 +3587,10 @@ class FMM_Pts {
       }
       {
         InteracData& interac_data=data.interac_data;
-        {
-          typedef size_t ElemType;
-          std::vector<std::vector<ElemType> >& vec_=in_node_;
-          pvfmm::Vector<ElemType>& vec=interac_data.in_node;
-          std::vector<size_t> vec_dsp(omp_p+1,0);
-          for(size_t tid=0;tid<omp_p;tid++){
-            vec_dsp[tid+1]=vec_dsp[tid]+vec_[tid].size();
-          }
-          vec.ReInit(vec_dsp[omp_p]);
-#pragma omp parallel for
-          for(size_t tid=0;tid<omp_p;tid++){
-            memcpy(&vec[0]+vec_dsp[tid],&vec_[tid][0],vec_[tid].size()*sizeof(ElemType));
-          }
-        }
-        {
-          typedef size_t ElemType;
-          std::vector<std::vector<ElemType> >& vec_=scal_idx_;
-          pvfmm::Vector<ElemType>& vec=interac_data.scal_idx;
-          std::vector<size_t> vec_dsp(omp_p+1,0);
-          for(size_t tid=0;tid<omp_p;tid++){
-            vec_dsp[tid+1]=vec_dsp[tid]+vec_[tid].size();
-          }
-          vec.ReInit(vec_dsp[omp_p]);
-#pragma omp parallel for
-          for(size_t tid=0;tid<omp_p;tid++){
-            memcpy(&vec[0]+vec_dsp[tid],&vec_[tid][0],vec_[tid].size()*sizeof(ElemType));
-          }
-        }
-        {
-          typedef Real_t ElemType;
-          std::vector<std::vector<ElemType> >& vec_=coord_shift_;
-          pvfmm::Vector<ElemType>& vec=interac_data.coord_shift;
-          std::vector<size_t> vec_dsp(omp_p+1,0);
-          for(size_t tid=0;tid<omp_p;tid++){
-            vec_dsp[tid+1]=vec_dsp[tid]+vec_[tid].size();
-          }
-          vec.ReInit(vec_dsp[omp_p]);
-#pragma omp parallel for
-          for(size_t tid=0;tid<omp_p;tid++){
-            memcpy(&vec[0]+vec_dsp[tid],&vec_[tid][0],vec_[tid].size()*sizeof(ElemType));
-          }
-        }
-        {
-          typedef size_t ElemType;
-          std::vector<std::vector<ElemType> >& vec_=interac_cnt_;
-          pvfmm::Vector<ElemType>& vec=interac_data.interac_cnt;
-          std::vector<size_t> vec_dsp(omp_p+1,0);
-          for(size_t tid=0;tid<omp_p;tid++){
-            vec_dsp[tid+1]=vec_dsp[tid]+vec_[tid].size();
-          }
-          vec.ReInit(vec_dsp[omp_p]);
-#pragma omp parallel for
-          for(size_t tid=0;tid<omp_p;tid++){
-            memcpy(&vec[0]+vec_dsp[tid],&vec_[tid][0],vec_[tid].size()*sizeof(ElemType));
-          }
-        }
+	CopyVec(in_node_,interac_data.in_node);
+	CopyVec(scal_idx_,interac_data.scal_idx);
+	CopyVec(coord_shift_,interac_data.coord_shift);
+	CopyVec(interac_cnt_,interac_data.interac_cnt);
         {
           pvfmm::Vector<size_t>& cnt=interac_data.interac_cnt;
           pvfmm::Vector<size_t>& dsp=interac_data.interac_dsp;
@@ -4025,62 +3883,10 @@ class FMM_Pts {
       }
       {
         InteracData& interac_data=data.interac_data;
-        {
-          typedef size_t ElemType;
-          std::vector<std::vector<ElemType> >& vec_=in_node_;
-          pvfmm::Vector<ElemType>& vec=interac_data.in_node;
-          std::vector<size_t> vec_dsp(omp_p+1,0);
-          for(size_t tid=0;tid<omp_p;tid++){
-            vec_dsp[tid+1]=vec_dsp[tid]+vec_[tid].size();
-          }
-          vec.ReInit(vec_dsp[omp_p]);
-#pragma omp parallel for
-          for(size_t tid=0;tid<omp_p;tid++){
-            memcpy(&vec[0]+vec_dsp[tid],&vec_[tid][0],vec_[tid].size()*sizeof(ElemType));
-          }
-        }
-        {
-          typedef size_t ElemType;
-          std::vector<std::vector<ElemType> >& vec_=scal_idx_;
-          pvfmm::Vector<ElemType>& vec=interac_data.scal_idx;
-          std::vector<size_t> vec_dsp(omp_p+1,0);
-          for(size_t tid=0;tid<omp_p;tid++){
-            vec_dsp[tid+1]=vec_dsp[tid]+vec_[tid].size();
-          }
-          vec.ReInit(vec_dsp[omp_p]);
-#pragma omp parallel for
-          for(size_t tid=0;tid<omp_p;tid++){
-            memcpy(&vec[0]+vec_dsp[tid],&vec_[tid][0],vec_[tid].size()*sizeof(ElemType));
-          }
-        }
-        {
-          typedef Real_t ElemType;
-          std::vector<std::vector<ElemType> >& vec_=coord_shift_;
-          pvfmm::Vector<ElemType>& vec=interac_data.coord_shift;
-          std::vector<size_t> vec_dsp(omp_p+1,0);
-          for(size_t tid=0;tid<omp_p;tid++){
-            vec_dsp[tid+1]=vec_dsp[tid]+vec_[tid].size();
-          }
-          vec.ReInit(vec_dsp[omp_p]);
-#pragma omp parallel for
-          for(size_t tid=0;tid<omp_p;tid++){
-            memcpy(&vec[0]+vec_dsp[tid],&vec_[tid][0],vec_[tid].size()*sizeof(ElemType));
-          }
-        }
-        {
-          typedef size_t ElemType;
-          std::vector<std::vector<ElemType> >& vec_=interac_cnt_;
-          pvfmm::Vector<ElemType>& vec=interac_data.interac_cnt;
-          std::vector<size_t> vec_dsp(omp_p+1,0);
-          for(size_t tid=0;tid<omp_p;tid++){
-            vec_dsp[tid+1]=vec_dsp[tid]+vec_[tid].size();
-          }
-          vec.ReInit(vec_dsp[omp_p]);
-#pragma omp parallel for
-          for(size_t tid=0;tid<omp_p;tid++){
-            memcpy(&vec[0]+vec_dsp[tid],&vec_[tid][0],vec_[tid].size()*sizeof(ElemType));
-          }
-        }
+	CopyVec(in_node_,interac_data.in_node);
+	CopyVec(scal_idx_,interac_data.scal_idx);
+	CopyVec(coord_shift_,interac_data.coord_shift);
+	CopyVec(interac_cnt_,interac_data.interac_cnt);
         {
           pvfmm::Vector<size_t>& cnt=interac_data.interac_cnt;
           pvfmm::Vector<size_t>& dsp=interac_data.interac_dsp;
@@ -4271,62 +4077,10 @@ class FMM_Pts {
       }
       {
         InteracData& interac_data=data.interac_data;
-        {
-          typedef size_t ElemType;
-          std::vector<std::vector<ElemType> >& vec_=in_node_;
-          pvfmm::Vector<ElemType>& vec=interac_data.in_node;
-          std::vector<size_t> vec_dsp(omp_p+1,0);
-          for(size_t tid=0;tid<omp_p;tid++){
-            vec_dsp[tid+1]=vec_dsp[tid]+vec_[tid].size();
-          }
-          vec.ReInit(vec_dsp[omp_p]);
-#pragma omp parallel for
-          for(size_t tid=0;tid<omp_p;tid++){
-            memcpy(&vec[0]+vec_dsp[tid],&vec_[tid][0],vec_[tid].size()*sizeof(ElemType));
-          }
-        }
-        {
-          typedef size_t ElemType;
-          std::vector<std::vector<ElemType> >& vec_=scal_idx_;
-          pvfmm::Vector<ElemType>& vec=interac_data.scal_idx;
-          std::vector<size_t> vec_dsp(omp_p+1,0);
-          for(size_t tid=0;tid<omp_p;tid++){
-            vec_dsp[tid+1]=vec_dsp[tid]+vec_[tid].size();
-          }
-          vec.ReInit(vec_dsp[omp_p]);
-#pragma omp parallel for
-          for(size_t tid=0;tid<omp_p;tid++){
-            memcpy(&vec[0]+vec_dsp[tid],&vec_[tid][0],vec_[tid].size()*sizeof(ElemType));
-          }
-        }
-        {
-          typedef Real_t ElemType;
-          std::vector<std::vector<ElemType> >& vec_=coord_shift_;
-          pvfmm::Vector<ElemType>& vec=interac_data.coord_shift;
-          std::vector<size_t> vec_dsp(omp_p+1,0);
-          for(size_t tid=0;tid<omp_p;tid++){
-            vec_dsp[tid+1]=vec_dsp[tid]+vec_[tid].size();
-          }
-          vec.ReInit(vec_dsp[omp_p]);
-#pragma omp parallel for
-          for(size_t tid=0;tid<omp_p;tid++){
-            memcpy(&vec[0]+vec_dsp[tid],&vec_[tid][0],vec_[tid].size()*sizeof(ElemType));
-          }
-        }
-        {
-          typedef size_t ElemType;
-          std::vector<std::vector<ElemType> >& vec_=interac_cnt_;
-          pvfmm::Vector<ElemType>& vec=interac_data.interac_cnt;
-          std::vector<size_t> vec_dsp(omp_p+1,0);
-          for(size_t tid=0;tid<omp_p;tid++){
-            vec_dsp[tid+1]=vec_dsp[tid]+vec_[tid].size();
-          }
-          vec.ReInit(vec_dsp[omp_p]);
-#pragma omp parallel for
-          for(size_t tid=0;tid<omp_p;tid++){
-            memcpy(&vec[0]+vec_dsp[tid],&vec_[tid][0],vec_[tid].size()*sizeof(ElemType));
-          }
-        }
+	CopyVec(in_node_,interac_data.in_node);
+	CopyVec(scal_idx_,interac_data.scal_idx);
+	CopyVec(coord_shift_,interac_data.coord_shift);
+	CopyVec(interac_cnt_,interac_data.interac_cnt);
         {
           pvfmm::Vector<size_t>& cnt=interac_data.interac_cnt;
           pvfmm::Vector<size_t>& dsp=interac_data.interac_dsp;
