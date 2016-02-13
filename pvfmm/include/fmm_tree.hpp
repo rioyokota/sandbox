@@ -5,8 +5,8 @@
 
 namespace pvfmm{
 
-template <class FMM_Mat_t>
-class FMM_Tree : public FMM_Pts<typename FMM_Mat_t::FMMNode_t> {
+template <class FMMNode_t>
+class FMM_Tree : public FMM_Pts<FMMNode_t> {
 
  private:
 
@@ -107,8 +107,8 @@ class FMM_Tree : public FMM_Pts<typename FMM_Mat_t::FMMNode_t> {
 
  public:
 
-  typedef typename FMM_Pts<typename FMM_Mat_t::FMMNode_t>::FMMData FMMData_t;
-  typedef typename FMM_Mat_t::FMMNode_t TreeNode;
+  typedef typename FMM_Pts<FMMNode_t>::FMMData FMMData_t;
+  typedef FMMNode_t TreeNode;
 
   int dim;
   TreeNode* root_node;
@@ -135,7 +135,7 @@ class FMM_Tree : public FMM_Pts<typename FMM_Mat_t::FMMNode_t> {
     }
   }
 
-  void Initialize(typename TreeNode::NodeData* init_data) {
+  void Initialize(typename FMM_Node::NodeData* init_data) {
     Profile::Tic("InitTree",true);{
       Profile::Tic("InitRoot",false,5);
       dim=init_data->dim;

@@ -5,7 +5,7 @@
  */
 
 template <class FMM_Mat_t>
-void CheckFMMOutput(pvfmm::FMM_Tree<FMM_Mat_t>* mytree, const pvfmm::Kernel<Real_t>* mykernel, std::string t_name){
+void CheckFMMOutput(pvfmm::FMM_Tree<typename FMM_Mat_t::FMMNode_t>* mytree, const pvfmm::Kernel<Real_t>* mykernel, std::string t_name){
   if(mykernel==NULL) return;
 
   // Find out number of OMP thereads.

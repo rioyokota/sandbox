@@ -341,7 +341,7 @@ class FMM_Pts {
 public:
 
   typedef FMMNode FMMNode_t;
-  typedef FMM_Tree<FMM_Pts<FMMNode> > FMMTree_t;
+  typedef FMM_Tree<FMMNode> FMMTree_t;
 
  private:
 
