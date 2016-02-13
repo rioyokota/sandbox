@@ -107,6 +107,7 @@ class FMM_Tree : public FMM_Pts<typename FMM_Mat_t::FMMNode_t> {
 
  public:
 
+  typedef typename FMM_Pts<typename FMM_Mat_t::FMMNode_t>::FMMData FMMData_t;
   typedef typename FMM_Mat_t::FMMNode_t TreeNode;
 
   int dim;
@@ -118,7 +119,6 @@ class FMM_Tree : public FMM_Pts<typename FMM_Mat_t::FMMNode_t> {
   std::vector<Matrix<Real_t> > node_data_buff;
   pvfmm::Matrix<TreeNode*> node_interac_lst;
   InteracList<TreeNode> interac_list;
-  FMM_Mat_t* fmm_mat;
   BoundaryType bndry;
   std::vector<Matrix<char> > precomp_lst;
   std::vector<SetupData<Real_t> > setup_data;
@@ -127,7 +127,7 @@ class FMM_Tree : public FMM_Pts<typename FMM_Mat_t::FMMNode_t> {
   std::vector<Vector<Real_t> > dnwd_check_surf;
   std::vector<Vector<Real_t> > dnwd_equiv_surf;
 
-  FMM_Tree(): dim(0), root_node(NULL), max_depth(MAX_DEPTH), memgr(0), fmm_mat(NULL), bndry(FreeSpace) { };
+  FMM_Tree(): dim(0), root_node(NULL), max_depth(MAX_DEPTH), memgr(0), bndry(FreeSpace) { };
 
   ~FMM_Tree(){
     if(RootNode()!=NULL){
@@ -238,7 +238,7 @@ class FMM_Tree : public FMM_Pts<typename FMM_Mat_t::FMMNode_t> {
 	std::vector<TreeNode*>& nodes=this->GetNodeList();
 #pragma omp parallel for
 	for(size_t i=0;i<nodes.size();i++){
-	  if(nodes[i]->FMMData()==NULL) nodes[i]->FMMData()=mem::aligned_new<typename FMM_Mat_t::FMMData>();
+	  if(nodes[i]->FMMData()==NULL) nodes[i]->FMMData()=mem::aligned_new<FMMData_t>();
 	}
       }Profile::Toc();   
     }Profile::Toc();
