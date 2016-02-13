@@ -343,7 +343,7 @@ class FMM_Pts {
   typedef FMMNode FMMNode_t;
   typedef FMM_Tree<FMMNode> FMMTree_t;
 
- private:
+ protected:
 
   mem::MemoryManager* mem_mgr;
   InteracList<FMMNode_t> interac_list;
@@ -535,7 +535,7 @@ class FMM_Pts {
     int n_trg=trg_coord.size()/3;
   
     Permutation<Real_t> P=Permutation<Real_t>(n_trg*dof);
-    if(p_indx==ReflecX || p_indx==ReflecY || p_indx==ReflecZ){ // Set P.perm
+    if(p_indx==ReflecX || p_indx==ReflecY || p_indx==ReflecZ) {
       for(int i=0;i<n_trg;i++)
       for(int j=0;j<n_trg;j++){
         if(pvfmm::fabs<Real_t>(trg_coord[i*3+0]-trg_coord[j*3+0]*(p_indx==ReflecX?-1.0:1.0))<eps)
@@ -627,10 +627,10 @@ class FMM_Pts {
       {
         Vector<Real_t> scal_exp;
         Permutation<Real_t> ker_perm;
-        if(perm_indx<C_Perm){ // Source permutation
+        if(perm_indx<C_Perm) {
           ker_perm=kernel->k_m2m->perm_vec[0     +p_indx];
           scal_exp=kernel->k_m2m->src_scal;
-        }else{ // Target permutation
+        }else{
           ker_perm=kernel->k_m2m->perm_vec[0     +p_indx];
           scal_exp=kernel->k_m2m->src_scal;
           for(size_t i=0;i<scal_exp.Dim();i++) scal_exp[i]=-scal_exp[i];
@@ -642,11 +642,11 @@ class FMM_Pts {
       {
         Vector<Real_t> scal_exp;
         Permutation<Real_t> ker_perm;
-        if(perm_indx<C_Perm){ // Source permutation
+        if(perm_indx<C_Perm){
           ker_perm=kernel->k_l2l->perm_vec[C_Perm+p_indx];
           scal_exp=kernel->k_l2l->trg_scal;
           for(size_t i=0;i<scal_exp.Dim();i++) scal_exp[i]=-scal_exp[i];
-        }else{ // Target permutation
+        }else{
           ker_perm=kernel->k_l2l->perm_vec[C_Perm+p_indx];
           scal_exp=kernel->k_l2l->trg_scal;
         }
@@ -1321,7 +1321,7 @@ class FMM_Pts {
           }
           for(int i=0;i<dof;i++)
             FFTW_t<Real_t>::fft_execute_dft_c2r(vlist_ifftplan, (typename FFTW_t<Real_t>::cplx*)&buffer0[i*2*n3_*ker_dim1*chld_cnt],
-                                                                                       (Real_t*)&buffer1[i*  n3 *ker_dim1*chld_cnt]);
+						(Real_t*)&buffer1[i*  n3 *ker_dim1*chld_cnt]);
 #ifndef FFTW3_MKL
           double add, mul, fma;
           FFTW_t<Real_t>::fftw_flops(vlist_ifftplan, &add, &mul, &fma);
@@ -1847,8 +1847,8 @@ class FMM_Pts {
         {
 #pragma omp parallel for
           for(size_t i=0;i<n_out;i++){
-            if(!((FMMNode_t*)nodes_out[i])->IsGhost() && (level==-1 || ((FMMNode_t*)nodes_out[i])->depth==level)){
-              Vector<FMMNode_t*>& lst=((FMMNode_t*)nodes_out[i])->interac_list[interac_type];
+            if(!nodes_out[i]->IsGhost() && (level==-1 || nodes_out[i]->depth==level)){
+              Vector<FMMNode_t*>& lst=nodes_out[i]->interac_list[interac_type];
               mem::memcopy(&trg_interac_list[i][0], &lst[0], lst.Dim()*sizeof(FMMNode_t*));
               assert(lst.Dim()==mat_cnt);
             }
@@ -1863,7 +1863,7 @@ class FMM_Pts {
             }
           }
 #pragma omp parallel for
-          for(size_t i=0;i<n_in ;i++) ((FMMNode_t*)nodes_in [i])->node_id=i;
+          for(size_t i=0;i<n_in ;i++) nodes_in[i]->node_id=i;
 #pragma omp parallel for
           for(size_t i=0;i<n_out;i++){
             for(size_t j=0;j<mat_cnt;j++){
@@ -1871,7 +1871,7 @@ class FMM_Pts {
                 if(trg_interac_list[i][j]->node_id==n_in){
                   trg_interac_list[i][j]=NULL;
                 }else{
-                  src_interac_list[trg_interac_list[i][j]->node_id][j]=(FMMNode_t*)nodes_out[i];
+                  src_interac_list[trg_interac_list[i][j]->node_id][j]=nodes_out[i];
                 }
               }
             }
@@ -1917,7 +1917,7 @@ class FMM_Pts {
         }
         {
           size_t vec_size=M_dim0*dof;
-          for(size_t i=0;i<n_out;i++) ((FMMNode_t*)nodes_out[i])->node_id=i;
+          for(size_t i=0;i<n_out;i++) nodes_out[i]->node_id=i;
           for(size_t k=1;k<interac_blk_dsp.size();k++){
             for(size_t i=0;i<n_in ;i++){
               for(size_t j=interac_blk_dsp[k-1];j<interac_blk_dsp[k];j++){
@@ -1940,7 +1940,7 @@ class FMM_Pts {
             for(size_t i=0;i<n_out;i++){
               for(size_t j=interac_blk_dsp[k-1];j<interac_blk_dsp[k];j++){
                 if(trg_interac_list[i][j]!=NULL){
-                  size_t depth=(this->ScaleInvar()?((FMMNode_t*)nodes_out[i])->depth:0);
+                  size_t depth=(this->ScaleInvar()?nodes_out[i]->depth:0);
                   output_perm.push_back(precomp_data_offset[j][1+4*depth+2]);
                   output_perm.push_back(precomp_data_offset[j][1+4*depth+3]);
                   output_perm.push_back(interac_dsp[               i ][j]*vec_size*sizeof(Real_t));
@@ -2644,9 +2644,9 @@ class FMM_Pts {
       value.dsp.ReInit(nodes.size());
 #pragma omp parallel for
       for(size_t i=0;i<nodes.size();i++){
-        ((FMMNode_t*)nodes[i])->node_id=i;
-        Vector<Real_t>& coord_vec=((FMMNode_t*)nodes[i])->src_coord;
-        Vector<Real_t>& value_vec=((FMMNode_t*)nodes[i])->src_value;
+        nodes[i]->node_id=i;
+        Vector<Real_t>& coord_vec=nodes[i]->src_coord;
+        Vector<Real_t>& value_vec=nodes[i]->src_value;
         if(coord_vec.Dim()){
           coord.dsp[i]=&coord_vec[0]-coord.ptr[0][0];
           assert(coord.dsp[i]<coord.len);
@@ -2679,8 +2679,8 @@ class FMM_Pts {
       value.dsp.ReInit(nodes.size());
 #pragma omp parallel for
       for(size_t i=0;i<nodes.size();i++){
-        Vector<Real_t>& coord_vec=((FMMNode_t*)nodes[i])->surf_coord;
-        Vector<Real_t>& value_vec=((FMMNode_t*)nodes[i])->surf_value;
+        Vector<Real_t>& coord_vec=nodes[i]->surf_coord;
+        Vector<Real_t>& value_vec=nodes[i]->surf_value;
         if(coord_vec.Dim()){
           coord.dsp[i]=&coord_vec[0]-coord.ptr[0][0];
           assert(coord.dsp[i]<coord.len);
@@ -2713,8 +2713,8 @@ class FMM_Pts {
       value.dsp.ReInit(nodes.size());
 #pragma omp parallel for
       for(size_t i=0;i<nodes.size();i++){
-        Vector<Real_t>& coord_vec=tree->upwd_check_surf[((FMMNode_t*)nodes[i])->depth];
-        Vector<Real_t>& value_vec=(((FMMNode_t*)nodes[i])->FMMData())->upward_equiv;
+        Vector<Real_t>& coord_vec=tree->upwd_check_surf[nodes[i]->depth];
+        Vector<Real_t>& value_vec=(nodes[i]->FMMData())->upward_equiv;
         if(coord_vec.Dim()){
           coord.dsp[i]=&coord_vec[0]-coord.ptr[0][0];
           assert(coord.dsp[i]<coord.len);
@@ -2767,7 +2767,7 @@ class FMM_Pts {
         size_t a=(nodes_out.size()*(tid+0))/omp_p;
         size_t b=(nodes_out.size()*(tid+1))/omp_p;
         for(size_t i=a;i<b;i++){
-          FMMNode_t* tnode=(FMMNode_t*)nodes_out[i];
+          FMMNode_t* tnode=nodes_out[i];
           Real_t s=pvfmm::pow<Real_t>(0.5,tnode->depth);
           size_t interac_cnt_=0;
           {
@@ -2903,8 +2903,8 @@ class FMM_Pts {
     std::vector<FMMNode_t*>& nodes_out=setup_data.nodes_out;
     std::vector<Vector<Real_t>*>&  input_vector=setup_data. input_vector;  input_vector.clear();
     std::vector<Vector<Real_t>*>& output_vector=setup_data.output_vector; output_vector.clear();
-    for(size_t i=0;i<nodes_in .size();i++)  input_vector.push_back(&(((FMMNode_t*)nodes_in [i])->FMMData())->upward_equiv);
-    for(size_t i=0;i<nodes_out.size();i++) output_vector.push_back(&(((FMMNode_t*)nodes_out[i])->FMMData())->upward_equiv);
+    for(size_t i=0;i<nodes_in .size();i++)  input_vector.push_back(&(nodes_in [i]->FMMData())->upward_equiv);
+    for(size_t i=0;i<nodes_out.size();i++) output_vector.push_back(&(nodes_out[i]->FMMData())->upward_equiv);
     SetupInterac(setup_data);
   }
   
@@ -2948,8 +2948,8 @@ class FMM_Pts {
     std::vector<FMMNode_t*>& nodes_out=setup_data.nodes_out;
     std::vector<Vector<Real_t>*>&  input_vector=setup_data. input_vector;  input_vector.clear();
     std::vector<Vector<Real_t>*>& output_vector=setup_data.output_vector; output_vector.clear();
-    for(size_t i=0;i<nodes_in .size();i++)  input_vector.push_back(&(((FMMNode_t*)((FMMNode_t*)nodes_in [i])->Child(0))->FMMData())->upward_equiv);
-    for(size_t i=0;i<nodes_out.size();i++) output_vector.push_back(&(((FMMNode_t*)((FMMNode_t*)nodes_out[i])->Child(0))->FMMData())->dnward_equiv);
+    for(size_t i=0;i<nodes_in .size();i++)  input_vector.push_back(&(nodes_in[i]->Child(0)->FMMData())->upward_equiv);
+    for(size_t i=0;i<nodes_out.size();i++) output_vector.push_back(&(nodes_out[i]->Child(0)->FMMData())->dnward_equiv);
     Real_t eps=1e-10;
     size_t n_in =nodes_in .size();
     size_t n_out=nodes_out.size();
@@ -2999,7 +2999,7 @@ class FMM_Pts {
         Vector<Real_t> src_scal=this->kernel->k_m2l->src_scal;
         Vector<Real_t> trg_scal=this->kernel->k_m2l->trg_scal;
   
-        for(size_t i=0;i<n_in;i++) ((FMMNode_t*)nodes_in[i])->node_id=i;
+        for(size_t i=0;i<n_in;i++) nodes_in[i]->node_id=i;
         for(size_t blk0=0;blk0<n_blk0;blk0++){
           size_t blk0_start=(n_out* blk0   )/n_blk0;
           size_t blk0_end  =(n_out*(blk0+1))/n_blk0;
@@ -3008,12 +3008,12 @@ class FMM_Pts {
           {
             std::set<FMMNode_t*> nodes_in;
             for(size_t i=blk0_start;i<blk0_end;i++){
-              nodes_out_.push_back((FMMNode_t*)nodes_out[i]);
-              Vector<FMMNode_t*>& lst=((FMMNode_t*)nodes_out[i])->interac_list[interac_type];
+              nodes_out_.push_back(nodes_out[i]);
+              Vector<FMMNode_t*>& lst=nodes_out[i]->interac_list[interac_type];
               for(size_t k=0;k<mat_cnt;k++) if(lst[k]!=NULL && lst[k]->pt_cnt[0]) nodes_in.insert(lst[k]);
             }
             for(typename std::set<FMMNode_t*>::iterator node=nodes_in.begin(); node != nodes_in.end(); node++){
-              nodes_in_.push_back((FMMNode_t*)*node);
+              nodes_in_.push_back(*node);
             }
             size_t  input_dim=nodes_in_ .size()*ker_dim0*dof*fftsize;
             size_t output_dim=nodes_out_.size()*ker_dim1*dof*fftsize;
@@ -3055,7 +3055,7 @@ class FMM_Pts {
               size_t blk1_end  =(nodes_out_.size()*(blk1+1))/n_blk1;
               for(size_t k=0;k<mat_cnt;k++){
                 for(size_t i=blk1_start;i<blk1_end;i++){
-                  Vector<FMMNode_t*>& lst=((FMMNode_t*)nodes_out_[i])->interac_list[interac_type];
+                  Vector<FMMNode_t*>& lst=nodes_out_[i]->interac_list[interac_type];
                   if(lst[k]!=NULL && lst[k]->pt_cnt[0]){
                     interac_vec[blk0].push_back(lst[k]->node_id*fftsize*ker_dim0*dof);
                     interac_vec[blk0].push_back(    i          *fftsize*ker_dim1*dof);
@@ -3259,8 +3259,8 @@ class FMM_Pts {
     std::vector<FMMNode_t*>& nodes_out=setup_data.nodes_out;
     std::vector<Vector<Real_t>*>&  input_vector=setup_data. input_vector;  input_vector.clear();
     std::vector<Vector<Real_t>*>& output_vector=setup_data.output_vector; output_vector.clear();
-    for(size_t i=0;i<nodes_in .size();i++)  input_vector.push_back(&((FMMData*)((FMMNode_t*)nodes_in [i])->FMMData())->dnward_equiv);
-    for(size_t i=0;i<nodes_out.size();i++) output_vector.push_back(&((FMMData*)((FMMNode_t*)nodes_out[i])->FMMData())->dnward_equiv);
+    for(size_t i=0;i<nodes_in .size();i++)  input_vector.push_back(&(nodes_in[i]->FMMData())->dnward_equiv);
+    for(size_t i=0;i<nodes_out.size();i++) output_vector.push_back(&(nodes_out[i]->FMMData())->dnward_equiv);
     SetupInterac(setup_data);
   }
   
@@ -3304,8 +3304,8 @@ class FMM_Pts {
 #pragma omp parallel for
       for(size_t i=0;i<nodes.size();i++){
         ((FMMNode_t*)nodes[i])->node_id=i;
-        Vector<Real_t>& coord_vec=((FMMNode_t*)nodes[i])->src_coord;
-        Vector<Real_t>& value_vec=((FMMNode_t*)nodes[i])->src_value;
+        Vector<Real_t>& coord_vec=nodes[i]->src_coord;
+        Vector<Real_t>& value_vec=nodes[i]->src_value;
         if(coord_vec.Dim()){
           coord.dsp[i]=&coord_vec[0]-coord.ptr[0][0];
           assert(coord.dsp[i]<coord.len);
@@ -3338,8 +3338,8 @@ class FMM_Pts {
       value.dsp.ReInit(nodes.size());
 #pragma omp parallel for
       for(size_t i=0;i<nodes.size();i++){
-        Vector<Real_t>& coord_vec=((FMMNode_t*)nodes[i])->surf_coord;
-        Vector<Real_t>& value_vec=((FMMNode_t*)nodes[i])->surf_value;
+        Vector<Real_t>& coord_vec=nodes[i]->surf_coord;
+        Vector<Real_t>& value_vec=nodes[i]->surf_value;
         if(coord_vec.Dim()){
           coord.dsp[i]=&coord_vec[0]-coord.ptr[0][0];
           assert(coord.dsp[i]<coord.len);
@@ -3372,8 +3372,8 @@ class FMM_Pts {
       value.dsp.ReInit(nodes.size());
 #pragma omp parallel for
       for(size_t i=0;i<nodes.size();i++){
-        Vector<Real_t>& coord_vec=tree->dnwd_check_surf[((FMMNode_t*)nodes[i])->depth];
-        Vector<Real_t>& value_vec=(((FMMNode_t*)nodes[i])->FMMData())->dnward_equiv;
+        Vector<Real_t>& coord_vec=tree->dnwd_check_surf[nodes[i]->depth];
+        Vector<Real_t>& value_vec=(nodes[i]->FMMData())->dnward_equiv;
         if(coord_vec.Dim()){
           coord.dsp[i]=&coord_vec[0]-coord.ptr[0][0];
           assert(coord.dsp[i]<coord.len);
@@ -3409,7 +3409,7 @@ class FMM_Pts {
         size_t a=(nodes_out.size()*(tid+0))/omp_p;
         size_t b=(nodes_out.size()*(tid+1))/omp_p;
         for(size_t i=a;i<b;i++){
-          FMMNode_t* tnode=(FMMNode_t*)nodes_out[i];
+          FMMNode_t* tnode=nodes_out[i];
           if(tnode->IsLeaf() && tnode->pt_cnt[1]<=Nsrf){
             interac_cnt.push_back(0);
             continue;
@@ -3552,8 +3552,8 @@ class FMM_Pts {
 #pragma omp parallel for
       for(size_t i=0;i<nodes.size();i++){
         ((FMMNode_t*)nodes[i])->node_id=i;
-        Vector<Real_t>& coord_vec=tree->upwd_equiv_surf[((FMMNode_t*)nodes[i])->depth];
-        Vector<Real_t>& value_vec=(((FMMNode_t*)nodes[i])->FMMData())->upward_equiv;
+        Vector<Real_t>& coord_vec=tree->upwd_equiv_surf[nodes[i]->depth];
+        Vector<Real_t>& value_vec=(nodes[i]->FMMData())->upward_equiv;
         if(coord_vec.Dim()){
           coord.dsp[i]=&coord_vec[0]-coord.ptr[0][0];
           assert(coord.dsp[i]<coord.len);
@@ -3606,8 +3606,8 @@ class FMM_Pts {
       value.dsp.ReInit(nodes.size());
 #pragma omp parallel for
       for(size_t i=0;i<nodes.size();i++){
-        Vector<Real_t>& coord_vec=((FMMNode_t*)nodes[i])->trg_coord;
-        Vector<Real_t>& value_vec=((FMMNode_t*)nodes[i])->trg_value;
+        Vector<Real_t>& coord_vec=nodes[i]->trg_coord;
+        Vector<Real_t>& value_vec=nodes[i]->trg_value;
         if(coord_vec.Dim()){
           coord.dsp[i]=&coord_vec[0]-coord.ptr[0][0];
           assert(coord.dsp[i]<coord.len);
@@ -3643,7 +3643,7 @@ class FMM_Pts {
         size_t a=(nodes_out.size()*(tid+0))/omp_p;
         size_t b=(nodes_out.size()*(tid+1))/omp_p;
         for(size_t i=a;i<b;i++){
-          FMMNode_t* tnode=(FMMNode_t*)nodes_out[i];
+          FMMNode_t* tnode=nodes_out[i];
           Real_t s=pvfmm::pow<Real_t>(0.5,tnode->depth);
           size_t interac_cnt_=0;
           {
@@ -3788,9 +3788,9 @@ class FMM_Pts {
       value.dsp.ReInit(nodes.size());
 #pragma omp parallel for
       for(size_t i=0;i<nodes.size();i++){
-        ((FMMNode_t*)nodes[i])->node_id=i;
-        Vector<Real_t>& coord_vec=((FMMNode_t*)nodes[i])->src_coord;
-        Vector<Real_t>& value_vec=((FMMNode_t*)nodes[i])->src_value;
+        nodes[i]->node_id=i;
+        Vector<Real_t>& coord_vec=nodes[i]->src_coord;
+        Vector<Real_t>& value_vec=nodes[i]->src_value;
         if(coord_vec.Dim()){
           coord.dsp[i]=&coord_vec[0]-coord.ptr[0][0];
           assert(coord.dsp[i]<coord.len);
@@ -3823,8 +3823,8 @@ class FMM_Pts {
       value.dsp.ReInit(nodes.size());
 #pragma omp parallel for
       for(size_t i=0;i<nodes.size();i++){
-        Vector<Real_t>& coord_vec=((FMMNode_t*)nodes[i])->surf_coord;
-        Vector<Real_t>& value_vec=((FMMNode_t*)nodes[i])->surf_value;
+        Vector<Real_t>& coord_vec=nodes[i]->surf_coord;
+        Vector<Real_t>& value_vec=nodes[i]->surf_value;
         if(coord_vec.Dim()){
           coord.dsp[i]=&coord_vec[0]-coord.ptr[0][0];
           assert(coord.dsp[i]<coord.len);
@@ -3857,8 +3857,8 @@ class FMM_Pts {
       value.dsp.ReInit(nodes.size());
 #pragma omp parallel for
       for(size_t i=0;i<nodes.size();i++){
-        Vector<Real_t>& coord_vec=((FMMNode_t*)nodes[i])->trg_coord;
-        Vector<Real_t>& value_vec=((FMMNode_t*)nodes[i])->trg_value;
+        Vector<Real_t>& coord_vec=nodes[i]->trg_coord;
+        Vector<Real_t>& value_vec=nodes[i]->trg_value;
         if(coord_vec.Dim()){
           coord.dsp[i]=&coord_vec[0]-coord.ptr[0][0];
           assert(coord.dsp[i]<coord.len);
@@ -3894,7 +3894,7 @@ class FMM_Pts {
         size_t a=(nodes_out.size()*(tid+0))/omp_p;
         size_t b=(nodes_out.size()*(tid+1))/omp_p;
         for(size_t i=a;i<b;i++){
-          FMMNode_t* tnode=(FMMNode_t*)nodes_out[i];
+          FMMNode_t* tnode=nodes_out[i];
           Real_t s=pvfmm::pow<Real_t>(0.5,tnode->depth);
           size_t interac_cnt_=0;
           {
@@ -4130,9 +4130,9 @@ class FMM_Pts {
       value.dsp.ReInit(nodes.size());
 #pragma omp parallel for
       for(size_t i=0;i<nodes.size();i++){
-        ((FMMNode_t*)nodes[i])->node_id=i;
-        Vector<Real_t>& coord_vec=tree->dnwd_equiv_surf[((FMMNode_t*)nodes[i])->depth];
-        Vector<Real_t>& value_vec=(((FMMNode_t*)nodes[i])->FMMData())->dnward_equiv;
+        nodes[i]->node_id=i;
+        Vector<Real_t>& coord_vec=tree->dnwd_equiv_surf[nodes[i]->depth];
+        Vector<Real_t>& value_vec=(nodes[i]->FMMData())->dnward_equiv;
         if(coord_vec.Dim()){
           coord.dsp[i]=&coord_vec[0]-coord.ptr[0][0];
           assert(coord.dsp[i]<coord.len);
@@ -4185,8 +4185,8 @@ class FMM_Pts {
       value.dsp.ReInit(nodes.size());
 #pragma omp parallel for
       for(size_t i=0;i<nodes.size();i++){
-        Vector<Real_t>& coord_vec=((FMMNode_t*)nodes[i])->trg_coord;
-        Vector<Real_t>& value_vec=((FMMNode_t*)nodes[i])->trg_value;
+        Vector<Real_t>& coord_vec=nodes[i]->trg_coord;
+        Vector<Real_t>& value_vec=nodes[i]->trg_value;
         if(coord_vec.Dim()){
           coord.dsp[i]=&coord_vec[0]-coord.ptr[0][0];
           assert(coord.dsp[i]<coord.len);
@@ -4239,7 +4239,7 @@ class FMM_Pts {
         size_t a=(nodes_out.size()*(tid+0))/omp_p;
         size_t b=(nodes_out.size()*(tid+1))/omp_p;
         for(size_t i=a;i<b;i++){
-          FMMNode_t* tnode=(FMMNode_t*)nodes_out[i];
+          FMMNode_t* tnode=nodes_out[i];
           Real_t s=pvfmm::pow<Real_t>(0.5,tnode->depth);
           size_t interac_cnt_=0;
           {

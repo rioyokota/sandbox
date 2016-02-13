@@ -10,5 +10,5 @@ Remove class hierarchy
 Put ReadVal in utils.hpp
 Check if all the headers are necessary
 Remove unnecessary "{}"
-"){" -> ") {"
+"){" -> ") {", "}else{" -> "} else {"
 Remove Duplicate data structures in fmm_pts.txx
