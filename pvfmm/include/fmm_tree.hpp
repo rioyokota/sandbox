@@ -256,16 +256,15 @@ class FMM_Tree : public FMM_Pts<FMMNode_t> {
     if(!curr_node->IsLeaf())
       for(int i=0;i<n;i++)
 	if(curr_node->Child(i)!=NULL)
-	  return (TreeNode*)curr_node->Child(i);
+	  return curr_node->Child(i);
     TreeNode* node=curr_node;
     while(true){
       int i=node->Path2Node()+1;
-      node=(TreeNode*)node->Parent();
+      node=node->Parent();
       if(node==NULL) return NULL;
-
       for(;i<n;i++)
 	if(node->Child(i)!=NULL)
-	  return (TreeNode*)node->Child(i);
+	  return node->Child(i);
     }
   }
 
@@ -301,15 +300,15 @@ class FMM_Tree : public FMM_Pts<FMMNode_t> {
       TreeNode* tmp_node1;
       TreeNode* tmp_node2;
       for(int i=0;i<n1;i++)node->SetColleague(NULL,i);
-      parent_node=(TreeNode*)node->Parent();
+      parent_node=node->Parent();
       if(parent_node==NULL) return;
       int l=node->Path2Node();
       for(int i=0;i<n1;i++){
-        tmp_node1=(TreeNode*)parent_node->Colleague(i);
+        tmp_node1=parent_node->Colleague(i);
         if(tmp_node1!=NULL)
         if(!tmp_node1->IsLeaf()){
           for(int j=0;j<n2;j++){
-            tmp_node2=(TreeNode*)tmp_node1->Child(j);
+            tmp_node2=tmp_node1->Child(j);
             if(tmp_node2!=NULL){
 
               bool flag=true;
@@ -352,8 +351,8 @@ class FMM_Tree : public FMM_Pts<FMMNode_t> {
       if(n->IsLeaf() && !n->IsGhost()) n->Subdivide();
       if(n->IsLeaf()) break;
       for(int j=0;j<num_child;j++){
-	if(((TreeNode*)n->Child(j))->GetMortonId().NextId()>key){
-	  n=(TreeNode*)n->Child(j);
+	if(n->Child(j)->GetMortonId().NextId()>key){
+	  n=n->Child(j);
 	  break;
 	}
       }
@@ -369,7 +368,7 @@ class FMM_Tree : public FMM_Pts<FMMNode_t> {
       if(node->IsLeaf()) return node;
       for(int i=0;i<n;i++) {
 	if(node->Child(i)!=NULL){
-	  node=(TreeNode*)node->Child(i);
+	  node=node->Child(i);
 	  break;
 	}
       }
@@ -380,17 +379,17 @@ class FMM_Tree : public FMM_Pts<FMMNode_t> {
     assert(curr_node!=NULL);
     TreeNode* node=curr_node;
     int j=node->Path2Node()+1;
-    node=(TreeNode*)node->Parent();
+    node=node->Parent();
     if(node==NULL) return NULL;
     int n=(1UL<<dim);
     for(;j<n;j++){
       if(node->Child(j)!=NULL){
-	node=(TreeNode*)node->Child(j);
+	node=node->Child(j);
 	while(true){
 	  if(node->IsLeaf()) return node;
 	  for(int i=0;i<n;i++) {
 	    if(node->Child(i)!=NULL){
-	      node=(TreeNode*)node->Child(i);
+	      node=node->Child(i);
 	      break;
 	    }
 	  }
