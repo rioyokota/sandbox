@@ -5,22 +5,6 @@
 
 namespace pvfmm{
 
-template <class Real_t>
-struct SetupData{
-  int level;
-  const Kernel<Real_t>* kernel;
-  std::vector<Mat_Type> interac_type;
-  std::vector<void*> nodes_in ;
-  std::vector<void*> nodes_out;
-  std::vector<Vector<Real_t>*>  input_vector;
-  std::vector<Vector<Real_t>*> output_vector;
-  Matrix< char>  interac_data;
-  Matrix< char>* precomp_data;
-  Matrix<Real_t>*  coord_data;
-  Matrix<Real_t>*  input_data;
-  Matrix<Real_t>* output_data;
-};
-
 template<class Real_t>
 inline void matmult_8x8x2(Real_t*& M_, Real_t*& IN0, Real_t*& IN1, Real_t*& OUT0, Real_t*& OUT1){
   Real_t out_reg000, out_reg001, out_reg010, out_reg011;
@@ -332,13 +316,29 @@ inline void matmult_8x8x2<float>(float*& M_, float*& IN0, float*& IN1, float*& O
 }
 #endif
 
+template <class Real_t, class FMMNode_t>
+struct SetupData {
+  int level;
+  const Kernel<Real_t>* kernel;
+  std::vector<Mat_Type> interac_type;
+  std::vector<FMMNode_t*> nodes_in ;
+  std::vector<FMMNode_t*> nodes_out;
+  std::vector<Vector<Real_t>*>  input_vector;
+  std::vector<Vector<Real_t>*> output_vector;
+  Matrix< char>  interac_data;
+  Matrix< char>* precomp_data;
+  Matrix<Real_t>*  coord_data;
+  Matrix<Real_t>*  input_data;
+  Matrix<Real_t>* output_data;
+};
+
 template <class FMM_Mat_t>
 class FMM_Tree;
 
 template <class FMMNode>
 class FMM_Pts {
 
-public:
+ public:
 
   typedef FMMNode FMMNode_t;
   typedef FMM_Tree<FMMNode> FMMTree_t;
@@ -1340,6 +1340,34 @@ public:
   
  public:
 
+  struct PackedData{
+    size_t len;
+    Matrix<Real_t>* ptr;
+    Vector<size_t> cnt;
+    Vector<size_t> dsp;
+  };
+  struct InteracData{
+    Vector<size_t> in_node;
+    Vector<size_t> scal_idx;
+    Vector<Real_t> coord_shift;
+    Vector<size_t> interac_cnt;
+    Vector<size_t> interac_dsp;
+    Vector<size_t> interac_cst;
+    Vector<Real_t> scal[4*MAX_DEPTH];
+    Matrix<Real_t> M[4];
+  };
+  struct ptSetupData{
+    int level;
+    const Kernel<Real_t>* kernel;
+    PackedData src_coord;
+    PackedData src_value;
+    PackedData srf_coord;
+    PackedData srf_value;
+    PackedData trg_coord;
+    PackedData trg_value;
+    InteracData interac_data;
+  };
+
   class FMMData: public FMM_Data<Real_t>{
    public:
     ~FMMData(){}
@@ -1757,7 +1785,7 @@ public:
     }
   }
   
-  void SetupPrecomp(SetupData<Real_t>& setup_data){
+  void SetupPrecomp(SetupData<Real_t,FMMNode_t>& setup_data){
     if(setup_data.precomp_data==NULL || setup_data.level>MAX_DEPTH) return;
     Profile::Tic("SetupPrecomp",true,25);
     {
@@ -1774,11 +1802,11 @@ public:
     Profile::Toc();
   }
   
-  void SetupInterac(SetupData<Real_t>& setup_data){
+  void SetupInterac(SetupData<Real_t,FMMNode_t>& setup_data){
     int level=setup_data.level;
     std::vector<Mat_Type>& interac_type_lst=setup_data.interac_type;
-    std::vector<void*>& nodes_in =setup_data.nodes_in ;
-    std::vector<void*>& nodes_out=setup_data.nodes_out;
+    std::vector<FMMNode_t*>& nodes_in =setup_data.nodes_in ;
+    std::vector<FMMNode_t*>& nodes_out=setup_data.nodes_out;
     Matrix<Real_t>&  input_data=*setup_data. input_data;
     Matrix<Real_t>& output_data=*setup_data.output_data;
     std::vector<Vector<Real_t>*>&  input_vector=setup_data. input_vector;
@@ -1972,7 +2000,7 @@ public:
     Profile::Toc();
   }
   
-  void EvalList(SetupData<Real_t>& setup_data){
+  void EvalList(SetupData<Real_t,FMMNode_t>& setup_data){
     if(setup_data.interac_data.Dim(0)==0 || setup_data.interac_data.Dim(1)==0){
       return;
     }
@@ -2089,34 +2117,7 @@ public:
     Profile::Toc();
   }
   
-  void PtSetup(SetupData<Real_t>& setup_data, void* data_){
-    struct PackedData{
-      size_t len;
-      Matrix<Real_t>* ptr;
-      Vector<size_t> cnt;
-      Vector<size_t> dsp;
-    };
-    struct InteracData{
-      Vector<size_t> in_node;
-      Vector<size_t> scal_idx;
-      Vector<Real_t> coord_shift;
-      Vector<size_t> interac_cnt;
-      Vector<size_t> interac_dsp;
-      Vector<size_t> interac_cst;
-      Vector<Real_t> scal[4*MAX_DEPTH];
-      Matrix<Real_t> M[4];
-    };
-    struct ptSetupData{
-      int level;
-      const Kernel<Real_t>* kernel;
-      PackedData src_coord;
-      PackedData src_value;
-      PackedData srf_coord;
-      PackedData srf_value;
-      PackedData trg_coord;
-      PackedData trg_value;
-      InteracData interac_data;
-    };
+  void PtSetup(SetupData<Real_t,FMMNode_t>& setup_data, ptSetupData* data_){
     ptSetupData& data=*(ptSetupData*)data_;
     if(data.interac_data.interac_cnt.Dim()){
       InteracData& intdata=data.interac_data;
@@ -2250,7 +2251,7 @@ public:
     }
   }
   
-  void EvalListPts(SetupData<Real_t>& setup_data) {
+  void EvalListPts(SetupData<Real_t,FMMNode_t>& setup_data) {
     if(setup_data.kernel->ker_dim[0]*setup_data.kernel->ker_dim[1]==0) return;
     if(setup_data.interac_data.Dim(0)==0 || setup_data.interac_data.Dim(1)==0){
       return;
@@ -2276,33 +2277,6 @@ public:
     int lock_idx=-1;
     int wait_lock_idx=-1;
     {
-      struct PackedData{
-        size_t len;
-        Matrix<Real_t>* ptr;
-        Vector<size_t> cnt;
-        Vector<size_t> dsp;
-      };
-      struct InteracData{
-        Vector<size_t> in_node;
-        Vector<size_t> scal_idx;
-        Vector<Real_t> coord_shift;
-        Vector<size_t> interac_cnt;
-        Vector<size_t> interac_dsp;
-        Vector<size_t> interac_cst;
-        Vector<Real_t> scal[4*MAX_DEPTH];
-        Matrix<Real_t> M[4];
-      };
-      struct ptSetupData{
-        int level;
-        const Kernel<Real_t>* kernel;
-        PackedData src_coord;
-        PackedData src_value;
-        PackedData srf_coord;
-        PackedData srf_value;
-        PackedData trg_coord;
-        PackedData trg_value;
-        InteracData interac_data;
-      };
       ptSetupData data;
       {
         struct PackedSetupData{
@@ -2630,7 +2604,7 @@ public:
     Profile::Toc();
   }
   
-  void Source2UpSetup(SetupData<Real_t>& setup_data, FMMTree_t* tree, std::vector<Matrix<Real_t> >& buff, std::vector<Vector<FMMNode_t*> >& n_list, int level) {
+  void Source2UpSetup(SetupData<Real_t,FMMNode_t>& setup_data, FMMTree_t* tree, std::vector<Matrix<Real_t> >& buff, std::vector<Vector<FMMNode_t*> >& n_list, int level) {
     if(!this->MultipoleOrder()) return;
     {
       setup_data. level=level;
@@ -2651,40 +2625,13 @@ public:
   	 && (nodes_out[i]->src_coord.Dim() || nodes_out[i]->surf_coord.Dim())
   	 && nodes_out[i]->IsLeaf() && !nodes_out[i]->IsGhost()) setup_data.nodes_out.push_back(nodes_out[i]);
     }
-    struct PackedData{
-      size_t len;
-      Matrix<Real_t>* ptr;
-      Vector<size_t> cnt;
-      Vector<size_t> dsp;
-    };
-    struct InteracData{
-      Vector<size_t> in_node;
-      Vector<size_t> scal_idx;
-      Vector<Real_t> coord_shift;
-      Vector<size_t> interac_cnt;
-      Vector<size_t> interac_dsp;
-      Vector<size_t> interac_cst;
-      Vector<Real_t> scal[4*MAX_DEPTH];
-      Matrix<Real_t> M[4];
-    };
-    struct ptSetupData{
-      int level;
-      const Kernel<Real_t>* kernel;
-      PackedData src_coord;
-      PackedData src_value;
-      PackedData srf_coord;
-      PackedData srf_value;
-      PackedData trg_coord;
-      PackedData trg_value;
-      InteracData interac_data;
-    };
     ptSetupData data;
     data. level=setup_data. level;
     data.kernel=setup_data.kernel;
-    std::vector<void*>& nodes_in =setup_data.nodes_in ;
-    std::vector<void*>& nodes_out=setup_data.nodes_out;
+    std::vector<FMMNode_t*>& nodes_in =setup_data.nodes_in ;
+    std::vector<FMMNode_t*>& nodes_out=setup_data.nodes_out;
     {
-      std::vector<void*>& nodes=nodes_in;
+      std::vector<FMMNode_t*>& nodes=nodes_in;
       PackedData& coord=data.src_coord;
       PackedData& value=data.src_value;
       coord.ptr=setup_data. coord_data;
@@ -2719,7 +2666,7 @@ public:
       }
     }
     {
-      std::vector<void*>& nodes=nodes_in;
+      std::vector<FMMNode_t*>& nodes=nodes_in;
       PackedData& coord=data.srf_coord;
       PackedData& value=data.srf_value;
       coord.ptr=setup_data. coord_data;
@@ -2753,7 +2700,7 @@ public:
       }
     }
     {
-      std::vector<void*>& nodes=nodes_out;
+      std::vector<FMMNode_t*>& nodes=nodes_out;
       PackedData& coord=data.trg_coord;
       PackedData& value=data.trg_value;
       coord.ptr=setup_data. coord_data;
@@ -2931,12 +2878,12 @@ public:
     PtSetup(setup_data, &data);
   }
 
-  void Source2Up(SetupData<Real_t>&  setup_data) {
+  void Source2Up(SetupData<Real_t,FMMNode_t>&  setup_data) {
     if(!this->MultipoleOrder()) return;
     this->EvalListPts(setup_data);
   }
   
-  void Up2UpSetup(SetupData<Real_t>& setup_data, FMMTree_t* tree, std::vector<Matrix<Real_t> >& buff, std::vector<Vector<FMMNode_t*> >& n_list, int level){
+  void Up2UpSetup(SetupData<Real_t,FMMNode_t>& setup_data, FMMTree_t* tree, std::vector<Matrix<Real_t> >& buff, std::vector<Vector<FMMNode_t*> >& n_list, int level){
     if(!this->MultipoleOrder()) return;
     {
       setup_data.level=level;
@@ -2952,8 +2899,8 @@ public:
       for(size_t i=0;i<nodes_in .Dim();i++) if((nodes_in [i]->depth==level+1) && nodes_in [i]->pt_cnt[0]) setup_data.nodes_in .push_back(nodes_in [i]);
       for(size_t i=0;i<nodes_out.Dim();i++) if((nodes_out[i]->depth==level  ) && nodes_out[i]->pt_cnt[0]) setup_data.nodes_out.push_back(nodes_out[i]);
     }
-    std::vector<void*>& nodes_in =setup_data.nodes_in ;
-    std::vector<void*>& nodes_out=setup_data.nodes_out;
+    std::vector<FMMNode_t*>& nodes_in =setup_data.nodes_in ;
+    std::vector<FMMNode_t*>& nodes_out=setup_data.nodes_out;
     std::vector<Vector<Real_t>*>&  input_vector=setup_data. input_vector;  input_vector.clear();
     std::vector<Vector<Real_t>*>& output_vector=setup_data.output_vector; output_vector.clear();
     for(size_t i=0;i<nodes_in .size();i++)  input_vector.push_back(&(((FMMNode_t*)nodes_in [i])->FMMData())->upward_equiv);
@@ -2961,7 +2908,7 @@ public:
     SetupInterac(setup_data);
   }
   
-  void Up2Up(SetupData<Real_t>& setup_data){
+  void Up2Up(SetupData<Real_t,FMMNode_t>& setup_data){
     if(!this->MultipoleOrder()) return;
     EvalList(setup_data);
   }
@@ -2980,7 +2927,7 @@ public:
     Matrix<Real_t>::GEMM(d_equiv,u_equiv,M);
   }
 
-  void V_ListSetup(SetupData<Real_t>&  setup_data, FMMTree_t* tree, std::vector<Matrix<Real_t> >& buff, std::vector<Vector<FMMNode_t*> >& n_list, int level){
+  void V_ListSetup(SetupData<Real_t,FMMNode_t>&  setup_data, FMMTree_t* tree, std::vector<Matrix<Real_t> >& buff, std::vector<Vector<FMMNode_t*> >& n_list, int level){
     if(!this->MultipoleOrder()) return;
     if(level==0) return;
     {
@@ -2997,8 +2944,8 @@ public:
       for(size_t i=0;i<nodes_in .Dim();i++) if((nodes_in [i]->depth==level-1 || level==-1) && nodes_in [i]->pt_cnt[0]) setup_data.nodes_in .push_back(nodes_in [i]);
       for(size_t i=0;i<nodes_out.Dim();i++) if((nodes_out[i]->depth==level-1 || level==-1) && nodes_out[i]->pt_cnt[1]) setup_data.nodes_out.push_back(nodes_out[i]);
     }
-    std::vector<void*>& nodes_in =setup_data.nodes_in ;
-    std::vector<void*>& nodes_out=setup_data.nodes_out;
+    std::vector<FMMNode_t*>& nodes_in =setup_data.nodes_in ;
+    std::vector<FMMNode_t*>& nodes_out=setup_data.nodes_out;
     std::vector<Vector<Real_t>*>&  input_vector=setup_data. input_vector;  input_vector.clear();
     std::vector<Vector<Real_t>*>& output_vector=setup_data.output_vector; output_vector.clear();
     for(size_t i=0;i<nodes_in .size();i++)  input_vector.push_back(&(((FMMNode_t*)((FMMNode_t*)nodes_in [i])->Child(0))->FMMData())->upward_equiv);
@@ -3059,13 +3006,13 @@ public:
           std::vector<FMMNode_t*>& nodes_in_ =nodes_blk_in [blk0];
           std::vector<FMMNode_t*>& nodes_out_=nodes_blk_out[blk0];
           {
-            std::set<void*> nodes_in;
+            std::set<FMMNode_t*> nodes_in;
             for(size_t i=blk0_start;i<blk0_end;i++){
               nodes_out_.push_back((FMMNode_t*)nodes_out[i]);
               Vector<FMMNode_t*>& lst=((FMMNode_t*)nodes_out[i])->interac_list[interac_type];
               for(size_t k=0;k<mat_cnt;k++) if(lst[k]!=NULL && lst[k]->pt_cnt[0]) nodes_in.insert(lst[k]);
             }
-            for(std::set<void*>::iterator node=nodes_in.begin(); node != nodes_in.end(); node++){
+            for(typename std::set<FMMNode_t*>::iterator node=nodes_in.begin(); node != nodes_in.end(); node++){
               nodes_in_.push_back((FMMNode_t*)*node);
             }
             size_t  input_dim=nodes_in_ .size()*ker_dim0*dof*fftsize;
@@ -3173,7 +3120,7 @@ public:
     Profile::Toc();
   }
   
-  void V_List(SetupData<Real_t>&  setup_data){
+  void V_List(SetupData<Real_t,FMMNode_t>&  setup_data){
     if(!this->MultipoleOrder()) return;
     int np=1;
     if(setup_data.interac_data.Dim(0)==0 || setup_data.interac_data.Dim(1)==0){
@@ -3292,7 +3239,7 @@ public:
     }
   }
 
-  void Down2DownSetup(SetupData<Real_t>& setup_data, FMMTree_t* tree, std::vector<Matrix<Real_t> >& buff, std::vector<Vector<FMMNode_t*> >& n_list, int level){
+  void Down2DownSetup(SetupData<Real_t,FMMNode_t>& setup_data, FMMTree_t* tree, std::vector<Matrix<Real_t> >& buff, std::vector<Vector<FMMNode_t*> >& n_list, int level){
     if(!this->MultipoleOrder()) return;
     {
       setup_data.level=level;
@@ -3308,8 +3255,8 @@ public:
       for(size_t i=0;i<nodes_in .Dim();i++) if((nodes_in [i]->depth==level-1) && nodes_in [i]->pt_cnt[1]) setup_data.nodes_in .push_back(nodes_in [i]);
       for(size_t i=0;i<nodes_out.Dim();i++) if((nodes_out[i]->depth==level  ) && nodes_out[i]->pt_cnt[1]) setup_data.nodes_out.push_back(nodes_out[i]);
     }
-    std::vector<void*>& nodes_in =setup_data.nodes_in ;
-    std::vector<void*>& nodes_out=setup_data.nodes_out;
+    std::vector<FMMNode_t*>& nodes_in =setup_data.nodes_in ;
+    std::vector<FMMNode_t*>& nodes_out=setup_data.nodes_out;
     std::vector<Vector<Real_t>*>&  input_vector=setup_data. input_vector;  input_vector.clear();
     std::vector<Vector<Real_t>*>& output_vector=setup_data.output_vector; output_vector.clear();
     for(size_t i=0;i<nodes_in .size();i++)  input_vector.push_back(&((FMMData*)((FMMNode_t*)nodes_in [i])->FMMData())->dnward_equiv);
@@ -3317,12 +3264,12 @@ public:
     SetupInterac(setup_data);
   }
   
-  void Down2Down(SetupData<Real_t>& setup_data){
+  void Down2Down(SetupData<Real_t,FMMNode_t>& setup_data){
     if(!this->MultipoleOrder()) return;
     EvalList(setup_data);
   }
   
-  void X_ListSetup(SetupData<Real_t>&  setup_data, FMMTree_t* tree, std::vector<Matrix<Real_t> >& buff, std::vector<Vector<FMMNode_t*> >& n_list, int level){
+  void X_ListSetup(SetupData<Real_t,FMMNode_t>&  setup_data, FMMTree_t* tree, std::vector<Matrix<Real_t> >& buff, std::vector<Vector<FMMNode_t*> >& n_list, int level){
     if(!this->MultipoleOrder()) return;
     {
       setup_data. level=level;
@@ -3337,40 +3284,13 @@ public:
       for(size_t i=0;i<nodes_in .Dim();i++) if((level==0 || level==-1) && (nodes_in [i]->src_coord.Dim() || nodes_in [i]->surf_coord.Dim()) &&  nodes_in [i]->IsLeaf ()) setup_data.nodes_in .push_back(nodes_in [i]);
       for(size_t i=0;i<nodes_out.Dim();i++) if((level==0 || level==-1) &&  nodes_out[i]->pt_cnt[1]                                          && !nodes_out[i]->IsGhost()) setup_data.nodes_out.push_back(nodes_out[i]);
     }
-    struct PackedData{
-      size_t len;
-      Matrix<Real_t>* ptr;
-      Vector<size_t> cnt;
-      Vector<size_t> dsp;
-    };
-    struct InteracData{
-      Vector<size_t> in_node;
-      Vector<size_t> scal_idx;
-      Vector<Real_t> coord_shift;
-      Vector<size_t> interac_cnt;
-      Vector<size_t> interac_dsp;
-      Vector<size_t> interac_cst;
-      Vector<Real_t> scal[4*MAX_DEPTH];
-      Matrix<Real_t> M[4];
-    };
-    struct ptSetupData{
-      int level;
-      const Kernel<Real_t>* kernel;
-      PackedData src_coord;
-      PackedData src_value;
-      PackedData srf_coord;
-      PackedData srf_value;
-      PackedData trg_coord;
-      PackedData trg_value;
-      InteracData interac_data;
-    };
     ptSetupData data;
     data. level=setup_data. level;
     data.kernel=setup_data.kernel;
-    std::vector<void*>& nodes_in =setup_data.nodes_in ;
-    std::vector<void*>& nodes_out=setup_data.nodes_out;
+    std::vector<FMMNode_t*>& nodes_in =setup_data.nodes_in ;
+    std::vector<FMMNode_t*>& nodes_out=setup_data.nodes_out;
     {
-      std::vector<void*>& nodes=nodes_in;
+      std::vector<FMMNode_t*>& nodes=nodes_in;
       PackedData& coord=data.src_coord;
       PackedData& value=data.src_value;
       coord.ptr=setup_data. coord_data;
@@ -3405,7 +3325,7 @@ public:
       }
     }
     {
-      std::vector<void*>& nodes=nodes_in;
+      std::vector<FMMNode_t*>& nodes=nodes_in;
       PackedData& coord=data.srf_coord;
       PackedData& value=data.srf_value;
       coord.ptr=setup_data. coord_data;
@@ -3439,7 +3359,7 @@ public:
       }
     }
     {
-      std::vector<void*>& nodes=nodes_out;
+      std::vector<FMMNode_t*>& nodes=nodes_out;
       PackedData& coord=data.trg_coord;
       PackedData& value=data.trg_value;
       coord.ptr=setup_data. coord_data;
@@ -3592,12 +3512,12 @@ public:
     PtSetup(setup_data, &data);
   }
   
-  void X_List(SetupData<Real_t>&  setup_data){
+  void X_List(SetupData<Real_t,FMMNode_t>&  setup_data){
     if(!this->MultipoleOrder()) return;
     this->EvalListPts(setup_data);
   }
   
-  void W_ListSetup(SetupData<Real_t>&  setup_data, FMMTree_t* tree, std::vector<Matrix<Real_t> >& buff, std::vector<Vector<FMMNode_t*> >& n_list, int level){
+  void W_ListSetup(SetupData<Real_t,FMMNode_t>&  setup_data, FMMTree_t* tree, std::vector<Matrix<Real_t> >& buff, std::vector<Vector<FMMNode_t*> >& n_list, int level){
     if(!this->MultipoleOrder()) return;
     {
       setup_data. level=level;
@@ -3612,40 +3532,13 @@ public:
       for(size_t i=0;i<nodes_in .Dim();i++) if((level==0 || level==-1) && nodes_in [i]->pt_cnt[0]                                                            ) setup_data.nodes_in .push_back(nodes_in [i]);
       for(size_t i=0;i<nodes_out.Dim();i++) if((level==0 || level==-1) && nodes_out[i]->trg_coord.Dim() && nodes_out[i]->IsLeaf() && !nodes_out[i]->IsGhost()) setup_data.nodes_out.push_back(nodes_out[i]);
     }
-    struct PackedData{
-      size_t len;
-      Matrix<Real_t>* ptr;
-      Vector<size_t> cnt;
-      Vector<size_t> dsp;
-    };
-    struct InteracData{
-      Vector<size_t> in_node;
-      Vector<size_t> scal_idx;
-      Vector<Real_t> coord_shift;
-      Vector<size_t> interac_cnt;
-      Vector<size_t> interac_dsp;
-      Vector<size_t> interac_cst;
-      Vector<Real_t> scal[4*MAX_DEPTH];
-      Matrix<Real_t> M[4];
-    };
-    struct ptSetupData{
-      int level;
-      const Kernel<Real_t>* kernel;
-      PackedData src_coord;
-      PackedData src_value;
-      PackedData srf_coord;
-      PackedData srf_value;
-      PackedData trg_coord;
-      PackedData trg_value;
-      InteracData interac_data;
-    };
     ptSetupData data;
     data. level=setup_data. level;
     data.kernel=setup_data.kernel;
-    std::vector<void*>& nodes_in =setup_data.nodes_in ;
-    std::vector<void*>& nodes_out=setup_data.nodes_out;
+    std::vector<FMMNode_t*>& nodes_in =setup_data.nodes_in ;
+    std::vector<FMMNode_t*>& nodes_out=setup_data.nodes_out;
     {
-      std::vector<void*>& nodes=nodes_in;
+      std::vector<FMMNode_t*>& nodes=nodes_in;
       PackedData& coord=data.src_coord;
       PackedData& value=data.src_value;
       coord.ptr=setup_data. coord_data;
@@ -3680,7 +3573,7 @@ public:
       }
     }
     {
-      std::vector<void*>& nodes=nodes_in;
+      std::vector<FMMNode_t*>& nodes=nodes_in;
       PackedData& coord=data.srf_coord;
       PackedData& value=data.srf_value;
       coord.ptr=setup_data. coord_data;
@@ -3700,7 +3593,7 @@ public:
       }
     }
     {
-      std::vector<void*>& nodes=nodes_out;
+      std::vector<FMMNode_t*>& nodes=nodes_out;
       PackedData& coord=data.trg_coord;
       PackedData& value=data.trg_value;
       coord.ptr=setup_data. coord_data;
@@ -3851,12 +3744,12 @@ public:
     PtSetup(setup_data, &data);
   }
   
-  void W_List(SetupData<Real_t>&  setup_data){
+  void W_List(SetupData<Real_t,FMMNode_t>&  setup_data){
     if(!this->MultipoleOrder()) return;
     this->EvalListPts(setup_data);
   }
   
-  void U_ListSetup(SetupData<Real_t>& setup_data, FMMTree_t* tree, std::vector<Matrix<Real_t> >& buff, std::vector<Vector<FMMNode_t*> >& n_list, int level){
+  void U_ListSetup(SetupData<Real_t,FMMNode_t>& setup_data, FMMTree_t* tree, std::vector<Matrix<Real_t> >& buff, std::vector<Vector<FMMNode_t*> >& n_list, int level){
     {
       setup_data. level=level;
       setup_data.kernel=kernel->k_s2t;
@@ -3876,40 +3769,13 @@ public:
   	 && (nodes_out[i]->trg_coord.Dim()                                  )
   	 && nodes_out[i]->IsLeaf() && !nodes_out[i]->IsGhost()) setup_data.nodes_out.push_back(nodes_out[i]);
     }
-    struct PackedData{
-      size_t len;
-      Matrix<Real_t>* ptr;
-      Vector<size_t> cnt;
-      Vector<size_t> dsp;
-    };
-    struct InteracData{
-      Vector<size_t> in_node;
-      Vector<size_t> scal_idx;
-      Vector<Real_t> coord_shift;
-      Vector<size_t> interac_cnt;
-      Vector<size_t> interac_dsp;
-      Vector<size_t> interac_cst;
-      Vector<Real_t> scal[4*MAX_DEPTH];
-      Matrix<Real_t> M[4];
-    };
-    struct ptSetupData{
-      int level;
-      const Kernel<Real_t>* kernel;
-      PackedData src_coord;
-      PackedData src_value;
-      PackedData srf_coord;
-      PackedData srf_value;
-      PackedData trg_coord;
-      PackedData trg_value;
-      InteracData interac_data;
-    };
     ptSetupData data;
     data. level=setup_data. level;
     data.kernel=setup_data.kernel;
-    std::vector<void*>& nodes_in =setup_data.nodes_in ;
-    std::vector<void*>& nodes_out=setup_data.nodes_out;
+    std::vector<FMMNode_t*>& nodes_in =setup_data.nodes_in ;
+    std::vector<FMMNode_t*>& nodes_out=setup_data.nodes_out;
     {
-      std::vector<void*>& nodes=nodes_in;
+      std::vector<FMMNode_t*>& nodes=nodes_in;
       PackedData& coord=data.src_coord;
       PackedData& value=data.src_value;
       coord.ptr=setup_data. coord_data;
@@ -3944,7 +3810,7 @@ public:
       }
     }
     {
-      std::vector<void*>& nodes=nodes_in;
+      std::vector<FMMNode_t*>& nodes=nodes_in;
       PackedData& coord=data.srf_coord;
       PackedData& value=data.srf_value;
       coord.ptr=setup_data. coord_data;
@@ -3978,7 +3844,7 @@ public:
       }
     }
     {
-      std::vector<void*>& nodes=nodes_out;
+      std::vector<FMMNode_t*>& nodes=nodes_out;
       PackedData& coord=data.trg_coord;
       PackedData& value=data.trg_value;
       coord.ptr=setup_data. coord_data;
@@ -4226,11 +4092,11 @@ public:
     PtSetup(setup_data, &data);
   }
   
-  void U_List(SetupData<Real_t>&  setup_data){
+  void U_List(SetupData<Real_t,FMMNode_t>&  setup_data){
     this->EvalListPts(setup_data);
   }
   
-  void Down2TargetSetup(SetupData<Real_t>&  setup_data, FMMTree_t* tree, std::vector<Matrix<Real_t> >& buff, std::vector<Vector<FMMNode_t*> >& n_list, int level){
+  void Down2TargetSetup(SetupData<Real_t,FMMNode_t>&  setup_data, FMMTree_t* tree, std::vector<Matrix<Real_t> >& buff, std::vector<Vector<FMMNode_t*> >& n_list, int level){
     if(!this->MultipoleOrder()) return;
     {
       setup_data. level=level;
@@ -4245,40 +4111,13 @@ public:
       for(size_t i=0;i<nodes_in .Dim();i++) if((nodes_in [i]->depth==level || level==-1) && nodes_in [i]->trg_coord.Dim() && nodes_in [i]->IsLeaf() && !nodes_in [i]->IsGhost()) setup_data.nodes_in .push_back(nodes_in [i]);
       for(size_t i=0;i<nodes_out.Dim();i++) if((nodes_out[i]->depth==level || level==-1) && nodes_out[i]->trg_coord.Dim() && nodes_out[i]->IsLeaf() && !nodes_out[i]->IsGhost()) setup_data.nodes_out.push_back(nodes_out[i]);
     }
-    struct PackedData{
-      size_t len;
-      Matrix<Real_t>* ptr;
-      Vector<size_t> cnt;
-      Vector<size_t> dsp;
-    };
-    struct InteracData{
-      Vector<size_t> in_node;
-      Vector<size_t> scal_idx;
-      Vector<Real_t> coord_shift;
-      Vector<size_t> interac_cnt;
-      Vector<size_t> interac_dsp;
-      Vector<size_t> interac_cst;
-      Vector<Real_t> scal[4*MAX_DEPTH];
-      Matrix<Real_t> M[4];
-    };
-    struct ptSetupData{
-      int level;
-      const Kernel<Real_t>* kernel;
-      PackedData src_coord;
-      PackedData src_value;
-      PackedData srf_coord;
-      PackedData srf_value;
-      PackedData trg_coord;
-      PackedData trg_value;
-      InteracData interac_data;
-    };
     ptSetupData data;
     data. level=setup_data. level;
     data.kernel=setup_data.kernel;
-    std::vector<void*>& nodes_in =setup_data.nodes_in ;
-    std::vector<void*>& nodes_out=setup_data.nodes_out;
+    std::vector<FMMNode_t*>& nodes_in =setup_data.nodes_in ;
+    std::vector<FMMNode_t*>& nodes_out=setup_data.nodes_out;
     {
-      std::vector<void*>& nodes=nodes_in;
+      std::vector<FMMNode_t*>& nodes=nodes_in;
       PackedData& coord=data.src_coord;
       PackedData& value=data.src_value;
       coord.ptr=setup_data. coord_data;
@@ -4313,7 +4152,7 @@ public:
       }
     }
     {
-      std::vector<void*>& nodes=nodes_in;
+      std::vector<FMMNode_t*>& nodes=nodes_in;
       PackedData& coord=data.srf_coord;
       PackedData& value=data.srf_value;
       coord.ptr=setup_data. coord_data;
@@ -4333,7 +4172,7 @@ public:
       }
     }
     {
-      std::vector<void*>& nodes=nodes_out;
+      std::vector<FMMNode_t*>& nodes=nodes_out;
       PackedData& coord=data.trg_coord;
       PackedData& value=data.trg_value;
       coord.ptr=setup_data. coord_data;
@@ -4511,7 +4350,7 @@ public:
     PtSetup(setup_data, &data);
   }
   
-  void Down2Target(SetupData<Real_t>&  setup_data){
+  void Down2Target(SetupData<Real_t,FMMNode_t>&  setup_data){
     if(!this->MultipoleOrder()) return;
     this->EvalListPts(setup_data);
   }
