@@ -143,8 +143,8 @@ class FMM_Node {
       max_depth=data_->max_depth;
       if(max_depth>MAX_DEPTH) max_depth=MAX_DEPTH;
     }else if(parent!=NULL){
-      dim=((FMM_Node*)parent)->Dim();
-      max_depth=((FMM_Node*)parent)->max_depth;
+      dim=parent->Dim();
+      max_depth=parent->max_depth;
     }
     assert(path2node_>=0 && path2node_<(int)(1U<<dim));
     path2node=path2node_;
@@ -154,7 +154,7 @@ class FMM_Node {
     }else if(parent_){
       int flag=1;
       for(int j=0;j<dim;j++){
-	coord[j]=((FMM_Node*)parent_)->coord[j]+
+	coord[j]=parent_->coord[j]+
 	  ((Path2Node() & flag)?coord_offset:0.0f);
 	flag=flag<<1;
       }
@@ -168,7 +168,7 @@ class FMM_Node {
       pt_value=mpi_data->value;
     }else if(parent){
       max_pts =parent->max_pts;
-      SetGhost(((FMM_Node*)parent)->IsGhost());
+      SetGhost(parent->IsGhost());
     }
     typename FMM_Node::NodeData* data=dynamic_cast<typename FMM_Node::NodeData*>(data_);
     if(data_!=NULL){
@@ -256,7 +256,7 @@ class FMM_Node {
       std::vector<std::vector<Vector<Real_t>*> > chld_pt_v(nchld);
       std::vector<std::vector<Vector<size_t>*> > chld_pt_s(nchld);
       for(size_t i=0;i<nchld;i++){
-	((FMM_Node*)Child(i))->NodeDataVec(chld_pt_c[i], chld_pt_v[i], chld_pt_s[i]);
+	Child(i)->NodeDataVec(chld_pt_c[i], chld_pt_v[i], chld_pt_s[i]);
       }
 
       Real_t* c=Coord();
@@ -350,8 +350,8 @@ class FMM_Node {
 
   void SetStatus(int flag) {
     status=(status|flag);
-    if(parent && !(((FMM_Node*)parent)->GetStatus() & flag))
-      ((FMM_Node*)parent)->SetStatus(flag);
+    if(parent && !(parent->GetStatus() & flag))
+      parent->SetStatus(flag);
   }
 
 
@@ -393,7 +393,7 @@ class FMM_Node {
   void SetChild(FMM_Node* c, int id) {
     assert(id<(1<<dim));
     child[id]=c;
-    if(c!=NULL) ((FMM_Node*)child[id])->SetParent(this,id);
+    if(c!=NULL) child[id]->SetParent(this,id);
   }
 
   FMM_Node * Colleague(int index) {

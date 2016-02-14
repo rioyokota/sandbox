@@ -203,7 +203,7 @@ class FMM_Pts {
       return;
     }
     for(size_t i=0;i<Perm_Count;i++) {
-      this->PrecompPerm(type, (Perm_Type) i);
+      PrecompPerm(type, (Perm_Type) i);
     }
     size_t mat_cnt=interac_list.ListCount(type);
     mat->Mat(level, type, mat_cnt-1);
@@ -227,7 +227,7 @@ class FMM_Pts {
   Permutation<Real_t>& PrecompPerm(Mat_Type type, Perm_Type perm_indx) {
     Permutation<Real_t>& P_ = mat->Perm(type, perm_indx);
     if(P_.Dim()!=0) return P_;
-    size_t m=this->MultipoleOrder();
+    size_t m=MultipoleOrder();
     size_t p_indx=perm_indx % C_Perm;
     Permutation<Real_t> P;
     switch (type){
@@ -243,7 +243,7 @@ class FMM_Pts {
           scal_exp=kernel->k_m2m->src_scal;
           for(size_t i=0;i<scal_exp.Dim();i++) scal_exp[i]=-scal_exp[i];
         }
-        P=equiv_surf_perm(m, p_indx, ker_perm, (this->ScaleInvar()?&scal_exp:NULL));
+        P=equiv_surf_perm(m, p_indx, ker_perm, (ScaleInvar()?&scal_exp:NULL));
         break;
       }
       case D2D_Type:
@@ -258,7 +258,7 @@ class FMM_Pts {
           ker_perm=kernel->k_l2l->perm_vec[C_Perm+p_indx];
           scal_exp=kernel->k_l2l->trg_scal;
         }
-        P=equiv_surf_perm(m, p_indx, ker_perm, (this->ScaleInvar()?&scal_exp:NULL));
+        P=equiv_surf_perm(m, p_indx, ker_perm, (ScaleInvar()?&scal_exp:NULL));
         break;
       }
       default:
@@ -272,18 +272,18 @@ class FMM_Pts {
   }
   
   Matrix<Real_t>& Precomp(int level, Mat_Type type, size_t mat_indx) {
-    if(this->ScaleInvar()) level=0;
-    Matrix<Real_t>& M_ = this->mat->Mat(level, type, mat_indx);
+    if(ScaleInvar()) level=0;
+    Matrix<Real_t>& M_ = mat->Mat(level, type, mat_indx);
     if(M_.Dim(0)!=0 && M_.Dim(1)!=0) return M_;
     else{
-      size_t class_indx = this->interac_list.InteracClass(type, mat_indx);
+      size_t class_indx = interac_list.InteracClass(type, mat_indx);
       if(class_indx!=mat_indx){
-        Matrix<Real_t>& M0 = this->Precomp(level, type, class_indx);
+        Matrix<Real_t>& M0 = Precomp(level, type, class_indx);
         if(M0.Dim(0)==0 || M0.Dim(1)==0) return M_;
   
-        for(size_t i=0;i<Perm_Count;i++) this->PrecompPerm(type, (Perm_Type) i);
-        Permutation<Real_t>& Pr = this->interac_list.Perm_R(level, type, mat_indx);
-        Permutation<Real_t>& Pc = this->interac_list.Perm_C(level, type, mat_indx);
+        for(size_t i=0;i<Perm_Count;i++) PrecompPerm(type, (Perm_Type) i);
+        Permutation<Real_t>& Pr = interac_list.Perm_R(level, type, mat_indx);
+        Permutation<Real_t>& Pc = interac_list.Perm_C(level, type, mat_indx);
         if(Pr.Dim()>0 && Pc.Dim()>0 && M0.Dim(0)>0 && M0.Dim(1)>0) return M_;
       }
     }
@@ -402,14 +402,14 @@ class FMM_Pts {
         Matrix<Real_t> M_c2e0=Precomp(level-1,DC2DE0_Type,0);
         Matrix<Real_t> M_c2e1=Precomp(level-1,DC2DE1_Type,0);
         if(ScaleInvar()) {
-          Permutation<Real_t> ker_perm=this->kernel->k_l2l->perm_vec[C_Perm+Scaling];
-          Vector<Real_t> scal_exp=this->kernel->k_l2l->trg_scal;
+          Permutation<Real_t> ker_perm=kernel->k_l2l->perm_vec[C_Perm+Scaling];
+          Vector<Real_t> scal_exp=kernel->k_l2l->trg_scal;
           Permutation<Real_t> P=equiv_surf_perm(MultipoleOrder(), Scaling, ker_perm, &scal_exp);
           M_c2e0=P*M_c2e0;
         }
         if(ScaleInvar()) {
-          Permutation<Real_t> ker_perm=this->kernel->k_l2l->perm_vec[0     +Scaling];
-          Vector<Real_t> scal_exp=this->kernel->k_l2l->src_scal;
+          Permutation<Real_t> ker_perm=kernel->k_l2l->perm_vec[0     +Scaling];
+          Vector<Real_t> scal_exp=kernel->k_l2l->src_scal;
           Permutation<Real_t> P=equiv_surf_perm(MultipoleOrder(), Scaling, ker_perm, &scal_exp);
           M_c2e1=M_c2e1*P;
         }
@@ -502,7 +502,7 @@ class FMM_Pts {
             if(ref_coord[0]==rel_coord[0] &&
                ref_coord[1]==rel_coord[1] &&
                ref_coord[2]==rel_coord[2]){
-              Matrix<Real_t>& M = this->mat->Mat(level, V_Type, k);
+              Matrix<Real_t>& M = mat->Mat(level, V_Type, k);
               M_ptr[j2*chld_cnt+j1]=&M[0][0];
               break;
             }
@@ -538,7 +538,7 @@ class FMM_Pts {
       }
       case BC_Type:
       {
-        if(!this->ScaleInvar() || MultipoleOrder()==0) break;
+        if(!ScaleInvar() || MultipoleOrder()==0) break;
         if(kernel->k_m2l->ker_dim[0]!=kernel->k_m2m->ker_dim[0]) break;
         if(kernel->k_m2l->ker_dim[1]!=kernel->k_l2l->ker_dim[1]) break;
         int ker_dim[2]={kernel->k_m2l->ker_dim[0],kernel->k_m2l->ker_dim[1]};
@@ -600,17 +600,17 @@ class FMM_Pts {
           }
           for(int level=0; level>=-BC_LEVELS; level--){
             {
-              this->Precomp(level, D2D_Type, 0);
-              Permutation<Real_t>& Pr = this->interac_list.Perm_R(level, D2D_Type, 0);
-              Permutation<Real_t>& Pc = this->interac_list.Perm_C(level, D2D_Type, 0);
-              M_l2l[-level] = M_check_zero_avg * Pr * this->Precomp(level, D2D_Type, this->interac_list.InteracClass(D2D_Type, 0)) * Pc * M_check_zero_avg;
+              Precomp(level, D2D_Type, 0);
+              Permutation<Real_t>& Pr = interac_list.Perm_R(level, D2D_Type, 0);
+              Permutation<Real_t>& Pc = interac_list.Perm_C(level, D2D_Type, 0);
+              M_l2l[-level] = M_check_zero_avg * Pr * Precomp(level, D2D_Type, interac_list.InteracClass(D2D_Type, 0)) * Pc * M_check_zero_avg;
               assert(M_l2l[-level].Dim(0)>0 && M_l2l[-level].Dim(1)>0);
             }
             for(size_t mat_indx=0; mat_indx<mat_cnt_m2m; mat_indx++){
-              this->Precomp(level, U2U_Type, mat_indx);
-              Permutation<Real_t>& Pr = this->interac_list.Perm_R(level, U2U_Type, mat_indx);
-              Permutation<Real_t>& Pc = this->interac_list.Perm_C(level, U2U_Type, mat_indx);
-              Matrix<Real_t> M = Pr * this->Precomp(level, U2U_Type, this->interac_list.InteracClass(U2U_Type, mat_indx)) * Pc;
+              Precomp(level, U2U_Type, mat_indx);
+              Permutation<Real_t>& Pr = interac_list.Perm_R(level, U2U_Type, mat_indx);
+              Permutation<Real_t>& Pc = interac_list.Perm_C(level, U2U_Type, mat_indx);
+              Matrix<Real_t> M = Pr * Precomp(level, U2U_Type, interac_list.InteracClass(U2U_Type, mat_indx)) * Pc;
               assert(M.Dim(0)>0 && M.Dim(1)>0);
   
               if(mat_indx==0) M_m2m[-level] = M_equiv_zero_avg*M*M_equiv_zero_avg;
@@ -636,15 +636,15 @@ class FMM_Pts {
             }else{
               M_m2l[-level]=M_equiv_zero_avg * M_m2l[-level-1] * M_check_zero_avg;
               if(ScaleInvar()) {
-                Permutation<Real_t> ker_perm=this->kernel->k_m2l->perm_vec[0     +Scaling];
-                Vector<Real_t> scal_exp=this->kernel->k_m2l->src_scal;
+                Permutation<Real_t> ker_perm=kernel->k_m2l->perm_vec[0     +Scaling];
+                Vector<Real_t> scal_exp=kernel->k_m2l->src_scal;
                 for(size_t i=0;i<scal_exp.Dim();i++) scal_exp[i]=-scal_exp[i];
                 Permutation<Real_t> P=equiv_surf_perm(MultipoleOrder(), Scaling, ker_perm, &scal_exp);
                 M_m2l[-level]=P*M_m2l[-level];
               }
               if(ScaleInvar()) {
-                Permutation<Real_t> ker_perm=this->kernel->k_m2l->perm_vec[C_Perm+Scaling];
-                Vector<Real_t> scal_exp=this->kernel->k_m2l->trg_scal;
+                Permutation<Real_t> ker_perm=kernel->k_m2l->perm_vec[C_Perm+Scaling];
+                Vector<Real_t> scal_exp=kernel->k_m2l->trg_scal;
                 for(size_t i=0;i<scal_exp.Dim();i++) scal_exp[i]=-scal_exp[i];
                 Permutation<Real_t> P=equiv_surf_perm(MultipoleOrder(), Scaling, ker_perm, &scal_exp);
                 M_m2l[-level]=M_m2l[-level]*P;
@@ -754,41 +754,41 @@ class FMM_Pts {
             }
             M-=M_grad;
           }
-          if(!this->ScaleInvar()) {
+          if(!ScaleInvar()) {
             Mat_Type type=D2D_Type;
             for(int l=-BC_LEVELS;l<0;l++)
-            for(size_t indx=0;indx<this->interac_list.ListCount(type);indx++){
-              Matrix<Real_t>& M=this->mat->Mat(l, type, indx);
+            for(size_t indx=0;indx<interac_list.ListCount(type);indx++){
+              Matrix<Real_t>& M=mat->Mat(l, type, indx);
               M.Resize(0,0);
             }
             type=U2U_Type;
             for(int l=-BC_LEVELS;l<0;l++)
-            for(size_t indx=0;indx<this->interac_list.ListCount(type);indx++){
-              Matrix<Real_t>& M=this->mat->Mat(l, type, indx);
+            for(size_t indx=0;indx<interac_list.ListCount(type);indx++){
+              Matrix<Real_t>& M=mat->Mat(l, type, indx);
               M.Resize(0,0);
             }
             type=DC2DE0_Type;
             for(int l=-BC_LEVELS;l<0;l++)
-            for(size_t indx=0;indx<this->interac_list.ListCount(type);indx++){
-              Matrix<Real_t>& M=this->mat->Mat(l, type, indx);
+            for(size_t indx=0;indx<interac_list.ListCount(type);indx++){
+              Matrix<Real_t>& M=mat->Mat(l, type, indx);
               M.Resize(0,0);
             }
             type=DC2DE1_Type;
             for(int l=-BC_LEVELS;l<0;l++)
-            for(size_t indx=0;indx<this->interac_list.ListCount(type);indx++){
-              Matrix<Real_t>& M=this->mat->Mat(l, type, indx);
+            for(size_t indx=0;indx<interac_list.ListCount(type);indx++){
+              Matrix<Real_t>& M=mat->Mat(l, type, indx);
               M.Resize(0,0);
             }
             type=UC2UE0_Type;
             for(int l=-BC_LEVELS;l<0;l++)
-            for(size_t indx=0;indx<this->interac_list.ListCount(type);indx++){
-              Matrix<Real_t>& M=this->mat->Mat(l, type, indx);
+            for(size_t indx=0;indx<interac_list.ListCount(type);indx++){
+              Matrix<Real_t>& M=mat->Mat(l, type, indx);
               M.Resize(0,0);
             }
             type=UC2UE1_Type;
             for(int l=-BC_LEVELS;l<0;l++)
-            for(size_t indx=0;indx<this->interac_list.ListCount(type);indx++){
-              Matrix<Real_t>& M=this->mat->Mat(l, type, indx);
+            for(size_t indx=0;indx<interac_list.ListCount(type);indx++){
+              Matrix<Real_t>& M=mat->Mat(l, type, indx);
               M.Resize(0,0);
             }
           }
@@ -847,7 +847,7 @@ class FMM_Pts {
     assert(kernel!=NULL);
     bool save_precomp=false;
     mat=new PrecompMat<Real_t>(ScaleInvar());
-    if(this->mat_fname.size()==0){
+    if(mat_fname.size()==0){
       std::stringstream st;
       st<<PVFMM_PRECOMP_DATA_PATH;
       if(!st.str().size()){
@@ -869,43 +869,43 @@ class FMM_Pts {
       else if(sizeof(Real_t)==4) st<<"_f";
       else st<<"_t"<<sizeof(Real_t);
       st<<".data";
-      this->mat_fname=st.str();
+      mat_fname=st.str();
       save_precomp=true;
     }
-    this->mat->LoadFile(mat_fname.c_str());
-    interac_list.Initialize(COORD_DIM, this->mat);
+    mat->LoadFile(mat_fname.c_str());
+    interac_list.Initialize(COORD_DIM, mat);
     Profile::Tic("PrecompUC2UE",false,4);
-    this->PrecompAll(UC2UE0_Type);
-    this->PrecompAll(UC2UE1_Type);
+    PrecompAll(UC2UE0_Type);
+    PrecompAll(UC2UE1_Type);
     Profile::Toc();
     Profile::Tic("PrecompDC2DE",false,4);
-    this->PrecompAll(DC2DE0_Type);
-    this->PrecompAll(DC2DE1_Type);
+    PrecompAll(DC2DE0_Type);
+    PrecompAll(DC2DE1_Type);
     Profile::Toc();
     Profile::Tic("PrecompBC",false,4);
-    this->PrecompAll(BC_Type,0);
+    PrecompAll(BC_Type,0);
     Profile::Toc();
     Profile::Tic("PrecompU2U",false,4);
-    this->PrecompAll(U2U_Type);
+    PrecompAll(U2U_Type);
     Profile::Toc();
     Profile::Tic("PrecompD2D",false,4);
-    this->PrecompAll(D2D_Type);
+    PrecompAll(D2D_Type);
     Profile::Toc();
     if(save_precomp){
       Profile::Tic("Save2File",false,4);
       if(!rank){
-        FILE* f=fopen(this->mat_fname.c_str(),"r");
+        FILE* f=fopen(mat_fname.c_str(),"r");
         if(f==NULL) { //File does not exists.
-          this->mat->Save2File(this->mat_fname.c_str());
+          mat->Save2File(mat_fname.c_str());
         }else fclose(f);
       }
       Profile::Toc();
     }
     Profile::Tic("PrecompV",false,4);
-    this->PrecompAll(V_Type);
+    PrecompAll(V_Type);
     Profile::Toc();
     Profile::Tic("PrecompV1",false,4);
-    this->PrecompAll(V1_Type);
+    PrecompAll(V1_Type);
     Profile::Toc();
     }Profile::Toc();
   }
@@ -925,7 +925,7 @@ class FMM_Pts {
       int indx=0;
       size_t vec_sz;
       {
-        Matrix<Real_t>& M_uc2ue = this->interac_list.ClassMat(0, UC2UE1_Type, 0);
+        Matrix<Real_t>& M_uc2ue = interac_list.ClassMat(0, UC2UE1_Type, 0);
         vec_sz=M_uc2ue.Dim(1);
       }
       std::vector< FMMNode_t* > node_lst;
@@ -976,7 +976,7 @@ class FMM_Pts {
       int indx=1;
       size_t vec_sz;
       {
-        Matrix<Real_t>& M_dc2de0 = this->interac_list.ClassMat(0, DC2DE0_Type, 0);
+        Matrix<Real_t>& M_dc2de0 = interac_list.ClassMat(0, DC2DE0_Type, 0);
         vec_sz=M_dc2de0.Dim(0);
       }
       std::vector< FMMNode_t* > node_lst;
@@ -1232,8 +1232,8 @@ class FMM_Pts {
       std::vector<Mat_Type>& interac_type_lst=setup_data.interac_type;
       for(size_t type_indx=0; type_indx<interac_type_lst.size(); type_indx++){
         Mat_Type& interac_type=interac_type_lst[type_indx];
-        this->PrecompAll(interac_type, level);
-        precomp_offset=this->mat->CompactData(level, interac_type, precomp_data, precomp_offset);
+        PrecompAll(interac_type, level);
+        precomp_offset=mat->CompactData(level, interac_type, precomp_data, precomp_offset);
       }
     }
     Profile::Toc();
@@ -1264,7 +1264,7 @@ class FMM_Pts {
       size_t buff_size=DEVICE_BUFFER_SIZE*1024l*1024l;
       if(n_out && n_in) for(size_t type_indx=0; type_indx<interac_type_lst.size(); type_indx++){
         Mat_Type& interac_type=interac_type_lst[type_indx];
-        size_t mat_cnt=this->interac_list.ListCount(interac_type);
+        size_t mat_cnt=interac_list.ListCount(interac_type);
         Matrix<size_t> precomp_data_offset;
         {
           struct HeaderData{
@@ -1318,7 +1318,7 @@ class FMM_Pts {
         std::vector<size_t> interac_blk_dsp(1,0);
         {
           dof=1;
-          Matrix<Real_t>& M0 = this->interac_list.ClassMat(level, interac_type_lst[0], 0);
+          Matrix<Real_t>& M0 = interac_list.ClassMat(level, interac_type_lst[0], 0);
           M_dim0=M0.Dim(0); M_dim1=M0.Dim(1);
         }
         {
@@ -1346,7 +1346,7 @@ class FMM_Pts {
               interac_dsp_-=offset;
               assert(interac_dsp_*vec_size<=buff_size);
             }
-            interac_mat.push_back(precomp_data_offset[this->interac_list.InteracClass(interac_type,j)][0]);
+            interac_mat.push_back(precomp_data_offset[interac_list.InteracClass(interac_type,j)][0]);
             interac_cnt.push_back(interac_dsp_-interac_dsp[0][j]);
           }
           interac_blk.push_back(mat_cnt-interac_blk_dsp.back());
@@ -1360,7 +1360,7 @@ class FMM_Pts {
               for(size_t j=interac_blk_dsp[k-1];j<interac_blk_dsp[k];j++){
                 FMMNode_t* trg_node=src_interac_list[i][j];
                 if(trg_node!=NULL && trg_node->node_id<n_out){
-                  size_t depth=(this->ScaleInvar()?trg_node->depth:0);
+                  size_t depth=(ScaleInvar()?trg_node->depth:0);
                   input_perm .push_back(precomp_data_offset[j][1+4*depth+0]);
                   input_perm .push_back(precomp_data_offset[j][1+4*depth+1]);
                   input_perm .push_back(interac_dsp[trg_node->node_id][j]*vec_size*sizeof(Real_t));
@@ -1377,7 +1377,7 @@ class FMM_Pts {
             for(size_t i=0;i<n_out;i++){
               for(size_t j=interac_blk_dsp[k-1];j<interac_blk_dsp[k];j++){
                 if(trg_interac_list[i][j]!=NULL){
-                  size_t depth=(this->ScaleInvar()?nodes_out[i]->depth:0);
+                  size_t depth=(ScaleInvar()?nodes_out[i]->depth:0);
                   output_perm.push_back(precomp_data_offset[j][1+4*depth+2]);
                   output_perm.push_back(precomp_data_offset[j][1+4*depth+3]);
                   output_perm.push_back(interac_dsp[               i ][j]*vec_size*sizeof(Real_t));
@@ -1389,7 +1389,7 @@ class FMM_Pts {
           }
         }
       }
-      if(this->dev_buffer.Dim()<buff_size) this->dev_buffer.ReInit(buff_size);
+      if(dev_buffer.Dim()<buff_size) dev_buffer.ReInit(buff_size);
       {
         size_t data_size=sizeof(size_t)*4;
         data_size+=sizeof(size_t)+interac_blk.size()*sizeof(size_t);
