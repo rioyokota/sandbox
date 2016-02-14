@@ -235,7 +235,7 @@ class FMM_Node {
   }
 
   void Subdivide(){
-    if(!this->IsLeaf()) return;
+    if(!IsLeaf()) return;
     if(child) return;
     SetStatus(1);
     int n=(1UL<<dim);
@@ -243,28 +243,28 @@ class FMM_Node {
     for(int i=0;i<n;i++){
       child[i]=NewNode();
       child[i]->parent=this;
-      ((FMM_Node*)child[i])->Initialize(this,i,NULL);
+      child[i]->Initialize(this,i,NULL);
     }
-    int nchld=(1UL<<this->Dim());
+    int nchld=(1UL<<Dim());
     if(!IsGhost()){
       std::vector<Vector<Real_t>*> pt_c;
       std::vector<Vector<Real_t>*> pt_v;
       std::vector<Vector<size_t>*> pt_s;
-      this->NodeDataVec(pt_c, pt_v, pt_s);
+      NodeDataVec(pt_c, pt_v, pt_s);
 
       std::vector<std::vector<Vector<Real_t>*> > chld_pt_c(nchld);
       std::vector<std::vector<Vector<Real_t>*> > chld_pt_v(nchld);
       std::vector<std::vector<Vector<size_t>*> > chld_pt_s(nchld);
       for(size_t i=0;i<nchld;i++){
-	((FMM_Node*)this->Child(i))->NodeDataVec(chld_pt_c[i], chld_pt_v[i], chld_pt_s[i]);
+	((FMM_Node*)Child(i))->NodeDataVec(chld_pt_c[i], chld_pt_v[i], chld_pt_s[i]);
       }
 
-      Real_t* c=this->Coord();
+      Real_t* c=Coord();
       Real_t s=pvfmm::pow<Real_t>(0.5,depth+1);
       for(size_t j=0;j<pt_c.size();j++){
 	if(!pt_c[j] || !pt_c[j]->Dim()) continue;
 	Vector<Real_t>& coord=*pt_c[j];
-	size_t npts=coord.Dim()/this->dim;
+	size_t npts=coord.Dim()/Dim();
 
 	Vector<size_t> cdata(nchld+1);
 	for(size_t i=0;i<nchld+1;i++){
