@@ -34,7 +34,6 @@ class FMM_Pts {
 
  protected:
 
-  mem::MemoryManager* mem_mgr;
   InteracList<FMMNode_t> interac_list;
   const Kernel<Real_t>* kernel;
   PrecompMat<Real_t>* mat;
@@ -845,7 +844,7 @@ class FMM_Pts {
   Vector<char> dev_buffer;
   Vector<char> staging_buffer;
 
-  FMM_Pts(mem::MemoryManager* mem_mgr_=NULL): mem_mgr(mem_mgr_),
+  FMM_Pts():
              vprecomp_fft_flag(false), vlist_fft_flag(false),
                vlist_ifft_flag(false), mat(NULL), kernel(NULL){};
 
