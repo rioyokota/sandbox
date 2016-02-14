@@ -807,34 +807,6 @@ class FMM_Pts {
   
  public:
 
-  struct PackedData{
-    size_t len;
-    Matrix<Real_t>* ptr;
-    Vector<size_t> cnt;
-    Vector<size_t> dsp;
-  };
-  struct InteracData{
-    Vector<size_t> in_node;
-    Vector<size_t> scal_idx;
-    Vector<Real_t> coord_shift;
-    Vector<size_t> interac_cnt;
-    Vector<size_t> interac_dsp;
-    Vector<size_t> interac_cst;
-    Vector<Real_t> scal[4*MAX_DEPTH];
-    Matrix<Real_t> M[4];
-  };
-  struct ptSetupData{
-    int level;
-    const Kernel<Real_t>* kernel;
-    PackedData src_coord;
-    PackedData src_value;
-    PackedData srf_coord;
-    PackedData srf_value;
-    PackedData trg_coord;
-    PackedData trg_value;
-    InteracData interac_data;
-  };
-
   class FMMData: public FMM_Data<Real_t>{
    public:
     ~FMMData(){}

@@ -319,6 +319,35 @@ inline void matmult_8x8x2<float>(float*& M_, float*& IN0, float*& IN1, float*& O
 template <class FMMNode_t>
 class FMM_Tree : public FMM_Pts<FMMNode_t> {
 
+ public:
+  struct PackedData{
+    size_t len;
+    Matrix<Real_t>* ptr;
+    Vector<size_t> cnt;
+    Vector<size_t> dsp;
+  };
+  struct InteracData{
+    Vector<size_t> in_node;
+    Vector<size_t> scal_idx;
+    Vector<Real_t> coord_shift;
+    Vector<size_t> interac_cnt;
+    Vector<size_t> interac_dsp;
+    Vector<size_t> interac_cst;
+    Vector<Real_t> scal[4*MAX_DEPTH];
+    Matrix<Real_t> M[4];
+  };
+  struct ptSetupData{
+    int level;
+    const Kernel<Real_t>* kernel;
+    PackedData src_coord;
+    PackedData src_value;
+    PackedData srf_coord;
+    PackedData srf_value;
+    PackedData trg_coord;
+    PackedData trg_value;
+    InteracData interac_data;
+  };
+
  private:
 
   inline int p2oLocal(Vector<MortonId> & nodes, Vector<MortonId>& leaves,
@@ -514,9 +543,6 @@ class FMM_Tree : public FMM_Pts<FMMNode_t> {
  public:
 
   typedef typename FMM_Pts<FMMNode_t>::FMMData FMMData_t;
-  typedef typename FMM_Pts<FMMNode_t>::ptSetupData ptSetupData;
-  typedef typename FMM_Pts<FMMNode_t>::PackedData PackedData;
-  typedef typename FMM_Pts<FMMNode_t>::InteracData InteracData;
   typedef FMM_Tree FMMTree_t;
   using FMM_Pts<FMMNode_t>::kernel;
   using FMM_Pts<FMMNode_t>::surface;
