@@ -48,11 +48,6 @@
 
 namespace pvfmm{
 
-enum BoundaryType{
-  FreeSpace,
-  Periodic
-};
-
 template <class Real_t>
 class FMM_Data{
  public:

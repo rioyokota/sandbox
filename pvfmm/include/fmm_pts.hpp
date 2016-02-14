@@ -814,11 +814,9 @@ class FMM_Pts {
   };
 
   Vector<char> dev_buffer;
-  Vector<char> staging_buffer;
 
-  FMM_Pts():
-             vprecomp_fft_flag(false), vlist_fft_flag(false),
-               vlist_ifft_flag(false), mat(NULL), kernel(NULL){};
+  FMM_Pts(): vprecomp_fft_flag(false), vlist_fft_flag(false),
+	     vlist_ifft_flag(false), mat(NULL), kernel(NULL){};
 
   ~FMM_Pts() {
     if(mat!=NULL){
@@ -1384,7 +1382,7 @@ class FMM_Pts {
                   output_perm.push_back(precomp_data_offset[j][1+4*depth+3]);
                   output_perm.push_back(interac_dsp[               i ][j]*vec_size*sizeof(Real_t));
                   output_perm.push_back((size_t)(&output_vector[i][0][0]-output_data[0]));
-                  assert(output_vector[i]->Dim()==vec_size);
+                  assert(output_vector[i]->Dim()==vec_OBsize);
                 }
               }
             }

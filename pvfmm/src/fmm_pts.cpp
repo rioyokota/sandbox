@@ -15,7 +15,6 @@ void fmm_test(size_t N, size_t M, Real_t b, int dist, int mult_order, int depth)
   typedef pvfmm::FMM_Tree<FMMNode_t> FMM_Tree_t;
 
   //Set kernel.
-  pvfmm::BoundaryType bndry=pvfmm::FreeSpace;
   const pvfmm::Kernel<Real_t>* mykernel = &pvfmm::LaplaceKernel<Real_t>::gradient();
 
   // Find out number of OMP thereads.
@@ -64,7 +63,7 @@ void fmm_test(size_t N, size_t M, Real_t b, int dist, int mult_order, int depth)
       }
     }
     pvfmm::Profile::Toc();
-    tree.InitFMM_Tree(false,bndry);
+    tree.InitFMM_Tree(false);
 
     // Setup FMM
     tree.SetupFMM();
