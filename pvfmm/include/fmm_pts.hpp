@@ -914,8 +914,8 @@ class FMM_Pts {
 
   bool ScaleInvar(){return kernel->scale_invar;}
 
-  void CollectNodeData(FMMTree_t* tree, std::vector<FMMNode_t*>& node, std::vector<Matrix<Real_t> >& buff_list, std::vector<Vector<FMMNode_t*> >& n_list,
-			       std::vector<std::vector<Vector<Real_t>* > > vec_list = std::vector<std::vector<Vector<Real_t>* > >(0)) {
+  void CollectNodeData(FMMTree_t* tree, std::vector<FMMNode_t*>& node, std::vector<Matrix<Real_t> >& buff_list, std::vector<Vector<FMMNode_t*> >& n_list) {
+    std::vector<std::vector<Vector<Real_t>* > > vec_list = std::vector<std::vector<Vector<Real_t>* > >(0);
     if(buff_list.size()<7) buff_list.resize(7);
     if(   n_list.size()<7)    n_list.resize(7);
     if( vec_list.size()<7)  vec_list.resize(7);
@@ -1165,32 +1165,15 @@ class FMM_Pts {
       std::vector<Vector<Real_t>*>& vec_lst= vec_list[indx];
       bool keep_data=(indx==4 || indx==6);
       size_t n_vec=vec_lst.size();
-      {
-        if(!n_vec) continue;
-        if(buff.Dim(0)*buff.Dim(1)>0){
-          bool init_buff=false;
-          Real_t* buff_start=&buff[0][0];
-          Real_t* buff_end=&buff[0][0]+buff.Dim(0)*buff.Dim(1);
-#pragma omp parallel for reduction(||:init_buff)
-          for(size_t i=0;i<n_vec;i++){
-            if(vec_lst[i]->Dim() && (&(*vec_lst[i])[0]<buff_start || &(*vec_lst[i])[0]>=buff_end)){
-              init_buff=true;
-            }
-          }
-          if(!init_buff) continue;
-        }
-      }
-  
+      if(!n_vec) continue;
       std::vector<size_t> vec_size(n_vec);
       std::vector<size_t> vec_disp(n_vec);
-      if(n_vec) {
 #pragma omp parallel for
-        for(size_t i=0;i<n_vec;i++) {
-          vec_size[i]=vec_lst[i]->Dim();
-        }
-        vec_disp[0]=0;
-        omp_par::scan(&vec_size[0],&vec_disp[0],n_vec);
+      for(size_t i=0;i<n_vec;i++) {
+	vec_size[i]=vec_lst[i]->Dim();
       }
+      vec_disp[0]=0;
+      omp_par::scan(&vec_size[0],&vec_disp[0],n_vec);
       size_t buff_size=vec_size[n_vec-1]+vec_disp[n_vec-1];
       if(!buff_size) continue;
       if(keep_data){
@@ -1217,7 +1200,7 @@ class FMM_Pts {
       }
 #pragma omp parallel for
       for(size_t i=0;i<n_vec;i++){
-        vec_lst[i]->ReInit(vec_size[i],&buff[0][0]+vec_disp[i],false);
+	vec_lst[i]->ReInit(vec_size[i],&buff[0][0]+vec_disp[i],false);
       }
     }
   }

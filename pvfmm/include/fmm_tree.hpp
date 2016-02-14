@@ -863,7 +863,7 @@ class FMM_Tree : public FMM_Pts<FMMNode_t> {
       n=static_cast<FMMNode_t*>(PostorderNxt(n));
     }
     std::vector<Vector<FMMNode_t*> > node_lists; // TODO: Remove this parameter, not really needed
-    CollectNodeData(this,all_nodes, node_data_buff, node_lists);
+    CollectNodeData(this, all_nodes, node_data_buff, node_lists);
     Profile::Toc();
   
     Profile::Tic("BuildLists",false,3);
@@ -874,50 +874,50 @@ class FMM_Tree : public FMM_Pts<FMMNode_t> {
     Profile::Tic("UListSetup",false,3);
     for(size_t i=0;i<MAX_DEPTH;i++){
       setup_data[i+MAX_DEPTH*0].precomp_data=&precomp_lst[0];
-      U_ListSetup(setup_data[i+MAX_DEPTH*0],this,node_data_buff,node_lists,ScaleInvar()?(i==0?-1:MAX_DEPTH+1):i);
+      U_ListSetup(setup_data[i+MAX_DEPTH*0],node_data_buff,node_lists,ScaleInvar()?(i==0?-1:MAX_DEPTH+1):i);
     }
     Profile::Toc();
     Profile::Tic("WListSetup",false,3);
     for(size_t i=0;i<MAX_DEPTH;i++){
       setup_data[i+MAX_DEPTH*1].precomp_data=&precomp_lst[1];
-      W_ListSetup(setup_data[i+MAX_DEPTH*1],this,node_data_buff,node_lists,ScaleInvar()?(i==0?-1:MAX_DEPTH+1):i);
+      W_ListSetup(setup_data[i+MAX_DEPTH*1],node_data_buff,node_lists,ScaleInvar()?(i==0?-1:MAX_DEPTH+1):i);
     }
     Profile::Toc();
     Profile::Tic("XListSetup",false,3);
     for(size_t i=0;i<MAX_DEPTH;i++){
       setup_data[i+MAX_DEPTH*2].precomp_data=&precomp_lst[2];
-      X_ListSetup(setup_data[i+MAX_DEPTH*2],this,node_data_buff,node_lists,ScaleInvar()?(i==0?-1:MAX_DEPTH+1):i);
+      X_ListSetup(setup_data[i+MAX_DEPTH*2],node_data_buff,node_lists,ScaleInvar()?(i==0?-1:MAX_DEPTH+1):i);
     }
     Profile::Toc();
     Profile::Tic("VListSetup",false,3);
     for(size_t i=0;i<MAX_DEPTH;i++){
       setup_data[i+MAX_DEPTH*3].precomp_data=&precomp_lst[3];
-      V_ListSetup(setup_data[i+MAX_DEPTH*3],this,node_data_buff,node_lists,ScaleInvar()?(i==0?-1:MAX_DEPTH+1):i);
+      V_ListSetup(setup_data[i+MAX_DEPTH*3],node_data_buff,node_lists,ScaleInvar()?(i==0?-1:MAX_DEPTH+1):i);
     }
     Profile::Toc();
     Profile::Tic("D2DSetup",false,3);
     for(size_t i=0;i<MAX_DEPTH;i++){
       setup_data[i+MAX_DEPTH*4].precomp_data=&precomp_lst[4];
-      Down2DownSetup(setup_data[i+MAX_DEPTH*4],this,node_data_buff,node_lists,i);
+      Down2DownSetup(setup_data[i+MAX_DEPTH*4],node_data_buff,node_lists,i);
     }
     Profile::Toc();
     Profile::Tic("D2TSetup",false,3);
     for(size_t i=0;i<MAX_DEPTH;i++){
       setup_data[i+MAX_DEPTH*5].precomp_data=&precomp_lst[5];
-      Down2TargetSetup(setup_data[i+MAX_DEPTH*5],this,node_data_buff,node_lists,ScaleInvar()?(i==0?-1:MAX_DEPTH+1):i);
+      Down2TargetSetup(setup_data[i+MAX_DEPTH*5],node_data_buff,node_lists,ScaleInvar()?(i==0?-1:MAX_DEPTH+1):i);
     }
     Profile::Toc();
   
     Profile::Tic("S2USetup",false,3);
     for(size_t i=0;i<MAX_DEPTH;i++){
       setup_data[i+MAX_DEPTH*6].precomp_data=&precomp_lst[6];
-      Source2UpSetup(setup_data[i+MAX_DEPTH*6],this,node_data_buff,node_lists,ScaleInvar()?(i==0?-1:MAX_DEPTH+1):i);
+      Source2UpSetup(setup_data[i+MAX_DEPTH*6],node_data_buff,node_lists,ScaleInvar()?(i==0?-1:MAX_DEPTH+1):i);
     }
     Profile::Toc();
     Profile::Tic("U2USetup",false,3);
     for(size_t i=0;i<MAX_DEPTH;i++){
       setup_data[i+MAX_DEPTH*7].precomp_data=&precomp_lst[7];
-      Up2UpSetup(setup_data[i+MAX_DEPTH*7],this,node_data_buff,node_lists,i);
+      Up2UpSetup(setup_data[i+MAX_DEPTH*7],node_data_buff,node_lists,i);
     }
     Profile::Toc();
     ClearFMMData();
@@ -1216,7 +1216,7 @@ class FMM_Tree : public FMM_Pts<FMMNode_t> {
     }
   }
 
-  void Source2UpSetup(SetupData<Real_t,FMMNode_t>& setup_data, FMMTree_t* tree, std::vector<Matrix<Real_t> >& buff, std::vector<Vector<FMMNode_t*> >& n_list, int level) {
+  void Source2UpSetup(SetupData<Real_t,FMMNode_t>& setup_data, std::vector<Matrix<Real_t> >& buff, std::vector<Vector<FMMNode_t*> >& n_list, int level) {
     if(!MultipoleOrder()) return;
     {
       setup_data. level=level;
@@ -1325,7 +1325,7 @@ class FMM_Tree : public FMM_Pts<FMMNode_t> {
       value.dsp.ReInit(nodes.size());
 #pragma omp parallel for
       for(size_t i=0;i<nodes.size();i++){
-        Vector<Real_t>& coord_vec=tree->upwd_check_surf[nodes[i]->depth];
+        Vector<Real_t>& coord_vec=upwd_check_surf[nodes[i]->depth];
         Vector<Real_t>& value_vec=(nodes[i]->FMMData())->upward_equiv;
         if(coord_vec.Dim()){
           coord.dsp[i]=&coord_vec[0]-coord.ptr[0][0];
@@ -1443,7 +1443,7 @@ class FMM_Tree : public FMM_Pts<FMMNode_t> {
     EvalListPts(setup_data);
   }
   
-  void Up2UpSetup(SetupData<Real_t,FMMNode_t>& setup_data, FMMTree_t* tree, std::vector<Matrix<Real_t> >& buff, std::vector<Vector<FMMNode_t*> >& n_list, int level){
+  void Up2UpSetup(SetupData<Real_t,FMMNode_t>& setup_data, std::vector<Matrix<Real_t> >& buff, std::vector<Vector<FMMNode_t*> >& n_list, int level){
     if(!MultipoleOrder()) return;
     {
       setup_data.level=level;
@@ -1915,7 +1915,7 @@ class FMM_Tree : public FMM_Pts<FMMNode_t> {
     Profile::Toc();
   }  
 
-  void V_ListSetup(SetupData<Real_t,FMMNode_t>&  setup_data, FMMTree_t* tree, std::vector<Matrix<Real_t> >& buff, std::vector<Vector<FMMNode_t*> >& n_list, int level){
+  void V_ListSetup(SetupData<Real_t,FMMNode_t>&  setup_data, std::vector<Matrix<Real_t> >& buff, std::vector<Vector<FMMNode_t*> >& n_list, int level){
     if(!MultipoleOrder()) return;
     if(level==0) return;
     {
@@ -2368,7 +2368,7 @@ class FMM_Tree : public FMM_Pts<FMMNode_t> {
     }
   }
 
-  void Down2DownSetup(SetupData<Real_t,FMMNode_t>& setup_data, FMMTree_t* tree, std::vector<Matrix<Real_t> >& buff, std::vector<Vector<FMMNode_t*> >& n_list, int level){
+  void Down2DownSetup(SetupData<Real_t,FMMNode_t>& setup_data, std::vector<Matrix<Real_t> >& buff, std::vector<Vector<FMMNode_t*> >& n_list, int level){
     if(!MultipoleOrder()) return;
     {
       setup_data.level=level;
@@ -2398,7 +2398,7 @@ class FMM_Tree : public FMM_Pts<FMMNode_t> {
     EvalList(setup_data);
   }
 
-  void X_ListSetup(SetupData<Real_t,FMMNode_t>&  setup_data, FMMTree_t* tree, std::vector<Matrix<Real_t> >& buff, std::vector<Vector<FMMNode_t*> >& n_list, int level){
+  void X_ListSetup(SetupData<Real_t,FMMNode_t>&  setup_data, std::vector<Matrix<Real_t> >& buff, std::vector<Vector<FMMNode_t*> >& n_list, int level){
     if(!MultipoleOrder()) return;
     {
       setup_data. level=level;
@@ -2501,7 +2501,7 @@ class FMM_Tree : public FMM_Pts<FMMNode_t> {
       value.dsp.ReInit(nodes.size());
 #pragma omp parallel for
       for(size_t i=0;i<nodes.size();i++){
-        Vector<Real_t>& coord_vec=tree->dnwd_check_surf[nodes[i]->depth];
+        Vector<Real_t>& coord_vec=dnwd_check_surf[nodes[i]->depth];
         Vector<Real_t>& value_vec=(nodes[i]->FMMData())->dnward_equiv;
         if(coord_vec.Dim()){
           coord.dsp[i]=&coord_vec[0]-coord.ptr[0][0];
@@ -2594,7 +2594,7 @@ class FMM_Tree : public FMM_Pts<FMMNode_t> {
     EvalListPts(setup_data);
   }
   
-  void W_ListSetup(SetupData<Real_t,FMMNode_t>&  setup_data, FMMTree_t* tree, std::vector<Matrix<Real_t> >& buff, std::vector<Vector<FMMNode_t*> >& n_list, int level){
+  void W_ListSetup(SetupData<Real_t,FMMNode_t>&  setup_data, std::vector<Matrix<Real_t> >& buff, std::vector<Vector<FMMNode_t*> >& n_list, int level){
     if(!MultipoleOrder()) return;
     {
       setup_data. level=level;
@@ -2629,7 +2629,7 @@ class FMM_Tree : public FMM_Pts<FMMNode_t> {
 #pragma omp parallel for
       for(size_t i=0;i<nodes.size();i++){
         ((FMMNode_t*)nodes[i])->node_id=i;
-        Vector<Real_t>& coord_vec=tree->upwd_equiv_surf[nodes[i]->depth];
+        Vector<Real_t>& coord_vec=upwd_equiv_surf[nodes[i]->depth];
         Vector<Real_t>& value_vec=(nodes[i]->FMMData())->upward_equiv;
         if(coord_vec.Dim()){
           coord.dsp[i]=&coord_vec[0]-coord.ptr[0][0];
@@ -2774,7 +2774,7 @@ class FMM_Tree : public FMM_Pts<FMMNode_t> {
     EvalListPts(setup_data);
   }  
 
-  void U_ListSetup(SetupData<Real_t,FMMNode_t>& setup_data, FMMTree_t* tree, std::vector<Matrix<Real_t> >& buff, std::vector<Vector<FMMNode_t*> >& n_list, int level){
+  void U_ListSetup(SetupData<Real_t,FMMNode_t>& setup_data, std::vector<Matrix<Real_t> >& buff, std::vector<Vector<FMMNode_t*> >& n_list, int level){
     {
       setup_data. level=level;
       setup_data.kernel=kernel->k_s2t;
@@ -3069,7 +3069,7 @@ class FMM_Tree : public FMM_Pts<FMMNode_t> {
     EvalListPts(setup_data);
   }
   
-  void Down2TargetSetup(SetupData<Real_t,FMMNode_t>&  setup_data, FMMTree_t* tree, std::vector<Matrix<Real_t> >& buff, std::vector<Vector<FMMNode_t*> >& n_list, int level){
+  void Down2TargetSetup(SetupData<Real_t,FMMNode_t>&  setup_data, std::vector<Matrix<Real_t> >& buff, std::vector<Vector<FMMNode_t*> >& n_list, int level){
     if(!MultipoleOrder()) return;
     {
       setup_data. level=level;
@@ -3104,8 +3104,8 @@ class FMM_Tree : public FMM_Pts<FMMNode_t> {
 #pragma omp parallel for
       for(size_t i=0;i<nodes.size();i++){
         nodes[i]->node_id=i;
-        Vector<Real_t>& coord_vec=tree->dnwd_equiv_surf[nodes[i]->depth];
-        Vector<Real_t>& value_vec=(nodes[i]->FMMData())->dnward_equiv;
+        Vector<Real_t>& coord_vec=dnwd_equiv_surf[nodes[i]->depth];
+        Vector<Real_t>& value_vec=nodes[i]->FMMData()->dnward_equiv;
         if(coord_vec.Dim()){
           coord.dsp[i]=&coord_vec[0]-coord.ptr[0][0];
           assert(coord.dsp[i]<coord.len);
