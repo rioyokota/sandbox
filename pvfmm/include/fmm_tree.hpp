@@ -704,6 +704,616 @@ class FMM_Tree : public FMM_Pts<FMMNode_t> {
     }
   }
 
+  void EvalListPts(SetupData<Real_t,FMMNode_t>& setup_data) {
+    if(setup_data.kernel->ker_dim[0]*setup_data.kernel->ker_dim[1]==0) return;
+    if(setup_data.interac_data.Dim(0)==0 || setup_data.interac_data.Dim(1)==0){
+      return;
+    }
+    bool have_gpu=false;
+    Profile::Tic("Host2Device",false,25);
+    typename Vector<char>::Device      dev_buff;
+    typename Matrix<char>::Device  interac_data;
+    typename Matrix<Real_t>::Device  coord_data;
+    typename Matrix<Real_t>::Device  input_data;
+    typename Matrix<Real_t>::Device output_data;
+    size_t ptr_single_layer_kernel=(size_t)NULL;
+    size_t ptr_double_layer_kernel=(size_t)NULL;
+    dev_buff    =       this-> dev_buffer;
+    interac_data= setup_data.interac_data;
+    if(setup_data.  coord_data!=NULL) coord_data  =*setup_data.  coord_data;
+    if(setup_data.  input_data!=NULL) input_data  =*setup_data.  input_data;
+    if(setup_data. output_data!=NULL) output_data =*setup_data. output_data;
+    ptr_single_layer_kernel=(size_t)setup_data.kernel->ker_poten;
+    ptr_double_layer_kernel=(size_t)setup_data.kernel->dbl_layer_poten;
+    Profile::Toc();
+    Profile::Tic("DeviceComp",false,20);
+    int lock_idx=-1;
+    int wait_lock_idx=-1;
+    {
+      ptSetupData data;
+      {
+        struct PackedSetupData{
+          size_t size;
+          int level;
+          const Kernel<Real_t>* kernel;
+          Matrix<Real_t>* src_coord;
+          Matrix<Real_t>* src_value;
+          Matrix<Real_t>* srf_coord;
+          Matrix<Real_t>* srf_value;
+          Matrix<Real_t>* trg_coord;
+          Matrix<Real_t>* trg_value;
+          size_t src_coord_cnt_size; size_t src_coord_cnt_offset;
+          size_t src_coord_dsp_size; size_t src_coord_dsp_offset;
+          size_t src_value_cnt_size; size_t src_value_cnt_offset;
+          size_t src_value_dsp_size; size_t src_value_dsp_offset;
+          size_t srf_coord_cnt_size; size_t srf_coord_cnt_offset;
+          size_t srf_coord_dsp_size; size_t srf_coord_dsp_offset;
+          size_t srf_value_cnt_size; size_t srf_value_cnt_offset;
+          size_t srf_value_dsp_size; size_t srf_value_dsp_offset;
+          size_t trg_coord_cnt_size; size_t trg_coord_cnt_offset;
+          size_t trg_coord_dsp_size; size_t trg_coord_dsp_offset;
+          size_t trg_value_cnt_size; size_t trg_value_cnt_offset;
+          size_t trg_value_dsp_size; size_t trg_value_dsp_offset;
+          size_t          in_node_size; size_t           in_node_offset;
+          size_t         scal_idx_size; size_t          scal_idx_offset;
+          size_t      coord_shift_size; size_t       coord_shift_offset;
+          size_t      interac_cnt_size; size_t       interac_cnt_offset;
+          size_t      interac_dsp_size; size_t       interac_dsp_offset;
+          size_t      interac_cst_size; size_t       interac_cst_offset;
+          size_t scal_dim[4*MAX_DEPTH]; size_t scal_offset[4*MAX_DEPTH];
+          size_t            Mdim[4][2]; size_t              M_offset[4];
+        };
+        typename Matrix<char>::Device& setupdata=interac_data;
+        PackedSetupData& pkd_data=*((PackedSetupData*)setupdata[0]);
+        data. level=pkd_data. level;
+        data.kernel=pkd_data.kernel;
+        data.src_coord.ptr=pkd_data.src_coord;
+        data.src_value.ptr=pkd_data.src_value;
+        data.srf_coord.ptr=pkd_data.srf_coord;
+        data.srf_value.ptr=pkd_data.srf_value;
+        data.trg_coord.ptr=pkd_data.trg_coord;
+        data.trg_value.ptr=pkd_data.trg_value;
+        data.src_coord.cnt.ReInit(pkd_data.src_coord_cnt_size, (size_t*)&setupdata[0][pkd_data.src_coord_cnt_offset], false);
+        data.src_coord.dsp.ReInit(pkd_data.src_coord_dsp_size, (size_t*)&setupdata[0][pkd_data.src_coord_dsp_offset], false);
+        data.src_value.cnt.ReInit(pkd_data.src_value_cnt_size, (size_t*)&setupdata[0][pkd_data.src_value_cnt_offset], false);
+        data.src_value.dsp.ReInit(pkd_data.src_value_dsp_size, (size_t*)&setupdata[0][pkd_data.src_value_dsp_offset], false);
+        data.srf_coord.cnt.ReInit(pkd_data.srf_coord_cnt_size, (size_t*)&setupdata[0][pkd_data.srf_coord_cnt_offset], false);
+        data.srf_coord.dsp.ReInit(pkd_data.srf_coord_dsp_size, (size_t*)&setupdata[0][pkd_data.srf_coord_dsp_offset], false);
+        data.srf_value.cnt.ReInit(pkd_data.srf_value_cnt_size, (size_t*)&setupdata[0][pkd_data.srf_value_cnt_offset], false);
+        data.srf_value.dsp.ReInit(pkd_data.srf_value_dsp_size, (size_t*)&setupdata[0][pkd_data.srf_value_dsp_offset], false);
+        data.trg_coord.cnt.ReInit(pkd_data.trg_coord_cnt_size, (size_t*)&setupdata[0][pkd_data.trg_coord_cnt_offset], false);
+        data.trg_coord.dsp.ReInit(pkd_data.trg_coord_dsp_size, (size_t*)&setupdata[0][pkd_data.trg_coord_dsp_offset], false);
+        data.trg_value.cnt.ReInit(pkd_data.trg_value_cnt_size, (size_t*)&setupdata[0][pkd_data.trg_value_cnt_offset], false);
+        data.trg_value.dsp.ReInit(pkd_data.trg_value_dsp_size, (size_t*)&setupdata[0][pkd_data.trg_value_dsp_offset], false);
+        InteracData& intdata=data.interac_data;
+        intdata.    in_node.ReInit(pkd_data.    in_node_size, (size_t*)&setupdata[0][pkd_data.    in_node_offset],false);
+        intdata.   scal_idx.ReInit(pkd_data.   scal_idx_size, (size_t*)&setupdata[0][pkd_data.   scal_idx_offset],false);
+        intdata.coord_shift.ReInit(pkd_data.coord_shift_size, (Real_t*)&setupdata[0][pkd_data.coord_shift_offset],false);
+        intdata.interac_cnt.ReInit(pkd_data.interac_cnt_size, (size_t*)&setupdata[0][pkd_data.interac_cnt_offset],false);
+        intdata.interac_dsp.ReInit(pkd_data.interac_dsp_size, (size_t*)&setupdata[0][pkd_data.interac_dsp_offset],false);
+        intdata.interac_cst.ReInit(pkd_data.interac_cst_size, (size_t*)&setupdata[0][pkd_data.interac_cst_offset],false);
+        for(size_t i=0;i<4*MAX_DEPTH;i++){
+          intdata.scal[i].ReInit(pkd_data.scal_dim[i], (Real_t*)&setupdata[0][pkd_data.scal_offset[i]],false);
+        }
+        for(size_t i=0;i<4;i++){
+          intdata.M[i].ReInit(pkd_data.Mdim[i][0], pkd_data.Mdim[i][1], (Real_t*)&setupdata[0][pkd_data.M_offset[i]],false);
+        }
+      }
+      {
+        InteracData& intdata=data.interac_data;
+        typename Kernel<Real_t>::Ker_t single_layer_kernel=(typename Kernel<Real_t>::Ker_t)ptr_single_layer_kernel;
+        typename Kernel<Real_t>::Ker_t double_layer_kernel=(typename Kernel<Real_t>::Ker_t)ptr_double_layer_kernel;
+        int omp_p=omp_get_max_threads();
+#pragma omp parallel for
+        for(size_t tid=0;tid<omp_p;tid++){
+          Matrix<Real_t> src_coord, src_value;
+          Matrix<Real_t> srf_coord, srf_value;
+          Matrix<Real_t> trg_coord, trg_value;
+          Vector<Real_t> buff;
+          {
+            size_t thread_buff_size=dev_buff.dim/sizeof(Real_t)/omp_p;
+            buff.ReInit(thread_buff_size, (Real_t*)&dev_buff[tid*thread_buff_size*sizeof(Real_t)], false);
+          }
+          size_t vcnt=0;
+          std::vector<Matrix<Real_t> > vbuff(6);
+          {
+            size_t vdim_=0, vdim[6];
+            for(size_t indx=0;indx<6;indx++){
+              vdim[indx]=0;
+              switch(indx){
+                case 0:
+                  vdim[indx]=intdata.M[0].Dim(0); break;
+                case 1:
+                  assert(intdata.M[0].Dim(1)==intdata.M[1].Dim(0));
+                  vdim[indx]=intdata.M[0].Dim(1); break;
+                case 2:
+                  vdim[indx]=intdata.M[1].Dim(1); break;
+                case 3:
+                  vdim[indx]=intdata.M[2].Dim(0); break;
+                case 4:
+                  assert(intdata.M[2].Dim(1)==intdata.M[3].Dim(0));
+                  vdim[indx]=intdata.M[2].Dim(1); break;
+                case 5:
+                  vdim[indx]=intdata.M[3].Dim(1); break;
+                default:
+                  vdim[indx]=0; break;
+              }
+              vdim_+=vdim[indx];
+            }
+            if(vdim_){
+              vcnt=buff.Dim()/vdim_/2;
+              assert(vcnt>0);
+            }
+            for(size_t indx=0;indx<6;indx++){
+              vbuff[indx].ReInit(vcnt,vdim[indx],&buff[0],false);
+              buff.ReInit(buff.Dim()-vdim[indx]*vcnt, &buff[vdim[indx]*vcnt], false);
+            }
+          }
+          size_t trg_a=0, trg_b=0;
+          if(intdata.interac_cst.Dim()){
+            Vector<size_t>& interac_cst=intdata.interac_cst;
+            size_t cost=interac_cst[interac_cst.Dim()-1];
+            trg_a=std::lower_bound(&interac_cst[0],&interac_cst[interac_cst.Dim()-1],(cost*(tid+0))/omp_p)-&interac_cst[0]+1;
+            trg_b=std::lower_bound(&interac_cst[0],&interac_cst[interac_cst.Dim()-1],(cost*(tid+1))/omp_p)-&interac_cst[0]+1;
+            if(tid==omp_p-1) trg_b=interac_cst.Dim();
+            if(tid==0) trg_a=0;
+          }
+          for(size_t trg0=trg_a;trg0<trg_b;){
+            size_t trg1_max=1;
+            if(vcnt){
+              size_t interac_cnt=intdata.interac_cnt[trg0];
+              while(trg0+trg1_max<trg_b){
+                interac_cnt+=intdata.interac_cnt[trg0+trg1_max];
+                if(interac_cnt>vcnt){
+                  interac_cnt-=intdata.interac_cnt[trg0+trg1_max];
+                  break;
+                }
+                trg1_max++;
+              }
+              assert(interac_cnt<=vcnt);
+              for(size_t k=0;k<6;k++){
+                if(vbuff[k].Dim(0)*vbuff[k].Dim(1)){
+                  vbuff[k].ReInit(interac_cnt,vbuff[k].Dim(1),vbuff[k][0],false);
+                }
+              }
+            }else{
+              trg1_max=trg_b-trg0;
+            }
+            if(intdata.M[0].Dim(0) && intdata.M[0].Dim(1) && intdata.M[1].Dim(0) && intdata.M[1].Dim(1)){
+              size_t interac_idx=0;
+              for(size_t trg1=0;trg1<trg1_max;trg1++){
+                size_t trg=trg0+trg1;
+                for(size_t i=0;i<intdata.interac_cnt[trg];i++){
+                  size_t int_id=intdata.interac_dsp[trg]+i;
+                  size_t src=intdata.in_node[int_id];
+                  src_value.ReInit(1, data.src_value.cnt[src], &data.src_value.ptr[0][0][data.src_value.dsp[src]], false);
+                  {
+                    size_t vdim=vbuff[0].Dim(1);
+                    assert(src_value.Dim(1)==vdim);
+                    for(size_t j=0;j<vdim;j++) vbuff[0][interac_idx][j]=src_value[0][j];
+                  }
+                  size_t scal_idx=intdata.scal_idx[int_id];
+                  {
+                    Matrix<Real_t>& vec=vbuff[0];
+                    Vector<Real_t>& scal=intdata.scal[scal_idx*4+0];
+                    size_t scal_dim=scal.Dim();
+                    if(scal_dim){
+                      size_t vdim=vec.Dim(1);
+                      for(size_t j=0;j<vdim;j+=scal_dim){
+                        for(size_t k=0;k<scal_dim;k++){
+                          vec[interac_idx][j+k]*=scal[k];
+                        }
+                      }
+                    }
+                  }
+                  interac_idx++;
+                }
+              }
+              Matrix<Real_t>::GEMM(vbuff[1],vbuff[0],intdata.M[0]);
+              Matrix<Real_t>::GEMM(vbuff[2],vbuff[1],intdata.M[1]);
+              interac_idx=0;
+              for(size_t trg1=0;trg1<trg1_max;trg1++){
+                size_t trg=trg0+trg1;
+                for(size_t i=0;i<intdata.interac_cnt[trg];i++){
+                  size_t int_id=intdata.interac_dsp[trg]+i;
+                  size_t scal_idx=intdata.scal_idx[int_id];
+                  {
+                    Matrix<Real_t>& vec=vbuff[2];
+                    Vector<Real_t>& scal=intdata.scal[scal_idx*4+1];
+                    size_t scal_dim=scal.Dim();
+                    if(scal_dim){
+                      size_t vdim=vec.Dim(1);
+                      for(size_t j=0;j<vdim;j+=scal_dim){
+                        for(size_t k=0;k<scal_dim;k++){
+                          vec[interac_idx][j+k]*=scal[k];
+                        }
+                      }
+                    }
+                  }
+                  interac_idx++;
+                }
+              }
+            }
+            if(intdata.M[2].Dim(0) && intdata.M[2].Dim(1) && intdata.M[3].Dim(0) && intdata.M[3].Dim(1)){
+              size_t vdim=vbuff[3].Dim(0)*vbuff[3].Dim(1);
+              for(size_t i=0;i<vdim;i++) vbuff[3][0][i]=0;
+            }
+            {
+              size_t interac_idx=0;
+              for(size_t trg1=0;trg1<trg1_max;trg1++){
+                size_t trg=trg0+trg1;
+                trg_coord.ReInit(1, data.trg_coord.cnt[trg], &data.trg_coord.ptr[0][0][data.trg_coord.dsp[trg]], false);
+                trg_value.ReInit(1, data.trg_value.cnt[trg], &data.trg_value.ptr[0][0][data.trg_value.dsp[trg]], false);
+                for(size_t i=0;i<intdata.interac_cnt[trg];i++){
+                  size_t int_id=intdata.interac_dsp[trg]+i;
+                  size_t src=intdata.in_node[int_id];
+                  src_coord.ReInit(1, data.src_coord.cnt[src], &data.src_coord.ptr[0][0][data.src_coord.dsp[src]], false);
+                  src_value.ReInit(1, data.src_value.cnt[src], &data.src_value.ptr[0][0][data.src_value.dsp[src]], false);
+                  srf_coord.ReInit(1, data.srf_coord.cnt[src], &data.srf_coord.ptr[0][0][data.srf_coord.dsp[src]], false);
+                  srf_value.ReInit(1, data.srf_value.cnt[src], &data.srf_value.ptr[0][0][data.srf_value.dsp[src]], false);
+                  Real_t* vbuff2_ptr=(vbuff[2].Dim(0)*vbuff[2].Dim(1)?vbuff[2][interac_idx]:src_value[0]);
+                  Real_t* vbuff3_ptr=(vbuff[3].Dim(0)*vbuff[3].Dim(1)?vbuff[3][interac_idx]:trg_value[0]);
+                  if(src_coord.Dim(1)){
+                    {
+                      Real_t* shift=&intdata.coord_shift[int_id*COORD_DIM];
+                      if(shift[0]!=0 || shift[1]!=0 || shift[2]!=0){
+                        size_t vdim=src_coord.Dim(1);
+                        Vector<Real_t> new_coord(vdim, &buff[0], false);
+                        assert(buff.Dim()>=vdim);
+                        for(size_t j=0;j<vdim;j+=COORD_DIM){
+                          for(size_t k=0;k<COORD_DIM;k++){
+                            new_coord[j+k]=src_coord[0][j+k]+shift[k];
+                          }
+                        }
+                        src_coord.ReInit(1, vdim, &new_coord[0], false);
+                      }
+                    }
+                    assert(ptr_single_layer_kernel);
+                    single_layer_kernel(src_coord[0], src_coord.Dim(1)/COORD_DIM, vbuff2_ptr, 1,
+                                        trg_coord[0], trg_coord.Dim(1)/COORD_DIM, vbuff3_ptr, NULL);
+                  }
+                  if(srf_coord.Dim(1)){
+                    {
+                      Real_t* shift=&intdata.coord_shift[int_id*COORD_DIM];
+                      if(shift[0]!=0 || shift[1]!=0 || shift[2]!=0){
+                        size_t vdim=srf_coord.Dim(1);
+                        Vector<Real_t> new_coord(vdim, &buff[0], false);
+                        assert(buff.Dim()>=vdim);
+                        for(size_t j=0;j<vdim;j+=COORD_DIM){
+                          for(size_t k=0;k<COORD_DIM;k++){
+                            new_coord[j+k]=srf_coord[0][j+k]+shift[k];
+                          }
+                        }
+                        srf_coord.ReInit(1, vdim, &new_coord[0], false);
+                      }
+                    }
+                    assert(ptr_double_layer_kernel);
+                    double_layer_kernel(srf_coord[0], srf_coord.Dim(1)/COORD_DIM, srf_value[0], 1,
+                                        trg_coord[0], trg_coord.Dim(1)/COORD_DIM, vbuff3_ptr, NULL);
+                  }
+                  interac_idx++;
+                }
+              }
+            }
+            if(intdata.M[2].Dim(0) && intdata.M[2].Dim(1) && intdata.M[3].Dim(0) && intdata.M[3].Dim(1)){
+              size_t interac_idx=0;
+              for(size_t trg1=0;trg1<trg1_max;trg1++){
+                size_t trg=trg0+trg1;
+                for(size_t i=0;i<intdata.interac_cnt[trg];i++){
+                  size_t int_id=intdata.interac_dsp[trg]+i;
+                  size_t scal_idx=intdata.scal_idx[int_id];
+                  {
+                    Matrix<Real_t>& vec=vbuff[3];
+                    Vector<Real_t>& scal=intdata.scal[scal_idx*4+2];
+                    size_t scal_dim=scal.Dim();
+                    if(scal_dim){
+                      size_t vdim=vec.Dim(1);
+                      for(size_t j=0;j<vdim;j+=scal_dim){
+                        for(size_t k=0;k<scal_dim;k++){
+                          vec[interac_idx][j+k]*=scal[k];
+                        }
+                      }
+                    }
+                  }
+                  interac_idx++;
+                }
+              }
+              Matrix<Real_t>::GEMM(vbuff[4],vbuff[3],intdata.M[2]);
+              Matrix<Real_t>::GEMM(vbuff[5],vbuff[4],intdata.M[3]);
+              interac_idx=0;
+              for(size_t trg1=0;trg1<trg1_max;trg1++){
+                size_t trg=trg0+trg1;
+                trg_value.ReInit(1, data.trg_value.cnt[trg], &data.trg_value.ptr[0][0][data.trg_value.dsp[trg]], false);
+                for(size_t i=0;i<intdata.interac_cnt[trg];i++){
+                  size_t int_id=intdata.interac_dsp[trg]+i;
+                  size_t scal_idx=intdata.scal_idx[int_id];
+                  {
+                    Matrix<Real_t>& vec=vbuff[5];
+                    Vector<Real_t>& scal=intdata.scal[scal_idx*4+3];
+                    size_t scal_dim=scal.Dim();
+                    if(scal_dim){
+                      size_t vdim=vec.Dim(1);
+                      for(size_t j=0;j<vdim;j+=scal_dim){
+                        for(size_t k=0;k<scal_dim;k++){
+                          vec[interac_idx][j+k]*=scal[k];
+                        }
+                      }
+                    }
+                  }
+                  {
+                    size_t vdim=vbuff[5].Dim(1);
+                    assert(trg_value.Dim(1)==vdim);
+                    for(size_t i=0;i<vdim;i++) trg_value[0][i]+=vbuff[5][interac_idx][i];
+                  }
+                  interac_idx++;
+                }
+              }
+            }
+            trg0+=trg1_max;
+          }
+        }
+      }
+    }
+    Profile::Toc();
+  }  
+
+  void Source2UpSetup(SetupData<Real_t,FMMNode_t>& setup_data, FMMTree_t* tree, std::vector<Matrix<Real_t> >& buff, std::vector<Vector<FMMNode_t*> >& n_list, int level) {
+    if(!this->MultipoleOrder()) return;
+    {
+      setup_data. level=level;
+      setup_data.kernel=kernel->k_s2m;
+      setup_data. input_data=&buff[4];
+      setup_data.output_data=&buff[0];
+      setup_data. coord_data=&buff[6];
+      Vector<FMMNode_t*>& nodes_in =n_list[4];
+      Vector<FMMNode_t*>& nodes_out=n_list[0];
+      setup_data.nodes_in .clear();
+      setup_data.nodes_out.clear();
+      for(size_t i=0;i<nodes_in .Dim();i++)
+        if((nodes_in [i]->depth==level || level==-1)
+  	 && (nodes_in [i]->src_coord.Dim() || nodes_in [i]->surf_coord.Dim())
+  	 && nodes_in [i]->IsLeaf() && !nodes_in [i]->IsGhost()) setup_data.nodes_in .push_back(nodes_in [i]);
+      for(size_t i=0;i<nodes_out.Dim();i++)
+        if((nodes_out[i]->depth==level || level==-1)
+  	 && (nodes_out[i]->src_coord.Dim() || nodes_out[i]->surf_coord.Dim())
+  	 && nodes_out[i]->IsLeaf() && !nodes_out[i]->IsGhost()) setup_data.nodes_out.push_back(nodes_out[i]);
+    }
+    ptSetupData data;
+    data. level=setup_data. level;
+    data.kernel=setup_data.kernel;
+    std::vector<FMMNode_t*>& nodes_in =setup_data.nodes_in ;
+    std::vector<FMMNode_t*>& nodes_out=setup_data.nodes_out;
+    {
+      std::vector<FMMNode_t*>& nodes=nodes_in;
+      PackedData& coord=data.src_coord;
+      PackedData& value=data.src_value;
+      coord.ptr=setup_data. coord_data;
+      value.ptr=setup_data. input_data;
+      coord.len=coord.ptr->Dim(0)*coord.ptr->Dim(1);
+      value.len=value.ptr->Dim(0)*value.ptr->Dim(1);
+      coord.cnt.ReInit(nodes.size());
+      coord.dsp.ReInit(nodes.size());
+      value.cnt.ReInit(nodes.size());
+      value.dsp.ReInit(nodes.size());
+#pragma omp parallel for
+      for(size_t i=0;i<nodes.size();i++){
+        nodes[i]->node_id=i;
+        Vector<Real_t>& coord_vec=nodes[i]->src_coord;
+        Vector<Real_t>& value_vec=nodes[i]->src_value;
+        if(coord_vec.Dim()){
+          coord.dsp[i]=&coord_vec[0]-coord.ptr[0][0];
+          assert(coord.dsp[i]<coord.len);
+          coord.cnt[i]=coord_vec.Dim();
+        }else{
+          coord.dsp[i]=0;
+          coord.cnt[i]=0;
+        }
+        if(value_vec.Dim()){
+          value.dsp[i]=&value_vec[0]-value.ptr[0][0];
+          assert(value.dsp[i]<value.len);
+          value.cnt[i]=value_vec.Dim();
+        }else{
+          value.dsp[i]=0;
+          value.cnt[i]=0;
+        }
+      }
+    }
+    {
+      std::vector<FMMNode_t*>& nodes=nodes_in;
+      PackedData& coord=data.srf_coord;
+      PackedData& value=data.srf_value;
+      coord.ptr=setup_data. coord_data;
+      value.ptr=setup_data. input_data;
+      coord.len=coord.ptr->Dim(0)*coord.ptr->Dim(1);
+      value.len=value.ptr->Dim(0)*value.ptr->Dim(1);
+      coord.cnt.ReInit(nodes.size());
+      coord.dsp.ReInit(nodes.size());
+      value.cnt.ReInit(nodes.size());
+      value.dsp.ReInit(nodes.size());
+#pragma omp parallel for
+      for(size_t i=0;i<nodes.size();i++){
+        Vector<Real_t>& coord_vec=nodes[i]->surf_coord;
+        Vector<Real_t>& value_vec=nodes[i]->surf_value;
+        if(coord_vec.Dim()){
+          coord.dsp[i]=&coord_vec[0]-coord.ptr[0][0];
+          assert(coord.dsp[i]<coord.len);
+          coord.cnt[i]=coord_vec.Dim();
+        }else{
+          coord.dsp[i]=0;
+          coord.cnt[i]=0;
+        }
+        if(value_vec.Dim()){
+          value.dsp[i]=&value_vec[0]-value.ptr[0][0];
+          assert(value.dsp[i]<value.len);
+          value.cnt[i]=value_vec.Dim();
+        }else{
+          value.dsp[i]=0;
+          value.cnt[i]=0;
+        }
+      }
+    }
+    {
+      std::vector<FMMNode_t*>& nodes=nodes_out;
+      PackedData& coord=data.trg_coord;
+      PackedData& value=data.trg_value;
+      coord.ptr=setup_data. coord_data;
+      value.ptr=setup_data.output_data;
+      coord.len=coord.ptr->Dim(0)*coord.ptr->Dim(1);
+      value.len=value.ptr->Dim(0)*value.ptr->Dim(1);
+      coord.cnt.ReInit(nodes.size());
+      coord.dsp.ReInit(nodes.size());
+      value.cnt.ReInit(nodes.size());
+      value.dsp.ReInit(nodes.size());
+#pragma omp parallel for
+      for(size_t i=0;i<nodes.size();i++){
+        Vector<Real_t>& coord_vec=tree->upwd_check_surf[nodes[i]->depth];
+        Vector<Real_t>& value_vec=(nodes[i]->FMMData())->upward_equiv;
+        if(coord_vec.Dim()){
+          coord.dsp[i]=&coord_vec[0]-coord.ptr[0][0];
+          assert(coord.dsp[i]<coord.len);
+          coord.cnt[i]=coord_vec.Dim();
+        }else{
+          coord.dsp[i]=0;
+          coord.cnt[i]=0;
+        }
+        if(value_vec.Dim()){
+          value.dsp[i]=&value_vec[0]-value.ptr[0][0];
+          assert(value.dsp[i]<value.len);
+          value.cnt[i]=value_vec.Dim();
+        }else{
+          value.dsp[i]=0;
+          value.cnt[i]=0;
+        }
+      }
+    }
+    {
+      int omp_p=omp_get_max_threads();
+      std::vector<std::vector<size_t> > in_node_(omp_p);
+      std::vector<std::vector<size_t> > scal_idx_(omp_p);
+      std::vector<std::vector<Real_t> > coord_shift_(omp_p);
+      std::vector<std::vector<size_t> > interac_cnt_(omp_p);
+      if(this->ScaleInvar()){
+        const Kernel<Real_t>* ker=kernel->k_m2m;
+        for(size_t l=0;l<MAX_DEPTH;l++){
+          Vector<Real_t>& scal=data.interac_data.scal[l*4+2];
+          Vector<Real_t>& scal_exp=ker->trg_scal;
+          scal.ReInit(scal_exp.Dim());
+          for(size_t i=0;i<scal.Dim();i++){
+            scal[i]=pvfmm::pow<Real_t>(2.0,-scal_exp[i]*l);
+          }
+        }
+        for(size_t l=0;l<MAX_DEPTH;l++){
+          Vector<Real_t>& scal=data.interac_data.scal[l*4+3];
+          Vector<Real_t>& scal_exp=ker->src_scal;
+          scal.ReInit(scal_exp.Dim());
+          for(size_t i=0;i<scal.Dim();i++){
+            scal[i]=pvfmm::pow<Real_t>(2.0,-scal_exp[i]*l);
+          }
+        }
+      }
+#pragma omp parallel for
+      for(size_t tid=0;tid<omp_p;tid++){
+        std::vector<size_t>& in_node    =in_node_[tid]    ;
+        std::vector<size_t>& scal_idx   =scal_idx_[tid]   ;
+        std::vector<Real_t>& coord_shift=coord_shift_[tid];
+        std::vector<size_t>& interac_cnt=interac_cnt_[tid];
+        size_t a=(nodes_out.size()*(tid+0))/omp_p;
+        size_t b=(nodes_out.size()*(tid+1))/omp_p;
+        for(size_t i=a;i<b;i++){
+          FMMNode_t* tnode=nodes_out[i];
+          Real_t s=pvfmm::pow<Real_t>(0.5,tnode->depth);
+          size_t interac_cnt_=0;
+          {
+            Mat_Type type=S2U_Type;
+            Vector<FMMNode_t*>& intlst=tnode->interac_list[type];
+            for(size_t j=0;j<intlst.Dim();j++) if(intlst[j]){
+              FMMNode_t* snode=intlst[j];
+              size_t snode_id=snode->node_id;
+              if(snode_id>=nodes_in.size() || nodes_in[snode_id]!=snode) continue;
+              in_node.push_back(snode_id);
+              scal_idx.push_back(snode->depth);
+              {
+                const int* rel_coord=interac_list.RelativeCoord(type,j);
+                const Real_t* scoord=snode->Coord();
+                const Real_t* tcoord=tnode->Coord();
+                Real_t shift[COORD_DIM];
+                shift[0]=rel_coord[0]*0.5*s-(scoord[0]+0.5*s)+(0+0.5*s);
+                shift[1]=rel_coord[1]*0.5*s-(scoord[1]+0.5*s)+(0+0.5*s);
+                shift[2]=rel_coord[2]*0.5*s-(scoord[2]+0.5*s)+(0+0.5*s);
+                coord_shift.push_back(shift[0]);
+                coord_shift.push_back(shift[1]);
+                coord_shift.push_back(shift[2]);
+              }
+              interac_cnt_++;
+            }
+          }
+          interac_cnt.push_back(interac_cnt_);
+        }
+      }
+      {
+        InteracData& interac_data=data.interac_data;
+	CopyVec(in_node_,interac_data.in_node);
+	CopyVec(scal_idx_,interac_data.scal_idx);
+	CopyVec(coord_shift_,interac_data.coord_shift);
+	CopyVec(interac_cnt_,interac_data.interac_cnt);
+        {
+          pvfmm::Vector<size_t>& cnt=interac_data.interac_cnt;
+          pvfmm::Vector<size_t>& dsp=interac_data.interac_dsp;
+          dsp.ReInit(cnt.Dim()); if(dsp.Dim()) dsp[0]=0;
+          omp_par::scan(&cnt[0],&dsp[0],dsp.Dim());
+        }
+      }
+      {
+        InteracData& interac_data=data.interac_data;
+        pvfmm::Vector<size_t>& cnt=interac_data.interac_cnt;
+        pvfmm::Vector<size_t>& dsp=interac_data.interac_dsp;
+        if(cnt.Dim() && cnt[cnt.Dim()-1]+dsp[dsp.Dim()-1]){
+          data.interac_data.M[2]=this->mat->Mat(level, UC2UE0_Type, 0);
+          data.interac_data.M[3]=this->mat->Mat(level, UC2UE1_Type, 0);
+        }else{
+          data.interac_data.M[2].ReInit(0,0);
+          data.interac_data.M[3].ReInit(0,0);
+        }
+      }
+    }
+    PtSetup(setup_data, &data);
+  }
+
+  void Source2Up(SetupData<Real_t,FMMNode_t>&  setup_data) {
+    if(!this->MultipoleOrder()) return;
+    this->EvalListPts(setup_data);
+  }
+  
+  void Up2UpSetup(SetupData<Real_t,FMMNode_t>& setup_data, FMMTree_t* tree, std::vector<Matrix<Real_t> >& buff, std::vector<Vector<FMMNode_t*> >& n_list, int level){
+    if(!this->MultipoleOrder()) return;
+    {
+      setup_data.level=level;
+      setup_data.kernel=kernel->k_m2m;
+      setup_data.interac_type.resize(1);
+      setup_data.interac_type[0]=U2U_Type;
+      setup_data. input_data=&buff[0];
+      setup_data.output_data=&buff[0];
+      Vector<FMMNode_t*>& nodes_in =n_list[0];
+      Vector<FMMNode_t*>& nodes_out=n_list[0];
+      setup_data.nodes_in .clear();
+      setup_data.nodes_out.clear();
+      for(size_t i=0;i<nodes_in .Dim();i++) if((nodes_in [i]->depth==level+1) && nodes_in [i]->pt_cnt[0]) setup_data.nodes_in .push_back(nodes_in [i]);
+      for(size_t i=0;i<nodes_out.Dim();i++) if((nodes_out[i]->depth==level  ) && nodes_out[i]->pt_cnt[0]) setup_data.nodes_out.push_back(nodes_out[i]);
+    }
+    std::vector<FMMNode_t*>& nodes_in =setup_data.nodes_in ;
+    std::vector<FMMNode_t*>& nodes_out=setup_data.nodes_out;
+    std::vector<Vector<Real_t>*>&  input_vector=setup_data. input_vector;  input_vector.clear();
+    std::vector<Vector<Real_t>*>& output_vector=setup_data.output_vector; output_vector.clear();
+    for(size_t i=0;i<nodes_in .size();i++)  input_vector.push_back(&(nodes_in [i]->FMMData())->upward_equiv);
+    for(size_t i=0;i<nodes_out.size();i++) output_vector.push_back(&(nodes_out[i]->FMMData())->upward_equiv);
+    SetupInterac(setup_data);
+  }
+  
+  void Up2Up(SetupData<Real_t,FMMNode_t>& setup_data){
+    if(!this->MultipoleOrder()) return;
+    EvalList(setup_data);
+  }
+
   void PeriodicBC(FMMNode_t* node){
     if(!this->ScaleInvar() || this->MultipoleOrder()==0) return;
     Matrix<Real_t>& M = Precomp(0, BC_Type, 0);
