@@ -4,7 +4,7 @@
 
 void fmm_test(size_t N, size_t M, Real_t b, int dist, int mult_order, int depth){
   typedef pvfmm::FMM_Node FMMNode_t;
-  typedef pvfmm::FMM_Tree<FMMNode_t> FMMTree_t;
+  typedef pvfmm::FMM_Tree FMMTree_t;
 
   //Set kernel.
   const pvfmm::Kernel<Real_t>* mykernel = &pvfmm::LaplaceKernel<Real_t>::gradient();

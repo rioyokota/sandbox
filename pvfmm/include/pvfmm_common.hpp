@@ -1,5 +1,3 @@
-#include "pvfmm_config.h"
-
 #ifndef _PVFMM_COMMON_HPP_
 #define _PVFMM_COMMON_HPP_
 

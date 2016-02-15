@@ -1,17 +1,7 @@
-/**
- * \file precomp_mat.txx
- * \author Dhairya Malhotra, dhairya.malhotra@gmail.com
- * \date 3-07-2011
- * \brief This file contains the implementation of the PrecompMat class.
- * Handles storage of precomputed translation matrices.
- */
-
 #include <omp.h>
 #include <cassert>
 #include <stdint.h>
-#ifdef PVFMM_HAVE_SYS_STAT_H
 #include <sys/stat.h>
-#endif
 
 #include <mem_mgr.hpp>
 #include <profile.hpp>

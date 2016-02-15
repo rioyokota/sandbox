@@ -1,27 +1,18 @@
-/**
- * \file fft_wrapper.hpp
- * \author Dhairya Malhotra, dhairya.malhotra@gmail.com
- * \date 2-11-2011
- * \brief This file contains FFTW3 wrapper functions.
- */
+#ifndef _PVFMM_FFT_WRAPPER_
+#define _PVFMM_FFT_WRAPPER_
 
 #include <cmath>
 #include <cassert>
 #include <cstdlib>
 #include <vector>
-#if defined(PVFMM_HAVE_FFTW) || defined(PVFMM_HAVE_FFTWF)
 #include <fftw3.h>
 #ifdef FFTW3_MKL
 #include <fftw3_mkl.h>
-#endif
 #endif
 
 #include <pvfmm_common.hpp>
 #include <mem_mgr.hpp>
 #include <matrix.hpp>
-
-#ifndef _PVFMM_FFT_WRAPPER_
-#define _PVFMM_FFT_WRAPPER_
 
 namespace pvfmm{
 
@@ -232,7 +223,6 @@ struct FFTW_t{
 
 };
 
-#ifdef PVFMM_HAVE_FFTW
 template<>
 struct FFTW_t<double>{
   typedef fftw_plan plan;
@@ -279,9 +269,7 @@ struct FFTW_t<double>{
   }
 
 };
-#endif
 
-#ifdef PVFMM_HAVE_FFTWF
 template<>
 struct FFTW_t<float>{
   typedef fftwf_plan plan;
@@ -318,7 +306,6 @@ struct FFTW_t<float>{
   }
 
 };
-#endif
 
 }//end namespace
 
