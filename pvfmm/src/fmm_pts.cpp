@@ -40,7 +40,7 @@ void fmm_test(size_t N, size_t M, Real_t b, int dist, int mult_order, int depth)
 
   //Create Tree.
   FMM_Tree_t tree;
-  ((FMM_Mat_t*)&tree)->Initialize(mult_order,mykernel);
+  tree.Initialize(mult_order,mykernel);
 
   pvfmm::Vector<Real_t> trg_value;
   for(size_t it=0;it<2;it++){ // Compute potential
