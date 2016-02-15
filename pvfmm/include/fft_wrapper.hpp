@@ -1,18 +1,7 @@
 #ifndef _PVFMM_FFT_WRAPPER_
 #define _PVFMM_FFT_WRAPPER_
 
-#include <cmath>
-#include <cassert>
-#include <cstdlib>
-#include <vector>
 #include <fftw3.h>
-#ifdef FFTW3_MKL
-#include <fftw3_mkl.h>
-#endif
-
-#include <pvfmm_common.hpp>
-#include <mem_mgr.hpp>
-#include <matrix.hpp>
 
 namespace pvfmm{
 
@@ -40,11 +29,11 @@ struct FFTW_t{
 
     plan p;
     p.howmany=howmany;
-    { // r2c
+    {
       p.dim.push_back(n[rank-1]);
       p.M.push_back(fft_r2c(n[rank-1]));
     }
-    for(int i=rank-2;i>=0;i--){ // c2c
+    for(int i=rank-2;i>=0;i--){
       p.dim.push_back(n[i]);
       p.M.push_back(fft_c2c(n[i]));
     }
@@ -70,11 +59,11 @@ struct FFTW_t{
 
     plan p;
     p.howmany=howmany;
-    for(size_t i=0;i<rank-1;i++){ // c2c
+    for(size_t i=0;i<rank-1;i++){
       p.dim.push_back(n[i]);
       p.M.push_back(fft_c2c(n[i]));
     }
-    { // c2r
+    {
       p.dim.push_back(n[rank-1]);
       p.M.push_back(fft_c2r(n[rank-1]));
     }
@@ -99,7 +88,7 @@ struct FFTW_t{
     std::vector<T> buff_(N1+2*N2);
     T* buff=&buff_[0];
 
-    { // r2c
+    {
       size_t i=0;
       const Matrix<T>& M=p.M[i];
       assert(2*N2/M.Dim(1)==N1/M.Dim(0));
@@ -108,15 +97,15 @@ struct FFTW_t{
       Matrix<T>::GEMM(y, x, M);
       transpose<cplx>(2*N2/M.Dim(1), M.Dim(1)/2, (cplx*)buff);
     }
-    for(size_t i=1;i<p.dim.size();i++){ // c2c
+    for(size_t i=1;i<p.dim.size();i++){
       const Matrix<T>& M=p.M[i];
       assert(M.Dim(0)==M.Dim(1));
-      Matrix<T> x(2*N2/M.Dim(0),M.Dim(0),buff); // TODO: optimize this
+      Matrix<T> x(2*N2/M.Dim(0),M.Dim(0),buff);
       Matrix<T> y(2*N2/M.Dim(1),M.Dim(1),buff,false);
       Matrix<T>::GEMM(y, x, M);
       transpose<cplx>(2*N2/M.Dim(1), M.Dim(1)/2, (cplx*)buff);
     }
-    { // howmany
+    {
       transpose<cplx>(N2/p.howmany, p.howmany, (cplx*)buff);
       mem::memcopy(out,buff,2*N2*sizeof(T));
     }
@@ -131,19 +120,19 @@ struct FFTW_t{
     std::vector<T> buff_(N1+2*N2);
     T* buff=&buff_[0];
 
-    { // howmany
+    {
       mem::memcopy(buff,in,2*N2*sizeof(T));
       transpose<cplx>(p.howmany, N2/p.howmany, (cplx*)buff);
     }
-    for(size_t i=0;i<p.dim.size()-1;i++){ // c2c
+    for(size_t i=0;i<p.dim.size()-1;i++){
       Matrix<T> M=p.M[i];
       assert(M.Dim(0)==M.Dim(1));
       transpose<cplx>(M.Dim(0)/2, 2*N2/M.Dim(0), (cplx*)buff);
-      Matrix<T> y(2*N2/M.Dim(0),M.Dim(0),buff); // TODO: optimize this
+      Matrix<T> y(2*N2/M.Dim(0),M.Dim(0),buff);
       Matrix<T> x(2*N2/M.Dim(1),M.Dim(1),buff,false);
       Matrix<T>::GEMM(x, y, M.Transpose());
     }
-    { // r2c
+    {
       size_t i=p.dim.size()-1;
       const Matrix<T>& M=p.M[i];
       assert(2*N2/M.Dim(0)==N1/M.Dim(1));
@@ -165,8 +154,6 @@ struct FFTW_t{
     *mul=0;
     *fma=0;
   }
-
-  private:
 
   static Matrix<T> fft_r2c(size_t N1){
     size_t N2=(N1/2+1);
@@ -231,11 +218,6 @@ struct FFTW_t<double>{
   static plan fft_plan_many_dft_r2c(int rank, const int *n, int howmany,
       double *in, const int *inembed, int istride, int idist,
       fftw_complex *out, const int *onembed, int ostride, int odist){
-    #ifdef FFTW3_MKL
-    int omp_p0=omp_get_num_threads();
-    int omp_p1=omp_get_max_threads();
-    fftw3_mkl.number_of_user_threads = (omp_p0>omp_p1?omp_p0:omp_p1);
-    #endif
     return fftw_plan_many_dft_r2c(rank, n, howmany, in, inembed, istride,
         idist, out, onembed, ostride, odist, FFTW_ESTIMATE);
   }
@@ -243,11 +225,6 @@ struct FFTW_t<double>{
   static plan fft_plan_many_dft_c2r(int rank, const int *n, int howmany,
       cplx *in, const int *inembed, int istride, int idist,
       double *out, const int *onembed, int ostride, int odist){
-    #ifdef FFTW3_MKL
-    int omp_p0=omp_get_num_threads();
-    int omp_p1=omp_get_max_threads();
-    fftw3_mkl.number_of_user_threads = (omp_p0>omp_p1?omp_p0:omp_p1);
-    #endif
     return fftw_plan_many_dft_c2r(rank, n, howmany, in, inembed, istride, idist,
         out, onembed, ostride, odist, FFTW_ESTIMATE);
   }

@@ -3536,10 +3536,8 @@ class FMM_Tree {
           for(int i=0;i<dof;i++)
             FFTW_t<Real_t>::fft_execute_dft_r2c(vlist_fftplan, (Real_t*)&upward_equiv_fft[i*  n3 *ker_dim0*chld_cnt],
                                         (typename FFTW_t<Real_t>::cplx*)&buffer          [i*2*n3_*ker_dim0*chld_cnt]);
-#ifndef FFTW3_MKL
           double add, mul, fma;
           FFTW_t<Real_t>::fftw_flops(vlist_fftplan, &add, &mul, &fma);
-#endif
           for(int i=0;i<ker_dim0*dof;i++)
           for(size_t j=0;j<n3_;j++)
           for(size_t k=0;k<chld_cnt;k++){
@@ -3606,10 +3604,8 @@ class FMM_Tree {
           for(int i=0;i<dof;i++)
             FFTW_t<Real_t>::fft_execute_dft_c2r(vlist_ifftplan, (typename FFTW_t<Real_t>::cplx*)&buffer0[i*2*n3_*ker_dim1*chld_cnt],
 						(Real_t*)&buffer1[i*  n3 *ker_dim1*chld_cnt]);
-#ifndef FFTW3_MKL
           double add, mul, fma;
           FFTW_t<Real_t>::fftw_flops(vlist_ifftplan, &add, &mul, &fma);
-#endif
           for(size_t k=0;k<n;k++){
             size_t idx=map[k];
             for(int j1=0;j1<dof;j1++)
