@@ -548,15 +548,18 @@ class FMM_Tree : public FMM_Pts<FMMNode_t> {
   using FMM_Pts<FMMNode_t>::kernel;
   using FMM_Pts<FMMNode_t>::surface;
   using FMM_Pts<FMMNode_t>::Precomp;
-  using FMM_Pts<FMMNode_t>::SetupPrecomp;
+  using FMM_Pts<FMMNode_t>::PrecompAll;
   using FMM_Pts<FMMNode_t>::MultipoleOrder;
-  using FMM_Pts<FMMNode_t>::CollectNodeData;
   using FMM_Pts<FMMNode_t>::ScaleInvar;
   using FMM_Pts<FMMNode_t>::dev_buffer;
   using FMM_Pts<FMMNode_t>::vlist_fft_flag;
   using FMM_Pts<FMMNode_t>::vlist_ifft_flag;
   using FMM_Pts<FMMNode_t>::vlist_fftplan;
   using FMM_Pts<FMMNode_t>::vlist_ifftplan;
+  using FMM_Pts<FMMNode_t>::u_check_surf;
+  using FMM_Pts<FMMNode_t>::u_equiv_surf;
+  using FMM_Pts<FMMNode_t>::d_check_surf;
+  using FMM_Pts<FMMNode_t>::d_equiv_surf;
 
   int dim;
   FMMNode_t* root_node;
@@ -963,6 +966,314 @@ class FMM_Tree : public FMM_Pts<FMMNode_t> {
     }
     Profile::Toc();
   }
+
+  void CollectNodeData(FMMTree_t* tree, std::vector<FMMNode_t*>& node, std::vector<Matrix<Real_t> >& buff_list, std::vector<Vector<FMMNode_t*> >& n_list) {
+    std::vector<std::vector<Vector<Real_t>* > > vec_list = std::vector<std::vector<Vector<Real_t>* > >(0);
+    if(buff_list.size()<7) buff_list.resize(7);
+    if(   n_list.size()<7)    n_list.resize(7);
+    if( vec_list.size()<7)  vec_list.resize(7);
+    int omp_p=omp_get_max_threads();
+    if(node.size()==0) return;
+    {
+      int indx=0;
+      size_t vec_sz;
+      {
+        Matrix<Real_t>& M_uc2ue = interac_list.ClassMat(0, UC2UE1_Type, 0);
+        vec_sz=M_uc2ue.Dim(1);
+      }
+      std::vector< FMMNode_t* > node_lst;
+      {
+        node_lst.clear();
+        std::vector<std::vector< FMMNode_t* > > node_lst_(MAX_DEPTH+1);
+        FMMNode_t* r_node=NULL;
+        for(size_t i=0;i<node.size();i++){
+          if(!node[i]->IsLeaf()){
+            node_lst_[node[i]->depth].push_back(node[i]);
+          }else{
+            node[i]->pt_cnt[0]+=node[i]-> src_coord.Dim()/COORD_DIM;
+            node[i]->pt_cnt[0]+=node[i]->surf_coord.Dim()/COORD_DIM;
+            if(node[i]->IsGhost()) node[i]->pt_cnt[0]++; // TODO: temporary fix, pt_cnt not known for ghost nodes
+          }
+          if(node[i]->depth==0) r_node=node[i];
+        }
+        size_t chld_cnt=1UL<<COORD_DIM;
+        for(int i=MAX_DEPTH;i>=0;i--){
+          for(size_t j=0;j<node_lst_[i].size();j++){
+            for(size_t k=0;k<chld_cnt;k++){
+              FMMNode_t* node=node_lst_[i][j]->Child(k);
+              node_lst_[i][j]->pt_cnt[0]+=node->pt_cnt[0];
+            }
+          }
+        }
+        for(int i=0;i<=MAX_DEPTH;i++){
+          for(size_t j=0;j<node_lst_[i].size();j++){
+            if(node_lst_[i][j]->pt_cnt[0])
+            for(size_t k=0;k<chld_cnt;k++){
+              FMMNode_t* node=node_lst_[i][j]->Child(k);
+              node_lst.push_back(node);
+            }
+          }
+        }
+        if(r_node!=NULL) node_lst.push_back(r_node);
+        n_list[indx]=node_lst;
+      }
+      std::vector<Vector<Real_t>*>& vec_lst=vec_list[indx];
+      for(size_t i=0;i<node_lst.size();i++){
+        FMMNode_t* node=node_lst[i];
+        Vector<Real_t>& data_vec=node->FMMData()->upward_equiv;
+        data_vec.ReInit(vec_sz,NULL,false);
+        vec_lst.push_back(&data_vec);
+      }
+    }
+    {
+      int indx=1;
+      size_t vec_sz;
+      {
+        Matrix<Real_t>& M_dc2de0 = interac_list.ClassMat(0, DC2DE0_Type, 0);
+        vec_sz=M_dc2de0.Dim(0);
+      }
+      std::vector< FMMNode_t* > node_lst;
+      {
+        node_lst.clear();
+        std::vector<std::vector< FMMNode_t* > > node_lst_(MAX_DEPTH+1);
+        FMMNode_t* r_node=NULL;
+        for(size_t i=0;i<node.size();i++){
+          if(!node[i]->IsLeaf()){
+            node_lst_[node[i]->depth].push_back(node[i]);
+          }else{
+            node[i]->pt_cnt[1]+=node[i]->trg_coord.Dim()/COORD_DIM;
+          }
+          if(node[i]->depth==0) r_node=node[i];
+        }
+        size_t chld_cnt=1UL<<COORD_DIM;
+        for(int i=MAX_DEPTH;i>=0;i--){
+          for(size_t j=0;j<node_lst_[i].size();j++){
+            for(size_t k=0;k<chld_cnt;k++){
+              FMMNode_t* node=node_lst_[i][j]->Child(k);
+              node_lst_[i][j]->pt_cnt[1]+=node->pt_cnt[1];
+            }
+          }
+        }
+        for(int i=0;i<=MAX_DEPTH;i++){
+          for(size_t j=0;j<node_lst_[i].size();j++){
+            if(node_lst_[i][j]->pt_cnt[1])
+            for(size_t k=0;k<chld_cnt;k++){
+              FMMNode_t* node=node_lst_[i][j]->Child(k);
+              node_lst.push_back(node);
+            }
+          }
+        }
+        if(r_node!=NULL) node_lst.push_back(r_node);
+        n_list[indx]=node_lst;
+      }
+      std::vector<Vector<Real_t>*>& vec_lst=vec_list[indx];
+      for(size_t i=0;i<node_lst.size();i++){
+        FMMNode_t* node=node_lst[i];
+        Vector<Real_t>& data_vec=node->FMMData()->dnward_equiv;
+        data_vec.ReInit(vec_sz,NULL,false);
+        vec_lst.push_back(&data_vec);
+      }
+    }
+    {
+      int indx=2;
+      std::vector< FMMNode_t* > node_lst;
+      {
+        std::vector<std::vector< FMMNode_t* > > node_lst_(MAX_DEPTH+1);
+        for(size_t i=0;i<node.size();i++)
+          if(!node[i]->IsLeaf())
+            node_lst_[node[i]->depth].push_back(node[i]);
+        for(int i=0;i<=MAX_DEPTH;i++)
+          for(size_t j=0;j<node_lst_[i].size();j++)
+            node_lst.push_back(node_lst_[i][j]);
+      }
+      n_list[indx]=node_lst;
+    }
+    {
+      int indx=3;
+      std::vector< FMMNode_t* > node_lst;
+      {
+        std::vector<std::vector< FMMNode_t* > > node_lst_(MAX_DEPTH+1);
+        for(size_t i=0;i<node.size();i++)
+          if(!node[i]->IsLeaf() && !node[i]->IsGhost())
+            node_lst_[node[i]->depth].push_back(node[i]);
+        for(int i=0;i<=MAX_DEPTH;i++)
+          for(size_t j=0;j<node_lst_[i].size();j++)
+            node_lst.push_back(node_lst_[i][j]);
+      }
+      n_list[indx]=node_lst;
+    }
+    {
+      int indx=4;
+      int src_dof=kernel->ker_dim[0];
+      int surf_dof=COORD_DIM+src_dof;
+      std::vector< FMMNode_t* > node_lst;
+      for(size_t i=0;i<node.size();i++) {
+        if(node[i]->IsLeaf()){
+          node_lst.push_back(node[i]);
+        }else{
+          node[i]->src_value.ReInit(0);
+          node[i]->surf_value.ReInit(0);
+        }
+      }
+      n_list[indx]=node_lst;
+      std::vector<Vector<Real_t>*>& vec_lst=vec_list[indx];
+      for(size_t i=0;i<node_lst.size();i++){
+        FMMNode_t* node=node_lst[i];
+        {
+          Vector<Real_t>& data_vec=node->src_value;
+          size_t vec_sz=(node->src_coord.Dim()/COORD_DIM)*src_dof;
+          if(data_vec.Dim()!=vec_sz) data_vec.ReInit(vec_sz,NULL,false);
+          vec_lst.push_back(&data_vec);
+        }
+        {
+          Vector<Real_t>& data_vec=node->surf_value;
+          size_t vec_sz=(node->surf_coord.Dim()/COORD_DIM)*surf_dof;
+          if(data_vec.Dim()!=vec_sz) data_vec.ReInit(vec_sz,NULL,false);
+          vec_lst.push_back(&data_vec);
+        }
+      }
+    }
+    {
+      int indx=5;
+      int trg_dof=kernel->ker_dim[1];
+      std::vector< FMMNode_t* > node_lst;
+      for(size_t i=0;i<node.size();i++) {
+        if(node[i]->IsLeaf() && !node[i]->IsGhost()){
+          node_lst.push_back(node[i]);
+        }else{
+          node[i]->trg_value.ReInit(0);
+        }
+      }
+      n_list[indx]=node_lst;
+      std::vector<Vector<Real_t>*>& vec_lst=vec_list[indx];
+      for(size_t i=0;i<node_lst.size();i++){
+        FMMNode_t* node=node_lst[i];
+        {
+          Vector<Real_t>& data_vec=node->trg_value;
+          size_t vec_sz=(node->trg_coord.Dim()/COORD_DIM)*trg_dof;
+          data_vec.ReInit(vec_sz,NULL,false);
+          vec_lst.push_back(&data_vec);
+        }
+      }
+    }
+    {
+      int indx=6;
+      std::vector< FMMNode_t* > node_lst;
+      for(size_t i=0;i<node.size();i++){
+        if(node[i]->IsLeaf()){
+          node_lst.push_back(node[i]);
+        }else{
+          node[i]->src_coord.ReInit(0);
+          node[i]->surf_coord.ReInit(0);
+          node[i]->trg_coord.ReInit(0);
+        }
+      }
+      n_list[indx]=node_lst;
+      std::vector<Vector<Real_t>*>& vec_lst=vec_list[indx];
+      for(size_t i=0;i<node_lst.size();i++){
+        FMMNode_t* node=node_lst[i];
+        {
+          Vector<Real_t>& data_vec=node->src_coord;
+          vec_lst.push_back(&data_vec);
+        }
+        {
+          Vector<Real_t>& data_vec=node->surf_coord;
+          vec_lst.push_back(&data_vec);
+        }
+        {
+          Vector<Real_t>& data_vec=node->trg_coord;
+          vec_lst.push_back(&data_vec);
+        }
+      }
+      {
+        if(tree->upwd_check_surf.size()==0){
+          size_t m=MultipoleOrder();
+          tree->upwd_check_surf.resize(MAX_DEPTH);
+          tree->upwd_equiv_surf.resize(MAX_DEPTH);
+          tree->dnwd_check_surf.resize(MAX_DEPTH);
+          tree->dnwd_equiv_surf.resize(MAX_DEPTH);
+          for(size_t depth=0;depth<MAX_DEPTH;depth++){
+            Real_t c[3]={0.0,0.0,0.0};
+            tree->upwd_check_surf[depth].ReInit((6*(m-1)*(m-1)+2)*COORD_DIM);
+            tree->upwd_equiv_surf[depth].ReInit((6*(m-1)*(m-1)+2)*COORD_DIM);
+            tree->dnwd_check_surf[depth].ReInit((6*(m-1)*(m-1)+2)*COORD_DIM);
+            tree->dnwd_equiv_surf[depth].ReInit((6*(m-1)*(m-1)+2)*COORD_DIM);
+            tree->upwd_check_surf[depth]=u_check_surf(m,c,depth);
+            tree->upwd_equiv_surf[depth]=u_equiv_surf(m,c,depth);
+            tree->dnwd_check_surf[depth]=d_check_surf(m,c,depth);
+            tree->dnwd_equiv_surf[depth]=d_equiv_surf(m,c,depth);
+          }
+        }
+        for(size_t depth=0;depth<MAX_DEPTH;depth++){
+          vec_lst.push_back(&tree->upwd_check_surf[depth]);
+          vec_lst.push_back(&tree->upwd_equiv_surf[depth]);
+          vec_lst.push_back(&tree->dnwd_check_surf[depth]);
+          vec_lst.push_back(&tree->dnwd_equiv_surf[depth]);
+        }
+      }
+    }
+    if(buff_list.size()<=vec_list.size()) buff_list.resize(vec_list.size()+1);
+    for(size_t indx=0;indx<vec_list.size();indx++){
+      Matrix<Real_t>&                  buff=buff_list[indx];
+      std::vector<Vector<Real_t>*>& vec_lst= vec_list[indx];
+      bool keep_data=(indx==4 || indx==6);
+      size_t n_vec=vec_lst.size();
+      if(!n_vec) continue;
+      std::vector<size_t> vec_size(n_vec);
+      std::vector<size_t> vec_disp(n_vec);
+#pragma omp parallel for
+      for(size_t i=0;i<n_vec;i++) {
+	vec_size[i]=vec_lst[i]->Dim();
+      }
+      vec_disp[0]=0;
+      omp_par::scan(&vec_size[0],&vec_disp[0],n_vec);
+      size_t buff_size=vec_size[n_vec-1]+vec_disp[n_vec-1];
+      if(!buff_size) continue;
+      if(keep_data){
+        if(dev_buffer.Dim()<buff_size*sizeof(Real_t)){
+          dev_buffer.ReInit(buff_size*sizeof(Real_t)*1.05);
+        }
+#pragma omp parallel for
+        for(size_t i=0;i<n_vec;i++){
+          if(&(*vec_lst[i])[0]){
+            mem::memcopy(((Real_t*)&dev_buffer[0])+vec_disp[i],&(*vec_lst[i])[0],vec_size[i]*sizeof(Real_t));
+          }
+        }
+      }
+      if(buff.Dim(0)*buff.Dim(1)<buff_size){
+        buff.ReInit(1,buff_size*1.05);
+      }
+      if(keep_data){
+#pragma omp parallel for
+        for(size_t tid=0;tid<omp_p;tid++){
+          size_t a=(buff_size*(tid+0))/omp_p;
+          size_t b=(buff_size*(tid+1))/omp_p;
+          mem::memcopy(&buff[0][0]+a,((Real_t*)&dev_buffer[0])+a,(b-a)*sizeof(Real_t));
+        }
+      }
+#pragma omp parallel for
+      for(size_t i=0;i<n_vec;i++){
+	vec_lst[i]->ReInit(vec_size[i],&buff[0][0]+vec_disp[i],false);
+      }
+    }
+  }
+
+  void SetupPrecomp(SetupData<Real_t,FMMNode_t>& setup_data){
+    if(setup_data.precomp_data==NULL || setup_data.level>MAX_DEPTH) return;
+    Profile::Tic("SetupPrecomp",true,25);
+    {
+      size_t precomp_offset=0;
+      int level=setup_data.level;
+      Matrix<char>& precomp_data=*setup_data.precomp_data;
+      std::vector<Mat_Type>& interac_type_lst=setup_data.interac_type;
+      for(size_t type_indx=0; type_indx<interac_type_lst.size(); type_indx++){
+        Mat_Type& interac_type=interac_type_lst[type_indx];
+        PrecompAll(interac_type, level);
+        precomp_offset=mat->CompactData(level, interac_type, precomp_data, precomp_offset);
+      }
+    }
+    Profile::Toc();
+  }  
 
   void SetupInterac(SetupData<Real_t,FMMNode_t>& setup_data){
     int level=setup_data.level;
