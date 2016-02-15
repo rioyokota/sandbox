@@ -5,14 +5,12 @@
 #include <stdio.h>
 
 #include <profile.hpp>
-#include <fmm_pts.hpp>
 #include <fmm_tree.hpp>
 #include <utils.hpp>
 
 void fmm_test(size_t N, size_t M, Real_t b, int dist, int mult_order, int depth){
   typedef pvfmm::FMM_Node FMMNode_t;
-  typedef pvfmm::FMM_Pts<FMMNode_t> FMM_Mat_t;
-  typedef pvfmm::FMM_Tree<FMMNode_t> FMM_Tree_t;
+  typedef pvfmm::FMM_Tree<FMMNode_t> FMMTree_t;
 
   //Set kernel.
   const pvfmm::Kernel<Real_t>* mykernel = &pvfmm::LaplaceKernel<Real_t>::gradient();
@@ -39,7 +37,7 @@ void fmm_test(size_t N, size_t M, Real_t b, int dist, int mult_order, int depth)
   }
 
   //Create Tree.
-  FMM_Tree_t tree;
+  FMMTree_t tree;
   tree.Initialize(mult_order,mykernel);
 
   pvfmm::Vector<Real_t> trg_value;
@@ -91,7 +89,7 @@ void fmm_test(size_t N, size_t M, Real_t b, int dist, int mult_order, int depth)
   }
 
   //Find error in FMM output.
-  CheckFMMOutput<FMM_Mat_t>(&tree, mykernel, "Output");
+  CheckFMMOutput<FMMTree_t>(&tree, mykernel, "Output");
 }
 
 int main(int argc, char **argv){

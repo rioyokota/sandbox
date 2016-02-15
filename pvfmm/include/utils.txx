@@ -4,8 +4,8 @@
  * \date 1-1-2013
  */
 
-template <class FMM_Mat_t>
-void CheckFMMOutput(pvfmm::FMM_Tree<typename FMM_Mat_t::FMMNode_t>* mytree, const pvfmm::Kernel<Real_t>* mykernel, std::string t_name){
+template<typename FMMTree_t>
+void CheckFMMOutput(FMMTree_t* mytree, const pvfmm::Kernel<Real_t>* mykernel, std::string t_name){
   if(mykernel==NULL) return;
 
   // Find out number of OMP thereads.
@@ -14,8 +14,8 @@ void CheckFMMOutput(pvfmm::FMM_Tree<typename FMM_Mat_t::FMMNode_t>* mytree, cons
   // Find out my identity in the default communicator
   int myrank=0, p=1;
 
-  typedef typename FMM_Mat_t::FMMData FMM_Data_t;
-  typedef typename FMM_Mat_t::FMMNode_t FMMNode_t;
+  typedef typename FMMTree_t::FMMData FMM_Data_t;
+  typedef typename FMMTree_t::FMMNode FMMNode_t;
 
   // Read source data.
   std::vector<Real_t> src_coord;

@@ -1,9 +1,25 @@
 #ifndef _PVFMM_FMM_TREE_HPP_
 #define _PVFMM_FMM_TREE_HPP_
 
-#include <fmm_pts.hpp>
+#include <fmm_node.hpp>
 
 namespace pvfmm{
+
+template <class Real_t, class FMMNode_t>
+struct SetupData {
+  int level;
+  const Kernel<Real_t>* kernel;
+  std::vector<Mat_Type> interac_type;
+  std::vector<FMMNode_t*> nodes_in ;
+  std::vector<FMMNode_t*> nodes_out;
+  std::vector<Vector<Real_t>*>  input_vector;
+  std::vector<Vector<Real_t>*> output_vector;
+  Matrix< char>  interac_data;
+  Matrix< char>* precomp_data;
+  Matrix<Real_t>*  coord_data;
+  Matrix<Real_t>*  input_data;
+  Matrix<Real_t>* output_data;
+};
 
 template<class Real_t>
 inline void matmult_8x8x2(Real_t*& M_, Real_t*& IN0, Real_t*& IN1, Real_t*& OUT0, Real_t*& OUT1){
@@ -317,7 +333,7 @@ inline void matmult_8x8x2<float>(float*& M_, float*& IN0, float*& IN1, float*& O
 #endif
 
 template <class FMMNode_t>
-class FMM_Tree : public FMM_Pts<FMMNode_t> {
+class FMM_Tree {
 
  public:
   struct PackedData{
@@ -1300,25 +1316,25 @@ class FMM_Tree : public FMM_Pts<FMMNode_t> {
 
  public:
 
-  typedef typename FMM_Pts<FMMNode_t>::FMMData FMMData_t;
+  class FMMData: public FMM_Data<Real_t>{
+   public:
+    ~FMMData(){}
+    FMM_Data<Real_t>* NewData(){return mem::aligned_new<FMMData>();}
+  };
+
+  typedef FMMNode_t FMMNode;
   typedef FMM_Tree FMMTree_t;
-  using FMM_Pts<FMMNode_t>::mat;
-  using FMM_Pts<FMMNode_t>::kernel;
-  using FMM_Pts<FMMNode_t>::dev_buffer;
-  using FMM_Pts<FMMNode_t>::multipole_order;
-  using FMM_Pts<FMMNode_t>::vlist_fft_flag;
-  using FMM_Pts<FMMNode_t>::vlist_ifft_flag;
-  using FMM_Pts<FMMNode_t>::vlist_fftplan;
-  using FMM_Pts<FMMNode_t>::vlist_ifftplan;
-  using FMM_Pts<FMMNode_t>::vprecomp_fft_flag;
-  using FMM_Pts<FMMNode_t>::vprecomp_fftplan;
-  using FMM_Pts<FMMNode_t>::mat_fname;
 
   int dim;
-  FMMNode_t* root_node;
   int max_depth;
+  int multipole_order;
+  FMMNode_t* root_node;
+  std::string mat_fname;
   std::vector<FMMNode_t*> node_lst;
   mem::MemoryManager memgr;
+  const Kernel<Real_t>* kernel;
+  PrecompMat<Real_t>* mat;
+  Vector<char> dev_buffer;
 
   std::vector<Matrix<Real_t> > node_data_buff;
   pvfmm::Matrix<FMMNode_t*> node_interac_lst;
@@ -1330,12 +1346,33 @@ class FMM_Tree : public FMM_Pts<FMMNode_t> {
   std::vector<Vector<Real_t> > dnwd_check_surf;
   std::vector<Vector<Real_t> > dnwd_equiv_surf;
 
-  FMM_Tree(): dim(0), root_node(NULL), max_depth(MAX_DEPTH), memgr(0) { };
+  typename FFTW_t<Real_t>::plan vprecomp_fftplan;
+  bool vprecomp_fft_flag;
+  typename FFTW_t<Real_t>::plan vlist_fftplan;
+  bool vlist_fft_flag;
+  typename FFTW_t<Real_t>::plan vlist_ifftplan;
+  bool vlist_ifft_flag;
+    
+
+  FMM_Tree(): dim(0), root_node(NULL), max_depth(MAX_DEPTH), memgr(0), vprecomp_fft_flag(false), vlist_fft_flag(false),
+	      vlist_ifft_flag(false), mat(NULL), kernel(NULL) { };
 
   ~FMM_Tree(){
     if(RootNode()!=NULL){
       mem::aligned_delete(root_node);
     }
+    if(mat!=NULL){
+      delete mat;
+      mat=NULL;
+    }
+    if(vprecomp_fft_flag) FFTW_t<Real_t>::fft_destroy_plan(vprecomp_fftplan);
+    {
+      if(vlist_fft_flag ) FFTW_t<Real_t>::fft_destroy_plan(vlist_fftplan );
+      if(vlist_ifft_flag) FFTW_t<Real_t>::fft_destroy_plan(vlist_ifftplan);
+      vlist_fft_flag =false;
+      vlist_ifft_flag=false;
+    }
+
   }
 
   void Initialize(typename FMM_Node::NodeData* init_data) {
@@ -1441,7 +1478,7 @@ class FMM_Tree : public FMM_Pts<FMMNode_t> {
 	std::vector<FMMNode_t*>& nodes=GetNodeList();
 #pragma omp parallel for
 	for(size_t i=0;i<nodes.size();i++){
-	  if(nodes[i]->FMMData()==NULL) nodes[i]->FMMData()=mem::aligned_new<FMMData_t>();
+	  if(nodes[i]->FMMData()==NULL) nodes[i]->FMMData()=mem::aligned_new<FMMData>();
 	}
       }Profile::Toc();   
     }Profile::Toc();

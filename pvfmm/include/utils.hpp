@@ -5,16 +5,16 @@
 #include <cheb_utils.hpp>
 #include <fmm_tree.hpp>
 
-template <class FMM_Mat_t>
-void CheckFMMOutput(pvfmm::FMM_Tree<FMM_Mat_t>* mytree, const pvfmm::Kernel<Real_t>* mykernel);
+template<typename FMMNode>
+void CheckFMMOutput(pvfmm::FMM_Tree<FMMNode>* mytree, const pvfmm::Kernel<Real_t>* mykernel);
 
 template <class Real_t>
 struct TestFn{
   typedef void (*Fn_t)(Real_t* c, int n, Real_t* out);
 };
 
-template <class FMMTree_t>
-void CheckChebOutput(FMMTree_t* mytree, typename TestFn<Real_t>::Fn_t fn_poten, int fn_dof, std::string t_name="");
+template<typename FMMNode>
+void CheckChebOutput(pvfmm::FMM_Tree<FMMNode>* mytree, typename TestFn<Real_t>::Fn_t fn_poten, int fn_dof, std::string t_name="");
 
 enum DistribType{
   UnifGrid,
