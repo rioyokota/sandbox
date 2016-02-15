@@ -1,9 +1,3 @@
-#include <pvfmm_common.hpp>
-#include <cstdlib>
-#include <iostream>
-#include <omp.h>
-#include <stdio.h>
-
 #include <profile.hpp>
 #include <fmm_tree.hpp>
 #include <utils.hpp>

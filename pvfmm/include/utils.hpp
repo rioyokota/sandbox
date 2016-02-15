@@ -13,9 +13,6 @@ struct TestFn{
   typedef void (*Fn_t)(Real_t* c, int n, Real_t* out);
 };
 
-template<typename FMMNode>
-void CheckChebOutput(pvfmm::FMM_Tree<FMMNode>* mytree, typename TestFn<Real_t>::Fn_t fn_poten, int fn_dof, std::string t_name="");
-
 enum DistribType{
   UnifGrid,
   RandUnif,
