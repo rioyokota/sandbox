@@ -68,8 +68,6 @@ class InteracList{
 
     Permutation<Real_t>& Perm_C(int l, Mat_Type type, size_t indx);
 
-  private:
-
     /**
      * \brief Returns the list of permutations to be applied to the matrix to
      * convert it to its interac_class.

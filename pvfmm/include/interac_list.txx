@@ -1,12 +1,3 @@
-/**
- * \file interac_list.txx
- * \author Dhairya Malhotra, dhairya.malhotra@gmail.com
- * \date 6-11-2012
- * \brief This file contains the implementation of the InteracList class.
- * Handles the logic for different interaction lists, and determines the
- * symmetry class for each interaction.
- */
-
 #include <cmath>
 #include <cassert>
 
@@ -15,9 +6,6 @@
 
 namespace pvfmm{
 
-/**
- * \brief Initialize.
- */
 template <class Node_t>
 void InteracList<Node_t>::Initialize(unsigned int dim_, PrecompMat<Real_t>* mat_){
   #ifdef PVFMM_NO_SYMMETRIES
@@ -56,44 +44,25 @@ void InteracList<Node_t>::Initialize(unsigned int dim_, PrecompMat<Real_t>* mat_
   InitList(0,0,1,BC_Type);
 }
 
-/**
- * \brief Number of possible interactions in each list.
- */
 template <class Node_t>
 size_t InteracList<Node_t>::ListCount(Mat_Type t){
   return rel_coord[t].Dim(0);
 }
 
-/**
- * \brief Returns the relative octant coordinates for an interaction i of
- * type t.
- */
 template <class Node_t>
 int* InteracList<Node_t>::RelativeCoord(Mat_Type t, size_t i){
   return rel_coord[t][i];
 }
 
-/**
- * \brief For an interaction of type t and index i, returns the symmetry
- * class for the same.
- */
 template <class Node_t>
-size_t InteracList<Node_t>::InteracClass(Mat_Type t, size_t i){
+  size_t InteracList<Node_t>::InteracClass(Mat_Type t, size_t i){
   return interac_class[t][i];
 }
-
-/**
- * \brief Returns the list of permutations to be applied to the matrix to
- * convert it to its interac_class.
- */
 template <class Node_t>
 std::vector<Perm_Type>& InteracList<Node_t>::PermutList(Mat_Type t, size_t i){
   return perm_list[t][i];
 }
 
-/**
- * \brief Build interaction list for this node.
- */
 template <class Node_t>
 void InteracList<Node_t>::BuildList(Node_t* n, Mat_Type t){
   Vector<Node_t*>& interac_list=n->interac_list[t];
@@ -339,9 +308,6 @@ Permutation<Real_t>& InteracList<Node_t>::Perm_C(int l, Mat_Type type, size_t in
   return col_perm;
 }
 
-/**
- * \brief A hash function defined on the relative coordinates of octants.
- */
 #define PVFMM_MAX_COORD_HASH 2000
 template <class Node_t>
 int InteracList<Node_t>::coord_hash(int* c){
@@ -363,10 +329,6 @@ int InteracList<Node_t>::class_hash(int* c_){
   return coord_hash(&c[0]);
 }
 
-/**
- * \brief Set relative coordinates of the interacting node in
- * rel_coord[Type][idx][1:3].
- */
 template <class Node_t>
 void InteracList<Node_t>::InitList(int max_r, int min_r, int step, Mat_Type t){
   size_t count=           pvfmm::pow<unsigned int>((max_r*2)/step+1,dim)

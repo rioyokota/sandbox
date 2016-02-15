@@ -46,6 +46,8 @@ class PrecompMat{
 
  public:
 
+  bool scale_invar;
+
   PrecompMat(bool scale_invar);
 
   Matrix<T>& Mat(int l, Mat_Type type, size_t indx);
@@ -74,7 +76,6 @@ class PrecompMat{
   std::vector<std::vector<Permutation<T> > > perm_c;
   std::vector<T> rel_trg_coord;
 
-  bool scale_invar;
 };
 
 }//end namespace
