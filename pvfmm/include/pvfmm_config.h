@@ -1,4 +1,0 @@
-#ifndef _INCLUDE_PVFMM_CONFIG_H
-#define _INCLUDE_PVFMM_CONFIG_H 1
- 
-#endif
