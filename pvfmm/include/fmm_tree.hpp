@@ -350,6 +350,154 @@ class FMM_Tree : public FMM_Pts<FMMNode_t> {
 
  private:
 
+  template <class Real_t>
+  std::vector<Real_t> surface(int p, Real_t* c, Real_t alpha, int depth){
+    size_t n_=(6*(p-1)*(p-1)+2);
+    std::vector<Real_t> coord(n_*3);
+    coord[0]=coord[1]=coord[2]=-1.0;
+    size_t cnt=1;
+    for(int i=0;i<p-1;i++)
+      for(int j=0;j<p-1;j++){
+        coord[cnt*3  ]=-1.0;
+        coord[cnt*3+1]=(2.0*(i+1)-p+1)/(p-1);
+        coord[cnt*3+2]=(2.0*j-p+1)/(p-1);
+        cnt++;
+      }
+    for(int i=0;i<p-1;i++)
+      for(int j=0;j<p-1;j++){
+        coord[cnt*3  ]=(2.0*i-p+1)/(p-1);
+        coord[cnt*3+1]=-1.0;
+        coord[cnt*3+2]=(2.0*(j+1)-p+1)/(p-1);
+        cnt++;
+      }
+    for(int i=0;i<p-1;i++)
+      for(int j=0;j<p-1;j++){
+        coord[cnt*3  ]=(2.0*(i+1)-p+1)/(p-1);
+        coord[cnt*3+1]=(2.0*j-p+1)/(p-1);
+        coord[cnt*3+2]=-1.0;
+        cnt++;
+      }
+    for(size_t i=0;i<(n_/2)*3;i++)
+      coord[cnt*3+i]=-coord[i];
+    Real_t r = 0.5*pvfmm::pow<Real_t>(0.5,depth);
+    Real_t b = alpha*r;
+    for(size_t i=0;i<n_;i++){
+      coord[i*3+0]=(coord[i*3+0]+1.0)*b+c[0];
+      coord[i*3+1]=(coord[i*3+1]+1.0)*b+c[1];
+      coord[i*3+2]=(coord[i*3+2]+1.0)*b+c[2];
+    }
+    return coord;
+  }
+  
+  template <class Real_t>
+  std::vector<Real_t> u_check_surf(int p, Real_t* c, int depth){
+    Real_t r=0.5*pvfmm::pow<Real_t>(0.5,depth);
+    Real_t coord[3]={(Real_t)(c[0]-r*(RAD1-1.0)),(Real_t)(c[1]-r*(RAD1-1.0)),(Real_t)(c[2]-r*(RAD1-1.0))};
+    return surface(p,coord,(Real_t)RAD1,depth);
+  }
+  
+  template <class Real_t>
+  std::vector<Real_t> u_equiv_surf(int p, Real_t* c, int depth){
+    Real_t r=0.5*pvfmm::pow<Real_t>(0.5,depth);
+    Real_t coord[3]={(Real_t)(c[0]-r*(RAD0-1.0)),(Real_t)(c[1]-r*(RAD0-1.0)),(Real_t)(c[2]-r*(RAD0-1.0))};
+    return surface(p,coord,(Real_t)RAD0,depth);
+  }
+  
+  template <class Real_t>
+  std::vector<Real_t> d_check_surf(int p, Real_t* c, int depth){
+    Real_t r=0.5*pvfmm::pow<Real_t>(0.5,depth);
+    Real_t coord[3]={(Real_t)(c[0]-r*(RAD0-1.0)),(Real_t)(c[1]-r*(RAD0-1.0)),(Real_t)(c[2]-r*(RAD0-1.0))};
+    return surface(p,coord,(Real_t)RAD0,depth);
+  }
+  
+  template <class Real_t>
+  std::vector<Real_t> d_equiv_surf(int p, Real_t* c, int depth){
+    Real_t r=0.5*pvfmm::pow<Real_t>(0.5,depth);
+    Real_t coord[3]={(Real_t)(c[0]-r*(RAD1-1.0)),(Real_t)(c[1]-r*(RAD1-1.0)),(Real_t)(c[2]-r*(RAD1-1.0))};
+    return surface(p,coord,(Real_t)RAD1,depth);
+  }
+  
+  template <class Real_t>
+  std::vector<Real_t> conv_grid(int p, Real_t* c, int depth){
+    Real_t r=pvfmm::pow<Real_t>(0.5,depth);
+    Real_t a=r*RAD0;
+    Real_t coord[3]={c[0],c[1],c[2]};
+    int n1=p*2;
+    int n2=pvfmm::pow<int>((Real_t)n1,2);
+    int n3=pvfmm::pow<int>((Real_t)n1,3);
+    std::vector<Real_t> grid(n3*3);
+    for(int i=0;i<n1;i++)
+    for(int j=0;j<n1;j++)
+    for(int k=0;k<n1;k++){
+      grid[(i+n1*j+n2*k)*3+0]=(i-p)*a/(p-1)+coord[0];
+      grid[(i+n1*j+n2*k)*3+1]=(j-p)*a/(p-1)+coord[1];
+      grid[(i+n1*j+n2*k)*3+2]=(k-p)*a/(p-1)+coord[2];
+    }
+    return grid;
+  }
+
+  template <class Real_t>
+  Permutation<Real_t> equiv_surf_perm(size_t m, size_t p_indx, const Permutation<Real_t>& ker_perm, const Vector<Real_t>* scal_exp=NULL){
+    Real_t eps=1e-10;
+    int dof=ker_perm.Dim();
+  
+    Real_t c[3]={-0.5,-0.5,-0.5};
+    std::vector<Real_t> trg_coord=d_check_surf(m,c,0);
+    int n_trg=trg_coord.size()/3;
+  
+    Permutation<Real_t> P=Permutation<Real_t>(n_trg*dof);
+    if(p_indx==ReflecX || p_indx==ReflecY || p_indx==ReflecZ) {
+      for(int i=0;i<n_trg;i++)
+      for(int j=0;j<n_trg;j++){
+        if(pvfmm::fabs<Real_t>(trg_coord[i*3+0]-trg_coord[j*3+0]*(p_indx==ReflecX?-1.0:1.0))<eps)
+        if(pvfmm::fabs<Real_t>(trg_coord[i*3+1]-trg_coord[j*3+1]*(p_indx==ReflecY?-1.0:1.0))<eps)
+        if(pvfmm::fabs<Real_t>(trg_coord[i*3+2]-trg_coord[j*3+2]*(p_indx==ReflecZ?-1.0:1.0))<eps){
+          for(int k=0;k<dof;k++){
+            P.perm[j*dof+k]=i*dof+ker_perm.perm[k];
+          }
+        }
+      }
+    }else if(p_indx==SwapXY || p_indx==SwapXZ){
+      for(int i=0;i<n_trg;i++)
+      for(int j=0;j<n_trg;j++){
+        if(pvfmm::fabs<Real_t>(trg_coord[i*3+0]-trg_coord[j*3+(p_indx==SwapXY?1:2)])<eps)
+        if(pvfmm::fabs<Real_t>(trg_coord[i*3+1]-trg_coord[j*3+(p_indx==SwapXY?0:1)])<eps)
+        if(pvfmm::fabs<Real_t>(trg_coord[i*3+2]-trg_coord[j*3+(p_indx==SwapXY?2:0)])<eps){
+          for(int k=0;k<dof;k++){
+            P.perm[j*dof+k]=i*dof+ker_perm.perm[k];
+          }
+        }
+      }
+    }else{
+      for(int j=0;j<n_trg;j++){
+        for(int k=0;k<dof;k++){
+          P.perm[j*dof+k]=j*dof+ker_perm.perm[k];
+        }
+      }
+    }
+  
+    if(scal_exp && p_indx==Scaling) {
+      assert(dof==scal_exp->Dim());
+      Vector<Real_t> scal(scal_exp->Dim());
+      for(size_t i=0;i<scal.Dim();i++){
+        scal[i]=pvfmm::pow<Real_t>(2.0,(*scal_exp)[i]);
+      }
+      for(int j=0;j<n_trg;j++){
+        for(int i=0;i<dof;i++){
+          P.scal[j*dof+i]*=scal[i];
+        }
+      }
+    }
+    {
+      for(int j=0;j<n_trg;j++){
+        for(int i=0;i<dof;i++){
+          P.scal[j*dof+i]*=ker_perm.scal[i];
+        }
+      }
+    }
+    return P;
+  }
+
   inline int p2oLocal(Vector<MortonId> & nodes, Vector<MortonId>& leaves,
 		      unsigned int maxNumPts, unsigned int maxDepth, bool complete) {
     assert(maxDepth<=MAX_DEPTH);
@@ -1156,7 +1304,6 @@ class FMM_Tree : public FMM_Pts<FMMNode_t> {
   typedef FMM_Tree FMMTree_t;
   using FMM_Pts<FMMNode_t>::mat;
   using FMM_Pts<FMMNode_t>::kernel;
-  using FMM_Pts<FMMNode_t>::surface;
   using FMM_Pts<FMMNode_t>::dev_buffer;
   using FMM_Pts<FMMNode_t>::multipole_order;
   using FMM_Pts<FMMNode_t>::vlist_fft_flag;
@@ -1165,12 +1312,6 @@ class FMM_Tree : public FMM_Pts<FMMNode_t> {
   using FMM_Pts<FMMNode_t>::vlist_ifftplan;
   using FMM_Pts<FMMNode_t>::vprecomp_fft_flag;
   using FMM_Pts<FMMNode_t>::vprecomp_fftplan;
-  using FMM_Pts<FMMNode_t>::u_check_surf;
-  using FMM_Pts<FMMNode_t>::u_equiv_surf;
-  using FMM_Pts<FMMNode_t>::d_check_surf;
-  using FMM_Pts<FMMNode_t>::d_equiv_surf;
-  using FMM_Pts<FMMNode_t>::equiv_surf_perm;
-  using FMM_Pts<FMMNode_t>::conv_grid;
   using FMM_Pts<FMMNode_t>::mat_fname;
 
   int dim;
@@ -1559,7 +1700,7 @@ class FMM_Tree : public FMM_Pts<FMMNode_t> {
       n=static_cast<FMMNode_t*>(PostorderNxt(n));
     }
     std::vector<Vector<FMMNode_t*> > node_lists; // TODO: Remove this parameter, not really needed
-    CollectNodeData(this, all_nodes, node_data_buff, node_lists);
+    CollectNodeData(all_nodes, node_data_buff, node_lists);
     Profile::Toc();
   
     Profile::Tic("BuildLists",false,3);
@@ -1661,7 +1802,7 @@ class FMM_Tree : public FMM_Pts<FMMNode_t> {
     Profile::Toc();
   }
 
-  void CollectNodeData(FMMTree_t* tree, std::vector<FMMNode_t*>& node, std::vector<Matrix<Real_t> >& buff_list, std::vector<Vector<FMMNode_t*> >& n_list) {
+  void CollectNodeData(std::vector<FMMNode_t*>& node, std::vector<Matrix<Real_t> >& buff_list, std::vector<Vector<FMMNode_t*> >& n_list) {
     std::vector<std::vector<Vector<Real_t>* > > vec_list = std::vector<std::vector<Vector<Real_t>* > >(0);
     if(buff_list.size()<7) buff_list.resize(7);
     if(   n_list.size()<7)    n_list.resize(7);
@@ -1880,29 +2021,29 @@ class FMM_Tree : public FMM_Pts<FMMNode_t> {
         }
       }
       {
-        if(tree->upwd_check_surf.size()==0){
+        if(upwd_check_surf.size()==0){
           size_t m=MultipoleOrder();
-          tree->upwd_check_surf.resize(MAX_DEPTH);
-          tree->upwd_equiv_surf.resize(MAX_DEPTH);
-          tree->dnwd_check_surf.resize(MAX_DEPTH);
-          tree->dnwd_equiv_surf.resize(MAX_DEPTH);
+          upwd_check_surf.resize(MAX_DEPTH);
+          upwd_equiv_surf.resize(MAX_DEPTH);
+          dnwd_check_surf.resize(MAX_DEPTH);
+          dnwd_equiv_surf.resize(MAX_DEPTH);
           for(size_t depth=0;depth<MAX_DEPTH;depth++){
             Real_t c[3]={0.0,0.0,0.0};
-            tree->upwd_check_surf[depth].ReInit((6*(m-1)*(m-1)+2)*COORD_DIM);
-            tree->upwd_equiv_surf[depth].ReInit((6*(m-1)*(m-1)+2)*COORD_DIM);
-            tree->dnwd_check_surf[depth].ReInit((6*(m-1)*(m-1)+2)*COORD_DIM);
-            tree->dnwd_equiv_surf[depth].ReInit((6*(m-1)*(m-1)+2)*COORD_DIM);
-            tree->upwd_check_surf[depth]=u_check_surf(m,c,depth);
-            tree->upwd_equiv_surf[depth]=u_equiv_surf(m,c,depth);
-            tree->dnwd_check_surf[depth]=d_check_surf(m,c,depth);
-            tree->dnwd_equiv_surf[depth]=d_equiv_surf(m,c,depth);
+            upwd_check_surf[depth].ReInit((6*(m-1)*(m-1)+2)*COORD_DIM);
+            upwd_equiv_surf[depth].ReInit((6*(m-1)*(m-1)+2)*COORD_DIM);
+            dnwd_check_surf[depth].ReInit((6*(m-1)*(m-1)+2)*COORD_DIM);
+            dnwd_equiv_surf[depth].ReInit((6*(m-1)*(m-1)+2)*COORD_DIM);
+            upwd_check_surf[depth]=u_check_surf(m,c,depth);
+            upwd_equiv_surf[depth]=u_equiv_surf(m,c,depth);
+            dnwd_check_surf[depth]=d_check_surf(m,c,depth);
+            dnwd_equiv_surf[depth]=d_equiv_surf(m,c,depth);
           }
         }
         for(size_t depth=0;depth<MAX_DEPTH;depth++){
-          vec_lst.push_back(&tree->upwd_check_surf[depth]);
-          vec_lst.push_back(&tree->upwd_equiv_surf[depth]);
-          vec_lst.push_back(&tree->dnwd_check_surf[depth]);
-          vec_lst.push_back(&tree->dnwd_equiv_surf[depth]);
+          vec_lst.push_back(&upwd_check_surf[depth]);
+          vec_lst.push_back(&upwd_equiv_surf[depth]);
+          vec_lst.push_back(&dnwd_check_surf[depth]);
+          vec_lst.push_back(&dnwd_equiv_surf[depth]);
         }
       }
     }
