@@ -62,12 +62,7 @@ class FMM_Data{
 
 class FMM_Node {
 
- private:
-
-  FMM_Data<Real_t>* fmm_data;
-
  public:
-
   int dim;
   int depth;
   int max_depth;
@@ -75,19 +70,15 @@ class FMM_Node {
   FMM_Node* parent;
   FMM_Node** child;
   int status;
-
   bool ghost;
   size_t max_pts;
   size_t node_id;
   long long weight;
-
   Real_t coord[COORD_DIM];
   FMM_Node * colleague[COLLEAGUE_COUNT];
-
   Vector<Real_t> pt_coord;
   Vector<Real_t> pt_value;
   Vector<size_t> pt_scatter;
-
   Vector<Real_t> src_coord;
   Vector<Real_t> src_value;
   Vector<size_t> src_scatter;
@@ -99,6 +90,8 @@ class FMM_Node {
   Vector<size_t> trg_scatter;
   size_t pt_cnt[2];
   Vector<FMM_Node*> interac_list[Type_Count];
+
+  FMM_Data<Real_t>* fmm_data;
 
   class NodeData {
     public:

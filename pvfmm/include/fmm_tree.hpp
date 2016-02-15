@@ -10,8 +10,8 @@ struct SetupData {
   int level;
   const Kernel<Real_t>* kernel;
   std::vector<Mat_Type> interac_type;
-  std::vector<FMMNode_t*> nodes_in ;
-  std::vector<FMMNode_t*> nodes_out;
+  std::vector<FMM_Node*> nodes_in ;
+  std::vector<FMM_Node*> nodes_out;
   std::vector<Vector<Real_t>*>  input_vector;
   std::vector<Vector<Real_t>*> output_vector;
   Matrix< char>  interac_data;
@@ -363,8 +363,6 @@ class FMM_Tree {
     PackedData trg_value;
     InteracData interac_data;
   };
-
- private:
 
   template <class Real_t>
   std::vector<Real_t> surface(int p, Real_t* c, Real_t alpha, int depth){
