@@ -83,7 +83,7 @@ void fmm_test(size_t N, size_t M, Real_t b, int dist, int mult_order, int depth)
   }
 
   //Find error in FMM output.
-  CheckFMMOutput<FMMTree_t>(&tree, mykernel, "Output");
+  tree.CheckFMMOutput<FMMTree_t>(&tree, mykernel, "Output");
 }
 
 int main(int argc, char **argv){

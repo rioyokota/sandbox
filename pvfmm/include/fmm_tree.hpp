@@ -4721,6 +4721,81 @@ class FMM_Tree {
     Profile::Toc();
   }
 
+  template<typename FMMTree_t>
+  void CheckFMMOutput(FMMTree_t* mytree, const pvfmm::Kernel<Real_t>* mykernel, std::string t_name){
+    if(mykernel==NULL) return;
+    int np=omp_get_max_threads();
+    int myrank=0, p=1;
+    typedef typename FMMTree_t::FMMData FMM_Data_t;
+    typedef typename FMMTree_t::FMMNode FMMNode_t;
+  
+    std::vector<Real_t> src_coord;
+    std::vector<Real_t> src_value;
+    FMMNode_t* n=static_cast<FMMNode_t*>(mytree->PreorderFirst());
+    while(n!=NULL){
+      if(n->IsLeaf() && !n->IsGhost()){
+        pvfmm::Vector<Real_t>& coord_vec=n->src_coord;
+        pvfmm::Vector<Real_t>& value_vec=n->src_value;
+        for(size_t i=0;i<coord_vec.Dim();i++) src_coord.push_back(coord_vec[i]);
+        for(size_t i=0;i<value_vec.Dim();i++) src_value.push_back(value_vec[i]);
+      }
+      n=static_cast<FMMNode_t*>(mytree->PreorderNxt(n));
+    }
+    long long src_cnt=src_coord.size()/3;
+    long long val_cnt=src_value.size();
+    if(src_cnt==0) return;
+    int dof=val_cnt/src_cnt/mykernel->ker_dim[0];
+    int trg_dof=dof*mykernel->ker_dim[1];
+    std::vector<Real_t> trg_coord;
+    std::vector<Real_t> trg_poten_fmm;
+    long long trg_iter=0;
+    size_t step_size=1+src_cnt*src_cnt*1e-9/p;
+    n=static_cast<FMMNode_t*>(mytree->PreorderFirst());
+    while(n!=NULL){
+      if(n->IsLeaf() && !n->IsGhost()){
+        pvfmm::Vector<Real_t>& coord_vec=n->trg_coord;
+        pvfmm::Vector<Real_t>& poten_vec=n->trg_value;
+        for(size_t i=0;i<coord_vec.Dim()/3          ;i++){
+          if(trg_iter%step_size==0){
+            for(int j=0;j<3        ;j++) trg_coord    .push_back(coord_vec[i*3        +j]);
+            for(int j=0;j<trg_dof  ;j++) trg_poten_fmm.push_back(poten_vec[i*trg_dof  +j]);
+          }
+          trg_iter++;
+        }
+      }
+      n=static_cast<FMMNode_t*>(mytree->PreorderNxt(n));
+    }
+    int trg_cnt=trg_coord.size()/3;
+    if(trg_cnt==0) return;
+    std::vector<Real_t> trg_poten_dir(trg_cnt*trg_dof ,0);
+    pvfmm::Profile::Tic("N-Body Direct",false,1);
+    #pragma omp parallel for
+    for(int i=0;i<np;i++){
+      size_t a=(i*trg_cnt)/np;
+      size_t b=((i+1)*trg_cnt)/np;
+      mykernel->ker_poten(&src_coord[0], src_cnt, &src_value[0], dof, &trg_coord[a*3], b-a, &trg_poten_dir[a*trg_dof  ],NULL);
+    }
+    pvfmm::Profile::Toc();
+    {
+      Real_t max_=0;
+      Real_t max_err=0;
+      for(size_t i=0;i<trg_poten_fmm.size();i++){
+        Real_t err=fabs(trg_poten_dir[i]-trg_poten_fmm[i]);
+        Real_t max=fabs(trg_poten_dir[i]);
+        if(err>max_err) max_err=err;
+        if(max>max_) max_=max;
+      }
+      if(!myrank){
+#ifdef __VERBOSE__
+        std::cout<<"Maximum Absolute Error ["<<t_name<<"] :  "<<std::scientific<<max_err<<'\n';
+        std::cout<<"Maximum Relative Error ["<<t_name<<"] :  "<<std::scientific<<max_err/max_<<'\n';
+#else
+        std::cout<<"Error      : "<<std::scientific<<max_err/max_<<'\n';
+#endif
+      }
+    }
+  }
+  
 };
 
 }//end namespace
