@@ -17,7 +17,6 @@ void fmm_test(size_t N, size_t M, Real_t b, int dist, int mult_order, int depth)
 
   //Various parameters.
   typename FMMNode_t::NodeData tree_data;
-  tree_data.dim=COORD_DIM;
   tree_data.max_depth=depth;
   tree_data.max_pts=M; // Points per octant.
 

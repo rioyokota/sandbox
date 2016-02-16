@@ -67,7 +67,7 @@ void Kernel<T>::Initialize(bool verbose) const{
     T eps_=N*eps;
 
     T src_coord[3]={0,0,0};
-    std::vector<T> trg_coord1(N*COORD_DIM);
+    std::vector<T> trg_coord1(N*3);
     Matrix<T> M1(N,ker_dim[0]*ker_dim[1]);
     while(true){
       T abs_sum=0;
@@ -79,9 +79,9 @@ void Kernel<T>::Initialize(bool verbose) const{
           z=(drand48()-0.5);
           r=pvfmm::sqrt<T>(x*x+y*y+z*z);
         }while(r<0.25);
-        trg_coord1[i*COORD_DIM+0]=x*scal;
-        trg_coord1[i*COORD_DIM+1]=y*scal;
-        trg_coord1[i*COORD_DIM+2]=z*scal;
+        trg_coord1[i*3+0]=x*scal;
+        trg_coord1[i*3+1]=y*scal;
+        trg_coord1[i*3+2]=z*scal;
       }
       for(size_t i=N/2;i<N;i++){
         T x,y,z,r;
@@ -91,13 +91,13 @@ void Kernel<T>::Initialize(bool verbose) const{
           z=(drand48()-0.5);
           r=pvfmm::sqrt<T>(x*x+y*y+z*z);
         }while(r<0.25);
-        trg_coord1[i*COORD_DIM+0]=x*1.0/scal;
-        trg_coord1[i*COORD_DIM+1]=y*1.0/scal;
-        trg_coord1[i*COORD_DIM+2]=z*1.0/scal;
+        trg_coord1[i*3+0]=x*1.0/scal;
+        trg_coord1[i*3+1]=y*1.0/scal;
+        trg_coord1[i*3+2]=z*1.0/scal;
       }
       for(size_t i=0;i<N;i++){
         BuildMatrix(&src_coord [          0], 1,
-                    &trg_coord1[i*COORD_DIM], 1, &(M1[i][0]));
+                    &trg_coord1[i*3], 1, &(M1[i][0]));
         for(size_t j=0;j<ker_dim[0]*ker_dim[1];j++){
           abs_sum+=pvfmm::fabs<T>(M1[i][j]);
         }
@@ -106,14 +106,14 @@ void Kernel<T>::Initialize(bool verbose) const{
       scal=scal*0.5;
     }
 
-    std::vector<T> trg_coord2(N*COORD_DIM);
+    std::vector<T> trg_coord2(N*3);
     Matrix<T> M2(N,ker_dim[0]*ker_dim[1]);
-    for(size_t i=0;i<N*COORD_DIM;i++){
+    for(size_t i=0;i<N*3;i++){
       trg_coord2[i]=trg_coord1[i]*0.5;
     }
     for(size_t i=0;i<N;i++){
       BuildMatrix(&src_coord [          0], 1,
-                  &trg_coord2[i*COORD_DIM], 1, &(M2[i][0]));
+                  &trg_coord2[i*3], 1, &(M2[i][0]));
     }
 
     for(size_t i=0;i<ker_dim[0]*ker_dim[1];i++){
@@ -188,8 +188,8 @@ void Kernel<T>::Initialize(bool verbose) const{
     size_t N=1024;
     T eps_=N*eps;
     T src_coord[3]={0,0,0};
-    std::vector<T> trg_coord1(N*COORD_DIM);
-    std::vector<T> trg_coord2(N*COORD_DIM);
+    std::vector<T> trg_coord1(N*3);
+    std::vector<T> trg_coord2(N*3);
     for(size_t i=0;i<N/2;i++){
       T x,y,z,r;
       do{
@@ -198,9 +198,9 @@ void Kernel<T>::Initialize(bool verbose) const{
         z=(drand48()-0.5);
         r=pvfmm::sqrt<T>(x*x+y*y+z*z);
       }while(r<0.25);
-      trg_coord1[i*COORD_DIM+0]=x*scal;
-      trg_coord1[i*COORD_DIM+1]=y*scal;
-      trg_coord1[i*COORD_DIM+2]=z*scal;
+      trg_coord1[i*3+0]=x*scal;
+      trg_coord1[i*3+1]=y*scal;
+      trg_coord1[i*3+2]=z*scal;
     }
     for(size_t i=N/2;i<N;i++){
       T x,y,z,r;
@@ -210,9 +210,9 @@ void Kernel<T>::Initialize(bool verbose) const{
         z=(drand48()-0.5);
         r=pvfmm::sqrt<T>(x*x+y*y+z*z);
       }while(r<0.25);
-      trg_coord1[i*COORD_DIM+0]=x*1.0/scal;
-      trg_coord1[i*COORD_DIM+1]=y*1.0/scal;
-      trg_coord1[i*COORD_DIM+2]=z*1.0/scal;
+      trg_coord1[i*3+0]=x*1.0/scal;
+      trg_coord1[i*3+1]=y*1.0/scal;
+      trg_coord1[i*3+2]=z*1.0/scal;
     }
 
     for(size_t p_type=0;p_type<C_Perm;p_type++){ // For each symmetry transform
@@ -220,44 +220,44 @@ void Kernel<T>::Initialize(bool verbose) const{
       switch(p_type){ // Set trg_coord2
         case ReflecX:
           for(size_t i=0;i<N;i++){
-            trg_coord2[i*COORD_DIM+0]=-trg_coord1[i*COORD_DIM+0];
-            trg_coord2[i*COORD_DIM+1]= trg_coord1[i*COORD_DIM+1];
-            trg_coord2[i*COORD_DIM+2]= trg_coord1[i*COORD_DIM+2];
+            trg_coord2[i*3+0]=-trg_coord1[i*3+0];
+            trg_coord2[i*3+1]= trg_coord1[i*3+1];
+            trg_coord2[i*3+2]= trg_coord1[i*3+2];
           }
           break;
         case ReflecY:
           for(size_t i=0;i<N;i++){
-            trg_coord2[i*COORD_DIM+0]= trg_coord1[i*COORD_DIM+0];
-            trg_coord2[i*COORD_DIM+1]=-trg_coord1[i*COORD_DIM+1];
-            trg_coord2[i*COORD_DIM+2]= trg_coord1[i*COORD_DIM+2];
+            trg_coord2[i*3+0]= trg_coord1[i*3+0];
+            trg_coord2[i*3+1]=-trg_coord1[i*3+1];
+            trg_coord2[i*3+2]= trg_coord1[i*3+2];
           }
           break;
         case ReflecZ:
           for(size_t i=0;i<N;i++){
-            trg_coord2[i*COORD_DIM+0]= trg_coord1[i*COORD_DIM+0];
-            trg_coord2[i*COORD_DIM+1]= trg_coord1[i*COORD_DIM+1];
-            trg_coord2[i*COORD_DIM+2]=-trg_coord1[i*COORD_DIM+2];
+            trg_coord2[i*3+0]= trg_coord1[i*3+0];
+            trg_coord2[i*3+1]= trg_coord1[i*3+1];
+            trg_coord2[i*3+2]=-trg_coord1[i*3+2];
           }
           break;
         case SwapXY:
           for(size_t i=0;i<N;i++){
-            trg_coord2[i*COORD_DIM+0]= trg_coord1[i*COORD_DIM+1];
-            trg_coord2[i*COORD_DIM+1]= trg_coord1[i*COORD_DIM+0];
-            trg_coord2[i*COORD_DIM+2]= trg_coord1[i*COORD_DIM+2];
+            trg_coord2[i*3+0]= trg_coord1[i*3+1];
+            trg_coord2[i*3+1]= trg_coord1[i*3+0];
+            trg_coord2[i*3+2]= trg_coord1[i*3+2];
           }
           break;
         case SwapXZ:
           for(size_t i=0;i<N;i++){
-            trg_coord2[i*COORD_DIM+0]= trg_coord1[i*COORD_DIM+2];
-            trg_coord2[i*COORD_DIM+1]= trg_coord1[i*COORD_DIM+1];
-            trg_coord2[i*COORD_DIM+2]= trg_coord1[i*COORD_DIM+0];
+            trg_coord2[i*3+0]= trg_coord1[i*3+2];
+            trg_coord2[i*3+1]= trg_coord1[i*3+1];
+            trg_coord2[i*3+2]= trg_coord1[i*3+0];
           }
           break;
         default:
           for(size_t i=0;i<N;i++){
-            trg_coord2[i*COORD_DIM+0]= trg_coord1[i*COORD_DIM+0];
-            trg_coord2[i*COORD_DIM+1]= trg_coord1[i*COORD_DIM+1];
-            trg_coord2[i*COORD_DIM+2]= trg_coord1[i*COORD_DIM+2];
+            trg_coord2[i*3+0]= trg_coord1[i*3+0];
+            trg_coord2[i*3+1]= trg_coord1[i*3+1];
+            trg_coord2[i*3+2]= trg_coord1[i*3+2];
           }
       }
 
@@ -267,9 +267,9 @@ void Kernel<T>::Initialize(bool verbose) const{
         Matrix<T> M2(N,ker_dim[0]*ker_dim[1]); M2.SetZero();
         for(size_t i=0;i<N;i++){
           BuildMatrix(&src_coord [          0], 1,
-                      &trg_coord1[i*COORD_DIM], 1, &(M1[i][0]));
+                      &trg_coord1[i*3], 1, &(M1[i][0]));
           BuildMatrix(&src_coord [          0], 1,
-                      &trg_coord2[i*COORD_DIM], 1, &(M2[i][0]));
+                      &trg_coord2[i*3], 1, &(M2[i][0]));
         }
 
         Matrix<T> dot11(ker_dim[0]*ker_dim[1],ker_dim[0]*ker_dim[1]);dot11.SetZero();
@@ -603,14 +603,14 @@ void Kernel<T>::Initialize(bool verbose) const{
             }
           }
         }
-        size_t n_equiv=equiv_surf.size()/COORD_DIM;
-        size_t n_check=equiv_surf.size()/COORD_DIM;
+        size_t n_equiv=equiv_surf.size()/3;
+        size_t n_check=equiv_surf.size()/3;
 
         size_t n_src=m*m;
         size_t n_trg=m*m;
         std::vector<T> src_coord;
         std::vector<T> trg_coord;
-        for(size_t i=0;i<n_src*COORD_DIM;i++){
+        for(size_t i=0;i<n_src*3;i++){
           src_coord.push_back((2*drand48()-1)/3*rad);
         }
         for(size_t i=0;i<n_trg;i++){
@@ -621,9 +621,9 @@ void Kernel<T>::Initialize(bool verbose) const{
             z=(drand48()-0.5);
             r=pvfmm::sqrt<T>(x*x+y*y+z*z);
           }while(r==0.0);
-          trg_coord.push_back(x/r*pvfmm::sqrt<T>((T)COORD_DIM)*rad*(1.0+drand48()));
-          trg_coord.push_back(y/r*pvfmm::sqrt<T>((T)COORD_DIM)*rad*(1.0+drand48()));
-          trg_coord.push_back(z/r*pvfmm::sqrt<T>((T)COORD_DIM)*rad*(1.0+drand48()));
+          trg_coord.push_back(x/r*pvfmm::sqrt<T>((T)3)*rad*(1.0+drand48()));
+          trg_coord.push_back(y/r*pvfmm::sqrt<T>((T)3)*rad*(1.0+drand48()));
+          trg_coord.push_back(z/r*pvfmm::sqrt<T>((T)3)*rad*(1.0+drand48()));
         }
 
         Matrix<T> M_s2c(n_src*ker_dim[0],n_check*ker_dim[1]);
@@ -697,14 +697,14 @@ void Kernel<T>::Initialize(bool verbose) const{
             }
           }
         }
-        size_t n_equiv=equiv_surf.size()/COORD_DIM;
-        size_t n_check=equiv_surf.size()/COORD_DIM;
+        size_t n_equiv=equiv_surf.size()/3;
+        size_t n_check=equiv_surf.size()/3;
 
         size_t n_src=m*m;
         size_t n_trg=m*m;
         std::vector<T> src_coord;
         std::vector<T> trg_coord;
-        for(size_t i=0;i<n_trg*COORD_DIM;i++){
+        for(size_t i=0;i<n_trg*3;i++){
           trg_coord.push_back((2*drand48()-1)/3*rad);
         }
         for(size_t i=0;i<n_src;i++){
@@ -715,9 +715,9 @@ void Kernel<T>::Initialize(bool verbose) const{
             z=(drand48()-0.5);
             r=pvfmm::sqrt<T>(x*x+y*y+z*z);
           }while(r==0.0);
-          src_coord.push_back(x/r*pvfmm::sqrt<T>((T)COORD_DIM)*rad*(1.0+drand48()));
-          src_coord.push_back(y/r*pvfmm::sqrt<T>((T)COORD_DIM)*rad*(1.0+drand48()));
-          src_coord.push_back(z/r*pvfmm::sqrt<T>((T)COORD_DIM)*rad*(1.0+drand48()));
+          src_coord.push_back(x/r*pvfmm::sqrt<T>((T)3)*rad*(1.0+drand48()));
+          src_coord.push_back(y/r*pvfmm::sqrt<T>((T)3)*rad*(1.0+drand48()));
+          src_coord.push_back(z/r*pvfmm::sqrt<T>((T)3)*rad*(1.0+drand48()));
         }
 
         Matrix<T> M_s2c(n_src*ker_dim[0],n_check*ker_dim[1]);
@@ -767,7 +767,7 @@ void Kernel<T>::Initialize(bool verbose) const{
       std::vector<T> equiv_surf;
       std::vector<T> check_surf;
       std::vector<T> trg_coord;
-      for(size_t i=0;i<m*COORD_DIM;i++){
+      for(size_t i=0;i<m*3;i++){
         trg_coord.push_back(drand48()+1.0);
       }
       for(int i0=0;i0<m;i0++){
@@ -792,9 +792,9 @@ void Kernel<T>::Initialize(bool verbose) const{
           }
         }
       }
-      size_t n_equiv=equiv_surf.size()/COORD_DIM;
-      size_t n_check=equiv_surf.size()/COORD_DIM;
-      size_t n_trg  =trg_coord .size()/COORD_DIM;
+      size_t n_equiv=equiv_surf.size()/3;
+      size_t n_check=equiv_surf.size()/3;
+      size_t n_trg  =trg_coord .size()/3;
 
       Matrix<T> M_local, M_analytic;
       Matrix<T> T_local, T_analytic;
@@ -948,8 +948,8 @@ void generic_kernel(Real_t* r_src, int src_cnt, Real_t* v_src, int dof, Real_t* 
     src_cnt_=((src_cnt+VecLen-1)/VecLen)*VecLen;
     trg_cnt_=((trg_cnt+VecLen-1)/VecLen)*VecLen;
 
-    size_t buff_size=src_cnt_*(COORD_DIM+SRC_DIM)+
-                     trg_cnt_*(COORD_DIM+TRG_DIM);
+    size_t buff_size=src_cnt_*(3+SRC_DIM)+
+                     trg_cnt_*(3+TRG_DIM);
     if(buff_size>STACK_BUFF_SIZE){ // Allocate buff
       buff=mem::aligned_new<Real_t>(buff_size, mem_mgr);
     }
@@ -962,19 +962,19 @@ void generic_kernel(Real_t* r_src, int src_cnt, Real_t* v_src, int dof, Real_t* 
       ptr=((ptr+ALIGN_MINUS_ONE) & NOT_ALIGN_MINUS_ONE);
       buff_ptr=(Real_t*)ptr;
     }
-    src_coord.ReInit(COORD_DIM, src_cnt_,buff_ptr,false);  buff_ptr+=COORD_DIM*src_cnt_;
+    src_coord.ReInit(3, src_cnt_,buff_ptr,false);  buff_ptr+=3*src_cnt_;
     src_value.ReInit(  SRC_DIM, src_cnt_,buff_ptr,false);  buff_ptr+=  SRC_DIM*src_cnt_;
-    trg_coord.ReInit(COORD_DIM, trg_cnt_,buff_ptr,false);  buff_ptr+=COORD_DIM*trg_cnt_;
+    trg_coord.ReInit(3, trg_cnt_,buff_ptr,false);  buff_ptr+=3*trg_cnt_;
     trg_value.ReInit(  TRG_DIM, trg_cnt_,buff_ptr,false);//buff_ptr+=  TRG_DIM*trg_cnt_;
     { // Set src_coord
       size_t i=0;
       for(   ;i<src_cnt ;i++){
-        for(size_t j=0;j<COORD_DIM;j++){
-          src_coord[j][i]=r_src[i*COORD_DIM+j];
+        for(size_t j=0;j<3;j++){
+          src_coord[j][i]=r_src[i*3+j];
         }
       }
       for(   ;i<src_cnt_;i++){
-        for(size_t j=0;j<COORD_DIM;j++){
+        for(size_t j=0;j<3;j++){
           src_coord[j][i]=0;
         }
       }
@@ -995,12 +995,12 @@ void generic_kernel(Real_t* r_src, int src_cnt, Real_t* v_src, int dof, Real_t* 
     { // Set trg_coord
       size_t i=0;
       for(   ;i<trg_cnt ;i++){
-        for(size_t j=0;j<COORD_DIM;j++){
-          trg_coord[j][i]=r_trg[i*COORD_DIM+j];
+        for(size_t j=0;j<3;j++){
+          trg_coord[j][i]=r_trg[i*3+j];
         }
       }
       for(   ;i<trg_cnt_;i++){
-        for(size_t j=0;j<COORD_DIM;j++){
+        for(size_t j=0;j<3;j++){
           trg_coord[j][i]=0;
         }
       }

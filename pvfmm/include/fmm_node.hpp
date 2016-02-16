@@ -60,7 +60,6 @@ class FMM_Data{
 class FMM_Node {
 
  public:
-  int dim;
   int depth;
   int max_depth;
   int path2node;
@@ -71,8 +70,8 @@ class FMM_Node {
   size_t max_pts;
   size_t node_id;
   long long weight;
-  Real_t coord[COORD_DIM];
-  FMM_Node * colleague[COLLEAGUE_COUNT];
+  Real_t coord[3];
+  FMM_Node * colleague[27];
   Vector<Real_t> pt_coord;
   Vector<Real_t> pt_value;
   Vector<size_t> pt_scatter;
@@ -95,7 +94,6 @@ class FMM_Node {
      ~NodeData(){};
      void Clear(){}
      int max_depth;
-     int dim;
      size_t max_pts;
      Vector<Real_t> coord;
      Vector<Real_t> value;
@@ -107,7 +105,7 @@ class FMM_Node {
      Vector<Real_t> trg_value;
   };
 
-  FMM_Node() : dim(0), depth(0), max_depth(MAX_DEPTH), parent(NULL), child(NULL), status(1),
+  FMM_Node() : depth(0), max_depth(MAX_DEPTH), parent(NULL), child(NULL), status(1),
 	       ghost(false), weight(1) {
     fmm_data=NULL;
   }
@@ -116,7 +114,7 @@ class FMM_Node {
     if(fmm_data!=NULL) mem::aligned_delete(fmm_data);
     fmm_data=NULL;
     if(!child) return;
-    int n=(1UL<<dim);
+    int n=(1UL<<3);
     for(int i=0;i<n;i++){
       if(child[i]!=NULL)
 	mem::aligned_delete(child[i]);
@@ -129,27 +127,25 @@ class FMM_Node {
     parent=parent_;
     depth=(parent==NULL?0:parent->depth+1);
     if(data_!=NULL){
-      dim=data_->dim;
       max_depth=data_->max_depth;
       if(max_depth>MAX_DEPTH) max_depth=MAX_DEPTH;
     }else if(parent!=NULL){
-      dim=parent->Dim();
       max_depth=parent->max_depth;
     }
-    assert(path2node_>=0 && path2node_<(int)(1U<<dim));
+    assert(path2node_>=0 && path2node_<(int)(1U<<3));
     path2node=path2node_;
     Real_t coord_offset=((Real_t)1.0)/((Real_t)(((uint64_t)1)<<depth));
     if(!parent_){
-      for(int j=0;j<dim;j++) coord[j]=0;
+      for(int j=0;j<3;j++) coord[j]=0;
     }else if(parent_){
       int flag=1;
-      for(int j=0;j<dim;j++){
+      for(int j=0;j<3;j++){
 	coord[j]=parent_->coord[j]+
 	  ((Path2Node() & flag)?coord_offset:0.0f);
 	flag=flag<<1;
       }
     }
-    int n=pvfmm::pow<unsigned int>(3,Dim());
+    int n=pvfmm::pow<unsigned int>(3,3);
     for(int i=0;i<n;i++) colleague[i]=NULL;
     NodeData* mpi_data=dynamic_cast<NodeData*>(data_);
     if(data_){
@@ -202,7 +198,7 @@ class FMM_Node {
   void Truncate() {
     if(!child) return;
     SetStatus(1);
-    int n=(1UL<<dim);
+    int n=(1UL<<3);
     for(int i=0;i<n;i++){
       if(child[i]!=NULL)
 	mem::aligned_delete(child[i]);
@@ -218,7 +214,6 @@ class FMM_Node {
   FMM_Node* NewNode(FMM_Node* n_=NULL) {
     FMM_Node* n=(n_==NULL?mem::aligned_new<FMM_Node>():static_cast<FMM_Node*>(n_));
     if(fmm_data!=NULL) n->fmm_data=fmm_data->NewData();
-    n->dim=dim;
     n->max_depth=max_depth;
     n->max_pts=max_pts;
     return n;
@@ -228,14 +223,14 @@ class FMM_Node {
     if(!IsLeaf()) return;
     if(child) return;
     SetStatus(1);
-    int n=(1UL<<dim);
+    int n=(1UL<<3);
     child=mem::aligned_new<FMM_Node*>(n);
     for(int i=0;i<n;i++){
       child[i]=NewNode();
       child[i]->parent=this;
       child[i]->Initialize(this,i,NULL);
     }
-    int nchld=(1UL<<Dim());
+    int nchld=(1UL<<3);
     if(!IsGhost()){
       std::vector<Vector<Real_t>*> pt_c;
       std::vector<Vector<Real_t>*> pt_v;
@@ -254,7 +249,7 @@ class FMM_Node {
       for(size_t j=0;j<pt_c.size();j++){
 	if(!pt_c[j] || !pt_c[j]->Dim()) continue;
 	Vector<Real_t>& coord=*pt_c[j];
-	size_t npts=coord.Dim()/Dim();
+	size_t npts=coord.Dim()/3;
 
 	Vector<size_t> cdata(nchld+1);
 	for(size_t i=0;i<nchld+1;i++){
@@ -303,10 +298,6 @@ class FMM_Node {
     }
   }
 
-  int Dim() {
-    return dim;
-  }
-
   bool IsLeaf() {
     return child == NULL;
   }
@@ -331,7 +322,7 @@ class FMM_Node {
 
 
   FMM_Node* Child(int id){
-    assert(id<(1<<dim));
+    assert(id<(1<<3));
     if(child==NULL) return NULL;
     return child[id];
   }
@@ -357,7 +348,7 @@ class FMM_Node {
   }
 
   void SetParent(FMM_Node* p, int path2node_) {
-    assert(path2node_>=0 && path2node_<(1<<dim));
+    assert(path2node_>=0 && path2node_<(1<<3));
     assert(p==NULL?true:p->Child(path2node_)==this);
     parent=p;
     path2node=path2node_;
@@ -366,7 +357,7 @@ class FMM_Node {
   }
 
   void SetChild(FMM_Node* c, int id) {
-    assert(id<(1<<dim));
+    assert(id<(1<<3));
     child[id]=c;
     if(c!=NULL) child[id]->SetParent(this,id);
   }

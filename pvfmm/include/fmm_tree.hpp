@@ -609,7 +609,7 @@ class FMM_Tree {
   template <class Real_t>
   void VListHadamard(size_t dof, size_t M_dim, size_t ker_dim0, size_t ker_dim1, Vector<size_t>& interac_dsp,
       Vector<size_t>& interac_vec, Vector<Real_t*>& precomp_mat, Vector<Real_t>& fft_in, Vector<Real_t>& fft_out){
-    size_t chld_cnt=1UL<<COORD_DIM;
+    size_t chld_cnt=1UL<<3;
     size_t fftsize_in =M_dim*ker_dim0*chld_cnt*2;
     size_t fftsize_out=M_dim*ker_dim1*chld_cnt*2;
     Real_t* zero_vec0=mem::aligned_new<Real_t>(fftsize_in );
@@ -930,7 +930,7 @@ class FMM_Tree {
         Real_t r=pvfmm::pow<Real_t>(0.5,level);
         size_t n_trg=rel_trg_coord.size()/3;
         std::vector<Real_t> trg_coord(n_trg*3);
-        for(size_t i=0;i<n_trg*COORD_DIM;i++) trg_coord[i]=rel_trg_coord[i]*r;
+        for(size_t i=0;i<n_trg*3;i++) trg_coord[i]=rel_trg_coord[i]*r;
         Real_t c[3]={0,0,0};
         std::vector<Real_t> equiv_surf=d_equiv_surf(MultipoleOrder(),c,level);
         size_t n_eq=equiv_surf.size()/3;
@@ -953,7 +953,7 @@ class FMM_Tree {
         Real_t s=pvfmm::pow<Real_t>(0.5,level);
         int* coord2=interac_list.RelativeCoord(type,mat_indx);
         Real_t coord_diff[3]={coord2[0]*s,coord2[1]*s,coord2[2]*s};
-        std::vector<Real_t> r_trg(COORD_DIM,0.0);
+        std::vector<Real_t> r_trg(3,0.0);
         std::vector<Real_t> conv_poten(n3*ker_dim[0]*ker_dim[1]);
         std::vector<Real_t> conv_coord=conv_grid(MultipoleOrder(),coord_diff,level);
         kernel->k_m2l->BuildMatrix(&conv_coord[0],n3,&r_trg[0],1,&conv_poten[0]);
@@ -966,7 +966,7 @@ class FMM_Tree {
 #pragma omp critical (FFTW_PLAN)
         {
           if (!vprecomp_fft_flag){
-            vprecomp_fftplan = FFTW_t<Real_t>::fft_plan_many_dft_r2c(COORD_DIM, nnn, ker_dim[0]*ker_dim[1],
+            vprecomp_fftplan = FFTW_t<Real_t>::fft_plan_many_dft_r2c(3, nnn, ker_dim[0]*ker_dim[1],
                 (Real_t*)fftw_in, NULL, 1, n3, (typename FFTW_t<Real_t>::cplx*) fftw_out, NULL, 1, n3_);
             vprecomp_fft_flag=true;
           }
@@ -986,7 +986,7 @@ class FMM_Tree {
         size_t mat_cnt =interac_list.ListCount( V_Type);
         for(size_t k=0;k<mat_cnt;k++) Precomp(level, V_Type, k);
   
-        const size_t chld_cnt=1UL<<COORD_DIM;
+        const size_t chld_cnt=1UL<<3;
         size_t n1=MultipoleOrder()*2;
         size_t M_dim=n1*n1*(n1/2+1);
         size_t n3=n1*n1*n1;
@@ -1031,7 +1031,7 @@ class FMM_Tree {
         Real_t s=pvfmm::pow<Real_t>(0.5,level);
         size_t n_trg=rel_trg_coord.size()/3;
         std::vector<Real_t> trg_coord(n_trg*3);
-        for(size_t j=0;j<n_trg*COORD_DIM;j++) trg_coord[j]=rel_trg_coord[j]*s;
+        for(size_t j=0;j<n_trg*3;j++) trg_coord[j]=rel_trg_coord[j]*s;
         int* coord2=interac_list.RelativeCoord(type,mat_indx);
         Real_t c[3]={(Real_t)((coord2[0]+1)*s*0.25),(Real_t)((coord2[1]+1)*s*0.25),(Real_t)((coord2[2]+1)*s*0.25)};
         std::vector<Real_t> equiv_surf=u_equiv_surf(MultipoleOrder(),c,level+1);
@@ -1200,7 +1200,7 @@ class FMM_Tree {
             corner_pts.push_back(1); corner_pts.push_back(0); corner_pts.push_back(1);
             corner_pts.push_back(1); corner_pts.push_back(1); corner_pts.push_back(0);
             corner_pts.push_back(1); corner_pts.push_back(1); corner_pts.push_back(1);
-            size_t n_corner=corner_pts.size()/COORD_DIM;
+            size_t n_corner=corner_pts.size()/3;
             Real_t c[3]={0,0,0};
             std::vector<Real_t> up_equiv_surf=u_equiv_surf(MultipoleOrder(),c,0);
             std::vector<Real_t> dn_equiv_surf=d_equiv_surf(MultipoleOrder(),c,0);
@@ -1220,9 +1220,9 @@ class FMM_Tree {
                 for(int j0=-1;j0<=1;j0++)
                 for(int j1=-1;j1<=1;j1++)
                 for(int j2=-1;j2<=1;j2++){
-                  Real_t pt_c[3]={corner_pts[k*COORD_DIM+0]-j0,
-                                      corner_pts[k*COORD_DIM+1]-j1,
-                                      corner_pts[k*COORD_DIM+2]-j2};
+                  Real_t pt_c[3]={corner_pts[k*3+0]-j0,
+                                      corner_pts[k*3+1]-j1,
+                                      corner_pts[k*3+2]-j2};
                   if(pvfmm::fabs<Real_t>(pt_c[0]-0.5)>1.0 || pvfmm::fabs<Real_t>(pt_c[1]-0.5)>1.0 || pvfmm::fabs<Real_t>(pt_c[2]-0.5)>1.0){
                     Matrix<Real_t> M_e2pt(n_surf*ker_dim[0],ker_dim[1]);
                     kernel->k_m2l->BuildMatrix(&up_equiv_surf[0], n_surf,
@@ -1249,14 +1249,14 @@ class FMM_Tree {
             for(size_t k=0;k<ker_dim[1];k++)
             for(size_t j=0;j<n_surf;j++){
               M_grad[i][j*ker_dim[1]+k]=  M_err[i][0*ker_dim[1]+k]
-                                        +(M_err[i][1*ker_dim[1]+k]-M_err[i][0*ker_dim[1]+k])*dn_check_surf[j*COORD_DIM+0]
-                                        +(M_err[i][2*ker_dim[1]+k]-M_err[i][0*ker_dim[1]+k])*dn_check_surf[j*COORD_DIM+1]
-                                        +(M_err[i][3*ker_dim[1]+k]-M_err[i][0*ker_dim[1]+k])*dn_check_surf[j*COORD_DIM+2]
-                                        +(M_err[i][4*ker_dim[1]+k]+M_err[i][0*ker_dim[1]+k]-M_err[i][2*ker_dim[1]+k]-M_err[i][3*ker_dim[1]+k])*dn_check_surf[j*COORD_DIM+1]*dn_check_surf[j*COORD_DIM+2]
-                                        +(M_err[i][5*ker_dim[1]+k]+M_err[i][0*ker_dim[1]+k]-M_err[i][1*ker_dim[1]+k]-M_err[i][3*ker_dim[1]+k])*dn_check_surf[j*COORD_DIM+2]*dn_check_surf[j*COORD_DIM+0]
-                                        +(M_err[i][6*ker_dim[1]+k]+M_err[i][0*ker_dim[1]+k]-M_err[i][1*ker_dim[1]+k]-M_err[i][2*ker_dim[1]+k])*dn_check_surf[j*COORD_DIM+0]*dn_check_surf[j*COORD_DIM+1]
+                                        +(M_err[i][1*ker_dim[1]+k]-M_err[i][0*ker_dim[1]+k])*dn_check_surf[j*3+0]
+                                        +(M_err[i][2*ker_dim[1]+k]-M_err[i][0*ker_dim[1]+k])*dn_check_surf[j*3+1]
+                                        +(M_err[i][3*ker_dim[1]+k]-M_err[i][0*ker_dim[1]+k])*dn_check_surf[j*3+2]
+                                        +(M_err[i][4*ker_dim[1]+k]+M_err[i][0*ker_dim[1]+k]-M_err[i][2*ker_dim[1]+k]-M_err[i][3*ker_dim[1]+k])*dn_check_surf[j*3+1]*dn_check_surf[j*3+2]
+                                        +(M_err[i][5*ker_dim[1]+k]+M_err[i][0*ker_dim[1]+k]-M_err[i][1*ker_dim[1]+k]-M_err[i][3*ker_dim[1]+k])*dn_check_surf[j*3+2]*dn_check_surf[j*3+0]
+                                        +(M_err[i][6*ker_dim[1]+k]+M_err[i][0*ker_dim[1]+k]-M_err[i][1*ker_dim[1]+k]-M_err[i][2*ker_dim[1]+k])*dn_check_surf[j*3+0]*dn_check_surf[j*3+1]
                                         +(M_err[i][7*ker_dim[1]+k]+M_err[i][1*ker_dim[1]+k]+M_err[i][2*ker_dim[1]+k]+M_err[i][3*ker_dim[1]+k]
-					  -M_err[i][0*ker_dim[1]+k]-M_err[i][4*ker_dim[1]+k]-M_err[i][5*ker_dim[1]+k]-M_err[i][6*ker_dim[1]+k])*dn_check_surf[j*COORD_DIM+0]*dn_check_surf[j*COORD_DIM+1]*dn_check_surf[j*COORD_DIM+2];
+					  -M_err[i][0*ker_dim[1]+k]-M_err[i][4*ker_dim[1]+k]-M_err[i][5*ker_dim[1]+k]-M_err[i][6*ker_dim[1]+k])*dn_check_surf[j*3+0]*dn_check_surf[j*3+1]*dn_check_surf[j*3+2];
             }
             M-=M_grad;
           }
@@ -1319,7 +1319,7 @@ class FMM_Tree {
     FMM_Data<Real_t>* NewData(){return mem::aligned_new<FMMData>();}
   };
 
-  int dim;
+  //int dim;
   int max_depth;
   int multipole_order;
   FMM_Node* root_node;
@@ -1348,7 +1348,7 @@ class FMM_Tree {
   bool vlist_ifft_flag;
     
 
-  FMM_Tree(): dim(0), root_node(NULL), max_depth(MAX_DEPTH), memgr(0), vprecomp_fft_flag(false), vlist_fft_flag(false),
+  FMM_Tree(): root_node(NULL), max_depth(MAX_DEPTH), memgr(0), vprecomp_fft_flag(false), vlist_fft_flag(false),
 	      vlist_ifft_flag(false), mat(NULL), kernel(NULL) { };
 
   ~FMM_Tree(){
@@ -1372,14 +1372,12 @@ class FMM_Tree {
   void Initialize(typename FMM_Node::NodeData* init_data) {
     Profile::Tic("InitTree",true);{
       Profile::Tic("InitRoot",false,5);
-      dim=init_data->dim;
       max_depth=init_data->max_depth;
       if(max_depth>MAX_DEPTH) max_depth=MAX_DEPTH;
       if(root_node) mem::aligned_delete(root_node);
       root_node=mem::aligned_new<FMM_Node>();
       root_node->Initialize(NULL,0,init_data);
       FMM_Node* rnode=RootNode();
-      assert(Dim()==COORD_DIM);
       Profile::Toc();
   
       Profile::Tic("Points2Octee",true,5);
@@ -1387,11 +1385,11 @@ class FMM_Tree {
       {
         Vector<MortonId> pt_mid;
         Vector<Real_t>& pt_c=rnode->pt_coord;
-        size_t pt_cnt=pt_c.Dim()/Dim();
+        size_t pt_cnt=pt_c.Dim()/3;
         pt_mid.Resize(pt_cnt);
 #pragma omp parallel for
         for(size_t i=0;i<pt_cnt;i++){
-        pt_mid[i]=MortonId(pt_c[i*COORD_DIM+0],pt_c[i*COORD_DIM+1],pt_c[i*COORD_DIM+2],max_depth);
+        pt_mid[i]=MortonId(pt_c[i*3+0],pt_c[i*3+1],pt_c[i*3+2],max_depth);
       }
         points2Octree(pt_mid,lin_oct,max_depth,init_data->max_pts);
       }
@@ -1411,11 +1409,11 @@ class FMM_Tree {
         for(size_t i=0;i<coord_lst.size();i++){
           if(!coord_lst[i]) continue;
           Vector<Real_t>& pt_c=*coord_lst[i];
-          size_t pt_cnt=pt_c.Dim()/Dim();
+          size_t pt_cnt=pt_c.Dim()/3;
           pt_mid.Resize(pt_cnt);
 #pragma omp parallel for
           for(size_t i=0;i<pt_cnt;i++){
-    	  pt_mid[i]=MortonId(pt_c[i*COORD_DIM+0],pt_c[i*COORD_DIM+1],pt_c[i*COORD_DIM+2],max_depth);
+    	  pt_mid[i]=MortonId(pt_c[i*3+0],pt_c[i*3+1],pt_c[i*3+2],max_depth);
           }
           par::SortScatterIndex(pt_mid  , scatter_index, &lin_oct[0]);
           par::ScatterForward  (pt_c, scatter_index);
@@ -1518,7 +1516,7 @@ class FMM_Tree {
       save_precomp=true;
     }
     mat->LoadFile(mat_fname.c_str());
-    interac_list.Initialize(COORD_DIM, mat);
+    interac_list.Initialize(3, mat);
     Profile::Tic("PrecompUC2UE",false,4);
     PrecompAll(UC2UE0_Type);
     PrecompAll(UC2UE1_Type);
@@ -1555,8 +1553,6 @@ class FMM_Tree {
     }Profile::Toc();
   }
 
-  int Dim() {return dim;}
-
   FMM_Node* RootNode() {return root_node;}
 
   FMM_Node* PreorderFirst() {return root_node;}
@@ -1567,7 +1563,7 @@ class FMM_Tree {
   
   FMM_Node* PreorderNxt(FMM_Node* curr_node) {
     assert(curr_node!=NULL);
-    int n=(1UL<<dim);
+    int n=(1UL<<3);
     if(!curr_node->IsLeaf())
       for(int i=0;i<n;i++)
 	if(curr_node->Child(i)!=NULL)
@@ -1584,8 +1580,8 @@ class FMM_Tree {
   }
 
   void SetColleagues(FMM_Node* node=NULL) {
-    int n1=(int)pvfmm::pow<unsigned int>(3,Dim());
-    int n2=(int)pvfmm::pow<unsigned int>(2,Dim());
+    int n1=(int)pvfmm::pow<unsigned int>(3,3);
+    int n2=(int)pvfmm::pow<unsigned int>(2,3);
     if(node==NULL){
       FMM_Node* curr_node=PreorderFirst();
       if(curr_node!=NULL){
@@ -1623,7 +1619,7 @@ class FMM_Tree {
 
               bool flag=true;
               int a=1,b=1,new_indx=0;
-              for(int k=0;k<Dim();k++){
+              for(int k=0;k<3;k++){
                 int indx_diff=(((i/b)%3)-1)*2+((j/a)%2)-((l/a)%2);
                 if(-1>indx_diff || indx_diff>1) flag=false;
                 new_indx+=(indx_diff+1)*b;
@@ -1654,7 +1650,7 @@ class FMM_Tree {
   }
 
   FMM_Node* FindNode(MortonId& key, bool subdiv, FMM_Node* start=NULL) {
-    int num_child=1UL<<Dim();
+    int num_child=1UL<<3;
     FMM_Node* n=start;
     if(n==NULL) n=RootNode();
     while(n->GetMortonId()<key && (!n->IsLeaf()||subdiv)){
@@ -1673,7 +1669,7 @@ class FMM_Tree {
 
   FMM_Node* PostorderFirst() {
     FMM_Node* node=root_node;
-    int n=(1UL<<dim);
+    int n=(1UL<<3);
     while(true){
       if(node->IsLeaf()) return node;
       for(int i=0;i<n;i++) {
@@ -1691,7 +1687,7 @@ class FMM_Tree {
     int j=node->Path2Node()+1;
     node=node->Parent();
     if(node==NULL) return NULL;
-    int n=(1UL<<dim);
+    int n=(1UL<<3);
     for(;j<n;j++){
       if(node->Child(j)!=NULL){
 	node=node->Child(j);
@@ -1711,7 +1707,7 @@ class FMM_Tree {
 
   void InitFMM_Tree(bool refine) {
     Profile::Tic("InitFMM_Tree",true);{
-      interac_list.Initialize(Dim(), mat);
+      interac_list.Initialize(3, mat);
     }Profile::Toc();
   }
 
@@ -1855,13 +1851,13 @@ class FMM_Tree {
           if(!node[i]->IsLeaf()){
             node_lst_[node[i]->depth].push_back(node[i]);
           }else{
-            node[i]->pt_cnt[0]+=node[i]-> src_coord.Dim()/COORD_DIM;
-            node[i]->pt_cnt[0]+=node[i]->surf_coord.Dim()/COORD_DIM;
+            node[i]->pt_cnt[0]+=node[i]-> src_coord.Dim()/3;
+            node[i]->pt_cnt[0]+=node[i]->surf_coord.Dim()/3;
             if(node[i]->IsGhost()) node[i]->pt_cnt[0]++; // TODO: temporary fix, pt_cnt not known for ghost nodes
           }
           if(node[i]->depth==0) r_node=node[i];
         }
-        size_t chld_cnt=1UL<<COORD_DIM;
+        size_t chld_cnt=1UL<<3;
         for(int i=MAX_DEPTH;i>=0;i--){
           for(size_t j=0;j<node_lst_[i].size();j++){
             for(size_t k=0;k<chld_cnt;k++){
@@ -1906,11 +1902,11 @@ class FMM_Tree {
           if(!node[i]->IsLeaf()){
             node_lst_[node[i]->depth].push_back(node[i]);
           }else{
-            node[i]->pt_cnt[1]+=node[i]->trg_coord.Dim()/COORD_DIM;
+            node[i]->pt_cnt[1]+=node[i]->trg_coord.Dim()/3;
           }
           if(node[i]->depth==0) r_node=node[i];
         }
-        size_t chld_cnt=1UL<<COORD_DIM;
+        size_t chld_cnt=1UL<<3;
         for(int i=MAX_DEPTH;i>=0;i--){
           for(size_t j=0;j<node_lst_[i].size();j++){
             for(size_t k=0;k<chld_cnt;k++){
@@ -1970,7 +1966,7 @@ class FMM_Tree {
     {
       int indx=4;
       int src_dof=kernel->ker_dim[0];
-      int surf_dof=COORD_DIM+src_dof;
+      int surf_dof=3+src_dof;
       std::vector< FMM_Node* > node_lst;
       for(size_t i=0;i<node.size();i++) {
         if(node[i]->IsLeaf()){
@@ -1986,13 +1982,13 @@ class FMM_Tree {
         FMM_Node* node=node_lst[i];
         {
           Vector<Real_t>& data_vec=node->src_value;
-          size_t vec_sz=(node->src_coord.Dim()/COORD_DIM)*src_dof;
+          size_t vec_sz=(node->src_coord.Dim()/3)*src_dof;
           if(data_vec.Dim()!=vec_sz) data_vec.ReInit(vec_sz,NULL,false);
           vec_lst.push_back(&data_vec);
         }
         {
           Vector<Real_t>& data_vec=node->surf_value;
-          size_t vec_sz=(node->surf_coord.Dim()/COORD_DIM)*surf_dof;
+          size_t vec_sz=(node->surf_coord.Dim()/3)*surf_dof;
           if(data_vec.Dim()!=vec_sz) data_vec.ReInit(vec_sz,NULL,false);
           vec_lst.push_back(&data_vec);
         }
@@ -2015,7 +2011,7 @@ class FMM_Tree {
         FMM_Node* node=node_lst[i];
         {
           Vector<Real_t>& data_vec=node->trg_value;
-          size_t vec_sz=(node->trg_coord.Dim()/COORD_DIM)*trg_dof;
+          size_t vec_sz=(node->trg_coord.Dim()/3)*trg_dof;
           data_vec.ReInit(vec_sz,NULL,false);
           vec_lst.push_back(&data_vec);
         }
@@ -2059,10 +2055,10 @@ class FMM_Tree {
           dnwd_equiv_surf.resize(MAX_DEPTH);
           for(size_t depth=0;depth<MAX_DEPTH;depth++){
             Real_t c[3]={0.0,0.0,0.0};
-            upwd_check_surf[depth].ReInit((6*(m-1)*(m-1)+2)*COORD_DIM);
-            upwd_equiv_surf[depth].ReInit((6*(m-1)*(m-1)+2)*COORD_DIM);
-            dnwd_check_surf[depth].ReInit((6*(m-1)*(m-1)+2)*COORD_DIM);
-            dnwd_equiv_surf[depth].ReInit((6*(m-1)*(m-1)+2)*COORD_DIM);
+            upwd_check_surf[depth].ReInit((6*(m-1)*(m-1)+2)*3);
+            upwd_equiv_surf[depth].ReInit((6*(m-1)*(m-1)+2)*3);
+            dnwd_check_surf[depth].ReInit((6*(m-1)*(m-1)+2)*3);
+            dnwd_equiv_surf[depth].ReInit((6*(m-1)*(m-1)+2)*3);
             upwd_check_surf[depth]=u_check_surf(m,c,depth);
             upwd_equiv_surf[depth]=u_equiv_surf(m,c,depth);
             dnwd_check_surf[depth]=d_check_surf(m,c,depth);
@@ -2768,7 +2764,7 @@ class FMM_Tree {
                 const int* rel_coord=interac_list.RelativeCoord(type,j);
                 const Real_t* scoord=snode->Coord();
                 const Real_t* tcoord=tnode->Coord();
-                Real_t shift[COORD_DIM];
+                Real_t shift[3];
                 shift[0]=rel_coord[0]*0.5*s-(scoord[0]+0.5*s)+(0+0.5*s);
                 shift[1]=rel_coord[1]*0.5*s-(scoord[1]+0.5*s)+(0+0.5*s);
                 shift[2]=rel_coord[2]*0.5*s-(scoord[2]+0.5*s)+(0+0.5*s);
@@ -3186,13 +3182,13 @@ class FMM_Tree {
                   Real_t* vbuff3_ptr=(vbuff[3].Dim(0)*vbuff[3].Dim(1)?vbuff[3][interac_idx]:trg_value[0]);
                   if(src_coord.Dim(1)){
                     {
-                      Real_t* shift=&intdata.coord_shift[int_id*COORD_DIM];
+                      Real_t* shift=&intdata.coord_shift[int_id*3];
                       if(shift[0]!=0 || shift[1]!=0 || shift[2]!=0){
                         size_t vdim=src_coord.Dim(1);
                         Vector<Real_t> new_coord(vdim, &buff[0], false);
                         assert(buff.Dim()>=vdim);
-                        for(size_t j=0;j<vdim;j+=COORD_DIM){
-                          for(size_t k=0;k<COORD_DIM;k++){
+                        for(size_t j=0;j<vdim;j+=3){
+                          for(size_t k=0;k<3;k++){
                             new_coord[j+k]=src_coord[0][j+k]+shift[k];
                           }
                         }
@@ -3200,18 +3196,18 @@ class FMM_Tree {
                       }
                     }
                     assert(ptr_single_layer_kernel);
-                    single_layer_kernel(src_coord[0], src_coord.Dim(1)/COORD_DIM, vbuff2_ptr, 1,
-                                        trg_coord[0], trg_coord.Dim(1)/COORD_DIM, vbuff3_ptr, NULL);
+                    single_layer_kernel(src_coord[0], src_coord.Dim(1)/3, vbuff2_ptr, 1,
+                                        trg_coord[0], trg_coord.Dim(1)/3, vbuff3_ptr, NULL);
                   }
                   if(srf_coord.Dim(1)){
                     {
-                      Real_t* shift=&intdata.coord_shift[int_id*COORD_DIM];
+                      Real_t* shift=&intdata.coord_shift[int_id*3];
                       if(shift[0]!=0 || shift[1]!=0 || shift[2]!=0){
                         size_t vdim=srf_coord.Dim(1);
                         Vector<Real_t> new_coord(vdim, &buff[0], false);
                         assert(buff.Dim()>=vdim);
-                        for(size_t j=0;j<vdim;j+=COORD_DIM){
-                          for(size_t k=0;k<COORD_DIM;k++){
+                        for(size_t j=0;j<vdim;j+=3){
+                          for(size_t k=0;k<3;k++){
                             new_coord[j+k]=srf_coord[0][j+k]+shift[k];
                           }
                         }
@@ -3219,8 +3215,8 @@ class FMM_Tree {
                       }
                     }
                     assert(ptr_double_layer_kernel);
-                    double_layer_kernel(srf_coord[0], srf_coord.Dim(1)/COORD_DIM, srf_value[0], 1,
-                                        trg_coord[0], trg_coord.Dim(1)/COORD_DIM, vbuff3_ptr, NULL);
+                    double_layer_kernel(srf_coord[0], srf_coord.Dim(1)/3, srf_value[0], 1,
+                                        trg_coord[0], trg_coord.Dim(1)/3, vbuff3_ptr, NULL);
                   }
                   interac_idx++;
                 }
@@ -3338,7 +3334,7 @@ class FMM_Tree {
         size_t n1=m*2;
         size_t n2=n1*n1;
         size_t n3_=n2*(n1/2+1);
-        size_t chld_cnt=1UL<<COORD_DIM;
+        size_t chld_cnt=1UL<<3;
         fftsize=2*n3_*chld_cnt;
         dof=1;
       }
@@ -3487,7 +3483,7 @@ class FMM_Tree {
     size_t n2=n1*n1;
     size_t n3=n1*n2;
     size_t n3_=n2*(n1/2+1);
-    size_t chld_cnt=1UL<<COORD_DIM;
+    size_t chld_cnt=1UL<<3;
     size_t fftsize_in =2*n3_*chld_cnt*ker_dim0*dof;
     int omp_p=omp_get_max_threads();
     size_t n=6*(m-1)*(m-1)+2;
@@ -3497,7 +3493,7 @@ class FMM_Tree {
       if(n_old!=n){
         Real_t c[3]={0,0,0};
         Vector<Real_t> surf=surface(m, c, (Real_t)(m-1), 0);
-        map.Resize(surf.Dim()/COORD_DIM);
+        map.Resize(surf.Dim()/3);
         for(size_t i=0;i<map.Dim();i++)
           map[i]=((size_t)(m-1-surf[i*3]+0.5))+((size_t)(m-1-surf[i*3+1]+0.5))*n1+((size_t)(m-1-surf[i*3+2]+0.5))*n2;
       }
@@ -3508,7 +3504,7 @@ class FMM_Tree {
         void *fftw_in, *fftw_out;
         fftw_in  = mem::aligned_new<Real_t>(  n3 *ker_dim0*chld_cnt);
         fftw_out = mem::aligned_new<Real_t>(2*n3_*ker_dim0*chld_cnt);
-        vlist_fftplan = FFTW_t<Real_t>::fft_plan_many_dft_r2c(COORD_DIM,nnn,ker_dim0*chld_cnt,
+        vlist_fftplan = FFTW_t<Real_t>::fft_plan_many_dft_r2c(3,nnn,ker_dim0*chld_cnt,
             (Real_t*)fftw_in, NULL, 1, n3, (typename FFTW_t<Real_t>::cplx*)(fftw_out),NULL, 1, n3_);
         mem::aligned_delete<Real_t>((Real_t*)fftw_in );
         mem::aligned_delete<Real_t>((Real_t*)fftw_out);
@@ -3555,7 +3551,7 @@ class FMM_Tree {
     size_t n2=n1*n1;
     size_t n3=n1*n2;
     size_t n3_=n2*(n1/2+1);
-    size_t chld_cnt=1UL<<COORD_DIM;
+    size_t chld_cnt=1UL<<3;
     size_t fftsize_out=2*n3_*dof*ker_dim1*chld_cnt;
     int omp_p=omp_get_max_threads();
     size_t n=6*(m-1)*(m-1)+2;
@@ -3565,7 +3561,7 @@ class FMM_Tree {
       if(n_old!=n){
         Real_t c[3]={0,0,0};
         Vector<Real_t> surf=surface(m, c, (Real_t)(m-1), 0);
-        map.Resize(surf.Dim()/COORD_DIM);
+        map.Resize(surf.Dim()/3);
         for(size_t i=0;i<map.Dim();i++)
           map[i]=((size_t)(m*2-0.5-surf[i*3]))+((size_t)(m*2-0.5-surf[i*3+1]))*n1+((size_t)(m*2-0.5-surf[i*3+2]))*n2;
       }
@@ -3576,7 +3572,7 @@ class FMM_Tree {
         Real_t *fftw_in, *fftw_out;
         fftw_in  = mem::aligned_new<Real_t>(2*n3_*ker_dim1*chld_cnt);
         fftw_out = mem::aligned_new<Real_t>(  n3 *ker_dim1*chld_cnt);
-        vlist_ifftplan = FFTW_t<Real_t>::fft_plan_many_dft_c2r(COORD_DIM,nnn,ker_dim1*chld_cnt,
+        vlist_ifftplan = FFTW_t<Real_t>::fft_plan_many_dft_c2r(3,nnn,ker_dim1*chld_cnt,
             (typename FFTW_t<Real_t>::cplx*)fftw_in, NULL, 1, n3_, (Real_t*)(fftw_out),NULL, 1, n3);
         mem::aligned_delete<Real_t>(fftw_in);
         mem::aligned_delete<Real_t>(fftw_out);
@@ -3691,7 +3687,7 @@ class FMM_Tree {
         size_t n1=m*2;
         size_t n2=n1*n1;
         size_t n3_=n2*(n1/2+1);
-        size_t chld_cnt=1UL<<COORD_DIM;
+        size_t chld_cnt=1UL<<3;
         fftsize=2*n3_*chld_cnt;
         M_dim=n3_;
       }
@@ -3927,7 +3923,7 @@ class FMM_Tree {
                 const int* rel_coord=interac_list.RelativeCoord(type,j);
                 const Real_t* scoord=snode->Coord();
                 const Real_t* tcoord=tnode->Coord();
-                Real_t shift[COORD_DIM];
+                Real_t shift[3];
                 shift[0]=rel_coord[0]*0.5*s-(scoord[0]+1.0*s)+(0+0.5*s);
                 shift[1]=rel_coord[1]*0.5*s-(scoord[1]+1.0*s)+(0+0.5*s);
                 shift[2]=rel_coord[2]*0.5*s-(scoord[2]+1.0*s)+(0+0.5*s);
@@ -4107,7 +4103,7 @@ class FMM_Tree {
                 const int* rel_coord=interac_list.RelativeCoord(type,j);
                 const Real_t* scoord=snode->Coord();
                 const Real_t* tcoord=tnode->Coord();
-                Real_t shift[COORD_DIM];
+                Real_t shift[3];
                 shift[0]=rel_coord[0]*0.25*s-(0+0.25*s)+(tcoord[0]+0.5*s);
                 shift[1]=rel_coord[1]*0.25*s-(0+0.25*s)+(tcoord[1]+0.5*s);
                 shift[2]=rel_coord[2]*0.25*s-(0+0.25*s)+(tcoord[2]+0.5*s);
@@ -4304,7 +4300,7 @@ class FMM_Tree {
                 const int* rel_coord=interac_list.RelativeCoord(type,j);
                 const Real_t* scoord=snode->Coord();
                 const Real_t* tcoord=tnode->Coord();
-                Real_t shift[COORD_DIM];
+                Real_t shift[3];
                 shift[0]=rel_coord[0]*0.5*s-(scoord[0]+1.0*s)+(tcoord[0]+0.5*s);
                 shift[1]=rel_coord[1]*0.5*s-(scoord[1]+1.0*s)+(tcoord[1]+0.5*s);
                 shift[2]=rel_coord[2]*0.5*s-(scoord[2]+1.0*s)+(tcoord[2]+0.5*s);
@@ -4328,7 +4324,7 @@ class FMM_Tree {
                 const int* rel_coord=interac_list.RelativeCoord(type,j);
                 const Real_t* scoord=snode->Coord();
                 const Real_t* tcoord=tnode->Coord();
-                Real_t shift[COORD_DIM];
+                Real_t shift[3];
                 shift[0]=rel_coord[0]*1.0*s-(scoord[0]+0.5*s)+(tcoord[0]+0.5*s);
                 shift[1]=rel_coord[1]*1.0*s-(scoord[1]+0.5*s)+(tcoord[1]+0.5*s);
                 shift[2]=rel_coord[2]*1.0*s-(scoord[2]+0.5*s)+(tcoord[2]+0.5*s);
@@ -4352,7 +4348,7 @@ class FMM_Tree {
                 const int* rel_coord=interac_list.RelativeCoord(type,j);
                 const Real_t* scoord=snode->Coord();
                 const Real_t* tcoord=tnode->Coord();
-                Real_t shift[COORD_DIM];
+                Real_t shift[3];
                 shift[0]=rel_coord[0]*0.25*s-(scoord[0]+0.25*s)+(tcoord[0]+0.5*s);
                 shift[1]=rel_coord[1]*0.25*s-(scoord[1]+0.25*s)+(tcoord[1]+0.5*s);
                 shift[2]=rel_coord[2]*0.25*s-(scoord[2]+0.25*s)+(tcoord[2]+0.5*s);
@@ -4377,7 +4373,7 @@ class FMM_Tree {
                 const int* rel_coord=interac_list.RelativeCoord(type,j);
                 const Real_t* scoord=snode->Coord();
                 const Real_t* tcoord=tnode->Coord();
-                Real_t shift[COORD_DIM];
+                Real_t shift[3];
                 shift[0]=rel_coord[0]*0.5*s-(scoord[0]+1.0*s)+(tcoord[0]+0.5*s);
                 shift[1]=rel_coord[1]*0.5*s-(scoord[1]+1.0*s)+(tcoord[1]+0.5*s);
                 shift[2]=rel_coord[2]*0.5*s-(scoord[2]+1.0*s)+(tcoord[2]+0.5*s);
@@ -4403,7 +4399,7 @@ class FMM_Tree {
                 const int* rel_coord=interac_list.RelativeCoord(type,j);
                 const Real_t* scoord=snode->Coord();
                 const Real_t* tcoord=tnode->Coord();
-                Real_t shift[COORD_DIM];
+                Real_t shift[3];
                 shift[0]=rel_coord[0]*0.25*s-(scoord[0]+0.25*s)+(tcoord[0]+0.5*s);
                 shift[1]=rel_coord[1]*0.25*s-(scoord[1]+0.25*s)+(tcoord[1]+0.5*s);
                 shift[2]=rel_coord[2]*0.25*s-(scoord[2]+0.25*s)+(tcoord[2]+0.5*s);
@@ -4597,7 +4593,7 @@ class FMM_Tree {
                 const int* rel_coord=interac_list.RelativeCoord(type,j);
                 const Real_t* scoord=snode->Coord();
                 const Real_t* tcoord=tnode->Coord();
-                Real_t shift[COORD_DIM];
+                Real_t shift[3];
                 shift[0]=rel_coord[0]*0.5*s-(0+0.5*s)+(tcoord[0]+0.5*s);
                 shift[1]=rel_coord[1]*0.5*s-(0+0.5*s)+(tcoord[1]+0.5*s);
                 shift[2]=rel_coord[2]*0.5*s-(0+0.5*s)+(tcoord[2]+0.5*s);
