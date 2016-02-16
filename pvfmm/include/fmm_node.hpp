@@ -32,7 +32,6 @@
 #include <cheb_utils.hpp>
 #include <fft_wrapper.hpp>
 #include <interac_list.hpp>
-#include <kernel.hpp>
 #include <matrix.hpp>
 #include <mem_mgr.hpp>
 #include <mortonid.hpp>

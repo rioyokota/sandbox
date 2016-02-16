@@ -364,7 +364,6 @@ std::vector<T> integ(int m, T* s, T r, int n, const Kernel<T>& kernel){//*
       }
     }
   }
-
   return U;
 }
 

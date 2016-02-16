@@ -2944,14 +2944,12 @@ class FMM_Tree {
     typename Matrix<Real_t>::Device  input_data;
     typename Matrix<Real_t>::Device output_data;
     size_t ptr_single_layer_kernel=(size_t)NULL;
-    size_t ptr_double_layer_kernel=(size_t)NULL;
     dev_buff = dev_buffer;
     interac_data= setup_data.interac_data;
     if(setup_data.  coord_data!=NULL) coord_data  =*setup_data.  coord_data;
     if(setup_data.  input_data!=NULL) input_data  =*setup_data.  input_data;
     if(setup_data. output_data!=NULL) output_data =*setup_data. output_data;
     ptr_single_layer_kernel=(size_t)setup_data.kernel->ker_poten;
-    ptr_double_layer_kernel=(size_t)setup_data.kernel->dbl_layer_poten;
     Profile::Toc();
     Profile::Tic("DeviceComp",false,20);
     int lock_idx=-1;
@@ -3029,7 +3027,6 @@ class FMM_Tree {
       {
         InteracData& intdata=data.interac_data;
         typename Kernel<Real_t>::Ker_t single_layer_kernel=(typename Kernel<Real_t>::Ker_t)ptr_single_layer_kernel;
-        typename Kernel<Real_t>::Ker_t double_layer_kernel=(typename Kernel<Real_t>::Ker_t)ptr_double_layer_kernel;
         int omp_p=omp_get_max_threads();
 #pragma omp parallel for
         for(size_t tid=0;tid<omp_p;tid++){
@@ -3214,9 +3211,6 @@ class FMM_Tree {
                         srf_coord.ReInit(1, vdim, &new_coord[0], false);
                       }
                     }
-                    assert(ptr_double_layer_kernel);
-                    double_layer_kernel(srf_coord[0], srf_coord.Dim(1)/3, srf_value[0], 1,
-                                        trg_coord[0], trg_coord.Dim(1)/3, vbuff3_ptr, NULL);
                   }
                   interac_idx++;
                 }
