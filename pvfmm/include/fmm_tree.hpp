@@ -1516,7 +1516,7 @@ class FMM_Tree {
       save_precomp=true;
     }
     mat->LoadFile(mat_fname.c_str());
-    interac_list.Initialize(3, mat);
+    interac_list.Initialize(mat);
     Profile::Tic("PrecompUC2UE",false,4);
     PrecompAll(UC2UE0_Type);
     PrecompAll(UC2UE1_Type);
@@ -1707,7 +1707,7 @@ class FMM_Tree {
 
   void InitFMM_Tree(bool refine) {
     Profile::Tic("InitFMM_Tree",true);{
-      interac_list.Initialize(3, mat);
+      interac_list.Initialize(mat);
     }Profile::Toc();
   }
 

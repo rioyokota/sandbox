@@ -13,28 +13,15 @@ template <class Node_t>
 class InteracList{
 public:
 
-  unsigned int dim;
   std::vector<Matrix<int> > rel_coord;
   std::vector<std::vector<int> > hash_lut;
   std::vector<std::vector<size_t> > interac_class;
   std::vector<std::vector<std::vector<Perm_Type> > > perm_list;
   PrecompMat<Real_t>* mat;
-  bool use_symmetries;
 
   InteracList(){}
 
-  InteracList(unsigned int dim_){
-    Initialize(dim_);
-  }
-
-  void Initialize(unsigned int dim_, PrecompMat<Real_t>* mat_=NULL){
-#ifdef PVFMM_NO_SYMMETRIES
-    use_symmetries=false;
-#else
-    use_symmetries=true;
-#endif
-    dim=dim_;
-    assert(dim==3); //Only supporting 3D for now.
+  void Initialize(PrecompMat<Real_t>* mat_=NULL){
     mat=mat_;
     interac_class.resize(Type_Count);
     perm_list.resize(Type_Count);
@@ -80,11 +67,11 @@ public:
 
   void BuildList(Node_t* n, Mat_Type t){
     Vector<Node_t*>& interac_list=n->interac_list[t];
-    if(interac_list.Dim()!=ListCount(t)) interac_list.ReInit(ListCount(t));
+    if(3!=ListCount(t)) interac_list.ReInit(ListCount(t));
     interac_list.SetZero();
 
-    static const int n_collg=pvfmm::pow<unsigned int>(3,dim);
-    static const int n_child=pvfmm::pow<unsigned int>(2,dim);
+    static const int n_collg=pvfmm::pow<unsigned int>(3,3);
+    static const int n_child=pvfmm::pow<unsigned int>(2,3);
     int rel_coord[3];
 
     switch (t){
@@ -314,10 +301,10 @@ public:
   }
 
   void InitList(int max_r, int min_r, int step, Mat_Type t){
-    size_t count=pvfmm::pow<unsigned int>((max_r*2)/step+1,dim)
-      -(min_r>0?pvfmm::pow<unsigned int>((min_r*2)/step-1,dim):0);
+    size_t count=pvfmm::pow<unsigned int>((max_r*2)/step+1,3)
+      -(min_r>0?pvfmm::pow<unsigned int>((min_r*2)/step-1,3):0);
     Matrix<int>& M=rel_coord[t];
-    M.Resize(count,dim);
+    M.Resize(count,3);
     hash_lut[t].assign(PVFMM_MAX_COORD_HASH, -1);
     std::vector<int> class_size_hash(PVFMM_MAX_COORD_HASH, 0);
     std::vector<int> class_disp_hash(PVFMM_MAX_COORD_HASH, 0);
@@ -336,7 +323,7 @@ public:
 	  if(abs(i)>=min_r || abs(j)>=min_r || abs(k) >= min_r){
 	    int c[3]={i,j,k};
 	    int& idx=class_disp_hash[class_hash(c)];
-	    for(size_t l=0;l<dim;l++) M[idx][l]=c[l];
+	    for(size_t l=0;l<3;l++) M[idx][l]=c[l];
 	    hash_lut[t][coord_hash(c)]=idx;
 	    count_++;
 	    idx++;
@@ -344,36 +331,29 @@ public:
     assert(count_==count);
     interac_class[t].resize(count);
     perm_list[t].resize(count);
-    if(!use_symmetries){
-      for(size_t j=0;j<count;j++){
-	int c_hash = coord_hash(&M[j][0]);
-	interac_class[t][j]=hash_lut[t][c_hash];
+    for(size_t j=0;j<count;j++){
+      if(M[j][0]<0) perm_list[t][j].push_back(ReflecX);
+      if(M[j][1]<0) perm_list[t][j].push_back(ReflecY);
+      if(M[j][2]<0) perm_list[t][j].push_back(ReflecZ);
+      int coord[3];
+      coord[0]=abs(M[j][0]);
+      coord[1]=abs(M[j][1]);
+      coord[2]=abs(M[j][2]);
+      if(coord[1]>coord[0] && coord[1]>coord[2]){
+	perm_list[t][j].push_back(SwapXY);
+	int tmp=coord[0]; coord[0]=coord[1]; coord[1]=tmp;
       }
-    } else {
-      for(size_t j=0;j<count;j++){
-	if(M[j][0]<0) perm_list[t][j].push_back(ReflecX);
-	if(M[j][1]<0) perm_list[t][j].push_back(ReflecY);
-	if(M[j][2]<0) perm_list[t][j].push_back(ReflecZ);
-	int coord[3];
-	coord[0]=abs(M[j][0]);
-	coord[1]=abs(M[j][1]);
-	coord[2]=abs(M[j][2]);
-	if(coord[1]>coord[0] && coord[1]>coord[2]){
-	  perm_list[t][j].push_back(SwapXY);
-	  int tmp=coord[0]; coord[0]=coord[1]; coord[1]=tmp;
-	}
-	if(coord[0]>coord[2]){
-	  perm_list[t][j].push_back(SwapXZ);
-	  int tmp=coord[0]; coord[0]=coord[2]; coord[2]=tmp;
-	}
-	if(coord[0]>coord[1]){
-	  perm_list[t][j].push_back(SwapXY);
-	  int tmp=coord[0]; coord[0]=coord[1]; coord[1]=tmp;
-	}
-	assert(coord[0]<=coord[1] && coord[1]<=coord[2]);
-	int c_hash = coord_hash(&coord[0]);
-	interac_class[t][j]=hash_lut[t][c_hash];
+      if(coord[0]>coord[2]){
+	perm_list[t][j].push_back(SwapXZ);
+	int tmp=coord[0]; coord[0]=coord[2]; coord[2]=tmp;
       }
+      if(coord[0]>coord[1]){
+	perm_list[t][j].push_back(SwapXY);
+	int tmp=coord[0]; coord[0]=coord[1]; coord[1]=tmp;
+      }
+      assert(coord[0]<=coord[1] && coord[1]<=coord[2]);
+      int c_hash = coord_hash(&coord[0]);
+      interac_class[t][j]=hash_lut[t][c_hash];
     }
   }
 
@@ -383,7 +363,6 @@ public:
   }
 
   int class_hash(int* c_){
-    if(!use_symmetries) return coord_hash(c_);
     int c[3]={abs(c_[0]), abs(c_[1]), abs(c_[2])};
     if(c[1]>c[0] && c[1]>c[2])
       {int tmp=c[0]; c[0]=c[1]; c[1]=tmp;}
