@@ -1,14 +1,12 @@
 namespace pvfmm{
 
 template <class T>
-Kernel<T>::Kernel(Ker_t poten, const char* name, int dim_, std::pair<int,int> k_dim,
-                  size_t dev_poten){
+Kernel<T>::Kernel(Ker_t poten, const char* name, int dim_, std::pair<int,int> k_dim) {
   dim=dim_;
   ker_dim[0]=k_dim.first;
   ker_dim[1]=k_dim.second;
   ker_poten=poten;
   ker_name=std::string(name);
-  dev_ker_poten=dev_poten;
   k_s2m=NULL;
   k_s2l=NULL;
   k_s2t=NULL;
