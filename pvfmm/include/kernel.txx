@@ -952,42 +952,10 @@ void laplace_poten_uKernel(Matrix<Real_t>& src_coord, Matrix<Real_t>& src_value,
   #undef SRC_BLK
 }
 
-template <class T, int newton_iter=0>
+template <class T>
 void laplace_poten(T* r_src, int src_cnt, T* v_src, int dof, T* r_trg, int trg_cnt, T* v_trg, mem::MemoryManager* mem_mgr){
-#define LAP_KER_NWTN(nwtn) if(newton_iter==nwtn)			\
-    generic_kernel<Real_t, 1, 1, laplace_poten_uKernel<Real_t,Vec_t, rsqrt_intrin##nwtn<Vec_t,Real_t> > > \
-      ((Real_t*)r_src, src_cnt, (Real_t*)v_src, dof, (Real_t*)r_trg, trg_cnt, (Real_t*)v_trg, mem_mgr)
-#define LAPLACE_KERNEL LAP_KER_NWTN(0); LAP_KER_NWTN(1); LAP_KER_NWTN(2); LAP_KER_NWTN(3);
-  if(mem::TypeTraits<T>::ID()==mem::TypeTraits<float>::ID()){
-    typedef float Real_t;
-#if defined __AVX__
-#define Vec_t __m256
-#elif defined __SSE3__
-#define Vec_t __m128
-#else
-#define Vec_t Real_t
-#endif
-    LAPLACE_KERNEL;
-#undef Vec_t
-  }else if(mem::TypeTraits<T>::ID()==mem::TypeTraits<double>::ID()){
-    typedef double Real_t;
-#if defined __AVX__
-#define Vec_t __m256d
-#elif defined __SSE3__
-#define Vec_t __m128d
-#else
-#define Vec_t Real_t
-#endif
-    LAPLACE_KERNEL;
-#undef Vec_t
-  }else{
-    typedef T Real_t;
-#define Vec_t Real_t
-    LAPLACE_KERNEL;
-#undef Vec_t
-  }
-#undef LAP_KER_NWTN
-#undef LAPLACE_KERNEL
+  generic_kernel<Real_t, 1, 1, laplace_poten_uKernel<Real_t,Vec_t, rsqrt_intrin2<Vec_t,Real_t> > >
+    ((Real_t*)r_src, src_cnt, (Real_t*)v_src, dof, (Real_t*)r_trg, trg_cnt, (Real_t*)v_trg, mem_mgr);
 }
 
 template <class Real_t, class Vec_t=Real_t, Vec_t (*RSQRT_INTRIN)(Vec_t)=rsqrt_intrin0<Vec_t> >
@@ -1047,28 +1015,23 @@ void laplace_grad_uKernel(Matrix<Real_t>& src_coord, Matrix<Real_t>& src_value, 
 }
 
 
-template <class T, int newton_iter=0>
+template <class T>
 void laplace_grad(T* r_src, int src_cnt, T* v_src, int dof, T* r_trg, int trg_cnt, T* v_trg, mem::MemoryManager* mem_mgr){
-#define LAP_KER_NWTN(nwtn) if(newton_iter==nwtn)			\
-        generic_kernel<Real_t, 1, 3, laplace_grad_uKernel<Real_t,Vec_t, rsqrt_intrin##nwtn<Vec_t,Real_t> > > \
-            ((Real_t*)r_src, src_cnt, (Real_t*)v_src, dof, (Real_t*)r_trg, trg_cnt, (Real_t*)v_trg, mem_mgr)
-#define LAPLACE_KERNEL LAP_KER_NWTN(0); LAP_KER_NWTN(1); LAP_KER_NWTN(2); LAP_KER_NWTN(3);
-  LAPLACE_KERNEL;
-  #undef LAP_KER_NWTN
-  #undef LAPLACE_KERNEL
+  generic_kernel<Real_t, 1, 3, laplace_grad_uKernel<Real_t,Vec_t, rsqrt_intrin2<Vec_t,Real_t> > >
+    ((Real_t*)r_src, src_cnt, (Real_t*)v_src, dof, (Real_t*)r_trg, trg_cnt, (Real_t*)v_trg, mem_mgr);
 }
 
 template<class T> const Kernel<T>& LaplaceKernel<T>::gradient(){
-  static Kernel<T> potn_ker=BuildKernel<T, laplace_poten<T,1> >("laplace"     , std::pair<int,int>(1,1));
-  static Kernel<T> grad_ker=BuildKernel<T, laplace_grad <T,1> >("laplace_grad", std::pair<int,int>(1,3),
+  static Kernel<T> potn_ker=BuildKernel<T, laplace_poten<T> >("laplace"     , std::pair<int,int>(1,1));
+  static Kernel<T> grad_ker=BuildKernel<T, laplace_grad <T> >("laplace_grad", std::pair<int,int>(1,3),
       &potn_ker, &potn_ker, NULL, &potn_ker, &potn_ker, NULL, &potn_ker, NULL);
   return grad_ker;
 }
 
 template<> inline const Kernel<double>& LaplaceKernel<double>::gradient(){
   typedef double T;
-  static Kernel<T> potn_ker=BuildKernel<T, laplace_poten<T,2> >("laplace"     , std::pair<int,int>(1,1));
-  static Kernel<T> grad_ker=BuildKernel<T, laplace_grad <T,2> >("laplace_grad", std::pair<int,int>(1,3),
+  static Kernel<T> potn_ker=BuildKernel<T, laplace_poten<T> >("laplace"     , std::pair<int,int>(1,1));
+  static Kernel<T> grad_ker=BuildKernel<T, laplace_grad <T> >("laplace_grad", std::pair<int,int>(1,3),
       &potn_ker, &potn_ker, NULL, &potn_ker, &potn_ker, NULL, &potn_ker, NULL);
   return grad_ker;
 }
