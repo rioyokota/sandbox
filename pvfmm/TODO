@@ -1,7 +1,6 @@
 kernel:
- - add grad error check
+ - simplify code structure of kernels
  - simplify rsqrt intrinsic
- - remove dim
 Check if all the headers are necessary
 Remove unnecessary "{}"
 "){" -> ") {", "}else{" -> "} else {"

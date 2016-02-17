@@ -15,14 +15,13 @@ struct Kernel{
 
   typedef void (*VolPoten)(const T* coord, int n, T* out);
 
-  Kernel(Ker_t poten, const char* name, int dim_, std::pair<int,int> k_dim);
+  Kernel(Ker_t poten, const char* name, std::pair<int,int> k_dim);
 
   void Initialize(bool verbose=false) const;
 
   void BuildMatrix(T* r_src, int src_cnt,
                    T* r_trg, int trg_cnt, T* k_out) const;
 
-  int dim;
   int ker_dim[2];
   std::string ker_name;
   Ker_t ker_poten;
@@ -50,11 +49,11 @@ struct Kernel{
 };
 
 template<typename T, void (*A)(T*, int, T*, int, T*, int, T*, mem::MemoryManager* mem_mgr)>
-Kernel<T> BuildKernel(const char* name, int dim, std::pair<int,int> k_dim,
+Kernel<T> BuildKernel(const char* name, std::pair<int,int> k_dim,
     const Kernel<T>* k_s2m=NULL, const Kernel<T>* k_s2l=NULL, const Kernel<T>* k_s2t=NULL,
     const Kernel<T>* k_m2m=NULL, const Kernel<T>* k_m2l=NULL, const Kernel<T>* k_m2t=NULL,
     const Kernel<T>* k_l2l=NULL, const Kernel<T>* k_l2t=NULL, typename Kernel<T>::VolPoten vol_poten=NULL){
-  Kernel<T> K(A, name, dim, k_dim);
+  Kernel<T> K(A, name, k_dim);
   K.k_s2m=k_s2m;
   K.k_s2l=k_s2l;
   K.k_s2t=k_s2t;

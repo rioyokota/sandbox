@@ -1,8 +1,7 @@
 namespace pvfmm{
 
 template <class T>
-Kernel<T>::Kernel(Ker_t poten, const char* name, int dim_, std::pair<int,int> k_dim) {
-  dim=dim_;
+Kernel<T>::Kernel(Ker_t poten, const char* name, std::pair<int,int> k_dim) {
   ker_dim[0]=k_dim.first;
   ker_dim[1]=k_dim.second;
   ker_poten=poten;
@@ -800,13 +799,12 @@ void Kernel<T>::Initialize(bool verbose) const{
 
 template <class T>
 void Kernel<T>::BuildMatrix(T* r_src, int src_cnt, T* r_trg, int trg_cnt, T* k_out) const{
-  int dim=3;
   memset(k_out, 0, src_cnt*ker_dim[0]*trg_cnt*ker_dim[1]*sizeof(T));
   for(int i=0;i<src_cnt;i++)
     for(int j=0;j<ker_dim[0];j++){
       std::vector<T> v_src(ker_dim[0],0);
       v_src[j]=1.0;
-      ker_poten(&r_src[i*dim], 1, &v_src[0], 1, r_trg, trg_cnt,
+      ker_poten(&r_src[i*3], 1, &v_src[0], 1, r_trg, trg_cnt,
                 &k_out[(i*ker_dim[0]+j)*trg_cnt*ker_dim[1]], NULL);
     }
 }
@@ -1086,16 +1084,16 @@ void laplace_grad(T* r_src, int src_cnt, T* v_src, int dof, T* r_trg, int trg_cn
 }
 
 template<class T> const Kernel<T>& LaplaceKernel<T>::gradient(){
-  static Kernel<T> potn_ker=BuildKernel<T, laplace_poten<T,1> >("laplace"     , 3, std::pair<int,int>(1,1));
-  static Kernel<T> grad_ker=BuildKernel<T, laplace_grad <T,1> >("laplace_grad", 3, std::pair<int,int>(1,3),
+  static Kernel<T> potn_ker=BuildKernel<T, laplace_poten<T,1> >("laplace"     , std::pair<int,int>(1,1));
+  static Kernel<T> grad_ker=BuildKernel<T, laplace_grad <T,1> >("laplace_grad", std::pair<int,int>(1,3),
       &potn_ker, &potn_ker, NULL, &potn_ker, &potn_ker, NULL, &potn_ker, NULL);
   return grad_ker;
 }
 
 template<> inline const Kernel<double>& LaplaceKernel<double>::gradient(){
   typedef double T;
-  static Kernel<T> potn_ker=BuildKernel<T, laplace_poten<T,2> >("laplace"     , 3, std::pair<int,int>(1,1));
-  static Kernel<T> grad_ker=BuildKernel<T, laplace_grad <T,2> >("laplace_grad", 3, std::pair<int,int>(1,3),
+  static Kernel<T> potn_ker=BuildKernel<T, laplace_poten<T,2> >("laplace"     , std::pair<int,int>(1,1));
+  static Kernel<T> grad_ker=BuildKernel<T, laplace_grad <T,2> >("laplace_grad", std::pair<int,int>(1,3),
       &potn_ker, &potn_ker, NULL, &potn_ker, &potn_ker, NULL, &potn_ker, NULL);
   return grad_ker;
 }
