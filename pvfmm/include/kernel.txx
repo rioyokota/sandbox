@@ -906,17 +906,12 @@ void generic_kernel(Real_t* r_src, int src_cnt, Real_t* v_src, int dof, Real_t* 
   }
 }
 
-template <class Real_t, class Vec_t=Real_t, Vec_t (*RSQRT_INTRIN)(Vec_t)=rsqrt_intrin0<Vec_t> >
+template <class Real_t, class Vec_t=Real_t>
 void laplace_poten_uKernel(Matrix<Real_t>& src_coord, Matrix<Real_t>& src_value, Matrix<Real_t>& trg_coord, Matrix<Real_t>& trg_value){
   #define SRC_BLK 1000
   size_t VecLen=sizeof(Vec_t)/sizeof(Real_t);
-  size_t NWTN_ITER=0;
-  if(RSQRT_INTRIN==(Vec_t (*)(Vec_t))rsqrt_intrin0<Vec_t,Real_t>) NWTN_ITER=0;
-  if(RSQRT_INTRIN==(Vec_t (*)(Vec_t))rsqrt_intrin1<Vec_t,Real_t>) NWTN_ITER=1;
-  if(RSQRT_INTRIN==(Vec_t (*)(Vec_t))rsqrt_intrin2<Vec_t,Real_t>) NWTN_ITER=2;
-  if(RSQRT_INTRIN==(Vec_t (*)(Vec_t))rsqrt_intrin3<Vec_t,Real_t>) NWTN_ITER=3;
   Real_t nwtn_scal=1;
-  for(int i=0;i<NWTN_ITER;i++){
+  for(int i=0;i<2;i++){
     nwtn_scal=2*nwtn_scal*nwtn_scal*nwtn_scal;
   }
   const Real_t OOFP = 1.0/(4*nwtn_scal*const_pi<Real_t>());
@@ -938,7 +933,7 @@ void laplace_poten_uKernel(Matrix<Real_t>& src_coord, Matrix<Real_t>& src_value,
         Vec_t r2=        mul_intrin(dx,dx) ;
         r2=add_intrin(r2,mul_intrin(dy,dy));
         r2=add_intrin(r2,mul_intrin(dz,dz));
-        Vec_t rinv=RSQRT_INTRIN(r2);
+        Vec_t rinv=rsqrt_intrin2<Vec_t,Real_t>(r2);
         tv=add_intrin(tv,mul_intrin(rinv,sv));
       }
       Vec_t oofp=set_intrin<Vec_t,Real_t>(OOFP);
@@ -947,28 +942,23 @@ void laplace_poten_uKernel(Matrix<Real_t>& src_coord, Matrix<Real_t>& src_value,
     }
   }
   {
-    Profile::Add_FLOP((long long)trg_cnt_*(long long)src_cnt_*(12+4*(NWTN_ITER)));
+    Profile::Add_FLOP((long long)trg_cnt_*(long long)src_cnt_*20);
   }
   #undef SRC_BLK
 }
 
 template <class T>
 void laplace_poten(T* r_src, int src_cnt, T* v_src, int dof, T* r_trg, int trg_cnt, T* v_trg, mem::MemoryManager* mem_mgr){
-  generic_kernel<Real_t, 1, 1, laplace_poten_uKernel<Real_t,Vec_t, rsqrt_intrin2<Vec_t,Real_t> > >
+  generic_kernel<Real_t, 1, 1, laplace_poten_uKernel<Real_t,Vec_t> >
     ((Real_t*)r_src, src_cnt, (Real_t*)v_src, dof, (Real_t*)r_trg, trg_cnt, (Real_t*)v_trg, mem_mgr);
 }
 
-template <class Real_t, class Vec_t=Real_t, Vec_t (*RSQRT_INTRIN)(Vec_t)=rsqrt_intrin0<Vec_t> >
+template <class Real_t, class Vec_t=Real_t>
 void laplace_grad_uKernel(Matrix<Real_t>& src_coord, Matrix<Real_t>& src_value, Matrix<Real_t>& trg_coord, Matrix<Real_t>& trg_value){
   #define SRC_BLK 500
   size_t VecLen=sizeof(Vec_t)/sizeof(Real_t);
-  size_t NWTN_ITER=0;
-  if(RSQRT_INTRIN==(Vec_t (*)(Vec_t))rsqrt_intrin0<Vec_t,Real_t>) NWTN_ITER=0;
-  if(RSQRT_INTRIN==(Vec_t (*)(Vec_t))rsqrt_intrin1<Vec_t,Real_t>) NWTN_ITER=1;
-  if(RSQRT_INTRIN==(Vec_t (*)(Vec_t))rsqrt_intrin2<Vec_t,Real_t>) NWTN_ITER=2;
-  if(RSQRT_INTRIN==(Vec_t (*)(Vec_t))rsqrt_intrin3<Vec_t,Real_t>) NWTN_ITER=3;
   Real_t nwtn_scal=1;
-  for(int i=0;i<NWTN_ITER;i++){
+  for(int i=0;i<2;i++){
     nwtn_scal=2*nwtn_scal*nwtn_scal*nwtn_scal;
   }
   const Real_t OOFP = -1.0/(4*nwtn_scal*nwtn_scal*nwtn_scal*const_pi<Real_t>());
@@ -992,7 +982,7 @@ void laplace_grad_uKernel(Matrix<Real_t>& src_coord, Matrix<Real_t>& src_value, 
         Vec_t r2=        mul_intrin(dx,dx) ;
         r2=add_intrin(r2,mul_intrin(dy,dy));
         r2=add_intrin(r2,mul_intrin(dz,dz));
-        Vec_t rinv=RSQRT_INTRIN(r2);
+        Vec_t rinv=rsqrt_intrin2<Vec_t,Real_t>(r2);
         Vec_t r3inv=mul_intrin(mul_intrin(rinv,rinv),rinv);
         sv=mul_intrin(sv,r3inv);
         tv0=add_intrin(tv0,mul_intrin(sv,dx));
@@ -1009,7 +999,7 @@ void laplace_grad_uKernel(Matrix<Real_t>& src_coord, Matrix<Real_t>& src_value, 
     }
   }
   {
-    Profile::Add_FLOP((long long)trg_cnt_*(long long)src_cnt_*(19+4*(NWTN_ITER)));
+    Profile::Add_FLOP((long long)trg_cnt_*(long long)src_cnt_*27);
   }
   #undef SRC_BLK
 }
@@ -1017,19 +1007,11 @@ void laplace_grad_uKernel(Matrix<Real_t>& src_coord, Matrix<Real_t>& src_value, 
 
 template <class T>
 void laplace_grad(T* r_src, int src_cnt, T* v_src, int dof, T* r_trg, int trg_cnt, T* v_trg, mem::MemoryManager* mem_mgr){
-  generic_kernel<Real_t, 1, 3, laplace_grad_uKernel<Real_t,Vec_t, rsqrt_intrin2<Vec_t,Real_t> > >
+  generic_kernel<Real_t, 1, 3, laplace_grad_uKernel<Real_t,Vec_t> >
     ((Real_t*)r_src, src_cnt, (Real_t*)v_src, dof, (Real_t*)r_trg, trg_cnt, (Real_t*)v_trg, mem_mgr);
 }
 
 template<class T> const Kernel<T>& LaplaceKernel<T>::gradient(){
-  static Kernel<T> potn_ker=BuildKernel<T, laplace_poten<T> >("laplace"     , std::pair<int,int>(1,1));
-  static Kernel<T> grad_ker=BuildKernel<T, laplace_grad <T> >("laplace_grad", std::pair<int,int>(1,3),
-      &potn_ker, &potn_ker, NULL, &potn_ker, &potn_ker, NULL, &potn_ker, NULL);
-  return grad_ker;
-}
-
-template<> inline const Kernel<double>& LaplaceKernel<double>::gradient(){
-  typedef double T;
   static Kernel<T> potn_ker=BuildKernel<T, laplace_poten<T> >("laplace"     , std::pair<int,int>(1,1));
   static Kernel<T> grad_ker=BuildKernel<T, laplace_grad <T> >("laplace_grad", std::pair<int,int>(1,3),
       &potn_ker, &potn_ker, NULL, &potn_ker, &potn_ker, NULL, &potn_ker, NULL);
