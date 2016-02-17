@@ -1,10 +1,3 @@
-/**
- * \file math_utils.hpp
- * \author Dhairya Malhotra, dhairya.malhotra@gmail.com
- * \date 7-16-2014
- * \brief This file contains wrappers for functions in math.h
- */
-
 #include <cmath>
 #include <ostream>
 

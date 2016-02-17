@@ -26,10 +26,37 @@
 
 #define UNUSED(x) (void)(x) // to ignore unused variable warning.
 
+#ifdef __SSE__
+#include <xmmintrin.h>
+#endif
+#ifdef __SSE2__
+#include <emmintrin.h>
+#endif
+#ifdef __SSE3__
+#include <pmmintrin.h>
+#endif
+#ifdef __AVX__
+#include <immintrin.h>
+#endif
+
 #if FLOAT
 typedef float Real_t;
+#if defined __AVX__
+typedef __m256 Vec_t;
+#elif defined __SSE3__
+typedef __m128 Vec_t;
+#else
+typedef Real_t Vec_t;
+#endif
 #else
 typedef double Real_t;
+#if defined __AVX__
+typedef __m256d Vec_t;
+#elif defined __SSE3__
+typedef __m128d Vec_t;
+#else
+typedef Real_t Vec_t;
+#endif
 #endif
 
 #include <math_utils.hpp>
