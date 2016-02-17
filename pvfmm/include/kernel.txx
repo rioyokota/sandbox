@@ -947,10 +947,8 @@ void laplace_poten_uKernel(Matrix<Real_t>& src_coord, Matrix<Real_t>& src_value,
   #undef SRC_BLK
 }
 
-template <class T>
-void laplace_poten(T* r_src, int src_cnt, T* v_src, int dof, T* r_trg, int trg_cnt, T* v_trg, mem::MemoryManager* mem_mgr){
-  generic_kernel<Real_t, 1, 1, laplace_poten_uKernel<Real_t,Vec_t> >
-    ((Real_t*)r_src, src_cnt, (Real_t*)v_src, dof, (Real_t*)r_trg, trg_cnt, (Real_t*)v_trg, mem_mgr);
+void laplace_poten(Real_t* r_src, int src_cnt, Real_t* v_src, int dof, Real_t* r_trg, int trg_cnt, Real_t* v_trg, mem::MemoryManager* mem_mgr){
+  generic_kernel<Real_t, 1, 1, laplace_poten_uKernel<Real_t,Vec_t> >(r_src, src_cnt, v_src, dof, r_trg, trg_cnt, v_trg, mem_mgr);
 }
 
 template <class Real_t, class Vec_t=Real_t>
@@ -1005,15 +1003,13 @@ void laplace_grad_uKernel(Matrix<Real_t>& src_coord, Matrix<Real_t>& src_value, 
 }
 
 
-template <class T>
-void laplace_grad(T* r_src, int src_cnt, T* v_src, int dof, T* r_trg, int trg_cnt, T* v_trg, mem::MemoryManager* mem_mgr){
-  generic_kernel<Real_t, 1, 3, laplace_grad_uKernel<Real_t,Vec_t> >
-    ((Real_t*)r_src, src_cnt, (Real_t*)v_src, dof, (Real_t*)r_trg, trg_cnt, (Real_t*)v_trg, mem_mgr);
+void laplace_grad(Real_t* r_src, int src_cnt, Real_t* v_src, int dof, Real_t* r_trg, int trg_cnt, Real_t* v_trg, mem::MemoryManager* mem_mgr){
+  generic_kernel<Real_t, 1, 3, laplace_grad_uKernel<Real_t,Vec_t> >(r_src, src_cnt, v_src, dof, r_trg, trg_cnt, v_trg, mem_mgr);
 }
 
 template<class T> const Kernel<T>& LaplaceKernel<T>::gradient(){
-  static Kernel<T> potn_ker=BuildKernel<T, laplace_poten<T> >("laplace"     , std::pair<int,int>(1,1));
-  static Kernel<T> grad_ker=BuildKernel<T, laplace_grad <T> >("laplace_grad", std::pair<int,int>(1,3),
+  static Kernel<T> potn_ker=BuildKernel<T, laplace_poten >("laplace"     , std::pair<int,int>(1,1));
+  static Kernel<T> grad_ker=BuildKernel<T, laplace_grad >("laplace_grad", std::pair<int,int>(1,3),
       &potn_ker, &potn_ker, NULL, &potn_ker, &potn_ker, NULL, &potn_ker, NULL);
   return grad_ker;
 }
