@@ -101,7 +101,7 @@ void quad_rule(int n, T* x, T* w){
   Vector<T> w_(n);
   {
     for(int i=0;i<n;i++){
-      x_[i]=-pvfmm::cos<T>((T)(2.0*i+1.0)/(2.0*n)*const_pi<T>());
+      x_[i]=-pvfmm::cos<T>((T)(2.0*i+1.0)/(2.0*n)*M_PI);
       w_[i]=0;
     }
     Matrix<T> M(n,n);
@@ -1387,7 +1387,7 @@ void laplace_poten_uKernel(Matrix<Real_t>& src_coord, Matrix<Real_t>& src_value,
   for(int i=0;i<2;i++){
     nwtn_scal=2*nwtn_scal*nwtn_scal*nwtn_scal;
   }
-  const Real_t OOFP = 1.0/(4*nwtn_scal*const_pi<Real_t>());
+  const Real_t OOFP = 1.0/(4*nwtn_scal*M_PI);
   size_t src_cnt_=src_coord.Dim(1);
   size_t trg_cnt_=trg_coord.Dim(1);
   for(size_t sblk=0;sblk<src_cnt_;sblk+=SRC_BLK){
@@ -1432,7 +1432,7 @@ void laplace_grad_uKernel(Matrix<Real_t>& src_coord, Matrix<Real_t>& src_value, 
   for(int i=0;i<2;i++){
     nwtn_scal=2*nwtn_scal*nwtn_scal*nwtn_scal;
   }
-  const Real_t OOFP = -1.0/(4*nwtn_scal*nwtn_scal*nwtn_scal*const_pi<Real_t>());
+  const Real_t OOFP = -1.0/(4*nwtn_scal*nwtn_scal*nwtn_scal*M_PI);
   size_t src_cnt_=src_coord.Dim(1);
   size_t trg_cnt_=trg_coord.Dim(1);
   for(size_t sblk=0;sblk<src_cnt_;sblk+=SRC_BLK){

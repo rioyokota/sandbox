@@ -7,15 +7,6 @@
 namespace pvfmm{
 
 template <class Real_t>
-inline Real_t const_pi(){return 3.1415926535897932384626433832795028841;}
-
-template <class Real_t>
-inline Real_t const_e (){return 2.7182818284590452353602874713526624977;}
-
-//template <class Real_t>
-//inline std::ostream& operator<<(std::ostream& output, const Real_t q_);
-
-template <class Real_t>
 inline Real_t fabs(const Real_t f){return ::fabs(f);}
 
 template <class Real_t>

@@ -215,14 +215,11 @@ namespace mat{
 
       T S_max=0.0;
       for(size_t i=0;i<dim[1];i++) S_max=(S_max>S(i,i)?S_max:S(i,i));
-
-      //while(k0<dim[1]-1 && pvfmm::fabs<T>(S(k0,k0+1))<=eps*(pvfmm::fabs<T>(S(k0,k0))+pvfmm::fabs<T>(S(k0+1,k0+1)))) k0++;
-      while(k0<dim[1]-1 && pvfmm::fabs<T>(S(k0,k0+1))<=eps*S_max) k0++;
+      while(k0<dim[1]-1 && fabs(S(k0,k0+1))<=eps*S_max) k0++;
       if(k0==dim[1]-1) continue;
 
       size_t n=k0+2;
-      //while(n<dim[1] && pvfmm::fabs<T>(S(n-1,n))>eps*(pvfmm::fabs<T>(S(n-1,n-1))+pvfmm::fabs<T>(S(n,n)))) n++;
-      while(n<dim[1] && pvfmm::fabs<T>(S(n-1,n))>eps*S_max) n++;
+      while(n<dim[1] && fabs(S(n-1,n))>eps*S_max) n++;
 
       T alpha=0;
       T beta=0;
@@ -237,11 +234,11 @@ namespace mat{
         T b=-(C[0][0]+C[1][1])/2;
         T c=  C[0][0]*C[1][1] - C[0][1]*C[1][0];
         T d=0;
-        if(b*b-c>0) d=pvfmm::sqrt<T>(b*b-c);
+        if(b*b-c>0) d=sqrtf(b*b-c);
         else{
           T b=(C[0][0]-C[1][1])/2;
           T c=-C[0][1]*C[1][0];
-          if(b*b-c>0) d=pvfmm::sqrt<T>(b*b-c);
+          if(b*b-c>0) d=sqrtf(b*b-c);
         }
 
         T lambda1=-b+d;
@@ -282,12 +279,11 @@ namespace mat{
           }
         }
         for(size_t i=0;i<dim[1]-1;i++){
-          if(pvfmm::fabs<T>(S(i,i+1))<=eps*S_max){
+          if(fabs(S(i,i+1))<=eps*S_max){
             S(i,i+1)=0;
           }
         }
       }
-      //std::cout<<iter<<' '<<k0<<' '<<n<<'\n';
     }
 
     { // Check Error
@@ -301,9 +297,9 @@ namespace mat{
       T max_nondiag1=0;
       for(size_t i=0;i<E.Dim(0);i++)
       for(size_t j=0;j<E.Dim(1);j++){
-        if(max_err<pvfmm::fabs<T>(E[i][j])) max_err=pvfmm::fabs<T>(E[i][j]);
-        if((i>j+0 || i+0<j) && max_nondiag0<pvfmm::fabs<T>(S0[i][j])) max_nondiag0=pvfmm::fabs<T>(S0[i][j]);
-        if((i>j+1 || i+1<j) && max_nondiag1<pvfmm::fabs<T>(S0[i][j])) max_nondiag1=pvfmm::fabs<T>(S0[i][j]);
+        if(max_err<fabs(E[i][j])) max_err=fabs(E[i][j]);
+        if((i>j+0 || i+0<j) && max_nondiag0<fabs(S0[i][j])) max_nondiag0=fabs(S0[i][j]);
+        if((i>j+1 || i+1<j) && max_nondiag1<fabs(S0[i][j])) max_nondiag1=fabs(S0[i][j]);
       }
       std::cout<<max_err<<'\n';
       std::cout<<max_nondiag0<<'\n';
