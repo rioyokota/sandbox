@@ -144,7 +144,7 @@ class FMM_Node {
 	flag=flag<<1;
       }
     }
-    int n=pvfmm::pow<unsigned int>(3,3);
+    int n=27;
     for(int i=0;i<n;i++) colleague[i]=NULL;
     NodeData* mpi_data=dynamic_cast<NodeData*>(data_);
     if(data_){
@@ -244,7 +244,7 @@ class FMM_Node {
       }
 
       Real_t* c=Coord();
-      Real_t s=pvfmm::pow<Real_t>(0.5,depth+1);
+      Real_t s=powf(0.5,depth+1);
       for(size_t j=0;j<pt_c.size();j++){
 	if(!pt_c[j] || !pt_c[j]->Dim()) continue;
 	Vector<Real_t>& coord=*pt_c[j];

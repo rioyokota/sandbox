@@ -160,8 +160,8 @@ struct FFTW_t{
     Matrix<T> M(N1,2*N2);
     for(size_t j=0;j<N1;j++)
     for(size_t i=0;i<N2;i++){
-      M[j][2*i+0]=pvfmm::cos<T>(j*i*(1.0/N1)*2.0*M_PI);
-      M[j][2*i+1]=pvfmm::sin<T>(j*i*(1.0/N1)*2.0*M_PI);
+      M[j][2*i+0]=cos(j*i*(1.0/N1)*2.0*M_PI);
+      M[j][2*i+1]=sin(j*i*(1.0/N1)*2.0*M_PI);
     }
     return M;
   }
@@ -170,10 +170,10 @@ struct FFTW_t{
     Matrix<T> M(2*N1,2*N1);
     for(size_t i=0;i<N1;i++)
     for(size_t j=0;j<N1;j++){
-      M[2*i+0][2*j+0]=pvfmm::cos<T>(j*i*(1.0/N1)*2.0*M_PI);
-      M[2*i+1][2*j+0]=pvfmm::sin<T>(j*i*(1.0/N1)*2.0*M_PI);
-      M[2*i+0][2*j+1]=-pvfmm::sin<T>(j*i*(1.0/N1)*2.0*M_PI);
-      M[2*i+1][2*j+1]= pvfmm::cos<T>(j*i*(1.0/N1)*2.0*M_PI);
+      M[2*i+0][2*j+0]=cos(j*i*(1.0/N1)*2.0*M_PI);
+      M[2*i+1][2*j+0]=sin(j*i*(1.0/N1)*2.0*M_PI);
+      M[2*i+0][2*j+1]=-sin(j*i*(1.0/N1)*2.0*M_PI);
+      M[2*i+1][2*j+1]= cos(j*i*(1.0/N1)*2.0*M_PI);
     }
     return M;
   }
@@ -183,8 +183,8 @@ struct FFTW_t{
     Matrix<T> M(2*N2,N1);
     for(size_t i=0;i<N2;i++)
     for(size_t j=0;j<N1;j++){
-      M[2*i+0][j]=2*pvfmm::cos<T>(j*i*(1.0/N1)*2.0*M_PI);
-      M[2*i+1][j]=2*pvfmm::sin<T>(j*i*(1.0/N1)*2.0*M_PI);
+      M[2*i+0][j]=2*cos(j*i*(1.0/N1)*2.0*M_PI);
+      M[2*i+1][j]=2*sin(j*i*(1.0/N1)*2.0*M_PI);
     }
     if(N2>0){
       for(size_t j=0;j<N1;j++){

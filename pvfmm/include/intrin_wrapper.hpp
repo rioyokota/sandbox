@@ -58,7 +58,7 @@ inline T sub_intrin(const T& a, const T& b){
 
 template <class T>
 inline T rsqrt_approx_intrin(const T& r2){
-  if(r2!=0) return 1.0/pvfmm::sqrt<T>(r2);
+  if(r2!=0) return 1.0/sqrtf(r2);
   return 0;
 }
 

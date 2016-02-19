@@ -69,7 +69,7 @@ namespace mat{
 
   template <class T>
   static void GivensL(T* S_, const size_t dim[2], size_t m, T a, T b){
-    T r=pvfmm::sqrt<T>(a*a+b*b);
+    T r=sqrtf(a*a+b*b);
     T c=a/r;
     T s=-b/r;
 
@@ -87,7 +87,7 @@ namespace mat{
 
   template <class T>
   static void GivensR(T* S_, const size_t dim[2], size_t m, T a, T b){
-    T r=pvfmm::sqrt<T>(a*a+b*b);
+    T r=sqrtf(a*a+b*b);
     T c=a/r;
     T s=-b/r;
 
@@ -123,9 +123,9 @@ namespace mat{
           for(size_t j=i;j<dim[0];j++){
             x_inv_norm+=S(j,i)*S(j,i);
           }
-          if(x_inv_norm>0) x_inv_norm=1/pvfmm::sqrt<T>(x_inv_norm);
+          if(x_inv_norm>0) x_inv_norm=1/sqrtf(x_inv_norm);
 
-          T alpha=pvfmm::sqrt<T>(1+x1*x_inv_norm);
+          T alpha=sqrtf(1+x1*x_inv_norm);
           T beta=x_inv_norm/alpha;
 
           house_vec[i]=-alpha;
@@ -167,9 +167,9 @@ namespace mat{
           for(size_t j=i+1;j<dim[1];j++){
             x_inv_norm+=S(i,j)*S(i,j);
           }
-          if(x_inv_norm>0) x_inv_norm=1/pvfmm::sqrt<T>(x_inv_norm);
+          if(x_inv_norm>0) x_inv_norm=1/sqrtf(x_inv_norm);
 
-          T alpha=pvfmm::sqrt<T>(1+x1*x_inv_norm);
+          T alpha=sqrtf(1+x1*x_inv_norm);
           T beta=x_inv_norm/alpha;
 
           house_vec[i+1]=-alpha;

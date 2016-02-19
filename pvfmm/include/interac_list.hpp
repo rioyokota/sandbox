@@ -70,8 +70,8 @@ public:
     if(3!=ListCount(t)) interac_list.ReInit(ListCount(t));
     interac_list.SetZero();
 
-    static const int n_collg=pvfmm::pow<unsigned int>(3,3);
-    static const int n_child=pvfmm::pow<unsigned int>(2,3);
+    static const int n_collg=27;
+    static const int n_child=8;
     int rel_coord[3];
 
     switch (t){
@@ -301,8 +301,8 @@ public:
   }
 
   void InitList(int max_r, int min_r, int step, Mat_Type t){
-    size_t count=pvfmm::pow<unsigned int>((max_r*2)/step+1,3)
-      -(min_r>0?pvfmm::pow<unsigned int>((min_r*2)/step-1,3):0);
+    size_t count=pow((max_r*2)/step+1,3)
+      -(min_r>0?pow((min_r*2)/step-1,3):0);
     Matrix<int>& M=rel_coord[t];
     M.Resize(count,3);
     hash_lut[t].assign(PVFMM_MAX_COORD_HASH, -1);

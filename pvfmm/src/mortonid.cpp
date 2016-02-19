@@ -1,10 +1,3 @@
-/**
- * \file mortonid.cpp
- * \author Dhairya Malhotra, dhairya.malhotra@gmail.com
- * \date 2-11-2011
- * \brief This file contains implementation of the class MortonId.
- */
-
 #include <mortonid.hpp>
 #include <iostream>
 #include <cstdlib>
@@ -15,7 +8,7 @@ namespace pvfmm{
 void MortonId::NbrList(std::vector<MortonId>& nbrs, uint8_t level, int periodic) const{
   nbrs.clear();
   static unsigned int dim=3;
-  static unsigned int nbr_cnt=pvfmm::pow<unsigned int>(3,dim);
+  static unsigned int nbr_cnt=powf(3,dim);
   static UINT_T maxCoord=(((UINT_T)1)<<(MAX_DEPTH));
 
   UINT_T mask=maxCoord-(((UINT_T)1)<<(MAX_DEPTH-level));

@@ -55,16 +55,16 @@ template <class T>
 inline void cheb_poly(int d, const T* in, int n, T* out){
   if(d==0){
     for(int i=0;i<n;i++)
-      out[i]=(pvfmm::fabs<T>(in[i])<=1?1.0:0);
+      out[i]=(fabs(in[i])<=1?1.0:0);
   }else if(d==1){
     for(int i=0;i<n;i++){
-      out[i]=(pvfmm::fabs<T>(in[i])<=1?1.0:0);
-      out[i+n]=(pvfmm::fabs<T>(in[i])<=1?in[i]:0);
+      out[i]=(fabs(in[i])<=1?1.0:0);
+      out[i+n]=(fabs(in[i])<=1?in[i]:0);
     }
   }else{
     for(int j=0;j<n;j++){
-      T x=(pvfmm::fabs<T>(in[j])<=1?in[j]:0);
-      T y0=(pvfmm::fabs<T>(in[j])<=1?1.0:0);
+      T x=(fabs(in[j])<=1?in[j]:0);
+      T y0=(fabs(in[j])<=1?1.0:0);
       out[j]=y0;
       out[j+n]=x;
 
@@ -101,7 +101,7 @@ void quad_rule(int n, T* x, T* w){
   Vector<T> w_(n);
   {
     for(int i=0;i<n;i++){
-      x_[i]=-pvfmm::cos<T>((T)(2.0*i+1.0)/(2.0*n)*M_PI);
+      x_[i]=-cos((T)(2.0*i+1.0)/(2.0*n)*M_PI);
       w_[i]=0;
     }
     Matrix<T> M(n,n);
@@ -146,11 +146,11 @@ std::vector<T> integ_pyramid(int m, T* s, T r, int nx, const Kernel<T>& kernel, 
   std::vector<T> x_;
   {
     x_.push_back(s[0]);
-    x_.push_back(pvfmm::fabs<T>(1.0-s[0])+s[0]);
-    x_.push_back(pvfmm::fabs<T>(1.0-s[1])+s[0]);
-    x_.push_back(pvfmm::fabs<T>(1.0+s[1])+s[0]);
-    x_.push_back(pvfmm::fabs<T>(1.0-s[2])+s[0]);
-    x_.push_back(pvfmm::fabs<T>(1.0+s[2])+s[0]);
+    x_.push_back(fabs(1.0-s[0])+s[0]);
+    x_.push_back(fabs(1.0-s[1])+s[0]);
+    x_.push_back(fabs(1.0+s[1])+s[0]);
+    x_.push_back(fabs(1.0-s[2])+s[0]);
+    x_.push_back(fabs(1.0+s[2])+s[0]);
     std::sort(x_.begin(),x_.end());
     for(int i=0;i<x_.size();i++){
       if(x_[i]<-1.0) x_[i]=-1.0;
@@ -158,11 +158,11 @@ std::vector<T> integ_pyramid(int m, T* s, T r, int nx, const Kernel<T>& kernel, 
     }
 
     std::vector<T> x_new;
-    T x_jump=pvfmm::fabs<T>(1.0-s[0]);
-    if(pvfmm::fabs<T>(1.0-s[1])>eps) x_jump=std::min(x_jump,(T)pvfmm::fabs<T>(1.0-s[1]));
-    if(pvfmm::fabs<T>(1.0+s[1])>eps) x_jump=std::min(x_jump,(T)pvfmm::fabs<T>(1.0+s[1]));
-    if(pvfmm::fabs<T>(1.0-s[2])>eps) x_jump=std::min(x_jump,(T)pvfmm::fabs<T>(1.0-s[2]));
-    if(pvfmm::fabs<T>(1.0+s[2])>eps) x_jump=std::min(x_jump,(T)pvfmm::fabs<T>(1.0+s[2]));
+    T x_jump=fabs(1.0-s[0]);
+    if(fabs(1.0-s[1])>eps) x_jump=std::min(x_jump,(T)fabs(1.0-s[1]));
+    if(fabs(1.0+s[1])>eps) x_jump=std::min(x_jump,(T)fabs(1.0+s[1]));
+    if(fabs(1.0-s[2])>eps) x_jump=std::min(x_jump,(T)fabs(1.0-s[2]));
+    if(fabs(1.0+s[2])>eps) x_jump=std::min(x_jump,(T)fabs(1.0+s[2]));
     for(int k=0; k<x_.size()-1; k++){
       T x0=x_[k];
       T x1=x_[k+1];
@@ -429,8 +429,8 @@ std::vector<T> cheb_integ(int m, T* s_, T r_, const Kernel<T>& kernel){
     U_=integ<T>(m+1,s,r,n,kernel);
     err=0;
     for(int i=0;i<(m+1)*(m+1)*(m+1)*k_dim;i++)
-      if(pvfmm::fabs<T>(U[i]-U_[i])>err)
-        err=pvfmm::fabs<T>(U[i]-U_[i]);
+      if(fabs(U[i]-U_[i])>err)
+        err=fabs(U[i]-U_[i]);
     U=U_;
   }
   std::vector<T> U0(((m+1)*(m+2)*(m+3)*k_dim)/6);
@@ -522,7 +522,7 @@ void Kernel<T>::Initialize(bool verbose) const{
           x=(drand48()-0.5);
           y=(drand48()-0.5);
           z=(drand48()-0.5);
-          r=pvfmm::sqrt<T>(x*x+y*y+z*z);
+          r=sqrtf(x*x+y*y+z*z);
         }while(r<0.25);
         trg_coord1[i*3+0]=x*scal;
         trg_coord1[i*3+1]=y*scal;
@@ -534,7 +534,7 @@ void Kernel<T>::Initialize(bool verbose) const{
           x=(drand48()-0.5);
           y=(drand48()-0.5);
           z=(drand48()-0.5);
-          r=pvfmm::sqrt<T>(x*x+y*y+z*z);
+          r=sqrtf(x*x+y*y+z*z);
         }while(r<0.25);
         trg_coord1[i*3+0]=x*1.0/scal;
         trg_coord1[i*3+1]=y*1.0/scal;
@@ -544,10 +544,10 @@ void Kernel<T>::Initialize(bool verbose) const{
         BuildMatrix(&src_coord [          0], 1,
                     &trg_coord1[i*3], 1, &(M1[i][0]));
         for(size_t j=0;j<ker_dim[0]*ker_dim[1];j++){
-          abs_sum+=pvfmm::fabs<T>(M1[i][j]);
+          abs_sum+=fabs(M1[i][j]);
         }
       }
-      if(abs_sum>pvfmm::sqrt<T>(eps) || scal<eps) break;
+      if(abs_sum>sqrtf(eps) || scal<eps) break;
       scal=scal*0.5;
     }
 
@@ -572,8 +572,8 @@ void Kernel<T>::Initialize(bool verbose) const{
       if(dot11>max_val*eps &&
          dot22>max_val*eps ){
         T s=dot12/dot11;
-        M_scal[0][i]=pvfmm::log<T>(s)/pvfmm::log<T>(2.0);
-        T err=pvfmm::sqrt<T>(0.5*(dot22/dot11)/(s*s)-0.5);
+        M_scal[0][i]=log(s)/log(2.0);
+        T err=sqrtf(0.5*(dot22/dot11)/(s*s)-0.5);
         if(err>eps_){
           scale_invar=false;
           M_scal[0][i]=0.0;
@@ -611,7 +611,7 @@ void Kernel<T>::Initialize(bool verbose) const{
       for(size_t i0=0;i0<ker_dim[0];i0++)
       for(size_t i1=0;i1<ker_dim[1];i1++){
         if(M_scal[i0][i1]>=0){
-          if(pvfmm::fabs<T>(src_scal[i0]+trg_scal[i1]-M_scal[i0][i1])>eps_){
+          if(fabs(src_scal[i0]+trg_scal[i1]-M_scal[i0][i1])>eps_){
             scale_invar=false;
           }
         }
@@ -634,7 +634,7 @@ void Kernel<T>::Initialize(bool verbose) const{
         x=(drand48()-0.5);
         y=(drand48()-0.5);
         z=(drand48()-0.5);
-        r=pvfmm::sqrt<T>(x*x+y*y+z*z);
+        r=sqrtf(x*x+y*y+z*z);
       }while(r<0.25);
       trg_coord1[i*3+0]=x*scal;
       trg_coord1[i*3+1]=y*scal;
@@ -646,7 +646,7 @@ void Kernel<T>::Initialize(bool verbose) const{
         x=(drand48()-0.5);
         y=(drand48()-0.5);
         z=(drand48()-0.5);
-        r=pvfmm::sqrt<T>(x*x+y*y+z*z);
+        r=sqrtf(x*x+y*y+z*z);
       }while(r<0.25);
       trg_coord1[i*3+0]=x*1.0/scal;
       trg_coord1[i*3+1]=y*1.0/scal;
@@ -720,8 +720,8 @@ void Kernel<T>::Initialize(bool verbose) const{
             dot22[i][j]+=M2[k][i]*M2[k][j];
           }
           for(size_t i=0;i<ker_dim[0]*ker_dim[1];i++){
-            norm1[i]=pvfmm::sqrt<T>(dot11[i][i]);
-            norm2[i]=pvfmm::sqrt<T>(dot22[i][i]);
+            norm1[i]=sqrtf(dot11[i][i]);
+            norm2[i]=sqrtf(dot22[i][i]);
           }
           for(size_t i=0;i<ker_dim[0]*ker_dim[1];i++)
           for(size_t j=0;j<ker_dim[0]*ker_dim[1];j++){
@@ -736,10 +736,10 @@ void Kernel<T>::Initialize(bool verbose) const{
         for(size_t i=0;i<ker_dim[0]*ker_dim[1];i++){
           if(norm1[i]>eps_ && M11[0][i]==0){
             for(size_t j=0;j<ker_dim[0]*ker_dim[1];j++){
-              if(pvfmm::fabs<T>(norm1[i]-norm1[j])<eps_ && pvfmm::fabs<T>(pvfmm::fabs<T>(dot11[i][j])-1.0)<eps_){
+              if(fabs(norm1[i]-norm1[j])<eps_ && fabs(fabs(dot11[i][j])-1.0)<eps_){
                 M11[0][j]=(dot11[i][j]>0?flag:-flag);
               }
-              if(pvfmm::fabs<T>(norm1[i]-norm2[j])<eps_ && pvfmm::fabs<T>(pvfmm::fabs<T>(dot12[i][j])-1.0)<eps_){
+              if(fabs(norm1[i]-norm2[j])<eps_ && fabs(fabs(dot12[i][j])-1.0)<eps_){
                 M22[0][j]=(dot12[i][j]>0?flag:-flag);
               }
             }
@@ -980,8 +980,8 @@ void Kernel<T>::Initialize(bool verbose) const{
       std::cout<<"Scaling Matrix :\n";
       Matrix<T> Src(ker_dim[0],1);
       Matrix<T> Trg(1,ker_dim[1]);
-      for(size_t i=0;i<ker_dim[0];i++) Src[i][0]=pvfmm::pow<T>(2.0,src_scal[i]);
-      for(size_t i=0;i<ker_dim[1];i++) Trg[0][i]=pvfmm::pow<T>(2.0,trg_scal[i]);
+      for(size_t i=0;i<ker_dim[0];i++) Src[i][0]=powf(2.0,src_scal[i]);
+      for(size_t i=0;i<ker_dim[1];i++) Trg[0][i]=powf(2.0,trg_scal[i]);
       std::cout<<Src*Trg;
     }
     if(ker_dim[0]*ker_dim[1]>0){
@@ -1023,11 +1023,11 @@ void Kernel<T>::Initialize(bool verbose) const{
             x=(drand48()-0.5);
             y=(drand48()-0.5);
             z=(drand48()-0.5);
-            r=pvfmm::sqrt<T>(x*x+y*y+z*z);
+            r=sqrtf(x*x+y*y+z*z);
           }while(r==0.0);
-          trg_coord.push_back(x/r*pvfmm::sqrt<T>((T)3)*rad*(1.0+drand48()));
-          trg_coord.push_back(y/r*pvfmm::sqrt<T>((T)3)*rad*(1.0+drand48()));
-          trg_coord.push_back(z/r*pvfmm::sqrt<T>((T)3)*rad*(1.0+drand48()));
+          trg_coord.push_back(x/r*sqrtf((T)3)*rad*(1.0+drand48()));
+          trg_coord.push_back(y/r*sqrtf((T)3)*rad*(1.0+drand48()));
+          trg_coord.push_back(z/r*sqrtf((T)3)*rad*(1.0+drand48()));
         }
         Matrix<T> M_s2c(n_src*ker_dim[0],n_check*ker_dim[1]);
         BuildMatrix( &src_coord[0], n_src,
@@ -1042,7 +1042,7 @@ void Kernel<T>::Initialize(bool verbose) const{
           T eps=1, max_S=0;
           while(eps*(T)0.5+(T)1.0>1.0) eps*=0.5;
           for(size_t i=0;i<std::min(S.Dim(0),S.Dim(1));i++){
-            if(pvfmm::fabs<T>(S[i][i])>max_S) max_S=pvfmm::fabs<T>(S[i][i]);
+            if(fabs(S[i][i])>max_S) max_S=fabs(S[i][i]);
           }
           for(size_t i=0;i<S.Dim(0);i++) S[i][i]=(S[i][i]>eps*max_S*4?1.0/S[i][i]:0.0);
           M_c2e0=V.Transpose()*S;
@@ -1058,8 +1058,8 @@ void Kernel<T>::Initialize(bool verbose) const{
         T max_error=0, max_value=0;
         for(size_t i=0;i<M.Dim(0);i++)
         for(size_t j=0;j<M.Dim(1);j++){
-          max_error=std::max<T>(max_error,pvfmm::fabs<T>(M    [i][j]));
-          max_value=std::max<T>(max_value,pvfmm::fabs<T>(M_s2t[i][j]));
+          max_error=std::max<T>(max_error,fabs(M    [i][j]));
+          max_value=std::max<T>(max_value,fabs(M_s2t[i][j]));
         }
         std::cout<<(double)(max_error/max_value)<<' ';
         if(scale_invar) break;
@@ -1105,11 +1105,11 @@ void Kernel<T>::Initialize(bool verbose) const{
             x=(drand48()-0.5);
             y=(drand48()-0.5);
             z=(drand48()-0.5);
-            r=pvfmm::sqrt<T>(x*x+y*y+z*z);
+            r=sqrtf(x*x+y*y+z*z);
           }while(r==0.0);
-          src_coord.push_back(x/r*pvfmm::sqrt<T>((T)3)*rad*(1.0+drand48()));
-          src_coord.push_back(y/r*pvfmm::sqrt<T>((T)3)*rad*(1.0+drand48()));
-          src_coord.push_back(z/r*pvfmm::sqrt<T>((T)3)*rad*(1.0+drand48()));
+          src_coord.push_back(x/r*sqrtf((T)3)*rad*(1.0+drand48()));
+          src_coord.push_back(y/r*sqrtf((T)3)*rad*(1.0+drand48()));
+          src_coord.push_back(z/r*sqrtf((T)3)*rad*(1.0+drand48()));
         }
         Matrix<T> M_s2c(n_src*ker_dim[0],n_check*ker_dim[1]);
         BuildMatrix( &src_coord[0], n_src,
@@ -1124,7 +1124,7 @@ void Kernel<T>::Initialize(bool verbose) const{
           T eps=1, max_S=0;
           while(eps*(T)0.5+(T)1.0>1.0) eps*=0.5;
           for(size_t i=0;i<std::min(S.Dim(0),S.Dim(1));i++){
-            if(pvfmm::fabs<T>(S[i][i])>max_S) max_S=pvfmm::fabs<T>(S[i][i]);
+            if(fabs(S[i][i])>max_S) max_S=fabs(S[i][i]);
           }
           for(size_t i=0;i<S.Dim(0);i++) S[i][i]=(S[i][i]>eps*max_S*4?1.0/S[i][i]:0.0);
           M_c2e0=V.Transpose()*S;
@@ -1140,8 +1140,8 @@ void Kernel<T>::Initialize(bool verbose) const{
         T max_error=0, max_value=0;
         for(size_t i=0;i<M.Dim(0);i++)
         for(size_t j=0;j<M.Dim(1);j++){
-          max_error=std::max<T>(max_error,pvfmm::fabs<T>(M    [i][j]));
-          max_value=std::max<T>(max_value,pvfmm::fabs<T>(M_s2t[i][j]));
+          max_error=std::max<T>(max_error,fabs(M    [i][j]));
+          max_value=std::max<T>(max_value,fabs(M_s2t[i][j]));
         }
         std::cout<<(double)(max_error/max_value)<<' ';
         if(scale_invar) break;
@@ -1222,7 +1222,7 @@ void Kernel<T>::Initialize(bool verbose) const{
           T eps=1, max_S=0;
           while(eps*(T)0.5+(T)1.0>1.0) eps*=0.5;
           for(size_t i=0;i<std::min(S.Dim(0),S.Dim(1));i++){
-            if(pvfmm::fabs<T>(S[i][i])>max_S) max_S=pvfmm::fabs<T>(S[i][i]);
+            if(fabs(S[i][i])>max_S) max_S=fabs(S[i][i]);
           }
           for(size_t i=0;i<S.Dim(0);i++) S[i][i]=(S[i][i]>eps*max_S*4?1.0/S[i][i]:0.0);
           M_c2e0=V.Transpose()*S;
@@ -1232,8 +1232,8 @@ void Kernel<T>::Initialize(bool verbose) const{
       }
       {
         T err_sum=0, analytic_sum=0;
-        for(size_t i=0;i<T_err     .Dim(0)*T_err     .Dim(1);i++)      err_sum+=pvfmm::fabs<T>(T_err     [0][i]);
-        for(size_t i=0;i<T_analytic.Dim(0)*T_analytic.Dim(1);i++) analytic_sum+=pvfmm::fabs<T>(T_analytic[0][i]);
+        for(size_t i=0;i<T_err     .Dim(0)*T_err     .Dim(1);i++)      err_sum+=fabs(T_err     [0][i]);
+        for(size_t i=0;i<T_analytic.Dim(0)*T_analytic.Dim(1);i++) analytic_sum+=fabs(T_analytic[0][i]);
         std::cout<<"Volume Error   : "<<err_sum/analytic_sum<<"\n";
       }
     }
