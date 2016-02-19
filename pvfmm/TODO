@@ -1,6 +1,4 @@
-kernel:
- - simplify code structure of kernels
- - simplify rsqrt intrinsic
-Check if all the headers are necessary
+Simplify code structure of headers
+template -> Real_t
 Remove unnecessary "{}"
 "){" -> ") {", "}else{" -> "} else {"

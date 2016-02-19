@@ -29,7 +29,7 @@
 #include <immintrin.h>
 #endif
 
-#include <cheb_utils.hpp>
+#include <kernel.hpp>
 #include <fft_wrapper.hpp>
 #include <interac_list.hpp>
 #include <matrix.hpp>
