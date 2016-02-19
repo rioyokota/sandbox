@@ -1,12 +1,6 @@
-/**
- * \file mortonid.hpp
- * \author Dhairya Malhotra, dhairya.malhotra@gmail.com
- * \date 2-11-2011
- * \brief This file contains definition of the class MortonId.
- */
-
 #include <vector>
 #include <stdint.h>
+#include <iostream>
 
 #include <pvfmm_common.hpp>
 

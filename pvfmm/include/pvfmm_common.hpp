@@ -59,6 +59,4 @@ typedef Real_t Vec_t;
 #endif
 #endif
 
-#include <math_utils.hpp>
-
 #endif //_PVFMM_COMMON_HPP_
