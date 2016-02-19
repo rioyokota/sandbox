@@ -1,10 +1,3 @@
-/**
- * \file matrix.hpp
- * \author Dhairya Malhotra, dhairya.malhotra@gmail.com
- * \date 2-11-2011
- * \brief This file contains definition of the class Matrix.
- */
-
 #include <stdint.h>
 #include <cstdlib>
 

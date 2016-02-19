@@ -1,10 +1,3 @@
-/**
- * \file matrix.txx
- * \author Dhairya Malhotra, dhairya.malhotra@gmail.com
- * \date 2-11-2011
- * \brief This file contains inplementation of the class Matrix.
- */
-
 #include <omp.h>
 #include <cmath>
 #include <cstdlib>
@@ -17,23 +10,6 @@
 #include <profile.hpp>
 
 namespace pvfmm{
-
-template <class T>
-std::ostream& operator<<(std::ostream& output, const Matrix<T>& M){
-  std::ios::fmtflags f(std::cout.flags());
-  output<<std::fixed<<std::setprecision(4)<<std::setiosflags(std::ios::left);
-  for(size_t i=0;i<M.Dim(0);i++){
-    for(size_t j=0;j<M.Dim(1);j++){
-      float f=((float)M(i,j));
-      if(fabs(f)<1e-25) f=0;
-      output<<std::setw(10)<<((double)f)<<' ';
-    }
-    output<<";\n";
-  }
-  std::cout.flags(f);
-  return output;
-}
-
 template <class T>
 Matrix<T>::Matrix(){
   dim[0]=0;
@@ -335,12 +311,9 @@ Matrix<T> Matrix<T>::Transpose(){
   const size_t blk0=((d0+B1-1)/B1);
   const size_t blk1=((d1+B1-1)/B1);
   const size_t blks=blk0*blk1;
-//  #pragma omp parallel for
   for(size_t k=0;k<blks;k++){
     size_t i=(k%blk0)*B1;
     size_t j=(k/blk0)*B1;
-//  for(size_t i=0;i<d0;i+=B1)
-//  for(size_t j=0;j<d1;j+=B1){
     size_t d0_=i+B1; if(d0_>=d0) d0_=d0;
     size_t d1_=j+B1; if(d1_>=d1) d1_=d1;
     for(size_t ii=i;ii<d0_;ii+=B2)
@@ -353,9 +326,6 @@ Matrix<T> Matrix<T>::Transpose(){
       }
     }
   }
-//  for(size_t i=0;i<d0;i++)
-//    for(size_t j=0;j<d1;j++)
-//      M_r[j][i]=M[i][j];
   return M_r;
 }
 
