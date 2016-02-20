@@ -414,56 +414,114 @@ public:
 
 };
 
-template <class Y>
-std::ostream& operator<<(std::ostream& output, const Matrix<Y>& M);
-
-
-/**
- * /brief P=[e(p1)*s1 e(p2)*s2 ... e(pn)*sn],
- * where e(k) is the kth unit vector,
- * perm := [p1 p2 ... pn] is the permutation vector,
- * scal := [s1 s2 ... sn] is the scaling vector.
- */
 #define PERM_INT_T size_t
 template <class T>
 class Permutation{
 
-  template <class Y>
-  friend std::ostream& operator<<(std::ostream& output, const Permutation<Y>& P);
-
-  public:
+public:
+  Vector<PERM_INT_T> perm;
+  Vector<T> scal;
 
   Permutation(){}
 
-  Permutation(size_t size);
+  Permutation(size_t size){
+    perm.Resize(size);
+    scal.Resize(size);
+    for(size_t i=0;i<size;i++){
+      perm[i]=i;
+      scal[i]=1.0;
+    }
+  }
 
-  static Permutation<T> RandPerm(size_t size);
+  static Permutation<T> RandPerm(size_t size){
+    Permutation<T> P(size);
+    for(size_t i=0;i<size;i++){
+      P.perm[i]=rand()%size;
+      for(size_t j=0;j<i;j++)
+	if(P.perm[i]==P.perm[j]){ i--; break; }
+      P.scal[i]=((T)rand())/RAND_MAX;
+    }
+    return P;
+  }
 
-  Matrix<T> GetMatrix() const;
+  Matrix<T> GetMatrix() const{
+    size_t size=perm.Dim();
+    Matrix<T> M_r(size,size,NULL);
+    for(size_t i=0;i<size;i++)
+      for(size_t j=0;j<size;j++)
+	M_r[i][j]=(perm[j]==i?scal[j]:0.0);
+    return M_r;
+  }
 
-  size_t Dim() const;
+  size_t Dim() const{
+    return perm.Dim();
+  }
 
-  Permutation<T> Transpose();
+  Permutation<T> Transpose(){
+    size_t size=perm.Dim();
+    Permutation<T> P_r(size);
+    Vector<PERM_INT_T>& perm_r=P_r.perm;
+    Vector<T>& scal_r=P_r.scal;
+    for(size_t i=0;i<size;i++){
+      perm_r[perm[i]]=i;
+      scal_r[perm[i]]=scal[i];
+    }
+    return P_r;
+  }
 
-  Permutation<T> operator*(const Permutation<T>& P);
+  Permutation<T> operator*(const Permutation<T>& P){
+    size_t size=perm.Dim();
+    assert(P.Dim()==size);
+    Permutation<T> P_r(size);
+    Vector<PERM_INT_T>& perm_r=P_r.perm;
+    Vector<T>& scal_r=P_r.scal;
+    for(size_t i=0;i<size;i++){
+      perm_r[i]=perm[P.perm[i]];
+      scal_r[i]=scal[P.perm[i]]*P.scal[i];
+    }
+    return P_r;
+  }
 
-  Matrix<T> operator*(const Matrix<T>& M);
+  Matrix<T> operator*(const Matrix<T>& M){
+    if(Dim()==0) return M;
+    assert(M.Dim(0)==Dim());
+    size_t d0=M.Dim(0);
+    size_t d1=M.Dim(1);
+    Matrix<T> M_r(d0,d1,NULL);
+    for(size_t i=0;i<d0;i++){
+      const T s=scal[i];
+      const T* M_=M[i];
+      T* M_r_=M_r[perm[i]];
+      for(size_t j=0;j<d1;j++)
+	M_r_[j]=M_[j]*s;
+    }
+    return M_r;
+  }
 
   template <class Y>
   friend Matrix<Y> operator*(const Matrix<Y>& M, const Permutation<Y>& P);
 
-  Vector<PERM_INT_T> perm;
-  Vector<T> scal;
 };
 
 template <class T>
-Matrix<T> operator*(const Matrix<T>& M, const Permutation<T>& P);
+Matrix<T> operator*(const Matrix<T>& M, const Permutation<T>& P){
+  if(P.Dim()==0) return M;
+  assert(M.Dim(1)==P.Dim());
+  size_t d0=M.Dim(0);
+  size_t d1=M.Dim(1);
 
-template <class Y>
-std::ostream& operator<<(std::ostream& output, const Permutation<Y>& P);
+  Matrix<T> M_r(d0,d1,NULL);
+  for(size_t i=0;i<d0;i++){
+    const PERM_INT_T* perm_=&(P.perm[0]);
+    const T* scal_=&(P.scal[0]);
+    const T* M_=M[i];
+    T* M_r_=M_r[i];
+    for(size_t j=0;j<d1;j++)
+      M_r_[j]=M_[perm_[j]]*scal_[j];
+  }
+  return M_r;
+}
 
 }//end namespace
-
-#include <matrix.txx>
 
 #endif //_PVFMM_MATRIX_HPP_
