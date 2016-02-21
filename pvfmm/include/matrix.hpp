@@ -1,19 +1,21 @@
-#include <omp.h>
+#ifndef _PVFMM_MATRIX_HPP_
+#define _PVFMM_MATRIX_HPP_
+
+#include <algorithm>
 #include <cmath>
 #include <cstdlib>
-#include <stdint.h>
 #include <cassert>
 #include <iostream>
 #include <iomanip>
+#include <omp.h>
+#include <stdint.h>
+#include <vector>
 
-#include <mat_utils.hpp>
 #include <mem_mgr.hpp>
+#include <mat_utils.hpp>
 #include <profile.hpp>
 #include <pvfmm_common.hpp>
 #include <vector.hpp>
-
-#ifndef _PVFMM_MATRIX_HPP_
-#define _PVFMM_MATRIX_HPP_
 
 namespace pvfmm{
 
@@ -49,6 +51,50 @@ public:
   Device dev;
   Vector<char> dev_sig;
 
+  static inline void gemm(char TransA, char TransB,  int M,  int N,  int K,  T alpha,  T *A,  int lda,  T *B,  int ldb,  T beta, T *C,  int ldc){
+    if((TransA=='N' || TransA=='n') && (TransB=='N' || TransB=='n')){
+      for(size_t n=0;n<N;n++){
+        for(size_t m=0;m<M;m++){
+            T AxB=0;
+            for(size_t k=0;k<K;k++){
+              AxB+=A[m+lda*k]*B[k+ldb*n];
+            }
+            C[m+ldc*n]=alpha*AxB+(beta==0?0:beta*C[m+ldc*n]);
+        }
+      }
+    }else if(TransA=='N' || TransA=='n'){
+      for(size_t n=0;n<N;n++){
+        for(size_t m=0;m<M;m++){
+            T AxB=0;
+            for(size_t k=0;k<K;k++){
+              AxB+=A[m+lda*k]*B[n+ldb*k];
+            }
+            C[m+ldc*n]=alpha*AxB+(beta==0?0:beta*C[m+ldc*n]);
+        }
+      }
+    }else if(TransB=='N' || TransB=='n'){
+      for(size_t n=0;n<N;n++){
+        for(size_t m=0;m<M;m++){
+            T AxB=0;
+            for(size_t k=0;k<K;k++){
+              AxB+=A[k+lda*m]*B[k+ldb*n];
+            }
+            C[m+ldc*n]=alpha*AxB+(beta==0?0:beta*C[m+ldc*n]);
+        }
+      }
+    }else{
+      for(size_t n=0;n<N;n++){
+        for(size_t m=0;m<M;m++){
+            T AxB=0;
+            for(size_t k=0;k<K;k++){
+              AxB+=A[k+lda*m]*B[n+ldb*k];
+            }
+            C[m+ldc*n]=alpha*AxB+(beta==0?0:beta*C[m+ldc*n]);
+        }
+      }
+    }
+  }
+
   public:
 
 
@@ -77,6 +123,7 @@ public:
   Matrix(const Matrix<T>& M){
     dim[0]=M.dim[0];
     dim[1]=M.dim[1];
+
     own_data=true;
     if(dim[0]*dim[1]>0){
       data_ptr=mem::aligned_new<T>(dim[0]*dim[1]);
@@ -247,7 +294,7 @@ public:
     Profile::Add_FLOP(2*(((long long)dim[0])*dim[1])*M.dim[1]);
     Matrix<T> M_r(dim[0],M.dim[1],NULL);
     if(M.Dim(0)*M.Dim(1)==0 || this->Dim(0)*this->Dim(1)==0) return M_r;
-    mat::gemm<T>('N','N',M.dim[1],dim[0],dim[1],
+    gemm('N','N',M.dim[1],dim[0],dim[1],
 		 1.0,M.data_ptr,M.dim[1],data_ptr,dim[1],0.0,M_r.data_ptr,M_r.dim[1]);
     return M_r;
   }
@@ -257,7 +304,7 @@ public:
     assert(A.dim[1]==B.dim[0]);
     assert(M_r.dim[0]==A.dim[0]);
     assert(M_r.dim[1]==B.dim[1]);
-    mat::gemm<T>('N','N',B.dim[1],A.dim[0],A.dim[1],
+    gemm('N','N',B.dim[1],A.dim[0],A.dim[1],
 		 1.0,B.data_ptr,B.dim[1],A.data_ptr,A.dim[1],beta,M_r.data_ptr,M_r.dim[1]);
   }
 
@@ -356,20 +403,20 @@ public:
     const size_t blks=blk0*blk1;
 #pragma omp parallel for
     for(size_t k=0;k<blks;k++){
-    size_t i=(k%blk0)*B1;
-    size_t j=(k/blk0)*B1;
-    size_t d0_=i+B1; if(d0_>=d0) d0_=d0;
-    size_t d1_=j+B1; if(d1_>=d1) d1_=d1;
-    for(size_t ii=i;ii<d0_;ii+=B2)
-      for(size_t jj=j;jj<d1_;jj+=B2){
-    size_t d0__=ii+B2; if(d0__>=d0) d0__=d0;
-    size_t d1__=jj+B2; if(d1__>=d1) d1__=d1;
-    for(size_t iii=ii;iii<d0__;iii++)
-      for(size_t jjj=jj;jjj<d1__;jjj++){
-    M_r[jjj][iii]=M[iii][jjj];
-  }
-  }
-  }
+      size_t i=(k%blk0)*B1;
+      size_t j=(k/blk0)*B1;
+      size_t d0_=i+B1; if(d0_>=d0) d0_=d0;
+      size_t d1_=j+B1; if(d1_>=d1) d1_=d1;
+      for(size_t ii=i;ii<d0_;ii+=B2)
+	for(size_t jj=j;jj<d1_;jj+=B2){
+	  size_t d0__=ii+B2; if(d0__>=d0) d0__=d0;
+	  size_t d1__=jj+B2; if(d1__>=d1) d1__=d1;
+	  for(size_t iii=ii;iii<d0__;iii++)
+	    for(size_t jjj=jj;jjj<d1__;jjj++){
+	      M_r[jjj][iii]=M[iii][jjj];
+	    }
+	}
+    }
   }
 #undef B2
 #undef B1

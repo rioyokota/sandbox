@@ -1,3 +1,6 @@
+#ifndef _PVFMM_INTRIN_WRAPPER_HPP_
+#define _PVFMM_INTRIN_WRAPPER_HPP_
+
 #ifdef __SSE__
 #include <xmmintrin.h>
 #endif
@@ -10,9 +13,6 @@
 #ifdef __AVX__
 #include <immintrin.h>
 #endif
-
-#ifndef _PVFMM_INTRIN_WRAPPER_HPP_
-#define _PVFMM_INTRIN_WRAPPER_HPP_
 
 namespace pvfmm{
 
