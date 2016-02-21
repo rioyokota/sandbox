@@ -12,7 +12,6 @@
 #include <vector>
 
 #include <mem_mgr.hpp>
-#include <mat_utils.hpp>
 #include <profile.hpp>
 #include <pvfmm_common.hpp>
 #include <vector.hpp>
@@ -704,14 +703,52 @@ public:
   }
   }
 
+  void pinv(T* M, int n1, int n2, T eps, T* M_){
+    if(n1*n2==0) return;
+    int m = n2;
+    int n = n1;
+    int k = (m<n?m:n);
+    T* tU =mem::aligned_new<T>(m*k);
+    T* tS =mem::aligned_new<T>(k);
+    T* tVT=mem::aligned_new<T>(k*n);
+    int INFO=0;
+    char JOBU  = 'S';
+    char JOBVT = 'S';
+    int wssize = 3*(m<n?m:n)+(m>n?m:n);
+    int wssize1 = 5*(m<n?m:n);
+    wssize = (wssize>wssize1?wssize:wssize1);
+    T* wsbuf = mem::aligned_new<T>(wssize);
+    svd(&JOBU, &JOBVT, &m, &n, &M[0], &m, &tS[0], &tU[0], &m, &tVT[0], &k,
+        wsbuf, &wssize, &INFO);
+    if(INFO!=0)
+      std::cout<<INFO<<'\n';
+    assert(INFO==0);
+    mem::aligned_delete<T>(wsbuf);
+    T eps_=tS[0]*eps;
+    for(int i=0;i<k;i++)
+      if(tS[i]<eps_)
+        tS[i]=0;
+      else
+        tS[i]=1.0/tS[i];
+    for(int i=0;i<m;i++){
+      for(int j=0;j<k;j++){
+        tU[i+j*m]*=tS[j];
+      }
+    }
+    gemm('T','T',n,m,k,1.0,&tVT[0],k,&tU[0],m,0.0,M_,n);
+    mem::aligned_delete<T>(tU);
+    mem::aligned_delete<T>(tS);
+    mem::aligned_delete<T>(tVT);
+  }
+
   Matrix<T> pinv(T eps=-1){
     if(eps<0){
-    eps=1.0;
-    while(eps+(T)1.0>1.0) eps*=0.5;
-    eps=sqrtf(eps);
-  }
+      eps=1.0;
+      while(eps+(T)1.0>1.0) eps*=0.5;
+      eps=sqrtf(eps);
+    }
     Matrix<T> M_r(dim[1],dim[0]);
-    mat::pinv(data_ptr,dim[0],dim[1],eps,M_r.data_ptr);
+    pinv(data_ptr,dim[0],dim[1],eps,M_r.data_ptr);
     this->Resize(0,0);
     return M_r;
   }
