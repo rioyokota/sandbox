@@ -24,7 +24,6 @@ class Logger {
  public:
   int stringLength;                                             //!< Max length of event name
   int decimal;                                                  //!< Decimal precision
-  bool verbose;                                                 //!< Print to screen
 
  private:
 //! Timer function
@@ -38,19 +37,16 @@ class Logger {
 //! Constructor
   Logger() : beginTimer(), timer(),                             // Initializing class variables (empty)
 	     stringLength(20),                                  // Max length of event name
-	     decimal(7),                                        // Decimal precision
-	     verbose(false) {}                                  // Don't print timings by default
+	     decimal(7) {}                                      // Decimal precision
 
 //! Print message to standard output
   inline void printTitle(std::string title) {
-    if (verbose) {                                              // If verbose flag is true
-      title += " ";                                             //  Append space to end of title
-      std::cout << "--- " << std::setw(stringLength)            //  Align string length
-                << std::left                                    //  Left shift
-                << std::setfill('-')                            //  Set to fill with '-'
-                << title << std::setw(10) << "-"                //  Fill until end of line
-                << std::setfill(' ') << std::endl;              //  Set back to fill with ' '
-    }                                                           // End if for verbose flag
+    title += " ";                                               //  Append space to end of title
+    std::cout << "--- " << std::setw(stringLength)              //  Align string length
+	      << std::left                                      //  Left shift
+	      << std::setfill('-')                              //  Set to fill with '-'
+	      << title << std::setw(10) << "-"                  //  Fill until end of line
+	      << std::setfill(' ') << std::endl;                //  Set back to fill with ' '
   }
 
 //! Start timer for given event
@@ -62,17 +58,15 @@ class Logger {
   double stopTimer(std::string event) {
     double endTimer = get_time();                               // Get time of day and store in endTimer
     timer[event] += endTimer - beginTimer[event];               // Accumulate event time to timer
-    if (verbose) printTime(event);                              // Print event and timer to screen
+    printTime(event);                                           // Print event and timer to screen
     return endTimer - beginTimer[event];                        // Return the event time
   }
 
 //! Print timings of a specific event
   inline void printTime(std::string event) {
-    if (verbose) {                                              // If verbose flag is true
-      std::cout << std::setw(stringLength) << std::left         //  Set format
-        << event << " : " << std::setprecision(decimal) << std::fixed
-        << timer[event] << " s" << std::endl;                   //  Print event and timer
-    }                                                           // End if for verbose flag
+    std::cout << std::setw(stringLength) << std::left           //  Set format
+	      << event << " : " << std::setprecision(decimal) << std::fixed
+	      << timer[event] << " s" << std::endl;             //  Print event and timer
   }
 
 //! Erase all events in timer
@@ -82,10 +76,8 @@ class Logger {
 
   //! Print relative L2 norm error
   void printError(double diff1, double norm1) {
-    if (verbose) {                                              // If verbose flag is true
-      std::cout << std::setw(stringLength) << std::left << std::scientific//  Set format
-                << "Rel. L2 Error (pot)" << " : " << std::sqrt(diff1/norm1) << std::endl;// Print potential error
-    }                                                           // End if for verbose flag
+    std::cout << std::setw(stringLength) << std::left << std::scientific//  Set format
+	      << "Rel. L2 Error (pot)" << " : " << std::sqrt(diff1/norm1) << std::endl;// Print potential error
   }
 };
 #endif

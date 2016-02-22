@@ -248,17 +248,5 @@ class BuildTree : public Logger {
     return linkTree(box.R);                                     // Form parent-child links in tree
   }
 
-//! Print tree structure statistics
-  void printTreeData(Cells &cells) {
-    if (verbose && !cells.empty()) {                            // If verbose flag is true
-      printTitle("Tree stats");                                 //  Print title
-      std::cout << std::setw(stringLength) << std::left         //  Set format
-		<< "Bodies"     << " : " << cells.front().NDBODY << std::endl// Print number of bodies
-		<< std::setw(stringLength) << std::left               //  Set format
-		<< "Cells"      << " : " << cells.size() << std::endl// Print number of cells
-		<< std::setw(stringLength) << std::left         //  Set format
-		<< "Tree depth" << " : " << maxlevel << std::endl;//  Print number of levels
-    }                                                           // End if for verbose flag
-  }
 };
 #endif

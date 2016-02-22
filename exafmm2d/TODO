@@ -1,5 +1,9 @@
-simpligy buildtree
-remove TBB in traversal
+have only one P2P
+remove mutual
 remove args
+non-recursive boundbox
+simplify buildtree
+remove TBB in traversal
+non-recursive direct
 calculate force
 remove all headers

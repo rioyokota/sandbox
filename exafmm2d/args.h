@@ -14,7 +14,6 @@ static struct option long_options[] = {
   {"images",       1, 0, 'i'},
   {"theta",        1, 0, 'o'},
   {"mutual",       1, 0, 'm'},
-  {"verbose",      1, 0, 'v'},
   {"distribution", 1, 0, 'd'},
   {"help",         0, 0, 'h'},
   {0, 0, 0, 0}
@@ -29,7 +28,6 @@ class Args {
   int images;
   double theta;
   int mutual;
-  int verbose;
   const char * distribution;
 
  private:
@@ -44,7 +42,6 @@ class Args {
             " --images : Number of periodic image levels (%d)\n"
             " --theta : Multipole acceptance criterion (%f)\n"
             " --mutual [0/1] : Use mutual interaction (%d)\n"
-	    " --verbose [0/1] : Print information to screen (%d)\n"
             " --distribution [l/s/c] : lattice, square, circle (%s)\n"
             " --help : Show this help document\n",
             name,
@@ -55,7 +52,6 @@ class Args {
             images,
             theta,
             mutual,
-	    verbose,
             distribution);
   }
 
@@ -76,7 +72,7 @@ class Args {
 
  public:
   Args(int argc=0, char ** argv=NULL) : numBodies(1000000), numTargets(10), ncrit(8), nspawn(1000), images(0),
-    theta(.4), mutual(1), verbose(1), distribution("square") {
+    theta(.4), mutual(1), distribution("square") {
     while (1) {
       int option_index;
       int c = getopt_long(argc, argv, "", long_options, &option_index);
@@ -103,9 +99,6 @@ class Args {
       case 'm':
         mutual = atoi(optarg);
         break;
-      case 'v':
-	verbose= atoi(optarg);
-	break;
       case 'd':
         distribution = parse(optarg);
         break;
@@ -119,27 +112,5 @@ class Args {
     }
   }
 
-  void print(int stringLength, int P) {
-    if (verbose) {
-      std::cout << std::setw(stringLength) << std::fixed << std::left// Set format
-		<< "numBodies" << " : " << numBodies << std::endl // Print numBodies  
-		<< std::setw(stringLength)                      // Set format
-		<< "P" << " : " << P << std::endl               // Print P
-		<< std::setw(stringLength)                      // Set format
-		<< "theta" << " : " << theta << std::endl       // Print theta
-		<< std::setw(stringLength)                      // Set format
-		<< "ncrit" << " : " << ncrit << std::endl       // Print ncrit
-		<< std::setw(stringLength)                      // Set format
-		<< "nspawn" << " : " << nspawn << std::endl     // Print nspawn
-		<< std::setw(stringLength)                      // Set format
-		<< "images" << " : " << images << std::endl     // Print images
-		<< std::setw(stringLength)                      // Set format
-		<< "mutual" << " : " << mutual << std::endl     // Print mutual
-		<< std::setw(stringLength)                      // Set format
-		<< "verbose" << " : " << verbose << std::endl   // Print verbose
-		<< std::setw(stringLength)                      // Set format
-		<< "distribution" << " : " << distribution << std::endl;// Print distribution
-    }
-  }
 };
 #endif

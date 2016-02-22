@@ -20,13 +20,6 @@ int main(int argc, char ** argv) {
   BuildTree tree(args.ncrit,args.nspawn);
   UpDownPass pass(args.theta,eps2);
   Traversal traversal(args.nspawn,args.images,eps2);
-  if (args.verbose) {
-    logger.verbose = true;
-    boundbox.verbose = true;
-    tree.verbose = true;
-    pass.verbose = true;
-    traversal.verbose = true;
-  }
   logger.printTitle("FMM Profiling");
   logger.startTimer("Total FMM");
   Bodies bodies = data.initBodies(args.numBodies, args.distribution, 0);
@@ -49,6 +42,5 @@ int main(int argc, char ** argv) {
   data.evalError(bodies2, bodies, diff1, norm1);
   logger.printTitle("FMM vs. direct");
   logger.printError(diff1, norm1);
-  tree.printTreeData(cells);
   return 0;
 }

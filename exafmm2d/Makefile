@@ -1,6 +1,6 @@
 .SUFFIXES: .cxx .o
 
-CXX	= mpicxx -ggdb3 -O3 -fopenmp -ffast-math -funroll-loops
+CXX	= g++ -O3 -fopenmp -ffast-math
 
 LFLAGS	+= -DEXPANSION=6 # Specifcy expansion order
 
