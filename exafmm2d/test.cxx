@@ -8,7 +8,6 @@
 #include "updownpass.h"
 
 int main(int argc, char ** argv) {
-  Dataset data;
   Logger logger;
 
   const int numBodies = 1000000;
@@ -24,7 +23,7 @@ int main(int argc, char ** argv) {
   Traversal traversal(nspawn,images,eps2);
   logger.printTitle("FMM Profiling");
   logger.startTimer("Total FMM");
-  Bodies bodies = data.initBodies(numBodies, 0);
+  Bodies bodies = initBodies(numBodies);
   Bounds bounds = boundbox.getBounds(bodies);
   Cells cells = tree.buildTree(bodies, bounds);
   pass.upwardPass(cells);
@@ -33,15 +32,17 @@ int main(int argc, char ** argv) {
   pass.downwardPass(cells);
   logger.printTitle("Total runtime");
   logger.stopTimer("Total FMM");
-  data.sampleBodies(bodies, 10);
+  sampleBodies(bodies, 10);
   Bodies bodies2 = bodies;
-  data.initTarget(bodies);
+  for (B_iter B=bodies.begin(); B!=bodies.end(); B++) {         // Loop over bodies
+    B->TRG = 0;                                                 //  Clear target values
+  }                                                             // End loop over bodies
   logger.startTimer("Total Direct");
   traversal.direct(bodies, jbodies, cycle);
   traversal.normalize(bodies);
   logger.stopTimer("Total Direct");
   double diff1 = 0, norm1 = 0;
-  data.evalError(bodies2, bodies, diff1, norm1);
+  evalError(bodies2, bodies, diff1, norm1);
   logger.printTitle("FMM vs. direct");
   logger.printError(diff1, norm1);
   return 0;
