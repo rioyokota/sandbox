@@ -2,7 +2,7 @@ namespace pvfmm{
 namespace mat{
 
   template <class T>
-  void pinv(T* M, int n1, int n2, T eps, T* M_){
+  void tpinv(T* M, int n1, int n2, T eps, T* M_){
     if(n1*n2==0) return;
     int m = n2;
     int n = n1;
@@ -17,7 +17,7 @@ namespace mat{
     int wssize1 = 5*(m<n?m:n);
     wssize = (wssize>wssize1?wssize:wssize1);
     T* wsbuf = mem::aligned_new<T>(wssize);
-    svd(&JOBU, &JOBVT, &m, &n, &M[0], &m, &tS[0], &tU[0], &m, &tVT[0], &k,
+    tsvd(&JOBU, &JOBVT, &m, &n, &M[0], &m, &tS[0], &tU[0], &m, &tVT[0], &k,
         wsbuf, &wssize, &INFO);
     if(INFO!=0)
       std::cout<<INFO<<'\n';
@@ -34,7 +34,7 @@ namespace mat{
         tU[i+j*m]*=tS[j];
       }
     }
-    gemm<T>('T','T',n,m,k,1.0,&tVT[0],k,&tU[0],m,0.0,M_,n);
+    tgemm<T>('T','T',n,m,k,1.0,&tVT[0],k,&tU[0],m,0.0,M_,n);
     mem::aligned_delete<T>(tU);
     mem::aligned_delete<T>(tS);
     mem::aligned_delete<T>(tVT);

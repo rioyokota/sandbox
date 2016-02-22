@@ -711,7 +711,7 @@ public:
     eps=sqrtf(eps);
   }
     Matrix<T> M_r(dim[1],dim[0]);
-    mat::pinv(data_ptr,dim[0],dim[1],eps,M_r.data_ptr);
+    mat::tpinv(data_ptr,dim[0],dim[1],eps,M_r.data_ptr);
     this->Resize(0,0);
     return M_r;
   }
