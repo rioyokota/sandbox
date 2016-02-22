@@ -1,7 +1,7 @@
-remove MASS
 non-recursive boundbox
 simplify buildtree
 remove TBB in traversal
 non-recursive direct
 calculate force
 remove all headers
+use printf for all output
