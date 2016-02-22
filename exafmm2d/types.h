@@ -1,19 +1,13 @@
 #ifndef types_h
 #define types_h
 #include <complex>
-#include "macros.h"
 #include <vector>
 #include "vec.h"
 
 // Basic type definitions
-#if FP64
-typedef double               real_t;                            //!< Floating point type is double precision
-#else
 typedef float                real_t;                            //!< Floating point type is single precision
-#endif
 typedef std::complex<real_t> complex_t;                         //!< Complex type
 typedef vec<2,real_t>        vec2;                              //!< Vector of 3 floating point types
-typedef vec<2,float>         fvec2;                             //!< Force float (Used only for communication)
 
 // Multipole/local expansion coefficients
 const int P = EXPANSION;                                        //!< Order of expansions

@@ -1,7 +1,6 @@
 #ifndef buildtree_h
 #define buildtree_h
 #include "logger.h"
-#include "thread.h"
 #include "types.h"
 
 class BuildTree : public Logger {

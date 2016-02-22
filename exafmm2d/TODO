@@ -1,9 +1,5 @@
-remove macros
- - FP64
- - TBB, nspawn
- - args
- - ASSERT
-remove unused headers
+simpligy buildtree
+remove TBB in traversal
+remove args
 calculate force
-remove TBB routines
 remove all headers
