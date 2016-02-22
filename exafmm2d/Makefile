@@ -15,7 +15,6 @@ CXX	= mpicxx -ggdb3 -msse4a -O3 -fopenmp -ffast-math -funroll-loops # GCC
 FC = mpif90 -xHOST -O3 -funroll-loops -finline-functions -ansi-alias -cpp # Intel
 
 ### Base flags
-CXX	+= -I../include -I ~/strumpack/src
 LFLAGS	+= -DEXPANSION=6 # Specifcy expansion order
 LFLAGS	+= -DUSE_SIMD # Use SIMD intrinsics
 #LFLAGS	+= -DFP64 # Use double precision
@@ -45,6 +44,12 @@ MAKEFLAGS += --no-print-directory
 	$(CXX) -c $^ -o $@ $(LFLAGS)
 .cu.o   :
 	$(NVCC) -c $^ -o $@ $(LFLAGS)
+
+LFLAGS	+= -DIneJ # Different target and source points
+
+serial: serial.o
+	$(CXX) $? $(LFLAGS)
+	./a.out
 
 help:
 	@make -C .. help

@@ -175,7 +175,7 @@ class Dataset {                                                 // Contains all 
     B_iter B2 = bodies2.begin();                                // Set iterator for bodies2
     for (B_iter B=bodies.begin(); B!=bodies.end(); B++, B2++) { // Loop over bodies & bodies2
       double dp = (B->TRG - B2->TRG) * (B->TRG - B2->TRG);      // Difference of potential
-      double  p = B2->TRG * B2->TRG;                             //  Value of potential
+      double  p = B2->TRG * B2->TRG;                            //  Value of potential
       diff1 += dp;                                              //  Accumulate difference of potential
       norm1 += p;                                               //  Accumulate value of potential
     }                                                           // End loop over bodies & bodies2
