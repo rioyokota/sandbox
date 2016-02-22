@@ -15,46 +15,21 @@ class Kernel {
   Kernel(real_t _EPS2) : EPS2(_EPS2), Xperiodic(0) {}
 
 //!< P2P kernel between cells Ci and Cj 
-  void P2P(C_iter Ci, C_iter Cj, bool mutual) const {
+  void P2P(C_iter Ci, C_iter Cj) const {
     B_iter Bi = Ci->BODY;
     B_iter Bj = Cj->BODY;
-    int ni = Ci->NDBODY;
-    int nj = Cj->NDBODY;
-    for (int i=0; i<ni; i++) {
+    for (int i=0; i<Ci->NDBODY; i++) {
       real_t pot = 0;
-      for (int j=0; j<nj; j++) {
+      for (int j=0; j<Cj->NDBODY; j++) {
 	vec2 dX = Bi[i].X - Bj[j].X - Xperiodic;
 	real_t R2 = norm(dX) + EPS2;
 	if (R2 != 0) {
 	  real_t invR = 1 / sqrt(R2);
 	  real_t logR = Bi[i].SRC * Bj[j].SRC * log(invR);
 	  pot += logR;
-	  if (mutual) {
-	    Bj[j].TRG += logR;
-	  }
 	}
       }
       Bi[i].TRG += pot;
-    }
-  }
-
-//!< P2P kernel for cell C
-  void P2P(C_iter C) const {
-    B_iter B = C->BODY;
-    int n = C->NDBODY;
-    for (int i=0; i<n; i++) {
-      real_t pot = 0;
-      for (int j=i+1; j<n; j++) {
-	vec2 dX = B[i].X - B[j].X;
-	real_t R2 = norm(dX) + EPS2;
-	if (R2 != 0) {
-	  real_t invR = 1 / sqrt(R2);
-	  real_t logR = B[i].SRC * B[j].SRC * log(invR);
-	  pot += logR;
-	  B[j].TRG += logR;
-	}
-      }
-      B[i].TRG += pot;
     }
   }
 
@@ -90,7 +65,7 @@ class Kernel {
   }
 
 //!< M2L kernel between cells Ci and Cj
-  void M2L(C_iter Ci, C_iter Cj, bool mutual) const {
+  void M2L(C_iter Ci, C_iter Cj) const {
     vec2 dX = Ci->X - Cj->X - Xperiodic;                        // Get distance vector
     complex_t Z(dX[0],dX[1]), powZn(1.0, 0.0),
       powZnk(1.0, 0.0), invZ(powZn/Z);                          // Convert to complex plane
@@ -118,9 +93,6 @@ class Kernel {
       }                                                         //  End loop
       powZnk *= real_t(n-1);                                    //  Store (n-1)! / z^n
     }                                                           // End loop
-    if (mutual) {                                               // If mutual interaction
-      M2L(Cj,Ci,false);                                         //  Lazy recursion
-    }                                                           // End if
   }
 
 //!< L2L kernel for one child cell Ci

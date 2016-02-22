@@ -1,6 +1,4 @@
-have only one P2P
-remove mutual
-remove args
+remove MASS
 non-recursive boundbox
 simplify buildtree
 remove TBB in traversal
