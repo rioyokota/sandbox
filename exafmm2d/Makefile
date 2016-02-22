@@ -15,9 +15,6 @@ LFLAGS	+= -std=c++0x -DTBB -ltbb
 ### MassiveThreads flags : MassiveThreads is available from http://code.google.com/p/massivethreads/
 #LFLAGS	+= -std=c++0x -DMTHREAD -lmyth
 
-### Trace flags
-#LFLAGS	+= -DTRACE
-
 MAKEFLAGS += --no-print-directory
 
 .cxx.o  :
@@ -29,19 +26,5 @@ test: test.o
 	$(CXX) $? $(LFLAGS)
 	./a.out
 
-help:
-	@make -C .. help
 clean:
-	@make -C .. clean
-cleandat:
-	@make -C .. cleandat
-cleanlib:
-	@make -C .. cleanlib
-cleanall:
-	@make -C .. cleanall
-commit:
-	@make -C .. commit
-save:
-	@make -C .. save
-revert:
-	@make -C .. revert
+	$(RM) *.o *.out

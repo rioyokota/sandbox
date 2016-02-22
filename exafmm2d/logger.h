@@ -12,26 +12,14 @@
 #include <sys/time.h>
 #include <vector>
 
-//! Structure for pthread based trace
-struct Trace {
-  pthread_t thread;                                             //!< pthread id
-  double    begin;                                              //!< Begin timer of trace
-  double    end;                                                //!< End timer of trace
-  Trace() {}                                                    //!< Constructor
-};
-
 //! Timer and Trace logger
 class Logger {
  typedef std::map<std::string,double>           Timer;          //!< Map of timer event name to timed value
  typedef std::map<std::string,double>::iterator T_iter;         //!< Iterator of timer event name map
- typedef std::queue<Trace>                      Traces;         //!< Queue of traces
- typedef std::map<pthread_t,int>                ThreadMap;      //!< Map of pthread id to thread id
 
  private:
-  Timer           beginTimer;                                   //!< Timer base value
-  Timer           timer;                                        //!< Timings of all events
-  Traces          traces;                                       //!< Traces for all events
-  pthread_mutex_t mutex;                                        //!< Pthread communicator
+  Timer beginTimer;                                             //!< Timer base value
+  Timer timer;                                                  //!< Timings of all events
 
  public:
   int stringLength;                                             //!< Max length of event name
@@ -48,12 +36,10 @@ class Logger {
 
  public:
 //! Constructor
-  Logger() : beginTimer(), timer(), traces(), mutex(),          // Initializing class variables (empty)
-    stringLength(20),                                           // Max length of event name
-    decimal(7),                                                 // Decimal precision
-    verbose(false) {                                            // Don't print timings by default
-    pthread_mutex_init(&mutex,NULL);                            // Initialize pthread communicator
-  }
+  Logger() : beginTimer(), timer(),                             // Initializing class variables (empty)
+	     stringLength(20),                                  // Max length of event name
+	     decimal(7),                                        // Decimal precision
+	     verbose(false) {}                                  // Don't print timings by default
 
 //! Print message to standard output
   inline void printTitle(std::string title) {
@@ -93,68 +79,6 @@ class Logger {
   inline void resetTimer() {
     timer.clear();                                              // Clear timer
   }
-
-#if TRACE
-//! Start tracer for given event
-  inline void startTracer(Trace &trace) {
-    pthread_mutex_lock(&mutex);                                 // Lock shared variable access
-    trace.thread = pthread_self();                              // Store pthread id
-    trace.begin  = get_time();                                  // Start timer
-    pthread_mutex_unlock(&mutex);                               // Unlock shared variable access
-  }
-
-//! Stop tracer for given event
-  inline void stopTracer(Trace &trace) {
-    pthread_mutex_lock(&mutex);                                 // Lock shared variable access
-    trace.end    = get_time();                                  // Stop timer
-    traces.push(trace);                                         // Push trace to queue of traces
-    pthread_mutex_unlock(&mutex);                               // Unlock shared variable access
-  }
-
-//! Write traces of all events
-  inline void writeTrace(int mpirank=0) {
-    startTimer("Write trace");                                  // Start timer
-    std::stringstream name;                                     // File name
-    name << "trace" << std::setfill('0') << std::setw(6)        // Set format
-         << mpirank << ".svg";                                  // Create file name for trace
-    std::ofstream traceFile(name.str().c_str());                // Open trace log file
-    traceFile << "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n" // Header statements for trace log file
-      << "<!DOCTYPE svg PUBLIC \"-_W3C_DTD SVG 1.0_EN\" \"http://www.w3.org/TR/SVG/DTD/svg10.dtd\">\n"
-      << "<svg xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\"\n"
-      << "  width=\"200mm\" height=\"40mm\" viewBox=\"0 0 20000 4000\">\n"
-      << "  <g>\n";
-    int num_thread = 0;                                         // Counter for number of threads to trace
-    ThreadMap threadMap;                                        // Map pthread ID to thread ID
-    double base = traces.front().begin;                         // Base time
-    double scale = 30000.0;                                     // Scale the length of bar plots
-    while (!traces.empty()) {                                   // While queue of traces is not empty
-      Trace trace = traces.front();                             //  Get trace at front of the queue
-      traces.pop();                                             //  Pop trace at front
-      pthread_t thread = trace.thread;                          //  Get pthread ID of trace
-      double begin  = trace.begin;                              //  Get begin time of trace
-      double end    = trace.end;                                //  Get end time of trace
-      int    color  = 0x0000ff;                                 //  Get color of trace
-      if (threadMap[thread] == 0) {                             //  If it's a new pthread ID
-        threadMap[thread] = num_thread++;                       //   Map it to an incremented thread ID
-      }                                                         //  End if for new pthread ID
-      begin -= base;                                            //  Subtract base time from begin time
-      end   -= base;                                            //  Subtract base time from end time
-      traceFile << "    <rect x=\"" << begin * scale            //  x position of bar plot
-        << "\" y=\"" << threadMap[thread] * 100.0               //  y position of bar plot
-        << "\" width=\"" << (end - begin) * scale               //  width of bar
-        << "\" height=\"90.0\" fill=\"#"<< std::setfill('0') << std::setw(6) << std::hex << color// height of bar
-        << "\" stroke=\"#000000\" stroke-width=\"1\"/>\n";      //  stroke color and width
-    }                                                           // End while loop for queue of traces
-    traceFile << "  </g>\n" "</svg>\n";                         // Footer for trace log file
-    traceFile.close();                                          // Close trace log file
-    stopTimer("Write trace",verbose);                           // Stop timer
-  }
-#else
-  inline void startTracer(Trace) {}
-  inline void stopTracer(Trace) {}
-  inline void writeTrace() {}
-  inline void writeTrace(int) {}
-#endif
 
   //! Print relative L2 norm error
   void printError(double diff1, double norm1) {

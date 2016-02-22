@@ -8,31 +8,11 @@ class Traversal : public Kernel, public Logger {
  private:
   int nspawn;                                                   //!< Threshold of NDBODY for spawning new threads
   int images;                                                   //!< Number of periodic image sublevels
-  real_t numP2P;                                                //!< Number of P2P kernel calls
-  real_t numM2L;                                                //!< Number of M2L kernel calls
-
-  real_t timeP2P;                                               //!< P2P execution time
-  real_t timeM2L;                                               //!< M2L execution time
   C_iter Ci0;                                                   //!< Begin iterator for target cells
   C_iter Cj0;                                                   //!< Begin iterator for source cells
 
-//! Approximate interaction between two cells
-  inline void approximate(C_iter Ci, C_iter Cj, bool mutual) {
-#if AUTO
-    if (timeP2P*Ci->NDBODY*Cj->NDBODY > timeM2L) {              // If M2L is faster
-      M2L(Ci, Cj, mutual);                                      //  M2L kernel
-    } else {                                                    // Else if P2P is faster
-      P2P(Ci, Cj, mutual);                                      //  P2P kernel
-    }                                                           // End if for fastest kernel
-#else
-    M2L(Ci,Cj,mutual);                                          // M2L kernel
-#endif
-  }
-
 //! Dual tree traversal for a range of Ci and Cj
   void traverse(C_iter CiBegin, C_iter CiEnd, C_iter CjBegin, C_iter CjEnd, bool mutual) {
-    Trace trace;
-    startTracer(trace);
     if (CiEnd - CiBegin == 1 || CjEnd - CjBegin == 1) {         // If only one cell in range
       if (CiBegin == CjBegin) {                                 //  If Ci == Cj
         assert(CiEnd == CjEnd);
@@ -60,7 +40,6 @@ class Traversal : public Kernel, public Logger {
 	sync_tasks;                                             //  Synchronize task group
       }
     }                                                           // End if for many cells in range
-    stopTracer(trace);
   }
 
 //! Split cell and call traverse() recursively for child
@@ -94,10 +73,10 @@ class Traversal : public Kernel, public Logger {
     vec2 dX = Ci->X - Cj->X - Xperiodic;                        // Distance vector from source to target
     real_t R2 = norm(dX);                                       // Scalar distance squared
     if (R2 > (Ci->RCRIT+Cj->RCRIT)*(Ci->RCRIT+Cj->RCRIT)) {     //  If distance is far enough
-      approximate(Ci, Cj, mutual);                              //   Use approximate kernels
+      M2L(Ci, Cj, mutual);                                      //   Use approximate kernels
     } else if (Ci->NCHILD == 0 && Cj->NCHILD == 0) {            //  Else if both cells are bodies
       if (Cj->NCBODY == 0) {                                    //   If the bodies weren't sent from remote node
-	approximate(Ci, Cj, mutual);                            //    Use approximate kernels
+	M2L(Ci, Cj, mutual);                                    //    Use approximate kernels
       } else {                                                  //   Else if the bodies were sent
 	if (R2 == 0 && Ci == Cj) {                              //    If source and target are same
 	  P2P(Ci);                                              //     P2P kernel for single cell
@@ -129,7 +108,7 @@ class Traversal : public Kernel, public Logger {
               for (int cy=-1; cy<=1; cy++) {                    //      Loop over y periodic direction (child)
                 Xperiodic[0] = (ix * 3 + cx) * cycle;           //       Coordinate offset for x periodic direction
                 Xperiodic[1] = (iy * 3 + cy) * cycle;           //       Coordinate offset for y periodic direction
-                approximate(Ci0,Ci,false);                      //       Perform M2L kernel
+                M2L(Ci0,Ci,false);                              //       Perform M2L kernel
               }                                                 //      End loop over y periodic direction (child)
             }                                                   //     End loop over x periodic direction (child)
           }                                                     //    Endif for periodic center cell
@@ -156,7 +135,7 @@ class Traversal : public Kernel, public Logger {
   }
 
  public:
- Traversal(int nspawn, int images, real_t eps2) : Kernel(eps2), nspawn(nspawn), images(images), numP2P(0), numM2L(0) {}
+ Traversal(int nspawn, int images, real_t eps2) : Kernel(eps2), nspawn(nspawn), images(images) {}
 
 //! Evaluate P2P and M2L using dual tree traversal
   void dualTreeTraversal(Cells &icells, Cells &jcells, real_t cycle, bool mutual=false) {
@@ -179,7 +158,6 @@ class Traversal : public Kernel, public Logger {
       }                                                         //  End if for periodic boundary condition
     }                                                           // End if for empty cell vectors
     stopTimer("Traverse");                                      // Stop timer
-    writeTrace();                                               // Write trace to file
   }
 
   //! Direct summation

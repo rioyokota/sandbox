@@ -1,4 +1,6 @@
 remove macros
+ - nspawn
+ - TBB
 remove unused headers
 calculate force
 remove TBB routines

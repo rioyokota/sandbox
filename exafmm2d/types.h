@@ -43,8 +43,6 @@ struct Body : public Source {
   int    ICELL;                                                 //!< Cell index
   real_t TRG;                                                   //!< Scalar+vector3 target values
 };
-typedef AlignedAllocator<Body,SIMD_BYTES> BodyAllocator;        //!< Body alignment allocator
-//typedef std::vector<Body,BodyAllocator>   Bodies;               //!< Vector of bodies
 typedef std::vector<Body>                 Bodies;               //!< Vector of bodies
 typedef Bodies::iterator                  B_iter;               //!< Iterator of body vector
 
