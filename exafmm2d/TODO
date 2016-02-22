@@ -1,6 +1,8 @@
 remove macros
- - nspawn
- - TBB
+ - FP64
+ - TBB, nspawn
+ - args
+ - ASSERT
 remove unused headers
 calculate force
 remove TBB routines

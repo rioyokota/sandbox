@@ -4,10 +4,6 @@
 CXX	= mpicxx -ggdb3 -msse4a -O3 -fopenmp -ffast-math -funroll-loops # GCC
 
 LFLAGS	+= -DEXPANSION=6 # Specifcy expansion order
-LFLAGS	+= -DUSE_SIMD # Use SIMD intrinsics
-
-### Debugging flags
-LFLAGS	+= -DASSERT # Turns on asserttions (otherwise define an empty macro function)
 
 ### Intel TBB flags : TBB is available from http://threadingbuildingblocks.org/download.php
 LFLAGS	+= -std=c++0x -DTBB -ltbb

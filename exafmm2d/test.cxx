@@ -1,3 +1,5 @@
+#include <cassert>
+
 #include "args.h"
 #include "boundbox.h"
 #include "buildtree.h"
@@ -11,6 +13,7 @@ int main(int argc, char ** argv) {
   Dataset data;
   Logger logger;
 
+  const int nspawn = 1000;
   const real_t eps2 = 0.0;
   const real_t cycle = 2 * M_PI;
   BoundBox boundbox(args.nspawn);
@@ -24,8 +27,6 @@ int main(int argc, char ** argv) {
     pass.verbose = true;
     traversal.verbose = true;
   }
-  logger.printTitle("FMM Parameters");
-  args.print(logger.stringLength,P);
   logger.printTitle("FMM Profiling");
   logger.startTimer("Total FMM");
   Bodies bodies = data.initBodies(args.numBodies, args.distribution, 0);

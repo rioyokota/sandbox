@@ -88,14 +88,9 @@ class BuildTree : public Logger {
       binNode->RIGHT = binNode->LEFT->END;                      //  Assign that same address to right node pointer
       binNode->RIGHT->BEGIN = binNode->RIGHT + 1;               //  Assign next memory address to right begin pointer
       binNode->RIGHT->END = binNode->RIGHT + numRightNode;      //  Keep track of last memory address used by right
-      spawn_tasks {                                             //  Initialize tasks
-	spawn_task1(bodies, {                                   //  Spawn new task using Intel TBB or MTHREAD
-	    countBodies(bodies, begin, mid, X, binNode->LEFT);  //   Recursive call for left branch
-	  });                                                   //  Close lambda expression
-	countBodies(bodies, mid, end, X, binNode->RIGHT);       //  Recursive call for right branch
-	sync_tasks;                                             //  Synchronize tasks
-	binNode->NBODY = binNode->LEFT->NBODY + binNode->RIGHT->NBODY;// Sum contribution from both branches
-      }
+      countBodies(bodies, begin, mid, X, binNode->LEFT);        //  Recursive call for left branch
+      countBodies(bodies, mid, end, X, binNode->RIGHT);         //  Recursive call for right branch
+      binNode->NBODY = binNode->LEFT->NBODY + binNode->RIGHT->NBODY;// Sum contribution from both branches
     }                                                           // End if for number of bodies
   }
 
@@ -111,14 +106,9 @@ class BuildTree : public Logger {
       }                                                         //  End loop over bodies
     } else {                                                    // Else if there are child nodes
       int mid = (begin + end) / 2;                              //  Split range of bodies in half
-      spawn_tasks {                                             //  Initialize tasks
-	spawn_task2(bodies, buffer, {                           //  Spawn new task using Intel TBB or MTHREAD
-	    moveBodies(bodies, buffer, begin, mid, binNode->LEFT, quadrantOffset, X);// Recursive call for left branch
-	  });                                                   //  Close lambda expression
-	quadrantOffset += binNode->LEFT->NBODY;                 //  Increment the quadrant offset for right branch
-	moveBodies(bodies, buffer, mid, end, binNode->RIGHT, quadrantOffset, X);// Recursive call for right branch
-	sync_tasks;                                             //  Synchronize tasks
-      }
+      moveBodies(bodies, buffer, begin, mid, binNode->LEFT, quadrantOffset, X);// Recursive call for left branch
+      quadrantOffset += binNode->LEFT->NBODY;                 //  Increment the quadrant offset for right branch
+      moveBodies(bodies, buffer, mid, end, binNode->RIGHT, quadrantOffset, X);// Recursive call for right branch
     }                                                           // End if for child existance
   }
 
@@ -137,27 +127,22 @@ class BuildTree : public Logger {
     ivec4 quadrantOffset = exclusiveScan(binNode->NBODY, begin);// Exclusive scan to obtain offset from quadrant count
     moveBodies(bodies, buffer, begin, end, binNode, quadrantOffset, X);// Sort bodies according to quadrant
     BinaryTreeNode * binNodeOffset = binNode->BEGIN;            // Initialize pointer offset for binary tree nodes
-    spawn_tasks {                                               // Initialize tasks
-      for (int i=0; i<4; i++) {                                 // Loop over children
-	int maxBinNode = getMaxBinNode(binNode->NBODY[i]);      //  Get maximum number of binary tree nodes
-	assert(binNodeOffset + maxBinNode <= binNode->END);
-	spawn_task2(buffer, bodies, {                           //  Spawn new task using Intel TBB or MTHREAD
-	    vec2 Xchild = X;                                    //   Initialize center position of child node
-	    real_t r = R0 / (1 << (level + 1));                 //   Radius of cells for child's level
-	    for (int d=0; d<2; d++) {                           //   Loop over dimensions
-	      Xchild[d] += r * (((i & 1 << d) >> d) * 2 - 1);   //    Shift center position to that of child node
-	    }                                                   //   End loop over dimensions
-	    BinaryTreeNode binNodeChild[1];                     //   Allocate new root for this branch
-	    binNodeChild->BEGIN = binNodeOffset;                //   Assign first memory address from offset
-	    binNodeChild->END = binNodeOffset + maxBinNode;     //   Keep track of last memory address
-	    quadNode->CHILD[i] = buildNodes(buffer, bodies,     //   Recursive call for each child
-	      quadrantOffset[i], quadrantOffset[i] + binNode->NBODY[i],//   Range of bodies is calcuated from quadrant offset
-	      binNodeChild, Xchild, R0, level+1, !direction);   //   Alternate copy direction bodies <-> buffer
-	  });                                                   //  Close lambda expression
-	binNodeOffset += maxBinNode;                            //  Increment offset for binNode memory address
-      }                                                         // End loop over children
-      sync_tasks;                                               // Synchronize tasks
-    }
+    for (int i=0; i<4; i++) {                                 // Loop over children
+      int maxBinNode = getMaxBinNode(binNode->NBODY[i]);      //  Get maximum number of binary tree nodes
+      assert(binNodeOffset + maxBinNode <= binNode->END);
+      vec2 Xchild = X;                                    //   Initialize center position of child node
+      real_t r = R0 / (1 << (level + 1));                 //   Radius of cells for child's level
+      for (int d=0; d<2; d++) {                           //   Loop over dimensions
+	Xchild[d] += r * (((i & 1 << d) >> d) * 2 - 1);   //    Shift center position to that of child node
+      }                                                   //   End loop over dimensions
+      BinaryTreeNode binNodeChild[1];                     //   Allocate new root for this branch
+      binNodeChild->BEGIN = binNodeOffset;                //   Assign first memory address from offset
+      binNodeChild->END = binNodeOffset + maxBinNode;     //   Keep track of last memory address
+      quadNode->CHILD[i] = buildNodes(buffer, bodies,     //   Recursive call for each child
+				      quadrantOffset[i], quadrantOffset[i] + binNode->NBODY[i],//   Range of bodies is calcuated from quadrant offset
+				      binNodeChild, Xchild, R0, level+1, !direction);   //   Alternate copy direction bodies <-> buffer
+      binNodeOffset += maxBinNode;                            //  Increment offset for binNode memory address
+    }                                                         // End loop over children
     for (int i=0; i<4; i++) {                                   // Loop over children
       if (quadNode->CHILD[i]) quadNode->NNODE += quadNode->CHILD[i]->NNODE;// If child exists increment child node counter
     }                                                           // End loop over chlidren
@@ -192,16 +177,12 @@ class BuildTree : public Logger {
       C->NCHILD = nchild;                                       //  Number of child cells
       assert(C->NCHILD > 0);
       CN += nchild;                                             //  Increment next free memory address
-      spawn_tasks {                                             //  Initialize tasks
-	for (int i=0; i<nchild; i++) {                          //  Loop over children
-	  int quadrant = quadrants[i];                          //   Get quadrant from child index
-	  spawn_task0_if(quadNode->NNODE > 1000,                //   Spawn task if number of sub-nodes is large
-	    nodes2cells(quadNode->CHILD[quadrant], Ci, C0, CN, R0, level+1, C-C0));// Recursive call for each child
-	  Ci++;                                                 //   Increment cell iterator
-	  CN += quadNode->CHILD[quadrant]->NNODE - 1;           //   Increment next free memory address
-	}                                                       //  End loop over children
-	sync_tasks;                                             //  Synchronize tasks
-      }
+      for (int i=0; i<nchild; i++) {                          //  Loop over children
+	int quadrant = quadrants[i];                          //   Get quadrant from child index
+	nodes2cells(quadNode->CHILD[quadrant], Ci, C0, CN, R0, level+1, C-C0);// Recursive call for each child
+	Ci++;                                                 //   Increment cell iterator
+	CN += quadNode->CHILD[quadrant]->NNODE - 1;           //   Increment next free memory address
+      }                                                       //  End loop over children
       for (int i=0; i<nchild; i++) {                            //  Loop over children
         int quadrant = quadrants[i];                            //   Get quadrant from child index
         delete quadNode->CHILD[quadrant];                       //   Free child pointer to avoid memory leak

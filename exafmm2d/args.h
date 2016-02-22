@@ -75,7 +75,7 @@ class Args {
   }
 
  public:
-  Args(int argc=0, char ** argv=NULL) : numBodies(1000000), numTargets(100), ncrit(64), nspawn(1000), images(0),
+  Args(int argc=0, char ** argv=NULL) : numBodies(1000000), numTargets(10), ncrit(8), nspawn(1000), images(0),
     theta(.4), mutual(1), verbose(1), distribution("square") {
     while (1) {
       int option_index;

@@ -1,6 +1,5 @@
 #ifndef types_h
 #define types_h
-#include "align.h"
 #include <complex>
 #include "macros.h"
 #include <vector>

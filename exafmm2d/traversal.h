@@ -174,9 +174,9 @@ class Traversal : public Kernel, public Logger {
     }                                                           // End loop over perioidc image sublevels
     for (int ix=-prange; ix<=prange; ix++) {                    // Loop over x periodic direction
       for (int iy=-prange; iy<=prange; iy++) {                  //  Loop over y periodic direction
-        Xperiodic[0] = ix * cycle;                              //    Coordinate shift for x periodic direction
-        Xperiodic[1] = iy * cycle;                              //    Coordinate shift for y periodic direction
-        P2P(Ci,Cj,false);                                       //    Evaluate P2P kernel
+        Xperiodic[0] = ix * cycle;                              //   Coordinate shift for x periodic direction
+        Xperiodic[1] = iy * cycle;                              //   Coordinate shift for y periodic direction
+        P2P(Ci,Cj,false);                                       //   Evaluate P2P kernel
       }                                                         //  End loop over y periodic direction
     }                                                           // End loop over x periodic direction
   }
