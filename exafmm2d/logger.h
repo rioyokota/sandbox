@@ -12,11 +12,6 @@
 #include <sys/time.h>
 #include <vector>
 
-#if PAPI
-#include <cstring>
-#include <papi.h>
-#endif
-
 //! Structure for pthread based trace
 struct Trace {
   pthread_t thread;                                             //!< pthread id
@@ -37,12 +32,6 @@ class Logger {
   Timer           timer;                                        //!< Timings of all events
   Traces          traces;                                       //!< Traces for all events
   pthread_mutex_t mutex;                                        //!< Pthread communicator
-#if PAPI
-  int                    PAPIEventSet;                          //!< PAPI event set
-  std::vector<char*>     PAPIEventNames;                        //!< Vector of PAPI event names
-  std::vector<int>       PAPIEventCodes;                        //!< Vector of PAPI event codes
-  std::vector<long long> PAPIEventValues;                       //!< Vector of PAPI event values
-#endif
 
  public:
   int stringLength;                                             //!< Max length of event name
@@ -60,9 +49,6 @@ class Logger {
  public:
 //! Constructor
   Logger() : beginTimer(), timer(), traces(), mutex(),          // Initializing class variables (empty)
-#if PAPI
-    PAPIEventSet(PAPI_NULL),                                    // Initializing PAPI event set
-#endif
     stringLength(20),                                           // Max length of event name
     decimal(7),                                                 // Decimal precision
     verbose(false) {                                            // Don't print timings by default
@@ -103,73 +89,9 @@ class Logger {
     }                                                           // End if for verbose flag
   }
 
-//! Write timings of all events
-  inline void writeTime(int mpirank=0) {
-    std::stringstream name;                                     // File name
-    name << "time" << std::setfill('0') << std::setw(6)         // Set format
-         << mpirank << ".dat";                                  // Create file name for timer
-    std::ofstream timerFile(name.str().c_str(), std::ios::app); // Open timer log file
-    for (T_iter E=timer.begin(); E!=timer.end(); E++) {         // Loop over all events
-      timerFile << std::setw(stringLength) << std::left         //  Set format
-        << E->first << " " << E->second << std::endl;           //  Print event and timer
-    }                                                           // End loop over all events
-    timerFile.close();                                          // Close timer log file
-  }
-
 //! Erase all events in timer
   inline void resetTimer() {
     timer.clear();                                              // Clear timer
-  }
-
-//! Start PAPI event
-  inline void startPAPI() {
-#if PAPI
-    PAPI_library_init(PAPI_VER_CURRENT);                        // Initialize PAPI library
-    char * allEvents = getenv("EXAFMM_PAPI_EVENTS");            // Get all PAPI event strings
-    char eventName[256];                                        // PAPI event name
-    while (allEvents) {                                         // While event string is not empty
-      char * event = strchr(allEvents, ',');                    //  Get single event string
-      int n = (event == NULL ? (int)strlen(allEvents) : event - allEvents);// Count string length
-      int eventCode;                                            //  PAPI event code
-      snprintf(eventName, n+1, "%s", allEvents);                //  Get PAPI event name
-      if (PAPI_event_name_to_code(eventName, &eventCode) == PAPI_OK) {// Event name to event code
-        PAPIEventNames.push_back(strdup(eventName));            //   Push event name to vector
-        PAPIEventCodes.push_back(eventCode);                    //   Push event code to vector
-      }                                                         //  End if for event name to event code
-      if (event == NULL) break;                                 //  Stop if event string is empty
-      else allEvents = event + 1;                               //  Else move to next event string
-    };                                                          // End while loop for event string
-    if (!PAPIEventCodes.empty()) {                              // If PAPI events are set
-      PAPI_create_eventset(&PAPIEventSet);                      // Create PAPI event set
-      for (int i=0; i<int(PAPIEventCodes.size()); i++) {        // Loop over PAPI events
-	PAPI_add_event(PAPIEventSet, PAPIEventCodes[i]);        //  Add PAPI event
-      }                                                         // End loop over PAPI events
-      PAPI_start(PAPIEventSet);                                 // Start PAPI counter
-    }
-#endif
-  }
-
-//! Stop PAPI event
-  inline void stopPAPI() {
-#if PAPI
-    if (!PAPIEventCodes.empty()) {                              // If PAPI events are set
-      PAPIEventValues.resize(PAPIEventCodes.size());            //  Resize PAPI event value vector
-      PAPI_stop(PAPIEventSet, &PAPIEventValues[0]);             //  Stop PAPI counter
-    }                                                           // End if for PAPI events
-#endif
-  }
-
-  inline void printPAPI() {
-#if PAPI
-    if (!PAPIEventCodes.empty() && verbose) {                   // If PAPI events are set and verbose is true
-      printTitle("PAPI stats ");
-      for (int i=0; i<int(PAPIEventCodes.size()); i++) {        //  Loop over PAPI events
-        std::cout << std::setw(stringLength) << std::left       //   Set format
-		  << PAPIEventNames[i] << " : " << std::setprecision(decimal) << std::fixed
-		  << PAPIEventValues[i] << std::endl;           //   Print event and timer
-      }                                                         //  End loop over PAPI events
-    }                                                           // End if for PAPI events
-#endif
   }
 
 #if TRACE

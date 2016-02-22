@@ -4,12 +4,6 @@
 #include "logger.h"
 #include "thread.h"
 
-#if COUNT
-#define count(N) N++
-#else
-#define count(N)
-#endif
-
 class Traversal : public Kernel, public Logger {
  private:
   int nspawn;                                                   //!< Threshold of NDBODY for spawning new threads
@@ -27,14 +21,11 @@ class Traversal : public Kernel, public Logger {
 #if AUTO
     if (timeP2P*Ci->NDBODY*Cj->NDBODY > timeM2L) {              // If M2L is faster
       M2L(Ci, Cj, mutual);                                      //  M2L kernel
-      count(numM2L);                                            //  Increment M2L counter
     } else {                                                    // Else if P2P is faster
       P2P(Ci, Cj, mutual);                                      //  P2P kernel
-      count(numP2P);                                            //  Increment P2P counter
     }                                                           // End if for fastest kernel
 #else
     M2L(Ci,Cj,mutual);                                          // M2L kernel
-    count(numM2L);                                              // Increment M2L counter
 #endif
   }
 
@@ -113,7 +104,6 @@ class Traversal : public Kernel, public Logger {
 	} else {                                                //    Else if source and target are different
 	  P2P(Ci, Cj, mutual);                                  //     P2P kernel for pair of cells
 	}                                                       //    End if for same source and target
-	count(numP2P);                                          //    Increment P2P counter
       }                                                         //   End if for bodies
     } else {                                                    //  Else if cells are close but not bodies
       splitCell(Ci, Cj, mutual);                                //   Split cell and call function recursively for child
@@ -220,21 +210,5 @@ class Traversal : public Kernel, public Logger {
     }                                                           // End loop over bodies
   }
 
-//! Print traversal statistics
-  void printTraversalData() {
-#if COUNT
-    if (verbose) {                                              // If verbose flag is true
-      std::cout << "--- Traversal stats --------------" << std::endl// Print title
-	      << std::setw(stringLength) << std::left           //  Set format
-	      << "P2P calls"  << " : "                          //  Print title
-	      << std::setprecision(0) << std::fixed             //  Set format
-              << numP2P << std::endl                            //  Print number of P2P calls
-	      << std::setw(stringLength) << std::left           //  Set format
-	      << "M2L calls"  << " : "                          //  Print title
-	      << std::setprecision(0) << std::fixed             //  Set format
-              << numM2L << std::endl;                           //  Print number of M2L calls
-    }                                                           // End if for verbose flag
-#endif
-  }
 };
 #endif

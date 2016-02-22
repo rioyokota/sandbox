@@ -28,36 +28,15 @@ int main(int argc, char ** argv) {
   args.print(logger.stringLength,P);
   logger.printTitle("FMM Profiling");
   logger.startTimer("Total FMM");
-  logger.startPAPI();
   Bodies bodies = data.initBodies(args.numBodies, args.distribution, 0);
   Bounds bounds = boundbox.getBounds(bodies);
-#if IneJ
-  Bodies jbodies = data.initBodies(args.numBodies, args.distribution, 1);
-  bounds = boundbox.getBounds(jbodies,bounds);
-#endif
   Cells cells = tree.buildTree(bodies, bounds);
   pass.upwardPass(cells);
-#if IneJ
-  Cells jcells = tree.buildTree(jbodies, bounds);
-  pass.upwardPass(jcells);
-  traversal.dualTreeTraversal(cells, jcells, cycle);
-#else
   traversal.dualTreeTraversal(cells, cells, cycle, args.mutual);
   Bodies jbodies = bodies;
-#endif
   pass.downwardPass(cells);
   logger.printTitle("Total runtime");
-  logger.stopPAPI();
   logger.stopTimer("Total FMM");
-  boundbox.writeTime();
-  tree.writeTime();
-  pass.writeTime();
-  traversal.writeTime();
-  boundbox.resetTimer();
-  tree.resetTimer();
-  pass.resetTimer();
-  traversal.resetTimer();
-  logger.resetTimer();
   data.sampleBodies(bodies, args.numTargets);
   Bodies bodies2 = bodies;
   data.initTarget(bodies);
@@ -70,7 +49,5 @@ int main(int argc, char ** argv) {
   logger.printTitle("FMM vs. direct");
   logger.printError(diff1, norm1);
   tree.printTreeData(cells);
-  traversal.printTraversalData();
-  logger.printPAPI();
   return 0;
 }
