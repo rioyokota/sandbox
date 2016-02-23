@@ -31,12 +31,6 @@ class BuildTree : public Logger {
   QuadtreeNode * N0;                                            //!< Quadtree root node
 
  private:
-//! Get number of binary tree nodes for a given number of bodies
-  inline int getNumBinNode(int n) const {
-    if (n <= nspawn) return 1;                                  // If less then threshold, use only one node
-    else return 4 * ((n - 1) / nspawn) - 1;                     // Else estimate number of binary tree nodes
-  }
-
 //! Get maximum number of binary tree nodes for a given number of bodies
   inline int getMaxBinNode(int n) const {
     return (4 * n) / nspawn;                                    // Conservative estimate of number of binary tree nodes
@@ -65,21 +59,9 @@ class BuildTree : public Logger {
     return quadNode;                                            // Return node
   }
 
-//! Sort bodies according to quadrant (Morton order)
-  void moveBodies(Bodies& bodies, Bodies& buffer, int begin, int end,
-                  BinaryTreeNode * binNode, ivec4 quadrantOffset, vec2 X) const {
-    for (int i=begin; i<end; i++) {                           //  Loop over bodies
-      vec2 x = bodies[i].X;                                   //   Position of body
-      int quadrant = (x[0] > X[0]) + ((x[1] > X[1]) << 1);    // Which quadrant body belongs to`
-      buffer[quadrantOffset[quadrant]] = bodies[i];           //   Permute bodies out-of-place according to quadrant
-      quadrantOffset[quadrant]++;                             //   Increment body count in quadrant
-    }                                                         //  End loop over bodies
-  }
-
 //! Build nodes of quadtree adaptively using a top-down approach based on recursion (uses task based thread parallelism)
   QuadtreeNode * buildNodes(Bodies& bodies, Bodies& buffer, int begin, int end,
                           BinaryTreeNode * binNode, vec2 X, real_t R0, int level=0, bool direction=false) {
-    assert(getMaxBinNode(end - begin) <= binNode->END - binNode->BEGIN);
     if (begin == end) return NULL;                              // If no bodies left, return null pointer
     if (end - begin <= ncrit) {                                 // If number of bodies is less than threshold
       if (direction)                                            //  If direction of data is from bodies to buffer
@@ -95,7 +77,13 @@ class BuildTree : public Logger {
       binNode->NBODY[quadrant]++;                               //   Increment body count in quadrant
     }                                                           //  End loop over bodies in node
     ivec4 quadrantOffset = exclusiveScan(binNode->NBODY, begin);// Exclusive scan to obtain offset from quadrant count
-    moveBodies(bodies, buffer, begin, end, binNode, quadrantOffset, X);// Sort bodies according to quadrant
+    ivec4 quadrantOffset2 = quadrantOffset;
+    for (int i=begin; i<end; i++) {                           //  Loop over bodies
+      vec2 x = bodies[i].X;                                   //   Position of body
+      int quadrant = (x[0] > X[0]) + ((x[1] > X[1]) << 1);    //   Which quadrant body belongs to`
+      buffer[quadrantOffset2[quadrant]] = bodies[i];          //   Permute bodies out-of-place according to quadrant
+      quadrantOffset2[quadrant]++;                            //   Increment body count in quadrant
+    }                                                         //  End loop over bodies
     BinaryTreeNode * binNodeOffset = binNode->BEGIN;            // Initialize pointer offset for binary tree nodes
     for (int i=0; i<4; i++) {                                 // Loop over children
       int maxBinNode = getMaxBinNode(binNode->NBODY[i]);      //  Get maximum number of binary tree nodes
