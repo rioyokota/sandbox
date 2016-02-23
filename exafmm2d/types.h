@@ -32,6 +32,16 @@ struct Body {
 typedef std::vector<Body> Bodies;                               //!< Vector of bodies
 typedef Bodies::iterator B_iter;                                //!< Iterator of body vector
 
+struct Node {
+  int NBODY;                                                    //!< Number of descendant bodies
+  int NNODE;                                                    //!< Number of descendant nodes
+  Node * CHILD[4];                                              //!< Pointer to child node
+  B_iter BODY;                                                  //!< Iterator for first body in node
+  vec2 X;                                                       //!< Coordinate at center
+};
+typedef std::vector<Node> Nodes;                                //!< Vector of nodes
+typedef Nodes::iterator N_iter;                                 //!< Iterator of node vector 
+
 //! Structure of cells
 struct Cell {
   int       NCHILD;                                             //!< Number of child cells
