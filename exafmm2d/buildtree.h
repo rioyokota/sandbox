@@ -6,11 +6,6 @@
 class BuildTree : public Logger {
  private:
   typedef vec<4,int> ivec4;                                     //!< Vector of 4 integer types
-//! Binary tree is used for counting number of bodies with a recursive approach
-  struct BinaryTreeNode {
-    ivec4            NBODY;                                     //!< Number of descendant bodies
-  };
-
 //! Quadtree is used for building the FMM tree structure as "nodes", then transformed to "cells" data structure
   struct QuadtreeNode {
     int            BODY;                                        //!< Index offset for first body in node
@@ -56,7 +51,7 @@ class BuildTree : public Logger {
 
 //! Build nodes of quadtree adaptively using a top-down approach based on recursion (uses task based thread parallelism)
   QuadtreeNode * buildNodes(Bodies& bodies, Bodies& buffer, int begin, int end,
-                          BinaryTreeNode * binNode, vec2 X, real_t R0, int level=0, bool direction=false) {
+			    vec2 X, real_t R0, int level=0, bool direction=false) {
     if (begin == end) return NULL;                              // If no bodies left, return null pointer
     if (end - begin <= ncrit) {                                 // If number of bodies is less than threshold
       if (direction)                                            //  If direction of data is from bodies to buffer
@@ -64,13 +59,13 @@ class BuildTree : public Logger {
       return makeQuadNode(begin, end, X, true);                 //  Create an quadtree node and return it's pointer
     }                                                           // End if for number of bodies
     QuadtreeNode * quadNode = makeQuadNode(begin, end, X, false);// Create an quadtree node with child nodes
-    for (int i=0; i<4; i++) binNode->NBODY[i] = 0;              //  Initialize number of bodies in quadrant
+    ivec4 NBODY = 0;
     for (int i=begin; i<end; i++) {                             //  Loop over bodies in node
       vec2 x = bodies[i].X;                                     //   Position of body
       int quadrant = (x[0] > X[0]) + ((x[1] > X[1]) << 1);      //   Which quadrant body belongs to
-      binNode->NBODY[quadrant]++;                               //   Increment body count in quadrant
+      NBODY[quadrant]++;                                        //   Increment body count in quadrant
     }                                                           //  End loop over bodies in node
-    ivec4 quadrantOffset = exclusiveScan(binNode->NBODY, begin);// Exclusive scan to obtain offset from quadrant count
+    ivec4 quadrantOffset = exclusiveScan(NBODY, begin);         // Exclusive scan to obtain offset from quadrant count
     ivec4 quadrantOffset2 = quadrantOffset;
     for (int i=begin; i<end; i++) {                           //  Loop over bodies
       vec2 x = bodies[i].X;                                   //   Position of body
@@ -84,10 +79,9 @@ class BuildTree : public Logger {
       for (int d=0; d<2; d++) {                           //   Loop over dimensions
 	Xchild[d] += r * (((i & 1 << d) >> d) * 2 - 1);   //    Shift center position to that of child node
       }                                                   //   End loop over dimensions
-      BinaryTreeNode binNodeChild[1];                     //   Allocate new root for this branch
       quadNode->CHILD[i] = buildNodes(buffer, bodies,     //   Recursive call for each child
-				      quadrantOffset[i], quadrantOffset[i] + binNode->NBODY[i],//   Range of bodies is calcuated from quadrant offset
-				      binNodeChild, Xchild, R0, level+1, !direction);   //   Alternate copy direction bodies <-> buffer
+				      quadrantOffset[i], quadrantOffset[i] + NBODY[i],//   Range of bodies is calcuated from quadrant offset
+				      Xchild, R0, level+1, !direction);   //   Alternate copy direction bodies <-> buffer
     }                                                         // End loop over children
     for (int i=0; i<4; i++) {                                   // Loop over children
       if (quadNode->CHILD[i]) quadNode->NNODE += quadNode->CHILD[i]->NNODE;// If child exists increment child node counter
@@ -158,8 +152,7 @@ class BuildTree : public Logger {
     Bodies buffer = bodies;                                     // Copy bodies to buffer
     startTimer("Grow tree");                                    // Start timer
     B0 = bodies.begin();                                        // Bodies iterator
-    BinaryTreeNode binNode[1];                                  // Allocate root node of binary tree
-    N0 = buildNodes(bodies, buffer, 0, bodies.size(), binNode, X0, R0);// Build tree recursively
+    N0 = buildNodes(bodies, buffer, 0, bodies.size(), X0, R0);  // Build tree recursively
     stopTimer("Grow tree");                                     // Stop timer
   }
 
