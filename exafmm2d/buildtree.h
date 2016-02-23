@@ -65,33 +65,15 @@ class BuildTree : public Logger {
     return quadNode;                                            // Return node
   }
 
-//! Count bodies in each quadrant using binary tree recursion
-  void countBodies(Bodies& bodies, int begin, int end, vec2 X, BinaryTreeNode * binNode) {
-    binNode->LEFT = binNode->RIGHT = NULL;
-    for (int i=0; i<4; i++) binNode->NBODY[i] = 0;              //  Initialize number of bodies in quadrant
-    for (int i=begin; i<end; i++) {                             //  Loop over bodies in node
-      vec2 x = bodies[i].X;                                     //   Position of body
-      int quadrant = (x[0] > X[0]) + ((x[1] > X[1]) << 1);      //   Which quadrant body belongs to
-      binNode->NBODY[quadrant]++;                               //   Increment body count in quadrant
-    }                                                           //  End loop over bodies in node
-  }
-
 //! Sort bodies according to quadrant (Morton order)
   void moveBodies(Bodies& bodies, Bodies& buffer, int begin, int end,
                   BinaryTreeNode * binNode, ivec4 quadrantOffset, vec2 X) const {
-    if (binNode->LEFT == NULL) {                                // If there are no more child nodes
-      for (int i=begin; i<end; i++) {                           //  Loop over bodies
-        vec2 x = bodies[i].X;                                   //   Position of body
-        int quadrant = (x[0] > X[0]) + ((x[1] > X[1]) << 1);    // Which quadrant body belongs to`
-        buffer[quadrantOffset[quadrant]] = bodies[i];           //   Permute bodies out-of-place according to quadrant
-        quadrantOffset[quadrant]++;                             //   Increment body count in quadrant
-      }                                                         //  End loop over bodies
-    } else {                                                    // Else if there are child nodes
-      int mid = (begin + end) / 2;                              //  Split range of bodies in half
-      moveBodies(bodies, buffer, begin, mid, binNode->LEFT, quadrantOffset, X);// Recursive call for left branch
-      quadrantOffset += binNode->LEFT->NBODY;                 //  Increment the quadrant offset for right branch
-      moveBodies(bodies, buffer, mid, end, binNode->RIGHT, quadrantOffset, X);// Recursive call for right branch
-    }                                                           // End if for child existance
+    for (int i=begin; i<end; i++) {                           //  Loop over bodies
+      vec2 x = bodies[i].X;                                   //   Position of body
+      int quadrant = (x[0] > X[0]) + ((x[1] > X[1]) << 1);    // Which quadrant body belongs to`
+      buffer[quadrantOffset[quadrant]] = bodies[i];           //   Permute bodies out-of-place according to quadrant
+      quadrantOffset[quadrant]++;                             //   Increment body count in quadrant
+    }                                                         //  End loop over bodies
   }
 
 //! Build nodes of quadtree adaptively using a top-down approach based on recursion (uses task based thread parallelism)
@@ -105,13 +87,18 @@ class BuildTree : public Logger {
       return makeQuadNode(begin, end, X, true);                 //  Create an quadtree node and return it's pointer
     }                                                           // End if for number of bodies
     QuadtreeNode * quadNode = makeQuadNode(begin, end, X, false);// Create an quadtree node with child nodes
-    countBodies(bodies, begin, end, X, binNode);                // Count bodies in each quadrant using binary recursion
+    binNode->LEFT = binNode->RIGHT = NULL;
+    for (int i=0; i<4; i++) binNode->NBODY[i] = 0;              //  Initialize number of bodies in quadrant
+    for (int i=begin; i<end; i++) {                             //  Loop over bodies in node
+      vec2 x = bodies[i].X;                                     //   Position of body
+      int quadrant = (x[0] > X[0]) + ((x[1] > X[1]) << 1);      //   Which quadrant body belongs to
+      binNode->NBODY[quadrant]++;                               //   Increment body count in quadrant
+    }                                                           //  End loop over bodies in node
     ivec4 quadrantOffset = exclusiveScan(binNode->NBODY, begin);// Exclusive scan to obtain offset from quadrant count
     moveBodies(bodies, buffer, begin, end, binNode, quadrantOffset, X);// Sort bodies according to quadrant
     BinaryTreeNode * binNodeOffset = binNode->BEGIN;            // Initialize pointer offset for binary tree nodes
     for (int i=0; i<4; i++) {                                 // Loop over children
       int maxBinNode = getMaxBinNode(binNode->NBODY[i]);      //  Get maximum number of binary tree nodes
-      assert(binNodeOffset + maxBinNode <= binNode->END);
       vec2 Xchild = X;                                    //   Initialize center position of child node
       real_t r = R0 / (1 << (level + 1));                 //   Radius of cells for child's level
       for (int d=0; d<2; d++) {                           //   Loop over dimensions
