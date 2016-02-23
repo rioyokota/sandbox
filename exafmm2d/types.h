@@ -5,9 +5,9 @@
 #include "vec.h"
 
 // Basic type definitions
-typedef float                real_t;                            //!< Floating point type is single precision
+typedef float real_t;                                           //!< Floating point type is single precision
 typedef std::complex<real_t> complex_t;                         //!< Complex type
-typedef vec<2,real_t>        vec2;                              //!< Vector of 3 floating point types
+typedef vec<2,real_t> vec2;                                     //!< Vector of 3 floating point types
 
 // Multipole/local expansion coefficients
 const int P = EXPANSION;                                        //!< Order of expansions
@@ -23,21 +23,14 @@ struct Bounds {
   vec2 Xmax;                                                    //!< Maximum value of coordinates
 };
 
-//! Structure of aligned source for SIMD
-struct Source {
+//! Structure of bodies
+struct Body {
   vec2   X;                                                     //!< Position
   real_t SRC;                                                   //!< Scalar source values
-} __attribute__ ((aligned (16)));
-
-//! Structure of bodies
-struct Body : public Source {
-  int    IBODY;                                                 //!< Initial body numbering for sorting back
-  int    IPROC;                                                 //!< Initial process numbering for partitioning back
-  int    ICELL;                                                 //!< Cell index
   real_t TRG;                                                   //!< Scalar+vector3 target values
 };
-typedef std::vector<Body>                 Bodies;               //!< Vector of bodies
-typedef Bodies::iterator                  B_iter;               //!< Iterator of body vector
+typedef std::vector<Body> Bodies;                               //!< Vector of bodies
+typedef Bodies::iterator B_iter;                                //!< Iterator of body vector
 
 //! Structure of cells
 struct Cell {
@@ -53,6 +46,6 @@ struct Cell {
   vecP      M;                                                  //!< Multipole coefficients
   vecP      L;                                                  //!< Local coefficients
 };
-typedef std::vector<Cell>           Cells;                      //!< Vector of cells
-typedef std::vector<Cell>::iterator C_iter;                     //!< Iterator of cell vector
+typedef std::vector<Cell> Cells;                                //!< Vector of cells
+typedef Cells::iterator C_iter;                                 //!< Iterator of cell vector
 #endif

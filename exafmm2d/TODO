@@ -1,4 +1,4 @@
-non-recursive boundbox
+remove RCRIT
 simplify buildtree
 remove TBB in traversal
 non-recursive direct

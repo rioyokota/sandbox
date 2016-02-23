@@ -16,7 +16,6 @@ class BuildTree : public Logger {
   };
 
   int        ncrit;                                             //!< Number of bodies per leaf cell
-  int        maxlevel;                                          //!< Maximum level of tree
   B_iter     B0;                                                //!< Iterator of first body
   TreeNode * N0;                                                //!< Tree root node
 
@@ -95,7 +94,6 @@ class BuildTree : public Logger {
       C->CHILD  = 0;                                            //  Set index of first child cell to zero
       C->NCHILD = 0;                                            //  Number of child cells
       C->NBODY = Node->NBODY;                                   //  Number of bodies in cell
-      maxlevel = std::max(maxlevel, level);                     //  Update maximum level of tree
     } else {                                                    // Else if node has children
       int nchild = 0;                                           //  Initialize number of child cells
       int quadrants[4];                                         //  Map of child index to quadrants (for when nchild < 4)
@@ -120,7 +118,6 @@ class BuildTree : public Logger {
         int quadrant = quadrants[i];                            //   Get quadrant from child index
         delete Node->CHILD[quadrant];                           //   Free child pointer to avoid memory leak
       }                                                         //  End loop over children
-      maxlevel = std::max(maxlevel, level+1);                   //  Update maximum level of tree
     }                                                           // End if for child existance
   }
 
@@ -164,7 +161,7 @@ class BuildTree : public Logger {
   }
 
  public:
-  BuildTree(int _ncrit) : ncrit(_ncrit), maxlevel(0) {}
+  BuildTree(int _ncrit) : ncrit(_ncrit) {}
 
 //! Build tree structure top down
   Cells buildTree(Bodies &bodies, Bounds bounds) {
