@@ -1,5 +1,4 @@
-CHILD type C_iter
-simplify buildtree
+remove eps2
 remove TBB in traversal
 non-recursive direct
 calculate force

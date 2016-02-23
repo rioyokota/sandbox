@@ -11,13 +11,12 @@ int main(int argc, char ** argv) {
   const int numBodies = 1000000;
   const int images = 0;
   const int ncrit = 8;
-  const int nspawn = 1000;
   const real_t theta = 0.4;
   const real_t eps2 = 0.0;
   const real_t cycle = 2 * M_PI;
   BuildTree tree(ncrit);
   UpDownPass pass(theta,eps2);
-  Traversal traversal(nspawn,images,theta);
+  Traversal traversal(images,theta);
   logger.printTitle("FMM Profiling");
   logger.startTimer("Total FMM");
 

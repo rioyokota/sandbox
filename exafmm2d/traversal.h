@@ -6,7 +6,6 @@
 
 class Traversal : public Kernel, public Logger {
  private:
-  int nspawn;                                                   //!< Threshold of NBODY for spawning new threads
   int images;                                                   //!< Number of periodic image sublevels
   real_t theta;                                                 //!< Multipole acceptance criterion
   C_iter Ci0;                                                   //!< Begin iterator for target cells
@@ -51,9 +50,6 @@ class Traversal : public Kernel, public Logger {
       for (C_iter cj=Cj0+Cj->CHILD; cj!=Cj0+Cj->CHILD+Cj->NCHILD; cj++ ) {// Loop over Cj's children
         traverse(Ci, cj);                                       //   Traverse a single pair of cells
       }                                                         //  End loop over Cj's children
-    } else if (Ci->NBODY + Cj->NBODY >= nspawn) {               // Else if cells are still large
-      traverse(Ci0+Ci->CHILD, Ci0+Ci->CHILD+Ci->NCHILD,         //  Traverse for range of cell pairs
-               Cj0+Cj->CHILD, Cj0+Cj->CHILD+Cj->NCHILD);
     } else if (Ci->R >= Cj->R) {                                // Else if Ci is larger than Cj
       for (C_iter ci=Ci0+Ci->CHILD; ci!=Ci0+Ci->CHILD+Ci->NCHILD; ci++ ) {// Loop over Ci's children
         traverse(ci, Cj);                                       //   Traverse a single pair of cells
@@ -124,7 +120,7 @@ class Traversal : public Kernel, public Logger {
   }
 
  public:
-  Traversal(int nspawn, int images, real_t theta) : Kernel(0.0), nspawn(nspawn), images(images), theta(theta) {}
+  Traversal(int images, real_t theta) : Kernel(0.0), images(images), theta(theta) {}
 
 //! Evaluate P2P and M2L using dual tree traversal
   void dualTreeTraversal(Cells &icells, Cells &jcells, real_t cycle) {
