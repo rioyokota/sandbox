@@ -18,9 +18,9 @@ class Kernel {
   void P2P(C_iter Ci, C_iter Cj) const {
     B_iter Bi = Ci->BODY;
     B_iter Bj = Cj->BODY;
-    for (int i=0; i<Ci->NDBODY; i++) {
+    for (int i=0; i<Ci->NBODY; i++) {
       real_t pot = 0;
-      for (int j=0; j<Cj->NDBODY; j++) {
+      for (int j=0; j<Cj->NBODY; j++) {
 	vec2 dX = Bi[i].X - Bj[j].X - Xperiodic;
 	real_t R2 = norm(dX) + EPS2;
 	if (R2 != 0) {
@@ -35,7 +35,7 @@ class Kernel {
 
 //!< P2M kernel for cell C
   void P2M(C_iter C) const {
-    for (B_iter B=C->BODY; B!=C->BODY+C->NCBODY; B++) {         // Loop over bodies
+    for (B_iter B=C->BODY; B!=C->BODY+C->NBODY; B++) {          // Loop over bodies
       vec2 dX = B->X - C->X;                                    //  Get distance vector
       complex_t Z(dX[0],dX[1]), powZ(1.0, 0.0);                 //  Convert to complex plane
       C->M[0] += B->SRC;                                        //  Add constant term
@@ -112,7 +112,7 @@ class Kernel {
 
 //!< L2P kernel for cell Ci
   void L2P(C_iter Ci) const {
-    for (B_iter B=Ci->BODY; B!=Ci->BODY+Ci->NDBODY; B++) {      // Loop over bodies
+    for (B_iter B=Ci->BODY; B!=Ci->BODY+Ci->NBODY; B++) {       // Loop over bodies
       vec2 dX = B->X - Ci->X;                                   //  Get distance vector
       complex_t Z(dX[0],dX[1]), powZ(1.0, 0.0);                 //  Convert to complex plane
       B->TRG /= B->SRC;                                         //  Normalize result

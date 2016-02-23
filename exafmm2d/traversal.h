@@ -6,7 +6,7 @@
 
 class Traversal : public Kernel, public Logger {
  private:
-  int nspawn;                                                   //!< Threshold of NDBODY for spawning new threads
+  int nspawn;                                                   //!< Threshold of NBODY for spawning new threads
   int images;                                                   //!< Number of periodic image sublevels
   C_iter Ci0;                                                   //!< Begin iterator for target cells
   C_iter Cj0;                                                   //!< Begin iterator for source cells
@@ -50,7 +50,7 @@ class Traversal : public Kernel, public Logger {
       for (C_iter cj=Cj0+Cj->CHILD; cj!=Cj0+Cj->CHILD+Cj->NCHILD; cj++ ) {// Loop over Cj's children
         traverse(Ci, cj);                                       //   Traverse a single pair of cells
       }                                                         //  End loop over Cj's children
-    } else if (Ci->NDBODY + Cj->NDBODY >= nspawn) {             // Else if cells are still large
+    } else if (Ci->NBODY + Cj->NBODY >= nspawn) {             // Else if cells are still large
       traverse(Ci0+Ci->CHILD, Ci0+Ci->CHILD+Ci->NCHILD,         //  Traverse for range of cell pairs
                Cj0+Cj->CHILD, Cj0+Cj->CHILD+Cj->NCHILD);
     } else if (Ci->RCRIT >= Cj->RCRIT) {                        // Else if Ci is larger than Cj
@@ -153,9 +153,9 @@ class Traversal : public Kernel, public Logger {
     Cells cells(2);                                             // Define a pair of cells to pass to P2P kernel
     C_iter Ci = cells.begin(), Cj = cells.begin()+1;            // First cell is target, second cell is source
     Ci->BODY = ibodies.begin();                                 // Iterator of first target body
-    Ci->NDBODY = ibodies.size();                                // Number of target bodies
+    Ci->NBODY = ibodies.size();                                 // Number of target bodies
     Cj->BODY = jbodies.begin();                                 // Iterator of first source body
-    Cj->NDBODY = jbodies.size();                                // Number of source bodies
+    Cj->NBODY = jbodies.size();                                 // Number of source bodies
     int prange = 0;                                             // Range of periodic images
     for (int i=0; i<images; i++) {                              // Loop over periodic image sublevels
       prange += int(std::pow(3.,i));                            //  Accumulate range of periodic images

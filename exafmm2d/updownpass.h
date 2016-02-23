@@ -30,7 +30,7 @@ class UpDownPass : public Kernel, public Logger {
     }                                                           // Finalize tasks
     C->M = 0;                                                   // Initialize multipole expansion coefficients
     C->L = 0;                                                   // Initialize local expansion coefficients
-    P2M(C);                                                     // P2M kernel
+    if (C->NCHILD == 0) P2M(C);                                 // P2M kernel
     M2M(C,C0);                                                  // M2M kernel
   }
 

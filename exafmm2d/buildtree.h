@@ -87,18 +87,16 @@ class BuildTree : public Logger {
 //! Create cell data structure from nodes
   void nodes2cells(TreeNode * Node, C_iter C, C_iter C0, C_iter CN, real_t R0, int level=0, int iparent=0) {
     C->PARENT = iparent;                                        // Index of parent cell
-    C->R      = R0 / (1 << level);                              // Cell radius
-    C->X      = Node->X;                                        // Cell center
-    C->NDBODY = Node->NBODY;                                    // Number of decendant bodies
-    C->BODY   = B0 + Node->BODY;                                // Iterator of first body in cell
+    C->R = R0 / (1 << level);                                   // Cell radius
+    C->X = Node->X;                                             // Cell center
+    C->NBODY = Node->NBODY;                                     // Number of decendant bodies
+    C->BODY = B0 + Node->BODY;                                  // Iterator of first body in cell
     if (Node->NNODE == 1) {                                     // If node has no children
       C->CHILD  = 0;                                            //  Set index of first child cell to zero
       C->NCHILD = 0;                                            //  Number of child cells
-      C->NCBODY = Node->NBODY;                                  //  Number of bodies in cell
-      C->NDBODY = Node->NBODY;                                  //  Number of bodies in cell
+      C->NBODY = Node->NBODY;                                   //  Number of bodies in cell
       maxlevel = std::max(maxlevel, level);                     //  Update maximum level of tree
     } else {                                                    // Else if node has children
-      C->NCBODY = 0;                                            //  Set number of bodies in cell to zero
       int nchild = 0;                                           //  Initialize number of child cells
       int quadrants[4];                                         //  Map of child index to quadrants (for when nchild < 4)
       for (int i=0; i<4; i++) {                                 //  Loop over quadrants
