@@ -95,7 +95,7 @@ class BuildTree : public Logger {
       C->CHILD  = 0;                                            //  Set index of first child cell to zero
       C->NCHILD = 0;                                            //  Number of child cells
       C->NCBODY = Node->NBODY;                                  //  Number of bodies in cell
-      assert(C->NCBODY > 0);
+      C->NDBODY = Node->NBODY;                                  //  Number of bodies in cell
       maxlevel = std::max(maxlevel, level);                     //  Update maximum level of tree
     } else {                                                    // Else if node has children
       C->NCBODY = 0;                                            //  Set number of bodies in cell to zero

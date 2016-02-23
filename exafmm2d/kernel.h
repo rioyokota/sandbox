@@ -112,7 +112,7 @@ class Kernel {
 
 //!< L2P kernel for cell Ci
   void L2P(C_iter Ci) const {
-    for (B_iter B=Ci->BODY; B!=Ci->BODY+Ci->NCBODY; B++) {      // Loop over bodies
+    for (B_iter B=Ci->BODY; B!=Ci->BODY+Ci->NDBODY; B++) {      // Loop over bodies
       vec2 dX = B->X - Ci->X;                                   //  Get distance vector
       complex_t Z(dX[0],dX[1]), powZ(1.0, 0.0);                 //  Convert to complex plane
       B->TRG /= B->SRC;                                         //  Normalize result

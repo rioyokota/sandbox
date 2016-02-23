@@ -37,7 +37,7 @@ class UpDownPass : public Kernel, public Logger {
 //! Recursive call for downward pass
   void preOrderTraversal(C_iter C, C_iter C0) const {
     L2L(C,C0);                                                  // L2L kernel
-    L2P(C);                                                     // L2P kernel
+    if (C->NCHILD == 0) L2P(C);                                 // L2P kernel
     spawn_tasks {                                               // Initialize tasks
       for (C_iter CC=C0+C->CHILD; CC!=C0+C->CHILD+C->NCHILD; CC++) {// Loop over child cells
 	spawn_task0(preOrderTraversal(CC, C0));                 //   Recursive call with new task
@@ -71,7 +71,7 @@ class UpDownPass : public Kernel, public Logger {
     startTimer("Downward pass");                                // Start timer
     if (!cells.empty()) {                                       // If cell vector is not empty
       C_iter C0 = cells.begin();                                //  Root cell
-      L2P(C0);                                                  //  If root is the only cell do L2P
+      if(C0->NCHILD==0) L2P(C0);                                //  If root is the only cell do L2P
       spawn_tasks {                                             //  Initialize tasks
         for (C_iter CC=C0+C0->CHILD; CC!=C0+C0->CHILD+C0->NCHILD; CC++) {// Loop over child cells
           spawn_task0(preOrderTraversal(CC, C0));               //    Recursive call for downward pass
