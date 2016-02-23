@@ -15,7 +15,7 @@ int main(int argc, char ** argv) {
   const real_t theta = 0.4;
   const real_t eps2 = 0.0;
   const real_t cycle = 2 * M_PI;
-  BuildTree tree(ncrit,nspawn);
+  BuildTree tree(ncrit);
   UpDownPass pass(theta,eps2);
   Traversal traversal(nspawn,images,eps2);
   logger.printTitle("FMM Profiling");

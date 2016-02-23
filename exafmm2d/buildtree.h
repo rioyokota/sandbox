@@ -9,10 +9,6 @@ class BuildTree : public Logger {
 //! Binary tree is used for counting number of bodies with a recursive approach
   struct BinaryTreeNode {
     ivec4            NBODY;                                     //!< Number of descendant bodies
-    BinaryTreeNode * LEFT;                                      //!< Pointer to left child
-    BinaryTreeNode * RIGHT;                                     //!< Pointer to right child
-    BinaryTreeNode * BEGIN;                                     //!< Pointer to begining of memory space
-    BinaryTreeNode * END;                                       //!< Pointer to end of memory space
   };
 
 //! Quadtree is used for building the FMM tree structure as "nodes", then transformed to "cells" data structure
@@ -25,7 +21,6 @@ class BuildTree : public Logger {
   };
 
   int            ncrit;                                         //!< Number of bodies per leaf cell
-  int            nspawn;                                        //!< Threshold of NDBODY for spawning new threads
   int            maxlevel;                                      //!< Maximum level of tree
   B_iter         B0;                                            //!< Iterator of first body
   QuadtreeNode * N0;                                            //!< Quadtree root node
@@ -33,7 +28,7 @@ class BuildTree : public Logger {
  private:
 //! Get maximum number of binary tree nodes for a given number of bodies
   inline int getMaxBinNode(int n) const {
-    return (4 * n) / nspawn;                                    // Conservative estimate of number of binary tree nodes
+    return (4 * n) / 10000000000;                                    // Conservative estimate of number of binary tree nodes
   }
 
 //! Exclusive scan with offset
@@ -69,7 +64,6 @@ class BuildTree : public Logger {
       return makeQuadNode(begin, end, X, true);                 //  Create an quadtree node and return it's pointer
     }                                                           // End if for number of bodies
     QuadtreeNode * quadNode = makeQuadNode(begin, end, X, false);// Create an quadtree node with child nodes
-    binNode->LEFT = binNode->RIGHT = NULL;
     for (int i=0; i<4; i++) binNode->NBODY[i] = 0;              //  Initialize number of bodies in quadrant
     for (int i=begin; i<end; i++) {                             //  Loop over bodies in node
       vec2 x = bodies[i].X;                                     //   Position of body
@@ -84,21 +78,16 @@ class BuildTree : public Logger {
       buffer[quadrantOffset2[quadrant]] = bodies[i];          //   Permute bodies out-of-place according to quadrant
       quadrantOffset2[quadrant]++;                            //   Increment body count in quadrant
     }                                                         //  End loop over bodies
-    BinaryTreeNode * binNodeOffset = binNode->BEGIN;            // Initialize pointer offset for binary tree nodes
     for (int i=0; i<4; i++) {                                 // Loop over children
-      int maxBinNode = getMaxBinNode(binNode->NBODY[i]);      //  Get maximum number of binary tree nodes
       vec2 Xchild = X;                                    //   Initialize center position of child node
       real_t r = R0 / (1 << (level + 1));                 //   Radius of cells for child's level
       for (int d=0; d<2; d++) {                           //   Loop over dimensions
 	Xchild[d] += r * (((i & 1 << d) >> d) * 2 - 1);   //    Shift center position to that of child node
       }                                                   //   End loop over dimensions
       BinaryTreeNode binNodeChild[1];                     //   Allocate new root for this branch
-      binNodeChild->BEGIN = binNodeOffset;                //   Assign first memory address from offset
-      binNodeChild->END = binNodeOffset + maxBinNode;     //   Keep track of last memory address
       quadNode->CHILD[i] = buildNodes(buffer, bodies,     //   Recursive call for each child
 				      quadrantOffset[i], quadrantOffset[i] + binNode->NBODY[i],//   Range of bodies is calcuated from quadrant offset
 				      binNodeChild, Xchild, R0, level+1, !direction);   //   Alternate copy direction bodies <-> buffer
-      binNodeOffset += maxBinNode;                            //  Increment offset for binNode memory address
     }                                                         // End loop over children
     for (int i=0; i<4; i++) {                                   // Loop over children
       if (quadNode->CHILD[i]) quadNode->NNODE += quadNode->CHILD[i]->NNODE;// If child exists increment child node counter
@@ -170,11 +159,7 @@ class BuildTree : public Logger {
     startTimer("Grow tree");                                    // Start timer
     B0 = bodies.begin();                                        // Bodies iterator
     BinaryTreeNode binNode[1];                                  // Allocate root node of binary tree
-    int maxBinNode = getMaxBinNode(bodies.size());              // Get maximum size of binary tree
-    binNode->BEGIN = new BinaryTreeNode[maxBinNode];            // Allocate array for binary tree nodes
-    binNode->END = binNode->BEGIN + maxBinNode;                 // Set end pointer
     N0 = buildNodes(bodies, buffer, 0, bodies.size(), binNode, X0, R0);// Build tree recursively
-    delete[] binNode->BEGIN;                                    // Deallocate binary tree array
     stopTimer("Grow tree");                                     // Stop timer
   }
 
@@ -193,7 +178,7 @@ class BuildTree : public Logger {
   }
 
  public:
-  BuildTree(int _ncrit, int _nspawn) : ncrit(_ncrit), nspawn(_nspawn), maxlevel(0) {}
+  BuildTree(int _ncrit) : ncrit(_ncrit), maxlevel(0) {}
 
 //! Build tree structure top down
   Cells buildTree(Bodies &bodies, Bounds bounds) {
