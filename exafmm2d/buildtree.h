@@ -6,6 +6,7 @@
 class BuildTree : public Logger {
  private:
   typedef vec<4,int> ivec4;                                     //!< Vector of 4 integer types
+
   struct Node {
     int NBODY;                                                  //!< Number of descendant bodies
     int NNODE;                                                  //!< Number of descendant nodes
@@ -16,7 +17,6 @@ class BuildTree : public Logger {
 
   int ncrit;                                                    //!< Number of bodies per leaf cell
   B_iter B0;                                                    //!< Iterator of first body
-  Node * N0;                                                    //!< Tree root node
 
  private:
 //! Exclusive scan with offset
@@ -105,7 +105,6 @@ class BuildTree : public Logger {
       C_iter Ci = CN;                                           //  CN points to the next free memory address
       C->CHILD = Ci - C0;                                       //  Set Index of first child cell
       C->NCHILD = nchild;                                       //  Number of child cells
-      assert(C->NCHILD > 0);
       CN += nchild;                                             //  Increment next free memory address
       for (int i=0; i<nchild; i++) {                            //  Loop over children
 	int quadrant = quadrants[i];                            //   Get quadrant from child index
@@ -135,39 +134,26 @@ class BuildTree : public Logger {
     return box;                                                 // Return box.X and box.R
   }
 
-//! Grow tree structure top down
-  void growTree(Bodies &bodies, vec2 X0, real_t R0) {
-  }
-
-//! Link tree structure
-  Cells linkTree(real_t R0) {
-  }
-
  public:
   BuildTree(int _ncrit) : ncrit(_ncrit) {}
 
 //! Build tree structure top down
   Cells buildTree(Bodies &bodies, Bounds bounds) {
     Box box = bounds2box(bounds);                               // Get box from bounds
-    if (bodies.empty()) {                                       // If bodies vector is empty
-      N0 = NULL;                                                //  Reinitialize N0 with NULL
-    } else {                                                    // If bodies vector is not empty
+    Cells cells;                                                // Initialize cell array
+    if (!bodies.empty()) {                                      // If bodies vector is empty
       Bodies buffer = bodies;                                   // Copy bodies to buffer
       startTimer("Grow tree");                                  // Start timer
       B0 = bodies.begin();                                      // Bodies iterator
-      N0 = buildNodes(bodies, buffer, 0, bodies.size(), box.X, box.R);// Build tree recursively
+      Node * N0 = buildNodes(bodies, buffer, 0, bodies.size(), box.X, box.R);// Build tree recursively
       stopTimer("Grow tree");                                   // Stop timer
-      growTree(bodies, box.X, box.R);                           //  Grow tree from root
-    }                                                           // End if for empty root
-    startTimer("Link tree");                                    // Start timer
-    Cells cells;                                                // Initialize cell array
-    if (N0 != NULL) {                                           // If he node tree is empty
+      startTimer("Link tree");                                  // Start timer
       cells.resize(N0->NNODE);                                  //  Allocate cells array
       C_iter C0 = cells.begin();                                //  Cell begin iterator
       nodes2cells(N0, C0, C0, C0+1, box.R);                     //  Convert nodes to cells recursively
       delete N0;                                                //  Deallocate nodes
-    }                                                           // End if for empty node tree
-    stopTimer("Link tree");                                     // Stop timer
+      stopTimer("Link tree");                                   // Stop timer
+    }                                                           // End if for empty root
     return cells;                                               // Return cells array
   }
 
