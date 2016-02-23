@@ -33,68 +33,68 @@ class BuildTree : public Logger {
 
 //! Create an tree node
   TreeNode * makeNode(int begin, int end, vec2 X, bool nochild) const {
-    TreeNode * Node = new TreeNode();               // Allocate memory for single node
-    Node->BODY = begin;                                     // Index of first body in node
-    Node->NBODY = end - begin;                              // Number of bodies in node
-    Node->NNODE = 1;                                        // Initialize counter for decendant nodes
-    Node->X = X;                                            // Center position of node
+    TreeNode * Node = new TreeNode();                           // Allocate memory for single node
+    Node->BODY = begin;                                         // Index of first body in node
+    Node->NBODY = end - begin;                                  // Number of bodies in node
+    Node->NNODE = 1;                                            // Initialize counter for decendant nodes
+    Node->X = X;                                                // Center position of node
     if (nochild) {                                              // If node has no children
-      for (int i=0; i<4; i++) Node->CHILD[i] = NULL;        //  Initialize pointers to children
+      for (int i=0; i<4; i++) Node->CHILD[i] = NULL;            //  Initialize pointers to children
     }                                                           // End if for node children
-    return Node;                                            // Return node
+    return Node;                                                // Return node
   }
 
 //! Build nodes of tree adaptively using a top-down approach based on recursion (uses task based thread parallelism)
   TreeNode * buildNodes(Bodies& bodies, Bodies& buffer, int begin, int end,
-			    vec2 X, real_t R0, int level=0, bool direction=false) {
+			vec2 X, real_t R0, int level=0, bool direction=false) {
     if (begin == end) return NULL;                              // If no bodies left, return null pointer
     if (end - begin <= ncrit) {                                 // If number of bodies is less than threshold
       if (direction)                                            //  If direction of data is from bodies to buffer
         for (int i=begin; i<end; i++) buffer[i] = bodies[i];    //   Copy bodies to buffer
-      return makeNode(begin, end, X, true);                 //  Create an tree node and return it's pointer
+      return makeNode(begin, end, X, true);                     //  Create an tree node and return it's pointer
     }                                                           // End if for number of bodies
-    TreeNode * Node = makeNode(begin, end, X, false);// Create an tree node with child nodes
-    ivec4 quadrantSize = 0;
+    TreeNode * Node = makeNode(begin, end, X, false);           // Create an tree node with child nodes
+    ivec4 size = 0;
     for (int i=begin; i<end; i++) {                             //  Loop over bodies in node
       vec2 x = bodies[i].X;                                     //   Position of body
       int quadrant = (x[0] > X[0]) + ((x[1] > X[1]) << 1);      //   Which quadrant body belongs to
-      quadrantSize[quadrant]++;                                        //   Increment body count in quadrant
+      size[quadrant]++;                                         //   Increment body count in quadrant
     }                                                           //  End loop over bodies in node
-    ivec4 quadrantOffset = exclusiveScan(quadrantSize, begin);         // Exclusive scan to obtain offset from quadrant count
-    ivec4 quadrantOffset2 = quadrantOffset;
-    for (int i=begin; i<end; i++) {                           //  Loop over bodies
-      vec2 x = bodies[i].X;                                   //   Position of body
-      int quadrant = (x[0] > X[0]) + ((x[1] > X[1]) << 1);    //   Which quadrant body belongs to`
-      buffer[quadrantOffset2[quadrant]] = bodies[i];          //   Permute bodies out-of-place according to quadrant
-      quadrantOffset2[quadrant]++;                            //   Increment body count in quadrant
-    }                                                         //  End loop over bodies
-    for (int i=0; i<4; i++) {                                 // Loop over children
-      vec2 Xchild = X;                                    //   Initialize center position of child node
-      real_t r = R0 / (1 << (level + 1));                 //   Radius of cells for child's level
-      for (int d=0; d<2; d++) {                           //   Loop over dimensions
-	Xchild[d] += r * (((i & 1 << d) >> d) * 2 - 1);   //    Shift center position to that of child node
-      }                                                   //   End loop over dimensions
-      Node->CHILD[i] = buildNodes(buffer, bodies,     //   Recursive call for each child
-				      quadrantOffset[i], quadrantOffset[i] + quadrantSize[i],//   Range of bodies is calcuated from quadrant offset
-				      Xchild, R0, level+1, !direction);   //   Alternate copy direction bodies <-> buffer
-    }                                                         // End loop over children
+    ivec4 offset = exclusiveScan(size, begin);                  // Exclusive scan to obtain offset from quadrant count
+    ivec4 offset2 = offset;
+    for (int i=begin; i<end; i++) {                             //  Loop over bodies
+      vec2 x = bodies[i].X;                                     //   Position of body
+      int quadrant = (x[0] > X[0]) + ((x[1] > X[1]) << 1);      //   Which quadrant body belongs to`
+      buffer[offset2[quadrant]] = bodies[i];                    //   Permute bodies out-of-place according to quadrant
+      offset2[quadrant]++;                                      //   Increment body count in quadrant
+    }                                                           //  End loop over bodies
     for (int i=0; i<4; i++) {                                   // Loop over children
-      if (Node->CHILD[i]) Node->NNODE += Node->CHILD[i]->NNODE;// If child exists increment child node counter
+      vec2 Xchild = X;                                          //   Initialize center position of child node
+      real_t r = R0 / (1 << (level + 1));                       //   Radius of cells for child's level
+      for (int d=0; d<2; d++) {                                 //   Loop over dimensions
+	Xchild[d] += r * (((i & 1 << d) >> d) * 2 - 1);         //    Shift center position to that of child node
+      }                                                         //   End loop over dimensions
+      Node->CHILD[i] = buildNodes(buffer, bodies,               //   Recursive call for each child
+				  offset[i], offset[i] + size[i],//   Range of bodies is calcuated from quadrant offset
+				  Xchild, R0, level+1, !direction);//   Alternate copy direction bodies <-> buffer
+    }                                                           // End loop over children
+    for (int i=0; i<4; i++) {                                   // Loop over children
+      if (Node->CHILD[i]) Node->NNODE += Node->CHILD[i]->NNODE; // If child exists increment child node counter
     }                                                           // End loop over chlidren
-    return Node;                                            // Return quadtree node
+    return Node;                                                // Return quadtree node
   }
 
 //! Create cell data structure from nodes
   void nodes2cells(TreeNode * Node, C_iter C, C_iter C0, C_iter CN, real_t R0, int level=0, int iparent=0) {
     C->PARENT = iparent;                                        // Index of parent cell
     C->R      = R0 / (1 << level);                              // Cell radius
-    C->X      = Node->X;                                    // Cell center
-    C->NDBODY = Node->NBODY;                                // Number of decendant bodies
-    C->BODY   = B0 + Node->BODY;                            // Iterator of first body in cell
-    if (Node->NNODE == 1) {                                 // If node has no children
+    C->X      = Node->X;                                        // Cell center
+    C->NDBODY = Node->NBODY;                                    // Number of decendant bodies
+    C->BODY   = B0 + Node->BODY;                                // Iterator of first body in cell
+    if (Node->NNODE == 1) {                                     // If node has no children
       C->CHILD  = 0;                                            //  Set index of first child cell to zero
       C->NCHILD = 0;                                            //  Number of child cells
-      C->NCBODY = Node->NBODY;                              //  Number of bodies in cell
+      C->NCBODY = Node->NBODY;                                  //  Number of bodies in cell
       assert(C->NCBODY > 0);
       maxlevel = std::max(maxlevel, level);                     //  Update maximum level of tree
     } else {                                                    // Else if node has children
@@ -102,7 +102,7 @@ class BuildTree : public Logger {
       int nchild = 0;                                           //  Initialize number of child cells
       int quadrants[4];                                         //  Map of child index to quadrants (for when nchild < 4)
       for (int i=0; i<4; i++) {                                 //  Loop over quadrants
-        if (Node->CHILD[i]) {                               //   If child exists for that quadrant
+        if (Node->CHILD[i]) {                                   //   If child exists for that quadrant
           quadrants[nchild] = i;                                //    Map quadrant to child index
           nchild++;                                             //    Increment child cell counter
         }                                                       //   End if for child existance
@@ -112,15 +112,15 @@ class BuildTree : public Logger {
       C->NCHILD = nchild;                                       //  Number of child cells
       assert(C->NCHILD > 0);
       CN += nchild;                                             //  Increment next free memory address
-      for (int i=0; i<nchild; i++) {                          //  Loop over children
-	int quadrant = quadrants[i];                          //   Get quadrant from child index
+      for (int i=0; i<nchild; i++) {                            //  Loop over children
+	int quadrant = quadrants[i];                            //   Get quadrant from child index
 	nodes2cells(Node->CHILD[quadrant], Ci, C0, CN, R0, level+1, C-C0);// Recursive call for each child
-	Ci++;                                                 //   Increment cell iterator
-	CN += Node->CHILD[quadrant]->NNODE - 1;           //   Increment next free memory address
-      }                                                       //  End loop over children
+	Ci++;                                                   //   Increment cell iterator
+	CN += Node->CHILD[quadrant]->NNODE - 1;                 //   Increment next free memory address
+      }                                                         //  End loop over children
       for (int i=0; i<nchild; i++) {                            //  Loop over children
         int quadrant = quadrants[i];                            //   Get quadrant from child index
-        delete Node->CHILD[quadrant];                       //   Free child pointer to avoid memory leak
+        delete Node->CHILD[quadrant];                           //   Free child pointer to avoid memory leak
       }                                                         //  End loop over children
       maxlevel = std::max(maxlevel, level+1);                   //  Update maximum level of tree
     }                                                           // End if for child existance
