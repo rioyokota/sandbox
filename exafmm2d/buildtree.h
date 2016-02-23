@@ -141,16 +141,6 @@ class BuildTree : public Logger {
 
 //! Link tree structure
   Cells linkTree(real_t R0) {
-    startTimer("Link tree");                                    // Start timer
-    Cells cells;                                                // Initialize cell array
-    if (N0 != NULL) {                                           // If he node tree is empty
-      cells.resize(N0->NNODE);                                  //  Allocate cells array
-      C_iter C0 = cells.begin();                                //  Cell begin iterator
-      nodes2cells(N0, C0, C0, C0+1, R0);                        //  Convert nodes to cells recursively
-      delete N0;                                                //  Deallocate nodes
-    }                                                           // End if for empty node tree
-    stopTimer("Link tree");                                     // Stop timer
-    return cells;                                               // Return cells array
   }
 
  public:
@@ -169,7 +159,16 @@ class BuildTree : public Logger {
       stopTimer("Grow tree");                                   // Stop timer
       growTree(bodies, box.X, box.R);                           //  Grow tree from root
     }                                                           // End if for empty root
-    return linkTree(box.R);                                     // Form parent-child links in tree
+    startTimer("Link tree");                                    // Start timer
+    Cells cells;                                                // Initialize cell array
+    if (N0 != NULL) {                                           // If he node tree is empty
+      cells.resize(N0->NNODE);                                  //  Allocate cells array
+      C_iter C0 = cells.begin();                                //  Cell begin iterator
+      nodes2cells(N0, C0, C0, C0+1, box.R);                     //  Convert nodes to cells recursively
+      delete N0;                                                //  Deallocate nodes
+    }                                                           // End if for empty node tree
+    stopTimer("Link tree");                                     // Stop timer
+    return cells;                                               // Return cells array
   }
 
 };
