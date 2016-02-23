@@ -8,15 +8,15 @@ class BuildTree : public Logger {
   typedef vec<4,int> ivec4;                                     //!< Vector of 4 integer types
 //! Quadtree is used for building the FMM tree structure as "nodes", then transformed to "cells" data structure
   struct TreeNode {
-    int        BODY;                                            //!< Index offset for first body in node
-    int        NBODY;                                           //!< Number of descendant bodies
-    int        NNODE;                                           //!< Number of descendant nodes
+    B_iter BODY;                                                //!< Iterator for first body in node
+    int NBODY;                                                  //!< Number of descendant bodies
+    int NNODE;                                                  //!< Number of descendant nodes
     TreeNode * CHILD[4];                                        //!< Pointer to child node
-    vec2       X;                                               //!< Coordinate at center
+    vec2 X;                                                     //!< Coordinate at center
   };
 
-  int        ncrit;                                             //!< Number of bodies per leaf cell
-  B_iter     B0;                                                //!< Iterator of first body
+  int ncrit;                                                    //!< Number of bodies per leaf cell
+  B_iter B0;                                                    //!< Iterator of first body
   TreeNode * N0;                                                //!< Tree root node
 
  private:
@@ -33,7 +33,7 @@ class BuildTree : public Logger {
 //! Create an tree node
   TreeNode * makeNode(int begin, int end, vec2 X, bool nochild) const {
     TreeNode * Node = new TreeNode();                           // Allocate memory for single node
-    Node->BODY = begin;                                         // Index of first body in node
+    Node->BODY = B0 + begin;                                    // Index of first body in node
     Node->NBODY = end - begin;                                  // Number of bodies in node
     Node->NNODE = 1;                                            // Initialize counter for decendant nodes
     Node->X = X;                                                // Center position of node
@@ -88,8 +88,8 @@ class BuildTree : public Logger {
     C->PARENT = iparent;                                        // Index of parent cell
     C->R = R0 / (1 << level);                                   // Cell radius
     C->X = Node->X;                                             // Cell center
+    C->BODY = Node->BODY;                                       // Iterator of first body in cell
     C->NBODY = Node->NBODY;                                     // Number of decendant bodies
-    C->BODY = B0 + Node->BODY;                                  // Iterator of first body in cell
     if (Node->NNODE == 1) {                                     // If node has no children
       C->CHILD  = 0;                                            //  Set index of first child cell to zero
       C->NCHILD = 0;                                            //  Number of child cells

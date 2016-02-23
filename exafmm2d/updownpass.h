@@ -9,17 +9,6 @@ class UpDownPass : public Kernel, public Logger {
   real_t theta;                                                 //!< Multipole acceptance criteria
 
  private:
-//! Error optimization of Rcrit
-  void setRcrit(C_iter C, C_iter C0, real_t c) {
-    spawn_tasks {                                               // Initialize tasks
-      for (C_iter CC=C0+C->CHILD; CC!=C0+C->CHILD+C->NCHILD; CC++) {// Loop over child cells
-	spawn_task0(setRcrit(CC, C0, c));                       //  Recursive call with new task
-      }                                                         // End loop over child cells
-      sync_tasks;                                               // Synchronize tasks
-    }
-    C->RCRIT = C->R / theta;                                    // Multiply Rcrit by error optimized parameter x
-  }
-
 //! Recursive call for upward pass
   void postOrderTraversal(C_iter C, C_iter C0) {
     spawn_tasks {                                               // Initialize tasks
@@ -55,13 +44,6 @@ class UpDownPass : public Kernel, public Logger {
     if (!cells.empty()) {                                       // If cell vector is not empty
       C_iter C0 = cells.begin();                                //  Set iterator of target root cell
       postOrderTraversal(C0, C0);                               //  Recursive call for upward pass
-      real_t c = (1 - theta) * (1 - theta) / std::pow(theta,P+2) / powf(std::abs(C0->M[0]),1.0/3); // Root coefficient
-      setRcrit(C0, C0, c);                                      //  Error optimization of Rcrit
-      if( cells.size() > 9 ) {                                  //  If tree has more than 2 levels
-        for (C_iter C=C0; C!=C0+9; C++) {                       //   Loop over top 2 levels of cells
-          C->RCRIT = 1e12;                                      //    Prevent approximation
-        }                                                       //   End loop over top 2 levels of cells
-      }                                                         //  End if for tree levels
     }                                                           // End if for empty cell vector
     stopTimer("Upward pass");                                   // Stop timer
   }

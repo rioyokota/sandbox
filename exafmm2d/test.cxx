@@ -17,7 +17,7 @@ int main(int argc, char ** argv) {
   const real_t cycle = 2 * M_PI;
   BuildTree tree(ncrit);
   UpDownPass pass(theta,eps2);
-  Traversal traversal(nspawn,images,eps2);
+  Traversal traversal(nspawn,images,theta);
   logger.printTitle("FMM Profiling");
   logger.startTimer("Total FMM");
 
@@ -25,12 +25,18 @@ int main(int argc, char ** argv) {
   logger.startTimer("Init bodies");                                    // Start timer
   srand48(0);                                                   // Set seed for random number generator
   Bodies bodies(numBodies);                                     // Initialize bodies
+  real_t average = 0;                                           // Average charge
   for (B_iter B=bodies.begin(); B!=bodies.end(); B++) {         // Loop over bodies
     for (int d=0; d<2; d++) {                                   //  Loop over dimension
       B->X[d] = drand48() * 2 * M_PI - M_PI;                    //   Initialize positions
     }                                                           //  End loop over dimension
-    B->SRC = drand48() - .5;                                    //   Initialize charge
+    B->SRC = drand48() - .5;                                    //  Initialize charge
+    average += B->SRC;                                          //  Accumulate charge
     B->TRG = 0;                                                 //  Clear target values
+  }                                                             // End loop over bodies
+  average /= bodies.size();                                     // Average charge
+  for (B_iter B=bodies.begin(); B!=bodies.end(); B++) {         // Loop over bodies
+    B->SRC -= average;                                          // Charge neutral
   }                                                             // End loop over bodies
   logger.stopTimer("Init bodies");                                     // Stop timer
 

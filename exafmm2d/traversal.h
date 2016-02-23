@@ -8,6 +8,7 @@ class Traversal : public Kernel, public Logger {
  private:
   int nspawn;                                                   //!< Threshold of NBODY for spawning new threads
   int images;                                                   //!< Number of periodic image sublevels
+  real_t theta;                                                 //!< Multipole acceptance criterion
   C_iter Ci0;                                                   //!< Begin iterator for target cells
   C_iter Cj0;                                                   //!< Begin iterator for source cells
 
@@ -50,10 +51,10 @@ class Traversal : public Kernel, public Logger {
       for (C_iter cj=Cj0+Cj->CHILD; cj!=Cj0+Cj->CHILD+Cj->NCHILD; cj++ ) {// Loop over Cj's children
         traverse(Ci, cj);                                       //   Traverse a single pair of cells
       }                                                         //  End loop over Cj's children
-    } else if (Ci->NBODY + Cj->NBODY >= nspawn) {             // Else if cells are still large
+    } else if (Ci->NBODY + Cj->NBODY >= nspawn) {               // Else if cells are still large
       traverse(Ci0+Ci->CHILD, Ci0+Ci->CHILD+Ci->NCHILD,         //  Traverse for range of cell pairs
                Cj0+Cj->CHILD, Cj0+Cj->CHILD+Cj->NCHILD);
-    } else if (Ci->RCRIT >= Cj->RCRIT) {                        // Else if Ci is larger than Cj
+    } else if (Ci->R >= Cj->R) {                                // Else if Ci is larger than Cj
       for (C_iter ci=Ci0+Ci->CHILD; ci!=Ci0+Ci->CHILD+Ci->NCHILD; ci++ ) {// Loop over Ci's children
         traverse(ci, Cj);                                       //   Traverse a single pair of cells
       }                                                         //  End loop over Ci's children
@@ -67,8 +68,8 @@ class Traversal : public Kernel, public Logger {
 //! Dual tree traversal for a single pair of cells
   void traverse(C_iter Ci, C_iter Cj) {
     vec2 dX = Ci->X - Cj->X - Xperiodic;                        // Distance vector from source to target
-    real_t R2 = norm(dX);                                       // Scalar distance squared
-    if (R2 > (Ci->RCRIT+Cj->RCRIT)*(Ci->RCRIT+Cj->RCRIT)) {     //  If distance is far enough
+    real_t R2 = norm(dX) * theta * theta;                       // Scalar distance squared
+    if (R2 > (Ci->R+Cj->R)*(Ci->R+Cj->R)) {                     //  If distance is far enough
       M2L(Ci, Cj);                                              //   Use approximate kernels
     } else if (Ci->NCHILD == 0 && Cj->NCHILD == 0) {            //  Else if both cells are bodies
       P2P(Ci, Cj);                                              //    Use exact kernel
@@ -123,7 +124,7 @@ class Traversal : public Kernel, public Logger {
   }
 
  public:
- Traversal(int nspawn, int images, real_t eps2) : Kernel(eps2), nspawn(nspawn), images(images) {}
+  Traversal(int nspawn, int images, real_t theta) : Kernel(0.0), nspawn(nspawn), images(images), theta(theta) {}
 
 //! Evaluate P2P and M2L using dual tree traversal
   void dualTreeTraversal(Cells &icells, Cells &jcells, real_t cycle) {
