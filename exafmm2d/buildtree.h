@@ -67,30 +67,13 @@ class BuildTree : public Logger {
 
 //! Count bodies in each quadrant using binary tree recursion
   void countBodies(Bodies& bodies, int begin, int end, vec2 X, BinaryTreeNode * binNode) {
-    assert(getNumBinNode(end - begin) <= binNode->END - binNode->BEGIN + 1);
-    if (end - begin <= nspawn) {                                // If number of bodies is less than threshold
-      for (int i=0; i<4; i++) binNode->NBODY[i] = 0;            //  Initialize number of bodies in quadrant
-      binNode->LEFT = binNode->RIGHT = NULL;                    //  Initialize pointers to left and right child node
-      for (int i=begin; i<end; i++) {                           //  Loop over bodies in node
-        vec2 x = bodies[i].X;                                   //   Position of body
-        int quadrant = (x[0] > X[0]) + ((x[1] > X[1]) << 1);    // Which quadrant body belongs to
-        binNode->NBODY[quadrant]++;                             //   Increment body count in quadrant
-      }                                                         //  End loop over bodies in node
-    } else {                                                    // Else if number of bodies is larger than threshold
-      int mid = (begin + end) / 2;                              //  Split range of bodies in half
-      int numLeftNode = getNumBinNode(mid - begin);             //  Number of binary tree nodes on left branch
-      int numRightNode = getNumBinNode(end - mid);              //  Number of binary tree nodes on right branch
-      assert(numLeftNode + numRightNode <= binNode->END - binNode->BEGIN);
-      binNode->LEFT = binNode->BEGIN;                           //  Assign first memory address to left node pointer
-      binNode->LEFT->BEGIN = binNode->LEFT + 1;                 //  Assign next memory address to left begin pointer
-      binNode->LEFT->END = binNode->LEFT + numLeftNode;         //  Keep track of last memory address used by left
-      binNode->RIGHT = binNode->LEFT->END;                      //  Assign that same address to right node pointer
-      binNode->RIGHT->BEGIN = binNode->RIGHT + 1;               //  Assign next memory address to right begin pointer
-      binNode->RIGHT->END = binNode->RIGHT + numRightNode;      //  Keep track of last memory address used by right
-      countBodies(bodies, begin, mid, X, binNode->LEFT);        //  Recursive call for left branch
-      countBodies(bodies, mid, end, X, binNode->RIGHT);         //  Recursive call for right branch
-      binNode->NBODY = binNode->LEFT->NBODY + binNode->RIGHT->NBODY;// Sum contribution from both branches
-    }                                                           // End if for number of bodies
+    binNode->LEFT = binNode->RIGHT = NULL;
+    for (int i=0; i<4; i++) binNode->NBODY[i] = 0;              //  Initialize number of bodies in quadrant
+    for (int i=begin; i<end; i++) {                             //  Loop over bodies in node
+      vec2 x = bodies[i].X;                                     //   Position of body
+      int quadrant = (x[0] > X[0]) + ((x[1] > X[1]) << 1);      //   Which quadrant body belongs to
+      binNode->NBODY[quadrant]++;                               //   Increment body count in quadrant
+    }                                                           //  End loop over bodies in node
   }
 
 //! Sort bodies according to quadrant (Morton order)

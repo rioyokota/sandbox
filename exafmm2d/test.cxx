@@ -1,6 +1,5 @@
 #include <cassert>
 
-#include "boundbox.h"
 #include "buildtree.h"
 #include "logger.h"
 #include "traversal.h"
@@ -16,23 +15,35 @@ int main(int argc, char ** argv) {
   const real_t theta = 0.4;
   const real_t eps2 = 0.0;
   const real_t cycle = 2 * M_PI;
-  BoundBox boundbox(nspawn);
   BuildTree tree(ncrit,nspawn);
   UpDownPass pass(theta,eps2);
   Traversal traversal(nspawn,images,eps2);
   logger.printTitle("FMM Profiling");
   logger.startTimer("Total FMM");
+
 //! Initialize dsitribution, source & target value of bodies
-  srand48(0);                                                 // Set seed for random number generator
-  Bodies bodies(numBodies);                                   // Initialize bodies
-  for (B_iter B=bodies.begin(); B!=bodies.end(); B++) {       // Loop over bodies
-    for (int d=0; d<2; d++) {                                 //  Loop over dimension
-      B->X[d] = drand48() * 2 * M_PI - M_PI;                  //   Initialize positions
-    }                                                         //  End loop over dimension
-    B->SRC = drand48() - .5;                                  //   Initialize charge
-    B->TRG = 0;                                               //  Clear target values
-  }                                                           // End loop over bodies
-  Bounds bounds = boundbox.getBounds(bodies);
+  logger.startTimer("Init bodies");                                    // Start timer
+  srand48(0);                                                   // Set seed for random number generator
+  Bodies bodies(numBodies);                                     // Initialize bodies
+  for (B_iter B=bodies.begin(); B!=bodies.end(); B++) {         // Loop over bodies
+    for (int d=0; d<2; d++) {                                   //  Loop over dimension
+      B->X[d] = drand48() * 2 * M_PI - M_PI;                    //   Initialize positions
+    }                                                           //  End loop over dimension
+    B->SRC = drand48() - .5;                                    //   Initialize charge
+    B->TRG = 0;                                                 //  Clear target values
+  }                                                             // End loop over bodies
+  logger.stopTimer("Init bodies");                                     // Stop timer
+
+// ! Get Xmin and Xmax of domain
+  logger.startTimer("Get bounds");                                     // Start timer
+  Bounds bounds;                                                // Bounds : Contains Xmin, Xmax
+  bounds.Xmin = bounds.Xmax = bodies.front().X;                 // Initialize Xmin, Xmax
+  for (B_iter B=bodies.begin(); B!=bodies.end(); B++) {         // Loop over range of bodies
+    bounds.Xmin = min(B->X, bounds.Xmin);                       //  Update Xmin
+    bounds.Xmax = max(B->X, bounds.Xmax);                       //  Update Xmax
+  }                                                             // End loop over range of bodies
+  logger.stopTimer("Get bounds");                                      // Stop timer
+
   Cells cells = tree.buildTree(bodies, bounds);
   pass.upwardPass(cells);
   traversal.dualTreeTraversal(cells, cells, cycle);
