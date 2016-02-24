@@ -5,44 +5,41 @@
 
 class BuildTree : public Logger {
  private:
-  typedef vec<4,int> ivec4;                                     //!< Vector of 4 integer types
   int ncrit;                                                    //!< Number of bodies per leaf cell
 
  private:
-//! Exclusive scan with offset
-  inline ivec4 exclusiveScan(ivec4 size, int offset) const {
-    ivec4 offsets;                                              // Output vector
-    for (int i=0; i<4; i++) {                                   // Loop over elements
-      offsets[i] = offset;                                      //  Set value
-      offset += size[i];                                        //  Increment offset
-    }                                                           // End loop over elements
-    return offsets;                                             // Return output vector
-  }
-
 //! Build nodes of tree adaptively using a top-down approach based on recursion (uses task based thread parallelism)
   Node * buildNodes(Bodies& bodies, Bodies& buffer, int begin, int end,
 		    vec2 X, real_t R0, int level=0, bool direction=false) {
     if (begin == end) return NULL;                              // If no bodies left, return null pointer
-//! Create an tree node
+    //! Create a tree node
     Node * node = new Node();                                   // Allocate memory for single node
     node->BODY = begin;                                         // Index of first body in node
     node->NBODY = end - begin;                                  // Number of bodies in node
     node->NNODE = 1;                                            // Initialize counter for decendant nodes
     node->X = X;                                                // Center position of node
     for (int i=0; i<4; i++) node->CHILD[i] = NULL;              //  Initialize pointers to children
+    //! If node is a leaf
     if (end - begin <= ncrit) {                                 // If number of bodies is less than threshold
       if (direction)                                            //  If direction of data is from bodies to buffer
         for (int i=begin; i<end; i++) buffer[i] = bodies[i];    //   Copy bodies to buffer
       return node;                                              //  Return node pointer
     }                                                           // End if for number of bodies
+    //! Count number of bodies in each quadrant 
     ivec4 size = 0;
     for (int i=begin; i<end; i++) {                             //  Loop over bodies in node
       vec2 x = bodies[i].X;                                     //   Position of body
       int quadrant = (x[0] > X[0]) + ((x[1] > X[1]) << 1);      //   Which quadrant body belongs to
       size[quadrant]++;                                         //   Increment body count in quadrant
     }                                                           //  End loop over bodies in node
+    //! Exclusive scan to get offsets
     int offset = begin;                                         // Offset of first quadrant
-    ivec4 offsets = exclusiveScan(size, offset);                // Exclusive scan to obtain offset from quadrant count
+    ivec4 offsets;                                              // Output vector
+    for (int i=0; i<4; i++) {                                   // Loop over elements
+      offsets[i] = offset;                                      //  Set value
+      offset += size[i];                                        //  Increment offset
+    }                                                           // End loop over elements
+    //! Sort bodies by quadrant
     ivec4 counter = offsets;
     for (int i=begin; i<end; i++) {                             //  Loop over bodies
       vec2 x = bodies[i].X;                                     //   Position of body
@@ -50,6 +47,7 @@ class BuildTree : public Logger {
       buffer[counter[quadrant]] = bodies[i];                    //   Permute bodies out-of-place according to quadrant
       counter[quadrant]++;                                      //   Increment body count in quadrant
     }                                                           //  End loop over bodies
+    //! Loop over children and recurse
     for (int i=0; i<4; i++) {                                   // Loop over children
       vec2 Xchild = X;                                          //   Initialize center position of child node
       real_t r = R0 / (1 << (level + 1));                       //   Radius of cells for child's level
@@ -60,6 +58,7 @@ class BuildTree : public Logger {
 				  offsets[i], offsets[i] + size[i],//   Range of bodies is calcuated from quadrant offset
 				  Xchild, R0, level+1, !direction);//   Alternate copy direction bodies <-> buffer
     }                                                           // End loop over children
+    //! Accumulate number of decendant nodes
     for (int i=0; i<4; i++) {                                   // Loop over children
       if (node->CHILD[i]) {                                     //  If child exists
 	node->NNODE += node->CHILD[i]->NNODE;                   //   Increment child node counter

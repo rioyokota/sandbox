@@ -2,7 +2,6 @@
 #define traversal_h
 #include "kernel.h"
 #include "logger.h"
-#include "thread.h"
 
 class Traversal : public Kernel, public Logger {
  private:
@@ -10,33 +9,6 @@ class Traversal : public Kernel, public Logger {
   real_t theta;                                                 //!< Multipole acceptance criterion
   C_iter Ci0;                                                   //!< Begin iterator for target cells
   C_iter Cj0;                                                   //!< Begin iterator for source cells
-
-//! Dual tree traversal for a range of Ci and Cj
-  void traverse(C_iter CiBegin, C_iter CiEnd, C_iter CjBegin, C_iter CjEnd) {
-    if (CiEnd - CiBegin == 1 || CjEnd - CjBegin == 1) {         // If only one cell in range
-      if (CiBegin == CjBegin) {                                 //  If Ci == Cj
-        assert(CiEnd == CjEnd);
-        traverse(CiBegin, CjBegin);                             //   Call traverse for single pair
-      } else {                                                  //  If Ci != Cj
-        for (C_iter Ci=CiBegin; Ci!=CiEnd; Ci++) {              //   Loop over all Ci cells
-          for (C_iter Cj=CjBegin; Cj!=CjEnd; Cj++) {            //    Loop over all Cj cells
-            traverse(Ci, Cj);                                   //     Call traverse for single pair
-          }                                                     //    End loop over all Cj cells
-        }                                                       //   End loop over all Ci cells
-      }                                                         //  End if for Ci == Cj
-    } else {                                                    // If many cells are in the range
-      C_iter CiMid = CiBegin + (CiEnd - CiBegin) / 2;           //  Split range of Ci cells in half
-      C_iter CjMid = CjBegin + (CjEnd - CjBegin) / 2;           //  Split range of Cj cells in half
-      spawn_tasks {                                             //  Initialize task group
-	spawn_task0(traverse(CiBegin, CiMid, CjBegin, CjMid));  //  Spawn Ci:former Cj:former
-	traverse(CiMid, CiEnd, CjMid, CjEnd);                   //  No spawn Ci:latter Cj:latter
-	sync_tasks;                                             //  Synchronize task group
-	spawn_task0(traverse(CiBegin, CiMid, CjMid, CjEnd));    //  Spawn Ci:former Cj:latter
-	traverse(CiMid, CiEnd, CjBegin, CjMid);                 //  No spawn Ci:latter Cj:former
-	sync_tasks;                                             //  Synchronize task group
-      }
-    }                                                           // End if for many cells in range
-  }
 
 //! Split cell and call traverse() recursively for child
   void splitCell(C_iter Ci, C_iter Cj) {

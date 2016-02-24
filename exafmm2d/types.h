@@ -7,10 +7,11 @@
 // Basic type definitions
 typedef float real_t;                                           //!< Floating point type is single precision
 typedef std::complex<real_t> complex_t;                         //!< Complex type
+typedef vec<4,int> ivec4;                                       //!< Vector of 4 integer types
 typedef vec<2,real_t> vec2;                                     //!< Vector of 3 floating point types
 
 // Multipole/local expansion coefficients
-const int P = EXPANSION;                                        //!< Order of expansions
+const int P = 6;                                                //!< Order of expansions
 typedef vec<P,complex_t> vecP;                                  //!< Multipole/local coefficient type
 
 //! Structures for defining bounding box

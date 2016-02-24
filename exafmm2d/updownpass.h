@@ -2,7 +2,6 @@
 #define updownpass_h
 #include "kernel.h"
 #include "logger.h"
-#include "thread.h"
 
 class UpDownPass : public Kernel, public Logger {
  public:
@@ -48,12 +47,9 @@ class UpDownPass : public Kernel, public Logger {
     if (!cells.empty()) {                                       // If cell vector is not empty
       C_iter C0 = cells.begin();                                //  Root cell
       if(C0->NCHILD==0) L2P(C0);                                //  If root is the only cell do L2P
-      spawn_tasks {                                             //  Initialize tasks
-        for (C_iter CC=C0+C0->CHILD; CC!=C0+C0->CHILD+C0->NCHILD; CC++) {// Loop over child cells
-          spawn_task0(preOrderTraversal(CC, C0));               //    Recursive call for downward pass
-        }                                                       //   End loop over child cells
-        sync_tasks;                                             //   Synchronize tasks
-      }                                                         //  Finalize tasks
+      for (C_iter CC=C0+C0->CHILD; CC!=C0+C0->CHILD+C0->NCHILD; CC++) {// Loop over child cells
+	preOrderTraversal(CC, C0);                              //    Recursive call for downward pass
+      }                                                         //   End loop over child cells
     }                                                           // End if for empty cell vector
     stopTimer("Downward pass");                                 // Stop timer
   }

@@ -1,4 +1,5 @@
 #include <cassert>
+#include <cstdlib>
 
 #include "buildtree.h"
 #include "logger.h"
