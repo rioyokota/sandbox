@@ -1,5 +1,3 @@
-remove eps2
-remove TBB in traversal
 non-recursive direct
 calculate force
 remove all headers

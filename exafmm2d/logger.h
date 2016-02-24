@@ -5,27 +5,16 @@
 #include <iomanip>
 #include <iostream>
 #include <map>
-#include <pthread.h>
-#include <queue>
-#include <string>
-#include <sstream>
 #include <sys/time.h>
-#include <vector>
 
-//! Timer and Trace logger
+//! Timer
 class Logger {
- typedef std::map<std::string,double>           Timer;          //!< Map of timer event name to timed value
- typedef std::map<std::string,double>::iterator T_iter;         //!< Iterator of timer event name map
+ typedef std::map<std::string,double> Timer;                    //!< Map of timer event name to timed value
 
  private:
   Timer beginTimer;                                             //!< Timer base value
   Timer timer;                                                  //!< Timings of all events
 
- public:
-  int stringLength;                                             //!< Max length of event name
-  int decimal;                                                  //!< Decimal precision
-
- private:
 //! Timer function
   double get_time() const {
     struct timeval tv;                                          // Time value
@@ -35,18 +24,13 @@ class Logger {
 
  public:
 //! Constructor
-  Logger() : beginTimer(), timer(),                             // Initializing class variables (empty)
-	     stringLength(20),                                  // Max length of event name
-	     decimal(7) {}                                      // Decimal precision
+  Logger() : beginTimer(), timer() {}                           // Initializing class variables (empty)
 
-//! Print message to standard output
-  inline void printTitle(std::string title) {
-    title += " ";                                               //  Append space to end of title
-    std::cout << "--- " << std::setw(stringLength)              //  Align string length
-	      << std::left                                      //  Left shift
-	      << std::setfill('-')                              //  Set to fill with '-'
-	      << title << std::setw(10) << "-"                  //  Fill until end of line
-	      << std::setfill(' ') << std::endl;                //  Set back to fill with ' '
+//! Print timings of a specific event
+  inline void printTime(std::string event) {
+    std::cout << std::setw(20) << std::left                     //  Set format
+	      << event << " : " << std::setprecision(7) << std::fixed
+	      << timer[event] << " s" << std::endl;             //  Print event and timer
   }
 
 //! Start timer for given event
@@ -62,21 +46,9 @@ class Logger {
     return endTimer - beginTimer[event];                        // Return the event time
   }
 
-//! Print timings of a specific event
-  inline void printTime(std::string event) {
-    std::cout << std::setw(stringLength) << std::left           //  Set format
-	      << event << " : " << std::setprecision(decimal) << std::fixed
-	      << timer[event] << " s" << std::endl;             //  Print event and timer
-  }
-
-//! Erase all events in timer
-  inline void resetTimer() {
-    timer.clear();                                              // Clear timer
-  }
-
   //! Print relative L2 norm error
   void printError(double diff1, double norm1) {
-    std::cout << std::setw(stringLength) << std::left << std::scientific//  Set format
+    std::cout << std::setw(20) << std::left << std::scientific  //  Set format
 	      << "Rel. L2 Error (pot)" << " : " << std::sqrt(diff1/norm1) << std::endl;// Print potential error
   }
 };

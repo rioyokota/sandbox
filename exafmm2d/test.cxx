@@ -18,7 +18,7 @@ int main(int argc, char ** argv) {
   BuildTree tree(ncrit);
   UpDownPass pass(theta);
   Traversal traversal(images,theta);
-  logger.printTitle("FMM Profiling");
+  printf("--- FMM Profiling ----------------\n");
   logger.startTimer("Total FMM");
 
 //! Initialize dsitribution, source & target value of bodies
@@ -55,7 +55,7 @@ int main(int argc, char ** argv) {
   traversal.dualTreeTraversal(cells, cells, cycle);
   Bodies jbodies = bodies;
   pass.downwardPass(cells);
-  logger.printTitle("Total runtime");
+  printf("--- Total runtime ----------------\n");
   logger.stopTimer("Total FMM");
 //! Downsize target bodies by even sampling 
   int numTargets = 100;                                         // Number of target bodies
@@ -81,7 +81,7 @@ int main(int argc, char ** argv) {
     diff1 += dp;                                              //  Accumulate difference of potential
     norm1 += p;                                               //  Accumulate value of potential
   }                                                           // End loop over bodies & bodies2
-  logger.printTitle("FMM vs. direct");
+  printf("--- FMM vs. direct ---------------\n");
   logger.printError(diff1, norm1);
   return 0;
 }
