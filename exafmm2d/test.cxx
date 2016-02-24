@@ -8,14 +8,14 @@
 int main(int argc, char ** argv) {
   Logger logger;
 
-  const int numBodies = 1000000;
+  const int numBodies = 100000;
   const int images = 0;
   const int ncrit = 8;
   const real_t theta = 0.4;
   const real_t eps2 = 0.0;
   const real_t cycle = 2 * M_PI;
   BuildTree tree(ncrit);
-  UpDownPass pass(theta,eps2);
+  UpDownPass pass(theta);
   Traversal traversal(images,theta);
   logger.printTitle("FMM Profiling");
   logger.startTimer("Total FMM");
@@ -57,7 +57,7 @@ int main(int argc, char ** argv) {
   logger.printTitle("Total runtime");
   logger.stopTimer("Total FMM");
 //! Downsize target bodies by even sampling 
-  int numTargets = 10;                                          // Number of target bodies
+  int numTargets = 100;                                         // Number of target bodies
   int stride = bodies.size() / numTargets;                      // Stride of sampling
   for (int i=0; i<numTargets; i++) {                            // Loop over target samples
     bodies[i] = bodies[i*stride];                               //  Sample targets

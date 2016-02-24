@@ -6,17 +6,7 @@
 class BuildTree : public Logger {
  private:
   typedef vec<4,int> ivec4;                                     //!< Vector of 4 integer types
-
-  struct Node {
-    int NBODY;                                                  //!< Number of descendant bodies
-    int NNODE;                                                  //!< Number of descendant nodes
-    Node * CHILD[4];                                            //!< Pointer to child node
-    B_iter BODY;                                                //!< Iterator for first body in node
-    vec2 X;                                                     //!< Coordinate at center
-  };
-
   int ncrit;                                                    //!< Number of bodies per leaf cell
-  B_iter B0;                                                    //!< Iterator of first body
 
  private:
 //! Exclusive scan with offset
@@ -32,7 +22,7 @@ class BuildTree : public Logger {
 //! Create an tree node
   Node * makeNode(int begin, int end, vec2 X) const {
     Node * node = new Node();                                   // Allocate memory for single node
-    node->BODY = B0 + begin;                                    // Index of first body in node
+    node->BODY = begin;                                         // Index of first body in node
     node->NBODY = end - begin;                                  // Number of bodies in node
     node->NNODE = 1;                                            // Initialize counter for decendant nodes
     node->X = X;                                                // Center position of node
@@ -83,11 +73,11 @@ class BuildTree : public Logger {
   }
 
 //! Create cell data structure from nodes
-  void nodes2cells(Node * node, C_iter C, C_iter C0, C_iter CN, real_t R0, int level=0, int iparent=0) {
+  void nodes2cells(B_iter B0, Node * node, C_iter C, C_iter C0, C_iter CN, real_t R0, int level=0, int iparent=0) {
     C->PARENT = iparent;                                        // Index of parent cell
     C->R = R0 / (1 << level);                                   // Cell radius
     C->X = node->X;                                             // Cell center
-    C->BODY = node->BODY;                                       // Iterator of first body in cell
+    C->BODY = B0 + node->BODY;                                  // Iterator of first body in cell
     C->NBODY = node->NBODY;                                     // Number of decendant bodies
     if (node->NNODE == 1) {                                     // If node has no children
       C->CHILD  = 0;                                            //  Set index of first child cell to zero
@@ -108,7 +98,7 @@ class BuildTree : public Logger {
       CN += nchild;                                             //  Increment next free memory address
       for (int i=0; i<nchild; i++) {                            //  Loop over children
 	int quadrant = quadrants[i];                            //   Get quadrant from child index
-	nodes2cells(node->CHILD[quadrant], Ci, C0, CN, R0, level+1, C-C0);// Recursive call for each child
+	nodes2cells(B0, node->CHILD[quadrant], Ci, C0, CN, R0, level+1, C-C0);// Recursive call for each child
 	Ci++;                                                   //   Increment cell iterator
 	CN += node->CHILD[quadrant]->NNODE - 1;                 //   Increment next free memory address
       }                                                         //  End loop over children
@@ -141,19 +131,17 @@ class BuildTree : public Logger {
   Cells buildTree(Bodies &bodies, Bounds bounds) {
     Box box = bounds2box(bounds);                               // Get box from bounds
     Cells cells;                                                // Initialize cell array
-    if (!bodies.empty()) {                                      // If bodies vector is empty
-      Bodies buffer = bodies;                                   // Copy bodies to buffer
-      startTimer("Grow tree");                                  // Start timer
-      B0 = bodies.begin();                                      // Bodies iterator
-      Node * N0 = buildNodes(bodies, buffer, 0, bodies.size(), box.X, box.R);// Build tree recursively
-      stopTimer("Grow tree");                                   // Stop timer
-      startTimer("Link tree");                                  // Start timer
-      cells.resize(N0->NNODE);                                  //  Allocate cells array
-      C_iter C0 = cells.begin();                                //  Cell begin iterator
-      nodes2cells(N0, C0, C0, C0+1, box.R);                     //  Convert nodes to cells recursively
-      delete N0;                                                //  Deallocate nodes
-      stopTimer("Link tree");                                   // Stop timer
-    }                                                           // End if for empty root
+    Bodies buffer = bodies;                                     // Copy bodies to buffer
+    startTimer("Grow tree");                                    // Start timer
+    Node * N0 = buildNodes(bodies, buffer, 0, bodies.size(), box.X, box.R);// Build tree recursively
+    stopTimer("Grow tree");                                     // Stop timer
+    startTimer("Link tree");                                    // Start timer
+    cells.resize(N0->NNODE);                                    //  Allocate cells array
+    B_iter B0 = bodies.begin();                                 // Iterator of first body
+    C_iter C0 = cells.begin();                                  //  Cell begin iterator
+    nodes2cells(B0, N0, C0, C0, C0+1, box.R);                   //  Convert nodes to cells recursively
+    delete N0;                                                  //  Deallocate nodes
+    stopTimer("Link tree");                                     // Stop timer
     return cells;                                               // Return cells array
   }
 

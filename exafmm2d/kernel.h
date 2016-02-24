@@ -4,15 +4,12 @@
 #include "types.h"
 
 class Kernel {
- private:
-  real_t EPS2;                                                  //!< Softening parameter (squared)
-
  protected:
   vec2 Xperiodic;                                               //!< Coordinate offset for periodic B.C.
 
  public:
 //!< Constructor
-  Kernel(real_t _EPS2) : EPS2(_EPS2), Xperiodic(0) {}
+  Kernel() : Xperiodic(0) {}
 
 //!< P2P kernel between cells Ci and Cj 
   void P2P(C_iter Ci, C_iter Cj) const {
@@ -22,7 +19,7 @@ class Kernel {
       real_t pot = 0;
       for (int j=0; j<Cj->NBODY; j++) {
 	vec2 dX = Bi[i].X - Bj[j].X - Xperiodic;
-	real_t R2 = norm(dX) + EPS2;
+	real_t R2 = norm(dX);
 	if (R2 != 0) {
 	  real_t invR = 1 / sqrt(R2);
 	  real_t logR = Bi[i].SRC * Bj[j].SRC * log(invR);

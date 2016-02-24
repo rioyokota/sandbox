@@ -120,7 +120,7 @@ class Traversal : public Kernel, public Logger {
   }
 
  public:
-  Traversal(int images, real_t theta) : Kernel(0.0), images(images), theta(theta) {}
+  Traversal(int images, real_t theta) : Kernel(), images(images), theta(theta) {}
 
 //! Evaluate P2P and M2L using dual tree traversal
   void dualTreeTraversal(Cells &icells, Cells &jcells, real_t cycle) {

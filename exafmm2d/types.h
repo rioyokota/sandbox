@@ -47,4 +47,14 @@ struct Cell {
 };
 typedef std::vector<Cell> Cells;                                //!< Vector of cells
 typedef Cells::iterator C_iter;                                 //!< Iterator of cell vector
+
+struct Node {
+  int BODY;                                                     //!< Iterator for first body in node
+  int NBODY;                                                    //!< Number of descendant bodies
+  int NNODE;                                                    //!< Number of descendant nodes
+  Node * CHILD[4];                                              //!< Pointer to child node
+  vec2 X;                                                       //!< Coordinate at center
+};
+
+
 #endif

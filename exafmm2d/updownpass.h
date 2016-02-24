@@ -30,7 +30,7 @@ class UpDownPass : public Kernel, public Logger {
   }
 
  public:
-  UpDownPass(real_t _theta, real_t eps2) : Kernel(eps2), theta(_theta) {}
+  UpDownPass(real_t _theta) : Kernel(), theta(_theta) {}
 
 //! Upward pass (P2M, M2M)
   void upwardPass(Cells &cells) {
