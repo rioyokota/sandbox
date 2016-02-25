@@ -7,8 +7,6 @@
 #include "updownpass.h"
 
 int main(int argc, char ** argv) {
-  Logger logger;
-
   const int numBodies = 100000;
   const int images = 0;
   const int ncrit = 8;
@@ -19,10 +17,10 @@ int main(int argc, char ** argv) {
   UpDownPass pass(theta);
   Traversal traversal(images,theta);
   printf("--- FMM Profiling ----------------\n");
-  logger.startTimer("Total FMM");
+  startTimer("Total FMM");
 
 //! Initialize dsitribution, source & target value of bodies
-  logger.startTimer("Init bodies");                                    // Start timer
+  startTimer("Init bodies");                                    // Start timer
   srand48(0);                                                   // Set seed for random number generator
   Bodies bodies(numBodies);                                     // Initialize bodies
   real_t average = 0;                                           // Average charge
@@ -38,17 +36,17 @@ int main(int argc, char ** argv) {
   for (B_iter B=bodies.begin(); B!=bodies.end(); B++) {         // Loop over bodies
     B->SRC -= average;                                          // Charge neutral
   }                                                             // End loop over bodies
-  logger.stopTimer("Init bodies");                                     // Stop timer
+  stopTimer("Init bodies");                                     // Stop timer
 
 // ! Get Xmin and Xmax of domain
-  logger.startTimer("Get bounds");                                     // Start timer
+  startTimer("Get bounds");                                     // Start timer
   Bounds bounds;                                                // Bounds : Contains Xmin, Xmax
   bounds.Xmin = bounds.Xmax = bodies.front().X;                 // Initialize Xmin, Xmax
   for (B_iter B=bodies.begin(); B!=bodies.end(); B++) {         // Loop over range of bodies
     bounds.Xmin = min(B->X, bounds.Xmin);                       //  Update Xmin
     bounds.Xmax = max(B->X, bounds.Xmax);                       //  Update Xmax
   }                                                             // End loop over range of bodies
-  logger.stopTimer("Get bounds");                                      // Stop timer
+  stopTimer("Get bounds");                                      // Stop timer
 
   Cells cells = tree.buildTree(bodies, bounds);
   pass.upwardPass(cells);
@@ -56,7 +54,7 @@ int main(int argc, char ** argv) {
   Bodies jbodies = bodies;
   pass.downwardPass(cells);
   printf("--- Total runtime ----------------\n");
-  logger.stopTimer("Total FMM");
+  stopTimer("Total FMM");
 //! Downsize target bodies by even sampling 
   int numTargets = 100;                                         // Number of target bodies
   int stride = bodies.size() / numTargets;                      // Stride of sampling
@@ -68,10 +66,10 @@ int main(int argc, char ** argv) {
   for (B_iter B=bodies.begin(); B!=bodies.end(); B++) {         // Loop over bodies
     B->TRG = 0;                                                 //  Clear target values
   }                                                             // End loop over bodies
-  logger.startTimer("Total Direct");
+  startTimer("Total Direct");
   traversal.direct(bodies, jbodies, cycle);
   traversal.normalize(bodies);
-  logger.stopTimer("Total Direct");
+  stopTimer("Total Direct");
   double diff1 = 0, norm1 = 0;
 //! Evaluate relaitve L2 norm error
   B_iter B2 = bodies2.begin();                                // Set iterator for bodies2
@@ -82,6 +80,7 @@ int main(int argc, char ** argv) {
     norm1 += p;                                               //  Accumulate value of potential
   }                                                           // End loop over bodies & bodies2
   printf("--- FMM vs. direct ---------------\n");
-  logger.printError(diff1, norm1);
+  std::cout << std::setw(20) << std::left << std::scientific  //  Set format
+	    << "Rel. L2 Error (pot)" << " : " << std::sqrt(diff1/norm1) << std::endl;// Print potential error
   return 0;
 }

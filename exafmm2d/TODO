@@ -1,4 +1,9 @@
+Nodes
+ - remove parent
+ - child[] -> child
+Use node to traverse
+Change name: Node -> Cell
 non-recursive direct
 calculate force
-remove all headers
+remove vec.h
 use printf for all output

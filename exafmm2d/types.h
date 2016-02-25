@@ -1,6 +1,7 @@
 #ifndef types_h
 #define types_h
 #include <complex>
+#include <map>
 #include <vector>
 #include "vec.h"
 
@@ -9,6 +10,7 @@ typedef float real_t;                                           //!< Floating po
 typedef std::complex<real_t> complex_t;                         //!< Complex type
 typedef vec<4,int> ivec4;                                       //!< Vector of 4 integer types
 typedef vec<2,real_t> vec2;                                     //!< Vector of 3 floating point types
+typedef std::map<std::string,double> Timer;                     //!< Map of timer event name to timed value
 
 // Multipole/local expansion coefficients
 const int P = 6;                                                //!< Order of expansions

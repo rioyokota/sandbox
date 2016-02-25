@@ -3,7 +3,7 @@
 #include "kernel.h"
 #include "logger.h"
 
-class UpDownPass : public Kernel, public Logger {
+class UpDownPass : public Kernel {
  public:
   real_t theta;                                                 //!< Multipole acceptance criteria
 

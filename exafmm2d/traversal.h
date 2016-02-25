@@ -3,7 +3,7 @@
 #include "kernel.h"
 #include "logger.h"
 
-class Traversal : public Kernel, public Logger {
+class Traversal : public Kernel{
  private:
   int images;                                                   //!< Number of periodic image sublevels
   real_t theta;                                                 //!< Multipole acceptance criterion

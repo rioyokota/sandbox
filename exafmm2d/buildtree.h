@@ -3,7 +3,7 @@
 #include "logger.h"
 #include "types.h"
 
-class BuildTree : public Logger {
+class BuildTree {
  private:
   int ncrit;                                                    //!< Number of bodies per leaf cell
 
