@@ -37,15 +37,15 @@ typedef Bodies::iterator B_iter;                                //!< Iterator of
 
 //! Structure of cells
 struct Cell {
-  int       NCHILD;                                             //!< Number of child cells
-  int       NBODY;                                              //!< Number of descendant bodies
-  int       CHILD;                                              //!< Index of child cells
+  int NCHILD;                                                   //!< Number of child cells
+  int NBODY;                                                    //!< Number of descendant bodies
+  int CHILD;                                                    //!< Index of child cells
   long long ICELL;                                              //!< Cell index
-  B_iter    BODY;                                               //!< Iterator of first body
-  vec2      X;                                                  //!< Cell center
-  real_t    R;                                                  //!< Cell radius
-  vecP      M;                                                  //!< Multipole coefficients
-  vecP      L;                                                  //!< Local coefficients
+  B_iter BODY;                                                  //!< Iterator of first body
+  vec2 X;                                                       //!< Cell center
+  real_t R;                                                     //!< Cell radius
+  vecP M;                                                       //!< Multipole coefficients
+  vecP L;                                                       //!< Local coefficients
 };
 typedef std::vector<Cell> Cells;                                //!< Vector of cells
 typedef Cells::iterator C_iter;                                 //!< Iterator of cell vector
@@ -56,6 +56,9 @@ struct Node {
   int NNODE;                                                    //!< Number of descendant nodes
   Node * CHILD[4];                                              //!< Pointer to child node
   vec2 X;                                                       //!< Coordinate at center
+  real_t R;                                                     //!< Cell radius
+  vecP M;                                                       //!< Multipole coefficients
+  vecP L;                                                       //!< Local coefficients
 };
 
 

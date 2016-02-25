@@ -18,6 +18,7 @@ class BuildTree {
     node->NBODY = end - begin;                                  // Number of bodies in node
     node->NNODE = 1;                                            // Initialize counter for decendant nodes
     node->X = X;                                                // Center position of node
+    node->R = R0 / (1 << level);                                // Cell radius
     for (int i=0; i<4; i++) node->CHILD[i] = NULL;              //  Initialize pointers to children
     //! If node is a leaf
     if (end - begin <= ncrit) {                                 // If number of bodies is less than threshold
@@ -68,8 +69,8 @@ class BuildTree {
   }
 
 //! Create cell data structure from nodes
-  void nodes2cells(B_iter B0, Node * node, C_iter C, C_iter C0, C_iter CN, real_t R0, int level=0) {
-    C->R = R0 / (1 << level);                                   // Cell radius
+  void nodes2cells(B_iter B0, Node * node, C_iter C, C_iter C0, C_iter CN, int level=0) {
+    C->R = node->R;                                             // Cell radius
     C->X = node->X;                                             // Cell center
     C->BODY = B0 + node->BODY;                                  // Iterator of first body in cell
     C->NBODY = node->NBODY;                                     // Number of decendant bodies
@@ -92,7 +93,7 @@ class BuildTree {
       CN += nchild;                                             //  Increment next free memory address
       for (int i=0; i<nchild; i++) {                            //  Loop over children
 	int quadrant = quadrants[i];                            //   Get quadrant from child index
-	nodes2cells(B0, node->CHILD[quadrant], Ci, C0, CN, R0, level+1);// Recursive call for each child
+	nodes2cells(B0, node->CHILD[quadrant], Ci, C0, CN, level+1);// Recursive call for each child
 	Ci++;                                                   //   Increment cell iterator
 	CN += node->CHILD[quadrant]->NNODE - 1;                 //   Increment next free memory address
       }                                                         //  End loop over children
@@ -133,7 +134,7 @@ class BuildTree {
     cells.resize(N0->NNODE);                                    //  Allocate cells array
     B_iter B0 = bodies.begin();                                 // Iterator of first body
     C_iter C0 = cells.begin();                                  //  Cell begin iterator
-    nodes2cells(B0, N0, C0, C0, C0+1, box.R);                   //  Convert nodes to cells recursively
+    nodes2cells(B0, N0, C0, C0, C0+1);                          //  Convert nodes to cells recursively
     delete N0;                                                  //  Deallocate nodes
     stopTimer("Link tree");                                     // Stop timer
     return cells;                                               // Return cells array
