@@ -80,7 +80,6 @@ int main(int argc, char ** argv) {
     norm1 += p;                                               //  Accumulate value of potential
   }                                                           // End loop over bodies & bodies2
   printf("--- FMM vs. direct ---------------\n");
-  std::cout << std::setw(20) << std::left << std::scientific  //  Set format
-	    << "Rel. L2 Error (pot)" << " : " << std::sqrt(diff1/norm1) << std::endl;// Print potential error
+  printf("Rel. L2 Error (pot)  : %lf\n",sqrtf(diff1/norm1));  // Print potential error
   return 0;
 }

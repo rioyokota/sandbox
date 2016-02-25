@@ -1,9 +1,7 @@
 #ifndef logger_h
 #define logger_h
 #include <cmath>
-#include <fstream>
-#include <iomanip>
-#include <iostream>
+#include <cstdio>
 #include <sys/time.h>
 #include "types.h"
 
@@ -17,15 +15,13 @@ double get_time() {
 }
 
 //! Start timer for given event
-inline void startTimer(std::string event) {
+inline void startTimer(const char * event) {
   timer[event] = get_time();                                    // Get time of day and store in beginTimer
 }
 
 //! Stop timer for given event
-void stopTimer(std::string event) {
-  std::cout << std::setw(20) << std::left                       //  Set format
-	    << event << " : " << std::setprecision(7) << std::fixed
-	    << get_time()-timer[event] << " s" << std::endl;    //  Print event and timer
+void stopTimer(const char * event) {
+  printf("%-20s : %lf s\n",event,get_time()-timer[event]);       // Print event and timer
 }
 
 #endif
