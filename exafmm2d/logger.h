@@ -1,6 +1,5 @@
 #ifndef logger_h
 #define logger_h
-#include <cmath>
 #include <cstdio>
 #include <sys/time.h>
 #include "types.h"

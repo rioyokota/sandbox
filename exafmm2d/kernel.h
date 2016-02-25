@@ -92,17 +92,19 @@ class Kernel {
     }                                                           // End loop
   }
 
-//!< L2L kernel for one child cell Ci
-  void L2L(C_iter Ci, C_iter C0) const {
-    C_iter Cj = C0 + Ci->PARENT;                                // Get parent cell
-    vec2 dX = Ci->X - Cj->X;                                    // Get distance vector
-    complex_t Z(dX[0],dX[1]);                                   // Convert to complex plane
-    for (int l=0; l<P; l++) {                                   // Loop over coefficients
-      complex_t powZ(1.0, 0.0);                                 //  z^0 = 1
-      Ci->L[l] += Cj->L[l];                                     //  Add constant term
-      for (int k=1; k<P-l; k++) {                               //  Loop over coefficients
-	powZ *= Z / real_t(k);                                  //   Store z^k / k!
-	Ci->L[l] += Cj->L[l+k] * powZ;                          //   Add to coefficient
+//!< L2L kernel for one parent cell Cj
+  void L2L(C_iter Cj, C_iter C0) const {
+    for (C_iter Ci=C0+Cj->CHILD;
+	 Ci!=C0+Cj->CHILD+Cj->NCHILD; Ci++) {                   // Loop over child cells
+      vec2 dX = Ci->X - Cj->X;                                  //  Get distance vector
+      complex_t Z(dX[0],dX[1]);                                 //  Convert to complex plane
+      for (int l=0; l<P; l++) {                                 //  Loop over coefficients
+	complex_t powZ(1.0, 0.0);                               //   z^0 = 1
+	Ci->L[l] += Cj->L[l];                                   //   Add constant term
+	for (int k=1; k<P-l; k++) {                             //   Loop over coefficients
+	  powZ *= Z / real_t(k);                                //    Store z^k / k!
+	  Ci->L[l] += Cj->L[l+k] * powZ;                        //    Add to coefficient
+	}                                                       //   End loop
       }                                                         //  End loop
     }                                                           // End loop
   }

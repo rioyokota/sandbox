@@ -68,8 +68,7 @@ class BuildTree {
   }
 
 //! Create cell data structure from nodes
-  void nodes2cells(B_iter B0, Node * node, C_iter C, C_iter C0, C_iter CN, real_t R0, int level=0, int iparent=0) {
-    C->PARENT = iparent;                                        // Index of parent cell
+  void nodes2cells(B_iter B0, Node * node, C_iter C, C_iter C0, C_iter CN, real_t R0, int level=0) {
     C->R = R0 / (1 << level);                                   // Cell radius
     C->X = node->X;                                             // Cell center
     C->BODY = B0 + node->BODY;                                  // Iterator of first body in cell
@@ -93,7 +92,7 @@ class BuildTree {
       CN += nchild;                                             //  Increment next free memory address
       for (int i=0; i<nchild; i++) {                            //  Loop over children
 	int quadrant = quadrants[i];                            //   Get quadrant from child index
-	nodes2cells(B0, node->CHILD[quadrant], Ci, C0, CN, R0, level+1, C-C0);// Recursive call for each child
+	nodes2cells(B0, node->CHILD[quadrant], Ci, C0, CN, R0, level+1);// Recursive call for each child
 	Ci++;                                                   //   Increment cell iterator
 	CN += node->CHILD[quadrant]->NNODE - 1;                 //   Increment next free memory address
       }                                                         //  End loop over children

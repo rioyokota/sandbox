@@ -80,6 +80,6 @@ int main(int argc, char ** argv) {
     norm1 += p;                                               //  Accumulate value of potential
   }                                                           // End loop over bodies & bodies2
   printf("--- FMM vs. direct ---------------\n");
-  printf("Rel. L2 Error (pot)  : %lf\n",sqrtf(diff1/norm1));  // Print potential error
+  printf("Rel. L2 Error (pot)  : %e\n",sqrtf(diff1/norm1));  // Print potential error
   return 0;
 }
