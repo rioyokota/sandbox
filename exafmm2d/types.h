@@ -38,6 +38,7 @@ typedef Bodies::iterator B_iter;                                //!< Iterator of
 //! Structure of cells
 struct Cell {
   int NCHILD;                                                   //!< Number of child cells
+  int NNODE;                                                    //!< Number of child cells
   int NBODY;                                                    //!< Number of descendant bodies
   Cell * CHILD;                                                 //!< Index of child cells
   long long ICELL;                                              //!< Cell index

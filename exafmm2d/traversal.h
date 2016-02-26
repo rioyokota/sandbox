@@ -10,13 +10,13 @@ class Traversal : public Kernel{
   
 //! Split cell and call traverse() recursively for child
   void splitCell(Cell * Ci, Cell * Cj) {
-    if (Cj->NCHILD == 0) {                                      // If Cj is leaf
-      assert(Ci->NCHILD > 0);                                   //  Make sure Ci is not leaf
+    if (Cj->NNODE == 1) {                                       // If Cj is leaf
+      assert(Ci->NNODE > 1);                                    //  Make sure Ci is not leaf
       for (Cell * ci=Ci->CHILD; ci!=Ci->CHILD+Ci->NCHILD; ci++ ) {// Loop over Ci's children
         traverse(ci, Cj);                                       //   Traverse a single pair of cells
       }                                                         //  End loop over Ci's children
-    } else if (Ci->NCHILD == 0) {                               // Else if Ci is leaf
-      assert(Cj->NCHILD > 0);                                   //  Make sure Cj is not leaf
+    } else if (Ci->NNODE == 1) {                                // Else if Ci is leaf
+      assert(Cj->NNODE > 1);                                    //  Make sure Cj is not leaf
       for (Cell * cj=Cj->CHILD; cj!=Cj->CHILD+Cj->NCHILD; cj++ ) {// Loop over Cj's children
         traverse(Ci, cj);                                       //   Traverse a single pair of cells
       }                                                         //  End loop over Cj's children
@@ -37,7 +37,7 @@ class Traversal : public Kernel{
     real_t R2 = norm(dX) * theta * theta;                       // Scalar distance squared
     if (R2 > (Ci->R+Cj->R)*(Ci->R+Cj->R)) {                     //  If distance is far enough
       M2L(Ci, Cj);                                              //   Use approximate kernels
-    } else if (Ci->NCHILD == 0 && Cj->NCHILD == 0) {            //  Else if both cells are bodies
+    } else if (Ci->NNODE == 1 && Cj->NNODE == 1) {              //  Else if both cells are bodies
       P2P(Ci, Cj);                                              //    Use exact kernel
     } else {                                                    //  Else if cells are close but not bodies
       splitCell(Ci, Cj);                                        //   Split cell and call function recursively for child
