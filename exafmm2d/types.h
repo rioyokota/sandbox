@@ -8,7 +8,6 @@
 // Basic type definitions
 typedef float real_t;                                           //!< Floating point type is single precision
 typedef std::complex<real_t> complex_t;                         //!< Complex type
-typedef vec<4,int> ivec4;                                       //!< Vector of 4 integer types
 typedef vec<2,real_t> vec2;                                     //!< Vector of 3 floating point types
 typedef std::map<const char*,double> Timer;                     //!< Map of timer event name to timed value
 

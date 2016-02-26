@@ -21,7 +21,7 @@ Cell * buildTree(Bodies& bodies, Bodies& buffer, B_iter B0, int begin, int end,
     return cell;                                              //  Return cell pointer
   }                                                           // End if for number of bodies
   //! Count number of bodies in each quadrant 
-  ivec4 size = 0;
+  int size[4] = {0,0,0,0};
   for (int i=begin; i<end; i++) {                             //  Loop over bodies in cell
     vec2 x = bodies[i].X;                                     //   Position of body
     int quadrant = (x[0] > X[0]) + ((x[1] > X[1]) << 1);      //   Which quadrant body belongs to
@@ -29,19 +29,19 @@ Cell * buildTree(Bodies& bodies, Bodies& buffer, B_iter B0, int begin, int end,
   }                                                           //  End loop over bodies in cell
   //! Exclusive scan to get offsets
   int offset = begin;                                         // Offset of first quadrant
-  ivec4 offsets;                                              // Output vector
+  int offsets[4], counter[4];                                 // Offsets and counter for each quadrant
   for (int i=0; i<4; i++) {                                   // Loop over elements
     offsets[i] = offset;                                      //  Set value
     offset += size[i];                                        //  Increment offset
   }                                                           // End loop over elements
   //! Sort bodies by quadrant
-  ivec4 counter = offsets;
-  for (int i=begin; i<end; i++) {                             //  Loop over bodies
-    vec2 x = bodies[i].X;                                     //   Position of body
-    int quadrant = (x[0] > X[0]) + ((x[1] > X[1]) << 1);      //   Which quadrant body belongs to`
-    buffer[counter[quadrant]] = bodies[i];                    //   Permute bodies out-of-place according to quadrant
-    counter[quadrant]++;                                      //   Increment body count in quadrant
-  }                                                           //  End loop over bodies
+  for (int i=0; i<4; i++) counter[i] = offsets[i];            // Copy offsets yo counter
+  for (int i=begin; i<end; i++) {                             // Loop over bodies
+    vec2 x = bodies[i].X;                                     //  Position of body
+    int quadrant = (x[0] > X[0]) + ((x[1] > X[1]) << 1);      //  Which quadrant body belongs to`
+    buffer[counter[quadrant]] = bodies[i];                    //  Permute bodies out-of-place according to quadrant
+    counter[quadrant]++;                                      //  Increment body count in quadrant
+  }                                                           // End loop over bodies
   //! Loop over children and recurse
   for (int i=0; i<4; i++) {                                   // Loop over children
     vec2 Xchild = X;                                          //   Initialize center position of child cell
