@@ -7,6 +7,7 @@ class Traversal : public Kernel{
  private:
   int images;                                                   //!< Number of periodic image sublevels
   real_t theta;                                                 //!< Multipole acceptance criterion
+  vec2 Xperiodic;                                               //!< Periodic coordinate offset
   
 //! Split cell and call traverse() recursively for child
   void splitCell(Cell * Ci, Cell * Cj) {
@@ -36,9 +37,9 @@ class Traversal : public Kernel{
     vec2 dX = Ci->X - Cj->X - Xperiodic;                        // Distance vector from source to target
     real_t R2 = norm(dX) * theta * theta;                       // Scalar distance squared
     if (R2 > (Ci->R+Cj->R)*(Ci->R+Cj->R)) {                     //  If distance is far enough
-      M2L(Ci, Cj);                                              //   Use approximate kernels
+      M2L(Ci, Cj, Xperiodic);                                   //   Use approximate kernels
     } else if (Ci->NNODE == 1 && Cj->NNODE == 1) {              //  Else if both cells are bodies
-      P2P(Ci, Cj);                                              //    Use exact kernel
+      P2P(Ci, Cj, Xperiodic);                                   //    Use exact kernel
     } else {                                                    //  Else if cells are close but not bodies
       splitCell(Ci, Cj);                                        //   Split cell and call function recursively for child
     }                                                           //  End if for multipole acceptance
@@ -48,7 +49,7 @@ class Traversal : public Kernel{
 //! Tree traversal of periodic cells
   void traversePeriodic(Cell * Ci0, Cell * Cj0, real_t cycle) {
     startTimer("Traverse periodic");                            // Start timer
-    Xperiodic = 0;                                              // Periodic coordinate offset
+    vec2 Xperiodic = 0;                                              // Periodic coordinate offset
     Cells pcells(2);                                            // Create cells
     Cell * Cp = new Cell();                                     // Last cell is periodic parent cell
     Cell * Cj = new Cell();                                     // Last cell is periodic parent cell
@@ -63,7 +64,7 @@ class Traversal : public Kernel{
               for (int cy=-1; cy<=1; cy++) {                    //      Loop over y periodic direction (child)
                 Xperiodic[0] = (ix * 3 + cx) * cycle;           //       Coordinate offset for x periodic direction
                 Xperiodic[1] = (iy * 3 + cy) * cycle;           //       Coordinate offset for y periodic direction
-                M2L(Ci0, Cp);                                   //       Perform M2L kernel
+                M2L(Ci0, Cp, Xperiodic);                        //       Perform M2L kernel
               }                                                 //      End loop over y periodic direction (child)
             }                                                   //     End loop over x periodic direction (child)
           }                                                     //    Endif for periodic center cell
@@ -87,7 +88,7 @@ class Traversal : public Kernel{
   }
 
  public:
-  Traversal(int images, real_t theta) : Kernel(), images(images), theta(theta) {}
+  Traversal(int images, real_t theta) : Kernel(), images(images), theta(theta), Xperiodic(0) {}
 
 //! Evaluate P2P and M2L using dual tree traversal
   void dualTreeTraversal(Cell * Ci0, Cell * Cj0, real_t cycle) {
@@ -124,7 +125,7 @@ class Traversal : public Kernel{
       for (int iy=-prange; iy<=prange; iy++) {                  //  Loop over y periodic direction
         Xperiodic[0] = ix * cycle;                              //   Coordinate shift for x periodic direction
         Xperiodic[1] = iy * cycle;                              //   Coordinate shift for y periodic direction
-        P2P(Ci, Cj);                                            //   Evaluate P2P kernel
+        P2P(Ci, Cj, Xperiodic);                                 //   Evaluate P2P kernel
       }                                                         //  End loop over y periodic direction
     }                                                           // End loop over x periodic direction
   }

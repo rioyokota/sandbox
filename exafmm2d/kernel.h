@@ -4,15 +4,9 @@
 #include "types.h"
 
 class Kernel {
- protected:
-  vec2 Xperiodic;                                               //!< Coordinate offset for periodic B.C.
-
  public:
-//!< Constructor
-  Kernel() : Xperiodic(0) {}
-
 //!< P2P kernel between cells Ci and Cj 
-  void P2P(Cell * Ci, Cell * Cj) const {
+  void P2P(Cell * Ci, Cell * Cj, vec2 Xperiodic) const {
     B_iter Bi = Ci->BODY;
     B_iter Bj = Cj->BODY;
     for (int i=0; i<Ci->NBODY; i++) {
@@ -64,7 +58,7 @@ class Kernel {
   }
 
 //!< M2L kernel between cells Ci and Cj
-  void M2L(Cell * Ci, Cell * Cj) const {
+  void M2L(Cell * Ci, Cell * Cj, vec2 Xperiodic) const {
     vec2 dX = Ci->X - Cj->X - Xperiodic;                        // Get distance vector
     complex_t Z(dX[0],dX[1]), powZn(1.0, 0.0),
       powZnk(1.0, 0.0), invZ(powZn/Z);                          // Convert to complex plane

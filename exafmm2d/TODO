@@ -1,9 +1,3 @@
-Updownpass -> test.cxx
-Use node to traverse
- - CHILD -> CHILD[4]
- - cells -> C0
-Change name: Node -> Cell
 non-recursive direct
 calculate force
 remove vec.h
-use printf for all output
