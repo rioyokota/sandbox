@@ -9,8 +9,8 @@ class UpDownPass : public Kernel {
 
  private:
 //! Recursive call for upward pass
-  void postOrderTraversal(C_iter C) {
-    for (C_iter CC=C->CHILD; CC!=C->CHILD+C->NCHILD; CC++) {    // Loop over child cells
+  void postOrderTraversal(Cell * C) {
+    for (Cell * CC=C->CHILD; CC!=C->CHILD+C->NCHILD; CC++) {    // Loop over child cells
       postOrderTraversal(CC);                                   //  Recursive call with new task
     }                                                           // End loop over child cells
     C->M = 0;                                                   // Initialize multipole expansion coefficients
@@ -20,10 +20,10 @@ class UpDownPass : public Kernel {
   }
 
 //! Recursive call for downward pass
-  void preOrderTraversal(C_iter C) const {
+  void preOrderTraversal(Cell * C) const {
     L2L(C);                                                     // L2L kernel
     if (C->NCHILD == 0) L2P(C);                                 // L2P kernel
-    for (C_iter CC=C->CHILD; CC!=C->CHILD+C->NCHILD; CC++) {    // Loop over child cells
+    for (Cell * CC=C->CHILD; CC!=C->CHILD+C->NCHILD; CC++) {    // Loop over child cells
       preOrderTraversal(CC);                                    //  Recursive call with new task
     }                                                           // End loop over chlid cells
   }
@@ -35,7 +35,7 @@ class UpDownPass : public Kernel {
   void upwardPass(Cells &cells) {
     startTimer("Upward pass");                                  // Start timer
     if (!cells.empty()) {                                       // If cell vector is not empty
-      C_iter C0 = cells.begin();                                //  Set iterator of target root cell
+      Cell * C0 = &cells[0];                                    //  Set iterator of target root cell
       postOrderTraversal(C0);                                   //  Recursive call for upward pass
     }                                                           // End if for empty cell vector
     stopTimer("Upward pass");                                   // Stop timer
@@ -45,7 +45,7 @@ class UpDownPass : public Kernel {
   void downwardPass(Cells &cells) {
     startTimer("Downward pass");                                // Start timer
     if (!cells.empty()) {                                       // If cell vector is not empty
-      C_iter C0 = cells.begin();                                //  Root cell
+      Cell * C0 = &cells[0];                                    //  Root cell
       preOrderTraversal(C0);                                    //  Recursive call for downward pass
     }                                                           // End if for empty cell vector
     stopTimer("Downward pass");                                 // Stop timer

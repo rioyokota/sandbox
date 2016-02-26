@@ -12,7 +12,7 @@ class Kernel {
   Kernel() : Xperiodic(0) {}
 
 //!< P2P kernel between cells Ci and Cj 
-  void P2P(C_iter Ci, C_iter Cj) const {
+  void P2P(Cell * Ci, Cell * Cj) const {
     B_iter Bi = Ci->BODY;
     B_iter Bj = Cj->BODY;
     for (int i=0; i<Ci->NBODY; i++) {
@@ -31,7 +31,7 @@ class Kernel {
   }
 
 //!< P2M kernel for cell C
-  void P2M(C_iter C) const {
+  void P2M(Cell * C) const {
     for (B_iter B=C->BODY; B!=C->BODY+C->NBODY; B++) {          // Loop over bodies
       vec2 dX = B->X - C->X;                                    //  Get distance vector
       complex_t Z(dX[0],dX[1]), powZ(1.0, 0.0);                 //  Convert to complex plane
@@ -44,8 +44,8 @@ class Kernel {
   }
 
 //!< M2M kernel for one parent cell Ci
-  void M2M(C_iter Ci) const {
-    for (C_iter Cj=Ci->CHILD;
+  void M2M(Cell * Ci) const {
+    for (Cell * Cj=Ci->CHILD;
 	 Cj!=Ci->CHILD+Ci->NCHILD; Cj++) {                      // Loop over child cells
       vec2 dX = Cj->X - Ci->X;                                  //  Get distance vector
       complex_t Z(dX[0],dX[1]), powZn(1.0, 0.0),
@@ -62,7 +62,7 @@ class Kernel {
   }
 
 //!< M2L kernel between cells Ci and Cj
-  void M2L(C_iter Ci, C_iter Cj) const {
+  void M2L(Cell * Ci, Cell * Cj) const {
     vec2 dX = Ci->X - Cj->X - Xperiodic;                        // Get distance vector
     complex_t Z(dX[0],dX[1]), powZn(1.0, 0.0),
       powZnk(1.0, 0.0), invZ(powZn/Z);                          // Convert to complex plane
@@ -93,8 +93,8 @@ class Kernel {
   }
 
 //!< L2L kernel for one parent cell Cj
-  void L2L(C_iter Cj) const {
-    for (C_iter Ci=Cj->CHILD;
+  void L2L(Cell * Cj) const {
+    for (Cell * Ci=Cj->CHILD;
 	 Ci!=Cj->CHILD+Cj->NCHILD; Ci++) {                      // Loop over child cells
       vec2 dX = Ci->X - Cj->X;                                  //  Get distance vector
       complex_t Z(dX[0],dX[1]);                                 //  Convert to complex plane
@@ -110,7 +110,7 @@ class Kernel {
   }
 
 //!< L2P kernel for cell Ci
-  void L2P(C_iter Ci) const {
+  void L2P(Cell * Ci) const {
     for (B_iter B=Ci->BODY; B!=Ci->BODY+Ci->NBODY; B++) {       // Loop over bodies
       vec2 dX = B->X - Ci->X;                                   //  Get distance vector
       complex_t Z(dX[0],dX[1]), powZ(1.0, 0.0);                 //  Convert to complex plane

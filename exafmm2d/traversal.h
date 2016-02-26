@@ -9,30 +9,30 @@ class Traversal : public Kernel{
   real_t theta;                                                 //!< Multipole acceptance criterion
   
 //! Split cell and call traverse() recursively for child
-  void splitCell(C_iter Ci, C_iter Cj) {
+  void splitCell(Cell * Ci, Cell * Cj) {
     if (Cj->NCHILD == 0) {                                      // If Cj is leaf
       assert(Ci->NCHILD > 0);                                   //  Make sure Ci is not leaf
-      for (C_iter ci=Ci->CHILD; ci!=Ci->CHILD+Ci->NCHILD; ci++ ) {// Loop over Ci's children
+      for (Cell * ci=Ci->CHILD; ci!=Ci->CHILD+Ci->NCHILD; ci++ ) {// Loop over Ci's children
         traverse(ci, Cj);                                       //   Traverse a single pair of cells
       }                                                         //  End loop over Ci's children
     } else if (Ci->NCHILD == 0) {                               // Else if Ci is leaf
       assert(Cj->NCHILD > 0);                                   //  Make sure Cj is not leaf
-      for (C_iter cj=Cj->CHILD; cj!=Cj->CHILD+Cj->NCHILD; cj++ ) {// Loop over Cj's children
+      for (Cell * cj=Cj->CHILD; cj!=Cj->CHILD+Cj->NCHILD; cj++ ) {// Loop over Cj's children
         traverse(Ci, cj);                                       //   Traverse a single pair of cells
       }                                                         //  End loop over Cj's children
     } else if (Ci->R >= Cj->R) {                                // Else if Ci is larger than Cj
-      for (C_iter ci=Ci->CHILD; ci!=Ci->CHILD+Ci->NCHILD; ci++ ) {// Loop over Ci's children
+      for (Cell * ci=Ci->CHILD; ci!=Ci->CHILD+Ci->NCHILD; ci++ ) {// Loop over Ci's children
         traverse(ci, Cj);                                       //   Traverse a single pair of cells
       }                                                         //  End loop over Ci's children
     } else {                                                    // Else if Cj is larger than Ci
-      for (C_iter cj=Cj->CHILD; cj!=Cj->CHILD+Cj->NCHILD; cj++ ) {// Loop over Cj's children
+      for (Cell * cj=Cj->CHILD; cj!=Cj->CHILD+Cj->NCHILD; cj++ ) {// Loop over Cj's children
         traverse(Ci, cj);                                       //   Traverse a single pair of cells
       }                                                         //  End loop over Cj's children
     }                                                           // End if for leafs and Ci Cj size
   }
 
 //! Dual tree traversal for a single pair of cells
-  void traverse(C_iter Ci, C_iter Cj) {
+  void traverse(Cell * Ci, Cell * Cj) {
     vec2 dX = Ci->X - Cj->X - Xperiodic;                        // Distance vector from source to target
     real_t R2 = norm(dX) * theta * theta;                       // Scalar distance squared
     if (R2 > (Ci->R+Cj->R)*(Ci->R+Cj->R)) {                     //  If distance is far enough
@@ -46,12 +46,12 @@ class Traversal : public Kernel{
 
 
 //! Tree traversal of periodic cells
-  void traversePeriodic(C_iter Ci0, C_iter Cj0, real_t cycle) {
+  void traversePeriodic(Cell * Ci0, Cell * Cj0, real_t cycle) {
     startTimer("Traverse periodic");                            // Start timer
     Xperiodic = 0;                                              // Periodic coordinate offset
     Cells pcells(2);                                            // Create cells
-    C_iter Cp = pcells.begin();                                 // Last cell is periodic parent cell
-    C_iter Cj = pcells.begin()+1;                               // Last cell is periodic parent cell
+    Cell * Cp = new Cell();                                     // Last cell is periodic parent cell
+    Cell * Cj = new Cell();                                     // Last cell is periodic parent cell
     *Cp = *Cj = *Cj0;                                           // Copy values from source root
     Cp->CHILD = Cj;                                             // Child cells for periodic center cell
     Cp->NCHILD = 1;                                             // Number of child cells for periodic center cell
@@ -93,8 +93,8 @@ class Traversal : public Kernel{
   void dualTreeTraversal(Cells &icells, Cells &jcells, real_t cycle) {
     startTimer("Traverse");                                     // Start timer
     if (!icells.empty() && !jcells.empty()) {                   // If neither of the cell vectors are empty
-      C_iter Ci0 = icells.begin();                              //  Set iterator of target root cell
-      C_iter Cj0 = jcells.begin();                              //  Set iterator of source root cell
+      Cell * Ci0 = &icells[0];                                  //  Set iterator of target root cell
+      Cell * Cj0 = &jcells[0];                                  //  Set iterator of source root cell
       if (images == 0) {                                        //  If non-periodic boundary condition
         Xperiodic = 0;                                          //   No periodic shift
         traverse(Ci0, Cj0);                                     //   Traverse the tree
@@ -114,8 +114,8 @@ class Traversal : public Kernel{
 
   //! Direct summation
   void direct(Bodies &ibodies, Bodies &jbodies, real_t cycle) {
-    Cells cells(2);                                             // Define a pair of cells to pass to P2P kernel
-    C_iter Ci = cells.begin(), Cj = cells.begin()+1;            // First cell is target, second cell is source
+    Cell * Ci = new Cell();                                     // Allocate single target cell
+    Cell * Cj = new Cell();                                     // Allocate single source cell
     Ci->BODY = ibodies.begin();                                 // Iterator of first target body
     Ci->NBODY = ibodies.size();                                 // Number of target bodies
     Cj->BODY = jbodies.begin();                                 // Iterator of first source body
