@@ -1,5 +1,6 @@
 Use node to traverse
- - Gradually change cell to node
+ - CHILD -> CHILD[4]
+ - C_iter -> Cell *
 Change name: Node -> Cell
 non-recursive direct
 calculate force

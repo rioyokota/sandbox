@@ -55,8 +55,7 @@ class Traversal : public Kernel{
     C_iter Ci = pcells.end()-1;                                 // Last cell is periodic parent cell
     *Ci = *Cj0;                                                 // Copy values from source root
     Ci->CHILD = Cj0;                                            // Child cells for periodic center cell
-    Ci->NCHILD = 8;                                             // Number of child cells for periodic center cell
-    C_iter C0 = Cj0;                                            // Placeholder for Cj0
+    Ci->NCHILD = 1;                                             // Number of child cells for periodic center cell
     for (int level=0; level<images-1; level++) {                // Loop over sublevels of tree
       for (int ix=-1; ix<=1; ix++) {                            //  Loop over x periodic direction
         for (int iy=-1; iy<=1; iy++) {                          //   Loop over y periodic direction
@@ -71,22 +70,20 @@ class Traversal : public Kernel{
           }                                                     //    Endif for periodic center cell
         }                                                       //   End loop over y periodic direction
       }                                                         //  End loop over x periodic direction
-      Cj0 = pcells.begin();                                     //  Redefine Cj0 for M2M
-      C_iter Cj = Cj0;                                          //  Iterator of periodic neighbor cells
+      C_iter Cj = pcells.begin();                               //  Iterator of periodic neighbor cells
+      C_iter Co = Ci;
+      Ci->M = 0;                                                //  Reset multipoles of periodic parent
       for (int ix=-1; ix<=1; ix++) {                            //  Loop over x periodic direction
         for (int iy=-1; iy<=1; iy++) {                          //   Loop over y periodic direction
           if( ix != 0 || iy != 0) {                             //    If periodic cell is not at center
-            Cj->X[0] = Ci->X[0] + ix * cycle;                   //     Set new x coordinate for periodic image
-            Cj->X[1] = Ci->X[1] + iy * cycle;                   //     Set new y cooridnate for periodic image
-            Cj->M    = Ci->M;                                   //     Copy multipoles to new periodic image
-            Cj++;                                               //     Increment periodic cell iterator
+            Cj->X[0] = Co->X[0] + ix * cycle;                   //     Set new x coordinate for periodic image
+            Cj->X[1] = Co->X[1] + iy * cycle;                   //     Set new y cooridnate for periodic image
+            Cj->M    = Co->M;                                   //     Copy multipoles to new periodic image
+	    M2M(Ci);                                            //     Evaluate periodic M2M kernels for this sublevel
           }                                                     //    Endif for periodic center cell
         }                                                       //   End loop over y periodic direction
       }                                                         //  End loop over x periodic direction
-      Ci->M = 0;                                                //  Reset multipoles of periodic parent
-      M2M(Ci);                                                  //  Evaluate periodic M2M kernels for this sublevel
       cycle *= 3;                                               //  Increase center cell size three times
-      Cj0 = C0;                                                 //  Reset Cj0 back
     }                                                           // End loop over sublevels of tree
     stopTimer("Traverse periodic");                             // Stop timer
   }
