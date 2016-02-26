@@ -14,7 +14,6 @@ int main(int argc, char ** argv) {
   const real_t theta = 0.4;
   const real_t eps2 = 0.0;
   const real_t cycle = 2 * M_PI;
-  BuildTree tree(ncrit);
   UpDownPass pass(theta);
   Traversal traversal(images,theta);
   printf("--- FMM Profiling ----------------\n");
@@ -59,7 +58,7 @@ int main(int argc, char ** argv) {
   Bodies buffer = bodies;                                       // Copy bodies to buffer
   startTimer("Grow tree");                                      // Start timer
   B_iter B0 = bodies.begin();                                   // Iterator of first body
-  Cell * C0 = tree.buildCells(bodies, buffer, B0, 0, bodies.size(), X0, R0);// Build tree recursively
+  Cell * C0 = buildTree(bodies, buffer, B0, 0, bodies.size(), X0, R0, ncrit);// Build tree recursively
   stopTimer("Grow tree");                                       // Stop timer
 
   startTimer("Upward pass");                                    // Start timer
