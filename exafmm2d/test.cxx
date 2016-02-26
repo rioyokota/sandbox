@@ -49,11 +49,11 @@ int main(int argc, char ** argv) {
   }                                                             // End loop over range of bodies
   stopTimer("Get bounds");                                      // Stop timer
 
-  Cells cells = tree.buildTree(bodies, bounds);
-  pass.upwardPass(cells);
-  traversal.dualTreeTraversal(cells, cells, cycle);
+  Cell * C0 = tree.buildTree(bodies, bounds);
+  pass.upwardPass(C0);
+  traversal.dualTreeTraversal(C0, C0, cycle);
   Bodies jbodies = bodies;
-  pass.downwardPass(cells);
+  pass.downwardPass(C0);
   printf("--- Total runtime ----------------\n");
   stopTimer("Total FMM");
 //! Downsize target bodies by even sampling 

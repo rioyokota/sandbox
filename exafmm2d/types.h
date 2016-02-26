@@ -37,11 +37,9 @@ typedef Bodies::iterator B_iter;                                //!< Iterator of
 
 //! Structure of cells
 struct Cell {
-  int NCHILD;                                                   //!< Number of child cells
   int NNODE;                                                    //!< Number of child cells
   int NBODY;                                                    //!< Number of descendant bodies
   Cell * CHILD[4];                                              //!< Index of child cells
-  long long ICELL;                                              //!< Cell index
   B_iter BODY;                                                  //!< Iterator of first body
   vec2 X;                                                       //!< Cell center
   real_t R;                                                     //!< Cell radius
@@ -52,10 +50,10 @@ typedef std::vector<Cell> Cells;                                //!< Vector of c
 typedef Cells::iterator C_iter;                                 //!< Iterator of cell vector
 
 struct Node {
-  B_iter BODY;                                                  //!< Iterator for first body in node
-  int NBODY;                                                    //!< Number of descendant bodies
   int NNODE;                                                    //!< Number of descendant nodes
+  int NBODY;                                                    //!< Number of descendant bodies
   Node * CHILD[4];                                              //!< Pointer to child node
+  B_iter BODY;                                                  //!< Iterator for first body in node
   vec2 X;                                                       //!< Coordinate at center
   real_t R;                                                     //!< Cell radius
   vecP M;                                                       //!< Multipole coefficients

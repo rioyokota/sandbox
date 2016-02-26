@@ -90,27 +90,23 @@ class Traversal : public Kernel{
   Traversal(int images, real_t theta) : Kernel(), images(images), theta(theta) {}
 
 //! Evaluate P2P and M2L using dual tree traversal
-  void dualTreeTraversal(Cells &icells, Cells &jcells, real_t cycle) {
+  void dualTreeTraversal(Cell * Ci0, Cell * Cj0, real_t cycle) {
     startTimer("Traverse");                                     // Start timer
-    if (!icells.empty() && !jcells.empty()) {                   // If neither of the cell vectors are empty
-      Cell * Ci0 = &icells[0];                                  //  Set iterator of target root cell
-      Cell * Cj0 = &jcells[0];                                  //  Set iterator of source root cell
-      if (images == 0) {                                        //  If non-periodic boundary condition
-        Xperiodic = 0;                                          //   No periodic shift
-        traverse(Ci0, Cj0);                                     //   Traverse the tree
-      } else {                                                  //  If periodic boundary condition
-        for (int ix=-1; ix<=1; ix++) {                          //   Loop over x periodic direction
-          for (int iy=-1; iy<=1; iy++) {                        //    Loop over y periodic direction
-            Xperiodic[0] = ix * cycle;                          //     Coordinate shift for x periodic direction
-            Xperiodic[1] = iy * cycle;                          //     Coordinate shift for y periodic direction
-            traverse(Ci0, Cj0);                                 //     Traverse the tree for this periodic image
-          }                                                     //    End loop over y periodic direction
-        }                                                       //   End loop over x periodic direction
-        traversePeriodic(Ci0, Cj0, cycle);                      //   Traverse tree for periodic images
-      }                                                         //  End if for periodic boundary condition
-    }                                                           // End if for empty cell vectors
+    if (images == 0) {                                          // If non-periodic boundary condition
+      Xperiodic = 0;                                            //  No periodic shift
+      traverse(Ci0, Cj0);                                       //  Traverse the tree
+    } else {                                                    // If periodic boundary condition
+      for (int ix=-1; ix<=1; ix++) {                            //  Loop over x periodic direction
+	for (int iy=-1; iy<=1; iy++) {                          //   Loop over y periodic direction
+	  Xperiodic[0] = ix * cycle;                            //    Coordinate shift for x periodic direction
+	  Xperiodic[1] = iy * cycle;                            //    Coordinate shift for y periodic direction
+	  traverse(Ci0, Cj0);                                   //    Traverse the tree for this periodic image
+	}                                                       //   End loop over y periodic direction
+      }                                                         //  End loop over x periodic direction
+      traversePeriodic(Ci0, Cj0, cycle);                        //  Traverse tree for periodic images
+    }                                                           // End if for periodic boundary condition
     stopTimer("Traverse");                                      // Stop timer
-  }
+  }                                                             // End if for empty cell vectors
 
   //! Direct summation
   void direct(Bodies &ibodies, Bodies &jbodies, real_t cycle) {
