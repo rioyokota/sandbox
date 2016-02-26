@@ -10,8 +10,8 @@ class UpDownPass : public Kernel {
  private:
 //! Recursive call for upward pass
   void postOrderTraversal(Cell * C) {
-    for (Cell * CC=C->CHILD; CC!=C->CHILD+C->NCHILD; CC++) {    // Loop over child cells
-      postOrderTraversal(CC);                                   //  Recursive call with new task
+    for (int i=0; i<4; i++) {                                   // Loop over child cells
+      if (C->CHILD[i]) postOrderTraversal(C->CHILD[i]);         //  Recursive call with new task
     }                                                           // End loop over child cells
     C->M = 0;                                                   // Initialize multipole expansion coefficients
     C->L = 0;                                                   // Initialize local expansion coefficients
@@ -22,9 +22,9 @@ class UpDownPass : public Kernel {
 //! Recursive call for downward pass
   void preOrderTraversal(Cell * C) const {
     L2L(C);                                                     // L2L kernel
-    if (C->NCHILD == 0) L2P(C);                                 // L2P kernel
-    for (Cell * CC=C->CHILD; CC!=C->CHILD+C->NCHILD; CC++) {    // Loop over child cells
-      preOrderTraversal(CC);                                    //  Recursive call with new task
+    if (C->NNODE == 1) L2P(C);                                  // L2P kernel
+    for (int i=0; i<4; i++) {                                   // Loop over child cells
+      if (C->CHILD[i]) preOrderTraversal(C->CHILD[i]);          //  Recursive call with new task
     }                                                           // End loop over chlid cells
   }
 

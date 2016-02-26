@@ -1,6 +1,7 @@
+Updownpass -> test.cxx
 Use node to traverse
  - CHILD -> CHILD[4]
- - C_iter -> Cell *
+ - cells -> C0
 Change name: Node -> Cell
 non-recursive direct
 calculate force

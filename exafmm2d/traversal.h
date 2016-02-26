@@ -12,21 +12,21 @@ class Traversal : public Kernel{
   void splitCell(Cell * Ci, Cell * Cj) {
     if (Cj->NNODE == 1) {                                       // If Cj is leaf
       assert(Ci->NNODE > 1);                                    //  Make sure Ci is not leaf
-      for (Cell * ci=Ci->CHILD; ci!=Ci->CHILD+Ci->NCHILD; ci++ ) {// Loop over Ci's children
-        traverse(ci, Cj);                                       //   Traverse a single pair of cells
+      for (int i=0; i<4; i++) {                                 //  Loop over Ci's children
+        if (Ci->CHILD[i]) traverse(Ci->CHILD[i], Cj);           //   Traverse a single pair of cells
       }                                                         //  End loop over Ci's children
     } else if (Ci->NNODE == 1) {                                // Else if Ci is leaf
       assert(Cj->NNODE > 1);                                    //  Make sure Cj is not leaf
-      for (Cell * cj=Cj->CHILD; cj!=Cj->CHILD+Cj->NCHILD; cj++ ) {// Loop over Cj's children
-        traverse(Ci, cj);                                       //   Traverse a single pair of cells
+      for (int i=0; i<4; i++) {                                 //  Loop over Cj's children
+        if (Cj->CHILD[i]) traverse(Ci, Cj->CHILD[i]);           //   Traverse a single pair of cells
       }                                                         //  End loop over Cj's children
     } else if (Ci->R >= Cj->R) {                                // Else if Ci is larger than Cj
-      for (Cell * ci=Ci->CHILD; ci!=Ci->CHILD+Ci->NCHILD; ci++ ) {// Loop over Ci's children
-        traverse(ci, Cj);                                       //   Traverse a single pair of cells
+      for (int i=0; i<4; i++) {                                 //  Loop over Ci's children
+        if (Ci->CHILD[i]) traverse(Ci->CHILD[i], Cj);           //   Traverse a single pair of cells
       }                                                         //  End loop over Ci's children
     } else {                                                    // Else if Cj is larger than Ci
-      for (Cell * cj=Cj->CHILD; cj!=Cj->CHILD+Cj->NCHILD; cj++ ) {// Loop over Cj's children
-        traverse(Ci, cj);                                       //   Traverse a single pair of cells
+      for (int i=0; i<4; i++) {                                 //  Loop over Cj's children
+        if (Cj->CHILD[i]) traverse(Ci, Cj->CHILD[i]);           //   Traverse a single pair of cells
       }                                                         //  End loop over Cj's children
     }                                                           // End if for leafs and Ci Cj size
   }
@@ -53,8 +53,8 @@ class Traversal : public Kernel{
     Cell * Cp = new Cell();                                     // Last cell is periodic parent cell
     Cell * Cj = new Cell();                                     // Last cell is periodic parent cell
     *Cp = *Cj = *Cj0;                                           // Copy values from source root
-    Cp->CHILD = Cj;                                             // Child cells for periodic center cell
-    Cp->NCHILD = 1;                                             // Number of child cells for periodic center cell
+    Cp->CHILD[0] = Cj;                                          // Child cells for periodic center cell
+    for (int i=1; i<4; i++) Cp->CHILD[i] = NULL;                // Define only one child
     for (int level=0; level<images-1; level++) {                // Loop over sublevels of tree
       for (int ix=-1; ix<=1; ix++) {                            //  Loop over x periodic direction
         for (int iy=-1; iy<=1; iy++) {                          //   Loop over y periodic direction

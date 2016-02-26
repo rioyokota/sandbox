@@ -74,8 +74,8 @@ class BuildTree {
     C->X = node->X;                                             // Cell center
     C->BODY = node->BODY;                                       // Iterator of first body in cell
     C->NBODY = node->NBODY;                                     // Number of decendant bodies
+    for (int i=0; i<4; i++) C->CHILD[i] = NULL;                 //  Set index of first child cell to zero
     if (node->NNODE == 1) {                                     // If node has no children
-      C->CHILD = &*C0;                                          //  Set index of first child cell to zero
       C->NCHILD = 0;                                            //  Number of child cells
       C->NNODE = node->NNODE;                                   //  Number of child cells
       C->NBODY = node->NBODY;                                   //  Number of bodies in cell
@@ -89,10 +89,12 @@ class BuildTree {
         }                                                       //   End if for child existance
       }                                                         //  End loop over quadrants
       C_iter Ci = CN;                                           //  CN points to the next free memory address
-      C->CHILD = &*Ci;                                          //  Set Index of first child cell
+      for (int i=0; i<nchild; i++) {
+	C->CHILD[i] = &*CN;                                     //  Set Index of first child cell
+	CN++;
+      }
       C->NCHILD = nchild;                                       //  Number of child cells
       C->NNODE = node->NNODE;                                   //  Number of child cells
-      CN += nchild;                                             //  Increment next free memory address
       for (int i=0; i<nchild; i++) {                            //  Loop over children
 	int quadrant = quadrants[i];                            //   Get quadrant from child index
 	nodes2cells(node->CHILD[quadrant], Ci, C0, CN, level+1);// Recursive call for each child

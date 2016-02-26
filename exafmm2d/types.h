@@ -40,7 +40,7 @@ struct Cell {
   int NCHILD;                                                   //!< Number of child cells
   int NNODE;                                                    //!< Number of child cells
   int NBODY;                                                    //!< Number of descendant bodies
-  Cell * CHILD;                                                 //!< Index of child cells
+  Cell * CHILD[4];                                              //!< Index of child cells
   long long ICELL;                                              //!< Cell index
   B_iter BODY;                                                  //!< Iterator of first body
   vec2 X;                                                       //!< Cell center
