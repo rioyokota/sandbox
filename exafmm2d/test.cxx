@@ -50,10 +50,14 @@ int main(int argc, char ** argv) {
   stopTimer("Get bounds");                                      // Stop timer
 
   Cell * C0 = tree.buildTree(bodies, bounds);
-  pass.upwardPass(C0);
-  traversal.dualTreeTraversal(C0, C0, cycle);
+  startTimer("Upward pass");                                    // Start timer
+  pass.upwardPass(C0);                                          // Upward pass for P2M, M2M
+  stopTimer("Upward pass");                                     // Stop timer
+  traversal.dualTreeTraversal(C0, C0, cycle);                   // Traversal for M2L, P2P
   Bodies jbodies = bodies;
-  pass.downwardPass(C0);
+  startTimer("Downward pass");                                  // Start timer
+  pass.downwardPass(C0);                                        // Downward pass for L2L, L2P
+  stopTimer("Downward pass");                                   // Stop timer
   printf("--- Total runtime ----------------\n");
   stopTimer("Total FMM");
 //! Downsize target bodies by even sampling 
