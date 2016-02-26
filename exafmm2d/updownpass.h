@@ -46,10 +46,7 @@ class UpDownPass : public Kernel {
     startTimer("Downward pass");                                // Start timer
     if (!cells.empty()) {                                       // If cell vector is not empty
       C_iter C0 = cells.begin();                                //  Root cell
-      if(C0->NCHILD==0) L2P(C0);                                //  If root is the only cell do L2P
-      for (C_iter CC=C0->CHILD; CC!=C0->CHILD+C0->NCHILD; CC++) {// Loop over child cells
-	preOrderTraversal(CC);                                  //    Recursive call for downward pass
-      }                                                         //   End loop over child cells
+      preOrderTraversal(C0);                                    //  Recursive call for downward pass
     }                                                           // End if for empty cell vector
     stopTimer("Downward pass");                                 // Stop timer
   }
