@@ -1,4 +1,3 @@
-remove normalize
-non-recursive direct
+remove B_iter
 calculate force
 remove vec.h
