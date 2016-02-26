@@ -9,31 +9,29 @@ class Traversal {
   real_t theta;                                                 //!< Multipole acceptance criterion
   vec2 Xperiodic;                                               //!< Periodic coordinate offset
   
-//! Split cell and call traverse() recursively for child
+//! Split cell and call dualTreeTraversal() recursively for child
   void splitCell(Cell * Ci, Cell * Cj) {
     if (Cj->NNODE == 1) {                                       // If Cj is leaf
-      assert(Ci->NNODE > 1);                                    //  Make sure Ci is not leaf
       for (int i=0; i<4; i++) {                                 //  Loop over Ci's children
-        if (Ci->CHILD[i]) traverse(Ci->CHILD[i], Cj);           //   Traverse a single pair of cells
+        if (Ci->CHILD[i]) dualTreeTraversal(Ci->CHILD[i], Cj);  //   Traverse a single pair of cells
       }                                                         //  End loop over Ci's children
     } else if (Ci->NNODE == 1) {                                // Else if Ci is leaf
-      assert(Cj->NNODE > 1);                                    //  Make sure Cj is not leaf
       for (int i=0; i<4; i++) {                                 //  Loop over Cj's children
-        if (Cj->CHILD[i]) traverse(Ci, Cj->CHILD[i]);           //   Traverse a single pair of cells
+        if (Cj->CHILD[i]) dualTreeTraversal(Ci, Cj->CHILD[i]);  //   Traverse a single pair of cells
       }                                                         //  End loop over Cj's children
     } else if (Ci->R >= Cj->R) {                                // Else if Ci is larger than Cj
       for (int i=0; i<4; i++) {                                 //  Loop over Ci's children
-        if (Ci->CHILD[i]) traverse(Ci->CHILD[i], Cj);           //   Traverse a single pair of cells
+        if (Ci->CHILD[i]) dualTreeTraversal(Ci->CHILD[i], Cj);  //   Traverse a single pair of cells
       }                                                         //  End loop over Ci's children
     } else {                                                    // Else if Cj is larger than Ci
       for (int i=0; i<4; i++) {                                 //  Loop over Cj's children
-        if (Cj->CHILD[i]) traverse(Ci, Cj->CHILD[i]);           //   Traverse a single pair of cells
+        if (Cj->CHILD[i]) dualTreeTraversal(Ci, Cj->CHILD[i]);  //   Traverse a single pair of cells
       }                                                         //  End loop over Cj's children
     }                                                           // End if for leafs and Ci Cj size
   }
 
 //! Dual tree traversal for a single pair of cells
-  void traverse(Cell * Ci, Cell * Cj) {
+  void dualTreeTraversal(Cell * Ci, Cell * Cj) {
     vec2 dX = Ci->X - Cj->X - Xperiodic;                        // Distance vector from source to target
     real_t R2 = norm(dX) * theta * theta;                       // Scalar distance squared
     if (R2 > (Ci->R+Cj->R)*(Ci->R+Cj->R)) {                     //  If distance is far enough
@@ -49,7 +47,7 @@ class Traversal {
 //! Tree traversal of periodic cells
   void traversePeriodic(Cell * Ci0, Cell * Cj0, real_t cycle) {
     startTimer("Traverse periodic");                            // Start timer
-    vec2 Xperiodic = 0;                                              // Periodic coordinate offset
+    vec2 Xperiodic = 0;                                         // Periodic coordinate offset
     Cells pcells(2);                                            // Create cells
     Cell * Cp = new Cell();                                     // Last cell is periodic parent cell
     Cell * Cj = new Cell();                                     // Last cell is periodic parent cell
@@ -91,17 +89,17 @@ class Traversal {
   Traversal(int images, real_t theta) : images(images), theta(theta), Xperiodic(0) {}
 
 //! Evaluate P2P and M2L using dual tree traversal
-  void dualTreeTraversal(Cell * Ci0, Cell * Cj0, real_t cycle) {
+  void traversal(Cell * Ci0, Cell * Cj0, real_t cycle) {
     startTimer("Traverse");                                     // Start timer
     if (images == 0) {                                          // If non-periodic boundary condition
       Xperiodic = 0;                                            //  No periodic shift
-      traverse(Ci0, Cj0);                                       //  Traverse the tree
+      dualTreeTraversal(Ci0, Cj0);                              //  Traverse the tree
     } else {                                                    // If periodic boundary condition
       for (int ix=-1; ix<=1; ix++) {                            //  Loop over x periodic direction
 	for (int iy=-1; iy<=1; iy++) {                          //   Loop over y periodic direction
 	  Xperiodic[0] = ix * cycle;                            //    Coordinate shift for x periodic direction
 	  Xperiodic[1] = iy * cycle;                            //    Coordinate shift for y periodic direction
-	  traverse(Ci0, Cj0);                                   //    Traverse the tree for this periodic image
+	  dualTreeTraversal(Ci0, Cj0);                          //    Traverse the tree for this periodic image
 	}                                                       //   End loop over y periodic direction
       }                                                         //  End loop over x periodic direction
       traversePeriodic(Ci0, Cj0, cycle);                        //  Traverse tree for periodic images

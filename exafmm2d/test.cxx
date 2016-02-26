@@ -63,7 +63,7 @@ int main(int argc, char ** argv) {
   startTimer("Upward pass");                                    // Start timer
   upwardPass(C0);                                               // Upward pass for P2M, M2M
   stopTimer("Upward pass");                                     // Stop timer
-  traversal.dualTreeTraversal(C0, C0, cycle);                   // Traversal for M2L, P2P
+  traversal.traversal(C0, C0, cycle);                           // Traversal for M2L, P2P
   Bodies jbodies = bodies;
   startTimer("Downward pass");                                  // Start timer
   downwardPass(C0);                                             // Downward pass for L2L, L2P
