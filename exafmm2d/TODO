@@ -1,7 +1,5 @@
-Nodes
- - remove parent
- - child[] -> child
 Use node to traverse
+ - Gradually change cell to node
 Change name: Node -> Cell
 non-recursive direct
 calculate force

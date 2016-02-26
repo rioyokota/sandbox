@@ -9,12 +9,12 @@ class BuildTree {
 
  private:
 //! Build nodes of tree adaptively using a top-down approach based on recursion (uses task based thread parallelism)
-  Node * buildNodes(Bodies& bodies, Bodies& buffer, int begin, int end,
+  Node * buildNodes(Bodies& bodies, Bodies& buffer, B_iter B0, int begin, int end,
 		    vec2 X, real_t R0, int level=0, bool direction=false) {
     if (begin == end) return NULL;                              // If no bodies left, return null pointer
     //! Create a tree node
     Node * node = new Node();                                   // Allocate memory for single node
-    node->BODY = begin;                                         // Index of first body in node
+    node->BODY = B0 + begin;                                    // Iterator of first body in node
     node->NBODY = end - begin;                                  // Number of bodies in node
     node->NNODE = 1;                                            // Initialize counter for decendant nodes
     node->X = X;                                                // Center position of node
@@ -55,7 +55,7 @@ class BuildTree {
       for (int d=0; d<2; d++) {                                 //   Loop over dimensions
 	Xchild[d] += r * (((i & 1 << d) >> d) * 2 - 1);         //    Shift center position to that of child node
       }                                                         //   End loop over dimensions
-      node->CHILD[i] = buildNodes(buffer, bodies,               //   Recursive call for each child
+      node->CHILD[i] = buildNodes(buffer, bodies, B0,           //   Recursive call for each child
 				  offsets[i], offsets[i] + size[i],//   Range of bodies is calcuated from quadrant offset
 				  Xchild, R0, level+1, !direction);//   Alternate copy direction bodies <-> buffer
     }                                                           // End loop over children
@@ -69,10 +69,10 @@ class BuildTree {
   }
 
 //! Create cell data structure from nodes
-  void nodes2cells(B_iter B0, Node * node, C_iter C, C_iter C0, C_iter CN, int level=0) {
+  void nodes2cells(Node * node, C_iter C, C_iter C0, C_iter CN, int level=0) {
     C->R = node->R;                                             // Cell radius
     C->X = node->X;                                             // Cell center
-    C->BODY = B0 + node->BODY;                                  // Iterator of first body in cell
+    C->BODY = node->BODY;                                       // Iterator of first body in cell
     C->NBODY = node->NBODY;                                     // Number of decendant bodies
     if (node->NNODE == 1) {                                     // If node has no children
       C->CHILD  = 0;                                            //  Set index of first child cell to zero
@@ -93,7 +93,7 @@ class BuildTree {
       CN += nchild;                                             //  Increment next free memory address
       for (int i=0; i<nchild; i++) {                            //  Loop over children
 	int quadrant = quadrants[i];                            //   Get quadrant from child index
-	nodes2cells(B0, node->CHILD[quadrant], Ci, C0, CN, level+1);// Recursive call for each child
+	nodes2cells(node->CHILD[quadrant], Ci, C0, CN, level+1);// Recursive call for each child
 	Ci++;                                                   //   Increment cell iterator
 	CN += node->CHILD[quadrant]->NNODE - 1;                 //   Increment next free memory address
       }                                                         //  End loop over children
@@ -128,13 +128,13 @@ class BuildTree {
     Cells cells;                                                // Initialize cell array
     Bodies buffer = bodies;                                     // Copy bodies to buffer
     startTimer("Grow tree");                                    // Start timer
-    Node * N0 = buildNodes(bodies, buffer, 0, bodies.size(), box.X, box.R);// Build tree recursively
+    B_iter B0 = bodies.begin();                                 // Iterator of first body
+    Node * N0 = buildNodes(bodies, buffer, B0, 0, bodies.size(), box.X, box.R);// Build tree recursively
     stopTimer("Grow tree");                                     // Stop timer
     startTimer("Link tree");                                    // Start timer
     cells.resize(N0->NNODE);                                    //  Allocate cells array
-    B_iter B0 = bodies.begin();                                 // Iterator of first body
     C_iter C0 = cells.begin();                                  //  Cell begin iterator
-    nodes2cells(B0, N0, C0, C0, C0+1);                          //  Convert nodes to cells recursively
+    nodes2cells(N0, C0, C0, C0+1);                              //  Convert nodes to cells recursively
     delete N0;                                                  //  Deallocate nodes
     stopTimer("Link tree");                                     // Stop timer
     return cells;                                               // Return cells array
