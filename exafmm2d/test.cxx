@@ -41,15 +41,27 @@ int main(int argc, char ** argv) {
 
 // ! Get Xmin and Xmax of domain
   startTimer("Get bounds");                                     // Start timer
-  Bounds bounds;                                                // Bounds : Contains Xmin, Xmax
-  bounds.Xmin = bounds.Xmax = bodies.front().X;                 // Initialize Xmin, Xmax
+  real_t R0;                                                    // Radius of root cell
+  vec2 Xmin, Xmax, X0;                                          // min, max of domain, and center of root cell
+  Xmin = Xmax = bodies.front().X;                               // Initialize Xmin, Xmax
   for (B_iter B=bodies.begin(); B!=bodies.end(); B++) {         // Loop over range of bodies
-    bounds.Xmin = min(B->X, bounds.Xmin);                       //  Update Xmin
-    bounds.Xmax = max(B->X, bounds.Xmax);                       //  Update Xmax
+    Xmin = min(B->X, Xmin);                                     //  Update Xmin
+    Xmax = max(B->X, Xmax);                                     //  Update Xmax
   }                                                             // End loop over range of bodies
+  for (int d=0; d<2; d++) X0[d] = (Xmax[d] + Xmin[d]) / 2;      // Calculate center of domain
+  R0 = 0;                                                       // Initialize localRadius
+  for (int d=0; d<2; d++) {                                     // Loop over dimensions
+    R0 = std::max(X0[d] - Xmin[d], R0);                         //  Calculate min distance from center
+    R0 = std::max(Xmax[d] - X0[d], R0);                         //  Calculate max distance from center
+  }                                                             // End loop over dimensions
+  R0 *= 1.00001;                                                // Add some leeway to radius
   stopTimer("Get bounds");                                      // Stop timer
+  Bodies buffer = bodies;                                       // Copy bodies to buffer
+  startTimer("Grow tree");                                      // Start timer
+  B_iter B0 = bodies.begin();                                   // Iterator of first body
+  Cell * C0 = tree.buildCells(bodies, buffer, B0, 0, bodies.size(), X0, R0);// Build tree recursively
+  stopTimer("Grow tree");                                       // Stop timer
 
-  Cell * C0 = tree.buildTree(bodies, bounds);
   startTimer("Upward pass");                                    // Start timer
   pass.upwardPass(C0);                                          // Upward pass for P2M, M2M
   stopTimer("Upward pass");                                     // Stop timer

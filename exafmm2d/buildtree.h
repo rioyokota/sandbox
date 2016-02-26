@@ -4,10 +4,12 @@
 #include "types.h"
 
 class BuildTree {
- private:
+private:
   int ncrit;                                                    //!< Number of bodies per leaf cell
 
- private:
+public:
+  BuildTree(int _ncrit) : ncrit(_ncrit) {}
+
 //! Build cells of tree adaptively using a top-down approach based on recursion (uses task based thread parallelism)
   Cell * buildCells(Bodies& bodies, Bodies& buffer, B_iter B0, int begin, int end,
 		    vec2 X, real_t R0, int level=0, bool direction=false) {
@@ -66,35 +68,6 @@ class BuildTree {
       }                                                         //  End if for child
     }                                                           // End loop over chlidren
     return cell;                                                // Return quadtree cell
-  }
-
-  //! Transform Xmin & Xmax to X (center) & R (radius)
-  Box bounds2box(Bounds bounds) {
-    vec2 Xmin = bounds.Xmin;                                    // Set local Xmin
-    vec2 Xmax = bounds.Xmax;                                    // Set local Xmax
-    Box box;                                                    // Bounding box
-    for (int d=0; d<2; d++) box.X[d] = (Xmax[d] + Xmin[d]) / 2; // Calculate center of domain
-    box.R = 0;                                                  // Initialize localRadius
-    for (int d=0; d<2; d++) {                                   // Loop over dimensions
-      box.R = std::max(box.X[d] - Xmin[d], box.R);              //  Calculate min distance from center
-      box.R = std::max(Xmax[d] - box.X[d], box.R);              //  Calculate max distance from center
-    }                                                           // End loop over dimensions
-    box.R *= 1.00001;                                           // Add some leeway to radius
-    return box;                                                 // Return box.X and box.R
-  }
-
- public:
-  BuildTree(int _ncrit) : ncrit(_ncrit) {}
-
-//! Build tree structure top down
-  Cell * buildTree(Bodies &bodies, Bounds bounds) {
-    Box box = bounds2box(bounds);                               // Get box from bounds
-    Bodies buffer = bodies;                                     // Copy bodies to buffer
-    startTimer("Grow tree");                                    // Start timer
-    B_iter B0 = bodies.begin();                                 // Iterator of first body
-    Cell * cell = buildCells(bodies, buffer, B0, 0, bodies.size(), box.X, box.R);// Build tree recursively
-    stopTimer("Grow tree");                                     // Stop timer
-    return cell;                                                // Return cells array
   }
 
 };
