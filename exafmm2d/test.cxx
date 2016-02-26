@@ -14,7 +14,6 @@ int main(int argc, char ** argv) {
   const real_t theta = 0.4;
   const real_t eps2 = 0.0;
   const real_t cycle = 2 * M_PI;
-  UpDownPass pass(theta);
   Traversal traversal(images,theta);
   printf("--- FMM Profiling ----------------\n");
   startTimer("Total FMM");
@@ -62,12 +61,12 @@ int main(int argc, char ** argv) {
   stopTimer("Grow tree");                                       // Stop timer
 
   startTimer("Upward pass");                                    // Start timer
-  pass.upwardPass(C0);                                          // Upward pass for P2M, M2M
+  upwardPass(C0);                                               // Upward pass for P2M, M2M
   stopTimer("Upward pass");                                     // Stop timer
   traversal.dualTreeTraversal(C0, C0, cycle);                   // Traversal for M2L, P2P
   Bodies jbodies = bodies;
   startTimer("Downward pass");                                  // Start timer
-  pass.downwardPass(C0);                                        // Downward pass for L2L, L2P
+  downwardPass(C0);                                             // Downward pass for L2L, L2P
   stopTimer("Downward pass");                                   // Stop timer
   printf("--- Total runtime ----------------\n");
   stopTimer("Total FMM");

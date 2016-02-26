@@ -3,7 +3,7 @@
 #include "kernel.h"
 #include "logger.h"
 
-class Traversal : public Kernel{
+class Traversal {
  private:
   int images;                                                   //!< Number of periodic image sublevels
   real_t theta;                                                 //!< Multipole acceptance criterion
@@ -88,7 +88,7 @@ class Traversal : public Kernel{
   }
 
  public:
-  Traversal(int images, real_t theta) : Kernel(), images(images), theta(theta), Xperiodic(0) {}
+  Traversal(int images, real_t theta) : images(images), theta(theta), Xperiodic(0) {}
 
 //! Evaluate P2P and M2L using dual tree traversal
   void dualTreeTraversal(Cell * Ci0, Cell * Cj0, real_t cycle) {
