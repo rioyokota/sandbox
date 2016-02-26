@@ -4,15 +4,15 @@
 
 //! Build cells of tree adaptively using a top-down approach based on recursion (uses task based thread parallelism)
 Cell * buildTree(Bodies& bodies, Bodies& buffer, B_iter B0, int begin, int end,
-		 vec2 X, real_t R0, int ncrit, int level=0, bool direction=false) {
+		 vec2 X, real_t R, int ncrit, int level=0, bool direction=false) {
   if (begin == end) return NULL;                              // If no bodies left, return null pointer
   //! Create a tree cell
   Cell * cell = new Cell();                                   // Allocate memory for single cell
   cell->BODY = B0 + begin;                                    // Iterator of first body in cell
   cell->NBODY = end - begin;                                  // Number of bodies in cell
   cell->NNODE = 1;                                            // Initialize counter for decendant cells
-  cell->X = X;                                                // Center position of cell
-  cell->R = R0 / (1 << level);                                // Cell radius
+  cell->X = X;                                               // Center position of cell
+  cell->R = R / (1 << level);                                // Cell radius
   for (int i=0; i<4; i++) cell->CHILD[i] = NULL;              //  Initialize pointers to children
   //! If cell is a leaf
   if (end - begin <= ncrit) {                                 // If number of bodies is less than threshold
@@ -45,13 +45,13 @@ Cell * buildTree(Bodies& bodies, Bodies& buffer, B_iter B0, int begin, int end,
   //! Loop over children and recurse
   for (int i=0; i<4; i++) {                                   // Loop over children
     vec2 Xchild = X;                                          //   Initialize center position of child cell
-    real_t r = R0 / (1 << (level + 1));                       //   Radius of cells for child's level
+    real_t r = R / (1 << (level + 1));                       //   Radius of cells for child's level
     for (int d=0; d<2; d++) {                                 //   Loop over dimensions
       Xchild[d] += r * (((i & 1 << d) >> d) * 2 - 1);         //    Shift center position to that of child cell
     }                                                         //   End loop over dimensions
     cell->CHILD[i] = buildTree(buffer, bodies, B0,            //   Recursive call for each child
 			       offsets[i], offsets[i] + size[i],//   Range of bodies is calcuated from quadrant offset
-			       Xchild, R0, ncrit, level+1, !direction);//   Alternate copy direction bodies <-> buffer
+			       Xchild, R, ncrit, level+1, !direction);//   Alternate copy direction bodies <-> buffer
   }                                                           // End loop over children
   //! Accumulate number of decendant cells
   for (int i=0; i<4; i++) {                                   // Loop over children

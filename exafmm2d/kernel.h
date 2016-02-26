@@ -14,7 +14,7 @@ void P2P(Cell * Ci, Cell * Cj, vec2 Xperiodic) {
       real_t R2 = norm(dX);
       if (R2 != 0) {
 	real_t invR = 1 / sqrt(R2);
-	real_t logR = Bi[i].SRC * Bj[j].SRC * log(invR);
+	real_t logR = Bj[j].SRC * log(invR);
 	pot += logR;
       }
     }
@@ -110,7 +110,6 @@ void L2P(Cell * Ci) {
   for (B_iter B=Ci->BODY; B!=Ci->BODY+Ci->NBODY; B++) {       // Loop over bodies
     vec2 dX = B->X - Ci->X;                                   //  Get distance vector
     complex_t Z(dX[0],dX[1]), powZ(1.0, 0.0);                 //  Convert to complex plane
-    B->TRG /= B->SRC;                                         //  Normalize result
     B->TRG += std::real(Ci->L[0]);                            //  Add constant term
     for (int n=1; n<P; n++) {                                 //  Loop over coefficients
       powZ *= Z / real_t(n);                                  //   Store z^n / n!

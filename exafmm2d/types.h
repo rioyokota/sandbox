@@ -16,16 +16,6 @@ typedef std::map<const char*,double> Timer;                     //!< Map of time
 const int P = 6;                                                //!< Order of expansions
 typedef vec<P,complex_t> vecP;                                  //!< Multipole/local coefficient type
 
-//! Structures for defining bounding box
-struct Box {
-  vec2   X;                                                     //!< Box center
-  real_t R;                                                     //!< Box radius
-};
-struct Bounds {
-  vec2 Xmin;                                                    //!< Minimum value of coordinates
-  vec2 Xmax;                                                    //!< Maximum value of coordinates
-};
-
 //! Structure of bodies
 struct Body {
   vec2   X;                                                     //!< Position
@@ -46,19 +36,5 @@ struct Cell {
   vecP M;                                                       //!< Multipole coefficients
   vecP L;                                                       //!< Local coefficients
 };
-typedef std::vector<Cell> Cells;                                //!< Vector of cells
-typedef Cells::iterator C_iter;                                 //!< Iterator of cell vector
-
-struct Node {
-  int NNODE;                                                    //!< Number of descendant nodes
-  int NBODY;                                                    //!< Number of descendant bodies
-  Node * CHILD[4];                                              //!< Pointer to child node
-  B_iter BODY;                                                  //!< Iterator for first body in node
-  vec2 X;                                                       //!< Coordinate at center
-  real_t R;                                                     //!< Cell radius
-  vecP M;                                                       //!< Multipole coefficients
-  vecP L;                                                       //!< Local coefficients
-};
-
 
 #endif

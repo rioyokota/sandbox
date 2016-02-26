@@ -1,3 +1,4 @@
+remove normalize
 non-recursive direct
 calculate force
 remove vec.h

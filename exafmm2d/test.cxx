@@ -9,16 +9,15 @@
 int main(int argc, char ** argv) {
   const int numBodies = 10000;
   const int numTargets = 10;
-  const int images = 3;
   const int ncrit = 8;
-  const real_t theta = 0.4;
   const real_t eps2 = 0.0;
   const real_t cycle = 2 * M_PI;
-  Traversal traversal(images,theta);
+  images = 3;
+  theta = 0.4;
   printf("--- FMM Profiling ----------------\n");
   startTimer("Total FMM");
 
-//! Initialize dsitribution, source & target value of bodies
+  //! Initialize dsitribution, source & target value of bodies
   startTimer("Init bodies");                                    // Start timer
   srand48(0);                                                   // Set seed for random number generator
   Bodies bodies(numBodies);                                     // Initialize bodies
@@ -37,7 +36,7 @@ int main(int argc, char ** argv) {
   }                                                             // End loop over bodies
   stopTimer("Init bodies");                                     // Stop timer
 
-// ! Get Xmin and Xmax of domain
+  // ! Get Xmin and Xmax of domain
   startTimer("Get bounds");                                     // Start timer
   real_t R0;                                                    // Radius of root cell
   vec2 Xmin, Xmax, X0;                                          // min, max of domain, and center of root cell
@@ -54,23 +53,29 @@ int main(int argc, char ** argv) {
   }                                                             // End loop over dimensions
   R0 *= 1.00001;                                                // Add some leeway to radius
   stopTimer("Get bounds");                                      // Stop timer
+
+  //! Build tree structure
   Bodies buffer = bodies;                                       // Copy bodies to buffer
   startTimer("Grow tree");                                      // Start timer
   B_iter B0 = bodies.begin();                                   // Iterator of first body
   Cell * C0 = buildTree(bodies, buffer, B0, 0, bodies.size(), X0, R0, ncrit);// Build tree recursively
   stopTimer("Grow tree");                                       // Stop timer
 
+  //! FMM evaluation
   startTimer("Upward pass");                                    // Start timer
   upwardPass(C0);                                               // Upward pass for P2M, M2M
   stopTimer("Upward pass");                                     // Stop timer
-  traversal.traversal(C0, C0, cycle);                           // Traversal for M2L, P2P
+  startTimer("Traverse");                                       // Start timer
+  traversal(C0, C0, cycle);                                     // Traversal for M2L, P2P
+  stopTimer("Traverse");                                        // Stop timer
   Bodies jbodies = bodies;
   startTimer("Downward pass");                                  // Start timer
   downwardPass(C0);                                             // Downward pass for L2L, L2P
   stopTimer("Downward pass");                                   // Stop timer
   printf("--- Total runtime ----------------\n");
   stopTimer("Total FMM");
-//! Downsize target bodies by even sampling 
+
+  //! Downsize target bodies by even sampling 
   int stride = bodies.size() / numTargets;                      // Stride of sampling
   for (int i=0; i<numTargets; i++) {                            // Loop over target samples
     bodies[i] = bodies[i*stride];                               //  Sample targets
@@ -80,12 +85,12 @@ int main(int argc, char ** argv) {
   for (B_iter B=bodies.begin(); B!=bodies.end(); B++) {         // Loop over bodies
     B->TRG = 0;                                                 //  Clear target values
   }                                                             // End loop over bodies
-  startTimer("Total Direct");
-  traversal.direct(bodies, jbodies, cycle);
-  traversal.normalize(bodies);
-  stopTimer("Total Direct");
+  startTimer("Total Direct");                                   // Start timer
+  direct(bodies, jbodies, cycle);                               // Direc N-body
+  stopTimer("Total Direct");                                    // End timer
+
+    //! Evaluate relaitve L2 norm error
   double diff1 = 0, norm1 = 0;
-//! Evaluate relaitve L2 norm error
   B_iter B2 = bodies2.begin();                                // Set iterator for bodies2
   for (B_iter B=bodies.begin(); B!=bodies.end(); B++, B2++) { // Loop over bodies & bodies2
     double dp = (B->TRG - B2->TRG) * (B->TRG - B2->TRG);      // Difference of potential
