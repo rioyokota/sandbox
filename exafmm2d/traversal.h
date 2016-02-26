@@ -9,25 +9,25 @@ class Traversal : public Kernel{
   real_t theta;                                                 //!< Multipole acceptance criterion
   C_iter Ci0;                                                   //!< Begin iterator for target cells
   C_iter Cj0;                                                   //!< Begin iterator for source cells
-
+  
 //! Split cell and call traverse() recursively for child
   void splitCell(C_iter Ci, C_iter Cj) {
     if (Cj->NCHILD == 0) {                                      // If Cj is leaf
       assert(Ci->NCHILD > 0);                                   //  Make sure Ci is not leaf
-      for (C_iter ci=Ci0+Ci->CHILD; ci!=Ci0+Ci->CHILD+Ci->NCHILD; ci++ ) {// Loop over Ci's children
+      for (C_iter ci=Ci->CHILD; ci!=Ci->CHILD+Ci->NCHILD; ci++ ) {// Loop over Ci's children
         traverse(ci, Cj);                                       //   Traverse a single pair of cells
       }                                                         //  End loop over Ci's children
     } else if (Ci->NCHILD == 0) {                               // Else if Ci is leaf
       assert(Cj->NCHILD > 0);                                   //  Make sure Cj is not leaf
-      for (C_iter cj=Cj0+Cj->CHILD; cj!=Cj0+Cj->CHILD+Cj->NCHILD; cj++ ) {// Loop over Cj's children
+      for (C_iter cj=Cj->CHILD; cj!=Cj->CHILD+Cj->NCHILD; cj++ ) {// Loop over Cj's children
         traverse(Ci, cj);                                       //   Traverse a single pair of cells
       }                                                         //  End loop over Cj's children
     } else if (Ci->R >= Cj->R) {                                // Else if Ci is larger than Cj
-      for (C_iter ci=Ci0+Ci->CHILD; ci!=Ci0+Ci->CHILD+Ci->NCHILD; ci++ ) {// Loop over Ci's children
+      for (C_iter ci=Ci->CHILD; ci!=Ci->CHILD+Ci->NCHILD; ci++ ) {// Loop over Ci's children
         traverse(ci, Cj);                                       //   Traverse a single pair of cells
       }                                                         //  End loop over Ci's children
     } else {                                                    // Else if Cj is larger than Ci
-      for (C_iter cj=Cj0+Cj->CHILD; cj!=Cj0+Cj->CHILD+Cj->NCHILD; cj++ ) {// Loop over Cj's children
+      for (C_iter cj=Cj->CHILD; cj!=Cj->CHILD+Cj->NCHILD; cj++ ) {// Loop over Cj's children
         traverse(Ci, cj);                                       //   Traverse a single pair of cells
       }                                                         //  End loop over Cj's children
     }                                                           // End if for leafs and Ci Cj size
@@ -54,7 +54,7 @@ class Traversal : public Kernel{
     Cells pcells(6);                                            // Create cells
     C_iter Ci = pcells.end()-1;                                 // Last cell is periodic parent cell
     *Ci = *Cj0;                                                 // Copy values from source root
-    Ci->CHILD = 0;                                              // Child cells for periodic center cell
+    Ci->CHILD = Cj0;                                            // Child cells for periodic center cell
     Ci->NCHILD = 8;                                             // Number of child cells for periodic center cell
     C_iter C0 = Cj0;                                            // Placeholder for Cj0
     for (int level=0; level<images-1; level++) {                // Loop over sublevels of tree
@@ -84,7 +84,7 @@ class Traversal : public Kernel{
         }                                                       //   End loop over y periodic direction
       }                                                         //  End loop over x periodic direction
       Ci->M = 0;                                                //  Reset multipoles of periodic parent
-      M2M(Ci,Cj0);                                              //  Evaluate periodic M2M kernels for this sublevel
+      M2M(Ci);                                                  //  Evaluate periodic M2M kernels for this sublevel
       cycle *= 3;                                               //  Increase center cell size three times
       Cj0 = C0;                                                 //  Reset Cj0 back
     }                                                           // End loop over sublevels of tree

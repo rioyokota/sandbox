@@ -44,9 +44,9 @@ class Kernel {
   }
 
 //!< M2M kernel for one parent cell Ci
-  void M2M(C_iter Ci, C_iter C0) const {
-    for (C_iter Cj=C0+Ci->CHILD;
-	 Cj!=C0+Ci->CHILD+Ci->NCHILD; Cj++) {                   // Loop over child cells
+  void M2M(C_iter Ci) const {
+    for (C_iter Cj=Ci->CHILD;
+	 Cj!=Ci->CHILD+Ci->NCHILD; Cj++) {                      // Loop over child cells
       vec2 dX = Cj->X - Ci->X;                                  //  Get distance vector
       complex_t Z(dX[0],dX[1]), powZn(1.0, 0.0),
 	powZnk(1.0, 0.0), invZ(powZn/Z);                        //  Convert to complex plane
@@ -93,9 +93,9 @@ class Kernel {
   }
 
 //!< L2L kernel for one parent cell Cj
-  void L2L(C_iter Cj, C_iter C0) const {
-    for (C_iter Ci=C0+Cj->CHILD;
-	 Ci!=C0+Cj->CHILD+Cj->NCHILD; Ci++) {                   // Loop over child cells
+  void L2L(C_iter Cj) const {
+    for (C_iter Ci=Cj->CHILD;
+	 Ci!=Cj->CHILD+Cj->NCHILD; Ci++) {                      // Loop over child cells
       vec2 dX = Ci->X - Cj->X;                                  //  Get distance vector
       complex_t Z(dX[0],dX[1]);                                 //  Convert to complex plane
       for (int l=0; l<P; l++) {                                 //  Loop over coefficients

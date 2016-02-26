@@ -39,7 +39,7 @@ typedef Bodies::iterator B_iter;                                //!< Iterator of
 struct Cell {
   int NCHILD;                                                   //!< Number of child cells
   int NBODY;                                                    //!< Number of descendant bodies
-  int CHILD;                                                    //!< Index of child cells
+  std::vector<Cell>::iterator CHILD;                            //!< Index of child cells
   long long ICELL;                                              //!< Cell index
   B_iter BODY;                                                  //!< Iterator of first body
   vec2 X;                                                       //!< Cell center
