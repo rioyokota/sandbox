@@ -9,7 +9,7 @@
 int main(int argc, char ** argv) {
   const int numBodies = 10000;
   const int numTargets = 10;
-  const int images = 2;
+  const int images = 3;
   const int ncrit = 8;
   const real_t theta = 0.4;
   const real_t eps2 = 0.0;

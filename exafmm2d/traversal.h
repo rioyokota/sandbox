@@ -7,8 +7,6 @@ class Traversal : public Kernel{
  private:
   int images;                                                   //!< Number of periodic image sublevels
   real_t theta;                                                 //!< Multipole acceptance criterion
-  C_iter Ci0;                                                   //!< Begin iterator for target cells
-  C_iter Cj0;                                                   //!< Begin iterator for source cells
   
 //! Split cell and call traverse() recursively for child
   void splitCell(C_iter Ci, C_iter Cj) {
@@ -48,14 +46,15 @@ class Traversal : public Kernel{
 
 
 //! Tree traversal of periodic cells
-  void traversePeriodic(real_t cycle) {
+  void traversePeriodic(C_iter Ci0, C_iter Cj0, real_t cycle) {
     startTimer("Traverse periodic");                            // Start timer
     Xperiodic = 0;                                              // Periodic coordinate offset
-    Cells pcells(6);                                            // Create cells
-    C_iter Ci = pcells.end()-1;                                 // Last cell is periodic parent cell
-    *Ci = *Cj0;                                                 // Copy values from source root
-    Ci->CHILD = Cj0;                                            // Child cells for periodic center cell
-    Ci->NCHILD = 1;                                             // Number of child cells for periodic center cell
+    Cells pcells(2);                                            // Create cells
+    C_iter Cp = pcells.begin();                                 // Last cell is periodic parent cell
+    C_iter Cj = pcells.begin()+1;                               // Last cell is periodic parent cell
+    *Cp = *Cj = *Cj0;                                           // Copy values from source root
+    Cp->CHILD = Cj;                                             // Child cells for periodic center cell
+    Cp->NCHILD = 1;                                             // Number of child cells for periodic center cell
     for (int level=0; level<images-1; level++) {                // Loop over sublevels of tree
       for (int ix=-1; ix<=1; ix++) {                            //  Loop over x periodic direction
         for (int iy=-1; iy<=1; iy++) {                          //   Loop over y periodic direction
@@ -64,22 +63,21 @@ class Traversal : public Kernel{
               for (int cy=-1; cy<=1; cy++) {                    //      Loop over y periodic direction (child)
                 Xperiodic[0] = (ix * 3 + cx) * cycle;           //       Coordinate offset for x periodic direction
                 Xperiodic[1] = (iy * 3 + cy) * cycle;           //       Coordinate offset for y periodic direction
-                M2L(Ci0, Ci);                                   //       Perform M2L kernel
+                M2L(Ci0, Cp);                                   //       Perform M2L kernel
               }                                                 //      End loop over y periodic direction (child)
             }                                                   //     End loop over x periodic direction (child)
           }                                                     //    Endif for periodic center cell
         }                                                       //   End loop over y periodic direction
       }                                                         //  End loop over x periodic direction
-      C_iter Cj = pcells.begin();                               //  Iterator of periodic neighbor cells
-      C_iter Co = Ci;
-      Ci->M = 0;                                                //  Reset multipoles of periodic parent
+      vecP M = Cp->M;                                           //  Save multipoles of periodic parent
+      Cp->M = 0;                                                //  Reset multipoles of periodic parent
       for (int ix=-1; ix<=1; ix++) {                            //  Loop over x periodic direction
         for (int iy=-1; iy<=1; iy++) {                          //   Loop over y periodic direction
           if( ix != 0 || iy != 0) {                             //    If periodic cell is not at center
-            Cj->X[0] = Co->X[0] + ix * cycle;                   //     Set new x coordinate for periodic image
-            Cj->X[1] = Co->X[1] + iy * cycle;                   //     Set new y cooridnate for periodic image
-            Cj->M    = Co->M;                                   //     Copy multipoles to new periodic image
-	    M2M(Ci);                                            //     Evaluate periodic M2M kernels for this sublevel
+            Cj->X[0] = Cp->X[0] + ix * cycle;                   //     Set new x coordinate for periodic image
+            Cj->X[1] = Cp->X[1] + iy * cycle;                   //     Set new y cooridnate for periodic image
+	    Cj->M    = M;                                       //     Copy multipoles to new periodic image
+	    M2M(Cp);                                            //     Evaluate periodic M2M kernels for this sublevel
           }                                                     //    Endif for periodic center cell
         }                                                       //   End loop over y periodic direction
       }                                                         //  End loop over x periodic direction
@@ -95,8 +93,8 @@ class Traversal : public Kernel{
   void dualTreeTraversal(Cells &icells, Cells &jcells, real_t cycle) {
     startTimer("Traverse");                                     // Start timer
     if (!icells.empty() && !jcells.empty()) {                   // If neither of the cell vectors are empty
-      Ci0 = icells.begin();                                     //  Set iterator of target root cell
-      Cj0 = jcells.begin();                                     //  Set iterator of source root cell
+      C_iter Ci0 = icells.begin();                              //  Set iterator of target root cell
+      C_iter Cj0 = jcells.begin();                              //  Set iterator of source root cell
       if (images == 0) {                                        //  If non-periodic boundary condition
         Xperiodic = 0;                                          //   No periodic shift
         traverse(Ci0, Cj0);                                     //   Traverse the tree
@@ -108,7 +106,7 @@ class Traversal : public Kernel{
             traverse(Ci0, Cj0);                                 //     Traverse the tree for this periodic image
           }                                                     //    End loop over y periodic direction
         }                                                       //   End loop over x periodic direction
-        traversePeriodic(cycle);                                //   Traverse tree for periodic images
+        traversePeriodic(Ci0, Cj0, cycle);                      //   Traverse tree for periodic images
       }                                                         //  End if for periodic boundary condition
     }                                                           // End if for empty cell vectors
     stopTimer("Traverse");                                      // Stop timer
