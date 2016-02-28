@@ -79,6 +79,7 @@ int main(int argc, char ** argv) {
   printf("%-20s : %lf s\n","Downward pass",getTime()-time);     // Stop timer 
 
   //! Downsize target bodies by even sampling 
+  Bodies jbodies = bodies;
   int stride = bodies.size() / numTargets;                      // Stride of sampling
   for (int i=0; i<numTargets; i++) {                            // Loop over target samples
     bodies[i] = bodies[i*stride];                               //  Sample targets
@@ -89,7 +90,6 @@ int main(int argc, char ** argv) {
     B->TRG = 0;                                                 //  Clear target values
   }                                                             // End loop over bodies
   time = getTime();                                             // Start timer 
-  Bodies jbodies = bodies;
   direct(bodies, jbodies, cycle);                               // Direc N-body
   printf("%-20s : %lf s\n","Direct N-Body",getTime()-time);     // Stop timer 
 
