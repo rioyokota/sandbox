@@ -11,7 +11,6 @@ typedef std::complex<real_t> complex_t;                         //!< Complex typ
 
 // Multipole/local expansion coefficients
 const int P = 6;                                                //!< Order of expansions
-typedef vec<P,complex_t> vecP;                                  //!< Multipole/local coefficient type
 
 //! Structure of bodies
 struct Body {
@@ -28,8 +27,8 @@ struct Cell {
   Body * BODY;                                                  //!< Iterator of first body
   real_t X[2];                                                  //!< Cell center
   real_t R;                                                     //!< Cell radius
-  vecP M;                                                       //!< Multipole coefficients
-  vecP L;                                                       //!< Local coefficients
+  complex_t M[P];                                               //!< Multipole coefficients
+  complex_t L[P];                                               //!< Local coefficients
 };
 
 #endif

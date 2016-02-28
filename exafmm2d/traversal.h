@@ -66,14 +66,17 @@ void traversePeriodic(Cell * Ci0, Cell * Cj0, real_t cycle) {
 	}                                                       //    Endif for periodic center cell
       }                                                         //   End loop over y periodic direction
     }                                                           //  End loop over x periodic direction
-    vecP M = Cp->M;                                             //  Save multipoles of periodic parent
-    Cp->M = 0;                                                  //  Reset multipoles of periodic parent
+    complex_t M[P];                                             //  Multipole expansions
+    for (int n=0; n<P; n++) {                                   //  Loop over order of expansions
+      M[n] = Cp->M[n];                                          //   Save multipoles of periodic parent
+      Cp->M[n] = 0;                                             //   Reset multipoles of periodic parent
+    }                                                           //  End loop over order of expansions
     for (int ix=-1; ix<=1; ix++) {                              //  Loop over x periodic direction
       for (int iy=-1; iy<=1; iy++) {                            //   Loop over y periodic direction
 	if( ix != 0 || iy != 0) {                               //    If periodic cell is not at center
 	  Cj->X[0] = Cp->X[0] + ix * cycle;                     //     Set new x coordinate for periodic image
 	  Cj->X[1] = Cp->X[1] + iy * cycle;                     //     Set new y cooridnate for periodic image
-	  Cj->M    = M;                                         //     Copy multipoles to new periodic image
+	  for (int n=0; n<P; n++) Cj->M[n] = M[n];              //     Copy multipoles to new periodic image
 	  M2M(Cp);                                              //     Evaluate periodic M2M kernels for this sublevel
 	}                                                       //    Endif for periodic center cell
       }                                                         //   End loop over y periodic direction

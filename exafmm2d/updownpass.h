@@ -6,8 +6,8 @@ void upwardPass(Cell * C) {
   for (int i=0; i<4; i++) {                                   // Loop over child cells
     if (C->CHILD[i]) upwardPass(C->CHILD[i]);                 //  Recursive call with new task
   }                                                           // End loop over child cells
-  C->M = 0;                                                   // Initialize multipole expansion coefficients
-  C->L = 0;                                                   // Initialize local expansion coefficients
+  for (int n=0; n<P; n++) C->M[n] = 0;                        // Initialize multipole expansion coefficients
+  for (int n=0; n<P; n++) C->L[n] = 0;                        // Initialize local expansion coefficients
   if (C->NNODE == 1) P2M(C);                                  // P2M kernel
   M2M(C);                                                     // M2M kernel
 }
