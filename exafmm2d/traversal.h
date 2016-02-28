@@ -100,13 +100,13 @@ void traversal(Cell * Ci0, Cell * Cj0, real_t cycle) {
 }                                                               // End if for empty cell vectors
 
 //! Direct summation
-void direct(Bodies &ibodies, Bodies &jbodies, real_t cycle) {
+void direct(int ni, Body * ibodies, int nj, Body * jbodies, real_t cycle) {
   Cell * Ci = new Cell();                                       // Allocate single target cell
   Cell * Cj = new Cell();                                       // Allocate single source cell
-  Ci->BODY = ibodies.begin();                                   // Iterator of first target body
-  Ci->NBODY = ibodies.size();                                   // Number of target bodies
-  Cj->BODY = jbodies.begin();                                   // Iterator of first source body
-  Cj->NBODY = jbodies.size();                                   // Number of source bodies
+  Ci->BODY = ibodies;                                           // Iterator of first target body
+  Ci->NBODY = ni;                                               // Number of target bodies
+  Cj->BODY = jbodies;                                           // Iterator of first source body
+  Cj->NBODY = nj;                                               // Number of source bodies
   int prange = 0;                                               // Range of periodic images
   for (int i=0; i<images; i++) {                                // Loop over periodic image sublevels
     prange += int(std::pow(3.,i));                              //  Accumulate range of periodic images

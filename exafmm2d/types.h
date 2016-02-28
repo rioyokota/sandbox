@@ -19,15 +19,13 @@ struct Body {
   real_t SRC;                                                   //!< Scalar source values
   real_t TRG;                                                   //!< Scalar+vector3 target values
 };
-typedef std::vector<Body> Bodies;                               //!< Vector of bodies
-typedef Bodies::iterator B_iter;                                //!< Iterator of body vector
 
 //! Structure of cells
 struct Cell {
   int NNODE;                                                    //!< Number of child cells
   int NBODY;                                                    //!< Number of descendant bodies
   Cell * CHILD[4];                                              //!< Index of child cells
-  B_iter BODY;                                                  //!< Iterator of first body
+  Body * BODY;                                                  //!< Iterator of first body
   real_t X[2];                                                  //!< Cell center
   real_t R;                                                     //!< Cell radius
   vecP M;                                                       //!< Multipole coefficients

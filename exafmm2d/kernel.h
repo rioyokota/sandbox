@@ -5,8 +5,8 @@
 
 //!< P2P kernel between cells Ci and Cj 
 void P2P(Cell * Ci, Cell * Cj, real_t Xperiodic[2]) {
-  B_iter Bi = Ci->BODY;
-  B_iter Bj = Cj->BODY;
+  Body * Bi = Ci->BODY;
+  Body * Bj = Cj->BODY;
   for (int i=0; i<Ci->NBODY; i++) {
     real_t pot = 0;
     for (int j=0; j<Cj->NBODY; j++) {
@@ -25,7 +25,7 @@ void P2P(Cell * Ci, Cell * Cj, real_t Xperiodic[2]) {
 
 //!< P2M kernel for cell C
 void P2M(Cell * C) {
-  for (B_iter B=C->BODY; B!=C->BODY+C->NBODY; B++) {          // Loop over bodies
+  for (Body * B=C->BODY; B!=C->BODY+C->NBODY; B++) {          // Loop over bodies
     real_t dX[2];                                             // Distance vector
     for (int d=0; d<2; d++) dX[d] = B->X[d] - C->X[d];        //  Get distance vector
     complex_t Z(dX[0],dX[1]), powZ(1.0, 0.0);                 //  Convert to complex plane
@@ -112,7 +112,7 @@ void L2L(Cell * Cj) {
 
 //!< L2P kernel for cell Ci
 void L2P(Cell * Ci) {
-  for (B_iter B=Ci->BODY; B!=Ci->BODY+Ci->NBODY; B++) {       // Loop over bodies
+  for (Body * B=Ci->BODY; B!=Ci->BODY+Ci->NBODY; B++) {       // Loop over bodies
     real_t dX[2];                                             // Distance vector
     for (int d=0; d<2; d++) dX[d] = B->X[d] - Ci->X[d];       //  Get distance vector
     complex_t Z(dX[0],dX[1]), powZ(1.0, 0.0);                 //  Convert to complex plane
