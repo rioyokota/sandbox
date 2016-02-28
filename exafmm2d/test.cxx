@@ -1,10 +1,11 @@
-#include <cassert>
+#include <cmath>
 #include <cstdlib>
 #include <sys/time.h>
 
 #include "buildtree.h"
+#include "kernel.h"
 #include "traversal.h"
-#include "updownpass.h"
+#include "types.h"
 
 //! Timer function
 double getTime() {

@@ -1,6 +1,5 @@
 #ifndef traversal_h
 #define traversal_h
-#include "kernel.h"
 
 int images;                                                     //!< Number of periodic image sublevels
 real_t theta;                                                   //!< Multipole acceptance criterion
@@ -85,6 +84,17 @@ void traversePeriodic(Cell * Ci0, Cell * Cj0, real_t cycle) {
   }                                                             // End loop over sublevels of tree
 }
 
+//! Recursive call for upward pass 
+void upwardPass(Cell * C) {
+  for (int i=0; i<4; i++) {                                   // Loop over child cells
+    if (C->CHILD[i]) upwardPass(C->CHILD[i]);                 //  Recursive call with new task
+  }                                                           // End loop over child cells
+  for (int n=0; n<P; n++) C->M[n] = 0;                        // Initialize multipole expansion coefficients
+  for (int n=0; n<P; n++) C->L[n] = 0;                        // Initialize local expansion coefficients
+  if (C->NNODE == 1) P2M(C);                                  // P2M kernel
+  M2M(C);                                                     // M2M kernel
+}
+
 //! Evaluate P2P and M2L using dual tree traversal
 void traversal(Cell * Ci0, Cell * Cj0, real_t cycle) {
   if (images == 0) {                                            // If non-periodic boundary condition
@@ -102,6 +112,15 @@ void traversal(Cell * Ci0, Cell * Cj0, real_t cycle) {
   }                                                             // End if for periodic boundary condition
 }                                                               // End if for empty cell vectors
 
+//! Recursive call for downward pass
+void downwardPass(Cell * C) {
+  L2L(C);                                                     // L2L kernel
+  if (C->NNODE == 1) L2P(C);                                  // L2P kernel
+  for (int i=0; i<4; i++) {                                   // Loop over child cells
+    if (C->CHILD[i]) downwardPass(C->CHILD[i]);               //  Recursive call with new task
+  }
+}
+  
 //! Direct summation
 void direct(int ni, Body * ibodies, int nj, Body * jbodies, real_t cycle) {
   Cell * Ci = new Cell();                                       // Allocate single target cell

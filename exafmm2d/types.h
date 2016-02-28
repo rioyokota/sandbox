@@ -1,8 +1,6 @@
 #ifndef types_h
 #define types_h
 #include <complex>
-#include <map>
-#include <vector>
 
 // Basic type definitions
 typedef float real_t;                                           //!< Floating point type is single precision

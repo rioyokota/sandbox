@@ -1,7 +1,5 @@
 #ifndef kernel_h
 #define kernel_h
-#include <cmath>
-#include "types.h"
 
 //!< P2P kernel between cells Ci and Cj 
 void P2P(Cell * Ci, Cell * Cj, real_t Xperiodic[2]) {
