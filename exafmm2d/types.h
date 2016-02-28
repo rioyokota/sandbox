@@ -3,7 +3,6 @@
 #include <complex>
 #include <map>
 #include <vector>
-#include "vec.h"
 
 // Basic type definitions
 typedef float real_t;                                           //!< Floating point type is single precision
