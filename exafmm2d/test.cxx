@@ -45,11 +45,11 @@ int main(int argc, char ** argv) {
   // ! Get Xmin and Xmax of domain
   time = getTime();                                             // Start timer 
   real_t R0;                                                    // Radius of root cell
-  vec2 Xmin, Xmax, X0;                                          // min, max of domain, and center of root cell
-  Xmin = Xmax = bodies.front().X;                               // Initialize Xmin, Xmax
+  real_t Xmin[2], Xmax[2], X0[2];                               // Min, max of domain, and center of root cell
+  for (int d=0; d<2; d++) Xmin[d] = Xmax[d] = bodies.front().X[d];// Initialize Xmin, Xmax
   for (B_iter B=bodies.begin(); B!=bodies.end(); B++) {         // Loop over range of bodies
-    Xmin = min(B->X, Xmin);                                     //  Update Xmin
-    Xmax = max(B->X, Xmax);                                     //  Update Xmax
+    for (int d=0; d<2; d++) Xmin[d] = fmin(B->X[d], Xmin[d]);   //  Update Xmin
+    for (int d=0; d<2; d++) Xmax[d] = fmax(B->X[d], Xmax[d]);   //  Update Xmax
   }                                                             // End loop over range of bodies
   for (int d=0; d<2; d++) X0[d] = (Xmax[d] + Xmin[d]) / 2;      // Calculate center of domain
   R0 = 0;                                                       // Initialize localRadius

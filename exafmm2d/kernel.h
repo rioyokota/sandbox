@@ -4,14 +4,15 @@
 #include "types.h"
 
 //!< P2P kernel between cells Ci and Cj 
-void P2P(Cell * Ci, Cell * Cj, vec2 Xperiodic) {
+void P2P(Cell * Ci, Cell * Cj, real_t Xperiodic[2]) {
   B_iter Bi = Ci->BODY;
   B_iter Bj = Cj->BODY;
   for (int i=0; i<Ci->NBODY; i++) {
     real_t pot = 0;
     for (int j=0; j<Cj->NBODY; j++) {
-      vec2 dX = Bi[i].X - Bj[j].X - Xperiodic;
-      real_t R2 = norm(dX);
+      real_t dX[2];
+      for (int d=0; d<2; d++) dX[d] = Bi[i].X[d] - Bj[j].X[d] - Xperiodic[d];
+      real_t R2 = dX[0] * dX[0] + dX[1] * dX[1];
       if (R2 != 0) {
 	real_t invR = 1 / sqrt(R2);
 	real_t logR = Bj[j].SRC * log(invR);
@@ -25,7 +26,8 @@ void P2P(Cell * Ci, Cell * Cj, vec2 Xperiodic) {
 //!< P2M kernel for cell C
 void P2M(Cell * C) {
   for (B_iter B=C->BODY; B!=C->BODY+C->NBODY; B++) {          // Loop over bodies
-    vec2 dX = B->X - C->X;                                    //  Get distance vector
+    real_t dX[2];                                             // Distance vector
+    for (int d=0; d<2; d++) dX[d] = B->X[d] - C->X[d];        //  Get distance vector
     complex_t Z(dX[0],dX[1]), powZ(1.0, 0.0);                 //  Convert to complex plane
     C->M[0] += B->SRC;                                        //  Add constant term
     for (int n=1; n<P; n++) {                                 //  Loop over coefficients
@@ -40,7 +42,8 @@ void M2M(Cell * Ci) {
   for (int i=0; i<4; i++) {                                   // Loop over child cells
     if (Ci->CHILD[i]) {                                       //  If child exists
       Cell * Cj = Ci->CHILD[i];                               //   Child cell
-      vec2 dX = Cj->X - Ci->X;                                //   Get distance vector
+      real_t dX[2];                                           //   Distance vector
+      for (int d=0; d<2; d++) dX[d] = Cj->X[d] - Ci->X[d];    //   Get distance vector
       complex_t Z(dX[0],dX[1]), powZn(1.0, 0.0),
 	powZnk(1.0, 0.0), invZ(powZn/Z);                      //   Convert to complex plane
       for (int k=0; k<P; k++) {                               //   Loop over coefficients
@@ -56,8 +59,9 @@ void M2M(Cell * Ci) {
 }
 
 //!< M2L kernel between cells Ci and Cj
-void M2L(Cell * Ci, Cell * Cj, vec2 Xperiodic) {
-  vec2 dX = Ci->X - Cj->X - Xperiodic;                        // Get distance vector
+void M2L(Cell * Ci, Cell * Cj, real_t Xperiodic[2]) {
+  real_t dX[2];                                               // Distance vector
+  for (int d=0; d<2; d++) dX[d] = Ci->X[d] - Cj->X[d] - Xperiodic[d];// Get distance vector
   complex_t Z(dX[0],dX[1]), powZn(1.0, 0.0),
     powZnk(1.0, 0.0), invZ(powZn/Z);                          // Convert to complex plane
   Ci->L[0] += -Cj->M[0] * log(Z);                             // Log term (for 0th order)
@@ -91,7 +95,8 @@ void L2L(Cell * Cj) {
   for (int i=0; i<4; i++) {                                   // Loop over child cells
     if (Cj->CHILD[i]) {                                       //  If child exists
       Cell * Ci = Cj->CHILD[i];                               //   Child cell
-      vec2 dX = Ci->X - Cj->X;                                //   Get distance vector
+      real_t dX[2];                                           // Distance vector
+      for (int d=0; d<2; d++) dX[d] = Ci->X[d] - Cj->X[d];    //   Get distance vector
       complex_t Z(dX[0],dX[1]);                               //   Convert to complex plane
       for (int l=0; l<P; l++) {                               //   Loop over coefficients
 	complex_t powZ(1.0, 0.0);                             //    z^0 = 1
@@ -108,7 +113,8 @@ void L2L(Cell * Cj) {
 //!< L2P kernel for cell Ci
 void L2P(Cell * Ci) {
   for (B_iter B=Ci->BODY; B!=Ci->BODY+Ci->NBODY; B++) {       // Loop over bodies
-    vec2 dX = B->X - Ci->X;                                   //  Get distance vector
+    real_t dX[2];                                             // Distance vector
+    for (int d=0; d<2; d++) dX[d] = B->X[d] - Ci->X[d];       //  Get distance vector
     complex_t Z(dX[0],dX[1]), powZ(1.0, 0.0);                 //  Convert to complex plane
     B->TRG += std::real(Ci->L[0]);                            //  Add constant term
     for (int n=1; n<P; n++) {                                 //  Loop over coefficients

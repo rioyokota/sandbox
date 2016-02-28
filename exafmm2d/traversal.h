@@ -4,7 +4,7 @@
 
 int images;                                                     //!< Number of periodic image sublevels
 real_t theta;                                                   //!< Multipole acceptance criterion
-vec2 Xperiodic;                                                 //!< Periodic coordinate offset
+real_t Xperiodic[2];                                            //!< Periodic coordinate offset
 
 void dualTreeTraversal(Cell * Ci, Cell * Cj);
 
@@ -31,8 +31,9 @@ void splitCell(Cell * Ci, Cell * Cj) {
 
 //! Dual tree traversal for a single pair of cells
 void dualTreeTraversal(Cell * Ci, Cell * Cj) {
-  vec2 dX = Ci->X - Cj->X - Xperiodic;                          // Distance vector from source to target
-  real_t R2 = norm(dX) * theta * theta;                         // Scalar distance squared
+  real_t dX[2];                                                 // Distance vector
+  for (int d=0; d<2; d++) dX[d] = Ci->X[d] - Cj->X[d] - Xperiodic[d];// Distance vector from source to target
+  real_t R2 = (dX[0] * dX[0] + dX[1] * dX[1]) * theta * theta;  // Scalar distance squared
   if (R2 > (Ci->R+Cj->R)*(Ci->R+Cj->R)) {                       //  If distance is far enough
     M2L(Ci, Cj, Xperiodic);                                     //   Use approximate kernels
   } else if (Ci->NNODE == 1 && Cj->NNODE == 1) {                //  Else if both cells are bodies
@@ -45,7 +46,7 @@ void dualTreeTraversal(Cell * Ci, Cell * Cj) {
 
 //! Tree traversal of periodic cells
 void traversePeriodic(Cell * Ci0, Cell * Cj0, real_t cycle) {
-  vec2 Xperiodic = 0;                                           // Periodic coordinate offset
+  for (int d=0; d<2; d++) Xperiodic[d] = 0;                     // Periodic coordinate offset
   Cell * Cp = new Cell();                                       // Last cell is periodic parent cell
   Cell * Cj = new Cell();                                       // Last cell is periodic parent cell
   *Cp = *Cj = *Cj0;                                             // Copy values from source root
@@ -84,7 +85,7 @@ void traversePeriodic(Cell * Ci0, Cell * Cj0, real_t cycle) {
 //! Evaluate P2P and M2L using dual tree traversal
 void traversal(Cell * Ci0, Cell * Cj0, real_t cycle) {
   if (images == 0) {                                            // If non-periodic boundary condition
-    Xperiodic = 0;                                              //  No periodic shift
+    for (int d=0; d<2; d++) Xperiodic[d] = 0;                   //  No periodic shift
     dualTreeTraversal(Ci0, Cj0);                                //  Traverse the tree
   } else {                                                      // If periodic boundary condition
     for (int ix=-1; ix<=1; ix++) {                              //  Loop over x periodic direction
