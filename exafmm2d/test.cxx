@@ -1,10 +1,17 @@
 #include <cassert>
 #include <cstdlib>
+#include <sys/time.h>
 
 #include "buildtree.h"
-#include "logger.h"
 #include "traversal.h"
 #include "updownpass.h"
+
+//! Timer function
+double getTime() {
+  struct timeval tv;                                            // Time value
+  gettimeofday(&tv, NULL);                                      // Get time of day in seconds and microseconds
+  return double(tv.tv_sec+tv.tv_usec*1e-6);                     // Combine seconds and microseconds and return
+}
 
 int main(int argc, char ** argv) {
   const int numBodies = 10000;
@@ -15,10 +22,9 @@ int main(int argc, char ** argv) {
   images = 3;
   theta = 0.4;
   printf("--- FMM Profiling ----------------\n");
-  startTimer("Total FMM");
 
   //! Initialize dsitribution, source & target value of bodies
-  startTimer("Init bodies");                                    // Start timer
+  double time = getTime();                                      // Start timer
   srand48(0);                                                   // Set seed for random number generator
   Bodies bodies(numBodies);                                     // Initialize bodies
   real_t average = 0;                                           // Average charge
@@ -34,10 +40,10 @@ int main(int argc, char ** argv) {
   for (B_iter B=bodies.begin(); B!=bodies.end(); B++) {         // Loop over bodies
     B->SRC -= average;                                          // Charge neutral
   }                                                             // End loop over bodies
-  stopTimer("Init bodies");                                     // Stop timer
+  printf("%-20s : %lf s\n","Init bodies",getTime()-time);       // Stop timer
 
   // ! Get Xmin and Xmax of domain
-  startTimer("Get bounds");                                     // Start timer
+  time = getTime();                                             // Start timer 
   real_t R0;                                                    // Radius of root cell
   vec2 Xmin, Xmax, X0;                                          // min, max of domain, and center of root cell
   Xmin = Xmax = bodies.front().X;                               // Initialize Xmin, Xmax
@@ -52,28 +58,25 @@ int main(int argc, char ** argv) {
     R0 = std::max(Xmax[d] - X0[d], R0);                         //  Calculate max distance from center
   }                                                             // End loop over dimensions
   R0 *= 1.00001;                                                // Add some leeway to radius
-  stopTimer("Get bounds");                                      // Stop timer
+  printf("%-20s : %lf s\n","Get bounds",getTime()-time);        // Stop timer 
 
   //! Build tree structure
+  time = getTime();                                             // Start timer 
   Bodies buffer = bodies;                                       // Copy bodies to buffer
-  startTimer("Grow tree");                                      // Start timer
   B_iter B0 = bodies.begin();                                   // Iterator of first body
   Cell * C0 = buildTree(bodies, buffer, B0, 0, bodies.size(), X0, R0, ncrit);// Build tree recursively
-  stopTimer("Grow tree");                                       // Stop timer
+  printf("%-20s : %lf s\n","Grow tree",getTime()-time);         // Stop timer 
 
   //! FMM evaluation
-  startTimer("Upward pass");                                    // Start timer
+  time = getTime();                                             // Start timer 
   upwardPass(C0);                                               // Upward pass for P2M, M2M
-  stopTimer("Upward pass");                                     // Stop timer
-  startTimer("Traverse");                                       // Start timer
+  printf("%-20s : %lf s\n","Upward pass",getTime()-time);       // Stop timer 
+  time = getTime();                                             // Start timer 
   traversal(C0, C0, cycle);                                     // Traversal for M2L, P2P
-  stopTimer("Traverse");                                        // Stop timer
-  Bodies jbodies = bodies;
-  startTimer("Downward pass");                                  // Start timer
+  printf("%-20s : %lf s\n","Traverse",getTime()-time);          // Stop timer 
+  time = getTime();                                             // Start timer 
   downwardPass(C0);                                             // Downward pass for L2L, L2P
-  stopTimer("Downward pass");                                   // Stop timer
-  printf("--- Total runtime ----------------\n");
-  stopTimer("Total FMM");
+  printf("%-20s : %lf s\n","Downward pass",getTime()-time);     // Stop timer 
 
   //! Downsize target bodies by even sampling 
   int stride = bodies.size() / numTargets;                      // Stride of sampling
@@ -85,20 +88,21 @@ int main(int argc, char ** argv) {
   for (B_iter B=bodies.begin(); B!=bodies.end(); B++) {         // Loop over bodies
     B->TRG = 0;                                                 //  Clear target values
   }                                                             // End loop over bodies
-  startTimer("Total Direct");                                   // Start timer
+  time = getTime();                                             // Start timer 
+  Bodies jbodies = bodies;
   direct(bodies, jbodies, cycle);                               // Direc N-body
-  stopTimer("Total Direct");                                    // End timer
+  printf("%-20s : %lf s\n","Direct N-Body",getTime()-time);     // Stop timer 
 
     //! Evaluate relaitve L2 norm error
   double diff1 = 0, norm1 = 0;
-  B_iter B2 = bodies2.begin();                                // Set iterator for bodies2
-  for (B_iter B=bodies.begin(); B!=bodies.end(); B++, B2++) { // Loop over bodies & bodies2
-    double dp = (B->TRG - B2->TRG) * (B->TRG - B2->TRG);      // Difference of potential
-    double  p = B2->TRG * B2->TRG;                            //  Value of potential
-    diff1 += dp;                                              //  Accumulate difference of potential
-    norm1 += p;                                               //  Accumulate value of potential
-  }                                                           // End loop over bodies & bodies2
-  printf("--- FMM vs. direct ---------------\n");
-  printf("Rel. L2 Error (pot)  : %e\n",sqrtf(diff1/norm1));  // Print potential error
+  B_iter B2 = bodies2.begin();                                  // Set iterator for bodies2
+  for (B_iter B=bodies.begin(); B!=bodies.end(); B++, B2++) {   // Loop over bodies & bodies2
+    double dp = (B->TRG - B2->TRG) * (B->TRG - B2->TRG);        // Difference of potential
+    double  p = B2->TRG * B2->TRG;                              //  Value of potential
+    diff1 += dp;                                                //  Accumulate difference of potential
+    norm1 += p;                                                 //  Accumulate value of potential
+  }                                                             // End loop over bodies & bodies2
+  printf("--- FMM vs. direct ---------------\n");               // Print message
+  printf("Rel. L2 Error (pot)  : %e\n",sqrtf(diff1/norm1));     // Print potential error
   return 0;
 }
