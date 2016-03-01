@@ -12,8 +12,8 @@ const int P = 6;                                                //!< Order of ex
 //! Structure of bodies
 struct Body {
   real_t X[2];                                                  //!< Position
-  real_t SRC;                                                   //!< Scalar source values
-  real_t TRG;                                                   //!< Scalar+vector3 target values
+  real_t q;                                                     //!< Scalar source values
+  real_t p;                                                     //!< Scalar+vector3 target values
 };
 
 //! Structure of cells

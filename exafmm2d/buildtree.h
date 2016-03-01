@@ -19,7 +19,7 @@ Cell * buildTree(Body * bodies, Body * buffer, int begin, int end,
     if (direction) {                                          //  If direction of data is from bodies to buffer
       for (int i=begin; i<end; i++) {                         //   Loop over bodies in cell
 	for (int d=0; d<2; d++) buffer[i].X[d] = bodies[i].X[d];//  Copy bodies coordinates to buffer
-	buffer[i].SRC = bodies[i].SRC;                        //    Copy bodies source to buffer
+	buffer[i].q = bodies[i].q;                            //    Copy bodies source to buffer
       }                                                       //   End loop over bodies in cell
     }                                                         //  End if for direction of data
     return cell;                                              //  Return cell pointer
@@ -45,7 +45,7 @@ Cell * buildTree(Body * bodies, Body * buffer, int begin, int end,
     for (int d=0; d<2; d++) x[d] = bodies[i].X[d];            //  Position of body
     int quadrant = (x[0] > X[0]) + ((x[1] > X[1]) << 1);      //  Which quadrant body belongs to`
     for (int d=0; d<2; d++) buffer[counter[quadrant]].X[d] = bodies[i].X[d];// Permute bodies coordinates out-of-place according to quadrant
-    buffer[counter[quadrant]].SRC = bodies[i].SRC;            //  Permute bodies sources out-of-place according to quadrant  
+    buffer[counter[quadrant]].q = bodies[i].q;                //  Permute bodies sources out-of-place according to quadrant  
     counter[quadrant]++;                                      //  Increment body count in quadrant
   }                                                           // End loop over bodies
   //! Loop over children and recurse

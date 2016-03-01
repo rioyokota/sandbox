@@ -7,24 +7,23 @@
 #include "traversal.h"
 #include "types.h"
 
-//! Timer function
+//! Get the current time in seconds
 double getTime() {
   struct timeval tv;                                            // Time value
   gettimeofday(&tv, NULL);                                      // Get time of day in seconds and microseconds
   return double(tv.tv_sec+tv.tv_usec*1e-6);                     // Combine seconds and microseconds and return
 }
 
-int main(int argc, char ** argv) {
-  const int numBodies = 10000;
-  const int numTargets = 10;
-  const int ncrit = 8;
-  const real_t eps2 = 0.0;
-  const real_t cycle = 2 * M_PI;
-  images = 3;
-  theta = 0.4;
-  printf("--- FMM Profiling ----------------\n");
+int main(int argc, char ** argv) {                              // Main function
+  const int numBodies = 10000;                                  // Number of bodies
+  const int numTargets = 10;                                    // Number of targets
+  const int ncrit = 8;                                          // Number of bodies per leaf cell
+  const real_t cycle = 2 * M_PI;                                // Cycle of periodic boundary condition
+  images = 3;                                                   // 3^images * 3^images * 3^images periodic images
+  theta = 0.4;                                                  // Multipole acceptance criterion
 
   //! Initialize dsitribution, source & target value of bodies
+  printf("--- FMM Profiling ----------------\n");               // Start profiling
   double time = getTime();                                      // Start timer
   srand48(0);                                                   // Set seed for random number generator
   Body * bodies = new Body [numBodies];                         // Initialize bodies
@@ -33,13 +32,13 @@ int main(int argc, char ** argv) {
     for (int d=0; d<2; d++) {                                   //  Loop over dimension
       bodies[b].X[d] = drand48() * 2 * M_PI - M_PI;             //   Initialize positions
     }                                                           //  End loop over dimension
-    bodies[b].SRC = drand48() - .5;                             //  Initialize charge
-    average += bodies[b].SRC;                                   //  Accumulate charge
-    bodies[b].TRG = 0;                                          //  Clear target values
+    bodies[b].q = drand48() - .5;                               //  Initialize charge
+    average += bodies[b].q;                                     //  Accumulate charge
+    bodies[b].p = 0;                                            //  Clear target values
   }                                                             // End loop over bodies
   average /= numBodies;                                         // Average charge
   for (int b=0; b<numBodies; b++) {                             // Loop over bodies
-    bodies[b].SRC -= average;                                   // Charge neutral
+    bodies[b].q -= average;                                     // Charge neutral
   }                                                             // End loop over bodies
   printf("%-20s : %lf s\n","Init bodies",getTime()-time);       // Stop timer
 
@@ -88,20 +87,20 @@ int main(int argc, char ** argv) {
   }                                                             // End loop over target samples
   Body * bodies2 = new Body [numTargets];                       // Backup bodies
   for (int b=0; b<numTargets; b++) {                            // Loop over bodies
-    bodies2[b].TRG = bodies[b].TRG;                             //  Save bodies target in bodies2
+    bodies2[b].p = bodies[b].p;                                 //  Save bodies target in bodies2
   }                                                             // End loop over bodies
   for (int b=0; b<numTargets; b++) {                            // Loop over bodies
-    bodies[b].TRG = 0;                                          //  Clear target values
+    bodies[b].p = 0;                                            //  Clear target values
   }                                                             // End loop over bodies
   time = getTime();                                             // Start timer 
   direct(numTargets, bodies, numBodies, jbodies, cycle);        // Direc N-body
   printf("%-20s : %lf s\n","Direct N-Body",getTime()-time);     // Stop timer 
 
-    //! Evaluate relaitve L2 norm error
+  //! Evaluate relaitve L2 norm error
   double diff1 = 0, norm1 = 0;
   for (int b=0; b<numTargets; b++) {                            // Loop over bodies & bodies2
-    double dp = (bodies[b].TRG - bodies2[b].TRG) * (bodies[b].TRG - bodies2[b].TRG);// Difference of potential
-    double  p = bodies2[b].TRG * bodies2[b].TRG;                //  Value of potential
+    double dp = (bodies[b].p - bodies2[b].p) * (bodies[b].p - bodies2[b].p);// Difference of potential
+    double  p = bodies2[b].p * bodies2[b].p;                    //  Value of potential
     diff1 += dp;                                                //  Accumulate difference of potential
     norm1 += p;                                                 //  Accumulate value of potential
   }                                                             // End loop over bodies & bodies2

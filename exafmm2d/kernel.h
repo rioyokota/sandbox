@@ -13,11 +13,11 @@ void P2P(Cell * Ci, Cell * Cj, real_t Xperiodic[2]) {
       real_t R2 = dX[0] * dX[0] + dX[1] * dX[1];
       if (R2 != 0) {
 	real_t invR = 1 / sqrt(R2);
-	real_t logR = Bj[j].SRC * log(invR);
+	real_t logR = Bj[j].q * log(invR);
 	pot += logR;
       }
     }
-    Bi[i].TRG += pot;
+    Bi[i].p += pot;
   }
 }
 
@@ -27,10 +27,10 @@ void P2M(Cell * C) {
     real_t dX[2];                                             // Distance vector
     for (int d=0; d<2; d++) dX[d] = B->X[d] - C->X[d];        //  Get distance vector
     complex_t Z(dX[0],dX[1]), powZ(1.0, 0.0);                 //  Convert to complex plane
-    C->M[0] += B->SRC;                                        //  Add constant term
+    C->M[0] += B->q;                                          //  Add constant term
     for (int n=1; n<P; n++) {                                 //  Loop over coefficients
       powZ *= Z / real_t(n);                                  //   Store z^n / n!
-      C->M[n] += powZ * B->SRC;                               //   Add to coefficient
+      C->M[n] += powZ * B->q;                                 //   Add to coefficient
     }                                                         //  End loop
   }                                                           // End loop
 }
@@ -114,10 +114,10 @@ void L2P(Cell * Ci) {
     real_t dX[2];                                             // Distance vector
     for (int d=0; d<2; d++) dX[d] = B->X[d] - Ci->X[d];       //  Get distance vector
     complex_t Z(dX[0],dX[1]), powZ(1.0, 0.0);                 //  Convert to complex plane
-    B->TRG += std::real(Ci->L[0]);                            //  Add constant term
+    B->p += std::real(Ci->L[0]);                              //  Add constant term
     for (int n=1; n<P; n++) {                                 //  Loop over coefficients
       powZ *= Z / real_t(n);                                  //   Store z^n / n!
-      B->TRG += std::real(Ci->L[n] * powZ);                   //   Add real part to solution
+      B->p += std::real(Ci->L[n] * powZ);                     //   Add real part to solution
     }                                                         //  End loop
   }                                                           // End loop
 }
