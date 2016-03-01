@@ -33,7 +33,7 @@ void dualTreeTraversal(Cell * Ci, Cell * Cj) {
   real_t dX[2];                                                 // Distance vector
   for (int d=0; d<2; d++) dX[d] = Ci->X[d] - Cj->X[d] - Xperiodic[d];// Distance vector from source to target
   real_t R2 = (dX[0] * dX[0] + dX[1] * dX[1]) * theta * theta;  // Scalar distance squared
-  if (R2 > (Ci->R+Cj->R)*(Ci->R+Cj->R)) {                       //  If distance is far enough
+  if (R2 > (Ci->R + Cj->R) * (Ci->R + Cj->R)) {                 //  If distance is far enough
     M2L(Ci, Cj, Xperiodic);                                     //   Use approximate kernels
   } else if (Ci->NNODE == 1 && Cj->NNODE == 1) {                //  Else if both cells are bodies
     P2P(Ci, Cj, Xperiodic);                                     //    Use exact kernel
@@ -131,7 +131,7 @@ void direct(int ni, Body * ibodies, int nj, Body * jbodies, real_t cycle) {
   Cj->NBODY = nj;                                               // Number of source bodies
   int prange = 0;                                               // Range of periodic images
   for (int i=0; i<images; i++) {                                // Loop over periodic image sublevels
-    prange += int(std::pow(3.,i));                              //  Accumulate range of periodic images
+    prange += int(powf(3.,i));                                  //  Accumulate range of periodic images
   }                                                             // End loop over perioidc image sublevels
   for (int ix=-prange; ix<=prange; ix++) {                      // Loop over x periodic direction
     for (int iy=-prange; iy<=prange; iy++) {                    //  Loop over y periodic direction

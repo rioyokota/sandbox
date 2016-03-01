@@ -55,8 +55,8 @@ int main(int argc, char ** argv) {                              // Main function
   for (int d=0; d<2; d++) X0[d] = (Xmax[d] + Xmin[d]) / 2;      // Calculate center of domain
   R0 = 0;                                                       // Initialize localRadius
   for (int d=0; d<2; d++) {                                     // Loop over dimensions
-    R0 = std::max(X0[d] - Xmin[d], R0);                         //  Calculate min distance from center
-    R0 = std::max(Xmax[d] - X0[d], R0);                         //  Calculate max distance from center
+    R0 = fmax(X0[d] - Xmin[d], R0);                             //  Calculate min distance from center
+    R0 = fmax(Xmax[d] - X0[d], R0);                             //  Calculate max distance from center
   }                                                             // End loop over dimensions
   R0 *= 1.00001;                                                // Add some leeway to radius
   printf("%-20s : %lf s\n","Get bounds",getTime()-time);        // Stop timer 
@@ -88,24 +88,28 @@ int main(int argc, char ** argv) {                              // Main function
   }                                                             // End loop over target samples
   Body * bodies2 = new Body [numTargets];                       // Backup bodies
   for (int b=0; b<numTargets; b++) {                            // Loop over bodies
-    bodies2[b].p = bodies[b].p;                                 //  Save bodies target in bodies2
+    bodies2[b] = bodies[b];                                     //  Save bodies in bodies2
   }                                                             // End loop over bodies
   for (int b=0; b<numTargets; b++) {                            // Loop over bodies
-    bodies[b].p = 0;                                            //  Clear target values
+    bodies[b].p = 0;                                            //  Clear potential
+    for (int d=0; d<2; d++) bodies[b].f[d] = 0;                 //  Clear force
   }                                                             // End loop over bodies
   time = getTime();                                             // Start timer 
   direct(numTargets, bodies, numBodies, jbodies, cycle);        // Direc N-body
   printf("%-20s : %lf s\n","Direct N-Body",getTime()-time);     // Stop timer 
 
   //! Evaluate relaitve L2 norm error
-  double diff1 = 0, norm1 = 0;
+  double dp2 = 0, p2 = 0, df2 = 0, f2 = 0;
   for (int b=0; b<numTargets; b++) {                            // Loop over bodies & bodies2
-    double dp = (bodies[b].p - bodies2[b].p) * (bodies[b].p - bodies2[b].p);// Difference of potential
-    double  p = bodies2[b].p * bodies2[b].p;                    //  Value of potential
-    diff1 += dp;                                                //  Accumulate difference of potential
-    norm1 += p;                                                 //  Accumulate value of potential
+    dp2 += (bodies[b].p - bodies2[b].p) * (bodies[b].p - bodies2[b].p);// Difference of potential
+    p2 += bodies2[b].p * bodies2[b].p;                          //  Value of potential
+    df2 += (bodies[b].f[0] - bodies2[b].f[0]) * (bodies[b].f[0] - bodies2[b].f[0])// Difference of force
+      + (bodies[b].f[0] - bodies2[b].f[0]) * (bodies[b].f[0] - bodies2[b].f[0]);// Difference of force
+    f2 += bodies2[b].f[0] * bodies2[b].f[0] + bodies2[b].f[1] * bodies2[b].f[1];//  Value of force
+    printf("%d {%f,%f} {%f,%f}\n", b, bodies[b].f[0], bodies[b].f[1], bodies2[b].f[0], bodies2[b].f[1]);
   }                                                             // End loop over bodies & bodies2
   printf("--- FMM vs. direct ---------------\n");               // Print message
-  printf("Rel. L2 Error (pot)  : %e\n",sqrtf(diff1/norm1));     // Print potential error
+  printf("Rel. L2 Error (p)  : %e\n",sqrtf(dp2/p2));            // Print potential error
+  printf("Rel. L2 Error (f)  : %e\n",sqrtf(df2/f2));            // Print force error
   return 0;
 }
