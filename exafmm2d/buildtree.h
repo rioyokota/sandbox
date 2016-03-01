@@ -1,6 +1,5 @@
 #ifndef buildtree_h
 #define buildtree_h
-#include "types.h"
 
 //! Build cells of tree adaptively using a top-down approach based on recursion (uses task based thread parallelism)
 Cell * buildTree(Body * bodies, Body * buffer, int begin, int end,

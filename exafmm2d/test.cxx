@@ -2,10 +2,10 @@
 #include <cstdlib>
 #include <sys/time.h>
 
+#include "types.h"
 #include "buildtree.h"
 #include "kernel.h"
 #include "traversal.h"
-#include "types.h"
 
 //! Get the current time in seconds
 double getTime() {
@@ -34,7 +34,8 @@ int main(int argc, char ** argv) {                              // Main function
     }                                                           //  End loop over dimension
     bodies[b].q = drand48() - .5;                               //  Initialize charge
     average += bodies[b].q;                                     //  Accumulate charge
-    bodies[b].p = 0;                                            //  Clear target values
+    bodies[b].p = 0;                                            //  Clear potential
+    for (int d=0; d<2; d++) bodies[b].f[d] = 0;                 //  Clear force
   }                                                             // End loop over bodies
   average /= numBodies;                                         // Average charge
   for (int b=0; b<numBodies; b++) {                             // Loop over bodies

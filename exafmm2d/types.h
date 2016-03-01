@@ -12,8 +12,9 @@ const int P = 6;                                                //!< Order of ex
 //! Structure of bodies
 struct Body {
   real_t X[2];                                                  //!< Position
-  real_t q;                                                     //!< Scalar source values
-  real_t p;                                                     //!< Scalar+vector3 target values
+  real_t q;                                                     //!< Charge
+  real_t p;                                                     //!< Potential
+  real_t f[2];                                                  //!< Force
 };
 
 //! Structure of cells
