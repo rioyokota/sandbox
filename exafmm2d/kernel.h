@@ -60,8 +60,7 @@ void M2M(Cell * Ci) {
 void M2L(Cell * Ci, Cell * Cj, real_t Xperiodic[2]) {
   real_t dX[2];                                                 // Distance vector
   for (int d=0; d<2; d++) dX[d] = Ci->X[d] - Cj->X[d] - Xperiodic[d];  // Get distance vector
-  complex_t Z(dX[0],dX[1]), powZn(1.0, 0.0),
-    powZnk(1.0, 0.0), invZ(powZn/Z);                            // Convert to complex plane
+  complex_t Z(dX[0],dX[1]), powZn(1.0, 0.0), powZnk(1.0, 0.0), invZ(powZn/Z);// Convert to complex plane
   Ci->L[0] += -Cj->M[0] * log(Z);                               // Log term (for 0th order)
   Ci->L[0] += Cj->M[1] * invZ;                                  // Constant term
   powZn = invZ;                                                 // 1/z term
@@ -93,7 +92,7 @@ void L2L(Cell * Cj) {
   for (int i=0; i<4; i++) {                                     // Loop over child cells
     if (Cj->CHILD[i]) {                                         //  If child exists
       Cell * Ci = Cj->CHILD[i];                                 //   Child cell
-      real_t dX[2];                                             // Distance vector
+      real_t dX[2];                                             //   Distance vector
       for (int d=0; d<2; d++) dX[d] = Ci->X[d] - Cj->X[d];      //   Get distance vector
       complex_t Z(dX[0],dX[1]);                                 //   Convert to complex plane
       for (int l=0; l<P; l++) {                                 //   Loop over coefficients
@@ -111,7 +110,7 @@ void L2L(Cell * Cj) {
 //!< L2P kernel for cell C
 void L2P(Cell * C) {
   for (Body * B=C->BODY; B!=C->BODY+C->NBODY; B++) {            // Loop over bodies
-    real_t dX[2];                                               // Distance vector
+    real_t dX[2];                                               //  Distance vector
     for (int d=0; d<2; d++) dX[d] = B->X[d] - C->X[d];          //  Get distance vector
     complex_t Z(dX[0],dX[1]), powZ(1.0, 0.0);                   //  Convert to complex plane
     B->p += std::real(C->L[0]);                                 //  Add constant term
