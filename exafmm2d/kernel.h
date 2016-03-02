@@ -6,7 +6,7 @@ void P2P(Cell * Ci, Cell * Cj, real_t Xperiodic[2]) {
   Body * Bi = Ci->BODY;                                         // Target body pointer
   Body * Bj = Cj->BODY;                                         // Source body pointer
   for (int i=0; i<Ci->NBODY; i++) {                             // Loop over target bodies
-    real_t p = 0, f[2] = {0, 0};                                //  Initialize potential, force
+    real_t p = 0, F[2] = {0, 0};                                //  Initialize potential, force
     for (int j=0; j<Cj->NBODY; j++) {                           //  Loop over source bodies
       real_t dX[2];                                             //   Declare distance vector
       for (int d=0; d<2; d++) dX[d] = Bi[i].X[d] - Bj[j].X[d] - Xperiodic[d];// Calculate distance vector
@@ -15,11 +15,11 @@ void P2P(Cell * Ci, Cell * Cj, real_t Xperiodic[2]) {
 	real_t invR = 1 / sqrtf(R2);                            //    1 / R
 	real_t logR = Bj[j].q * log(invR);                      //    q * log(R)
 	p += logR;                                              //    Potential
-	for (int d=0; d<2; d++) f[d] += dX[d] * Bj[j].q / R2;   //    Force
+	for (int d=0; d<2; d++) F[d] += dX[d] * Bj[j].q / R2;   //    Force
       }                                                         //   End if for same point
     }                                                           //  End loop over source points
     Bi[i].p += p;                                               //  Accumulate potential
-    for (int d=0; d<2; d++) Bi[i].f[d] -= f[d];                 //  Accumulate force
+    for (int d=0; d<2; d++) Bi[i].F[d] -= F[d];                 //  Accumulate force
   }                                                             // End loop over target bodies
 }
 
@@ -114,14 +114,14 @@ void L2P(Cell * C) {
     for (int d=0; d<2; d++) dX[d] = B->X[d] - C->X[d];          //  Get distance vector
     complex_t Z(dX[0],dX[1]), powZ(1.0, 0.0);                   //  Convert to complex plane
     B->p += std::real(C->L[0]);                                 //  Add constant term
-    B->f[0] += std::real(C->L[1]);                              //  Add constant term
-    B->f[1] -= std::imag(C->L[1]);                              //  Add constant term
+    B->F[0] += std::real(C->L[1]);                              //  Add constant term
+    B->F[1] -= std::imag(C->L[1]);                              //  Add constant term
     for (int n=1; n<P; n++) {                                   //  Loop over coefficients
       powZ *= Z / real_t(n);                                    //   Store z^n / n!
       B->p += std::real(C->L[n] * powZ);                        //   Add real part to solution
       if (n < P-1) {                                            //   Condition for force accumulation
-	B->f[0] += std::real(C->L[n+1] * powZ);                 //    Add real part to solution
-	B->f[1] -= std::imag(C->L[n+1] * powZ);                 //    Add real part to solution
+	B->F[0] += std::real(C->L[n+1] * powZ);                 //    Add real part to solution
+	B->F[1] -= std::imag(C->L[n+1] * powZ);                 //    Add real part to solution
       }                                                         //   End condition for force accumulation
     }                                                           //  End loop
   }                                                             // End loop

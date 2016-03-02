@@ -36,7 +36,7 @@ int main(int argc, char ** argv) {                              // Main function
     bodies[b].q = drand48() - .5;                               //  Initialize charge
     average += bodies[b].q;                                     //  Accumulate charge
     bodies[b].p = 0;                                            //  Clear potential
-    for (int d=0; d<2; d++) bodies[b].f[d] = 0;                 //  Clear force
+    for (int d=0; d<2; d++) bodies[b].F[d] = 0;                 //  Clear force
   }                                                             // End loop over bodies
   average /= numBodies;                                         // Average charge
   for (int b=0; b<numBodies; b++) {                             // Loop over bodies
@@ -93,7 +93,7 @@ int main(int argc, char ** argv) {                              // Main function
   }                                                             // End loop over bodies
   for (int b=0; b<numTargets; b++) {                            // Loop over bodies
     bodies[b].p = 0;                                            //  Clear potential
-    for (int d=0; d<2; d++) bodies[b].f[d] = 0;                 //  Clear force
+    for (int d=0; d<2; d++) bodies[b].F[d] = 0;                 //  Clear force
   }                                                             // End loop over bodies
   time = getTime();                                             // Start timer 
   direct(numTargets, bodies, numBodies, jbodies, cycle);        // Direc N-body
@@ -104,9 +104,9 @@ int main(int argc, char ** argv) {                              // Main function
   for (int b=0; b<numTargets; b++) {                            // Loop over bodies & bodies2
     dp2 += (bodies[b].p - bodies2[b].p) * (bodies[b].p - bodies2[b].p);// Difference of potential
     p2 += bodies2[b].p * bodies2[b].p;                          //  Value of potential
-    df2 += (bodies[b].f[0] - bodies2[b].f[0]) * (bodies[b].f[0] - bodies2[b].f[0])// Difference of force
-      + (bodies[b].f[0] - bodies2[b].f[0]) * (bodies[b].f[0] - bodies2[b].f[0]);// Difference of force
-    f2 += bodies2[b].f[0] * bodies2[b].f[0] + bodies2[b].f[1] * bodies2[b].f[1];//  Value of force
+    df2 += (bodies[b].F[0] - bodies2[b].F[0]) * (bodies[b].F[0] - bodies2[b].F[0])// Difference of force
+      + (bodies[b].F[0] - bodies2[b].F[0]) * (bodies[b].F[0] - bodies2[b].F[0]);// Difference of force
+    f2 += bodies2[b].F[0] * bodies2[b].F[0] + bodies2[b].F[1] * bodies2[b].F[1];//  Value of force
   }                                                             // End loop over bodies & bodies2
   printf("--- FMM vs. direct ---------------\n");               // Print message
   printf("Rel. L2 Error (p)  : %e\n",sqrtf(dp2/p2));            // Print potential error
