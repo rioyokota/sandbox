@@ -125,9 +125,9 @@ void downwardPass(Cell * C) {
 void direct(int ni, Body * ibodies, int nj, Body * jbodies, real_t cycle) {
   Cell * Ci = new Cell();                                       // Allocate single target cell
   Cell * Cj = new Cell();                                       // Allocate single source cell
-  Ci->BODY = ibodies;                                           // Iterator of first target body
+  Ci->BODY = ibodies;                                           // Pointer of first target body
   Ci->NBODY = ni;                                               // Number of target bodies
-  Cj->BODY = jbodies;                                           // Iterator of first source body
+  Cj->BODY = jbodies;                                           // Pointer of first source body
   Cj->NBODY = nj;                                               // Number of source bodies
   int prange = 0;                                               // Range of periodic images
   for (int i=0; i<images; i++) {                                // Loop over periodic image sublevels

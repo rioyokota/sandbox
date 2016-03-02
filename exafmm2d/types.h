@@ -21,12 +21,12 @@ struct Body {
 struct Cell {
   int NNODE;                                                    //!< Number of child cells
   int NBODY;                                                    //!< Number of descendant bodies
-  Cell * CHILD[4];                                              //!< Index of child cells
-  Body * BODY;                                                  //!< Iterator of first body
+  Cell * CHILD[4];                                              //!< Pointer of child cells
+  Body * BODY;                                                  //!< Pointer of first body
   real_t X[2];                                                  //!< Cell center
   real_t R;                                                     //!< Cell radius
-  complex_t M[P];                                               //!< Multipole coefficients
-  complex_t L[P];                                               //!< Local coefficients
+  complex_t M[P];                                               //!< Multipole expansion coefficients
+  complex_t L[P];                                               //!< Local expansion coefficients
 };
 
 #endif

@@ -7,12 +7,12 @@ Cell * buildTree(Body * bodies, Body * buffer, int begin, int end,
   if (begin == end) return NULL;                              // If no bodies left, return null pointer
   //! Create a tree cell
   Cell * cell = new Cell();                                   // Allocate memory for single cell
-  cell->BODY = bodies + begin;                                // Iterator of first body in cell
+  cell->BODY = bodies + begin;                                // Pointer of first body in cell
   cell->NBODY = end - begin;                                  // Number of bodies in cell
   cell->NNODE = 1;                                            // Initialize counter for decendant cells
   for (int d=0; d<2; d++) cell->X[d] = X[d];                  // Center position of cell
   cell->R = R / (1 << level);                                 // Cell radius
-  for (int i=0; i<4; i++) cell->CHILD[i] = NULL;              //  Initialize pointers to children
+  for (int i=0; i<4; i++) cell->CHILD[i] = NULL;              // Initialize pointers to children
   //! If cell is a leaf
   if (end - begin <= ncrit) {                                 // If number of bodies is less than threshold
     if (direction) {                                          //  If direction of data is from bodies to buffer
