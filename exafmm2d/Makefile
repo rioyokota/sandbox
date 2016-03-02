@@ -1,12 +1,12 @@
 .SUFFIXES: .cxx .o
 
-CXX	= g++ -O3 -fopenmp -ffast-math
+CXX = g++ -O3 -fopenmp -ffast-math
 
 .cxx.o  :
-	$(CXX) -c $^ -o $@ $(LFLAGS)
+	$(CXX) -c $^ -o $@
 
 test: test.o
-	$(CXX) $? $(LFLAGS)
+	$(CXX) $?
 	./a.out
 
 clean:
