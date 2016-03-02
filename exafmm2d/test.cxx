@@ -1,5 +1,6 @@
 #include <cmath>
 #include <cstdlib>
+#include <cstdio>
 #include <sys/time.h>
 
 #include "types.h"
@@ -106,7 +107,6 @@ int main(int argc, char ** argv) {                              // Main function
     df2 += (bodies[b].f[0] - bodies2[b].f[0]) * (bodies[b].f[0] - bodies2[b].f[0])// Difference of force
       + (bodies[b].f[0] - bodies2[b].f[0]) * (bodies[b].f[0] - bodies2[b].f[0]);// Difference of force
     f2 += bodies2[b].f[0] * bodies2[b].f[0] + bodies2[b].f[1] * bodies2[b].f[1];//  Value of force
-    printf("%d {%f,%f} {%f,%f}\n", b, bodies[b].f[0], bodies[b].f[1], bodies2[b].f[0], bodies2[b].f[1]);
   }                                                             // End loop over bodies & bodies2
   printf("--- FMM vs. direct ---------------\n");               // Print message
   printf("Rel. L2 Error (p)  : %e\n",sqrtf(dp2/p2));            // Print potential error
