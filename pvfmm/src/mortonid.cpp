@@ -65,16 +65,4 @@ std::vector<MortonId> MortonId::Children() const{
   return child;
 }
 
-std::ostream& operator<<(std::ostream& out, const MortonId & mid){
-  double a=0;
-  double s=1;
-  for(int i=MAX_DEPTH;i>=0;i--){
-    s=s*0.5; if(mid.z & (((UINT_T)1)<<i)) a+=s;
-    s=s*0.5; if(mid.y & (((UINT_T)1)<<i)) a+=s;
-    s=s*0.5; if(mid.x & (((UINT_T)1)<<i)) a+=s;
-  }
-  out<<"("<<(size_t)mid.x<<","<<(size_t)mid.y<<","<<(size_t)mid.z<<" - "<<a<<")";
-  return out;
-}
-
 }//end namespace

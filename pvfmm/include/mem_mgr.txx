@@ -1,40 +1,12 @@
-/**
- * \file mem_mgr.txx
- * \author Dhairya Malhotra, dhairya.malhotra@gmail.com
- * \date 9-21-2014
- * \brief This file contains the definition of a simple memory manager which
- * uses a pre-allocated buffer of size defined in call to the constructor.
- */
-
 #include <omp.h>
 #include <algorithm>
 #include <cstring>
 #include <cassert>
+#include <iostream>
 
 namespace pvfmm{
 namespace mem{
 
-template <class T>
-uintptr_t TypeTraits<T>::ID(){
-  return (uintptr_t)&ID;
-}
-
-template <class T>
-bool TypeTraits<T>::IsPOD(){
-  return false;
-}
-
-#define PVFMMDefinePOD(type) template<> bool inline TypeTraits<type>::IsPOD(){return true;};
-PVFMMDefinePOD(char);
-PVFMMDefinePOD(float);
-PVFMMDefinePOD(double);
-PVFMMDefinePOD(int);
-PVFMMDefinePOD(long long);
-PVFMMDefinePOD(unsigned long);
-PVFMMDefinePOD(char*);
-PVFMMDefinePOD(float*);
-PVFMMDefinePOD(double*);
-#undef PVFMMDefinePOD
 
 
 MemoryManager::MemHead* MemoryManager::GetMemHead(void* p){

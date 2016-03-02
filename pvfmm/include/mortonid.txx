@@ -1,10 +1,3 @@
-/**
- * \file mortonid.txx
- * \author Dhairya Malhotra, dhairya.malhotra@gmail.com
- * \date 2-11-2011
- * \brief This file contains implementation of the class MortonId.
- */
-
 #include <cmath>
 #include <cassert>
 
