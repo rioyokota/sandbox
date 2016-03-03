@@ -2,16 +2,18 @@
 #define _PVFMM_MATRIX_HPP_
 
 #include <algorithm>
+#include <cassert>
 #include <cmath>
 #include <cstdlib>
-#include <cassert>
-#include <iostream>
+#include <cstring>
 #include <iomanip>
+#include <iostream>
+#include <map>
 #include <omp.h>
+#include <stack>
 #include <stdint.h>
 #include <vector>
 
-#include <mem_mgr.hpp>
 #include <profile.hpp>
 #include <pvfmm_common.hpp>
 #include <vector.hpp>
@@ -28,6 +30,12 @@ extern "C" {
 }
 
 namespace pvfmm{
+
+  inline uintptr_t align_ptr(uintptr_t ptr){
+    static uintptr_t     ALIGN_MINUS_ONE=MEM_ALIGN-1;
+    static uintptr_t NOT_ALIGN_MINUS_ONE=~ALIGN_MINUS_ONE;
+    return ((ptr+ALIGN_MINUS_ONE) & NOT_ALIGN_MINUS_ONE);
+  }
 
   template <class T>
   void tgemm(char TransA, char TransB,  int M,  int N,  int K,  T alpha,  T *A,  int lda,  T *B,  int ldb,  T beta, T *C,  int ldc) {

@@ -1,13 +1,3 @@
-
-/**
-  @file parUtils.txx
-  @brief Definitions of the templated functions in the par module.
-  @author Rahul S. Sampath, rahul.sampath@gmail.com
-  @author Hari Sundar, hsundar@gmail.com
-  @author Shravan Veerapaneni, shravan@seas.upenn.edu
-  @author Santi Swaroop Adavani, santis@gmail.com
-  */
-
 #include <cmath>
 #include <cassert>
 #include <cstring>
@@ -15,7 +5,6 @@
 #include <iostream>
 #include <algorithm>
 #include <ompUtils.h>
-#include <mem_mgr.hpp>
 #include <matrix.hpp>
 
 namespace pvfmm{
@@ -35,12 +24,6 @@ namespace par{
       // Local sort.
       Vector<T> arr=arr_;
       omp_par::merge_sort(&arr[0], &arr[0]+nelem);
-
-      // Allocate memory.
-      //Vector<T> nbuff;
-      //Vector<T> nbuff_ext;
-      //Vector<T> rbuff    ;
-      //Vector<T> rbuff_ext;
 
       SortedElem.Resize(nelem);
       memcpy(&SortedElem[0], &arr[0], nelem*sizeof(T));

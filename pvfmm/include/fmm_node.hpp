@@ -33,7 +33,6 @@
 #include <fft_wrapper.hpp>
 #include <interac_list.hpp>
 #include <matrix.hpp>
-#include <mem_mgr.hpp>
 #include <mortonid.hpp>
 #include <ompUtils.h>
 #include <parUtils.h>

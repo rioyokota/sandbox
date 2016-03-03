@@ -1,8 +1,6 @@
 #include <cassert>
 #include <iostream>
 #include <iomanip>
-
-#include <mem_mgr.hpp>
 #include <profile.hpp>
 
 namespace pvfmm{
