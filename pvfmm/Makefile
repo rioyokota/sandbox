@@ -13,7 +13,7 @@ float: src/fmm_pts.cpp
 double: src/fmm_pts.cpp
 	$(CXX) -c $< -o src/fmm_pts.o
 
-link: src/mortonid.o src/profile.o src/fmm_pts.o
+link: src/profile.o src/fmm_pts.o
 	$(CXX) $? $(LDFLAGS) -o ./fmm_pts
 
 clean:
