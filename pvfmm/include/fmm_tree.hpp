@@ -952,8 +952,8 @@ class FMM_Tree {
         M_conv=M_conv.Transpose();
         int nnn[3]={n1,n1,n1};
         Real_t *fftw_in, *fftw_out;
-        fftw_in  = mem::aligned_new<Real_t>(  n3 *ker_dim[0]*ker_dim[1]*sizeof(Real_t));
-        fftw_out = mem::aligned_new<Real_t>(2*n3_*ker_dim[0]*ker_dim[1]*sizeof(Real_t));
+        fftw_in  = new Real_t [n3 *ker_dim[0]*ker_dim[1]*sizeof(Real_t)];
+        fftw_out = new Real_t [2*n3_*ker_dim[0]*ker_dim[1]*sizeof(Real_t)];
 #pragma omp critical (FFTW_PLAN)
         {
           if (!vprecomp_fft_flag){
@@ -966,8 +966,8 @@ class FMM_Tree {
         FFTW_t<Real_t>::fft_execute_dft_r2c(vprecomp_fftplan, (Real_t*)fftw_in, (typename FFTW_t<Real_t>::cplx*)(fftw_out));
         Matrix<Real_t> M_(2*n3_*ker_dim[0]*ker_dim[1],1,(Real_t*)fftw_out,false);
         M=M_;
-        mem::aligned_delete<Real_t>(fftw_in);
-        mem::aligned_delete<Real_t>(fftw_out);
+        delete[] fftw_in;
+        delete[] fftw_out;
         break;
       }
       case V1_Type:
@@ -3480,13 +3480,13 @@ class FMM_Tree {
     {
       if(!vlist_fft_flag){
         int nnn[3]={(int)n1,(int)n1,(int)n1};
-        void *fftw_in, *fftw_out;
-        fftw_in  = mem::aligned_new<Real_t>(  n3 *ker_dim0*chld_cnt);
-        fftw_out = mem::aligned_new<Real_t>(2*n3_*ker_dim0*chld_cnt);
+        Real_t *fftw_in, *fftw_out;
+        fftw_in  = new Real_t [n3 *ker_dim0*chld_cnt];
+        fftw_out = new Real_t [2*n3_*ker_dim0*chld_cnt];
         vlist_fftplan = FFTW_t<Real_t>::fft_plan_many_dft_r2c(3,nnn,ker_dim0*chld_cnt,
             (Real_t*)fftw_in, NULL, 1, n3, (typename FFTW_t<Real_t>::cplx*)(fftw_out),NULL, 1, n3_);
-        mem::aligned_delete<Real_t>((Real_t*)fftw_in );
-        mem::aligned_delete<Real_t>((Real_t*)fftw_out);
+        delete[] fftw_in;
+        delete[] fftw_out;
         vlist_fft_flag=true;
       }
     }
@@ -3549,12 +3549,12 @@ class FMM_Tree {
       if(!vlist_ifft_flag){
         int nnn[3]={(int)n1,(int)n1,(int)n1};
         Real_t *fftw_in, *fftw_out;
-        fftw_in  = mem::aligned_new<Real_t>(2*n3_*ker_dim1*chld_cnt);
-        fftw_out = mem::aligned_new<Real_t>(  n3 *ker_dim1*chld_cnt);
+        fftw_in  = new Real_t [2*n3_*ker_dim1*chld_cnt];
+        fftw_out = new Real_t [n3 *ker_dim1*chld_cnt];
         vlist_ifftplan = FFTW_t<Real_t>::fft_plan_many_dft_c2r(3,nnn,ker_dim1*chld_cnt,
             (typename FFTW_t<Real_t>::cplx*)fftw_in, NULL, 1, n3_, (Real_t*)(fftw_out),NULL, 1, n3);
-        mem::aligned_delete<Real_t>(fftw_in);
-        mem::aligned_delete<Real_t>(fftw_out);
+        delete[] fftw_in;
+        delete[] fftw_out;
         vlist_ifft_flag=true;
       }
     }
