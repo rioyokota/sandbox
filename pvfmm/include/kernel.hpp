@@ -11,7 +11,7 @@ struct Kernel{
   public:
 
   typedef void (*Ker_t)(T* r_src, int src_cnt, T* v_src, int dof,
-                        T* r_trg, int trg_cnt, T* k_out, mem::MemoryManager* mem_mgr);
+                        T* r_trg, int trg_cnt, T* k_out);
 
   typedef void (*VolPoten)(const T* coord, int n, T* out);
 
@@ -129,7 +129,6 @@ void quad_rule(int n, T* x, T* w){
 
 template <class T>
 std::vector<T> integ_pyramid(int m, T* s, T r, int nx, const Kernel<T>& kernel, int* perm){//*
-  static mem::MemoryManager mem_mgr(16*1024*1024*sizeof(T));
   int ny=nx;
   int nz=nx;
 
@@ -198,10 +197,10 @@ std::vector<T> integ_pyramid(int m, T* s, T r, int nx, const Kernel<T>& kernel, 
     x_.swap(x_new);
   }
 
-  Vector<T> k_out(   ny*nz*k_dim,mem::aligned_new<T>(   ny*nz*k_dim,&mem_mgr),false);
-  Vector<T> I0   (   ny*m *k_dim,mem::aligned_new<T>(   ny*m *k_dim,&mem_mgr),false);
-  Vector<T> I1   (   m *m *k_dim,mem::aligned_new<T>(   m *m *k_dim,&mem_mgr),false);
-  Vector<T> I2   (m *m *m *k_dim,mem::aligned_new<T>(m *m *m *k_dim,&mem_mgr),false); I2.SetZero();
+  Vector<T> k_out(   ny*nz*k_dim,mem::aligned_new<T>(   ny*nz*k_dim),false);
+  Vector<T> I0   (   ny*m *k_dim,mem::aligned_new<T>(   ny*m *k_dim),false);
+  Vector<T> I1   (   m *m *k_dim,mem::aligned_new<T>(   m *m *k_dim),false);
+  Vector<T> I2   (m *m *m *k_dim,mem::aligned_new<T>(m *m *m *k_dim),false); I2.SetZero();
   if(x_.size()>1)
   for(int k=0; k<x_.size()-1; k++){
     T x0=x_[k];
@@ -320,10 +319,10 @@ std::vector<T> integ_pyramid(int m, T* s, T r, int nx, const Kernel<T>& kernel, 
                      +m*(m+1)*(m+2)/3*k_dim)*nx*(x_.size()-1));
 
   std::vector<T> I2_(&I2[0], &I2[0]+I2.Dim());
-  mem::aligned_delete<T>(&k_out[0],&mem_mgr);
-  mem::aligned_delete<T>(&I0   [0],&mem_mgr);
-  mem::aligned_delete<T>(&I1   [0],&mem_mgr);
-  mem::aligned_delete<T>(&I2   [0],&mem_mgr);
+  mem::aligned_delete<T>(&k_out[0]);
+  mem::aligned_delete<T>(&I0   [0]);
+  mem::aligned_delete<T>(&I1   [0]);
+  mem::aligned_delete<T>(&I2   [0]);
   return I2_;
 }
 
@@ -449,7 +448,7 @@ std::vector<T> cheb_integ(int m, T* s_, T r_, const Kernel<T>& kernel){
   return U0;
 }
 
-template<typename T, void (*A)(T*, int, T*, int, T*, int, T*, mem::MemoryManager* mem_mgr)>
+template<typename T, void (*A)(T*, int, T*, int, T*, int, T*)>
 Kernel<T> BuildKernel(const char* name, std::pair<int,int> k_dim,
     const Kernel<T>* k_s2m=NULL, const Kernel<T>* k_s2l=NULL, const Kernel<T>* k_s2t=NULL,
     const Kernel<T>* k_m2m=NULL, const Kernel<T>* k_m2l=NULL, const Kernel<T>* k_m2t=NULL,
@@ -1010,13 +1009,13 @@ void Kernel<T>::BuildMatrix(T* r_src, int src_cnt, T* r_trg, int trg_cnt, T* k_o
       std::vector<T> v_src(ker_dim[0],0);
       v_src[j]=1.0;
       ker_poten(&r_src[i*3], 1, &v_src[0], 1, r_trg, trg_cnt,
-                &k_out[(i*ker_dim[0]+j)*trg_cnt*ker_dim[1]], NULL);
+                &k_out[(i*ker_dim[0]+j)*trg_cnt*ker_dim[1]]);
     }
 }
 
 
 template <class Real_t, int SRC_DIM, int TRG_DIM, void (*uKernel)(Matrix<Real_t>&, Matrix<Real_t>&, Matrix<Real_t>&, Matrix<Real_t>&)>
-void generic_kernel(Real_t* r_src, int src_cnt, Real_t* v_src, int dof, Real_t* r_trg, int trg_cnt, Real_t* v_trg, mem::MemoryManager* mem_mgr){
+void generic_kernel(Real_t* r_src, int src_cnt, Real_t* v_src, int dof, Real_t* r_trg, int trg_cnt, Real_t* v_trg){
   assert(dof==1);
   int VecLen=8;
   if(sizeof(Real_t)==sizeof( float)) VecLen=8;
@@ -1035,7 +1034,7 @@ void generic_kernel(Real_t* r_src, int src_cnt, Real_t* v_src, int dof, Real_t* 
     size_t buff_size=src_cnt_*(3+SRC_DIM)+
                      trg_cnt_*(3+TRG_DIM);
     if(buff_size>STACK_BUFF_SIZE){
-      buff=mem::aligned_new<Real_t>(buff_size, mem_mgr);
+      buff=mem::aligned_new<Real_t>(buff_size);
     }
     Real_t* buff_ptr=buff;
     if(!buff_ptr){
@@ -1151,8 +1150,8 @@ void laplace_poten_uKernel(Matrix<Real_t>& src_coord, Matrix<Real_t>& src_value,
   #undef SRC_BLK
 }
 
-void laplace_poten(Real_t* r_src, int src_cnt, Real_t* v_src, int dof, Real_t* r_trg, int trg_cnt, Real_t* v_trg, mem::MemoryManager* mem_mgr){
-  generic_kernel<Real_t, 1, 1, laplace_poten_uKernel<Real_t,Vec_t> >(r_src, src_cnt, v_src, dof, r_trg, trg_cnt, v_trg, mem_mgr);
+void laplace_poten(Real_t* r_src, int src_cnt, Real_t* v_src, int dof, Real_t* r_trg, int trg_cnt, Real_t* v_trg){
+  generic_kernel<Real_t, 1, 1, laplace_poten_uKernel<Real_t,Vec_t> >(r_src, src_cnt, v_src, dof, r_trg, trg_cnt, v_trg);
 }
 
 template <class Real_t, class Vec_t=Real_t>
@@ -1207,8 +1206,8 @@ void laplace_grad_uKernel(Matrix<Real_t>& src_coord, Matrix<Real_t>& src_value, 
 }
 
 
-void laplace_grad(Real_t* r_src, int src_cnt, Real_t* v_src, int dof, Real_t* r_trg, int trg_cnt, Real_t* v_trg, mem::MemoryManager* mem_mgr){
-  generic_kernel<Real_t, 1, 3, laplace_grad_uKernel<Real_t,Vec_t> >(r_src, src_cnt, v_src, dof, r_trg, trg_cnt, v_trg, mem_mgr);
+void laplace_grad(Real_t* r_src, int src_cnt, Real_t* v_src, int dof, Real_t* r_trg, int trg_cnt, Real_t* v_trg){
+  generic_kernel<Real_t, 1, 3, laplace_grad_uKernel<Real_t,Vec_t> >(r_src, src_cnt, v_src, dof, r_trg, trg_cnt, v_trg);
 }
 
 template<class T> const Kernel<T>& LaplaceKernel<T>::gradient(){

@@ -2082,8 +2082,8 @@ class FMM_Tree {
         }
 #pragma omp parallel for
         for(size_t i=0;i<n_vec;i++){
-          if(&(*vec_lst[i])[0]){
-            mem::memcopy(((Real_t*)&dev_buffer[0])+vec_disp[i],&(*vec_lst[i])[0],vec_size[i]*sizeof(Real_t));
+          if((bool)&vec_lst[i][0][0]){
+            mem::memcopy(((Real_t*)&dev_buffer[0])+vec_disp[i],&vec_lst[i][0][0],vec_size[i]*sizeof(Real_t));
           }
         }
       }
@@ -3179,7 +3179,7 @@ class FMM_Tree {
                     }
                     assert(ptr_single_layer_kernel);
                     single_layer_kernel(src_coord[0], src_coord.Dim(1)/3, vbuff2_ptr, 1,
-                                        trg_coord[0], trg_coord.Dim(1)/3, vbuff3_ptr, NULL);
+                                        trg_coord[0], trg_coord.Dim(1)/3, vbuff3_ptr);
                   }
                   if(srf_coord.Dim(1)){
                     {
@@ -4733,7 +4733,7 @@ class FMM_Tree {
     for(int i=0;i<np;i++){
       size_t a=(i*trg_cnt)/np;
       size_t b=((i+1)*trg_cnt)/np;
-      kernel->ker_poten(&src_coord[0], src_cnt, &src_value[0], dof, &trg_coord[a*3], b-a, &trg_poten_dir[a*trg_dof  ],NULL);
+      kernel->ker_poten(&src_coord[0], src_cnt, &src_value[0], dof, &trg_coord[a*3], b-a, &trg_poten_dir[a*trg_dof  ]);
     }
     pvfmm::Profile::Toc();
     {

@@ -67,7 +67,7 @@ void omp_par::merge(T A_,T A_last,T B_,T B_last,T C_,int p,StrictWeakOrdering co
     j=(std::lower_bound(&split_size[p*n],&split_size[p*n*2],req_size,std::less<_DiffType>())-&split_size[p*n])+p*n;
     if(j>=2*p*n)
       j=2*p*n-1;
-    if(abs(split_size[j]-req_size)<abs(split_size1-req_size)){
+    if(std::abs(split_size[j]-req_size)<std::abs(split_size1-req_size)){
       split1     =split   [j];
       split_size1=split_size[j];
     }

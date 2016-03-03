@@ -190,8 +190,8 @@ public:
       delete_node(n_prev_indx);
 
       if(n.prev){
-      node_buff[n.prev-1].next=n_indx;
-    }
+	node_buff[n.prev-1].next=n_indx;
+      }
     }
     if(n.next!=0 && node_buff[n.next-1].free){
       size_t n_next_indx=n.next;
@@ -202,8 +202,8 @@ public:
       delete_node(n_next_indx);
 
       if(n.next){
-      node_buff[n.next-1].prev=n_indx;
-    }
+	node_buff[n.next-1].prev=n_indx;
+      }
     }
     n.free=true; // Insert n to free_map
     n.it=free_map.insert(std::make_pair(n.size,n_indx));
@@ -253,55 +253,55 @@ private:
   mutable omp_lock_t omp_lock;
 };
 
-  MemoryManager glbMemMgr(GLOBAL_MEM_BUFF*1024LL*1024LL);
+  MemoryManager glbMemMgr(16*1024*1024*sizeof(Real_t));//GLOBAL_MEM_BUFF*1024LL*1024LL);
 
-  inline uintptr_t align_ptr(uintptr_t ptr){
-    static uintptr_t     ALIGN_MINUS_ONE=MEM_ALIGN-1;
-    static uintptr_t NOT_ALIGN_MINUS_ONE=~ALIGN_MINUS_ONE;
-    return ((ptr+ALIGN_MINUS_ONE) & NOT_ALIGN_MINUS_ONE);
-  }
-
-  template <class T>
-  inline T* aligned_new(size_t n_elem=1, const MemoryManager* mem_mgr=&glbMemMgr) {
-    if(!n_elem) return NULL;
-
-    static MemoryManager def_mem_mgr(0);
-    if(!mem_mgr) mem_mgr=&def_mem_mgr;
-    T* A=(T*)mem_mgr->malloc(n_elem, sizeof(T));
-
-    if(!TypeTraits<T>::IsPOD()){ // Call constructors
+inline uintptr_t align_ptr(uintptr_t ptr){
+  static uintptr_t     ALIGN_MINUS_ONE=MEM_ALIGN-1;
+  static uintptr_t NOT_ALIGN_MINUS_ONE=~ALIGN_MINUS_ONE;
+  return ((ptr+ALIGN_MINUS_ONE) & NOT_ALIGN_MINUS_ONE);
+}
+  
+template <class T>
+inline T* aligned_new(size_t n_elem=1, const MemoryManager* mem_mgr=&glbMemMgr) {
+  if(!n_elem) return NULL;
+  
+  static MemoryManager def_mem_mgr(0);
+  if(!mem_mgr) mem_mgr=&def_mem_mgr;
+  T* A=(T*)mem_mgr->malloc(n_elem, sizeof(T));
+  
+  if(!TypeTraits<T>::IsPOD()){ // Call constructors
 #pragma omp parallel for
-      for(size_t i=0;i<n_elem;i++){
-	T* Ai=new(A+i) T();
-	assert(Ai==(A+i));
-      }
+    for(size_t i=0;i<n_elem;i++){
+      T* Ai=new(A+i) T();
+      assert(Ai==(A+i));
     }
-    assert(A);
-    return A;
   }
+  assert(A);
+  return A;
+}
 
-  template <class T>
-  inline void aligned_delete(T* A, const MemoryManager* mem_mgr=&glbMemMgr){
-    if (!A) return;
-    if(!TypeTraits<T>::IsPOD()){ // Call destructors
-      MemoryManager::MemHead* mem_head=MemoryManager::GetMemHead(A);
-      size_t type_size=mem_head->type_size;
-      size_t n_elem=mem_head->n_elem;
-      for(size_t i=0;i<n_elem;i++){
-	((T*)(((char*)A)+i*type_size))->~T();
-      }
+template <class T>
+inline void aligned_delete(T* A, const MemoryManager* mem_mgr=&glbMemMgr){
+  if (!A) return;
+  if(!TypeTraits<T>::IsPOD()){ // Call destructors
+    MemoryManager::MemHead* mem_head=MemoryManager::GetMemHead(A);
+    size_t type_size=mem_head->type_size;
+    size_t n_elem=mem_head->n_elem;
+    for(size_t i=0;i<n_elem;i++){
+      ((T*)(((char*)A)+i*type_size))->~T();
     }
-
-    static MemoryManager def_mem_mgr(0);
-    if(!mem_mgr) mem_mgr=&def_mem_mgr;
-    mem_mgr->free(A);
   }
 
-  inline void* memcopy( void * destination, const void * source, size_t num){
-    if(destination==source || num==0) return destination;
-    return memcpy ( destination, source, num );
-  }
+  static MemoryManager def_mem_mgr(0);
+  if(!mem_mgr) mem_mgr=&def_mem_mgr;
+  mem_mgr->free(A);
+}
 
+inline void* memcopy( void * destination, const void * source, size_t num){
+  if(destination==source || num==0) return destination;
+  return memcpy ( destination, source, num );
+}
+  
 }//end namespace
 }//end namespace
 
