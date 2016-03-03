@@ -61,14 +61,6 @@ public:
       buff=(char*)((uintptr_t)(base_ptr+2+alignment) & ~(uintptr_t)alignment);
       ((uint16_t*)buff)[-1] = (uint16_t)(buff-base_ptr);
     }
-    { // Initialize to init_mem_val
-#ifndef NDEBUG
-#pragma omp parallel for
-      for(size_t i=0;i<buff_size;i++){
-	buff[i]=init_mem_val;
-      }
-#endif
-    }
     n_dummy_indx=new_node();
     size_t n_indx=new_node();
     MemNode& n_dummy=node_buff[n_dummy_indx-1];
@@ -100,14 +92,6 @@ public:
     }
     omp_destroy_lock(&omp_lock);
 
-    { // Check out-of-bounds write
-#ifndef NDEBUG
-#pragma omp parallel for
-      for(size_t i=0;i<buff_size;i++){
-	assert(buff[i]==init_mem_val);
-      }
-#endif
-    }
     { // free buff
       assert(buff);
       std::free(buff-((uint16_t*)buff)[-1]);
@@ -169,33 +153,12 @@ public:
       base = (char*)((uintptr_t)(p+2+alignment) & ~(uintptr_t)alignment);
       ((uint16_t*)base)[-1] = (uint16_t)(base-p);
     }
-
-    { // Check out-of-bounds write
-#ifndef NDEBUG
-      if(n_indx){
-#pragma omp parallel for
-      for(size_t i=0;i<size;i++) assert(base[i]==init_mem_val);
-    }
-#endif
-  }
-
     MemHead* mem_head=(MemHead*)base;
     { // Set mem_head
-    mem_head->n_indx=n_indx;
-    mem_head->n_elem=n_elem;
-    mem_head->type_size=type_size;
-  }
-    { // Set header check_sum
-#ifndef NDEBUG
-    size_t check_sum=0;
-    mem_head->check_sum=0;
-    for(size_t i=0;i<header_size;i++){
-      check_sum+=base[i];
+      mem_head->n_indx=n_indx;
+      mem_head->n_elem=n_elem;
+      mem_head->type_size=type_size;
     }
-    check_sum=check_sum & ((1UL << sizeof(mem_head->check_sum))-1);
-    mem_head->check_sum=check_sum;
-#endif
-  }
     return (void*)(base+header_size);
   }
 
@@ -214,24 +177,6 @@ public:
 
     size_t n_indx=mem_head->n_indx;
     assert(n_indx>0 && n_indx<=node_buff.size());
-    { // Verify header check_sum; set array to init_mem_val
-#ifndef NDEBUG
-      { // Verify header check_sum
-      size_t check_sum=0;
-      for(size_t i=0;i<header_size;i++){
-      check_sum+=base[i];
-    }
-      check_sum-=mem_head->check_sum;
-      check_sum=check_sum & ((1UL << sizeof(mem_head->check_sum))-1);
-      assert(check_sum==mem_head->check_sum);
-    }
-      size_t size=mem_head->n_elem*mem_head->type_size;
-#pragma omp parallel for
-      for(size_t i=0;i<size;i++) ((char*)p)[i]=init_mem_val;
-      for(size_t i=0;i<sizeof(MemHead);i++) base[i]=init_mem_val;
-#endif
-    }
-
     omp_set_lock(&omp_lock);
     MemNode& n=node_buff[n_indx-1];
     assert(!n.free && n.size>0 && n.mem_ptr==base);
@@ -327,18 +272,10 @@ private:
     if(!TypeTraits<T>::IsPOD()){ // Call constructors
 #pragma omp parallel for
       for(size_t i=0;i<n_elem;i++){
-      T* Ai=new(A+i) T();
-      assert(Ai==(A+i));
+	T* Ai=new(A+i) T();
+	assert(Ai==(A+i));
+      }
     }
-    }else{
-#ifndef NDEBUG
-#pragma omp parallel for
-      for(size_t i=0;i<n_elem*sizeof(T);i++){
-      ((char*)A)[i]=0;
-    }
-#endif
-    }
-
     assert(A);
     return A;
   }
@@ -353,17 +290,6 @@ private:
       for(size_t i=0;i<n_elem;i++){
 	((T*)(((char*)A)+i*type_size))->~T();
       }
-    }else{
-#ifndef NDEBUG
-      MemoryManager::MemHead* mem_head=MemoryManager::GetMemHead(A);
-      size_t type_size=mem_head->type_size;
-      size_t n_elem=mem_head->n_elem;
-      size_t size=n_elem*type_size;
-#pragma omp parallel for
-      for(size_t i=0;i<size;i++){
-	((char*)A)[i]=0;
-      }
-#endif
     }
 
     static MemoryManager def_mem_mgr(0);

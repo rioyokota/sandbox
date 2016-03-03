@@ -544,15 +544,6 @@ class FMM_Tree {
       next_pt = curr_pt + maxNumPts;
       if(next_pt > num_pts) next_pt = num_pts;
     }
-#ifndef NDEBUG
-    for(size_t i=0;i<leaves_lst.size();i++){
-      size_t a=std::lower_bound(&nodes[0],&nodes[0]+nodes.Dim(),leaves_lst[i],std::less<MortonId>())-&nodes[0];
-      size_t b=std::lower_bound(&nodes[0],&nodes[0]+nodes.Dim(),leaves_lst[i].NextId(),std::less<MortonId>())-&nodes[0];
-      assert(b-a<=maxNumPts || leaves_lst[i].GetDepth()==maxDepth-1);
-      if(i==leaves_lst.size()-1) assert(b==nodes.Dim() && a<nodes.Dim());
-      if(i==0) assert(a==0);
-    }
-#endif
     if(complete) {
       while(curr_node<last_node){
 	while( curr_node.NextId() > last_node && curr_node.GetDepth() < maxDepth-1 )
@@ -1480,11 +1471,6 @@ class FMM_Tree {
     Profile::Tic("InitFMM_Pts",true);{
     int rank=0;
     bool verbose=false;
-#ifndef NDEBUG
-#ifdef __VERBOSE__
-    if(!rank) verbose=true;
-#endif
-#endif
     if(kernel_) kernel_->Initialize(verbose);
     multipole_order=mult_order;
     kernel=kernel_;
@@ -2279,7 +2265,6 @@ class FMM_Tree {
                   output_perm.push_back(precomp_data_offset[j][1+4*depth+3]);
                   output_perm.push_back(interac_dsp[               i ][j]*vec_size*sizeof(Real_t));
                   output_perm.push_back((size_t)(&output_vector[i][0][0]-output_data[0]));
-                  assert(output_vector[i]->Dim()==vec_OBsize);
                 }
               }
             }

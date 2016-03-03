@@ -1,4 +1,3 @@
-Remove NDEBUG
 Remove src files
 Simplify code structure of headers
 template -> Real_t
