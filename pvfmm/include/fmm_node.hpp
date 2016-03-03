@@ -109,15 +109,15 @@ class FMM_Node {
   }
 
   ~FMM_Node(){
-    if(fmm_data!=NULL) mem::aligned_delete(fmm_data);
+    if(fmm_data!=NULL) delete[] fmm_data;
     fmm_data=NULL;
     if(!child) return;
     int n=(1UL<<3);
     for(int i=0;i<n;i++){
       if(child[i]!=NULL)
-	mem::aligned_delete(child[i]);
+	delete[] child[i];
     }
-    mem::aligned_delete(child);
+    delete[] child;
     child=NULL;
   }
 
@@ -199,9 +199,9 @@ class FMM_Node {
     int n=(1UL<<3);
     for(int i=0;i<n;i++){
       if(child[i]!=NULL)
-	mem::aligned_delete(child[i]);
+	delete[] child[i];
     }
-    mem::aligned_delete(child);
+    delete[] child;
     child=NULL;
   }
 
@@ -210,8 +210,8 @@ class FMM_Node {
   }
 
   FMM_Node* NewNode() {
-    FMM_Node* n=mem::aligned_new<FMM_Node>(1);
-    if(fmm_data!=NULL) n->fmm_data=mem::aligned_new<FMM_Data<Real_t> >(1);
+    FMM_Node* n=new FMM_Node [1];
+    if(fmm_data!=NULL) n->fmm_data=new FMM_Data<Real_t> [1];
     n->max_depth=max_depth;
     n->max_pts=max_pts;
     return n;
@@ -222,7 +222,7 @@ class FMM_Node {
     if(child) return;
     SetStatus(1);
     int n=(1UL<<3);
-    child=mem::aligned_new<FMM_Node*>(n);
+    child=new FMM_Node* [n];
     for(int i=0;i<n;i++){
       child[i]=NewNode();
       child[i]->parent=this;
