@@ -4729,12 +4729,7 @@ class FMM_Tree {
         if(max>max_) max_=max;
       }
       if(!myrank){
-#ifdef __VERBOSE__
-        std::cout<<"Maximum Absolute Error ["<<t_name<<"] :  "<<std::scientific<<max_err<<'\n';
-        std::cout<<"Maximum Relative Error ["<<t_name<<"] :  "<<std::scientific<<max_err/max_<<'\n';
-#else
         std::cout<<"Error      : "<<std::scientific<<max_err/max_<<'\n';
-#endif
       }
     }
   }

@@ -12,50 +12,9 @@
 
 namespace pvfmm{
 
-long long Profile::Add_FLOP(long long inc){
-  long long orig_val=FLOP;
-  #pragma omp atomic update
-  FLOP+=inc;
-  return orig_val;
-}
-
-long long Profile::Add_MEM(long long inc){
-  long long orig_val=MEM;
-  #pragma omp atomic update
-  MEM+=inc;
-  for(size_t i=0;i<max_mem.size();i++){
-    if(max_mem[i]<MEM) max_mem[i]=MEM;
-  }
-  return orig_val;
-}
-
-bool Profile::Enable(bool state){
-  bool orig_val=enable_state;
-  enable_state=state;
-  return orig_val;
-}
-
-void Profile::Tic(const char* name_, bool sync_, int verbose){
-  if(!enable_state) return;
-  if(verbose<=__PROFILE__ && verb_level.size()==enable_depth){
-    name.push(name_);
-    sync.push(sync_);
-    max_mem.push_back(MEM);
-    e_log.push_back(true);
-    s_log.push_back(sync_);
-    n_log.push_back(name.top());
-    t_log.push_back(omp_get_wtime());
-    f_log.push_back(FLOP);
-    m_log.push_back(MEM);
-    max_m_log.push_back(MEM);
-    enable_depth++;
-  }
-  verb_level.push(verbose);
-}
-
 void Profile::Toc(){
   if(!enable_state) return;
-  if(verb_level.top()<=__PROFILE__ && verb_level.size()==enable_depth){
+  if(verb_level.top()<=5 && verb_level.size()==enable_depth){
     std::string name_=name.top();
     bool sync_=sync.top();
     e_log.push_back(false);

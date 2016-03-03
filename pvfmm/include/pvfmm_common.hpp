@@ -9,9 +9,6 @@
 #define NDEBUG
 #endif
 
-#define __PROFILE__ 5
-//#define __VERBOSE__
-
 #define MAX_DEPTH 15
 #define BC_LEVELS 60
 
