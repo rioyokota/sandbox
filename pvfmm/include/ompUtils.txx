@@ -8,14 +8,13 @@ template <class T,class StrictWeakOrdering>
 void omp_par::merge(T A_,T A_last,T B_,T B_last,T C_,int p,StrictWeakOrdering comp){
   typedef typename std::iterator_traits<T>::difference_type _DiffType;
   typedef typename std::iterator_traits<T>::value_type _ValType;
-
   _DiffType N1=A_last-A_;
   _DiffType N2=B_last-B_;
   if(N1==0 && N2==0) return;
   if(N1==0 || N2==0){
     _ValType* A=(N1==0? &B_[0]: &A_[0]);
     _DiffType N=(N1==0?  N2  :  N1   );
-    #pragma omp parallel for
+#pragma omp parallel for
     for(int i=0;i<p;i++){
       _DiffType indx1=( i   *N)/p;
       _DiffType indx2=((i+1)*N)/p;
@@ -23,13 +22,10 @@ void omp_par::merge(T A_,T A_last,T B_,T B_last,T C_,int p,StrictWeakOrdering co
     }
     return;
   }
-
-  //Split both arrays ( A and B ) into n equal parts.
-  //Find the position of each split in the final merged array.
   int n=10;
   _ValType* split=new _ValType [p*n*2];
   _DiffType* split_size=new _DiffType [p*n*2];
-  #pragma omp parallel for
+#pragma omp parallel for
   for(int i=0;i<p;i++){
     for(int j=0;j<n;j++){
       int indx=i*n+j;
@@ -43,16 +39,13 @@ void omp_par::merge(T A_,T A_last,T B_,T B_last,T C_,int p,StrictWeakOrdering co
       split_size[indx]=indx1+(std::lower_bound(A_,A_last,split[indx],comp)-A_);
     }
   }
-
-  //Find the closest split position for each thread that will
-  //divide the final array equally between the threads.
   _DiffType* split_indx_A=new _DiffType [p+1];
   _DiffType* split_indx_B=new _DiffType [p+1];
   split_indx_A[0]=0;
   split_indx_B[0]=0;
   split_indx_A[p]=N1;
   split_indx_B[p]=N2;
-  #pragma omp parallel for
+#pragma omp parallel for
   for(int i=1;i<p;i++){
     _DiffType req_size=(i*(N1+N2))/p;
 
@@ -75,9 +68,7 @@ void omp_par::merge(T A_,T A_last,T B_,T B_last,T C_,int p,StrictWeakOrdering co
   }
   delete[] split;
   delete[] split_size;
-
-  //Merge for each thread independently.
-  #pragma omp parallel for
+#pragma omp parallel for
   for(int i=0;i<p;i++){
     T C=C_+split_indx_A[i]+split_indx_B[i];
     std::merge(A_+split_indx_A[i],A_+split_indx_A[i+1],B_+split_indx_B[i],B_+split_indx_B[i+1],C,comp);
@@ -90,29 +81,22 @@ template <class T,class StrictWeakOrdering>
 void omp_par::merge_sort(T A,T A_last,StrictWeakOrdering comp){
   typedef typename std::iterator_traits<T>::difference_type _DiffType;
   typedef typename std::iterator_traits<T>::value_type _ValType;
-
   int p=omp_get_max_threads();
   _DiffType N=A_last-A;
   if(N<2*p){
     std::sort(A,A_last,comp);
     return;
   }
-
-  //Split the array A into p equal parts.
   _DiffType* split=new _DiffType [p+1];
   split[p]=N;
-  #pragma omp parallel for
+#pragma omp parallel for
   for(int id=0;id<p;id++){
     split[id]=(id*N)/p;
   }
-
-  //Sort each part independently.
-  #pragma omp parallel for
+#pragma omp parallel for
   for(int id=0;id<p;id++){
     std::sort(A+split[id],A+split[id+1],comp);
   }
-
-  //Merge two parts at a time.
   _ValType* B=new _ValType [N];
   _ValType* A_=&A[0];
   _ValType* B_=&B[0];
@@ -121,7 +105,7 @@ void omp_par::merge_sort(T A,T A_last,StrictWeakOrdering comp){
       if(i+j<p){
         omp_par::merge(A_+split[i],A_+split[i+j],A_+split[i+j],A_+split[(i+2*j<=p?i+2*j:p)],B_+split[i],p,comp);
       }else{
-        #pragma omp parallel for
+#pragma omp parallel for
         for(int k=split[i];k<split[p];k++)
           B_[k]=A_[k];
       }
@@ -130,15 +114,11 @@ void omp_par::merge_sort(T A,T A_last,StrictWeakOrdering comp){
     A_=B_;
     B_=tmp_swap;
   }
-
-  //The final result should be in A.
   if(A_!=&A[0]){
-    #pragma omp parallel for
+#pragma omp parallel for
     for(int i=0;i<N;i++)
       A[i]=A_[i];
   }
-
-  //Free memory.
   delete[] split;
   delete[] B;
 }
@@ -152,7 +132,7 @@ void omp_par::merge_sort(T A,T A_last){
 template <class T, class I>
 T omp_par::reduce(T* A, I cnt){
   T sum=0;
-  #pragma omp parallel for reduction(+:sum)
+#pragma omp parallel for reduction(+:sum)
   for(I i = 0; i < cnt; i++)
     sum+=A[i];
   return sum;
@@ -166,10 +146,8 @@ void omp_par::scan(T* A, T* B,I cnt){
       B[i]=B[i-1]+A[i-1];
     return;
   }
-
   I step_size=cnt/p;
-
-  #pragma omp parallel for
+#pragma omp parallel for
   for(int i=0; i<p; i++){
     int start=i*step_size;
     int end=start+step_size;
@@ -178,13 +156,11 @@ void omp_par::scan(T* A, T* B,I cnt){
     for(I j=(I)start+1; j<(I)end; j++)
       B[j]=B[j-1]+A[j-1];
   }
-
   T* sum=new T [p];
   sum[0]=0;
   for(int i=1;i<p;i++)
     sum[i]=sum[i-1]+B[i*step_size-1]+A[i*step_size-1];
-
-  #pragma omp parallel for
+#pragma omp parallel for
   for(int i=1; i<p; i++){
     int start=i*step_size;
     int end=start+step_size;

@@ -11,35 +11,14 @@ namespace pvfmm{
 namespace par{
   template<typename T>
     int HyperQuickSort(const Vector<T>& arr_, Vector<T>& SortedElem){
-
-      // Get comm size and rank.
-      int npes=1, myrank=0;
-      int omp_p=omp_get_max_threads();
-      srand(myrank);
-
-      // Local and global sizes. O(log p)
-      long long totSize, nelem = arr_.Dim();
-      totSize = nelem;
-
-      // Local sort.
+      srand(0);
+      long long nelem = arr_.Dim();
       Vector<T> arr=arr_;
       omp_par::merge_sort(&arr[0], &arr[0]+nelem);
-
       SortedElem.Resize(nelem);
       memcpy(&SortedElem[0], &arr[0], nelem*sizeof(T));
-
       return 0;
     }//end function
-
-  template<typename T>
-    int HyperQuickSort(const std::vector<T>& arr_, std::vector<T>& SortedElem_){
-      Vector<T> SortedElem;
-      const Vector<T> arr(arr_.size(),(T*)&arr_[0],false);
-
-      int ret = HyperQuickSort(arr, SortedElem);
-      SortedElem_.assign(&SortedElem[0],&SortedElem[0]+SortedElem.Dim());
-      return ret;
-    }
 
 
   template<typename T>
@@ -54,7 +33,7 @@ namespace par{
         long long glb_dsp=0;
         long long loc_size=key.Dim();
         glb_dsp=0;
-        #pragma omp parallel for
+#pragma omp parallel for
         for(size_t i=0;i<loc_size;i++){
           parray[i].key=key[i];
           parray[i].data=glb_dsp+i;
@@ -66,7 +45,7 @@ namespace par{
 
       scatter_index.Resize(psorted.Dim());
 
-      #pragma omp parallel for
+#pragma omp parallel for
       for(size_t i=0;i<psorted.Dim();i++){
         scatter_index[i]=psorted[i].data;
       }
@@ -97,7 +76,7 @@ namespace par{
       // Sort scatter_index.
       Vector<Pair_t> psorted(recv_size);
       {
-        #pragma omp parallel for
+#pragma omp parallel for
         for(size_t i=0;i<recv_size;i++){
           psorted[i].key=scatter_index[i];
           psorted[i].data=i;
