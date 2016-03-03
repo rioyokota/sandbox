@@ -264,12 +264,9 @@ void PrecompMat<T>::LoadFile(const char* fname){
       struct stat fileStat;
       if(stat(fname,&fileStat) < 0) f_size=0;
       else f_size=fileStat.st_size;
-
-      //fseek (f, 0, SEEK_END);
-      //f_size=ftell (f);
     }
     if(f_size>0){
-      f_data=mem::aligned_new<char>(f_size);
+      f_data= new char [f_size];
       fseek (f, 0, SEEK_SET);
       MY_FREAD(f_data,sizeof(char),f_size,f);
       fclose(f);
@@ -284,7 +281,7 @@ void PrecompMat<T>::LoadFile(const char* fname){
     return;
   }
 
-  if(f_data==NULL) f_data=mem::aligned_new<char>(f_size);
+  if(f_data==NULL) f_data=new char [f_size];
   char* f_ptr=f_data;
   int max_send_size=1000000000;
   while(f_size>0){
@@ -334,7 +331,7 @@ void PrecompMat<T>::LoadFile(const char* fname){
       perm_c[i].resize(500);
     }
   }
-  mem::aligned_delete<char>(f_data);
+  delete[] f_data;
   Profile::Toc();
   Profile::Toc();
 }

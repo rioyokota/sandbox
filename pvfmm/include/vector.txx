@@ -1,10 +1,3 @@
-/**
- * \file vector.txx
- * \author Dhairya Malhotra, dhairya.malhotra@gmail.com
- * \date 2-11-2011
- * \brief This file contains implementation of the class Vector.
- */
-
 #include <cassert>
 #include <iostream>
 #include <iomanip>
@@ -13,17 +6,6 @@
 #include <profile.hpp>
 
 namespace pvfmm{
-
-template <class T>
-std::ostream& operator<<(std::ostream& output, const Vector<T>& V){
-  std::ios::fmtflags f(std::cout.flags());
-  output<<std::fixed<<std::setprecision(4)<<std::setiosflags(std::ios::left);
-  for(size_t i=0;i<V.Dim();i++)
-    output<<std::setw(10)<<V[i]<<' ';
-  output<<";\n";
-  std::cout.flags(f);
-  return output;
-}
 
 template <class T>
 Vector<T>::Vector(){
