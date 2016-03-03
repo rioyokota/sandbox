@@ -23,7 +23,7 @@ Vector<T>::Vector(size_t dim_, T* data_, bool own_data_){
   own_data=own_data_;
   if(own_data){
     if(dim>0){
-      data_ptr=mem::aligned_new<T>(capacity);
+      data_ptr=new T [capacity];
       if(data_!=NULL) memcpy(data_ptr,data_,dim*sizeof(T));
     }else data_ptr=NULL;
   }else
@@ -37,7 +37,7 @@ Vector<T>::Vector(const Vector<T>& V){
   capacity=dim;
   own_data=true;
   if(dim>0){
-    data_ptr=mem::aligned_new<T>(capacity);
+    data_ptr=new T [capacity];
     memcpy(data_ptr,V.data_ptr,dim*sizeof(T));
   }else
     data_ptr=NULL;
@@ -50,7 +50,7 @@ Vector<T>::Vector(const std::vector<T>& V){
   capacity=dim;
   own_data=true;
   if(dim>0){
-    data_ptr=mem::aligned_new<T>(capacity);
+    data_ptr=new T [capacity];
     memcpy(data_ptr,&V[0],dim*sizeof(T));
   }else
     data_ptr=NULL;
@@ -62,7 +62,7 @@ Vector<T>::~Vector(){
   FreeDevice(false);
   if(own_data){
     if(data_ptr!=NULL){
-      mem::aligned_delete(data_ptr);
+      delete[] data_ptr;
     }
   }
   data_ptr=NULL;
