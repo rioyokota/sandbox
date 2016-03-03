@@ -185,7 +185,7 @@ public:
     if(own_data){
       if(dim[0]*dim[1]>0){
 	data_ptr=mem::aligned_new<T>(dim[0]*dim[1]);
-	if(data_!=NULL) mem::memcopy(data_ptr,data_,dim[0]*dim[1]*sizeof(T));
+	if(data_!=NULL) memcpy(data_ptr,data_,dim[0]*dim[1]*sizeof(T));
       }else data_ptr=NULL;
     }else
       data_ptr=data_;
@@ -199,7 +199,7 @@ public:
     own_data=true;
     if(dim[0]*dim[1]>0){
       data_ptr=mem::aligned_new<T>(dim[0]*dim[1]);
-      mem::memcopy(data_ptr,M.data_ptr,dim[0]*dim[1]*sizeof(T));
+      memcpy(data_ptr,M.data_ptr,dim[0]*dim[1]*sizeof(T));
     }else
       data_ptr=NULL;
     dev.dev_ptr=(uintptr_t)NULL;
@@ -243,7 +243,7 @@ public:
     if(own_data_ && own_data && dim[0]*dim[1]>=dim1*dim2){
       if(dim[0]*dim[1]!=dim1*dim2) FreeDevice(false);
       dim[0]=dim1; dim[1]=dim2;
-      if(data_) mem::memcopy(data_ptr,data_,dim[0]*dim[1]*sizeof(T));
+      if(data_) memcpy(data_ptr,data_,dim[0]*dim[1]*sizeof(T));
     }else{
       Matrix<T> tmp(dim1,dim2,data_,own_data_);
       this->Swap(tmp);
@@ -308,7 +308,7 @@ public:
 	ReInit(M.dim[0],M.dim[1]);
       }
       dim[0]=M.dim[0]; dim[1]=M.dim[1];
-      mem::memcopy(data_ptr,M.data_ptr,dim[0]*dim[1]*sizeof(T));
+      memcpy(data_ptr,M.data_ptr,dim[0]*dim[1]*sizeof(T));
     }
     return *this;
   }

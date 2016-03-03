@@ -589,7 +589,7 @@ void Kernel<T>::Initialize(bool verbose) const{
     trg_scal.Resize(ker_dim[1]); trg_scal.SetZero();
     if(scale_invar){
       Matrix<T> b(ker_dim[0]*ker_dim[1]+1,1); b.SetZero();
-      mem::memcopy(&b[0][0],&M_scal[0][0],ker_dim[0]*ker_dim[1]*sizeof(T));
+      memcpy(&b[0][0],&M_scal[0][0],ker_dim[0]*ker_dim[1]*sizeof(T));
       Matrix<T> M(ker_dim[0]*ker_dim[1]+1,ker_dim[0]+ker_dim[1]); M.SetZero();
       M[ker_dim[0]*ker_dim[1]][0]=1;
       for(size_t i0=0;i0<ker_dim[0];i0++)

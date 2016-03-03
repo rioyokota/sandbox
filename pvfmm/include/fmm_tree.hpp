@@ -962,7 +962,7 @@ class FMM_Tree {
             vprecomp_fft_flag=true;
           }
         }
-        mem::memcopy(fftw_in, &conv_poten[0], n3*ker_dim[0]*ker_dim[1]*sizeof(Real_t));
+        memcpy(fftw_in, &conv_poten[0], n3*ker_dim[0]*ker_dim[1]*sizeof(Real_t));
         FFTW_t<Real_t>::fft_execute_dft_r2c(vprecomp_fftplan, (Real_t*)fftw_in, (typename FFTW_t<Real_t>::cplx*)(fftw_out));
         Matrix<Real_t> M_(2*n3_*ker_dim[0]*ker_dim[1],1,(Real_t*)fftw_out,false);
         M=M_;
@@ -2083,7 +2083,7 @@ class FMM_Tree {
 #pragma omp parallel for
         for(size_t i=0;i<n_vec;i++){
           if((bool)&vec_lst[i][0][0]){
-            mem::memcopy(((Real_t*)&dev_buffer[0])+vec_disp[i],&vec_lst[i][0][0],vec_size[i]*sizeof(Real_t));
+            memcpy(((Real_t*)&dev_buffer[0])+vec_disp[i],&vec_lst[i][0][0],vec_size[i]*sizeof(Real_t));
           }
         }
       }
@@ -2095,7 +2095,7 @@ class FMM_Tree {
         for(size_t tid=0;tid<omp_p;tid++){
           size_t a=(buff_size*(tid+0))/omp_p;
           size_t b=(buff_size*(tid+1))/omp_p;
-          mem::memcopy(&buff[0][0]+a,((Real_t*)&dev_buffer[0])+a,(b-a)*sizeof(Real_t));
+          memcpy(&buff[0][0]+a,((Real_t*)&dev_buffer[0])+a,(b-a)*sizeof(Real_t));
         }
       }
 #pragma omp parallel for
@@ -2169,7 +2169,7 @@ class FMM_Tree {
           for(size_t i=0;i<n_out;i++){
             if(!nodes_out[i]->IsGhost() && (level==-1 || nodes_out[i]->depth==level)){
               Vector<FMM_Node*>& lst=nodes_out[i]->interac_list[interac_type];
-              mem::memcopy(&trg_interac_list[i][0], &lst[0], lst.Dim()*sizeof(FMM_Node*));
+              memcpy(&trg_interac_list[i][0], &lst[0], lst.Dim()*sizeof(FMM_Node*));
               assert(lst.Dim()==mat_cnt);
             }
           }
@@ -2290,7 +2290,7 @@ class FMM_Tree {
           if(data_size>interac_data.Dim(0)*interac_data.Dim(1)){
             Matrix< char> pts_interac_data=interac_data;
             interac_data.ReInit(1,data_size);
-            mem::memcopy(&interac_data[0][0],&pts_interac_data[0][0],pts_data_size);
+            memcpy(&interac_data[0][0],&pts_interac_data[0][0],pts_data_size);
           }
         }
         char* data_ptr=&interac_data[0][0];
@@ -2300,19 +2300,19 @@ class FMM_Tree {
         ((size_t*)data_ptr)[0]=   M_dim1; data_ptr+=sizeof(size_t);
         ((size_t*)data_ptr)[0]=      dof; data_ptr+=sizeof(size_t);
         ((size_t*)data_ptr)[0]=interac_blk.size(); data_ptr+=sizeof(size_t);
-        mem::memcopy(data_ptr, &interac_blk[0], interac_blk.size()*sizeof(size_t));
+        memcpy(data_ptr, &interac_blk[0], interac_blk.size()*sizeof(size_t));
         data_ptr+=interac_blk.size()*sizeof(size_t);
         ((size_t*)data_ptr)[0]=interac_cnt.size(); data_ptr+=sizeof(size_t);
-        mem::memcopy(data_ptr, &interac_cnt[0], interac_cnt.size()*sizeof(size_t));
+        memcpy(data_ptr, &interac_cnt[0], interac_cnt.size()*sizeof(size_t));
         data_ptr+=interac_cnt.size()*sizeof(size_t);
         ((size_t*)data_ptr)[0]=interac_mat.size(); data_ptr+=sizeof(size_t);
-        mem::memcopy(data_ptr, &interac_mat[0], interac_mat.size()*sizeof(size_t));
+        memcpy(data_ptr, &interac_mat[0], interac_mat.size()*sizeof(size_t));
         data_ptr+=interac_mat.size()*sizeof(size_t);
         ((size_t*)data_ptr)[0]= input_perm.size(); data_ptr+=sizeof(size_t);
-        mem::memcopy(data_ptr, & input_perm[0],  input_perm.size()*sizeof(size_t));
+        memcpy(data_ptr, & input_perm[0],  input_perm.size()*sizeof(size_t));
         data_ptr+= input_perm.size()*sizeof(size_t);
         ((size_t*)data_ptr)[0]=output_perm.size(); data_ptr+=sizeof(size_t);
-        mem::memcopy(data_ptr, &output_perm[0], output_perm.size()*sizeof(size_t));
+        memcpy(data_ptr, &output_perm[0], output_perm.size()*sizeof(size_t));
         data_ptr+=output_perm.size()*sizeof(size_t);
       }
     }
@@ -3426,29 +3426,29 @@ class FMM_Tree {
         ((size_t*)data_ptr)[0]= ker_dim1; data_ptr+=sizeof(size_t);
         ((size_t*)data_ptr)[0]=   n_blk0; data_ptr+=sizeof(size_t);
         ((size_t*)data_ptr)[0]= interac_mat.size(); data_ptr+=sizeof(size_t);
-        mem::memcopy(data_ptr, &interac_mat[0], interac_mat.size()*sizeof(size_t));
+        memcpy(data_ptr, &interac_mat[0], interac_mat.size()*sizeof(size_t));
         data_ptr+=interac_mat.size()*sizeof(size_t);
         ((size_t*)data_ptr)[0]= interac_mat_ptr.size(); data_ptr+=sizeof(size_t);
-        mem::memcopy(data_ptr, &interac_mat_ptr[0], interac_mat_ptr.size()*sizeof(Real_t*));
+        memcpy(data_ptr, &interac_mat_ptr[0], interac_mat_ptr.size()*sizeof(Real_t*));
         data_ptr+=interac_mat_ptr.size()*sizeof(Real_t*);
         for(size_t blk0=0;blk0<n_blk0;blk0++){
           ((size_t*)data_ptr)[0]= fft_vec[blk0].size(); data_ptr+=sizeof(size_t);
-          mem::memcopy(data_ptr, & fft_vec[blk0][0],  fft_vec[blk0].size()*sizeof(size_t));
+          memcpy(data_ptr, & fft_vec[blk0][0],  fft_vec[blk0].size()*sizeof(size_t));
           data_ptr+= fft_vec[blk0].size()*sizeof(size_t);
           ((size_t*)data_ptr)[0]=ifft_vec[blk0].size(); data_ptr+=sizeof(size_t);
-          mem::memcopy(data_ptr, &ifft_vec[blk0][0], ifft_vec[blk0].size()*sizeof(size_t));
+          memcpy(data_ptr, &ifft_vec[blk0][0], ifft_vec[blk0].size()*sizeof(size_t));
           data_ptr+=ifft_vec[blk0].size()*sizeof(size_t);
           ((size_t*)data_ptr)[0]= fft_scl[blk0].size(); data_ptr+=sizeof(size_t);
-          mem::memcopy(data_ptr, & fft_scl[blk0][0],  fft_scl[blk0].size()*sizeof(Real_t));
+          memcpy(data_ptr, & fft_scl[blk0][0],  fft_scl[blk0].size()*sizeof(Real_t));
           data_ptr+= fft_scl[blk0].size()*sizeof(Real_t);
           ((size_t*)data_ptr)[0]=ifft_scl[blk0].size(); data_ptr+=sizeof(size_t);
-          mem::memcopy(data_ptr, &ifft_scl[blk0][0], ifft_scl[blk0].size()*sizeof(Real_t));
+          memcpy(data_ptr, &ifft_scl[blk0][0], ifft_scl[blk0].size()*sizeof(Real_t));
           data_ptr+=ifft_scl[blk0].size()*sizeof(Real_t);
           ((size_t*)data_ptr)[0]=interac_vec[blk0].size(); data_ptr+=sizeof(size_t);
-          mem::memcopy(data_ptr, &interac_vec[blk0][0], interac_vec[blk0].size()*sizeof(size_t));
+          memcpy(data_ptr, &interac_vec[blk0][0], interac_vec[blk0].size()*sizeof(size_t));
           data_ptr+=interac_vec[blk0].size()*sizeof(size_t);
           ((size_t*)data_ptr)[0]=interac_dsp[blk0].size(); data_ptr+=sizeof(size_t);
-          mem::memcopy(data_ptr, &interac_dsp[blk0][0], interac_dsp[blk0].size()*sizeof(size_t));
+          memcpy(data_ptr, &interac_dsp[blk0][0], interac_dsp[blk0].size()*sizeof(size_t));
           data_ptr+=interac_dsp[blk0].size()*sizeof(size_t);
         }
       }

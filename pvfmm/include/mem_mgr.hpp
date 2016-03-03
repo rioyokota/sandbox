@@ -96,7 +96,7 @@ public:
       assert(buff);
       std::free(buff-((uint16_t*)buff)[-1]);
     }
-    }
+  }
 
   static inline MemHead* GetMemHead(void* p){
     static uintptr_t alignment=MEM_ALIGN-1;
@@ -253,7 +253,7 @@ private:
   mutable omp_lock_t omp_lock;
 };
 
-  MemoryManager glbMemMgr(16*1024*1024*sizeof(Real_t));//GLOBAL_MEM_BUFF*1024LL*1024LL);
+MemoryManager glbMemMgr(16*1024*1024*sizeof(Real_t));
 
 inline uintptr_t align_ptr(uintptr_t ptr){
   static uintptr_t     ALIGN_MINUS_ONE=MEM_ALIGN-1;
@@ -264,11 +264,7 @@ inline uintptr_t align_ptr(uintptr_t ptr){
 template <class T>
 inline T* aligned_new(size_t n_elem=1, const MemoryManager* mem_mgr=&glbMemMgr) {
   if(!n_elem) return NULL;
-  
-  static MemoryManager def_mem_mgr(0);
-  if(!mem_mgr) mem_mgr=&def_mem_mgr;
   T* A=(T*)mem_mgr->malloc(n_elem, sizeof(T));
-  
   if(!TypeTraits<T>::IsPOD()){ // Call constructors
 #pragma omp parallel for
     for(size_t i=0;i<n_elem;i++){
@@ -291,17 +287,9 @@ inline void aligned_delete(T* A, const MemoryManager* mem_mgr=&glbMemMgr){
       ((T*)(((char*)A)+i*type_size))->~T();
     }
   }
-
-  static MemoryManager def_mem_mgr(0);
-  if(!mem_mgr) mem_mgr=&def_mem_mgr;
   mem_mgr->free(A);
 }
 
-inline void* memcopy( void * destination, const void * source, size_t num){
-  if(destination==source || num==0) return destination;
-  return memcpy ( destination, source, num );
-}
-  
 }//end namespace
 }//end namespace
 

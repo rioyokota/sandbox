@@ -107,7 +107,7 @@ struct FFTW_t{
     }
     {
       transpose<cplx>(N2/p.howmany, p.howmany, (cplx*)buff);
-      mem::memcopy(out,buff,2*N2*sizeof(T));
+      memcpy(out,buff,2*N2*sizeof(T));
     }
   }
 
@@ -121,7 +121,7 @@ struct FFTW_t{
     T* buff=&buff_[0];
 
     {
-      mem::memcopy(buff,in,2*N2*sizeof(T));
+      memcpy(buff,in,2*N2*sizeof(T));
       transpose<cplx>(p.howmany, N2/p.howmany, (cplx*)buff);
     }
     for(size_t i=0;i<p.dim.size()-1;i++){
