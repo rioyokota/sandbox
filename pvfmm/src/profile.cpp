@@ -14,122 +14,72 @@ namespace pvfmm{
 
 long long Profile::Add_FLOP(long long inc){
   long long orig_val=FLOP;
-  #if __PROFILE__ >= 0
   #pragma omp atomic update
   FLOP+=inc;
-  #endif
   return orig_val;
 }
 
 long long Profile::Add_MEM(long long inc){
   long long orig_val=MEM;
-  #if __PROFILE__ >= 0
   #pragma omp atomic update
   MEM+=inc;
   for(size_t i=0;i<max_mem.size();i++){
     if(max_mem[i]<MEM) max_mem[i]=MEM;
   }
-  #endif
   return orig_val;
 }
 
 bool Profile::Enable(bool state){
   bool orig_val=enable_state;
-  #if __PROFILE__ >= 0
   enable_state=state;
-  #endif
   return orig_val;
 }
 
 void Profile::Tic(const char* name_, bool sync_, int verbose){
-#if __PROFILE__ >= 0
   if(!enable_state) return;
   if(verbose<=__PROFILE__ && verb_level.size()==enable_depth){
-    #ifdef __VERBOSE__
-    int rank=0;
-    if(!rank){
-      for(size_t i=0;i<name.size();i++) std::cout<<"    ";
-      std::cout << "\033[1;31m"<<name_<<"\033[0m {\n";
-    }
-    #endif
     name.push(name_);
     sync.push(sync_);
     max_mem.push_back(MEM);
-
     e_log.push_back(true);
     s_log.push_back(sync_);
     n_log.push_back(name.top());
     t_log.push_back(omp_get_wtime());
     f_log.push_back(FLOP);
-
     m_log.push_back(MEM);
     max_m_log.push_back(MEM);
     enable_depth++;
   }
   verb_level.push(verbose);
-#endif
 }
 
 void Profile::Toc(){
-#if __PROFILE__ >= 0
   if(!enable_state) return;
   if(verb_level.top()<=__PROFILE__ && verb_level.size()==enable_depth){
     std::string name_=name.top();
     bool sync_=sync.top();
-
     e_log.push_back(false);
     s_log.push_back(sync_);
     n_log.push_back(name_);
     t_log.push_back(omp_get_wtime());
     f_log.push_back(FLOP);
-
     m_log.push_back(MEM);
     max_m_log.push_back(max_mem.back());
-
     name.pop();
     sync.pop();
     max_mem.pop_back();
-
-    #ifdef __VERBOSE__
-    int rank=0;
-    if(!rank){
-      for(size_t i=0;i<name.size();i++) std::cout<<"    ";
-      std::cout<<"}\n";
-    }
-    #endif
     enable_depth--;
   }
   verb_level.pop();
-#endif
 }
 
 void Profile::print(){
-#if __PROFILE__ >= 0
   int np=1, rank=0;
   std::stack<double> tt;
   std::stack<long long> ff;
   std::stack<long long> mm;
   int width=10;
   size_t level=0;
-#ifdef __VERBOSE__
-  if(!rank && e_log.size()>0){
-    std::cout<<"\n"<<std::setw(width*3-2*level)<<" ";
-    std::cout<<"  "<<std::setw(width)<<"t_min";
-    std::cout<<"  "<<std::setw(width)<<"t_avg";
-    std::cout<<"  "<<std::setw(width)<<"t_max";
-    std::cout<<"  "<<std::setw(width)<<"f_min";
-    std::cout<<"  "<<std::setw(width)<<"f_avg";
-    std::cout<<"  "<<std::setw(width)<<"f_max";
-
-    std::cout<<"  "<<std::setw(width)<<"f/s_min";
-    std::cout<<"  "<<std::setw(width)<<"f/s_max";
-    std::cout<<"  "<<std::setw(width)<<"f/s_total";
-
-    std::cout<<"  "<<std::setw(width)<<"m_init";
-    std::cout<<"  "<<std::setw(width)<<"m_max";
-    std::cout<<"  "<<std::setw(width)<<"m_final"<<'\n';
-  }
-#endif
 
   std::stack<std::string> out_stack;
   std::string s;
@@ -158,66 +108,11 @@ void Profile::print(){
 
       t_avg=t_sum/np;
       f_avg=f_sum/np;
-      //fs_avg=f_avg/t_max;
       fs_sum=f_sum/t_max;
  
       if(!rank){
-#ifdef __VERBOSE__
-	std::string s0=out_stack.top();out_stack.pop();
-        std::string s1=out_stack.top();out_stack.pop();
-        std::stringstream ss(std::stringstream::in | std::stringstream::out);
-        ss<<std::setiosflags(std::ios::fixed)<<std::setprecision(4)<<std::setiosflags(std::ios::left);
-
-        for(size_t j=0;j<level-1;j++){
-          size_t l=i+1;
-          size_t k=level-1;
-          while(k>j && l<e_log.size()){
-            k+=(e_log[l]?1:-1);
-            l++;
-          }
-          if(l<e_log.size()?e_log[l]:false)
-            ss<<"| ";
-          else
-            ss<<"  ";
-        }
-        ss<<"+-";
-        ss<<std::setw(width*3-2*level)<<n_log[i];
-        ss<<std::setiosflags(std::ios::right);
-        ss<<"  "<<std::setw(width)<<t_min;
-        ss<<"  "<<std::setw(width)<<t_avg;
-        ss<<"  "<<std::setw(width)<<t_max;
-
-        ss<<"  "<<std::setw(width)<<f_min;
-        ss<<"  "<<std::setw(width)<<f_avg;
-        ss<<"  "<<std::setw(width)<<f_max;
-
-        ss<<"  "<<std::setw(width)<<fs_min;
-        ss<<"  "<<std::setw(width)<<fs_max;
-        ss<<"  "<<std::setw(width)<<fs_sum;
-
-        ss<<"  "<<std::setw(width)<<m_init;
-        ss<<"  "<<std::setw(width)<<m_max;
-        ss<<"  "<<std::setw(width)<<m_final<<'\n';
-
-        s1+=ss.str()+s0;
-        if(!s0.empty() && (i+1<e_log.size()?e_log[i+1]:false)){
-          for(size_t j=0;j<level;j++){
-            size_t l=i+1;
-            size_t k=level-1;
-            while(k>j && l<e_log.size()){
-              k+=(e_log[l]?1:-1);
-              l++;
-            }
-            if(l<e_log.size()?e_log[l]:false) s1+="| ";
-            else s1+="  ";
-          }
-          s1+="\n";
-        }// */
-        out_stack.push(s1);
-#else
 	if(i==151||i==153)
 	  std::cout << n_log[i] << "     : " << t_avg << std::endl;
-#endif
       }
       level--;
     }
@@ -226,7 +121,6 @@ void Profile::print(){
     std::cout<<out_stack.top()<<'\n';
 
   reset();
-#endif
 }
 
 void Profile::reset(){

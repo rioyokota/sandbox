@@ -7,10 +7,6 @@
 #ifndef _PVFMM_PROFILE_HPP_
 #define _PVFMM_PROFILE_HPP_
 
-#ifndef __PROFILE__
-#define __PROFILE__ -1
-#endif
-
 namespace pvfmm{
 
 class Profile{

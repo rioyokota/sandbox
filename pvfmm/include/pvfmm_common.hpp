@@ -21,7 +21,6 @@
 #define MEM_ALIGN 64
 #define DEVICE_BUFFER_SIZE 1024LL //in MB
 #define V_BLK_CACHE 25 //in KB
-#define GLOBAL_MEM_BUFF 1024LL*0LL //in MB
 #define PVFMM_MAX_COORD_HASH 2000
 
 #define UNUSED(x) (void)(x) // to ignore unused variable warning.

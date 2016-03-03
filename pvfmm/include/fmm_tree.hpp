@@ -3681,21 +3681,9 @@ class FMM_Tree {
           if(np==1) Profile::Toc();
         }
         {
-#ifdef PVFMM_HAVE_PAPI
-#ifdef __VERBOSE__
-          std::cout << "Starting counters new\n";
-          if (PAPI_start(EventSet) != PAPI_OK) std::cout << "handle_error3" << std::endl;
-#endif
-#endif
           if(np==1) Profile::Tic("HadamardProduct",false,100);
           VListHadamard<Real_t>(dof, M_dim, ker_dim0, ker_dim1, interac_dsp[blk0], interac_vec[blk0], precomp_mat, fft_in, fft_out);
           if(np==1) Profile::Toc();
-#ifdef PVFMM_HAVE_PAPI
-#ifdef __VERBOSE__
-          if (PAPI_stop(EventSet, values) != PAPI_OK) std::cout << "handle_error4" << std::endl;
-          std::cout << "Stopping counters\n";
-#endif
-#endif
         }
         {
           if(np==1) Profile::Tic("IFFT",false,100);
