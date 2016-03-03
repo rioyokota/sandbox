@@ -58,22 +58,22 @@ namespace pvfmm{
     int m = n2;
     int n = n1;
     int k = (m<n?m:n);
-    T* tU =mem::aligned_new<T>(m*k);
-    T* tS =mem::aligned_new<T>(k);
-    T* tVT=mem::aligned_new<T>(k*n);
+    T* tU =new T [m*k];
+    T* tS =new T [k];
+    T* tVT=new T [k*n];
     int INFO=0;
     char JOBU  = 'S';
     char JOBVT = 'S';
     int wssize = 3*(m<n?m:n)+(m>n?m:n);
     int wssize1 = 5*(m<n?m:n);
     wssize = (wssize>wssize1?wssize:wssize1);
-    T* wsbuf = mem::aligned_new<T>(wssize);
+    T* wsbuf = new T [wssize];
     tsvd(&JOBU, &JOBVT, &m, &n, &M[0], &m, &tS[0], &tU[0], &m, &tVT[0], &k,
         wsbuf, &wssize, &INFO);
     if(INFO!=0)
       std::cout<<INFO<<'\n';
     assert(INFO==0);
-    mem::aligned_delete<T>(wsbuf);
+    delete[] wsbuf;
     T eps_=tS[0]*eps;
     for(int i=0;i<k;i++)
       if(tS[i]<eps_)
@@ -86,9 +86,9 @@ namespace pvfmm{
       }
     }
     tgemm<T>('T','T',n,m,k,1.0,&tVT[0],k,&tU[0],m,0.0,M_,n);
-    mem::aligned_delete<T>(tU);
-    mem::aligned_delete<T>(tS);
-    mem::aligned_delete<T>(tVT);
+    delete[] tU;
+    delete[] tS;
+    delete[] tVT;
   }
 
 template <class T>
@@ -184,7 +184,7 @@ public:
     own_data=own_data_;
     if(own_data){
       if(dim[0]*dim[1]>0){
-	data_ptr=mem::aligned_new<T>(dim[0]*dim[1]);
+	data_ptr=new T [dim[0]*dim[1]];
 	if(data_!=NULL) memcpy(data_ptr,data_,dim[0]*dim[1]*sizeof(T));
       }else data_ptr=NULL;
     }else
@@ -198,7 +198,7 @@ public:
 
     own_data=true;
     if(dim[0]*dim[1]>0){
-      data_ptr=mem::aligned_new<T>(dim[0]*dim[1]);
+      data_ptr=new T [dim[0]*dim[1]];
       memcpy(data_ptr,M.data_ptr,dim[0]*dim[1]*sizeof(T));
     }else
       data_ptr=NULL;
@@ -209,7 +209,7 @@ public:
     FreeDevice(false);
     if(own_data){
       if(data_ptr!=NULL){
-	mem::aligned_delete(data_ptr);
+	delete[] data_ptr;
       }
     }
     data_ptr=NULL;
@@ -693,9 +693,9 @@ public:
       T *S, T *U, int *LDU, T *VT, int *LDVT, T *WORK, int *LWORK,
       int *INFO){
     const size_t dim[2]={(size_t)std::max(*N,*M), (size_t)std::min(*N,*M)};
-    T* U_=mem::aligned_new<T>(dim[0]*dim[0]); memset(U_, 0, dim[0]*dim[0]*sizeof(T));
-    T* V_=mem::aligned_new<T>(dim[1]*dim[1]); memset(V_, 0, dim[1]*dim[1]*sizeof(T));
-    T* S_=mem::aligned_new<T>(dim[0]*dim[1]);
+    T* U_=new T [dim[0]*dim[0]]; memset(U_, 0, dim[0]*dim[0]*sizeof(T));
+    T* V_=new T [dim[1]*dim[1]]; memset(V_, 0, dim[1]*dim[1]*sizeof(T));
+    T* S_=new T [dim[0]*dim[1]];
     const size_t lda=*LDA;
     const size_t ldu=*LDU;
     const size_t ldv=*LDVT;
@@ -745,9 +745,9 @@ public:
     for(size_t i=0;i<dim[1];i++){
       S[i]=S[i]*(S[i]<0.0?-1.0:1.0);
     }
-    mem::aligned_delete<T>(U_);
-    mem::aligned_delete<T>(S_);
-    mem::aligned_delete<T>(V_);
+    delete[] U_;
+    delete[] S_;
+    delete[] V_;
   }
 
   void SVD(Matrix<T>& tU, Matrix<T>& tS, Matrix<T>& tVT){
@@ -765,9 +765,9 @@ public:
     int wssize = 3*(m<n?m:n)+(m>n?m:n);
     int wssize1 = 5*(m<n?m:n);
     wssize = (wssize>wssize1?wssize:wssize1);
-    T* wsbuf = mem::aligned_new<T>(wssize);
+    T* wsbuf = new T [wssize];
     svd(&JOBU, &JOBVT, &m, &n, &M[0][0], &m, &tS[0][0], &tVT[0][0], &m, &tU[0][0], &k, wsbuf, &wssize, &INFO);
-    mem::aligned_delete<T>(wsbuf);
+    delete[] wsbuf;
     if(INFO!=0) std::cout<<INFO<<'\n';
     assert(INFO==0);
     for(size_t i=1;i<k;i++){
