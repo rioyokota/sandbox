@@ -48,7 +48,6 @@ template <class Real_t>
 class FMM_Data{
  public:
   ~FMM_Data(){}
-  FMM_Data* NewData(){return mem::aligned_new<FMM_Data>();}
   void Clear() {
     upward_equiv.Resize(0);
   }
@@ -210,9 +209,9 @@ class FMM_Node {
     return fmm_data;
   }
 
-  FMM_Node* NewNode(FMM_Node* n_=NULL) {
-    FMM_Node* n=(n_==NULL?mem::aligned_new<FMM_Node>():static_cast<FMM_Node*>(n_));
-    if(fmm_data!=NULL) n->fmm_data=fmm_data->NewData();
+  FMM_Node* NewNode() {
+    FMM_Node* n=mem::aligned_new<FMM_Node>(1);
+    if(fmm_data!=NULL) n->fmm_data=mem::aligned_new<FMM_Data<Real_t> >(1);
     n->max_depth=max_depth;
     n->max_pts=max_pts;
     return n;

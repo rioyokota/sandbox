@@ -603,8 +603,8 @@ class FMM_Tree {
     size_t chld_cnt=1UL<<3;
     size_t fftsize_in =M_dim*ker_dim0*chld_cnt*2;
     size_t fftsize_out=M_dim*ker_dim1*chld_cnt*2;
-    Real_t* zero_vec0=mem::aligned_new<Real_t>(fftsize_in );
-    Real_t* zero_vec1=mem::aligned_new<Real_t>(fftsize_out);
+    Real_t* zero_vec0=new Real_t [fftsize_in];
+    Real_t* zero_vec1=new Real_t [fftsize_out];
     size_t n_out=fft_out.Dim()/fftsize_out;
 #pragma omp parallel for
     for(size_t k=0;k<n_out;k++){
@@ -614,8 +614,8 @@ class FMM_Tree {
     size_t mat_cnt=precomp_mat.Dim();
     size_t blk1_cnt=interac_dsp.Dim()/mat_cnt;
     const size_t V_BLK_SIZE=V_BLK_CACHE*64/sizeof(Real_t);
-    Real_t** IN_ =mem::aligned_new<Real_t*>(2*V_BLK_SIZE*blk1_cnt*mat_cnt);
-    Real_t** OUT_=mem::aligned_new<Real_t*>(2*V_BLK_SIZE*blk1_cnt*mat_cnt);
+    Real_t** IN_ = new Real_t* [2*V_BLK_SIZE*blk1_cnt*mat_cnt];
+    Real_t** OUT_= new Real_t* [2*V_BLK_SIZE*blk1_cnt*mat_cnt];
 #pragma omp parallel for
     for(size_t interac_blk1=0; interac_blk1<blk1_cnt*mat_cnt; interac_blk1++){
       size_t interac_dsp0 = (interac_blk1==0?0:interac_dsp[interac_blk1-1]);
@@ -672,10 +672,10 @@ class FMM_Tree {
     {
       Profile::Add_FLOP(8*8*8*(interac_vec.Dim()/2)*M_dim*ker_dim0*ker_dim1*dof);
     }
-    mem::aligned_delete<Real_t*>(IN_ );
-    mem::aligned_delete<Real_t*>(OUT_);
-    mem::aligned_delete<Real_t>(zero_vec0);
-    mem::aligned_delete<Real_t>(zero_vec1);
+    delete[] IN_;
+    delete[] OUT_;
+    delete[] zero_vec0;
+    delete[] zero_vec1;
   }
 
   template<typename ElemType>
