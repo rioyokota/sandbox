@@ -1,7 +1,7 @@
 .SUFFIXES: .cpp
 
-CXX = mpic++ -mavx -fabi-version=6 -std=gnu++11 -fopenmp -I./include
-#CXX = mpicxx -mavx -std=c++11 -fopenmp -I./include
+#CXX = mpic++ -mavx -fabi-version=6 -std=gnu++11 -fopenmp -I./include
+CXX = mpicxx -msse4 -std=c++11 -fopenmp -I./include
 LDFLAGS = -lfftw3 -lfftw3f -llapack -lblas
 
 %.o: %.cpp
@@ -21,6 +21,12 @@ clean:
 
 tags:
 	find . -name "*.cpp" -o -name "*.hpp" -o -name "*.txx" | xargs etags -f TAGS
+
+m4:
+	./fmm_pts -omp 4 -N 10000 -m 4 -M 64
+
+m16:
+	./fmm_pts -omp 4 -N 10000 -m 16 -M 320
 
 y4:
 	./fmm_pts -omp 16 -N 1000000 -m 4 -M 64
