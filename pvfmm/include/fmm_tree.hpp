@@ -1312,7 +1312,6 @@ class FMM_Tree {
   FMM_Node* root_node;
   std::string mat_fname;
   std::vector<FMM_Node*> node_lst;
-  mem::MemoryManager memgr;
   const Kernel<Real_t>* kernel;
   PrecompMat<Real_t>* mat;
   Vector<char> dev_buffer;
@@ -1335,7 +1334,7 @@ class FMM_Tree {
   bool vlist_ifft_flag;
     
 
-  FMM_Tree(): root_node(NULL), max_depth(MAX_DEPTH), memgr(0), vprecomp_fft_flag(false), vlist_fft_flag(false),
+  FMM_Tree(): root_node(NULL), max_depth(MAX_DEPTH), vprecomp_fft_flag(false), vlist_fft_flag(false),
 	      vlist_ifft_flag(false), mat(NULL), kernel(NULL) { };
 
   ~FMM_Tree(){
