@@ -1,8 +1,4 @@
 #include <vector>
-#include <stdint.h>
-#include <iostream>
-
-#include <pvfmm_common.hpp>
 
 #ifndef _PVFMM_MORTONID_HPP_
 #define _PVFMM_MORTONID_HPP_
@@ -50,9 +46,6 @@ class MortonId{
 
   MortonId getAncestor(uint8_t ancestor_level) const;
 
-  /**
-   * \brief Returns the deepest first descendant.
-   */
   MortonId getDFD(uint8_t level=MAX_DEPTH) const;
 
   void NbrList(std::vector<MortonId>& nbrs,uint8_t level, int periodic) const;

@@ -1,11 +1,7 @@
 #ifndef _PVFMM_INTERAC_LIST_HPP_
 #define _PVFMM_INTERAC_LIST_HPP_
 
-#include <parUtils.h>
 #include <ompUtils.h>
-#include <pvfmm_common.hpp>
-#include <precomp_mat.hpp>
-#include <matrix.hpp>
 
 namespace pvfmm{
 

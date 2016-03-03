@@ -1,21 +1,6 @@
 #ifndef _PVFMM_MATRIX_HPP_
 #define _PVFMM_MATRIX_HPP_
 
-#include <algorithm>
-#include <cassert>
-#include <cmath>
-#include <cstdlib>
-#include <cstring>
-#include <iomanip>
-#include <iostream>
-#include <map>
-#include <omp.h>
-#include <stack>
-#include <stdint.h>
-#include <vector>
-
-#include <profile.hpp>
-#include <pvfmm_common.hpp>
 #include <vector.hpp>
 
 extern "C" {

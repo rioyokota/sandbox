@@ -1,19 +1,6 @@
 #ifndef _PVFMM_INTRIN_WRAPPER_HPP_
 #define _PVFMM_INTRIN_WRAPPER_HPP_
 
-#ifdef __SSE__
-#include <xmmintrin.h>
-#endif
-#ifdef __SSE2__
-#include <emmintrin.h>
-#endif
-#ifdef __SSE3__
-#include <pmmintrin.h>
-#endif
-#ifdef __AVX__
-#include <immintrin.h>
-#endif
-
 namespace pvfmm{
 
 template <class T>
