@@ -1,6 +1,3 @@
-#include <cmath>
-#include <cassert>
-
 namespace pvfmm{
 
 inline MortonId::MortonId():x(0), y(0), z(0), depth(0){}
