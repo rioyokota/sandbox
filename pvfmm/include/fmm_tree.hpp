@@ -1402,7 +1402,7 @@ class FMM_Tree {
     	  pt_mid[i]=MortonId(pt_c[i*3+0],pt_c[i*3+1],pt_c[i*3+2],max_depth);
           }
           par::SortScatterIndex(pt_mid  , scatter_index, &lin_oct[0]);
-          par::ScatterForward  (pt_c, scatter_index);
+          par::ScatterForward(pt_c, scatter_index);
           if(value_lst[i]!=NULL){
             Vector<Real_t>& pt_v=*value_lst[i];
             par::ScatterForward(pt_v, scatter_index);
