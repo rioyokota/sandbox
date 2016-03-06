@@ -1,5 +1,4 @@
-Remove remaining macros
-Remove src files
+Find segfault revision
 Simplify code structure of headers
 template -> Real_t
 Remove unnecessary "{}"
