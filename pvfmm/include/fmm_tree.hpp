@@ -561,7 +561,7 @@ class FMM_Tree {
     int myrank=0, np=1;
     Profile::Tic("SortMortonId", true, 10);
     Vector<MortonId> pt_sorted;
-    par::HyperQuickSort(pt_mid, pt_sorted);
+    HyperQuickSort(pt_mid, pt_sorted);
     size_t pt_cnt=pt_sorted.Dim();
     Profile::Toc();
 
@@ -1401,11 +1401,11 @@ class FMM_Tree {
           for(size_t i=0;i<pt_cnt;i++){
     	  pt_mid[i]=MortonId(pt_c[i*3+0],pt_c[i*3+1],pt_c[i*3+2],max_depth);
           }
-          par::SortScatterIndex(pt_mid  , scatter_index, &lin_oct[0]);
-          par::ScatterForward(pt_c, scatter_index);
+          SortScatterIndex(pt_mid  , scatter_index, &lin_oct[0]);
+          ScatterForward(pt_c, scatter_index);
           if(value_lst[i]!=NULL){
             Vector<Real_t>& pt_v=*value_lst[i];
-            par::ScatterForward(pt_v, scatter_index);
+            ScatterForward(pt_v, scatter_index);
           }
           if(scatter_lst[i]!=NULL){
             Vector<size_t>& pt_s=*scatter_lst[i];

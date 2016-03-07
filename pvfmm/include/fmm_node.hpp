@@ -32,11 +32,10 @@
 
 #include <kernel.hpp>
 #include <fft_wrapper.hpp>
-#include <interac_list.hpp>
 #include <matrix.hpp>
 #include <mortonid.hpp>
-#include <ompUtils.h>
-#include <parUtils.h>
+#include <sort.hpp>
+#include <interac_list.hpp>
 #include <precomp_mat.hpp>
 #include <profile.hpp>
 #include <pvfmm_common.hpp>

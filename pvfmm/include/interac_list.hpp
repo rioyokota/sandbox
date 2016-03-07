@@ -1,8 +1,6 @@
 #ifndef _PVFMM_INTERAC_LIST_HPP_
 #define _PVFMM_INTERAC_LIST_HPP_
 
-#include <ompUtils.h>
-
 namespace pvfmm{
 
 template <class Node_t>
