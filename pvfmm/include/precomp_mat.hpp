@@ -1,9 +1,3 @@
-#include <vector>
-#include <cstdlib>
-
-#include <pvfmm_common.hpp>
-#include <matrix.hpp>
-
 #ifndef _PVFMM_PrecompMAT_HPP_
 #define _PVFMM_PrecompMAT_HPP_
 

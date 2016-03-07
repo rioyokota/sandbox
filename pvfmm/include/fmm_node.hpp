@@ -30,9 +30,9 @@
 #include <immintrin.h>
 #endif
 
+#include <matrix.hpp>
 #include <kernel.hpp>
 #include <fft_wrapper.hpp>
-#include <matrix.hpp>
 #include <mortonid.hpp>
 #include <sort.hpp>
 #include <interac_list.hpp>
