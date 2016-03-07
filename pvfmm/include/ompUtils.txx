@@ -4,8 +4,8 @@
 
 namespace pvfmm{
 
-template <class T,class StrictWeakOrdering>
-void omp_par::merge(T A_,T A_last,T B_,T B_last,T C_,int p,StrictWeakOrdering comp){
+template <class T>
+void omp_par::merge(T A_,T A_last,T B_,T B_last,T C_,int p){
   typedef typename std::iterator_traits<T>::difference_type _DiffType;
   typedef typename std::iterator_traits<T>::value_type _ValType;
   _DiffType N1=A_last-A_;
@@ -31,12 +31,12 @@ void omp_par::merge(T A_,T A_last,T B_,T B_last,T C_,int p,StrictWeakOrdering co
       int indx=i*n+j;
       _DiffType indx1=(indx*N1)/(p*n);
       split   [indx]=A_[indx1];
-      split_size[indx]=indx1+(std::lower_bound(B_,B_last,split[indx],comp)-B_);
+      split_size[indx]=indx1+(std::lower_bound(B_,B_last,split[indx])-B_);
 
       indx1=(indx*N2)/(p*n);
       indx+=p*n;
       split   [indx]=B_[indx1];
-      split_size[indx]=indx1+(std::lower_bound(A_,A_last,split[indx],comp)-A_);
+      split_size[indx]=indx1+(std::lower_bound(A_,A_last,split[indx])-A_);
     }
   }
   _DiffType* split_indx_A=new _DiffType [p+1];
@@ -63,28 +63,28 @@ void omp_par::merge(T A_,T A_last,T B_,T B_last,T C_,int p,StrictWeakOrdering co
       split_size1=split_size[j];
     }
 
-    split_indx_A[i]=std::lower_bound(A_,A_last,split1,comp)-A_;
-    split_indx_B[i]=std::lower_bound(B_,B_last,split1,comp)-B_;
+    split_indx_A[i]=std::lower_bound(A_,A_last,split1)-A_;
+    split_indx_B[i]=std::lower_bound(B_,B_last,split1)-B_;
   }
   delete[] split;
   delete[] split_size;
 #pragma omp parallel for
   for(int i=0;i<p;i++){
     T C=C_+split_indx_A[i]+split_indx_B[i];
-    std::merge(A_+split_indx_A[i],A_+split_indx_A[i+1],B_+split_indx_B[i],B_+split_indx_B[i+1],C,comp);
+    std::merge(A_+split_indx_A[i],A_+split_indx_A[i+1],B_+split_indx_B[i],B_+split_indx_B[i+1],C);
   }
   delete[] split_indx_A;
   delete[] split_indx_B;
 }
 
-template <class T,class StrictWeakOrdering>
-void omp_par::merge_sort(T A,T A_last,StrictWeakOrdering comp){
+template <class T>
+void omp_par::merge_sort(T A,T A_last){
   typedef typename std::iterator_traits<T>::difference_type _DiffType;
   typedef typename std::iterator_traits<T>::value_type _ValType;
   int p=omp_get_max_threads();
   _DiffType N=A_last-A;
   if(N<2*p){
-    std::sort(A,A_last,comp);
+    std::sort(A,A_last);
     return;
   }
   _DiffType* split=new _DiffType [p+1];
@@ -95,7 +95,7 @@ void omp_par::merge_sort(T A,T A_last,StrictWeakOrdering comp){
   }
 #pragma omp parallel for
   for(int id=0;id<p;id++){
-    std::sort(A+split[id],A+split[id+1],comp);
+    std::sort(A+split[id],A+split[id+1]);
   }
   _ValType* B=new _ValType [N];
   _ValType* A_=&A[0];
@@ -103,7 +103,7 @@ void omp_par::merge_sort(T A,T A_last,StrictWeakOrdering comp){
   for(int j=1;j<p;j=j*2){
     for(int i=0;i<p;i=i+2*j){
       if(i+j<p){
-        omp_par::merge(A_+split[i],A_+split[i+j],A_+split[i+j],A_+split[(i+2*j<=p?i+2*j:p)],B_+split[i],p,comp);
+        omp_par::merge(A_+split[i],A_+split[i+j],A_+split[i+j],A_+split[(i+2*j<=p?i+2*j:p)],B_+split[i],p);
       }else{
 #pragma omp parallel for
         for(int k=split[i];k<split[p];k++)
@@ -121,12 +121,6 @@ void omp_par::merge_sort(T A,T A_last,StrictWeakOrdering comp){
   }
   delete[] split;
   delete[] B;
-}
-
-template <class T>
-void omp_par::merge_sort(T A,T A_last){
-  typedef typename std::iterator_traits<T>::value_type _ValType;
-  omp_par::merge_sort(A,A_last,std::less<_ValType>());
 }
 
 template <class T, class I>
