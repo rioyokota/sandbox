@@ -2068,7 +2068,7 @@ class FMM_Tree {
 	vec_size[i]=vec_lst[i]->Dim();
       }
       vec_disp[0]=0;
-      omp_par::scan(&vec_size[0],&vec_disp[0],n_vec);
+      scan(&vec_size[0],&vec_disp[0],n_vec);
       size_t buff_size=vec_size[n_vec-1]+vec_disp[n_vec-1];
       if(!buff_size) continue;
       if(keep_data){
@@ -2452,7 +2452,7 @@ class FMM_Tree {
         }
       }
       dsp[0]=cnt[0];
-      omp_par::scan(&cnt[0],&dsp[0],dsp.Dim());
+      scan(&cnt[0],&dsp[0],dsp.Dim());
     }
     {
       struct PackedSetupData{
@@ -2768,7 +2768,7 @@ class FMM_Tree {
           pvfmm::Vector<size_t>& cnt=interac_data.interac_cnt;
           pvfmm::Vector<size_t>& dsp=interac_data.interac_dsp;
           dsp.ReInit(cnt.Dim()); if(dsp.Dim()) dsp[0]=0;
-          omp_par::scan(&cnt[0],&dsp[0],dsp.Dim());
+          scan(&cnt[0],&dsp[0],dsp.Dim());
         }
       }
       {
@@ -2893,7 +2893,7 @@ class FMM_Tree {
     for(size_t i=0;i<type_lst.size();i++){
       interac_cnt[i]=interac_list.ListCount(type_lst[i]);
     }
-    omp_par::scan(&interac_cnt[0],&interac_dsp[0],type_lst.size());
+    scan(&interac_cnt[0],&interac_dsp[0],type_lst.size());
     node_interac_lst.ReInit(node_cnt,interac_cnt.back()+interac_dsp.back());
     int omp_p=omp_get_max_threads();
 #pragma omp parallel for
@@ -3909,7 +3909,7 @@ class FMM_Tree {
           pvfmm::Vector<size_t>& cnt=interac_data.interac_cnt;
           pvfmm::Vector<size_t>& dsp=interac_data.interac_dsp;
           dsp.ReInit(cnt.Dim()); if(dsp.Dim()) dsp[0]=0;
-          omp_par::scan(&cnt[0],&dsp[0],dsp.Dim());
+          scan(&cnt[0],&dsp[0],dsp.Dim());
         }
       }
     }
@@ -4089,7 +4089,7 @@ class FMM_Tree {
           pvfmm::Vector<size_t>& cnt=interac_data.interac_cnt;
           pvfmm::Vector<size_t>& dsp=interac_data.interac_dsp;
           dsp.ReInit(cnt.Dim()); if(dsp.Dim()) dsp[0]=0;
-          omp_par::scan(&cnt[0],&dsp[0],dsp.Dim());
+          scan(&cnt[0],&dsp[0],dsp.Dim());
         }
       }
     }
@@ -4385,7 +4385,7 @@ class FMM_Tree {
           pvfmm::Vector<size_t>& cnt=interac_data.interac_cnt;
           pvfmm::Vector<size_t>& dsp=interac_data.interac_dsp;
           dsp.ReInit(cnt.Dim()); if(dsp.Dim()) dsp[0]=0;
-          omp_par::scan(&cnt[0],&dsp[0],dsp.Dim());
+          scan(&cnt[0],&dsp[0],dsp.Dim());
         }
       }
     }
@@ -4579,7 +4579,7 @@ class FMM_Tree {
           pvfmm::Vector<size_t>& cnt=interac_data.interac_cnt;
           pvfmm::Vector<size_t>& dsp=interac_data.interac_dsp;
           dsp.ReInit(cnt.Dim()); if(dsp.Dim()) dsp[0]=0;
-          omp_par::scan(&cnt[0],&dsp[0],dsp.Dim());
+          scan(&cnt[0],&dsp[0],dsp.Dim());
         }
       }
       {

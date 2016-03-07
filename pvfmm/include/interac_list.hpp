@@ -311,7 +311,7 @@ public:
 	    int c[3]={i,j,k};
 	    class_size_hash[class_hash(c)]++;
 	  }
-    omp_par::scan(&class_size_hash[0], &class_disp_hash[0], PVFMM_MAX_COORD_HASH);
+    scan(&class_size_hash[0], &class_disp_hash[0], PVFMM_MAX_COORD_HASH);
     size_t count_=0;
     for(int k=-max_r;k<=max_r;k+=step)
       for(int j=-max_r;j<=max_r;j+=step)

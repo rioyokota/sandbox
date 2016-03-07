@@ -15,7 +15,7 @@ namespace par{
     srand(0);
     long long nelem = arr_.Dim();
     Vector<T> arr=arr_;
-    omp_par::merge_sort(&arr[0], &arr[0]+nelem);
+    merge_sort(&arr[0], &arr[0]+nelem);
     SortedElem.Resize(nelem);
     memcpy(&SortedElem[0], &arr[0], nelem*sizeof(T));
     return 0;
@@ -63,7 +63,7 @@ namespace par{
 	psorted[i].key=scatter_index[i];
 	psorted[i].data=i;
       }
-      omp_par::merge_sort(&psorted[0], &psorted[0]+recv_size);
+      merge_sort(&psorted[0], &psorted[0]+recv_size);
     }
     {
       char* data=(char*)&data_[0];
