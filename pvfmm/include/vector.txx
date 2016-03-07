@@ -1,8 +1,3 @@
-#include <cassert>
-#include <iostream>
-#include <iomanip>
-#include <profile.hpp>
-
 namespace pvfmm{
 
 template <class T>

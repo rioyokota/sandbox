@@ -12,6 +12,7 @@
 #include <omp.h>
 #include <set>
 #include <sstream>
+#include <stack>
 #include <stdint.h>
 #include <string>
 #include <sys/stat.h>
@@ -30,6 +31,7 @@
 #include <immintrin.h>
 #endif
 
+#include <profile.hpp>
 #include <matrix.hpp>
 #include <kernel.hpp>
 #include <fft_wrapper.hpp>
@@ -37,8 +39,8 @@
 #include <sort.hpp>
 #include <interac_list.hpp>
 #include <precomp_mat.hpp>
-#include <profile.hpp>
 #include <pvfmm_common.hpp>
+#include <utils.hpp>
 #include <vector.hpp>
 
 namespace pvfmm{

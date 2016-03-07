@@ -1,9 +1,6 @@
 #ifndef _UTILS_
 #define _UTILS_
 
-#include <kernel.hpp>
-#include <fmm_tree.hpp>
-
 enum DistribType{
   UnifGrid,
   RandUnif,
