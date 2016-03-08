@@ -44,7 +44,18 @@
 #include <fmm_node.hpp>
 #include <fmm_tree.hpp>
 
-void fmm_test(size_t N, size_t M, Real_t b, int dist, int mult_order, int depth){
+int main(int argc, char **argv){
+  commandline_option_start(argc, argv);
+  omp_set_num_threads( atoi(commandline_option(argc, argv,  "-omp",     "1", false, "-omp  <int> =  (1)   : Number of OpenMP threads."          )));
+  size_t N=  (size_t)strtod(commandline_option(argc, argv,    "-N",     "1",  true, "-N    <int>          : Number of points."                  ),NULL);
+  size_t M=  (size_t)strtod(commandline_option(argc, argv,    "-M",   "350", false, "-M    <int>          : Number of points per octant."       ),NULL);
+  double b=          strtod(commandline_option(argc, argv,    "-b",     "1", false, "-b    <int> =  (1)   : Bounding-box length (0 < b <= 1)"   ),NULL);
+  int mult_order=   strtoul(commandline_option(argc, argv,    "-m",    "10", false, "-m    <int> = (10)   : Multipole order (+ve even integer)."),NULL,10);
+  int depth=        strtoul(commandline_option(argc, argv,    "-d",    "15", false, "-d    <int> = (15)   : Maximum tree depth."                ),NULL,10);
+  int dist=         strtoul(commandline_option(argc, argv, "-dist",     "0", false, "-dist <int> =  (0)   : 0) Unif 1) Sphere 2) Ellipse"       ),NULL,10);
+  commandline_option_end(argc, argv);
+  pvfmm::Profile::Enable(true);
+  pvfmm::Profile::Tic("FMM_Test",true);
   typedef pvfmm::FMM_Node FMMNode_t;
   typedef pvfmm::FMM_Tree FMMTree_t;
   const pvfmm::Kernel<Real_t>* mykernel = &pvfmm::LaplaceKernel<Real_t>::gradient();
@@ -103,21 +114,6 @@ void fmm_test(size_t N, size_t M, Real_t b, int dist, int mult_order, int depth)
     if(!myrank) std::cout<<"Tree Depth : "<<maxdepth<<'\n';
   }
   tree.CheckFMMOutput("Output");
-}
-
-int main(int argc, char **argv){
-  commandline_option_start(argc, argv);
-  omp_set_num_threads( atoi(commandline_option(argc, argv,  "-omp",     "1", false, "-omp  <int> =  (1)   : Number of OpenMP threads."          )));
-  size_t   N=(size_t)strtod(commandline_option(argc, argv,    "-N",     "1",  true, "-N    <int>          : Number of points."                  ),NULL);
-  size_t   M=(size_t)strtod(commandline_option(argc, argv,    "-M",   "350", false, "-M    <int>          : Number of points per octant."       ),NULL);
-  double   b=        strtod(commandline_option(argc, argv,    "-b",     "1", false, "-b    <int> =  (1)   : Bounding-box length (0 < b <= 1)"   ),NULL);
-  int      m=       strtoul(commandline_option(argc, argv,    "-m",    "10", false, "-m    <int> = (10)   : Multipole order (+ve even integer)."),NULL,10);
-  int      d=       strtoul(commandline_option(argc, argv,    "-d",    "15", false, "-d    <int> = (15)   : Maximum tree depth."                ),NULL,10);
-  int   dist=       strtoul(commandline_option(argc, argv, "-dist",     "0", false, "-dist <int> =  (0)   : 0) Unif 1) Sphere 2) Ellipse"       ),NULL,10);
-  commandline_option_end(argc, argv);
-  pvfmm::Profile::Enable(true);
-  pvfmm::Profile::Tic("FMM_Test",true);
-  fmm_test(N, M, b, dist, m, d);
   pvfmm::Profile::Toc();
   pvfmm::Profile::print();
   return 0;
