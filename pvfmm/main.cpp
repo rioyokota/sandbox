@@ -7,6 +7,7 @@
 #include <fstream>
 #include <iomanip>
 #include <iostream>
+#include <map>
 #include <omp.h>
 #include <set>
 #include <sstream>
@@ -35,6 +36,7 @@
 #include <matrix.hpp>
 #include <precomp_mat.hpp>
 #include <intrin_wrapper.hpp>
+#include <mem_mgr.hpp>
 #include <kernel.hpp>
 #include <fft_wrapper.hpp>
 #include <mortonid.hpp>

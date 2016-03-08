@@ -1030,7 +1030,7 @@ void generic_kernel(Real_t* r_src, int src_cnt, Real_t* v_src, int dof, Real_t* 
     size_t buff_size=src_cnt_*(3+SRC_DIM)+
                      trg_cnt_*(3+TRG_DIM);
     if(buff_size>STACK_BUFF_SIZE){
-      buff=new Real_t [buff_size];
+      buff=mem::aligned_new<Real_t>(buff_size);
     }
     Real_t* buff_ptr=buff;
     if(!buff_ptr){
@@ -1101,7 +1101,7 @@ void generic_kernel(Real_t* r_src, int src_cnt, Real_t* v_src, int dof, Real_t* 
     }
   }
   if(buff){
-    delete[] buff;
+    mem::aligned_delete<Real_t>(buff);
   }
 }
 
