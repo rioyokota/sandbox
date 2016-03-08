@@ -1,9 +1,3 @@
-#include <vector>
-#include <cstdlib>
-#include <stdint.h>
-
-#include <pvfmm_common.hpp>
-
 #ifndef _PVFMM_VECTOR_HPP_
 #define _PVFMM_VECTOR_HPP_
 
@@ -11,9 +5,6 @@ namespace pvfmm{
 
 template <class T>
 class Vector{
-
-  template <class Y>
-  friend std::ostream& operator<<(std::ostream& output, const Vector<Y>& V);
 
 public:
 

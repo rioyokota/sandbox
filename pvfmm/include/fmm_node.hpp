@@ -1,48 +1,6 @@
 #ifndef _PVFMM_FMM_NODE_HPP_
 #define _PVFMM_FMM_NODE_HPP_
 
-#include <algorithm>
-#include <cassert>
-#include <cmath>
-#include <cstdlib>
-#include <cstring>
-#include <fstream>
-#include <iomanip>
-#include <iostream>
-#include <omp.h>
-#include <set>
-#include <sstream>
-#include <stack>
-#include <stdint.h>
-#include <string>
-#include <sys/stat.h>
-#include <vector>
-
-#ifdef __SSE__
-#include <xmmintrin.h>
-#endif
-#ifdef __SSE2__
-#include <emmintrin.h>
-#endif
-#ifdef __SSE3__
-#include <pmmintrin.h>
-#endif
-#ifdef __AVX__
-#include <immintrin.h>
-#endif
-
-#include <profile.hpp>
-#include <matrix.hpp>
-#include <kernel.hpp>
-#include <fft_wrapper.hpp>
-#include <mortonid.hpp>
-#include <sort.hpp>
-#include <interac_list.hpp>
-#include <precomp_mat.hpp>
-#include <pvfmm_common.hpp>
-#include <utils.hpp>
-#include <vector.hpp>
-
 namespace pvfmm{
 
 template <class Real_t>

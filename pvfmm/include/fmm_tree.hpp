@@ -1,8 +1,6 @@
 #ifndef _PVFMM_FMM_TREE_HPP_
 #define _PVFMM_FMM_TREE_HPP_
 
-#include <fmm_node.hpp>
-
 namespace pvfmm{
 
 template <class Real_t>

@@ -1,8 +1,6 @@
 #ifndef _PVFMM_MATRIX_HPP_
 #define _PVFMM_MATRIX_HPP_
 
-#include <vector.hpp>
-
 extern "C" {
   void sgemm_(char* TRANSA, char* TRANSB, int* M, int* N, int* K, float* ALPHA, float* A,
 	      int* LDA, float* B, int* LDB, float* BETA, float* C, int* LDC);
