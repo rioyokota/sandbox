@@ -32,11 +32,11 @@
 
 #include <types.hpp>
 #include <profile.hpp>
+#include <mem_mgr.hpp>
 #include <vector.hpp>
 #include <matrix.hpp>
 #include <precomp_mat.hpp>
 #include <intrin_wrapper.hpp>
-#include <mem_mgr.hpp>
 #include <kernel.hpp>
 #include <fft_wrapper.hpp>
 #include <mortonid.hpp>
