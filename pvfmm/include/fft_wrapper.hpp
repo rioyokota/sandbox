@@ -1,8 +1,6 @@
 #ifndef _PVFMM_FFT_WRAPPER_
 #define _PVFMM_FFT_WRAPPER_
 
-#include <fftw3.h>
-
 namespace pvfmm{
 
 template<class T>

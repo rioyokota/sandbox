@@ -1,14 +1,12 @@
 #ifndef _PVFMM_FMM_KERNEL_HPP_
 #define _PVFMM_FMM_KERNEL_HPP_
 
-#include <precomp_mat.hpp>
-#include <intrin_wrapper.hpp>
-
 namespace pvfmm{
 
 template <class T>
 struct Kernel{
-  public:
+
+public:
 
   typedef void (*Ker_t)(T* r_src, int src_cnt, T* v_src, int dof,
                         T* r_trg, int trg_cnt, T* k_out);
@@ -470,8 +468,6 @@ template<class T>
 struct LaplaceKernel{
   inline static const Kernel<T>& gradient();
 };
-
-#include <pvfmm_common.hpp>
 
 template <class T>
 Kernel<T>::Kernel(Ker_t poten, const char* name, std::pair<int,int> k_dim) {

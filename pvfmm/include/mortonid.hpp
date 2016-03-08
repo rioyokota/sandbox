@@ -1,27 +1,7 @@
-#include <vector>
-
 #ifndef _PVFMM_MORTONID_HPP_
 #define _PVFMM_MORTONID_HPP_
 
 namespace pvfmm{
-
-#ifndef MAX_DEPTH
-#define MAX_DEPTH 30
-#endif
-
-#if MAX_DEPTH < 7
-#define UINT_T uint8_t
-#define  INT_T  int8_t
-#elif MAX_DEPTH < 15
-#define UINT_T uint16_t
-#define  INT_T  int16_t
-#elif MAX_DEPTH < 31
-#define UINT_T uint32_t
-#define  INT_T  int32_t
-#elif MAX_DEPTH < 63
-#define UINT_T uint64_t
-#define  INT_T  int64_t
-#endif
 
 class MortonId{
 
