@@ -1464,9 +1464,9 @@ class FMM_Tree {
     Profile::Tic("InitFMM_Pts",true);{
     int rank=0;
     bool verbose=false;
-    if(kernel_) kernel_->Initialize(verbose);
-    multipole_order=mult_order;
+    kernel_->Initialize(verbose);
     kernel=kernel_;
+    multipole_order=mult_order;
     assert(kernel!=NULL);
     bool save_precomp=false;
     mat=new PrecompMat<Real_t>(ScaleInvar());

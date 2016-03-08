@@ -62,7 +62,7 @@ int main(int argc, char **argv){
   tree_data.max_pts=M;
   std::vector<Real_t> src_coord, src_value;
   src_coord=point_distrib(N);
-  for(size_t i=0;i<src_coord.size()*mykernel->ker_dim[0]/3;i++) src_value.push_back(drand48()-0.5);
+  for(size_t i=0;i<src_coord.size()/3;i++) src_value.push_back(drand48()-0.5);
   tree_data.coord=src_coord;
   tree_data.value=src_value;
   FMMTree_t tree;
