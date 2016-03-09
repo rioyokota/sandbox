@@ -121,12 +121,7 @@ public:
 
   void free(void* p) const{
     if(!p) return;
-    static uintptr_t alignment=MEM_ALIGN-1;
-    static uintptr_t header_size=(uintptr_t)(sizeof(MemHead)+alignment) & ~(uintptr_t)alignment;
-
-    char* base=(char*)((char*)p-header_size);
-    MemHead* mem_head=(MemHead*)base;
-
+    char* base=(char*)((char*)p-MEM_ALIGN);
     char* p_=(char*)((uintptr_t)base-((uint16_t*)base)[-1]);
     return std::free(p_);
   }
@@ -150,18 +145,6 @@ private:
     node_stack.pop();
     assert(indx);
     return indx;
-  }
-
-  inline void delete_node(size_t indx) const{
-    assert(indx);
-    assert(indx<=node_buff.size());
-    MemNode& n=node_buff[indx-1];
-    n.free=false;
-    n.size=0;
-    n.prev=0;
-    n.next=0;
-    n.mem_ptr=NULL;
-    node_stack.push(indx);
   }
 
   char* buff;
