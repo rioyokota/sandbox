@@ -1305,7 +1305,7 @@ class FMM_Tree {
   class FMMData: public FMM_Data<Real_t>{
    public:
     ~FMMData(){}
-    FMM_Data<Real_t>* NewData(){return mem::aligned_new<FMMData>();}
+    FMM_Data<Real_t>* NewData(){return new FMMData();}
   };
 
   //int dim;
@@ -1459,7 +1459,7 @@ class FMM_Tree {
 	std::vector<FMM_Node*>& nodes=GetNodeList();
 #pragma omp parallel for
 	for(size_t i=0;i<nodes.size();i++){
-	  if(nodes[i]->FMMData()==NULL) nodes[i]->FMMData()=mem::aligned_new<FMMData>();
+	  if(nodes[i]->FMMData()==NULL) nodes[i]->FMMData()=new FMMData();
 	}
       }Profile::Toc();   
     }Profile::Toc();
