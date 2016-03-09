@@ -1302,13 +1302,6 @@ class FMM_Tree {
 
  public:
 
-  class FMMData: public FMM_Data<Real_t>{
-   public:
-    ~FMMData(){}
-    FMM_Data<Real_t>* NewData(){return new FMMData();}
-  };
-
-  //int dim;
   int max_depth;
   int multipole_order;
   FMM_Node* root_node;
@@ -1459,7 +1452,7 @@ class FMM_Tree {
 	std::vector<FMM_Node*>& nodes=GetNodeList();
 #pragma omp parallel for
 	for(size_t i=0;i<nodes.size();i++){
-	  if(nodes[i]->FMMData()==NULL) nodes[i]->FMMData()=new FMMData();
+	  if(nodes[i]->FMMData()==NULL) nodes[i]->FMMData()=new FMM_Data<Real_t>();
 	}
       }Profile::Toc();   
     }Profile::Toc();
