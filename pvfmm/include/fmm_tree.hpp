@@ -601,8 +601,8 @@ class FMM_Tree {
     size_t chld_cnt=1UL<<3;
     size_t fftsize_in =M_dim*ker_dim0*chld_cnt*2;
     size_t fftsize_out=M_dim*ker_dim1*chld_cnt*2;
-    Real_t* zero_vec0=new Real_t [fftsize_in];
-    Real_t* zero_vec1=new Real_t [fftsize_out];
+    Real_t* zero_vec0=mem::aligned_new<Real_t>(fftsize_in );
+    Real_t* zero_vec1=mem::aligned_new<Real_t>(fftsize_out);
     size_t n_out=fft_out.Dim()/fftsize_out;
 #pragma omp parallel for
     for(size_t k=0;k<n_out;k++){
@@ -612,8 +612,8 @@ class FMM_Tree {
     size_t mat_cnt=precomp_mat.Dim();
     size_t blk1_cnt=interac_dsp.Dim()/mat_cnt;
     const size_t V_BLK_SIZE=V_BLK_CACHE*64/sizeof(Real_t);
-    Real_t** IN_ = new Real_t* [2*V_BLK_SIZE*blk1_cnt*mat_cnt];
-    Real_t** OUT_= new Real_t* [2*V_BLK_SIZE*blk1_cnt*mat_cnt];
+    Real_t** IN_ =mem::aligned_new<Real_t*>(2*V_BLK_SIZE*blk1_cnt*mat_cnt);
+    Real_t** OUT_=mem::aligned_new<Real_t*>(2*V_BLK_SIZE*blk1_cnt*mat_cnt);
 #pragma omp parallel for
     for(size_t interac_blk1=0; interac_blk1<blk1_cnt*mat_cnt; interac_blk1++){
       size_t interac_dsp0 = (interac_blk1==0?0:interac_dsp[interac_blk1-1]);
@@ -670,10 +670,10 @@ class FMM_Tree {
     {
       Profile::Add_FLOP(8*8*8*(interac_vec.Dim()/2)*M_dim*ker_dim0*ker_dim1*dof);
     }
-    delete[] IN_;
-    delete[] OUT_;
-    delete[] zero_vec0;
-    delete[] zero_vec1;
+    mem::aligned_delete<Real_t*>(IN_ );
+    mem::aligned_delete<Real_t*>(OUT_);
+    mem::aligned_delete<Real_t>(zero_vec0);
+    mem::aligned_delete<Real_t>(zero_vec1);
   }
 
   template<typename ElemType>
@@ -950,8 +950,8 @@ class FMM_Tree {
         M_conv=M_conv.Transpose();
         int nnn[3]={n1,n1,n1};
         Real_t *fftw_in, *fftw_out;
-        fftw_in  = new Real_t [n3 *ker_dim[0]*ker_dim[1]*sizeof(Real_t)];
-        fftw_out = new Real_t [2*n3_*ker_dim[0]*ker_dim[1]*sizeof(Real_t)];
+        fftw_in  = mem::aligned_new<Real_t>(  n3 *ker_dim[0]*ker_dim[1]*sizeof(Real_t));
+        fftw_out = mem::aligned_new<Real_t>(2*n3_*ker_dim[0]*ker_dim[1]*sizeof(Real_t));
 #pragma omp critical (FFTW_PLAN)
         {
           if (!vprecomp_fft_flag){
@@ -964,8 +964,8 @@ class FMM_Tree {
         FFTW_t<Real_t>::fft_execute_dft_r2c(vprecomp_fftplan, (Real_t*)fftw_in, (typename FFTW_t<Real_t>::cplx*)(fftw_out));
         Matrix<Real_t> M_(2*n3_*ker_dim[0]*ker_dim[1],1,(Real_t*)fftw_out,false);
         M=M_;
-        delete[] fftw_in;
-        delete[] fftw_out;
+        mem::aligned_delete<Real_t>(fftw_in);
+        mem::aligned_delete<Real_t>(fftw_out);
         break;
       }
       case V1_Type:
@@ -1302,7 +1302,11 @@ class FMM_Tree {
 
  public:
 
-  class FMMData: public FMM_Data<Real_t>{};
+  class FMMData: public FMM_Data<Real_t>{
+   public:
+    ~FMMData(){}
+    FMM_Data<Real_t>* NewData(){return mem::aligned_new<FMMData>();}
+  };
 
   //int dim;
   int max_depth;
@@ -1310,6 +1314,7 @@ class FMM_Tree {
   FMM_Node* root_node;
   std::string mat_fname;
   std::vector<FMM_Node*> node_lst;
+  mem::MemoryManager memgr;
   const Kernel<Real_t>* kernel;
   PrecompMat<Real_t>* mat;
   Vector<char> dev_buffer;
@@ -1332,12 +1337,12 @@ class FMM_Tree {
   bool vlist_ifft_flag;
     
 
-  FMM_Tree(): root_node(NULL), max_depth(MAX_DEPTH), vprecomp_fft_flag(false), vlist_fft_flag(false),
+  FMM_Tree(): root_node(NULL), max_depth(MAX_DEPTH), memgr(0), vprecomp_fft_flag(false), vlist_fft_flag(false),
 	      vlist_ifft_flag(false), mat(NULL), kernel(NULL) { };
 
   ~FMM_Tree(){
     if(RootNode()!=NULL){
-      delete[] root_node;
+      mem::aligned_delete(root_node);
     }
     if(mat!=NULL){
       delete mat;
@@ -1358,8 +1363,8 @@ class FMM_Tree {
       Profile::Tic("InitRoot",false,5);
       max_depth=init_data->max_depth;
       if(max_depth>MAX_DEPTH) max_depth=MAX_DEPTH;
-      if(root_node) delete[] root_node;
-      root_node= new FMM_Node [1];
+      if(root_node) mem::aligned_delete(root_node);
+      root_node=mem::aligned_new<FMM_Node>();
       root_node->Initialize(NULL,0,init_data);
       FMM_Node* rnode=RootNode();
       Profile::Toc();
@@ -1400,7 +1405,7 @@ class FMM_Tree {
     	  pt_mid[i]=MortonId(pt_c[i*3+0],pt_c[i*3+1],pt_c[i*3+2],max_depth);
           }
           SortScatterIndex(pt_mid  , scatter_index, &lin_oct[0]);
-          ScatterForward(pt_c, scatter_index);
+          ScatterForward  (pt_c, scatter_index);
           if(value_lst[i]!=NULL){
             Vector<Real_t>& pt_v=*value_lst[i];
             ScatterForward(pt_v, scatter_index);
@@ -1454,7 +1459,7 @@ class FMM_Tree {
 	std::vector<FMM_Node*>& nodes=GetNodeList();
 #pragma omp parallel for
 	for(size_t i=0;i<nodes.size();i++){
-	  if(nodes[i]->FMMData()==NULL) nodes[i]->FMMData()=new FMMData [1];
+	  if(nodes[i]->FMMData()==NULL) nodes[i]->FMMData()=mem::aligned_new<FMMData>();
 	}
       }Profile::Toc();   
     }Profile::Toc();
@@ -1464,9 +1469,9 @@ class FMM_Tree {
     Profile::Tic("InitFMM_Pts",true);{
     int rank=0;
     bool verbose=false;
-    kernel_->Initialize(verbose);
-    kernel=kernel_;
+    if(kernel_) kernel_->Initialize(verbose);
     multipole_order=mult_order;
+    kernel=kernel_;
     assert(kernel!=NULL);
     bool save_precomp=false;
     mat=new PrecompMat<Real_t>(ScaleInvar());
@@ -2486,7 +2491,7 @@ class FMM_Tree {
       };
       PackedSetupData pkd_data;
       {
-        size_t offset=align_ptr(sizeof(PackedSetupData));
+        size_t offset=mem::align_ptr(sizeof(PackedSetupData));
         pkd_data. level=data. level;
         pkd_data.kernel=data.kernel;
         pkd_data.src_coord=data.src_coord.ptr;
@@ -2495,32 +2500,32 @@ class FMM_Tree {
         pkd_data.srf_value=data.srf_value.ptr;
         pkd_data.trg_coord=data.trg_coord.ptr;
         pkd_data.trg_value=data.trg_value.ptr;
-        pkd_data.src_coord_cnt_offset=offset; pkd_data.src_coord_cnt_size=data.src_coord.cnt.Dim(); offset+=align_ptr(sizeof(size_t)*pkd_data.src_coord_cnt_size);
-        pkd_data.src_coord_dsp_offset=offset; pkd_data.src_coord_dsp_size=data.src_coord.dsp.Dim(); offset+=align_ptr(sizeof(size_t)*pkd_data.src_coord_dsp_size);
-        pkd_data.src_value_cnt_offset=offset; pkd_data.src_value_cnt_size=data.src_value.cnt.Dim(); offset+=align_ptr(sizeof(size_t)*pkd_data.src_value_cnt_size);
-        pkd_data.src_value_dsp_offset=offset; pkd_data.src_value_dsp_size=data.src_value.dsp.Dim(); offset+=align_ptr(sizeof(size_t)*pkd_data.src_value_dsp_size);
-        pkd_data.srf_coord_cnt_offset=offset; pkd_data.srf_coord_cnt_size=data.srf_coord.cnt.Dim(); offset+=align_ptr(sizeof(size_t)*pkd_data.srf_coord_cnt_size);
-        pkd_data.srf_coord_dsp_offset=offset; pkd_data.srf_coord_dsp_size=data.srf_coord.dsp.Dim(); offset+=align_ptr(sizeof(size_t)*pkd_data.srf_coord_dsp_size);
-        pkd_data.srf_value_cnt_offset=offset; pkd_data.srf_value_cnt_size=data.srf_value.cnt.Dim(); offset+=align_ptr(sizeof(size_t)*pkd_data.srf_value_cnt_size);
-        pkd_data.srf_value_dsp_offset=offset; pkd_data.srf_value_dsp_size=data.srf_value.dsp.Dim(); offset+=align_ptr(sizeof(size_t)*pkd_data.srf_value_dsp_size);
-        pkd_data.trg_coord_cnt_offset=offset; pkd_data.trg_coord_cnt_size=data.trg_coord.cnt.Dim(); offset+=align_ptr(sizeof(size_t)*pkd_data.trg_coord_cnt_size);
-        pkd_data.trg_coord_dsp_offset=offset; pkd_data.trg_coord_dsp_size=data.trg_coord.dsp.Dim(); offset+=align_ptr(sizeof(size_t)*pkd_data.trg_coord_dsp_size);
-        pkd_data.trg_value_cnt_offset=offset; pkd_data.trg_value_cnt_size=data.trg_value.cnt.Dim(); offset+=align_ptr(sizeof(size_t)*pkd_data.trg_value_cnt_size);
-        pkd_data.trg_value_dsp_offset=offset; pkd_data.trg_value_dsp_size=data.trg_value.dsp.Dim(); offset+=align_ptr(sizeof(size_t)*pkd_data.trg_value_dsp_size);
+        pkd_data.src_coord_cnt_offset=offset; pkd_data.src_coord_cnt_size=data.src_coord.cnt.Dim(); offset+=mem::align_ptr(sizeof(size_t)*pkd_data.src_coord_cnt_size);
+        pkd_data.src_coord_dsp_offset=offset; pkd_data.src_coord_dsp_size=data.src_coord.dsp.Dim(); offset+=mem::align_ptr(sizeof(size_t)*pkd_data.src_coord_dsp_size);
+        pkd_data.src_value_cnt_offset=offset; pkd_data.src_value_cnt_size=data.src_value.cnt.Dim(); offset+=mem::align_ptr(sizeof(size_t)*pkd_data.src_value_cnt_size);
+        pkd_data.src_value_dsp_offset=offset; pkd_data.src_value_dsp_size=data.src_value.dsp.Dim(); offset+=mem::align_ptr(sizeof(size_t)*pkd_data.src_value_dsp_size);
+        pkd_data.srf_coord_cnt_offset=offset; pkd_data.srf_coord_cnt_size=data.srf_coord.cnt.Dim(); offset+=mem::align_ptr(sizeof(size_t)*pkd_data.srf_coord_cnt_size);
+        pkd_data.srf_coord_dsp_offset=offset; pkd_data.srf_coord_dsp_size=data.srf_coord.dsp.Dim(); offset+=mem::align_ptr(sizeof(size_t)*pkd_data.srf_coord_dsp_size);
+        pkd_data.srf_value_cnt_offset=offset; pkd_data.srf_value_cnt_size=data.srf_value.cnt.Dim(); offset+=mem::align_ptr(sizeof(size_t)*pkd_data.srf_value_cnt_size);
+        pkd_data.srf_value_dsp_offset=offset; pkd_data.srf_value_dsp_size=data.srf_value.dsp.Dim(); offset+=mem::align_ptr(sizeof(size_t)*pkd_data.srf_value_dsp_size);
+        pkd_data.trg_coord_cnt_offset=offset; pkd_data.trg_coord_cnt_size=data.trg_coord.cnt.Dim(); offset+=mem::align_ptr(sizeof(size_t)*pkd_data.trg_coord_cnt_size);
+        pkd_data.trg_coord_dsp_offset=offset; pkd_data.trg_coord_dsp_size=data.trg_coord.dsp.Dim(); offset+=mem::align_ptr(sizeof(size_t)*pkd_data.trg_coord_dsp_size);
+        pkd_data.trg_value_cnt_offset=offset; pkd_data.trg_value_cnt_size=data.trg_value.cnt.Dim(); offset+=mem::align_ptr(sizeof(size_t)*pkd_data.trg_value_cnt_size);
+        pkd_data.trg_value_dsp_offset=offset; pkd_data.trg_value_dsp_size=data.trg_value.dsp.Dim(); offset+=mem::align_ptr(sizeof(size_t)*pkd_data.trg_value_dsp_size);
         InteracData& intdata=data.interac_data;
-        pkd_data.    in_node_offset=offset; pkd_data.    in_node_size=intdata.    in_node.Dim(); offset+=align_ptr(sizeof(size_t)*pkd_data.    in_node_size);
-        pkd_data.   scal_idx_offset=offset; pkd_data.   scal_idx_size=intdata.   scal_idx.Dim(); offset+=align_ptr(sizeof(size_t)*pkd_data.   scal_idx_size);
-        pkd_data.coord_shift_offset=offset; pkd_data.coord_shift_size=intdata.coord_shift.Dim(); offset+=align_ptr(sizeof(Real_t)*pkd_data.coord_shift_size);
-        pkd_data.interac_cnt_offset=offset; pkd_data.interac_cnt_size=intdata.interac_cnt.Dim(); offset+=align_ptr(sizeof(size_t)*pkd_data.interac_cnt_size);
-        pkd_data.interac_dsp_offset=offset; pkd_data.interac_dsp_size=intdata.interac_dsp.Dim(); offset+=align_ptr(sizeof(size_t)*pkd_data.interac_dsp_size);
-        pkd_data.interac_cst_offset=offset; pkd_data.interac_cst_size=intdata.interac_cst.Dim(); offset+=align_ptr(sizeof(size_t)*pkd_data.interac_cst_size);
+        pkd_data.    in_node_offset=offset; pkd_data.    in_node_size=intdata.    in_node.Dim(); offset+=mem::align_ptr(sizeof(size_t)*pkd_data.    in_node_size);
+        pkd_data.   scal_idx_offset=offset; pkd_data.   scal_idx_size=intdata.   scal_idx.Dim(); offset+=mem::align_ptr(sizeof(size_t)*pkd_data.   scal_idx_size);
+        pkd_data.coord_shift_offset=offset; pkd_data.coord_shift_size=intdata.coord_shift.Dim(); offset+=mem::align_ptr(sizeof(Real_t)*pkd_data.coord_shift_size);
+        pkd_data.interac_cnt_offset=offset; pkd_data.interac_cnt_size=intdata.interac_cnt.Dim(); offset+=mem::align_ptr(sizeof(size_t)*pkd_data.interac_cnt_size);
+        pkd_data.interac_dsp_offset=offset; pkd_data.interac_dsp_size=intdata.interac_dsp.Dim(); offset+=mem::align_ptr(sizeof(size_t)*pkd_data.interac_dsp_size);
+        pkd_data.interac_cst_offset=offset; pkd_data.interac_cst_size=intdata.interac_cst.Dim(); offset+=mem::align_ptr(sizeof(size_t)*pkd_data.interac_cst_size);
         for(size_t i=0;i<4*MAX_DEPTH;i++){
-          pkd_data.scal_offset[i]=offset; pkd_data.scal_dim[i]=intdata.scal[i].Dim(); offset+=align_ptr(sizeof(Real_t)*pkd_data.scal_dim[i]);
+          pkd_data.scal_offset[i]=offset; pkd_data.scal_dim[i]=intdata.scal[i].Dim(); offset+=mem::align_ptr(sizeof(Real_t)*pkd_data.scal_dim[i]);
         }
         for(size_t i=0;i<4;i++){
           size_t& Mdim0=pkd_data.Mdim[i][0];
           size_t& Mdim1=pkd_data.Mdim[i][1];
-          pkd_data.M_offset[i]=offset; Mdim0=intdata.M[i].Dim(0); Mdim1=intdata.M[i].Dim(1); offset+=align_ptr(sizeof(Real_t)*Mdim0*Mdim1);
+          pkd_data.M_offset[i]=offset; Mdim0=intdata.M[i].Dim(0); Mdim1=intdata.M[i].Dim(1); offset+=mem::align_ptr(sizeof(Real_t)*Mdim0*Mdim1);
         }
         pkd_data.size=offset;
       }
@@ -3473,13 +3478,13 @@ class FMM_Tree {
     {
       if(!vlist_fft_flag){
         int nnn[3]={(int)n1,(int)n1,(int)n1};
-        Real_t *fftw_in, *fftw_out;
-        fftw_in  = new Real_t [n3 *ker_dim0*chld_cnt];
-        fftw_out = new Real_t [2*n3_*ker_dim0*chld_cnt];
+        void *fftw_in, *fftw_out;
+        fftw_in  = mem::aligned_new<Real_t>(  n3 *ker_dim0*chld_cnt);
+        fftw_out = mem::aligned_new<Real_t>(2*n3_*ker_dim0*chld_cnt);
         vlist_fftplan = FFTW_t<Real_t>::fft_plan_many_dft_r2c(3,nnn,ker_dim0*chld_cnt,
             (Real_t*)fftw_in, NULL, 1, n3, (typename FFTW_t<Real_t>::cplx*)(fftw_out),NULL, 1, n3_);
-        delete[] fftw_in;
-        delete[] fftw_out;
+        mem::aligned_delete<Real_t>((Real_t*)fftw_in );
+        mem::aligned_delete<Real_t>((Real_t*)fftw_out);
         vlist_fft_flag=true;
       }
     }
@@ -3542,12 +3547,12 @@ class FMM_Tree {
       if(!vlist_ifft_flag){
         int nnn[3]={(int)n1,(int)n1,(int)n1};
         Real_t *fftw_in, *fftw_out;
-        fftw_in  = new Real_t [2*n3_*ker_dim1*chld_cnt];
-        fftw_out = new Real_t [n3 *ker_dim1*chld_cnt];
+        fftw_in  = mem::aligned_new<Real_t>(2*n3_*ker_dim1*chld_cnt);
+        fftw_out = mem::aligned_new<Real_t>(  n3 *ker_dim1*chld_cnt);
         vlist_ifftplan = FFTW_t<Real_t>::fft_plan_many_dft_c2r(3,nnn,ker_dim1*chld_cnt,
             (typename FFTW_t<Real_t>::cplx*)fftw_in, NULL, 1, n3_, (Real_t*)(fftw_out),NULL, 1, n3);
-        delete[] fftw_in;
-        delete[] fftw_out;
+        mem::aligned_delete<Real_t>(fftw_in);
+        mem::aligned_delete<Real_t>(fftw_out);
         vlist_ifft_flag=true;
       }
     }

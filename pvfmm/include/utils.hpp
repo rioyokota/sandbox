@@ -13,6 +13,7 @@ std::vector<Real_t> point_distrib(size_t N){
   int np=1, myrank=0;
   static size_t seed=myrank+1; seed+=np;
   srand48(seed);
+
   std::vector<Real_t> coord;
   size_t NN=(size_t)round(pow((double)N,1.0/3.0));
   size_t N_total=NN*NN*NN;

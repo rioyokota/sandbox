@@ -72,7 +72,7 @@ public:
     FreeDevice(false);
     if(own_data){
       if(data_ptr!=NULL){
-	mem::aligned_delete<T>(data_ptr);
+	mem::aligned_delete(data_ptr);
       }
     }
     data_ptr=NULL;

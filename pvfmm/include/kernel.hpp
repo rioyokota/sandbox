@@ -5,8 +5,7 @@ namespace pvfmm{
 
 template <class T>
 struct Kernel{
-
-public:
+  public:
 
   typedef void (*Ker_t)(T* r_src, int src_cnt, T* v_src, int dof,
                         T* r_trg, int trg_cnt, T* k_out);
@@ -195,10 +194,10 @@ std::vector<T> integ_pyramid(int m, T* s, T r, int nx, const Kernel<T>& kernel, 
     x_.swap(x_new);
   }
 
-  Vector<T> k_out(   ny*nz*k_dim,new T [ny*nz*k_dim],false);
-  Vector<T> I0   (   ny*m *k_dim,new T [ny*m *k_dim],false);
-  Vector<T> I1   (   m *m *k_dim,new T [m *m *k_dim],false);
-  Vector<T> I2   (m *m *m *k_dim,new T [m *m *m *k_dim],false); I2.SetZero();
+  Vector<T> k_out(   ny*nz*k_dim,mem::aligned_new<T>(   ny*nz*k_dim),false);
+  Vector<T> I0   (   ny*m *k_dim,mem::aligned_new<T>(   ny*m *k_dim),false);
+  Vector<T> I1   (   m *m *k_dim,mem::aligned_new<T>(   m *m *k_dim),false);
+  Vector<T> I2   (m *m *m *k_dim,mem::aligned_new<T>(m *m *m *k_dim),false); I2.SetZero();
   if(x_.size()>1)
   for(int k=0; k<x_.size()-1; k++){
     T x0=x_[k];
@@ -317,10 +316,10 @@ std::vector<T> integ_pyramid(int m, T* s, T r, int nx, const Kernel<T>& kernel, 
                      +m*(m+1)*(m+2)/3*k_dim)*nx*(x_.size()-1));
 
   std::vector<T> I2_(&I2[0], &I2[0]+I2.Dim());
-  delete[] &k_out[0];
-  delete[] &I0[0];
-  delete[] &I1[0];
-  delete[] &I2[0];
+  mem::aligned_delete<T>(&k_out[0]);
+  mem::aligned_delete<T>(&I0   [0]);
+  mem::aligned_delete<T>(&I1   [0]);
+  mem::aligned_delete<T>(&I2   [0]);
   return I2_;
 }
 
