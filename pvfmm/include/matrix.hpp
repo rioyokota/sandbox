@@ -775,12 +775,11 @@ public:
 
 };
 
-#define PERM_INT_T size_t
 template <class T>
 class Permutation{
 
 public:
-  Vector<PERM_INT_T> perm;
+  Vector<size_t> perm;
   Vector<T> scal;
 
   Permutation(){}
@@ -821,7 +820,7 @@ public:
   Permutation<T> Transpose(){
     size_t size=perm.Dim();
     Permutation<T> P_r(size);
-    Vector<PERM_INT_T>& perm_r=P_r.perm;
+    Vector<size_t>& perm_r=P_r.perm;
     Vector<T>& scal_r=P_r.scal;
     for(size_t i=0;i<size;i++){
       perm_r[perm[i]]=i;
@@ -834,7 +833,7 @@ public:
     size_t size=perm.Dim();
     assert(P.Dim()==size);
     Permutation<T> P_r(size);
-    Vector<PERM_INT_T>& perm_r=P_r.perm;
+    Vector<size_t>& perm_r=P_r.perm;
     Vector<T>& scal_r=P_r.scal;
     for(size_t i=0;i<size;i++){
       perm_r[i]=perm[P.perm[i]];
@@ -873,7 +872,7 @@ Matrix<T> operator*(const Matrix<T>& M, const Permutation<T>& P){
 
   Matrix<T> M_r(d0,d1,NULL);
   for(size_t i=0;i<d0;i++){
-    const PERM_INT_T* perm_=&(P.perm[0]);
+    const size_t* perm_=&(P.perm[0]);
     const T* scal_=&(P.scal[0]);
     const T* M_=M[i];
     T* M_r_=M_r[i];

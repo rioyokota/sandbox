@@ -130,12 +130,12 @@ class PrecompMat{
 	  Permutation<T>& Pr=Perm_R(l,type,j);
 	  Permutation<T>& Pc=Perm_C(l,type,j);
 	  if(Pr.Dim()>0){
-	    mem_size+=Pr.Dim()*sizeof(PERM_INT_T); mem_size=mem::align_ptr(mem_size);
-	    mem_size+=Pr.Dim()*sizeof(T);          mem_size=mem::align_ptr(mem_size);
+	    mem_size+=Pr.Dim()*sizeof(size_t); mem_size=mem::align_ptr(mem_size);
+	    mem_size+=Pr.Dim()*sizeof(T);      mem_size=mem::align_ptr(mem_size);
 	  }
 	  if(Pc.Dim()>0){
-	    mem_size+=Pc.Dim()*sizeof(PERM_INT_T); mem_size=mem::align_ptr(mem_size);
-	    mem_size+=Pc.Dim()*sizeof(T);          mem_size=mem::align_ptr(mem_size);
+	    mem_size+=Pc.Dim()*sizeof(size_t); mem_size=mem::align_ptr(mem_size);
+	    mem_size+=Pc.Dim()*sizeof(T);      mem_size=mem::align_ptr(mem_size);
 	  }
 	}
       }
@@ -169,14 +169,14 @@ class PrecompMat{
 	for(size_t l=l0;l<l1;l++){
 	  Permutation<T>& Pr=Perm_R(l,type,j);
 	  offset_indx[j][1+4*(l-l0)+0]=data_offset;
-	  data_offset+=Pr.Dim()*sizeof(PERM_INT_T); mem_size=mem::align_ptr(mem_size);
+	  data_offset+=Pr.Dim()*sizeof(size_t); mem_size=mem::align_ptr(mem_size);
 	  offset_indx[j][1+4*(l-l0)+1]=data_offset;
-	  data_offset+=Pr.Dim()*sizeof(T);          mem_size=mem::align_ptr(mem_size);
+	  data_offset+=Pr.Dim()*sizeof(T);      mem_size=mem::align_ptr(mem_size);
 	  Permutation<T>& Pc=Perm_C(l,type,j);
 	  offset_indx[j][1+4*(l-l0)+2]=data_offset;
-	  data_offset+=Pc.Dim()*sizeof(PERM_INT_T); mem_size=mem::align_ptr(mem_size);
+	  data_offset+=Pc.Dim()*sizeof(size_t); mem_size=mem::align_ptr(mem_size);
 	  offset_indx[j][1+4*(l-l0)+3]=data_offset;
-	  data_offset+=Pc.Dim()*sizeof(T);          mem_size=mem::align_ptr(mem_size);
+	  data_offset+=Pc.Dim()*sizeof(T);      mem_size=mem::align_ptr(mem_size);
 	}
       }
     }
@@ -198,14 +198,14 @@ class PrecompMat{
 	  if(Pr.Dim()>0){
 	    size_t a=(Pr.Dim()* tid   )/omp_p;
 	    size_t b=(Pr.Dim()*(tid+1))/omp_p;
-	    memcpy(comp_data[0]+offset_indx[j][1+4*(l-l0)+0]+a*sizeof(PERM_INT_T), &Pr.perm[a], (b-a)*sizeof(PERM_INT_T));
-	    memcpy(comp_data[0]+offset_indx[j][1+4*(l-l0)+1]+a*sizeof(         T), &Pr.scal[a], (b-a)*sizeof(         T));
+	    memcpy(comp_data[0]+offset_indx[j][1+4*(l-l0)+0]+a*sizeof(size_t), &Pr.perm[a], (b-a)*sizeof(size_t));
+	    memcpy(comp_data[0]+offset_indx[j][1+4*(l-l0)+1]+a*sizeof(     T), &Pr.scal[a], (b-a)*sizeof(     T));
 	  }
 	  if(Pc.Dim()>0){
 	    size_t a=(Pc.Dim()* tid   )/omp_p;
 	    size_t b=(Pc.Dim()*(tid+1))/omp_p;
-	    memcpy(comp_data[0]+offset_indx[j][1+4*(l-l0)+2]+a*sizeof(PERM_INT_T), &Pc.perm[a], (b-a)*sizeof(PERM_INT_T));
-	    memcpy(comp_data[0]+offset_indx[j][1+4*(l-l0)+3]+a*sizeof(         T), &Pc.scal[a], (b-a)*sizeof(         T));
+	    memcpy(comp_data[0]+offset_indx[j][1+4*(l-l0)+2]+a*sizeof(size_t), &Pc.perm[a], (b-a)*sizeof(size_t));
+	    memcpy(comp_data[0]+offset_indx[j][1+4*(l-l0)+3]+a*sizeof(     T), &Pc.scal[a], (b-a)*sizeof(     T));
 	  }
 	}
       }

@@ -793,7 +793,7 @@ void Kernel<T>::Initialize(bool verbose) const{
         Matrix<long long>& Pmat=P1;
         std::vector<Permutation<long long> >& Pvec=P1vec;
         Permutation<long long> P(Pmat.Dim(0));
-        Vector<PERM_INT_T>& perm=P.perm;
+        Vector<size_t>& perm=P.perm;
         perm.SetZero();
         for(size_t i=0;i<P.Dim();i++)
         for(size_t j=0;j<P.Dim();j++){
@@ -802,7 +802,7 @@ void Kernel<T>::Initialize(bool verbose) const{
             break;
           }
         }
-        Vector<PERM_INT_T> perm_tmp;
+        Vector<size_t> perm_tmp;
         while(true){
           perm_tmp=perm;
           std::sort(&perm_tmp[0],&perm_tmp[0]+perm_tmp.Dim());
@@ -814,7 +814,7 @@ void Kernel<T>::Initialize(bool verbose) const{
           }
           bool last=false;
           for(size_t i=0;i<P.Dim();i++){
-            PERM_INT_T tmp=perm[i];
+            size_t tmp=perm[i];
             for(size_t j=perm[i]+1;j<P.Dim();j++){
               if(Pmat[i][j]){
                 perm[i]=j;
@@ -837,7 +837,7 @@ void Kernel<T>::Initialize(bool verbose) const{
         Matrix<long long>& Pmat=P2;
         std::vector<Permutation<long long> >& Pvec=P2vec;
         Permutation<long long> P(Pmat.Dim(0));
-        Vector<PERM_INT_T>& perm=P.perm;
+        Vector<size_t>& perm=P.perm;
         perm.SetZero();
         for(size_t i=0;i<P.Dim();i++)
         for(size_t j=0;j<P.Dim();j++){
@@ -846,7 +846,7 @@ void Kernel<T>::Initialize(bool verbose) const{
             break;
           }
         }
-        Vector<PERM_INT_T> perm_tmp;
+        Vector<size_t> perm_tmp;
         while(true){
           perm_tmp=perm;
           std::sort(&perm_tmp[0],&perm_tmp[0]+perm_tmp.Dim());
@@ -858,7 +858,7 @@ void Kernel<T>::Initialize(bool verbose) const{
           }
           bool last=false;
           for(size_t i=0;i<P.Dim();i++){
-            PERM_INT_T tmp=perm[i];
+            size_t tmp=perm[i];
             for(size_t j=perm[i]+1;j<P.Dim();j++){
               if(Pmat[i][j]){
                 perm[i]=j;

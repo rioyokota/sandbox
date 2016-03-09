@@ -509,12 +509,12 @@ class FMM_Tree {
     return P;
   }
 
-  inline int p2oLocal(Vector<MortonId> & nodes, Vector<MortonId>& leaves,
+  inline int p2oLocal(std::vector<MortonId> & nodes, std::vector<MortonId>& leaves,
 		      unsigned int maxNumPts, unsigned int maxDepth, bool complete) {
     assert(maxDepth<=MAX_DEPTH);
     std::vector<MortonId> leaves_lst;
-    unsigned int init_size=leaves.Dim();
-    unsigned int num_pts=nodes.Dim();
+    unsigned int init_size=leaves.size();
+    unsigned int num_pts=nodes.size();
     MortonId curr_node=leaves[0];
     MortonId last_node=leaves[init_size-1].NextId();
     MortonId next_node;
@@ -554,23 +554,23 @@ class FMM_Tree {
     return 0;
   }
 
-  inline int points2Octree(const Vector<MortonId>& pt_mid, Vector<MortonId>& nodes,
+  inline int points2Octree(const std::vector<MortonId>& pt_mid, std::vector<MortonId>& nodes,
 			   unsigned int maxDepth, unsigned int maxNumPts) {
     int myrank=0, np=1;
     Profile::Tic("SortMortonId", true, 10);
-    Vector<MortonId> pt_sorted;
+    std::vector<MortonId> pt_sorted;
     HyperQuickSort(pt_mid, pt_sorted);
-    size_t pt_cnt=pt_sorted.Dim();
+    size_t pt_cnt=pt_sorted.size();
     Profile::Toc();
 
     Profile::Tic("p2o_local", false, 10);
-    Vector<MortonId> nodes_local(1); nodes_local[0]=MortonId();
+    std::vector<MortonId> nodes_local(1); nodes_local[0]=MortonId();
     p2oLocal(pt_sorted, nodes_local, maxNumPts, maxDepth, myrank==np-1);
     Profile::Toc();
 
     Profile::Tic("RemoveDuplicates", true, 10);
     {
-      size_t node_cnt=nodes_local.Dim();
+      size_t node_cnt=nodes_local.size();
       MortonId first_node;
       MortonId  last_node=nodes_local[node_cnt-1];
       size_t i=0;
@@ -1363,12 +1363,12 @@ class FMM_Tree {
       Profile::Toc();
   
       Profile::Tic("Points2Octee",true,5);
-      Vector<MortonId> lin_oct;
+      std::vector<MortonId> lin_oct;
       {
-        Vector<MortonId> pt_mid;
+        std::vector<MortonId> pt_mid;
         Vector<Real_t>& pt_c=rnode->pt_coord;
         size_t pt_cnt=pt_c.Dim()/3;
-        pt_mid.Resize(pt_cnt);
+        pt_mid.resize(pt_cnt);
 #pragma omp parallel for
         for(size_t i=0;i<pt_cnt;i++){
         pt_mid[i]=MortonId(pt_c[i*3+0],pt_c[i*3+1],pt_c[i*3+2],max_depth);
@@ -1386,13 +1386,13 @@ class FMM_Tree {
         assert(coord_lst.size()==value_lst.size());
         assert(coord_lst.size()==scatter_lst.size());
   
-        Vector<MortonId> pt_mid;
+        std::vector<MortonId> pt_mid;
         Vector<size_t> scatter_index;
         for(size_t i=0;i<coord_lst.size();i++){
           if(!coord_lst[i]) continue;
           Vector<Real_t>& pt_c=*coord_lst[i];
           size_t pt_cnt=pt_c.Dim()/3;
-          pt_mid.Resize(pt_cnt);
+          pt_mid.resize(pt_cnt);
 #pragma omp parallel for
           for(size_t i=0;i<pt_cnt;i++){
     	  pt_mid[i]=MortonId(pt_c[i*3+0],pt_c[i*3+1],pt_c[i*3+2],max_depth);
@@ -1417,7 +1417,7 @@ class FMM_Tree {
   
         rnode->SetGhost(false);
         for(int i=0;i<omp_p;i++){
-          size_t idx=(lin_oct.Dim()*i)/omp_p;
+          size_t idx=(lin_oct.size()*i)/omp_p;
           FMM_Node* n=FindNode(lin_oct[idx], true);
           assert(n->GetMortonId()==lin_oct[idx]);
           UNUSED(n);
@@ -1425,8 +1425,8 @@ class FMM_Tree {
   
 #pragma omp parallel for
         for(int i=0;i<omp_p;i++){
-          size_t a=(lin_oct.Dim()* i   )/omp_p;
-          size_t b=(lin_oct.Dim()*(i+1))/omp_p;
+          size_t a=(lin_oct.size()* i   )/omp_p;
+          size_t b=(lin_oct.size()*(i+1))/omp_p;
   
           size_t idx=a;
           FMM_Node* n=FindNode(lin_oct[idx], false);
@@ -2372,10 +2372,10 @@ class FMM_Tree {
             size_t a=( tid   *vec_cnt)/omp_p;
             size_t b=((tid+1)*vec_cnt)/omp_p;
             for(size_t i=a;i<b;i++){
-              const PERM_INT_T*  perm=(PERM_INT_T*)(precomp_data[0]+input_perm[(interac_indx+i)*4+0]);
-              const     Real_t*  scal=(    Real_t*)(precomp_data[0]+input_perm[(interac_indx+i)*4+1]);
-              const     Real_t* v_in =(    Real_t*)(  input_data[0]+input_perm[(interac_indx+i)*4+3]);
-              Real_t*           v_out=(    Real_t*)(     buff_in   +input_perm[(interac_indx+i)*4+2]);
+              const size_t*  perm=(size_t*)(precomp_data[0]+input_perm[(interac_indx+i)*4+0]);
+              const Real_t*  scal=(Real_t*)(precomp_data[0]+input_perm[(interac_indx+i)*4+1]);
+              const Real_t* v_in =(Real_t*)(  input_data[0]+input_perm[(interac_indx+i)*4+3]);
+              Real_t*       v_out=(Real_t*)(     buff_in   +input_perm[(interac_indx+i)*4+2]);
               for(size_t j=0;j<M_dim0;j++ ){
                 v_out[j]=v_in[perm[j]]*scal[j];
               }
@@ -2410,10 +2410,10 @@ class FMM_Tree {
               if(tid<omp_p-1) while(b<vec_cnt && out_ptr==output_perm[(interac_indx+b)*4+3]) b++;
             }
             for(size_t i=a;i<b;i++){ // Compute permutations.
-              const PERM_INT_T*  perm=(PERM_INT_T*)(precomp_data[0]+output_perm[(interac_indx+i)*4+0]);
-              const     Real_t*  scal=(    Real_t*)(precomp_data[0]+output_perm[(interac_indx+i)*4+1]);
-              const     Real_t* v_in =(    Real_t*)(    buff_out   +output_perm[(interac_indx+i)*4+2]);
-              Real_t*           v_out=(    Real_t*)( output_data[0]+output_perm[(interac_indx+i)*4+3]);
+              const size_t*  perm=(size_t*)(precomp_data[0]+output_perm[(interac_indx+i)*4+0]);
+              const Real_t*  scal=(Real_t*)(precomp_data[0]+output_perm[(interac_indx+i)*4+1]);
+              const Real_t* v_in =(Real_t*)(    buff_out   +output_perm[(interac_indx+i)*4+2]);
+              Real_t*       v_out=(Real_t*)( output_data[0]+output_perm[(interac_indx+i)*4+3]);
               for(size_t j=0;j<M_dim1;j++ ){
                 v_out[j]+=v_in[perm[j]]*scal[j];
               }

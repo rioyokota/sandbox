@@ -164,31 +164,31 @@ namespace pvfmm{
   };
 
   template<typename T>
-  int HyperQuickSort(const Vector<T>& arr_, Vector<T>& SortedElem){
+  int HyperQuickSort(const std::vector<T>& arr_, std::vector<T>& SortedElem){
     srand(0);
-    long long nelem = arr_.Dim();
-    Vector<T> arr=arr_;
+    long long nelem = arr_.size();
+    std::vector<T> arr=arr_;
     merge_sort(&arr[0], &arr[0]+nelem);
-    SortedElem.Resize(nelem);
+    SortedElem.resize(nelem);
     memcpy(&SortedElem[0], &arr[0], nelem*sizeof(T));
     return 0;
   }
 
   template<typename T>
-  int SortScatterIndex(const Vector<T>& key, Vector<size_t>& scatter_index, const T* split_key_){
+  int SortScatterIndex(const std::vector<T>& key, Vector<size_t>& scatter_index, const T* split_key_){
     typedef SortPair<T,size_t> Pair_t;
-    Vector<Pair_t> parray(key.Dim());
-    long long loc_size=key.Dim();
+    std::vector<Pair_t> parray(key.size());
+    long long loc_size=key.size();
 #pragma omp parallel for
     for(size_t i=0;i<loc_size;i++){
       parray[i].key=key[i];
       parray[i].data=i;
     }
-    Vector<Pair_t> psorted;
+    std::vector<Pair_t> psorted;
     HyperQuickSort(parray, psorted);
-    scatter_index.Resize(psorted.Dim());
+    scatter_index.Resize(psorted.size());
 #pragma omp parallel for
-    for(size_t i=0;i<psorted.Dim();i++){
+    for(size_t i=0;i<psorted.size();i++){
       scatter_index[i]=psorted[i].data;
     }
     return 0;
@@ -208,7 +208,7 @@ namespace pvfmm{
       send_size=(data_.Dim()*sizeof(T))/data_dim;
     }
     Vector<char> recv_buff(recv_size*data_dim);
-    Vector<Pair_t> psorted(recv_size);
+    std::vector<Pair_t> psorted(recv_size);
     {
 #pragma omp parallel for
       for(size_t i=0;i<recv_size;i++){
