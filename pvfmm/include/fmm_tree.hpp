@@ -1335,7 +1335,7 @@ class FMM_Tree {
 
   ~FMM_Tree(){
     if(RootNode()!=NULL){
-      mem::aligned_delete(root_node);
+      delete root_node;
     }
     if(mat!=NULL){
       delete mat;
@@ -1356,8 +1356,8 @@ class FMM_Tree {
       Profile::Tic("InitRoot",false,5);
       max_depth=init_data->max_depth;
       if(max_depth>MAX_DEPTH) max_depth=MAX_DEPTH;
-      if(root_node) mem::aligned_delete(root_node);
-      root_node=mem::aligned_new<FMM_Node>();
+      if(root_node) delete root_node;
+      root_node=new FMM_Node();
       root_node->Initialize(NULL,0,init_data);
       FMM_Node* rnode=RootNode();
       Profile::Toc();
