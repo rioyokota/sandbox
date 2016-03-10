@@ -36,61 +36,6 @@ struct SetupData {
   Matrix<Real_t>* output_data;
 };
 
-  /*
-template<class Real_t>
-inline void matmult_8x8x2(Real_t*& M_, Real_t*& IN0, Real_t*& IN1, Real_t*& OUT0, Real_t*& OUT1){
-  Real_t out_reg000, out_reg001, out_reg010, out_reg011;
-  Real_t out_reg100, out_reg101, out_reg110, out_reg111;
-  Real_t  in_reg000,  in_reg001,  in_reg010,  in_reg011;
-  Real_t  in_reg100,  in_reg101,  in_reg110,  in_reg111;
-  Real_t   m_reg000,   m_reg001,   m_reg010,   m_reg011;
-  Real_t   m_reg100,   m_reg101,   m_reg110,   m_reg111;
-  for(int i1=0;i1<8;i1+=2){
-    Real_t* IN0_=IN0;
-    Real_t* IN1_=IN1;
-    out_reg000=OUT0[ 0]; out_reg001=OUT0[ 1];
-    out_reg010=OUT0[ 2]; out_reg011=OUT0[ 3];
-    out_reg100=OUT1[ 0]; out_reg101=OUT1[ 1];
-    out_reg110=OUT1[ 2]; out_reg111=OUT1[ 3];
-    for(int i2=0;i2<8;i2+=2){
-      m_reg000=M_[ 0]; m_reg001=M_[ 1];
-      m_reg010=M_[ 2]; m_reg011=M_[ 3];
-      m_reg100=M_[16]; m_reg101=M_[17];
-      m_reg110=M_[18]; m_reg111=M_[19];
-      in_reg000=IN0_[0]; in_reg001=IN0_[1];
-      in_reg010=IN0_[2]; in_reg011=IN0_[3];
-      in_reg100=IN1_[0]; in_reg101=IN1_[1];
-      in_reg110=IN1_[2]; in_reg111=IN1_[3];
-      out_reg000 += m_reg000*in_reg000 - m_reg001*in_reg001;
-      out_reg001 += m_reg000*in_reg001 + m_reg001*in_reg000;
-      out_reg010 += m_reg010*in_reg000 - m_reg011*in_reg001;
-      out_reg011 += m_reg010*in_reg001 + m_reg011*in_reg000;
-      out_reg000 += m_reg100*in_reg010 - m_reg101*in_reg011;
-      out_reg001 += m_reg100*in_reg011 + m_reg101*in_reg010;
-      out_reg010 += m_reg110*in_reg010 - m_reg111*in_reg011;
-      out_reg011 += m_reg110*in_reg011 + m_reg111*in_reg010;
-      out_reg100 += m_reg000*in_reg100 - m_reg001*in_reg101;
-      out_reg101 += m_reg000*in_reg101 + m_reg001*in_reg100;
-      out_reg110 += m_reg010*in_reg100 - m_reg011*in_reg101;
-      out_reg111 += m_reg010*in_reg101 + m_reg011*in_reg100;
-      out_reg100 += m_reg100*in_reg110 - m_reg101*in_reg111;
-      out_reg101 += m_reg100*in_reg111 + m_reg101*in_reg110;
-      out_reg110 += m_reg110*in_reg110 - m_reg111*in_reg111;
-      out_reg111 += m_reg110*in_reg111 + m_reg111*in_reg110;
-      M_+=32;
-      IN0_+=4;
-      IN1_+=4;
-    }
-    OUT0[ 0]=out_reg000; OUT0[ 1]=out_reg001;
-    OUT0[ 2]=out_reg010; OUT0[ 3]=out_reg011;
-    OUT1[ 0]=out_reg100; OUT1[ 1]=out_reg101;
-    OUT1[ 2]=out_reg110; OUT1[ 3]=out_reg111;
-    M_+=4-64*2;
-    OUT0+=4;
-    OUT1+=4;
-  }
-}
-  */
 #if defined(__AVX__) || defined(__SSE3__)
 inline void matmult_8x8x2(double*& M_, double*& IN0, double*& IN1, double*& OUT0, double*& OUT1){
 #ifdef __AVX__
@@ -377,7 +322,6 @@ class FMM_Tree {
     InteracData interac_data;
   };
 
-  template <class Real_t>
   std::vector<Real_t> surface(int p, Real_t* c, Real_t alpha, int depth){
     size_t n_=(6*(p-1)*(p-1)+2);
     std::vector<Real_t> coord(n_*3);
@@ -416,35 +360,30 @@ class FMM_Tree {
     return coord;
   }
   
-  template <class Real_t>
   std::vector<Real_t> u_check_surf(int p, Real_t* c, int depth){
     Real_t r=0.5*powf(0.5,depth);
     Real_t coord[3]={(Real_t)(c[0]-r*(RAD1-1.0)),(Real_t)(c[1]-r*(RAD1-1.0)),(Real_t)(c[2]-r*(RAD1-1.0))};
     return surface(p,coord,(Real_t)RAD1,depth);
   }
   
-  template <class Real_t>
   std::vector<Real_t> u_equiv_surf(int p, Real_t* c, int depth){
     Real_t r=0.5*powf(0.5,depth);
     Real_t coord[3]={(Real_t)(c[0]-r*(RAD0-1.0)),(Real_t)(c[1]-r*(RAD0-1.0)),(Real_t)(c[2]-r*(RAD0-1.0))};
     return surface(p,coord,(Real_t)RAD0,depth);
   }
   
-  template <class Real_t>
   std::vector<Real_t> d_check_surf(int p, Real_t* c, int depth){
     Real_t r=0.5*powf(0.5,depth);
     Real_t coord[3]={(Real_t)(c[0]-r*(RAD0-1.0)),(Real_t)(c[1]-r*(RAD0-1.0)),(Real_t)(c[2]-r*(RAD0-1.0))};
     return surface(p,coord,(Real_t)RAD0,depth);
   }
   
-  template <class Real_t>
   std::vector<Real_t> d_equiv_surf(int p, Real_t* c, int depth){
     Real_t r=0.5*powf(0.5,depth);
     Real_t coord[3]={(Real_t)(c[0]-r*(RAD1-1.0)),(Real_t)(c[1]-r*(RAD1-1.0)),(Real_t)(c[2]-r*(RAD1-1.0))};
     return surface(p,coord,(Real_t)RAD1,depth);
   }
   
-  template <class Real_t>
   std::vector<Real_t> conv_grid(int p, Real_t* c, int depth){
     Real_t r=powf(0.5,depth);
     Real_t a=r*RAD0;
@@ -463,7 +402,6 @@ class FMM_Tree {
     return grid;
   }
 
-  template <class Real_t>
   Permutation<Real_t> equiv_surf_perm(size_t m, size_t p_indx, const Permutation<Real_t>& ker_perm, const Vector<Real_t>* scal_exp=NULL){
     Real_t eps=1e-10;
     int dof=ker_perm.Dim();
@@ -611,7 +549,6 @@ class FMM_Tree {
     return 0;
   }
 
-  template <class Real_t>
   void VListHadamard(size_t dof, size_t M_dim, size_t ker_dim0, size_t ker_dim1, Vector<size_t>& interac_dsp,
       Vector<size_t>& interac_vec, Vector<Real_t*>& precomp_mat, Vector<Real_t>& fft_in, Vector<Real_t>& fft_out){
     size_t chld_cnt=1UL<<3;
@@ -3696,7 +3633,7 @@ class FMM_Tree {
         }
         {
           if(np==1) Profile::Tic("HadamardProduct",false,100);
-          VListHadamard<Real_t>(dof, M_dim, ker_dim0, ker_dim1, interac_dsp[blk0], interac_vec[blk0], precomp_mat, fft_in, fft_out);
+          VListHadamard(dof, M_dim, ker_dim0, ker_dim1, interac_dsp[blk0], interac_vec[blk0], precomp_mat, fft_in, fft_out);
           if(np==1) Profile::Toc();
         }
         {
