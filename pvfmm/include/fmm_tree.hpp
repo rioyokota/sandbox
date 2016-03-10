@@ -21,7 +21,6 @@ typedef fftw_plan fft_plan;
 
 namespace pvfmm{
 
-template <class Real_t>
 struct SetupData {
   int level;
   const Kernel<Real_t>* kernel;
@@ -37,6 +36,7 @@ struct SetupData {
   Matrix<Real_t>* output_data;
 };
 
+  /*
 template<class Real_t>
 inline void matmult_8x8x2(Real_t*& M_, Real_t*& IN0, Real_t*& IN1, Real_t*& OUT0, Real_t*& OUT1){
   Real_t out_reg000, out_reg001, out_reg010, out_reg011;
@@ -90,10 +90,9 @@ inline void matmult_8x8x2(Real_t*& M_, Real_t*& IN0, Real_t*& IN1, Real_t*& OUT0
     OUT1+=4;
   }
 }
-
+  */
 #if defined(__AVX__) || defined(__SSE3__)
-template<>
-inline void matmult_8x8x2<double>(double*& M_, double*& IN0, double*& IN1, double*& OUT0, double*& OUT1){
+inline void matmult_8x8x2(double*& M_, double*& IN0, double*& IN1, double*& OUT0, double*& OUT1){
 #ifdef __AVX__
   __m256d out00,out01,out10,out11;
   __m256d out20,out21,out30,out31;
@@ -249,8 +248,7 @@ inline void matmult_8x8x2<double>(double*& M_, double*& IN0, double*& IN1, doubl
 #endif
 
 #if defined(__SSE3__)
-template<>
-inline void matmult_8x8x2<float>(float*& M_, float*& IN0, float*& IN1, float*& OUT0, float*& OUT1){
+inline void matmult_8x8x2(float*& M_, float*& IN0, float*& IN1, float*& OUT0, float*& OUT1){
 #if defined __SSE3__
   __m128 out00,out01,out10,out11;
   __m128 out20,out21,out30,out31;
@@ -1336,7 +1334,7 @@ class FMM_Tree {
   pvfmm::Matrix<FMM_Node*> node_interac_lst;
   InteracList<FMM_Node> interac_list;
   std::vector<Matrix<char> > precomp_lst;
-  std::vector<SetupData<Real_t> > setup_data;
+  std::vector<SetupData > setup_data;
   std::vector<Vector<Real_t> > upwd_check_surf;
   std::vector<Vector<Real_t> > upwd_equiv_surf;
   std::vector<Vector<Real_t> > dnwd_check_surf;
@@ -1472,7 +1470,7 @@ class FMM_Tree {
 	std::vector<FMM_Node*>& nodes=GetNodeList();
 #pragma omp parallel for
 	for(size_t i=0;i<nodes.size();i++){
-	  if(nodes[i]->FMMData()==NULL) nodes[i]->FMMData()=new FMM_Data<Real_t>();
+	  if(nodes[i]->FMMData()==NULL) nodes[i]->FMMData()=new FMM_Data();
 	}
       }Profile::Toc();   
     }Profile::Toc();
@@ -2116,7 +2114,7 @@ class FMM_Tree {
     }
   }
 
-  void SetupPrecomp(SetupData<Real_t>& setup_data){
+  void SetupPrecomp(SetupData& setup_data){
     if(setup_data.precomp_data==NULL || setup_data.level>MAX_DEPTH) return;
     Profile::Tic("SetupPrecomp",true,25);
     {
@@ -2133,7 +2131,7 @@ class FMM_Tree {
     Profile::Toc();
   }  
 
-  void SetupInterac(SetupData<Real_t>& setup_data){
+  void SetupInterac(SetupData& setup_data){
     int level=setup_data.level;
     std::vector<Mat_Type>& interac_type_lst=setup_data.interac_type;
     std::vector<FMM_Node*>& nodes_in =setup_data.nodes_in ;
@@ -2330,7 +2328,7 @@ class FMM_Tree {
     Profile::Toc();
   }
 
-  void EvalList(SetupData<Real_t>& setup_data){
+  void EvalList(SetupData& setup_data){
     if(setup_data.interac_data.Dim(0)==0 || setup_data.interac_data.Dim(1)==0){
       return;
     }
@@ -2447,7 +2445,7 @@ class FMM_Tree {
     Profile::Toc();
   }
 
-  void PtSetup(SetupData<Real_t>& setup_data, ptSetupData* data_){
+  void PtSetup(SetupData& setup_data, ptSetupData* data_){
     ptSetupData& data=*(ptSetupData*)data_;
     if(data.interac_data.interac_cnt.Dim()){
       InteracData& intdata=data.interac_data;
@@ -2581,7 +2579,7 @@ class FMM_Tree {
     }
   }
 
-  void Source2UpSetup(SetupData<Real_t>& setup_data, std::vector<Matrix<Real_t> >& buff, std::vector<Vector<FMM_Node*> >& n_list, int level) {
+  void Source2UpSetup(SetupData& setup_data, std::vector<Matrix<Real_t> >& buff, std::vector<Vector<FMM_Node*> >& n_list, int level) {
     if(!MultipoleOrder()) return;
     {
       setup_data. level=level;
@@ -2803,12 +2801,12 @@ class FMM_Tree {
     PtSetup(setup_data, &data);
   }
 
-  void Source2Up(SetupData<Real_t>&  setup_data) {
+  void Source2Up(SetupData&  setup_data) {
     if(!MultipoleOrder()) return;
     EvalListPts(setup_data);
   }
   
-  void Up2UpSetup(SetupData<Real_t>& setup_data, std::vector<Matrix<Real_t> >& buff, std::vector<Vector<FMM_Node*> >& n_list, int level){
+  void Up2UpSetup(SetupData& setup_data, std::vector<Matrix<Real_t> >& buff, std::vector<Vector<FMM_Node*> >& n_list, int level){
     if(!MultipoleOrder()) return;
     {
       setup_data.level=level;
@@ -2833,7 +2831,7 @@ class FMM_Tree {
     SetupInterac(setup_data);
   }
   
-  void Up2Up(SetupData<Real_t>& setup_data){
+  void Up2Up(SetupData& setup_data){
     if(!MultipoleOrder()) return;
     EvalList(setup_data);
   }
@@ -2927,7 +2925,7 @@ class FMM_Tree {
     }
   }
 
-  void EvalListPts(SetupData<Real_t>& setup_data) {
+  void EvalListPts(SetupData& setup_data) {
     if(setup_data.kernel->ker_dim[0]*setup_data.kernel->ker_dim[1]==0) return;
     if(setup_data.interac_data.Dim(0)==0 || setup_data.interac_data.Dim(1)==0){
       return;
@@ -3274,7 +3272,7 @@ class FMM_Tree {
     Profile::Toc();
   }  
 
-  void V_ListSetup(SetupData<Real_t>&  setup_data, std::vector<Matrix<Real_t> >& buff, std::vector<Vector<FMM_Node*> >& n_list, int level){
+  void V_ListSetup(SetupData&  setup_data, std::vector<Matrix<Real_t> >& buff, std::vector<Vector<FMM_Node*> >& n_list, int level){
     if(!MultipoleOrder()) return;
     if(level==0) return;
     {
@@ -3604,7 +3602,7 @@ class FMM_Tree {
     }
   }
   
-  void V_List(SetupData<Real_t>&  setup_data){
+  void V_List(SetupData&  setup_data){
     if(!MultipoleOrder()) return;
     int np=1;
     if(setup_data.interac_data.Dim(0)==0 || setup_data.interac_data.Dim(1)==0){
@@ -3711,7 +3709,7 @@ class FMM_Tree {
     }
   }
 
-  void Down2DownSetup(SetupData<Real_t>& setup_data, std::vector<Matrix<Real_t> >& buff, std::vector<Vector<FMM_Node*> >& n_list, int level){
+  void Down2DownSetup(SetupData& setup_data, std::vector<Matrix<Real_t> >& buff, std::vector<Vector<FMM_Node*> >& n_list, int level){
     if(!MultipoleOrder()) return;
     {
       setup_data.level=level;
@@ -3736,12 +3734,12 @@ class FMM_Tree {
     SetupInterac(setup_data);
   }
   
-  void Down2Down(SetupData<Real_t>& setup_data){
+  void Down2Down(SetupData& setup_data){
     if(!MultipoleOrder()) return;
     EvalList(setup_data);
   }
 
-  void X_ListSetup(SetupData<Real_t>&  setup_data, std::vector<Matrix<Real_t> >& buff, std::vector<Vector<FMM_Node*> >& n_list, int level){
+  void X_ListSetup(SetupData&  setup_data, std::vector<Matrix<Real_t> >& buff, std::vector<Vector<FMM_Node*> >& n_list, int level){
     if(!MultipoleOrder()) return;
     {
       setup_data. level=level;
@@ -3932,12 +3930,12 @@ class FMM_Tree {
     PtSetup(setup_data, &data);
   }
   
-  void X_List(SetupData<Real_t>&  setup_data){
+  void X_List(SetupData&  setup_data){
     if(!MultipoleOrder()) return;
     EvalListPts(setup_data);
   }
   
-  void W_ListSetup(SetupData<Real_t>&  setup_data, std::vector<Matrix<Real_t> >& buff, std::vector<Vector<FMM_Node*> >& n_list, int level){
+  void W_ListSetup(SetupData&  setup_data, std::vector<Matrix<Real_t> >& buff, std::vector<Vector<FMM_Node*> >& n_list, int level){
     if(!MultipoleOrder()) return;
     {
       setup_data. level=level;
@@ -4112,12 +4110,12 @@ class FMM_Tree {
     PtSetup(setup_data, &data);
   }
   
-  void W_List(SetupData<Real_t>&  setup_data){
+  void W_List(SetupData&  setup_data){
     if(!MultipoleOrder()) return;
     EvalListPts(setup_data);
   }  
 
-  void U_ListSetup(SetupData<Real_t>& setup_data, std::vector<Matrix<Real_t> >& buff, std::vector<Vector<FMM_Node*> >& n_list, int level){
+  void U_ListSetup(SetupData& setup_data, std::vector<Matrix<Real_t> >& buff, std::vector<Vector<FMM_Node*> >& n_list, int level){
     {
       setup_data. level=level;
       setup_data.kernel=kernel->k_s2t;
@@ -4408,11 +4406,11 @@ class FMM_Tree {
     PtSetup(setup_data, &data);
   }
 
-  void U_List(SetupData<Real_t>&  setup_data){
+  void U_List(SetupData&  setup_data){
     EvalListPts(setup_data);
   }
   
-  void Down2TargetSetup(SetupData<Real_t>&  setup_data, std::vector<Matrix<Real_t> >& buff, std::vector<Vector<FMM_Node*> >& n_list, int level){
+  void Down2TargetSetup(SetupData&  setup_data, std::vector<Matrix<Real_t> >& buff, std::vector<Vector<FMM_Node*> >& n_list, int level){
     if(!MultipoleOrder()) return;
     {
       setup_data. level=level;
@@ -4614,7 +4612,7 @@ class FMM_Tree {
     PtSetup(setup_data, &data);
   }
 
-  void Down2Target(SetupData<Real_t>&  setup_data){
+  void Down2Target(SetupData&  setup_data){
     if(!MultipoleOrder()) return;
     EvalListPts(setup_data);
   }

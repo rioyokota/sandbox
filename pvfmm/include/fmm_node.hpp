@@ -3,7 +3,6 @@
 
 namespace pvfmm{
 
-template <class Real_t>
 class FMM_Data{
  public:
   ~FMM_Data(){}
@@ -44,7 +43,7 @@ class FMM_Node {
   size_t pt_cnt[2];
   Vector<FMM_Node*> interac_list[Type_Count];
 
-  FMM_Data<Real_t>* fmm_data;
+  FMM_Data* fmm_data;
 
   class NodeData {
     public:
@@ -164,13 +163,13 @@ class FMM_Node {
     child=NULL;
   }
 
-  FMM_Data<Real_t>*& FMMData() {
+  FMM_Data*& FMMData() {
     return fmm_data;
   }
 
   FMM_Node* NewNode() {
     FMM_Node* n=new FMM_Node();
-    if(fmm_data!=NULL) n->fmm_data=new FMM_Data<Real_t>();
+    if(fmm_data!=NULL) n->fmm_data=new FMM_Data();
     n->max_depth=max_depth;
     n->max_pts=max_pts;
     return n;
