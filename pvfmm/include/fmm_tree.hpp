@@ -813,8 +813,9 @@ class FMM_Tree {
         size_t n_ue=ue_coord.size()/3;
         Matrix<Real_t> M_e2c(n_ue*ker_dim[0],n_uc*ker_dim[1]);
         kernel->k_m2m->BuildMatrix(&ue_coord[0], n_ue, &uc_coord[0], n_uc, &(M_e2c[0][0]));
+	printf("0\n");
         Matrix<Real_t> U,S,V;
-        M_e2c.SVD(U,S,V);
+        M_e2c.SVD(U,S,V,true);
         Real_t eps=1, max_S=0;
         while(eps*(Real_t)0.5+(Real_t)1.0>1.0) eps*=0.5;
         for(size_t i=0;i<std::min(S.Dim(0),S.Dim(1));i++){

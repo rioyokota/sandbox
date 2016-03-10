@@ -1,11 +1,11 @@
 [./fmm_pts -omp 4 -N 100000 -m 4 -M 64] @ r0
- Error  8.24e-03
- U-List 0.212
- V-List 0.126
+Error      : 1.379760e-05
+U-List     : 2.154050e-01
+V-List     : 1.558261e-01
 [./fmm_pts -omp 4 -N 100000 -m 16 -M 320] @ r0
- Error  5.37e-11
- U-List 1.786
- V-List 1.631
+Error      : 4.540572e-14
+U-List     : 2.216897e+00
+V-List     : 1.694868e+00
 [./fmm_pts -omp 16 -N 1000000 -m 4 -M 64] @ y1
 Error      : 9.811069e-05
 U-List     : 1.264025e-01
@@ -15,10 +15,10 @@ Error      : 1.588667e-13
 U-List     : 1.267981e+00
 V-List     : 3.361643e+00
 [./fmm_pts -omp 72 -N 1000000 -m 4 -M 64] @ r2
- Error  4.44e-03
- U-List 0.08351
- V-List 0.05408
+Error      : 9.716759e-05
+U-List     : 9.771921e-02
+V-List     : 1.172842e-01
 [./fmm_pts -omp 72 -N 1000000 -m 16 -M 320] @ r2
- Error  1.09e-11
- U-List 0.4385
- V-List 0.8440
+Error      : 1.588667e-13
+U-List     : 8.817272e-01
+V-List     : 1.594586e+00
