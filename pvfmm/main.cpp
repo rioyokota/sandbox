@@ -38,7 +38,6 @@
 #include <precomp_mat.hpp>
 #include <intrin_wrapper.hpp>
 #include <kernel.hpp>
-#include <fft_wrapper.hpp>
 #include <mortonid.hpp>
 #include <sort.hpp>
 #include <interac_list.hpp>
