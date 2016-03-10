@@ -15,7 +15,6 @@ public:
   }
 };
 
-class FMM_Node;
 
 #define PVFMMDefinePOD(type) template<> bool inline TypeTraits<type>::IsPOD(){return true;};
 PVFMMDefinePOD(char);
@@ -27,7 +26,6 @@ PVFMMDefinePOD(unsigned long);
 PVFMMDefinePOD(char*);
 PVFMMDefinePOD(float*);
 PVFMMDefinePOD(double*);
-PVFMMDefinePOD(FMM_Node*);
 #undef PVFMMDefinePOD
 
 class MemoryManager{

@@ -956,12 +956,12 @@ class FMM_Tree {
         {
           if (!vprecomp_fft_flag){
             vprecomp_fftplan = FFTW_t<Real_t>::fft_plan_many_dft_r2c(3, nnn, ker_dim[0]*ker_dim[1],
-                (Real_t*)fftw_in, NULL, 1, n3, (typename FFTW_t<Real_t>::cplx*) fftw_out, NULL, 1, n3_);
+                (Real_t*)fftw_in, NULL, 1, n3, (fft_complex*) fftw_out, NULL, 1, n3_);
             vprecomp_fft_flag=true;
           }
         }
         memcpy(fftw_in, &conv_poten[0], n3*ker_dim[0]*ker_dim[1]*sizeof(Real_t));
-        FFTW_t<Real_t>::fft_execute_dft_r2c(vprecomp_fftplan, (Real_t*)fftw_in, (typename FFTW_t<Real_t>::cplx*)(fftw_out));
+        FFTW_t<Real_t>::fft_execute_dft_r2c(vprecomp_fftplan, (Real_t*)fftw_in, (fft_complex*)(fftw_out));
         Matrix<Real_t> M_(2*n3_*ker_dim[0]*ker_dim[1],1,(Real_t*)fftw_out,false);
         M=M_;
         mem::aligned_delete<Real_t>(fftw_in);
@@ -1322,11 +1322,11 @@ class FMM_Tree {
   std::vector<Vector<Real_t> > dnwd_check_surf;
   std::vector<Vector<Real_t> > dnwd_equiv_surf;
 
-  typename FFTW_t<Real_t>::plan vprecomp_fftplan;
+  fft_plan vprecomp_fftplan;
   bool vprecomp_fft_flag;
-  typename FFTW_t<Real_t>::plan vlist_fftplan;
+  fft_plan vlist_fftplan;
   bool vlist_fft_flag;
-  typename FFTW_t<Real_t>::plan vlist_ifftplan;
+  fft_plan vlist_ifftplan;
   bool vlist_ifft_flag;
     
 
@@ -3475,7 +3475,7 @@ class FMM_Tree {
         fftw_in  = mem::aligned_new<Real_t>(  n3 *ker_dim0*chld_cnt);
         fftw_out = mem::aligned_new<Real_t>(2*n3_*ker_dim0*chld_cnt);
         vlist_fftplan = FFTW_t<Real_t>::fft_plan_many_dft_r2c(3,nnn,ker_dim0*chld_cnt,
-            (Real_t*)fftw_in, NULL, 1, n3, (typename FFTW_t<Real_t>::cplx*)(fftw_out),NULL, 1, n3_);
+            (Real_t*)fftw_in, NULL, 1, n3, (fft_complex*)(fftw_out),NULL, 1, n3_);
         mem::aligned_delete<Real_t>((Real_t*)fftw_in );
         mem::aligned_delete<Real_t>((Real_t*)fftw_out);
         vlist_fft_flag=true;
@@ -3501,7 +3501,7 @@ class FMM_Tree {
           }
           for(int i=0;i<dof;i++)
             FFTW_t<Real_t>::fft_execute_dft_r2c(vlist_fftplan, (Real_t*)&upward_equiv_fft[i*  n3 *ker_dim0*chld_cnt],
-                                        (typename FFTW_t<Real_t>::cplx*)&buffer          [i*2*n3_*ker_dim0*chld_cnt]);
+                                        (fft_complex*)&buffer          [i*2*n3_*ker_dim0*chld_cnt]);
           double add, mul, fma;
           FFTW_t<Real_t>::fftw_flops(vlist_fftplan, &add, &mul, &fma);
           for(int i=0;i<ker_dim0*dof;i++)
@@ -3543,7 +3543,7 @@ class FMM_Tree {
         fftw_in  = mem::aligned_new<Real_t>(2*n3_*ker_dim1*chld_cnt);
         fftw_out = mem::aligned_new<Real_t>(  n3 *ker_dim1*chld_cnt);
         vlist_ifftplan = FFTW_t<Real_t>::fft_plan_many_dft_c2r(3,nnn,ker_dim1*chld_cnt,
-            (typename FFTW_t<Real_t>::cplx*)fftw_in, NULL, 1, n3_, (Real_t*)(fftw_out),NULL, 1, n3);
+            (fft_complex*)fftw_in, NULL, 1, n3_, (Real_t*)(fftw_out),NULL, 1, n3);
         mem::aligned_delete<Real_t>(fftw_in);
         mem::aligned_delete<Real_t>(fftw_out);
         vlist_ifft_flag=true;
@@ -3568,7 +3568,7 @@ class FMM_Tree {
             buffer0[2*(n3_*(ker_dim1*dof*k+i)+j)+1]=dnward_check_fft[2*(chld_cnt*(n3_*i+j)+k)+1];
           }
           for(int i=0;i<dof;i++)
-            FFTW_t<Real_t>::fft_execute_dft_c2r(vlist_ifftplan, (typename FFTW_t<Real_t>::cplx*)&buffer0[i*2*n3_*ker_dim1*chld_cnt],
+            FFTW_t<Real_t>::fft_execute_dft_c2r(vlist_ifftplan, (fft_complex*)&buffer0[i*2*n3_*ker_dim1*chld_cnt],
 						(Real_t*)&buffer1[i*  n3 *ker_dim1*chld_cnt]);
           double add, mul, fma;
           FFTW_t<Real_t>::fftw_flops(vlist_ifftplan, &add, &mul, &fma);
