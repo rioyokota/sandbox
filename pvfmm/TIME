@@ -7,13 +7,13 @@
  U-List 1.786
  V-List 1.631
 [./fmm_pts -omp 16 -N 1000000 -m 4 -M 64] @ y1
- Error  4.45e-03
- U-List 0.145
- V-List 0.1012
+Error      : 9.811069e-05
+U-List     : 1.264025e-01
+V-List     : 1.050769e-01
 [./fmm_pts -omp 16 -N 1000000 -m 16 -M 320] @ y1
- Error  1.09e-11
- U-List 1.135
- V-List 3.115
+Error      : 1.588667e-13
+U-List     : 1.267981e+00
+V-List     : 3.361643e+00
 [./fmm_pts -omp 72 -N 1000000 -m 4 -M 64] @ r2
  Error  4.44e-03
  U-List 0.08351

@@ -46,13 +46,11 @@
 #include <fmm_tree.hpp>
 
 int main(int argc, char **argv){
-  commandline_option_start(argc, argv);
   omp_set_num_threads( atoi(commandline_option(argc, argv,  "-omp",     "1", false, "-omp  <int> =  (1)   : Number of OpenMP threads."          )));
   size_t N=  (size_t)strtod(commandline_option(argc, argv,    "-N",     "1",  true, "-N    <int>          : Number of points."                  ),NULL);
   size_t M=  (size_t)strtod(commandline_option(argc, argv,    "-M",   "350", false, "-M    <int>          : Number of points per octant."       ),NULL);
   int mult_order=   strtoul(commandline_option(argc, argv,    "-m",    "10", false, "-m    <int> = (10)   : Multipole order (+ve even integer)."),NULL,10);
   int depth=        strtoul(commandline_option(argc, argv,    "-d",    "15", false, "-d    <int> = (15)   : Maximum tree depth."                ),NULL,10);
-  commandline_option_end(argc, argv);
   pvfmm::Profile::Enable(true);
   pvfmm::Profile::Tic("FMM_Test",true);
   typedef pvfmm::FMM_Node FMMNode_t;
@@ -62,7 +60,12 @@ int main(int argc, char **argv){
   tree_data.max_depth=depth;
   tree_data.max_pts=M;
   std::vector<Real_t> src_coord, src_value;
-  src_coord=point_distrib(N);
+  srand48(0);
+  for(size_t i=0;i<N;i++){
+    src_coord.push_back(drand48());
+    src_coord.push_back(drand48());
+    src_coord.push_back(drand48());
+  }
   for(size_t i=0;i<src_coord.size()/3;i++) src_value.push_back(drand48()-0.5);
   tree_data.coord=src_coord;
   tree_data.value=src_value;
