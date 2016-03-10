@@ -512,12 +512,11 @@ public:
     }
   }
 
-  static void SVD5(const size_t dim[2], T* U_, T* S_, T* V_, T eps=-1, bool current=false){
+  static void SVD5(const size_t dim[2], T* U_, T* S_, T* V_, T eps=-1){
     assert(dim[0]>=dim[1]);
     {
       size_t n=std::min(dim[0],dim[1]);
       std::vector<T> house_vec(std::max(dim[0],dim[1]));
-      if(current) printf("3\n");
       for(size_t i=0;i<n;i++){
         {
           T x1=S(i,i);
@@ -598,7 +597,6 @@ public:
         }
       }
     }
-    if(current) printf("4\n");
     size_t k0=0;
     size_t iter=0;
     if(eps<0){
@@ -608,7 +606,6 @@ public:
     }
     while(k0<dim[1]-1){
       iter++;
-      if(current) printf("%d %d\n",iter,k0);
       T S_max=0.0;
       for(size_t i=0;i<dim[1];i++) S_max=(S_max>S(i,i)?S_max:S(i,i));
       while(k0<dim[1]-1 && fabs(S(k0,k0+1))<=eps*S_max) k0++;
@@ -679,7 +676,7 @@ public:
 
   static inline void svd(char *JOBU, char *JOBVT, int *M, int *N, T *A, int *LDA,
 			 T *S, T *U, int *LDU, T *VT, int *LDVT, T *WORK, int *LWORK,
-			 int *INFO, bool current=false){
+			 int *INFO){
     const size_t dim[2]={(size_t)std::max(*N,*M), (size_t)std::min(*N,*M)};
     T* U_=mem::aligned_new<T>(dim[0]*dim[0]); memset(U_, 0, dim[0]*dim[0]*sizeof(T));
     T* V_=mem::aligned_new<T>(dim[1]*dim[1]); memset(V_, 0, dim[1]*dim[1]*sizeof(T));
@@ -704,8 +701,7 @@ public:
     for(size_t i=0;i<dim[1];i++){
       V_[i*dim[1]+i]=1;
     }
-    if(current) printf("2\n");
-    SVD5(dim, U_, S_, V_, (T)-1, true);
+    SVD5(dim, U_, S_, V_, (T)-1);
     for(size_t i=0;i<dim[1];i++){
       S[i]=S_[i*dim[1]+i];
     }
@@ -739,7 +735,7 @@ public:
     mem::aligned_delete<T>(V_);
   }
 
-  void SVD(Matrix<T>& tU, Matrix<T>& tS, Matrix<T>& tVT, bool current=false){
+  void SVD(Matrix<T>& tU, Matrix<T>& tS, Matrix<T>& tVT){
     pvfmm::Matrix<T>& M=*this;
     pvfmm::Matrix<T> M_=M;
     int n=M.Dim(0);
@@ -755,8 +751,7 @@ public:
     int wssize1 = 5*(m<n?m:n);
     wssize = (wssize>wssize1?wssize:wssize1);
     T* wsbuf = mem::aligned_new<T>(wssize);
-    if(current) printf("1\n");
-    svd(&JOBU, &JOBVT, &m, &n, &M[0][0], &m, &tS[0][0], &tVT[0][0], &m, &tU[0][0], &k, wsbuf, &wssize, &INFO, true);
+    svd(&JOBU, &JOBVT, &m, &n, &M[0][0], &m, &tS[0][0], &tVT[0][0], &m, &tU[0][0], &k, wsbuf, &wssize, &INFO);
     mem::aligned_delete<T>(wsbuf);
     if(INFO!=0) std::cout<<INFO<<'\n';
     assert(INFO==0);
