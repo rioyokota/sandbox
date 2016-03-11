@@ -1112,6 +1112,7 @@ void laplace_poten_uKernel(Matrix<Real_t>& src_coord, Matrix<Real_t>& src_value,
   for(int i=0;i<2;i++){
     nwtn_scal=2*nwtn_scal*nwtn_scal*nwtn_scal;
   }
+  const Real_t zero = 0;
   const Real_t OOFP = 1.0/(4*nwtn_scal*M_PI);
   size_t src_cnt_=src_coord.Dim(1);
   size_t trg_cnt_=trg_coord.Dim(1);
@@ -1119,23 +1120,23 @@ void laplace_poten_uKernel(Matrix<Real_t>& src_coord, Matrix<Real_t>& src_value,
     size_t src_cnt=src_cnt_-sblk;
     if(src_cnt>SRC_BLK) src_cnt=SRC_BLK;
     for(size_t t=0;t<trg_cnt_;t+=VecLen){
-      Vec_t tx=load_intrin<Vec_t>(&trg_coord[0][t]);
-      Vec_t ty=load_intrin<Vec_t>(&trg_coord[1][t]);
-      Vec_t tz=load_intrin<Vec_t>(&trg_coord[2][t]);
-      Vec_t tv=zero_intrin<Vec_t>();
+      Vec_t tx=load_intrin(&trg_coord[0][t]);
+      Vec_t ty=load_intrin(&trg_coord[1][t]);
+      Vec_t tz=load_intrin(&trg_coord[2][t]);
+      Vec_t tv=zero_intrin(zero);
       for(size_t s=sblk;s<sblk+src_cnt;s++){
-        Vec_t dx=sub_intrin(tx,bcast_intrin<Vec_t>(&src_coord[0][s]));
-        Vec_t dy=sub_intrin(ty,bcast_intrin<Vec_t>(&src_coord[1][s]));
-        Vec_t dz=sub_intrin(tz,bcast_intrin<Vec_t>(&src_coord[2][s]));
-        Vec_t sv=              bcast_intrin<Vec_t>(&src_value[0][s]) ;
+        Vec_t dx=sub_intrin(tx,bcast_intrin(&src_coord[0][s]));
+        Vec_t dy=sub_intrin(ty,bcast_intrin(&src_coord[1][s]));
+        Vec_t dz=sub_intrin(tz,bcast_intrin(&src_coord[2][s]));
+        Vec_t sv=              bcast_intrin(&src_value[0][s]) ;
         Vec_t r2=        mul_intrin(dx,dx) ;
         r2=add_intrin(r2,mul_intrin(dy,dy));
         r2=add_intrin(r2,mul_intrin(dz,dz));
-        Vec_t rinv=rsqrt_intrin2<Vec_t,Real_t>(r2);
+        Vec_t rinv=rsqrt_intrin2(r2);
         tv=add_intrin(tv,mul_intrin(rinv,sv));
       }
-      Vec_t oofp=set_intrin<Vec_t,Real_t>(OOFP);
-      tv=add_intrin(mul_intrin(tv,oofp),load_intrin<Vec_t>(&trg_value[0][t]));
+      Vec_t oofp=set_intrin(OOFP);
+      tv=add_intrin(mul_intrin(tv,oofp),load_intrin(&trg_value[0][t]));
       store_intrin(&trg_value[0][t],tv);
     }
   }
@@ -1157,6 +1158,7 @@ void laplace_grad_uKernel(Matrix<Real_t>& src_coord, Matrix<Real_t>& src_value, 
   for(int i=0;i<2;i++){
     nwtn_scal=2*nwtn_scal*nwtn_scal*nwtn_scal;
   }
+  const Real_t zero = 0;
   const Real_t OOFP = -1.0/(4*nwtn_scal*nwtn_scal*nwtn_scal*M_PI);
   size_t src_cnt_=src_coord.Dim(1);
   size_t trg_cnt_=trg_coord.Dim(1);
@@ -1164,31 +1166,31 @@ void laplace_grad_uKernel(Matrix<Real_t>& src_coord, Matrix<Real_t>& src_value, 
     size_t src_cnt=src_cnt_-sblk;
     if(src_cnt>SRC_BLK) src_cnt=SRC_BLK;
     for(size_t t=0;t<trg_cnt_;t+=VecLen){
-      Vec_t tx=load_intrin<Vec_t>(&trg_coord[0][t]);
-      Vec_t ty=load_intrin<Vec_t>(&trg_coord[1][t]);
-      Vec_t tz=load_intrin<Vec_t>(&trg_coord[2][t]);
-      Vec_t tv0=zero_intrin<Vec_t>();
-      Vec_t tv1=zero_intrin<Vec_t>();
-      Vec_t tv2=zero_intrin<Vec_t>();
+      Vec_t tx=load_intrin(&trg_coord[0][t]);
+      Vec_t ty=load_intrin(&trg_coord[1][t]);
+      Vec_t tz=load_intrin(&trg_coord[2][t]);
+      Vec_t tv0=zero_intrin(zero);
+      Vec_t tv1=zero_intrin(zero);
+      Vec_t tv2=zero_intrin(zero);
       for(size_t s=sblk;s<sblk+src_cnt;s++){
-        Vec_t dx=sub_intrin(tx,bcast_intrin<Vec_t>(&src_coord[0][s]));
-        Vec_t dy=sub_intrin(ty,bcast_intrin<Vec_t>(&src_coord[1][s]));
-        Vec_t dz=sub_intrin(tz,bcast_intrin<Vec_t>(&src_coord[2][s]));
-        Vec_t sv=              bcast_intrin<Vec_t>(&src_value[0][s]) ;
+        Vec_t dx=sub_intrin(tx,bcast_intrin(&src_coord[0][s]));
+        Vec_t dy=sub_intrin(ty,bcast_intrin(&src_coord[1][s]));
+        Vec_t dz=sub_intrin(tz,bcast_intrin(&src_coord[2][s]));
+        Vec_t sv=              bcast_intrin(&src_value[0][s]) ;
         Vec_t r2=        mul_intrin(dx,dx) ;
         r2=add_intrin(r2,mul_intrin(dy,dy));
         r2=add_intrin(r2,mul_intrin(dz,dz));
-        Vec_t rinv=rsqrt_intrin2<Vec_t,Real_t>(r2);
+        Vec_t rinv=rsqrt_intrin2(r2);
         Vec_t r3inv=mul_intrin(mul_intrin(rinv,rinv),rinv);
         sv=mul_intrin(sv,r3inv);
         tv0=add_intrin(tv0,mul_intrin(sv,dx));
         tv1=add_intrin(tv1,mul_intrin(sv,dy));
         tv2=add_intrin(tv2,mul_intrin(sv,dz));
       }
-      Vec_t oofp=set_intrin<Vec_t,Real_t>(OOFP);
-      tv0=add_intrin(mul_intrin(tv0,oofp),load_intrin<Vec_t>(&trg_value[0][t]));
-      tv1=add_intrin(mul_intrin(tv1,oofp),load_intrin<Vec_t>(&trg_value[1][t]));
-      tv2=add_intrin(mul_intrin(tv2,oofp),load_intrin<Vec_t>(&trg_value[2][t]));
+      Vec_t oofp=set_intrin(OOFP);
+      tv0=add_intrin(mul_intrin(tv0,oofp),load_intrin(&trg_value[0][t]));
+      tv1=add_intrin(mul_intrin(tv1,oofp),load_intrin(&trg_value[1][t]));
+      tv2=add_intrin(mul_intrin(tv2,oofp),load_intrin(&trg_value[2][t]));
       store_intrin(&trg_value[0][t],tv0);
       store_intrin(&trg_value[1][t],tv1);
       store_intrin(&trg_value[2][t],tv2);
