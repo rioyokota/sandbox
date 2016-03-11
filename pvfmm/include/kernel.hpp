@@ -1172,7 +1172,6 @@ void laplace_grad_uKernel(Matrix<Real_t>& src_coord, Matrix<Real_t>& src_value, 
 #undef SRC_BLK
 }
 
-
 void laplace_grad(Real_t* r_src, int src_cnt, Real_t* v_src, int dof, Real_t* r_trg, int trg_cnt, Real_t* v_trg){
   generic_kernel<Real_t, 1, 3, laplace_grad_uKernel>(r_src, src_cnt, v_src, dof, r_trg, trg_cnt, v_trg);
 }

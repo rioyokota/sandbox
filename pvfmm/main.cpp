@@ -46,19 +46,21 @@
 #include <fmm_node.hpp>
 #include <fmm_tree.hpp>
 
+using namespace pvfmm;
+
 int main(int argc, char **argv){
   omp_set_num_threads( atoi(commandline_option(argc, argv,  "-omp",     "1", false, "-omp  <int> =  (1)   : Number of OpenMP threads."          )));
   size_t N=  (size_t)strtod(commandline_option(argc, argv,    "-N",     "1",  true, "-N    <int>          : Number of points."                  ),NULL);
   size_t M=  (size_t)strtod(commandline_option(argc, argv,    "-M",   "350", false, "-M    <int>          : Number of points per octant."       ),NULL);
   int mult_order=   strtoul(commandline_option(argc, argv,    "-m",    "10", false, "-m    <int> = (10)   : Multipole order (+ve even integer)."),NULL,10);
   int depth=        strtoul(commandline_option(argc, argv,    "-d",    "15", false, "-d    <int> = (15)   : Maximum tree depth."                ),NULL,10);
-  pvfmm::Profile::Enable(true);
-  pvfmm::Profile::Tic("FMM_Test",true);
-  typedef pvfmm::FMM_Node FMMNode_t;
-  typedef pvfmm::FMM_Tree FMMTree_t;
-  pvfmm::Kernel<Real_t> potn_ker=pvfmm::BuildKernel<pvfmm::laplace_poten >("laplace"     , std::pair<int,int>(1,1));
-  pvfmm::Kernel<Real_t> grad_ker=pvfmm::BuildKernel<pvfmm::laplace_grad >("laplace_grad", std::pair<int,int>(1,3),
-									  &potn_ker, &potn_ker, NULL, &potn_ker, &potn_ker, NULL, &potn_ker, NULL);
+  Profile::Enable(true);
+  Profile::Tic("FMM_Test",true);
+  typedef FMM_Node FMMNode_t;
+  typedef FMM_Tree FMMTree_t;
+  Kernel<Real_t> potn_ker=BuildKernel<laplace_poten >("laplace"    , std::pair<int,int>(1,1));
+  Kernel<Real_t> grad_ker=BuildKernel<laplace_grad >("laplace_grad", std::pair<int,int>(1,3),
+						     &potn_ker, &potn_ker, NULL, &potn_ker, &potn_ker, NULL, &potn_ker, NULL);
   typename FMMNode_t::NodeData tree_data;
   tree_data.max_depth=depth;
   tree_data.max_pts=M;
@@ -74,11 +76,11 @@ int main(int argc, char **argv){
   tree_data.value=src_value;
   FMMTree_t tree;
   tree.Initialize(mult_order,&grad_ker);
-  pvfmm::Vector<Real_t> trg_value;
+  Vector<Real_t> trg_value;
   for(size_t it=0;it<2;it++){
-    pvfmm::Profile::Tic("TotalTime",true);
+    Profile::Tic("TotalTime",true);
     tree.Initialize(&tree_data);
-    pvfmm::Profile::Tic("SetSrcTrg",true);
+    Profile::Tic("SetSrcTrg",true);
     std::vector<FMMNode_t*>& node=tree.GetNodeList();
 #pragma omp parallel for
     for(size_t i=0;i<node.size();i++){
@@ -88,11 +90,11 @@ int main(int argc, char **argv){
       node[i]->trg_scatter.ReInit(node[i]->pt_scatter.Dim(), &node[i]->pt_scatter[0]);
       node[i]->src_scatter.ReInit(node[i]->pt_scatter.Dim(), &node[i]->pt_scatter[0]);
     }
-    pvfmm::Profile::Toc();
+    Profile::Toc();
     tree.InitFMM_Tree(false);
     tree.SetupFMM();
     tree.RunFMM();
-    pvfmm::Profile::Toc();
+    Profile::Toc();
   }
   long nleaf=0, maxdepth=0;
   std::vector<size_t> all_nodes(MAX_DEPTH+1,0);
@@ -110,8 +112,8 @@ int main(int argc, char **argv){
   std::cout<<"Leaf Nodes : "<<nleaf<<'\n';
   std::cout<<"Tree Depth : "<<maxdepth<<'\n';
   tree.CheckFMMOutput("Output");
-  pvfmm::Profile::Toc();
-  pvfmm::Profile::print();
+  Profile::Toc();
+  Profile::print();
   return 0;
 }
 
