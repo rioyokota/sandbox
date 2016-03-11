@@ -23,7 +23,7 @@ namespace pvfmm{
 
 struct SetupData {
   int level;
-  const Kernel<Real_t>* kernel;
+  const Kernel* kernel;
   std::vector<Mat_Type> interac_type;
   std::vector<FMM_Node*> nodes_in ;
   std::vector<FMM_Node*> nodes_out;
@@ -312,7 +312,7 @@ class FMM_Tree {
   };
   struct ptSetupData{
     int level;
-    const Kernel<Real_t>* kernel;
+    const Kernel* kernel;
     PackedData src_coord;
     PackedData src_value;
     PackedData srf_coord;
@@ -1225,7 +1225,7 @@ class FMM_Tree {
   std::string mat_fname;
   std::vector<FMM_Node*> node_lst;
   mem::MemoryManager memgr;
-  const Kernel<Real_t>* kernel;
+  const Kernel* kernel;
   PrecompMat<Real_t>* mat;
   Vector<char> dev_buffer;
 
@@ -1375,7 +1375,7 @@ class FMM_Tree {
     }Profile::Toc();
   }
 
-  void Initialize(int mult_order, const Kernel<Real_t>* kernel_) {
+  void Initialize(int mult_order, const Kernel* kernel_) {
     Profile::Tic("InitFMM_Pts",true);{
     int rank=0;
     bool verbose=false;
@@ -2371,7 +2371,7 @@ class FMM_Tree {
       struct PackedSetupData{
         size_t size;
         int level;
-        const Kernel<Real_t>* kernel;
+        const Kernel* kernel;
         Matrix<Real_t>* src_coord;
         Matrix<Real_t>* src_value;
         Matrix<Real_t>* srf_coord;
@@ -2614,7 +2614,7 @@ class FMM_Tree {
       std::vector<std::vector<Real_t> > coord_shift_(omp_p);
       std::vector<std::vector<size_t> > interac_cnt_(omp_p);
       if(ScaleInvar()){
-        const Kernel<Real_t>* ker=kernel->k_m2m;
+        const Kernel* ker=kernel->k_m2m;
         for(size_t l=0;l<MAX_DEPTH;l++){
           Vector<Real_t>& scal=data.interac_data.scal[l*4+2];
           Vector<Real_t>& scal_exp=ker->trg_scal;
@@ -2853,7 +2853,7 @@ class FMM_Tree {
         struct PackedSetupData{
           size_t size;
           int level;
-          const Kernel<Real_t>* kernel;
+          const Kernel* kernel;
           Matrix<Real_t>* src_coord;
           Matrix<Real_t>* src_value;
           Matrix<Real_t>* srf_coord;
@@ -2919,7 +2919,7 @@ class FMM_Tree {
       }
       {
         InteracData& intdata=data.interac_data;
-        typename Kernel<Real_t>::Ker_t single_layer_kernel=(typename Kernel<Real_t>::Ker_t)ptr_single_layer_kernel;
+        typename Kernel::Ker_t single_layer_kernel=(typename Kernel::Ker_t)ptr_single_layer_kernel;
         int omp_p=omp_get_max_threads();
 #pragma omp parallel for
         for(size_t tid=0;tid<omp_p;tid++){
@@ -4425,7 +4425,7 @@ class FMM_Tree {
       std::vector<std::vector<Real_t> > coord_shift_(omp_p);
       std::vector<std::vector<size_t> > interac_cnt_(omp_p);
       if(ScaleInvar()){
-        const Kernel<Real_t>* ker=kernel->k_l2l;
+        const Kernel* ker=kernel->k_l2l;
         for(size_t l=0;l<MAX_DEPTH;l++){
           Vector<Real_t>& scal=data.interac_data.scal[l*4+0];
           Vector<Real_t>& scal_exp=ker->trg_scal;

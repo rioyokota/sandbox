@@ -58,8 +58,8 @@ int main(int argc, char **argv){
   Profile::Tic("FMM_Test",true);
   typedef FMM_Node FMMNode_t;
   typedef FMM_Tree FMMTree_t;
-  Kernel<Real_t> potn_ker=BuildKernel<laplace_poten >("laplace"    , std::pair<int,int>(1,1));
-  Kernel<Real_t> grad_ker=BuildKernel<laplace_grad >("laplace_grad", std::pair<int,int>(1,3),
+  Kernel potn_ker=BuildKernel<laplace_poten >("laplace"    , std::pair<int,int>(1,1));
+  Kernel grad_ker=BuildKernel<laplace_grad >("laplace_grad", std::pair<int,int>(1,3),
 						     &potn_ker, &potn_ker, NULL, &potn_ker, &potn_ker, NULL, &potn_ker, NULL);
   typename FMMNode_t::NodeData tree_data;
   tree_data.max_depth=depth;

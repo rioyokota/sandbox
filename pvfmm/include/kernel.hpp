@@ -3,7 +3,6 @@
 
 namespace pvfmm{
 
-template <class T>
 struct Kernel{
   public:
 
@@ -556,14 +555,14 @@ struct Kernel{
   mutable Vector<Real_t> trg_scal;
   mutable Vector<Permutation<Real_t> > perm_vec;
 
-  mutable const Kernel<Real_t>* k_s2m;
-  mutable const Kernel<Real_t>* k_s2l;
-  mutable const Kernel<Real_t>* k_s2t;
-  mutable const Kernel<Real_t>* k_m2m;
-  mutable const Kernel<Real_t>* k_m2l;
-  mutable const Kernel<Real_t>* k_m2t;
-  mutable const Kernel<Real_t>* k_l2l;
-  mutable const Kernel<Real_t>* k_l2t;
+  mutable const Kernel* k_s2m;
+  mutable const Kernel* k_s2l;
+  mutable const Kernel* k_s2t;
+  mutable const Kernel* k_m2m;
+  mutable const Kernel* k_m2l;
+  mutable const Kernel* k_m2t;
+  mutable const Kernel* k_l2l;
+  mutable const Kernel* k_l2t;
 
 };
 
@@ -647,7 +646,7 @@ void quad_rule(int n, Real_t* x, Real_t* w){
   quad_rule(n, x, w);
 }
 
-std::vector<Real_t> integ_pyramid(int m, Real_t* s, Real_t r, int nx, const Kernel<Real_t>& kernel, int* perm){
+std::vector<Real_t> integ_pyramid(int m, Real_t* s, Real_t r, int nx, const Kernel& kernel, int* perm){
   int ny=nx;
   int nz=nx;
 
@@ -845,7 +844,7 @@ std::vector<Real_t> integ_pyramid(int m, Real_t* s, Real_t r, int nx, const Kern
   return I2_;
 }
 
-std::vector<Real_t> integ(int m, Real_t* s, Real_t r, int n, const Kernel<Real_t>& kernel){
+std::vector<Real_t> integ(int m, Real_t* s, Real_t r, int n, const Kernel& kernel){
   int k_dim=kernel.ker_dim[0]*kernel.ker_dim[1];
   Real_t s_[3];
   s_[0]=s[0]*2.0/r-1.0;
@@ -922,7 +921,7 @@ std::vector<Real_t> integ(int m, Real_t* s, Real_t r, int n, const Kernel<Real_t
   return U;
 }
 
-std::vector<Real_t> cheb_integ(int m, Real_t* s_, Real_t r_, const Kernel<Real_t>& kernel){
+std::vector<Real_t> cheb_integ(int m, Real_t* s_, Real_t r_, const Kernel& kernel){
   Real_t eps=machine_eps();
   Real_t r=r_;
   Real_t s[3]={s_[0],s_[1],s_[2]};
@@ -965,11 +964,11 @@ std::vector<Real_t> cheb_integ(int m, Real_t* s_, Real_t r_, const Kernel<Real_t
 }
 
 template<void (*A)(Real_t*, int, Real_t*, int, Real_t*, int, Real_t*)>
-Kernel<Real_t> BuildKernel(const char* name, std::pair<int,int> k_dim,
-    const Kernel<Real_t>* k_s2m=NULL, const Kernel<Real_t>* k_s2l=NULL, const Kernel<Real_t>* k_s2t=NULL,
-    const Kernel<Real_t>* k_m2m=NULL, const Kernel<Real_t>* k_m2l=NULL, const Kernel<Real_t>* k_m2t=NULL,
-		      const Kernel<Real_t>* k_l2l=NULL, const Kernel<Real_t>* k_l2t=NULL) {
-  Kernel<Real_t> K(A, name, k_dim);
+Kernel BuildKernel(const char* name, std::pair<int,int> k_dim,
+    const Kernel* k_s2m=NULL, const Kernel* k_s2l=NULL, const Kernel* k_s2t=NULL,
+    const Kernel* k_m2m=NULL, const Kernel* k_m2l=NULL, const Kernel* k_m2t=NULL,
+		      const Kernel* k_l2l=NULL, const Kernel* k_l2t=NULL) {
+  Kernel K(A, name, k_dim);
   K.k_s2m=k_s2m;
   K.k_s2l=k_s2l;
   K.k_s2t=k_s2t;
