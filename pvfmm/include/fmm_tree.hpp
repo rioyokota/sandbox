@@ -1231,7 +1231,7 @@ class FMM_Tree {
 
   std::vector<Matrix<Real_t> > node_data_buff;
   pvfmm::Matrix<FMM_Node*> node_interac_lst;
-  InteracList<FMM_Node> interac_list;
+  InteracList interac_list;
   std::vector<Matrix<char> > precomp_lst;
   std::vector<SetupData > setup_data;
   std::vector<Vector<Real_t> > upwd_check_surf;

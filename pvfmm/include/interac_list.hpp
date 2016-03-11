@@ -3,7 +3,6 @@
 
 namespace pvfmm{
 
-template <class Node_t>
 class InteracList{
 public:
 
@@ -59,8 +58,8 @@ public:
     return perm_list[t][i];
   }
 
-  void BuildList(Node_t* n, Mat_Type t){
-    Vector<Node_t*>& interac_list=n->interac_list[t];
+  void BuildList(FMM_Node* n, Mat_Type t){
+    Vector<FMM_Node*>& interac_list=n->interac_list[t];
     if(3!=ListCount(t)) interac_list.ReInit(ListCount(t));
     interac_list.SetZero();
 
@@ -84,7 +83,7 @@ public:
 	  rel_coord[2]=-1+(j & 4?2:0);
 	  int c_hash = coord_hash(rel_coord);
 	  int idx=hash_lut[t][c_hash];
-	  Node_t* chld=(Node_t*)n->Child(j);
+	  FMM_Node* chld=(FMM_Node*)n->Child(j);
 	  if(idx>=0 && !chld->IsGhost()) interac_list[idx]=chld;
 	}
 	break;
@@ -92,7 +91,7 @@ public:
     case D2D_Type:
       {
 	if(n->IsGhost() || n->Parent()==NULL) return;
-	Node_t* p=(Node_t*)n->Parent();
+	FMM_Node* p=(FMM_Node*)n->Parent();
 	int p2n=n->Path2Node();
 	{
 	  rel_coord[0]=-1+(p2n & 1?2:0);
@@ -112,10 +111,10 @@ public:
     case U0_Type:
       {
 	if(n->IsGhost() || n->Parent()==NULL || !n->IsLeaf()) return;
-	Node_t* p=(Node_t*)n->Parent();
+	FMM_Node* p=(FMM_Node*)n->Parent();
 	int p2n=n->Path2Node();
 	for(int i=0;i<n_collg;i++){
-	  Node_t* pc=(Node_t*)p->Colleague(i);
+	  FMM_Node* pc=(FMM_Node*)p->Colleague(i);
 	  if(pc!=NULL && pc->IsLeaf()){
 	    rel_coord[0]=( i %3)*4-4-(p2n & 1?2:0)+1;
 	    rel_coord[1]=((i/3)%3)*4-4-(p2n & 2?2:0)+1;
@@ -131,7 +130,7 @@ public:
       {
 	if(n->IsGhost() || !n->IsLeaf()) return;
 	for(int i=0;i<n_collg;i++){
-	  Node_t* col=(Node_t*)n->Colleague(i);
+	  FMM_Node* col=(FMM_Node*)n->Colleague(i);
 	  if(col!=NULL && col->IsLeaf()){
             rel_coord[0]=( i %3)-1;
             rel_coord[1]=((i/3)%3)-1;
@@ -147,7 +146,7 @@ public:
       {
 	if(n->IsGhost() || !n->IsLeaf()) return;
 	for(int i=0;i<n_collg;i++){
-	  Node_t* col=(Node_t*)n->Colleague(i);
+	  FMM_Node* col=(FMM_Node*)n->Colleague(i);
 	  if(col!=NULL && !col->IsLeaf()){
 	    for(int j=0;j<n_child;j++){
 	      rel_coord[0]=( i %3)*4-4+(j & 1?2:0)-1;
@@ -157,7 +156,7 @@ public:
 	      int idx=hash_lut[t][c_hash];
 	      if(idx>=0){
 		assert(col->Child(j)->IsLeaf()); //2:1 balanced
-		interac_list[idx]=(Node_t*)col->Child(j);
+		interac_list[idx]=(FMM_Node*)col->Child(j);
 	      }
 	    }
 	  }
@@ -167,10 +166,10 @@ public:
     case V_Type:
       {
 	if(n->IsGhost() || n->Parent()==NULL) return;
-	Node_t* p=(Node_t*)n->Parent();
+	FMM_Node* p=(FMM_Node*)n->Parent();
 	int p2n=n->Path2Node();
 	for(int i=0;i<n_collg;i++){
-	  Node_t* pc=(Node_t*)p->Colleague(i);
+	  FMM_Node* pc=(FMM_Node*)p->Colleague(i);
 	  if(pc!=NULL?!pc->IsLeaf():0){
 	    for(int j=0;j<n_child;j++){
 	      rel_coord[0]=( i   %3)*2-2+(j & 1?1:0)-(p2n & 1?1:0);
@@ -178,7 +177,7 @@ public:
 	      rel_coord[2]=((i/9)%3)*2-2+(j & 4?1:0)-(p2n & 4?1:0);
 	      int c_hash = coord_hash(rel_coord);
 	      int idx=hash_lut[t][c_hash];
-	      if(idx>=0) interac_list[idx]=(Node_t*)pc->Child(j);
+	      if(idx>=0) interac_list[idx]=(FMM_Node*)pc->Child(j);
 	    }
 	  }
 	}
@@ -188,7 +187,7 @@ public:
       {
 	if(n->IsGhost() || n->IsLeaf()) return;
 	for(int i=0;i<n_collg;i++){
-	  Node_t* col=(Node_t*)n->Colleague(i);
+	  FMM_Node* col=(FMM_Node*)n->Colleague(i);
 	  if(col!=NULL && !col->IsLeaf()){
             rel_coord[0]=( i %3)-1;
             rel_coord[1]=((i/3)%3)-1;
@@ -204,7 +203,7 @@ public:
       {
 	if(n->IsGhost() || !n->IsLeaf()) return;
 	for(int i=0;i<n_collg;i++){
-	  Node_t* col=(Node_t*)n->Colleague(i);
+	  FMM_Node* col=(FMM_Node*)n->Colleague(i);
 	  if(col!=NULL && !col->IsLeaf()){
 	    for(int j=0;j<n_child;j++){
 	      rel_coord[0]=( i %3)*4-4+(j & 1?2:0)-1;
@@ -212,7 +211,7 @@ public:
 	      rel_coord[2]=((i/9)%3)*4-4+(j & 4?2:0)-1;
 	      int c_hash = coord_hash(rel_coord);
 	      int idx=hash_lut[t][c_hash];
-	      if(idx>=0) interac_list[idx]=(Node_t*)col->Child(j);
+	      if(idx>=0) interac_list[idx]=(FMM_Node*)col->Child(j);
 	    }
 	  }
 	}
@@ -221,10 +220,10 @@ public:
     case X_Type:
       {
 	if(n->IsGhost() || n->Parent()==NULL) return;
-	Node_t* p=(Node_t*)n->Parent();
+	FMM_Node* p=(FMM_Node*)n->Parent();
 	int p2n=n->Path2Node();
 	for(int i=0;i<n_collg;i++){
-	  Node_t* pc=(Node_t*)p->Colleague(i);
+	  FMM_Node* pc=(FMM_Node*)p->Colleague(i);
 	  if(pc!=NULL && pc->IsLeaf()){
 	    rel_coord[0]=( i %3)*4-4-(p2n & 1?2:0)+1;
 	    rel_coord[1]=((i/3)%3)*4-4-(p2n & 2?2:0)+1;
