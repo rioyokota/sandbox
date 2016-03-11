@@ -10,14 +10,12 @@ struct Kernel{
   typedef void (*Ker_t)(Real_t* r_src, int src_cnt, Real_t* v_src, int dof,
                         Real_t* r_trg, int trg_cnt, Real_t* k_out);
 
-  typedef void (*VolPoten)(const T* coord, int n, T* out);
-
   Kernel(Ker_t poten, const char* name, std::pair<int,int> k_dim);
 
   void Initialize(bool verbose=false) const;
 
-  void BuildMatrix(T* r_src, int src_cnt,
-                   T* r_trg, int trg_cnt, T* k_out) const;
+  void BuildMatrix(Real_t* r_src, int src_cnt,
+                   Real_t* r_trg, int trg_cnt, Real_t* k_out) const;
 
   int ker_dim[2];
   std::string ker_name;
@@ -25,31 +23,28 @@ struct Kernel{
 
   mutable bool init;
   mutable bool scale_invar;
-  mutable Vector<T> src_scal;
-  mutable Vector<T> trg_scal;
-  mutable Vector<Permutation<T> > perm_vec;
+  mutable Vector<Real_t> src_scal;
+  mutable Vector<Real_t> trg_scal;
+  mutable Vector<Permutation<Real_t> > perm_vec;
 
-  mutable const Kernel<T>* k_s2m;
-  mutable const Kernel<T>* k_s2l;
-  mutable const Kernel<T>* k_s2t;
-  mutable const Kernel<T>* k_m2m;
-  mutable const Kernel<T>* k_m2l;
-  mutable const Kernel<T>* k_m2t;
-  mutable const Kernel<T>* k_l2l;
-  mutable const Kernel<T>* k_l2t;
-  mutable VolPoten vol_poten;
+  mutable const Kernel<Real_t>* k_s2m;
+  mutable const Kernel<Real_t>* k_s2l;
+  mutable const Kernel<Real_t>* k_s2t;
+  mutable const Kernel<Real_t>* k_m2m;
+  mutable const Kernel<Real_t>* k_m2l;
+  mutable const Kernel<Real_t>* k_m2t;
+  mutable const Kernel<Real_t>* k_l2l;
+  mutable const Kernel<Real_t>* k_l2t;
 
 };
 
-template <class T>
-T machine_eps(){
-  T eps=1.0;
-  while(eps+(T)1.0>1.0) eps*=0.5;
+Real_t machine_eps(){
+  Real_t eps=1.0;
+  while(eps+(Real_t)1.0>1.0) eps*=0.5;
   return eps;
 }
 
-template <class T>
-inline void cheb_poly(int d, const T* in, int n, T* out){
+inline void cheb_poly(int d, const Real_t* in, int n, Real_t* out){
   if(d==0){
     for(int i=0;i<n;i++)
       out[i]=(fabs(in[i])<=1?1.0:0);
@@ -60,13 +55,13 @@ inline void cheb_poly(int d, const T* in, int n, T* out){
     }
   }else{
     for(int j=0;j<n;j++){
-      T x=(fabs(in[j])<=1?in[j]:0);
-      T y0=(fabs(in[j])<=1?1.0:0);
+      Real_t x=(fabs(in[j])<=1?in[j]:0);
+      Real_t y0=(fabs(in[j])<=1?1.0:0);
       out[j]=y0;
       out[j+n]=x;
 
-      T y1=x;
-      T* y2=&out[2*n+j];
+      Real_t y1=x;
+      Real_t* y2=&out[2*n+j];
       for(int i=2;i<=d;i++){
         *y2=2*x*y1-y0;
         y0=y1;
@@ -77,16 +72,15 @@ inline void cheb_poly(int d, const T* in, int n, T* out){
   }
 }
 
-template <class T>
-void quad_rule(int n, T* x, T* w){
-  static std::vector<Vector<T> > x_lst(10000);
-  static std::vector<Vector<T> > w_lst(10000);
+void quad_rule(int n, Real_t* x, Real_t* w){
+  static std::vector<Vector<Real_t> > x_lst(10000);
+  static std::vector<Vector<Real_t> > w_lst(10000);
   assert(n<10000);
   bool done=false;
-  #pragma omp critical (QUAD_RULE)
+#pragma omp critical (QUAD_RULE)
   if(x_lst[n].Dim()>0){
-    Vector<T>& x_=x_lst[n];
-    Vector<T>& w_=w_lst[n];
+    Vector<Real_t>& x_=x_lst[n];
+    Vector<Real_t>& w_=w_lst[n];
     for(int i=0;i<n;i++){
       x[i]=x_[i];
       w[i]=w_[i];
@@ -94,19 +88,19 @@ void quad_rule(int n, T* x, T* w){
     done=true;
   }
   if(done) return;
-  Vector<T> x_(n);
-  Vector<T> w_(n);
+  Vector<Real_t> x_(n);
+  Vector<Real_t> w_(n);
   {
     for(int i=0;i<n;i++){
-      x_[i]=-cos((T)(2.0*i+1.0)/(2.0*n)*M_PI);
+      x_[i]=-cos((Real_t)(2.0*i+1.0)/(2.0*n)*M_PI);
       w_[i]=0;
     }
-    Matrix<T> M(n,n);
+    Matrix<Real_t> M(n,n);
     cheb_poly(n-1, &x_[0], n, &M[0][0]);
     for(size_t i=0;i<n;i++) M[0][i]/=2.0;
 
-    std::vector<T> w_sample(n,0);
-    for(long i=0;i<n;i+=2) w_sample[i]=-((T)2.0/(i+1)/(i-1));
+    std::vector<Real_t> w_sample(n,0);
+    for(long i=0;i<n;i+=2) w_sample[i]=-((Real_t)2.0/(i+1)/(i-1));
     for(size_t i=0;i<n;i++)
     for(size_t j=0;j<n;j++){
       M[i][j]*=w_sample[i];
@@ -116,7 +110,7 @@ void quad_rule(int n, T* x, T* w){
       w_[j]+=M[i][j]*2/n;
     }
   }
-  #pragma omp critical (QUAD_RULE)
+#pragma omp critical (QUAD_RULE)
   {
     x_lst[n]=x_;
     w_lst[n]=w_;
@@ -124,22 +118,21 @@ void quad_rule(int n, T* x, T* w){
   quad_rule(n, x, w);
 }
 
-template <class T>
-std::vector<T> integ_pyramid(int m, T* s, T r, int nx, const Kernel<T>& kernel, int* perm){//*
+std::vector<Real_t> integ_pyramid(int m, Real_t* s, Real_t r, int nx, const Kernel<Real_t>& kernel, int* perm){
   int ny=nx;
   int nz=nx;
 
-  T eps=machine_eps<T>()*64;
+  Real_t eps=machine_eps()*64;
   int k_dim=kernel.ker_dim[0]*kernel.ker_dim[1];
 
-  std::vector<T> qp_x(nx), qw_x(nx);
-  std::vector<T> qp_y(ny), qw_y(ny);
-  std::vector<T> qp_z(nz), qw_z(nz);
-  std::vector<T> p_x(nx*m);
-  std::vector<T> p_y(ny*m);
-  std::vector<T> p_z(nz*m);
+  std::vector<Real_t> qp_x(nx), qw_x(nx);
+  std::vector<Real_t> qp_y(ny), qw_y(ny);
+  std::vector<Real_t> qp_z(nz), qw_z(nz);
+  std::vector<Real_t> p_x(nx*m);
+  std::vector<Real_t> p_y(ny*m);
+  std::vector<Real_t> p_z(nz*m);
 
-  std::vector<T> x_;
+  std::vector<Real_t> x_;
   {
     x_.push_back(s[0]);
     x_.push_back(fabs(1.0-s[0])+s[0]);
@@ -153,33 +146,33 @@ std::vector<T> integ_pyramid(int m, T* s, T r, int nx, const Kernel<T>& kernel, 
       if(x_[i]> 1.0) x_[i]= 1.0;
     }
 
-    std::vector<T> x_new;
-    T x_jump=fabs(1.0-s[0]);
-    if(fabs(1.0-s[1])>eps) x_jump=std::min(x_jump,(T)fabs(1.0-s[1]));
-    if(fabs(1.0+s[1])>eps) x_jump=std::min(x_jump,(T)fabs(1.0+s[1]));
-    if(fabs(1.0-s[2])>eps) x_jump=std::min(x_jump,(T)fabs(1.0-s[2]));
-    if(fabs(1.0+s[2])>eps) x_jump=std::min(x_jump,(T)fabs(1.0+s[2]));
+    std::vector<Real_t> x_new;
+    Real_t x_jump=fabs(1.0-s[0]);
+    if(fabs(1.0-s[1])>eps) x_jump=std::min(x_jump,(Real_t)fabs(1.0-s[1]));
+    if(fabs(1.0+s[1])>eps) x_jump=std::min(x_jump,(Real_t)fabs(1.0+s[1]));
+    if(fabs(1.0-s[2])>eps) x_jump=std::min(x_jump,(Real_t)fabs(1.0-s[2]));
+    if(fabs(1.0+s[2])>eps) x_jump=std::min(x_jump,(Real_t)fabs(1.0+s[2]));
     for(int k=0; k<x_.size()-1; k++){
-      T x0=x_[k];
-      T x1=x_[k+1];
+      Real_t x0=x_[k];
+      Real_t x1=x_[k+1];
 
-      T A0=0;
-      T A1=0;
-      { // A0
-        T y0=s[1]-(x0-s[0]); if(y0<-1.0) y0=-1.0; if(y0> 1.0) y0= 1.0;
-        T y1=s[1]+(x0-s[0]); if(y1<-1.0) y1=-1.0; if(y1> 1.0) y1= 1.0;
-        T z0=s[2]-(x0-s[0]); if(z0<-1.0) z0=-1.0; if(z0> 1.0) z0= 1.0;
-        T z1=s[2]+(x0-s[0]); if(z1<-1.0) z1=-1.0; if(z1> 1.0) z1= 1.0;
+      Real_t A0=0;
+      Real_t A1=0;
+      {
+        Real_t y0=s[1]-(x0-s[0]); if(y0<-1.0) y0=-1.0; if(y0> 1.0) y0= 1.0;
+        Real_t y1=s[1]+(x0-s[0]); if(y1<-1.0) y1=-1.0; if(y1> 1.0) y1= 1.0;
+        Real_t z0=s[2]-(x0-s[0]); if(z0<-1.0) z0=-1.0; if(z0> 1.0) z0= 1.0;
+        Real_t z1=s[2]+(x0-s[0]); if(z1<-1.0) z1=-1.0; if(z1> 1.0) z1= 1.0;
         A0=(y1-y0)*(z1-z0);
       }
-      { // A1
-        T y0=s[1]-(x1-s[0]); if(y0<-1.0) y0=-1.0; if(y0> 1.0) y0= 1.0;
-        T y1=s[1]+(x1-s[0]); if(y1<-1.0) y1=-1.0; if(y1> 1.0) y1= 1.0;
-        T z0=s[2]-(x1-s[0]); if(z0<-1.0) z0=-1.0; if(z0> 1.0) z0= 1.0;
-        T z1=s[2]+(x1-s[0]); if(z1<-1.0) z1=-1.0; if(z1> 1.0) z1= 1.0;
+      {
+        Real_t y0=s[1]-(x1-s[0]); if(y0<-1.0) y0=-1.0; if(y0> 1.0) y0= 1.0;
+        Real_t y1=s[1]+(x1-s[0]); if(y1<-1.0) y1=-1.0; if(y1> 1.0) y1= 1.0;
+        Real_t z0=s[2]-(x1-s[0]); if(z0<-1.0) z0=-1.0; if(z0> 1.0) z0= 1.0;
+        Real_t z1=s[2]+(x1-s[0]); if(z1<-1.0) z1=-1.0; if(z1> 1.0) z1= 1.0;
         A1=(y1-y0)*(z1-z0);
       }
-      T V=0.5*(A0+A1)*(x1-x0);
+      Real_t V=0.5*(A0+A1)*(x1-x0);
       if(V<eps) continue;
 
       if(!x_new.size()) x_new.push_back(x0);
@@ -194,17 +187,17 @@ std::vector<T> integ_pyramid(int m, T* s, T r, int nx, const Kernel<T>& kernel, 
     x_.swap(x_new);
   }
 
-  Vector<T> k_out(   ny*nz*k_dim,mem::aligned_new<T>(   ny*nz*k_dim),false);
-  Vector<T> I0   (   ny*m *k_dim,mem::aligned_new<T>(   ny*m *k_dim),false);
-  Vector<T> I1   (   m *m *k_dim,mem::aligned_new<T>(   m *m *k_dim),false);
-  Vector<T> I2   (m *m *m *k_dim,mem::aligned_new<T>(m *m *m *k_dim),false); I2.SetZero();
+  Vector<Real_t> k_out(   ny*nz*k_dim,mem::aligned_new<Real_t>(   ny*nz*k_dim),false);
+  Vector<Real_t> I0   (   ny*m *k_dim,mem::aligned_new<Real_t>(   ny*m *k_dim),false);
+  Vector<Real_t> I1   (   m *m *k_dim,mem::aligned_new<Real_t>(   m *m *k_dim),false);
+  Vector<Real_t> I2   (m *m *m *k_dim,mem::aligned_new<Real_t>(m *m *m *k_dim),false); I2.SetZero();
   if(x_.size()>1)
   for(int k=0; k<x_.size()-1; k++){
-    T x0=x_[k];
-    T x1=x_[k+1];
+    Real_t x0=x_[k];
+    Real_t x1=x_[k+1];
     {
-      std::vector<T> qp(nx);
-      std::vector<T> qw(nx);
+      std::vector<Real_t> qp(nx);
+      std::vector<Real_t> qw(nx);
       quad_rule(nx,&qp[0],&qw[0]);
       for(int i=0; i<nx; i++)
         qp_x[i]=(x1-x0)*qp[i]/2.0+(x1+x0)/2.0;
@@ -213,22 +206,22 @@ std::vector<T> integ_pyramid(int m, T* s, T r, int nx, const Kernel<T>& kernel, 
     cheb_poly(m-1,&qp_x[0],nx,&p_x[0]);
 
     for(int i=0; i<nx; i++){
-      T y0=s[1]-(qp_x[i]-s[0]); if(y0<-1.0) y0=-1.0; if(y0> 1.0) y0= 1.0;
-      T y1=s[1]+(qp_x[i]-s[0]); if(y1<-1.0) y1=-1.0; if(y1> 1.0) y1= 1.0;
-      T z0=s[2]-(qp_x[i]-s[0]); if(z0<-1.0) z0=-1.0; if(z0> 1.0) z0= 1.0;
-      T z1=s[2]+(qp_x[i]-s[0]); if(z1<-1.0) z1=-1.0; if(z1> 1.0) z1= 1.0;
+      Real_t y0=s[1]-(qp_x[i]-s[0]); if(y0<-1.0) y0=-1.0; if(y0> 1.0) y0= 1.0;
+      Real_t y1=s[1]+(qp_x[i]-s[0]); if(y1<-1.0) y1=-1.0; if(y1> 1.0) y1= 1.0;
+      Real_t z0=s[2]-(qp_x[i]-s[0]); if(z0<-1.0) z0=-1.0; if(z0> 1.0) z0= 1.0;
+      Real_t z1=s[2]+(qp_x[i]-s[0]); if(z1<-1.0) z1=-1.0; if(z1> 1.0) z1= 1.0;
 
       {
-        std::vector<T> qp(ny);
-        std::vector<T> qw(ny);
+        std::vector<Real_t> qp(ny);
+        std::vector<Real_t> qw(ny);
         quad_rule(ny,&qp[0],&qw[0]);
         for(int j=0; j<ny; j++)
           qp_y[j]=(y1-y0)*qp[j]/2.0+(y1+y0)/2.0;
         qw_y=qw;
       }
       {
-        std::vector<T> qp(nz);
-        std::vector<T> qw(nz);
+        std::vector<Real_t> qp(nz);
+        std::vector<Real_t> qw(nz);
         quad_rule(nz,&qp[0],&qw[0]);
         for(int j=0; j<nz; j++)
           qp_z[j]=(z1-z0)*qp[j]/2.0+(z1+z0)/2.0;
@@ -237,8 +230,8 @@ std::vector<T> integ_pyramid(int m, T* s, T r, int nx, const Kernel<T>& kernel, 
       cheb_poly(m-1,&qp_y[0],ny,&p_y[0]);
       cheb_poly(m-1,&qp_z[0],nz,&p_z[0]);
       {
-        T src[3]={0,0,0};
-        std::vector<T> trg(ny*nz*3);
+        Real_t src[3]={0,0,0};
+        std::vector<Real_t> trg(ny*nz*3);
         for(int i0=0; i0<ny; i0++){
           size_t indx0=i0*nz*3;
           for(int i1=0; i1<nz; i1++){
@@ -249,9 +242,9 @@ std::vector<T> integ_pyramid(int m, T* s, T r, int nx, const Kernel<T>& kernel, 
           }
         }
         {
-          Matrix<T> k_val(ny*nz*kernel.ker_dim[0],kernel.ker_dim[1]);
+          Matrix<Real_t> k_val(ny*nz*kernel.ker_dim[0],kernel.ker_dim[1]);
           kernel.BuildMatrix(&src[0],1,&trg[0],ny*nz,&k_val[0][0]);
-          Matrix<T> k_val_t(kernel.ker_dim[1],ny*nz*kernel.ker_dim[0],&k_out[0], false);
+          Matrix<Real_t> k_val_t(kernel.ker_dim[1],ny*nz*kernel.ker_dim[0],&k_out[0], false);
           k_val_t=k_val.Transpose();
         }
         for(int kk=0; kk<k_dim; kk++){
@@ -283,7 +276,7 @@ std::vector<T> integ_pyramid(int m, T* s, T r, int nx, const Kernel<T>& kernel, 
           size_t indx0=(kk*ny+i2)*m;
           for(int i0=0; i0<m; i0++){
             size_t indx1=(kk* m+i0)*m;
-            T py=p_y[i0*ny+i2];
+            Real_t py=p_y[i0*ny+i2];
             for(int i1=0; i0+i1<m; i1++){
               I1[indx1+i1] += I0[indx0+i1]*py;
             }
@@ -291,10 +284,10 @@ std::vector<T> integ_pyramid(int m, T* s, T r, int nx, const Kernel<T>& kernel, 
         }
       }
 
-      T v=(x1-x0)*(y1-y0)*(z1-z0);
+      Real_t v=(x1-x0)*(y1-y0)*(z1-z0);
       for(int kk=0; kk<k_dim; kk++){
         for(int i0=0; i0<m; i0++){
-          T px=p_x[i+i0*nx]*qw_x[i]*v;
+          Real_t px=p_x[i+i0*nx]*qw_x[i]*v;
           for(int i1=0; i0+i1<m; i1++){
             size_t indx0= (kk*m+i1)*m;
             size_t indx1=((kk*m+i0)*m+i1)*m;
@@ -315,58 +308,56 @@ std::vector<T> integ_pyramid(int m, T* s, T r, int nx, const Kernel<T>& kernel, 
                      +2*m*(m+1)*k_dim
                      +m*(m+1)*(m+2)/3*k_dim)*nx*(x_.size()-1));
 
-  std::vector<T> I2_(&I2[0], &I2[0]+I2.Dim());
-  mem::aligned_delete<T>(&k_out[0]);
-  mem::aligned_delete<T>(&I0   [0]);
-  mem::aligned_delete<T>(&I1   [0]);
-  mem::aligned_delete<T>(&I2   [0]);
+  std::vector<Real_t> I2_(&I2[0], &I2[0]+I2.Dim());
+  mem::aligned_delete<Real_t>(&k_out[0]);
+  mem::aligned_delete<Real_t>(&I0   [0]);
+  mem::aligned_delete<Real_t>(&I1   [0]);
+  mem::aligned_delete<Real_t>(&I2   [0]);
   return I2_;
 }
 
-template <class T>
-std::vector<T> integ(int m, T* s, T r, int n, const Kernel<T>& kernel){//*
-  //Compute integrals over pyramids in all directions.
+std::vector<Real_t> integ(int m, Real_t* s, Real_t r, int n, const Kernel<Real_t>& kernel){
   int k_dim=kernel.ker_dim[0]*kernel.ker_dim[1];
-  T s_[3];
+  Real_t s_[3];
   s_[0]=s[0]*2.0/r-1.0;
   s_[1]=s[1]*2.0/r-1.0;
   s_[2]=s[2]*2.0/r-1.0;
 
-  T s1[3];
+  Real_t s1[3];
   int perm[6];
-  std::vector<T> U_[6];
+  std::vector<Real_t> U_[6];
 
   s1[0]= s_[0];s1[1]=s_[1];s1[2]=s_[2];
   perm[0]= 0; perm[2]= 1; perm[4]= 2;
   perm[1]= 1; perm[3]= 1; perm[5]= 1;
-  U_[0]=integ_pyramid<T>(m,s1,r,n,kernel,perm);
+  U_[0]=integ_pyramid(m,s1,r,n,kernel,perm);
 
   s1[0]=-s_[0];s1[1]=s_[1];s1[2]=s_[2];
   perm[0]= 0; perm[2]= 1; perm[4]= 2;
   perm[1]=-1; perm[3]= 1; perm[5]= 1;
-  U_[1]=integ_pyramid<T>(m,s1,r,n,kernel,perm);
+  U_[1]=integ_pyramid(m,s1,r,n,kernel,perm);
 
   s1[0]= s_[1];s1[1]=s_[0];s1[2]=s_[2];
   perm[0]= 1; perm[2]= 0; perm[4]= 2;
   perm[1]= 1; perm[3]= 1; perm[5]= 1;
-  U_[2]=integ_pyramid<T>(m,s1,r,n,kernel,perm);
+  U_[2]=integ_pyramid(m,s1,r,n,kernel,perm);
 
   s1[0]=-s_[1];s1[1]=s_[0];s1[2]=s_[2];
   perm[0]= 1; perm[2]= 0; perm[4]= 2;
   perm[1]=-1; perm[3]= 1; perm[5]= 1;
-  U_[3]=integ_pyramid<T>(m,s1,r,n,kernel,perm);
+  U_[3]=integ_pyramid(m,s1,r,n,kernel,perm);
 
   s1[0]= s_[2];s1[1]=s_[0];s1[2]=s_[1];
   perm[0]= 2; perm[2]= 0; perm[4]= 1;
   perm[1]= 1; perm[3]= 1; perm[5]= 1;
-  U_[4]=integ_pyramid<T>(m,s1,r,n,kernel,perm);
+  U_[4]=integ_pyramid(m,s1,r,n,kernel,perm);
 
   s1[0]=-s_[2];s1[1]=s_[0];s1[2]=s_[1];
   perm[0]= 2; perm[2]= 0; perm[4]= 1;
   perm[1]=-1; perm[3]= 1; perm[5]= 1;
-  U_[5]=integ_pyramid<T>(m,s1,r,n,kernel,perm);
+  U_[5]=integ_pyramid(m,s1,r,n,kernel,perm);
 
-  std::vector<T> U; U.assign(m*m*m*k_dim,0);
+  std::vector<Real_t> U; U.assign(m*m*m*k_dim,0);
   for(int kk=0; kk<k_dim; kk++){
     for(int i=0;i<m;i++){
       for(int j=0;j<m;j++){
@@ -404,13 +395,13 @@ std::vector<T> integ(int m, T* s, T r, int n, const Kernel<T>& kernel){//*
 
 template <class T>
 std::vector<T> cheb_integ(int m, T* s_, T r_, const Kernel<T>& kernel){
-  T eps=machine_eps<T>();
+  Real_t eps=machine_eps();
   T r=r_;
   T s[3]={s_[0],s_[1],s_[2]};
   int n=m+2;
   T err=1.0;
   int k_dim=kernel.ker_dim[0]*kernel.ker_dim[1];
-  std::vector<T> U=integ<T>(m+1,s,r,n,kernel);
+  std::vector<T> U=integ(m+1,s,r,n,kernel);
   std::vector<T> U_;
   while(err>eps*n){
     n=(int)round(n*1.3);
@@ -422,7 +413,7 @@ std::vector<T> cheb_integ(int m, T* s_, T r_, const Kernel<T>& kernel){
       std::cout<<((double)s[2])<<"]\n";
       break;
     }
-    U_=integ<T>(m+1,s,r,n,kernel);
+    U_=integ(m+1,s,r,n,kernel);
     err=0;
     for(int i=0;i<(m+1)*(m+1)*(m+1)*k_dim;i++)
       if(fabs(U[i]-U_[i])>err)
@@ -449,7 +440,7 @@ template<typename T, void (*A)(T*, int, T*, int, T*, int, T*)>
 Kernel<T> BuildKernel(const char* name, std::pair<int,int> k_dim,
     const Kernel<T>* k_s2m=NULL, const Kernel<T>* k_s2l=NULL, const Kernel<T>* k_s2t=NULL,
     const Kernel<T>* k_m2m=NULL, const Kernel<T>* k_m2l=NULL, const Kernel<T>* k_m2t=NULL,
-		      const Kernel<T>* k_l2l=NULL, const Kernel<T>* k_l2t=NULL) {//, typename Kernel<T>::VolPoten vol_poten=NULL){
+		      const Kernel<T>* k_l2l=NULL, const Kernel<T>* k_l2t=NULL) {
   Kernel<T> K(A, name, k_dim);
   K.k_s2m=k_s2m;
   K.k_s2l=k_s2l;
@@ -459,7 +450,6 @@ Kernel<T> BuildKernel(const char* name, std::pair<int,int> k_dim,
   K.k_m2t=k_m2t;
   K.k_l2l=k_l2l;
   K.k_l2t=k_l2t;
-  //K.vol_poten=vol_poten;
   return K;
 }
 
@@ -482,7 +472,6 @@ Kernel<T>::Kernel(Ker_t poten, const char* name, std::pair<int,int> k_dim) {
   k_m2t=NULL;
   k_l2l=NULL;
   k_l2t=NULL;
-  vol_poten=NULL;
   scale_invar=true;
   src_scal.Resize(ker_dim[0]); src_scal.SetZero();
   trg_scal.Resize(ker_dim[1]); trg_scal.SetZero();
@@ -997,11 +986,11 @@ void Kernel<T>::Initialize(bool verbose) const{
 }
 
 template <class T>
-void Kernel<T>::BuildMatrix(T* r_src, int src_cnt, T* r_trg, int trg_cnt, T* k_out) const{
+void Kernel<T>::BuildMatrix(Real_t* r_src, int src_cnt, Real_t* r_trg, int trg_cnt, Real_t* k_out) const{
   memset(k_out, 0, src_cnt*ker_dim[0]*trg_cnt*ker_dim[1]*sizeof(T));
   for(int i=0;i<src_cnt;i++)
     for(int j=0;j<ker_dim[0];j++){
-      std::vector<T> v_src(ker_dim[0],0);
+      std::vector<Real_t> v_src(ker_dim[0],0);
       v_src[j]=1.0;
       ker_poten(&r_src[i*3], 1, &v_src[0], 1, r_trg, trg_cnt,
                 &k_out[(i*ker_dim[0]+j)*trg_cnt*ker_dim[1]]);

@@ -1105,35 +1105,6 @@ class FMM_Tree {
             if(level==-BC_LEVELS) M = M_m2l[-level];
             else                  M = M_equiv_zero_avg * (M_m2l[-level] + M_m2m[-level]*M*M_l2l[-level]) * M_check_zero_avg;
           }
-          if(kernel->k_m2l->vol_poten){
-            Matrix<Real_t> M_far;
-            {
-              std::vector<Real_t> dc_coord;
-              {
-                Real_t c[3]={1.0,1.0,1.0};
-                dc_coord=d_check_surf(MultipoleOrder(),c,0);
-              }
-              Matrix<Real_t> M_near(ker_dim[0],n_surf*ker_dim[1]);
-#pragma omp parallel for schedule(dynamic)
-              for(size_t i=0;i<n_surf;i++) {
-                std::vector<Real_t> M_=cheb_integ<Real_t>(0, &dc_coord[i*3], 3.0, *kernel->k_m2l);
-                for(size_t j=0; j<ker_dim[0]; j++)
-                  for(int k=0; k<ker_dim[1]; k++)
-                    M_near[j][i*ker_dim[1]+k] = M_[j+k*ker_dim[0]];
-              }
-              {
-                Matrix<Real_t> M_analytic(ker_dim[0],n_surf*ker_dim[1]); M_analytic.SetZero();
-                kernel->k_m2l->vol_poten(&dc_coord[0],n_surf,&M_analytic[0][0]);
-                M_far=M_analytic-M_near;
-              }
-            }
-            {
-              for(size_t i=0;i<n_surf;i++)
-                for(size_t k=0;k<ker_dim[0];k++)
-                  for(size_t j=0;j<n_surf*ker_dim[1];j++)
-                    M[i*ker_dim[0]+k][j]+=M_far[k][j];
-            }
-          }
           {
             std::vector<Real_t> corner_pts;
             corner_pts.push_back(0); corner_pts.push_back(0); corner_pts.push_back(0);
@@ -1175,15 +1146,6 @@ class FMM_Tree {
                       for(size_t j=0;j<M_e2pt.Dim(1);j++)
                         M_err[i][k*ker_dim[1]+j]+=M_e2pt[i][j];
                   }
-                }
-              }
-              if(kernel->k_m2l->vol_poten) {
-                Matrix<Real_t> M_analytic(ker_dim[0],n_corner*ker_dim[1]); M_analytic.SetZero();
-                kernel->k_m2l->vol_poten(&corner_pts[0],n_corner,&M_analytic[0][0]);
-                for(size_t j=0;j<n_surf;j++)
-                for(size_t k=0;k<ker_dim[0];k++)
-                for(size_t i=0;i<M_err.Dim(1);i++){
-                  M_err[j*ker_dim[0]+k][i]-=M_analytic[k][i];
                 }
               }
             }
