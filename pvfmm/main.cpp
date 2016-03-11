@@ -56,12 +56,10 @@ int main(int argc, char **argv){
   int depth=        strtoul(commandline_option(argc, argv,    "-d",    "15", false, "-d    <int> = (15)   : Maximum tree depth."                ),NULL,10);
   Profile::Enable(true);
   Profile::Tic("FMM_Test",true);
-  typedef FMM_Node FMMNode_t;
-  typedef FMM_Tree FMMTree_t;
   Kernel potn_ker=BuildKernel<laplace_poten >("laplace"    , std::pair<int,int>(1,1));
   Kernel grad_ker=BuildKernel<laplace_grad >("laplace_grad", std::pair<int,int>(1,3),
-						     &potn_ker, &potn_ker, NULL, &potn_ker, &potn_ker, NULL, &potn_ker, NULL);
-  typename FMMNode_t::NodeData tree_data;
+					     &potn_ker, &potn_ker, NULL, &potn_ker, &potn_ker, NULL, &potn_ker, NULL);
+  typename FMM_Node::NodeData tree_data;
   tree_data.max_depth=depth;
   tree_data.max_pts=M;
   std::vector<Real_t> src_coord, src_value;
@@ -74,14 +72,14 @@ int main(int argc, char **argv){
   for(size_t i=0;i<src_coord.size()/3;i++) src_value.push_back(drand48()-0.5);
   tree_data.coord=src_coord;
   tree_data.value=src_value;
-  FMMTree_t tree;
+  FMM_Tree tree;
   tree.Initialize(mult_order,&grad_ker);
   Vector<Real_t> trg_value;
   for(size_t it=0;it<2;it++){
     Profile::Tic("TotalTime",true);
     tree.Initialize(&tree_data);
     Profile::Tic("SetSrcTrg",true);
-    std::vector<FMMNode_t*>& node=tree.GetNodeList();
+    std::vector<FMM_Node*>& node=tree.GetNodeList();
 #pragma omp parallel for
     for(size_t i=0;i<node.size();i++){
       node[i]->  trg_coord.ReInit(node[i]->  pt_coord.Dim(), &node[i]->  pt_coord[0]);
@@ -99,9 +97,9 @@ int main(int argc, char **argv){
   long nleaf=0, maxdepth=0;
   std::vector<size_t> all_nodes(MAX_DEPTH+1,0);
   std::vector<size_t> leaf_nodes(MAX_DEPTH+1,0);
-  std::vector<FMMNode_t*>& nodes=tree.GetNodeList();
+  std::vector<FMM_Node*>& nodes=tree.GetNodeList();
   for(size_t i=0;i<nodes.size();i++){
-    FMMNode_t* n=nodes[i];
+    FMM_Node* n=nodes[i];
     if(!n->IsGhost()) all_nodes[n->depth]++;
     if(!n->IsGhost() && n->IsLeaf()){
       leaf_nodes[n->depth]++;
