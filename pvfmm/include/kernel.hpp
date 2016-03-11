@@ -7,8 +7,8 @@ template <class T>
 struct Kernel{
   public:
 
-  typedef void (*Ker_t)(T* r_src, int src_cnt, T* v_src, int dof,
-                        T* r_trg, int trg_cnt, T* k_out);
+  typedef void (*Ker_t)(Real_t* r_src, int src_cnt, Real_t* v_src, int dof,
+                        Real_t* r_trg, int trg_cnt, Real_t* k_out);
 
   typedef void (*VolPoten)(const T* coord, int n, T* out);
 
@@ -449,7 +449,7 @@ template<typename T, void (*A)(T*, int, T*, int, T*, int, T*)>
 Kernel<T> BuildKernel(const char* name, std::pair<int,int> k_dim,
     const Kernel<T>* k_s2m=NULL, const Kernel<T>* k_s2l=NULL, const Kernel<T>* k_s2t=NULL,
     const Kernel<T>* k_m2m=NULL, const Kernel<T>* k_m2l=NULL, const Kernel<T>* k_m2t=NULL,
-    const Kernel<T>* k_l2l=NULL, const Kernel<T>* k_l2t=NULL, typename Kernel<T>::VolPoten vol_poten=NULL){
+		      const Kernel<T>* k_l2l=NULL, const Kernel<T>* k_l2t=NULL) {//, typename Kernel<T>::VolPoten vol_poten=NULL){
   Kernel<T> K(A, name, k_dim);
   K.k_s2m=k_s2m;
   K.k_s2l=k_s2l;
@@ -459,7 +459,7 @@ Kernel<T> BuildKernel(const char* name, std::pair<int,int> k_dim,
   K.k_m2t=k_m2t;
   K.k_l2l=k_l2l;
   K.k_l2t=k_l2t;
-  K.vol_poten=vol_poten;
+  //K.vol_poten=vol_poten;
   return K;
 }
 
