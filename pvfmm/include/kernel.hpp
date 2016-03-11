@@ -10,9 +10,530 @@ struct Kernel{
   typedef void (*Ker_t)(Real_t* r_src, int src_cnt, Real_t* v_src, int dof,
                         Real_t* r_trg, int trg_cnt, Real_t* k_out);
 
-  Kernel(Ker_t poten, const char* name, std::pair<int,int> k_dim);
+  Kernel(Ker_t poten, const char* name, std::pair<int,int> k_dim) {
+    ker_dim[0]=k_dim.first;
+    ker_dim[1]=k_dim.second;
+    ker_poten=poten;
+    ker_name=std::string(name);
+    k_s2m=NULL;
+    k_s2l=NULL;
+    k_s2t=NULL;
+    k_m2m=NULL;
+    k_m2l=NULL;
+    k_m2t=NULL;
+    k_l2l=NULL;
+    k_l2t=NULL;
+    scale_invar=true;
+    src_scal.Resize(ker_dim[0]); src_scal.SetZero();
+    trg_scal.Resize(ker_dim[1]); trg_scal.SetZero();
+    perm_vec.Resize(Perm_Count);
+    for(size_t p_type=0;p_type<C_Perm;p_type++){
+      perm_vec[p_type       ]=Permutation<Real_t>(ker_dim[0]);
+      perm_vec[p_type+C_Perm]=Permutation<Real_t>(ker_dim[1]);
+    }
+    init=false;
+  }
 
-  void Initialize(bool verbose=false) const;
+  void Initialize(bool verbose=false) const{
+    if(init) return;
+    init=true;
+    Real_t eps=1.0;
+    while(eps+(Real_t)1.0>1.0) eps*=0.5;
+    Real_t scal=1.0;
+    if(ker_dim[0]*ker_dim[1]>0){
+      Matrix<Real_t> M_scal(ker_dim[0],ker_dim[1]);
+      size_t N=1024;
+      Real_t eps_=N*eps;
+      Real_t src_coord[3]={0,0,0};
+      std::vector<Real_t> trg_coord1(N*3);
+      Matrix<Real_t> M1(N,ker_dim[0]*ker_dim[1]);
+      while(true){
+	Real_t abs_sum=0;
+	for(size_t i=0;i<N/2;i++){
+	  Real_t x,y,z,r;
+	  do{
+	    x=(drand48()-0.5);
+	    y=(drand48()-0.5);
+	    z=(drand48()-0.5);
+	    r=sqrtf(x*x+y*y+z*z);
+	  }while(r<0.25);
+	  trg_coord1[i*3+0]=x*scal;
+	  trg_coord1[i*3+1]=y*scal;
+	  trg_coord1[i*3+2]=z*scal;
+	}
+	for(size_t i=N/2;i<N;i++){
+	  Real_t x,y,z,r;
+	  do{
+	    x=(drand48()-0.5);
+	    y=(drand48()-0.5);
+	    z=(drand48()-0.5);
+	    r=sqrtf(x*x+y*y+z*z);
+	  }while(r<0.25);
+	  trg_coord1[i*3+0]=x*1.0/scal;
+	  trg_coord1[i*3+1]=y*1.0/scal;
+	  trg_coord1[i*3+2]=z*1.0/scal;
+	}
+	for(size_t i=0;i<N;i++){
+	  BuildMatrix(&src_coord [          0], 1,
+		      &trg_coord1[i*3], 1, &(M1[i][0]));
+	  for(size_t j=0;j<ker_dim[0]*ker_dim[1];j++){
+	    abs_sum+=fabs(M1[i][j]);
+	  }
+	}
+	if(abs_sum>sqrtf(eps) || scal<eps) break;
+	scal=scal*0.5;
+      }
+
+      std::vector<Real_t> trg_coord2(N*3);
+      Matrix<Real_t> M2(N,ker_dim[0]*ker_dim[1]);
+      for(size_t i=0;i<N*3;i++){
+	trg_coord2[i]=trg_coord1[i]*0.5;
+      }
+      for(size_t i=0;i<N;i++){
+	BuildMatrix(&src_coord [          0], 1,
+		    &trg_coord2[i*3], 1, &(M2[i][0]));
+      }
+
+      for(size_t i=0;i<ker_dim[0]*ker_dim[1];i++){
+	Real_t dot11=0, dot12=0, dot22=0;
+	for(size_t j=0;j<N;j++){
+	  dot11+=M1[j][i]*M1[j][i];
+	  dot12+=M1[j][i]*M2[j][i];
+	  dot22+=M2[j][i]*M2[j][i];
+	}
+	Real_t max_val=std::max<Real_t>(dot11,dot22);
+	if(dot11>max_val*eps &&
+	   dot22>max_val*eps ){
+	  Real_t s=dot12/dot11;
+	  M_scal[0][i]=log(s)/log(2.0);
+	  Real_t err=sqrtf(0.5*(dot22/dot11)/(s*s)-0.5);
+	  if(err>eps_){
+	    scale_invar=false;
+	    M_scal[0][i]=0.0;
+	  }
+	}else if(dot11>max_val*eps ||
+		 dot22>max_val*eps ){
+	  scale_invar=false;
+	  M_scal[0][i]=0.0;
+	}else{
+	  M_scal[0][i]=-1;
+	}
+      }
+      src_scal.Resize(ker_dim[0]); src_scal.SetZero();
+      trg_scal.Resize(ker_dim[1]); trg_scal.SetZero();
+      if(scale_invar){
+	Matrix<Real_t> b(ker_dim[0]*ker_dim[1]+1,1); b.SetZero();
+	memcpy(&b[0][0],&M_scal[0][0],ker_dim[0]*ker_dim[1]*sizeof(Real_t));
+	Matrix<Real_t> M(ker_dim[0]*ker_dim[1]+1,ker_dim[0]+ker_dim[1]); M.SetZero();
+	M[ker_dim[0]*ker_dim[1]][0]=1;
+	for(size_t i0=0;i0<ker_dim[0];i0++)
+	  for(size_t i1=0;i1<ker_dim[1];i1++){
+	    size_t j=i0*ker_dim[1]+i1;
+	    if(fabs(b[j][0])>=0){
+	      M[j][ 0+        i0]=1;
+	      M[j][i1+ker_dim[0]]=1;
+	    }
+	  }
+	Matrix<Real_t> x=M.pinv()*b;
+	for(size_t i=0;i<ker_dim[0];i++){
+	  src_scal[i]=x[i][0];
+	}
+	for(size_t i=0;i<ker_dim[1];i++){
+	  trg_scal[i]=x[ker_dim[0]+i][0];
+	}
+	for(size_t i0=0;i0<ker_dim[0];i0++)
+	  for(size_t i1=0;i1<ker_dim[1];i1++){
+	    if(M_scal[i0][i1]>=0){
+	      if(fabs(src_scal[i0]+trg_scal[i1]-M_scal[i0][i1])>eps_){
+		scale_invar=false;
+	      }
+	    }
+	  }
+      }
+      if(!scale_invar){
+	src_scal.SetZero();
+	trg_scal.SetZero();
+      }
+    }
+    if(ker_dim[0]*ker_dim[1]>0){
+      size_t N=1024;
+      Real_t eps_=N*eps;
+      Real_t src_coord[3]={0,0,0};
+      std::vector<Real_t> trg_coord1(N*3);
+      std::vector<Real_t> trg_coord2(N*3);
+      for(size_t i=0;i<N/2;i++){
+	Real_t x,y,z,r;
+	do{
+	  x=(drand48()-0.5);
+	  y=(drand48()-0.5);
+	  z=(drand48()-0.5);
+	  r=sqrtf(x*x+y*y+z*z);
+	}while(r<0.25);
+	trg_coord1[i*3+0]=x*scal;
+	trg_coord1[i*3+1]=y*scal;
+	trg_coord1[i*3+2]=z*scal;
+      }
+      for(size_t i=N/2;i<N;i++){
+	Real_t x,y,z,r;
+	do{
+	  x=(drand48()-0.5);
+	  y=(drand48()-0.5);
+	  z=(drand48()-0.5);
+	  r=sqrtf(x*x+y*y+z*z);
+	}while(r<0.25);
+	trg_coord1[i*3+0]=x*1.0/scal;
+	trg_coord1[i*3+1]=y*1.0/scal;
+	trg_coord1[i*3+2]=z*1.0/scal;
+      }
+      for(size_t p_type=0;p_type<C_Perm;p_type++){
+	switch(p_type){
+        case ReflecX:
+          for(size_t i=0;i<N;i++){
+            trg_coord2[i*3+0]=-trg_coord1[i*3+0];
+            trg_coord2[i*3+1]= trg_coord1[i*3+1];
+            trg_coord2[i*3+2]= trg_coord1[i*3+2];
+          }
+          break;
+        case ReflecY:
+          for(size_t i=0;i<N;i++){
+            trg_coord2[i*3+0]= trg_coord1[i*3+0];
+            trg_coord2[i*3+1]=-trg_coord1[i*3+1];
+            trg_coord2[i*3+2]= trg_coord1[i*3+2];
+          }
+          break;
+        case ReflecZ:
+          for(size_t i=0;i<N;i++){
+            trg_coord2[i*3+0]= trg_coord1[i*3+0];
+            trg_coord2[i*3+1]= trg_coord1[i*3+1];
+            trg_coord2[i*3+2]=-trg_coord1[i*3+2];
+          }
+          break;
+        case SwapXY:
+          for(size_t i=0;i<N;i++){
+            trg_coord2[i*3+0]= trg_coord1[i*3+1];
+            trg_coord2[i*3+1]= trg_coord1[i*3+0];
+            trg_coord2[i*3+2]= trg_coord1[i*3+2];
+          }
+          break;
+        case SwapXZ:
+          for(size_t i=0;i<N;i++){
+            trg_coord2[i*3+0]= trg_coord1[i*3+2];
+            trg_coord2[i*3+1]= trg_coord1[i*3+1];
+            trg_coord2[i*3+2]= trg_coord1[i*3+0];
+          }
+          break;
+        default:
+          for(size_t i=0;i<N;i++){
+            trg_coord2[i*3+0]= trg_coord1[i*3+0];
+            trg_coord2[i*3+1]= trg_coord1[i*3+1];
+            trg_coord2[i*3+2]= trg_coord1[i*3+2];
+          }
+	}
+	Matrix<long long> M11, M22;
+	{
+	  Matrix<Real_t> M1(N,ker_dim[0]*ker_dim[1]); M1.SetZero();
+	  Matrix<Real_t> M2(N,ker_dim[0]*ker_dim[1]); M2.SetZero();
+	  for(size_t i=0;i<N;i++){
+	    BuildMatrix(&src_coord [          0], 1,
+			&trg_coord1[i*3], 1, &(M1[i][0]));
+	    BuildMatrix(&src_coord [          0], 1,
+			&trg_coord2[i*3], 1, &(M2[i][0]));
+	  }
+	  Matrix<Real_t> dot11(ker_dim[0]*ker_dim[1],ker_dim[0]*ker_dim[1]);dot11.SetZero();
+	  Matrix<Real_t> dot12(ker_dim[0]*ker_dim[1],ker_dim[0]*ker_dim[1]);dot12.SetZero();
+	  Matrix<Real_t> dot22(ker_dim[0]*ker_dim[1],ker_dim[0]*ker_dim[1]);dot22.SetZero();
+	  std::vector<Real_t> norm1(ker_dim[0]*ker_dim[1]);
+	  std::vector<Real_t> norm2(ker_dim[0]*ker_dim[1]);
+	  {
+	    for(size_t k=0;k<N;k++)
+	      for(size_t i=0;i<ker_dim[0]*ker_dim[1];i++)
+		for(size_t j=0;j<ker_dim[0]*ker_dim[1];j++){
+		  dot11[i][j]+=M1[k][i]*M1[k][j];
+		  dot12[i][j]+=M1[k][i]*M2[k][j];
+		  dot22[i][j]+=M2[k][i]*M2[k][j];
+		}
+	    for(size_t i=0;i<ker_dim[0]*ker_dim[1];i++){
+	      norm1[i]=sqrtf(dot11[i][i]);
+	      norm2[i]=sqrtf(dot22[i][i]);
+	    }
+	    for(size_t i=0;i<ker_dim[0]*ker_dim[1];i++)
+	      for(size_t j=0;j<ker_dim[0]*ker_dim[1];j++){
+		dot11[i][j]/=(norm1[i]*norm1[j]);
+		dot12[i][j]/=(norm1[i]*norm2[j]);
+		dot22[i][j]/=(norm2[i]*norm2[j]);
+	      }
+	  }
+	  long long flag=1;
+	  M11.Resize(ker_dim[0],ker_dim[1]); M11.SetZero();
+	  M22.Resize(ker_dim[0],ker_dim[1]); M22.SetZero();
+	  for(size_t i=0;i<ker_dim[0]*ker_dim[1];i++){
+	    if(norm1[i]>eps_ && M11[0][i]==0){
+	      for(size_t j=0;j<ker_dim[0]*ker_dim[1];j++){
+		if(fabs(norm1[i]-norm1[j])<eps_ && fabs(fabs(dot11[i][j])-1.0)<eps_){
+		  M11[0][j]=(dot11[i][j]>0?flag:-flag);
+		}
+		if(fabs(norm1[i]-norm2[j])<eps_ && fabs(fabs(dot12[i][j])-1.0)<eps_){
+		  M22[0][j]=(dot12[i][j]>0?flag:-flag);
+		}
+	      }
+	      flag++;
+	    }
+	  }
+	}
+	Matrix<long long> P1, P2;
+	{
+	  Matrix<long long>& P=P1;
+	  Matrix<long long>  M1=M11;
+	  Matrix<long long>  M2=M22;
+	  for(size_t i=0;i<M1.Dim(0);i++){
+	    for(size_t j=0;j<M1.Dim(1);j++){
+	      if(M1[i][j]<0) M1[i][j]=-M1[i][j];
+	      if(M2[i][j]<0) M2[i][j]=-M2[i][j];
+	    }
+	    std::sort(&M1[i][0],&M1[i][M1.Dim(1)]);
+	    std::sort(&M2[i][0],&M2[i][M2.Dim(1)]);
+	  }
+	  P.Resize(M1.Dim(0),M1.Dim(0));
+	  for(size_t i=0;i<M1.Dim(0);i++)
+	    for(size_t j=0;j<M1.Dim(0);j++){
+	      P[i][j]=1;
+	      for(size_t k=0;k<M1.Dim(1);k++)
+		if(M1[i][k]!=M2[j][k]){
+		  P[i][j]=0;
+		  break;
+		}
+	    }
+	}
+	{
+	  Matrix<long long>& P=P2;
+	  Matrix<long long>  M1=M11.Transpose();
+	  Matrix<long long>  M2=M22.Transpose();
+	  for(size_t i=0;i<M1.Dim(0);i++){
+	    for(size_t j=0;j<M1.Dim(1);j++){
+	      if(M1[i][j]<0) M1[i][j]=-M1[i][j];
+	      if(M2[i][j]<0) M2[i][j]=-M2[i][j];
+	    }
+	    std::sort(&M1[i][0],&M1[i][M1.Dim(1)]);
+	    std::sort(&M2[i][0],&M2[i][M2.Dim(1)]);
+	  }
+	  P.Resize(M1.Dim(0),M1.Dim(0));
+	  for(size_t i=0;i<M1.Dim(0);i++)
+	    for(size_t j=0;j<M1.Dim(0);j++){
+	      P[i][j]=1;
+	      for(size_t k=0;k<M1.Dim(1);k++)
+		if(M1[i][k]!=M2[j][k]){
+		  P[i][j]=0;
+		  break;
+		}
+	    }
+	}
+	std::vector<Permutation<long long> > P1vec, P2vec;
+	{
+	  Matrix<long long>& Pmat=P1;
+	  std::vector<Permutation<long long> >& Pvec=P1vec;
+	  Permutation<long long> P(Pmat.Dim(0));
+	  Vector<size_t>& perm=P.perm;
+	  perm.SetZero();
+	  for(size_t i=0;i<P.Dim();i++)
+	    for(size_t j=0;j<P.Dim();j++){
+	      if(Pmat[i][j]){
+		perm[i]=j;
+		break;
+	      }
+	    }
+	  Vector<size_t> perm_tmp;
+	  while(true){
+	    perm_tmp=perm;
+	    std::sort(&perm_tmp[0],&perm_tmp[0]+perm_tmp.Dim());
+	    for(size_t i=0;i<perm_tmp.Dim();i++){
+	      if(perm_tmp[i]!=i) break;
+	      if(i==perm_tmp.Dim()-1){
+		Pvec.push_back(P);
+	      }
+	    }
+	    bool last=false;
+	    for(size_t i=0;i<P.Dim();i++){
+	      size_t tmp=perm[i];
+	      for(size_t j=perm[i]+1;j<P.Dim();j++){
+		if(Pmat[i][j]){
+		  perm[i]=j;
+		  break;
+		}
+	      }
+	      if(perm[i]>tmp) break;
+	      for(size_t j=0;j<P.Dim();j++){
+		if(Pmat[i][j]){
+		  perm[i]=j;
+		  break;
+		}
+	      }
+	      if(i==P.Dim()-1) last=true;
+	    }
+	    if(last) break;
+	  }
+	}
+	{
+	  Matrix<long long>& Pmat=P2;
+	  std::vector<Permutation<long long> >& Pvec=P2vec;
+	  Permutation<long long> P(Pmat.Dim(0));
+	  Vector<size_t>& perm=P.perm;
+	  perm.SetZero();
+	  for(size_t i=0;i<P.Dim();i++)
+	    for(size_t j=0;j<P.Dim();j++){
+	      if(Pmat[i][j]){
+		perm[i]=j;
+		break;
+	      }
+	    }
+	  Vector<size_t> perm_tmp;
+	  while(true){
+	    perm_tmp=perm;
+	    std::sort(&perm_tmp[0],&perm_tmp[0]+perm_tmp.Dim());
+	    for(size_t i=0;i<perm_tmp.Dim();i++){
+	      if(perm_tmp[i]!=i) break;
+	      if(i==perm_tmp.Dim()-1){
+		Pvec.push_back(P);
+	      }
+	    }
+	    bool last=false;
+	    for(size_t i=0;i<P.Dim();i++){
+	      size_t tmp=perm[i];
+	      for(size_t j=perm[i]+1;j<P.Dim();j++){
+		if(Pmat[i][j]){
+		  perm[i]=j;
+		  break;
+		}
+	      }
+	      if(perm[i]>tmp) break;
+	      for(size_t j=0;j<P.Dim();j++){
+		if(Pmat[i][j]){
+		  perm[i]=j;
+		  break;
+		}
+	      }
+	      if(i==P.Dim()-1) last=true;
+	    }
+	    if(last) break;
+	  }
+	}
+	{
+	  std::vector<Permutation<long long> > P1vec_, P2vec_;
+	  Matrix<long long>  M1=M11;
+	  Matrix<long long>  M2=M22;
+	  for(size_t i=0;i<M1.Dim(0);i++){
+	    for(size_t j=0;j<M1.Dim(1);j++){
+	      if(M1[i][j]<0) M1[i][j]=-M1[i][j];
+	      if(M2[i][j]<0) M2[i][j]=-M2[i][j];
+	    }
+	  }
+	  Matrix<long long> M;
+	  for(size_t i=0;i<P1vec.size();i++)
+	    for(size_t j=0;j<P2vec.size();j++){
+	      M=P1vec[i]*M2*P2vec[j];
+	      for(size_t k=0;k<M.Dim(0)*M.Dim(1);k++){
+		if(M[0][k]!=M1[0][k]) break;
+		if(k==M.Dim(0)*M.Dim(1)-1){
+		  P1vec_.push_back(P1vec[i]);
+		  P2vec_.push_back(P2vec[j]);
+		}
+	      }
+	    }
+	  P1vec=P1vec_;
+	  P2vec=P2vec_;
+	}
+	Permutation<Real_t> P1_, P2_;
+	{
+	  for(size_t k=0;k<P1vec.size();k++){
+	    Permutation<long long> P1=P1vec[k];
+	    Permutation<long long> P2=P2vec[k];
+	    Matrix<long long>  M1=   M11   ;
+	    Matrix<long long>  M2=P1*M22*P2;
+	    Matrix<Real_t> M(M1.Dim(0)*M1.Dim(1)+1,M1.Dim(0)+M1.Dim(1));
+	    M.SetZero(); M[M1.Dim(0)*M1.Dim(1)][0]=1.0;
+	    for(size_t i=0;i<M1.Dim(0);i++)
+	      for(size_t j=0;j<M1.Dim(1);j++){
+		size_t k=i*M1.Dim(1)+j;
+		M[k][          i]= M1[i][j];
+		M[k][M1.Dim(0)+j]=-M2[i][j];
+	      }
+	    M=M.pinv();
+	    {
+	      Permutation<long long> P1_(M1.Dim(0));
+	      Permutation<long long> P2_(M1.Dim(1));
+	      for(size_t i=0;i<M1.Dim(0);i++){
+		P1_.scal[i]=(M[i][M1.Dim(0)*M1.Dim(1)]>0?1:-1);
+	      }
+	      for(size_t i=0;i<M1.Dim(1);i++){
+		P2_.scal[i]=(M[M1.Dim(0)+i][M1.Dim(0)*M1.Dim(1)]>0?1:-1);
+	      }
+	      P1=P1_*P1 ;
+	      P2=P2 *P2_;
+	    }
+	    bool done=true;
+	    Matrix<long long> Merr=P1*M22*P2-M11;
+	    for(size_t i=0;i<Merr.Dim(0)*Merr.Dim(1);i++){
+	      if(Merr[0][i]){
+		done=false;
+		break;
+	      }
+	    }
+	    if(done){
+	      P1_=Permutation<Real_t>(P1.Dim());
+	      P2_=Permutation<Real_t>(P2.Dim());
+	      for(size_t i=0;i<P1.Dim();i++){
+		P1_.perm[i]=P1.perm[i];
+		P1_.scal[i]=P1.scal[i];
+	      }
+	      for(size_t i=0;i<P2.Dim();i++){
+		P2_.perm[i]=P2.perm[i];
+		P2_.scal[i]=P2.scal[i];
+	      }
+	      break;
+	    }
+	  }
+	}
+	perm_vec[p_type       ]=P1_.Transpose();
+	perm_vec[p_type+C_Perm]=P2_;
+      }
+      for(size_t i=0;i<2*C_Perm;i++){
+	if(perm_vec[i].Dim()==0){
+	  perm_vec.Resize(0);
+	  std::cout<<"no-symmetry for: "<<ker_name<<'\n';
+	  break;
+	}
+      }
+    }
+    {
+      if(!k_s2m) k_s2m=this;
+      if(!k_s2l) k_s2l=this;
+      if(!k_s2t) k_s2t=this;
+      if(!k_m2m) k_m2m=this;
+      if(!k_m2l) k_m2l=this;
+      if(!k_m2t) k_m2t=this;
+      if(!k_l2l) k_l2l=this;
+      if(!k_l2t) k_l2t=this;
+      assert(k_s2t->ker_dim[0]==ker_dim[0]);
+      assert(k_s2m->ker_dim[0]==k_s2l->ker_dim[0]);
+      assert(k_s2m->ker_dim[0]==k_s2t->ker_dim[0]);
+      assert(k_m2m->ker_dim[0]==k_m2l->ker_dim[0]);
+      assert(k_m2m->ker_dim[0]==k_m2t->ker_dim[0]);
+      assert(k_l2l->ker_dim[0]==k_l2t->ker_dim[0]);
+      assert(k_s2t->ker_dim[1]==ker_dim[1]);
+      assert(k_s2m->ker_dim[1]==k_m2m->ker_dim[1]);
+      assert(k_s2l->ker_dim[1]==k_l2l->ker_dim[1]);
+      assert(k_m2l->ker_dim[1]==k_l2l->ker_dim[1]);
+      assert(k_s2t->ker_dim[1]==k_m2t->ker_dim[1]);
+      assert(k_s2t->ker_dim[1]==k_l2t->ker_dim[1]);
+      k_s2m->Initialize(verbose);
+      k_s2l->Initialize(verbose);
+      k_s2t->Initialize(verbose);
+      k_m2m->Initialize(verbose);
+      k_m2l->Initialize(verbose);
+      k_m2t->Initialize(verbose);
+      k_l2l->Initialize(verbose);
+      k_l2t->Initialize(verbose);
+    }
+  }
 
   void BuildMatrix(Real_t* r_src, int src_cnt,
                    Real_t* r_trg, int trg_cnt, Real_t* k_out) const;
@@ -456,533 +977,6 @@ template<typename T>
 struct LaplaceKernel{
   inline static const Kernel<T>& gradient();
 };
-
-template <class T>
-Kernel<T>::Kernel(Ker_t poten, const char* name, std::pair<int,int> k_dim) {
-  ker_dim[0]=k_dim.first;
-  ker_dim[1]=k_dim.second;
-  ker_poten=poten;
-  ker_name=std::string(name);
-  k_s2m=NULL;
-  k_s2l=NULL;
-  k_s2t=NULL;
-  k_m2m=NULL;
-  k_m2l=NULL;
-  k_m2t=NULL;
-  k_l2l=NULL;
-  k_l2t=NULL;
-  scale_invar=true;
-  src_scal.Resize(ker_dim[0]); src_scal.SetZero();
-  trg_scal.Resize(ker_dim[1]); trg_scal.SetZero();
-  perm_vec.Resize(Perm_Count);
-  for(size_t p_type=0;p_type<C_Perm;p_type++){
-    perm_vec[p_type       ]=Permutation<Real_t>(ker_dim[0]);
-    perm_vec[p_type+C_Perm]=Permutation<Real_t>(ker_dim[1]);
-  }
-  init=false;
-}
-
-template <class T>
-void Kernel<T>::Initialize(bool verbose) const{
-  if(init) return;
-  init=true;
-  Real_t eps=1.0;
-  while(eps+(Real_t)1.0>1.0) eps*=0.5;
-  Real_t scal=1.0;
-  if(ker_dim[0]*ker_dim[1]>0){
-    Matrix<Real_t> M_scal(ker_dim[0],ker_dim[1]);
-    size_t N=1024;
-    Real_t eps_=N*eps;
-    Real_t src_coord[3]={0,0,0};
-    std::vector<Real_t> trg_coord1(N*3);
-    Matrix<Real_t> M1(N,ker_dim[0]*ker_dim[1]);
-    while(true){
-      Real_t abs_sum=0;
-      for(size_t i=0;i<N/2;i++){
-        Real_t x,y,z,r;
-        do{
-          x=(drand48()-0.5);
-          y=(drand48()-0.5);
-          z=(drand48()-0.5);
-          r=sqrtf(x*x+y*y+z*z);
-        }while(r<0.25);
-        trg_coord1[i*3+0]=x*scal;
-        trg_coord1[i*3+1]=y*scal;
-        trg_coord1[i*3+2]=z*scal;
-      }
-      for(size_t i=N/2;i<N;i++){
-        Real_t x,y,z,r;
-        do{
-          x=(drand48()-0.5);
-          y=(drand48()-0.5);
-          z=(drand48()-0.5);
-          r=sqrtf(x*x+y*y+z*z);
-        }while(r<0.25);
-        trg_coord1[i*3+0]=x*1.0/scal;
-        trg_coord1[i*3+1]=y*1.0/scal;
-        trg_coord1[i*3+2]=z*1.0/scal;
-      }
-      for(size_t i=0;i<N;i++){
-        BuildMatrix(&src_coord [          0], 1,
-                    &trg_coord1[i*3], 1, &(M1[i][0]));
-        for(size_t j=0;j<ker_dim[0]*ker_dim[1];j++){
-          abs_sum+=fabs(M1[i][j]);
-        }
-      }
-      if(abs_sum>sqrtf(eps) || scal<eps) break;
-      scal=scal*0.5;
-    }
-
-    std::vector<Real_t> trg_coord2(N*3);
-    Matrix<Real_t> M2(N,ker_dim[0]*ker_dim[1]);
-    for(size_t i=0;i<N*3;i++){
-      trg_coord2[i]=trg_coord1[i]*0.5;
-    }
-    for(size_t i=0;i<N;i++){
-      BuildMatrix(&src_coord [          0], 1,
-                  &trg_coord2[i*3], 1, &(M2[i][0]));
-    }
-
-    for(size_t i=0;i<ker_dim[0]*ker_dim[1];i++){
-      Real_t dot11=0, dot12=0, dot22=0;
-      for(size_t j=0;j<N;j++){
-        dot11+=M1[j][i]*M1[j][i];
-        dot12+=M1[j][i]*M2[j][i];
-        dot22+=M2[j][i]*M2[j][i];
-      }
-      Real_t max_val=std::max<Real_t>(dot11,dot22);
-      if(dot11>max_val*eps &&
-         dot22>max_val*eps ){
-        Real_t s=dot12/dot11;
-        M_scal[0][i]=log(s)/log(2.0);
-        Real_t err=sqrtf(0.5*(dot22/dot11)/(s*s)-0.5);
-        if(err>eps_){
-          scale_invar=false;
-          M_scal[0][i]=0.0;
-        }
-      }else if(dot11>max_val*eps ||
-               dot22>max_val*eps ){
-        scale_invar=false;
-        M_scal[0][i]=0.0;
-      }else{
-        M_scal[0][i]=-1;
-      }
-    }
-    src_scal.Resize(ker_dim[0]); src_scal.SetZero();
-    trg_scal.Resize(ker_dim[1]); trg_scal.SetZero();
-    if(scale_invar){
-      Matrix<Real_t> b(ker_dim[0]*ker_dim[1]+1,1); b.SetZero();
-      memcpy(&b[0][0],&M_scal[0][0],ker_dim[0]*ker_dim[1]*sizeof(Real_t));
-      Matrix<Real_t> M(ker_dim[0]*ker_dim[1]+1,ker_dim[0]+ker_dim[1]); M.SetZero();
-      M[ker_dim[0]*ker_dim[1]][0]=1;
-      for(size_t i0=0;i0<ker_dim[0];i0++)
-      for(size_t i1=0;i1<ker_dim[1];i1++){
-        size_t j=i0*ker_dim[1]+i1;
-        if(fabs(b[j][0])>=0){
-          M[j][ 0+        i0]=1;
-          M[j][i1+ker_dim[0]]=1;
-        }
-      }
-      Matrix<Real_t> x=M.pinv()*b;
-      for(size_t i=0;i<ker_dim[0];i++){
-        src_scal[i]=x[i][0];
-      }
-      for(size_t i=0;i<ker_dim[1];i++){
-        trg_scal[i]=x[ker_dim[0]+i][0];
-      }
-      for(size_t i0=0;i0<ker_dim[0];i0++)
-      for(size_t i1=0;i1<ker_dim[1];i1++){
-        if(M_scal[i0][i1]>=0){
-          if(fabs(src_scal[i0]+trg_scal[i1]-M_scal[i0][i1])>eps_){
-            scale_invar=false;
-          }
-        }
-      }
-    }
-    if(!scale_invar){
-      src_scal.SetZero();
-      trg_scal.SetZero();
-    }
-  }
-  if(ker_dim[0]*ker_dim[1]>0){
-    size_t N=1024;
-    Real_t eps_=N*eps;
-    Real_t src_coord[3]={0,0,0};
-    std::vector<Real_t> trg_coord1(N*3);
-    std::vector<Real_t> trg_coord2(N*3);
-    for(size_t i=0;i<N/2;i++){
-      Real_t x,y,z,r;
-      do{
-        x=(drand48()-0.5);
-        y=(drand48()-0.5);
-        z=(drand48()-0.5);
-        r=sqrtf(x*x+y*y+z*z);
-      }while(r<0.25);
-      trg_coord1[i*3+0]=x*scal;
-      trg_coord1[i*3+1]=y*scal;
-      trg_coord1[i*3+2]=z*scal;
-    }
-    for(size_t i=N/2;i<N;i++){
-      Real_t x,y,z,r;
-      do{
-        x=(drand48()-0.5);
-        y=(drand48()-0.5);
-        z=(drand48()-0.5);
-        r=sqrtf(x*x+y*y+z*z);
-      }while(r<0.25);
-      trg_coord1[i*3+0]=x*1.0/scal;
-      trg_coord1[i*3+1]=y*1.0/scal;
-      trg_coord1[i*3+2]=z*1.0/scal;
-    }
-    for(size_t p_type=0;p_type<C_Perm;p_type++){
-      switch(p_type){
-        case ReflecX:
-          for(size_t i=0;i<N;i++){
-            trg_coord2[i*3+0]=-trg_coord1[i*3+0];
-            trg_coord2[i*3+1]= trg_coord1[i*3+1];
-            trg_coord2[i*3+2]= trg_coord1[i*3+2];
-          }
-          break;
-        case ReflecY:
-          for(size_t i=0;i<N;i++){
-            trg_coord2[i*3+0]= trg_coord1[i*3+0];
-            trg_coord2[i*3+1]=-trg_coord1[i*3+1];
-            trg_coord2[i*3+2]= trg_coord1[i*3+2];
-          }
-          break;
-        case ReflecZ:
-          for(size_t i=0;i<N;i++){
-            trg_coord2[i*3+0]= trg_coord1[i*3+0];
-            trg_coord2[i*3+1]= trg_coord1[i*3+1];
-            trg_coord2[i*3+2]=-trg_coord1[i*3+2];
-          }
-          break;
-        case SwapXY:
-          for(size_t i=0;i<N;i++){
-            trg_coord2[i*3+0]= trg_coord1[i*3+1];
-            trg_coord2[i*3+1]= trg_coord1[i*3+0];
-            trg_coord2[i*3+2]= trg_coord1[i*3+2];
-          }
-          break;
-        case SwapXZ:
-          for(size_t i=0;i<N;i++){
-            trg_coord2[i*3+0]= trg_coord1[i*3+2];
-            trg_coord2[i*3+1]= trg_coord1[i*3+1];
-            trg_coord2[i*3+2]= trg_coord1[i*3+0];
-          }
-          break;
-        default:
-          for(size_t i=0;i<N;i++){
-            trg_coord2[i*3+0]= trg_coord1[i*3+0];
-            trg_coord2[i*3+1]= trg_coord1[i*3+1];
-            trg_coord2[i*3+2]= trg_coord1[i*3+2];
-          }
-      }
-      Matrix<long long> M11, M22;
-      {
-        Matrix<Real_t> M1(N,ker_dim[0]*ker_dim[1]); M1.SetZero();
-        Matrix<Real_t> M2(N,ker_dim[0]*ker_dim[1]); M2.SetZero();
-        for(size_t i=0;i<N;i++){
-          BuildMatrix(&src_coord [          0], 1,
-                      &trg_coord1[i*3], 1, &(M1[i][0]));
-          BuildMatrix(&src_coord [          0], 1,
-                      &trg_coord2[i*3], 1, &(M2[i][0]));
-        }
-        Matrix<Real_t> dot11(ker_dim[0]*ker_dim[1],ker_dim[0]*ker_dim[1]);dot11.SetZero();
-        Matrix<Real_t> dot12(ker_dim[0]*ker_dim[1],ker_dim[0]*ker_dim[1]);dot12.SetZero();
-        Matrix<Real_t> dot22(ker_dim[0]*ker_dim[1],ker_dim[0]*ker_dim[1]);dot22.SetZero();
-        std::vector<Real_t> norm1(ker_dim[0]*ker_dim[1]);
-        std::vector<Real_t> norm2(ker_dim[0]*ker_dim[1]);
-        {
-          for(size_t k=0;k<N;k++)
-          for(size_t i=0;i<ker_dim[0]*ker_dim[1];i++)
-          for(size_t j=0;j<ker_dim[0]*ker_dim[1];j++){
-            dot11[i][j]+=M1[k][i]*M1[k][j];
-            dot12[i][j]+=M1[k][i]*M2[k][j];
-            dot22[i][j]+=M2[k][i]*M2[k][j];
-          }
-          for(size_t i=0;i<ker_dim[0]*ker_dim[1];i++){
-            norm1[i]=sqrtf(dot11[i][i]);
-            norm2[i]=sqrtf(dot22[i][i]);
-          }
-          for(size_t i=0;i<ker_dim[0]*ker_dim[1];i++)
-          for(size_t j=0;j<ker_dim[0]*ker_dim[1];j++){
-            dot11[i][j]/=(norm1[i]*norm1[j]);
-            dot12[i][j]/=(norm1[i]*norm2[j]);
-            dot22[i][j]/=(norm2[i]*norm2[j]);
-          }
-        }
-        long long flag=1;
-        M11.Resize(ker_dim[0],ker_dim[1]); M11.SetZero();
-        M22.Resize(ker_dim[0],ker_dim[1]); M22.SetZero();
-        for(size_t i=0;i<ker_dim[0]*ker_dim[1];i++){
-          if(norm1[i]>eps_ && M11[0][i]==0){
-            for(size_t j=0;j<ker_dim[0]*ker_dim[1];j++){
-              if(fabs(norm1[i]-norm1[j])<eps_ && fabs(fabs(dot11[i][j])-1.0)<eps_){
-                M11[0][j]=(dot11[i][j]>0?flag:-flag);
-              }
-              if(fabs(norm1[i]-norm2[j])<eps_ && fabs(fabs(dot12[i][j])-1.0)<eps_){
-                M22[0][j]=(dot12[i][j]>0?flag:-flag);
-              }
-            }
-            flag++;
-          }
-        }
-      }
-      Matrix<long long> P1, P2;
-      {
-        Matrix<long long>& P=P1;
-        Matrix<long long>  M1=M11;
-        Matrix<long long>  M2=M22;
-        for(size_t i=0;i<M1.Dim(0);i++){
-          for(size_t j=0;j<M1.Dim(1);j++){
-            if(M1[i][j]<0) M1[i][j]=-M1[i][j];
-            if(M2[i][j]<0) M2[i][j]=-M2[i][j];
-          }
-          std::sort(&M1[i][0],&M1[i][M1.Dim(1)]);
-          std::sort(&M2[i][0],&M2[i][M2.Dim(1)]);
-        }
-        P.Resize(M1.Dim(0),M1.Dim(0));
-        for(size_t i=0;i<M1.Dim(0);i++)
-        for(size_t j=0;j<M1.Dim(0);j++){
-          P[i][j]=1;
-          for(size_t k=0;k<M1.Dim(1);k++)
-          if(M1[i][k]!=M2[j][k]){
-            P[i][j]=0;
-            break;
-          }
-        }
-      }
-      {
-        Matrix<long long>& P=P2;
-        Matrix<long long>  M1=M11.Transpose();
-        Matrix<long long>  M2=M22.Transpose();
-        for(size_t i=0;i<M1.Dim(0);i++){
-          for(size_t j=0;j<M1.Dim(1);j++){
-            if(M1[i][j]<0) M1[i][j]=-M1[i][j];
-            if(M2[i][j]<0) M2[i][j]=-M2[i][j];
-          }
-          std::sort(&M1[i][0],&M1[i][M1.Dim(1)]);
-          std::sort(&M2[i][0],&M2[i][M2.Dim(1)]);
-        }
-        P.Resize(M1.Dim(0),M1.Dim(0));
-        for(size_t i=0;i<M1.Dim(0);i++)
-        for(size_t j=0;j<M1.Dim(0);j++){
-          P[i][j]=1;
-          for(size_t k=0;k<M1.Dim(1);k++)
-          if(M1[i][k]!=M2[j][k]){
-            P[i][j]=0;
-            break;
-          }
-        }
-      }
-      std::vector<Permutation<long long> > P1vec, P2vec;
-      {
-        Matrix<long long>& Pmat=P1;
-        std::vector<Permutation<long long> >& Pvec=P1vec;
-        Permutation<long long> P(Pmat.Dim(0));
-        Vector<size_t>& perm=P.perm;
-        perm.SetZero();
-        for(size_t i=0;i<P.Dim();i++)
-        for(size_t j=0;j<P.Dim();j++){
-          if(Pmat[i][j]){
-            perm[i]=j;
-            break;
-          }
-        }
-        Vector<size_t> perm_tmp;
-        while(true){
-          perm_tmp=perm;
-          std::sort(&perm_tmp[0],&perm_tmp[0]+perm_tmp.Dim());
-          for(size_t i=0;i<perm_tmp.Dim();i++){
-            if(perm_tmp[i]!=i) break;
-            if(i==perm_tmp.Dim()-1){
-              Pvec.push_back(P);
-            }
-          }
-          bool last=false;
-          for(size_t i=0;i<P.Dim();i++){
-            size_t tmp=perm[i];
-            for(size_t j=perm[i]+1;j<P.Dim();j++){
-              if(Pmat[i][j]){
-                perm[i]=j;
-                break;
-              }
-            }
-            if(perm[i]>tmp) break;
-            for(size_t j=0;j<P.Dim();j++){
-              if(Pmat[i][j]){
-                perm[i]=j;
-                break;
-              }
-            }
-            if(i==P.Dim()-1) last=true;
-          }
-          if(last) break;
-        }
-      }
-      {
-        Matrix<long long>& Pmat=P2;
-        std::vector<Permutation<long long> >& Pvec=P2vec;
-        Permutation<long long> P(Pmat.Dim(0));
-        Vector<size_t>& perm=P.perm;
-        perm.SetZero();
-        for(size_t i=0;i<P.Dim();i++)
-        for(size_t j=0;j<P.Dim();j++){
-          if(Pmat[i][j]){
-            perm[i]=j;
-            break;
-          }
-        }
-        Vector<size_t> perm_tmp;
-        while(true){
-          perm_tmp=perm;
-          std::sort(&perm_tmp[0],&perm_tmp[0]+perm_tmp.Dim());
-          for(size_t i=0;i<perm_tmp.Dim();i++){
-            if(perm_tmp[i]!=i) break;
-            if(i==perm_tmp.Dim()-1){
-              Pvec.push_back(P);
-            }
-          }
-          bool last=false;
-          for(size_t i=0;i<P.Dim();i++){
-            size_t tmp=perm[i];
-            for(size_t j=perm[i]+1;j<P.Dim();j++){
-              if(Pmat[i][j]){
-                perm[i]=j;
-                break;
-              }
-            }
-            if(perm[i]>tmp) break;
-            for(size_t j=0;j<P.Dim();j++){
-              if(Pmat[i][j]){
-                perm[i]=j;
-                break;
-              }
-            }
-            if(i==P.Dim()-1) last=true;
-          }
-          if(last) break;
-        }
-      }
-      {
-        std::vector<Permutation<long long> > P1vec_, P2vec_;
-        Matrix<long long>  M1=M11;
-        Matrix<long long>  M2=M22;
-        for(size_t i=0;i<M1.Dim(0);i++){
-          for(size_t j=0;j<M1.Dim(1);j++){
-            if(M1[i][j]<0) M1[i][j]=-M1[i][j];
-            if(M2[i][j]<0) M2[i][j]=-M2[i][j];
-          }
-        }
-        Matrix<long long> M;
-        for(size_t i=0;i<P1vec.size();i++)
-        for(size_t j=0;j<P2vec.size();j++){
-          M=P1vec[i]*M2*P2vec[j];
-          for(size_t k=0;k<M.Dim(0)*M.Dim(1);k++){
-            if(M[0][k]!=M1[0][k]) break;
-            if(k==M.Dim(0)*M.Dim(1)-1){
-              P1vec_.push_back(P1vec[i]);
-              P2vec_.push_back(P2vec[j]);
-            }
-          }
-        }
-        P1vec=P1vec_;
-        P2vec=P2vec_;
-      }
-      Permutation<Real_t> P1_, P2_;
-      {
-        for(size_t k=0;k<P1vec.size();k++){
-          Permutation<long long> P1=P1vec[k];
-          Permutation<long long> P2=P2vec[k];
-          Matrix<long long>  M1=   M11   ;
-          Matrix<long long>  M2=P1*M22*P2;
-          Matrix<Real_t> M(M1.Dim(0)*M1.Dim(1)+1,M1.Dim(0)+M1.Dim(1));
-          M.SetZero(); M[M1.Dim(0)*M1.Dim(1)][0]=1.0;
-          for(size_t i=0;i<M1.Dim(0);i++)
-          for(size_t j=0;j<M1.Dim(1);j++){
-            size_t k=i*M1.Dim(1)+j;
-            M[k][          i]= M1[i][j];
-            M[k][M1.Dim(0)+j]=-M2[i][j];
-          }
-          M=M.pinv();
-          {
-            Permutation<long long> P1_(M1.Dim(0));
-            Permutation<long long> P2_(M1.Dim(1));
-            for(size_t i=0;i<M1.Dim(0);i++){
-              P1_.scal[i]=(M[i][M1.Dim(0)*M1.Dim(1)]>0?1:-1);
-            }
-            for(size_t i=0;i<M1.Dim(1);i++){
-              P2_.scal[i]=(M[M1.Dim(0)+i][M1.Dim(0)*M1.Dim(1)]>0?1:-1);
-            }
-            P1=P1_*P1 ;
-            P2=P2 *P2_;
-          }
-          bool done=true;
-          Matrix<long long> Merr=P1*M22*P2-M11;
-          for(size_t i=0;i<Merr.Dim(0)*Merr.Dim(1);i++){
-            if(Merr[0][i]){
-              done=false;
-              break;
-            }
-          }
-          if(done){
-            P1_=Permutation<Real_t>(P1.Dim());
-            P2_=Permutation<Real_t>(P2.Dim());
-            for(size_t i=0;i<P1.Dim();i++){
-              P1_.perm[i]=P1.perm[i];
-              P1_.scal[i]=P1.scal[i];
-            }
-            for(size_t i=0;i<P2.Dim();i++){
-              P2_.perm[i]=P2.perm[i];
-              P2_.scal[i]=P2.scal[i];
-            }
-            break;
-          }
-        }
-      }
-      perm_vec[p_type       ]=P1_.Transpose();
-      perm_vec[p_type+C_Perm]=P2_;
-    }
-    for(size_t i=0;i<2*C_Perm;i++){
-      if(perm_vec[i].Dim()==0){
-        perm_vec.Resize(0);
-        std::cout<<"no-symmetry for: "<<ker_name<<'\n';
-        break;
-      }
-    }
-  }
-  {
-    if(!k_s2m) k_s2m=this;
-    if(!k_s2l) k_s2l=this;
-    if(!k_s2t) k_s2t=this;
-    if(!k_m2m) k_m2m=this;
-    if(!k_m2l) k_m2l=this;
-    if(!k_m2t) k_m2t=this;
-    if(!k_l2l) k_l2l=this;
-    if(!k_l2t) k_l2t=this;
-    assert(k_s2t->ker_dim[0]==ker_dim[0]);
-    assert(k_s2m->ker_dim[0]==k_s2l->ker_dim[0]);
-    assert(k_s2m->ker_dim[0]==k_s2t->ker_dim[0]);
-    assert(k_m2m->ker_dim[0]==k_m2l->ker_dim[0]);
-    assert(k_m2m->ker_dim[0]==k_m2t->ker_dim[0]);
-    assert(k_l2l->ker_dim[0]==k_l2t->ker_dim[0]);
-    assert(k_s2t->ker_dim[1]==ker_dim[1]);
-    assert(k_s2m->ker_dim[1]==k_m2m->ker_dim[1]);
-    assert(k_s2l->ker_dim[1]==k_l2l->ker_dim[1]);
-    assert(k_m2l->ker_dim[1]==k_l2l->ker_dim[1]);
-    assert(k_s2t->ker_dim[1]==k_m2t->ker_dim[1]);
-    assert(k_s2t->ker_dim[1]==k_l2t->ker_dim[1]);
-    k_s2m->Initialize(verbose);
-    k_s2l->Initialize(verbose);
-    k_s2t->Initialize(verbose);
-    k_m2m->Initialize(verbose);
-    k_m2l->Initialize(verbose);
-    k_m2t->Initialize(verbose);
-    k_l2l->Initialize(verbose);
-    k_l2t->Initialize(verbose);
-  }
-}
 
 template <class T>
 void Kernel<T>::BuildMatrix(Real_t* r_src, int src_cnt, Real_t* r_trg, int trg_cnt, Real_t* k_out) const{
