@@ -1012,7 +1012,7 @@ class FMM_Tree {
               }
 #pragma omp parallel for schedule(dynamic)
               for(size_t i=0;i<n_surf;i++){
-                std::vector<Real_t> M_=cheb_integ<Real_t>(0, &uc_coord[i*3], 1.0, *kernel->k_m2m);
+                std::vector<Real_t> M_=cheb_integ(0, &uc_coord[i*3], 1.0, *kernel->k_m2m);
                 for(size_t j=0; j<ker_dim[0]; j++)
                   for(int k=0; k<ker_dim[1]; k++)
                     M_s2c[j][i*ker_dim[1]+k] = M_[j+k*ker_dim[0]];
