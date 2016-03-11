@@ -56,7 +56,9 @@ int main(int argc, char **argv){
   pvfmm::Profile::Tic("FMM_Test",true);
   typedef pvfmm::FMM_Node FMMNode_t;
   typedef pvfmm::FMM_Tree FMMTree_t;
-  const pvfmm::Kernel<Real_t>* mykernel = &pvfmm::LaplaceKernel<Real_t>::gradient();
+  pvfmm::Kernel<Real_t> potn_ker=pvfmm::BuildKernel<pvfmm::laplace_poten >("laplace"     , std::pair<int,int>(1,1));
+  pvfmm::Kernel<Real_t> grad_ker=pvfmm::BuildKernel<pvfmm::laplace_grad >("laplace_grad", std::pair<int,int>(1,3),
+									  &potn_ker, &potn_ker, NULL, &potn_ker, &potn_ker, NULL, &potn_ker, NULL);
   typename FMMNode_t::NodeData tree_data;
   tree_data.max_depth=depth;
   tree_data.max_pts=M;
@@ -71,7 +73,7 @@ int main(int argc, char **argv){
   tree_data.coord=src_coord;
   tree_data.value=src_value;
   FMMTree_t tree;
-  tree.Initialize(mult_order,mykernel);
+  tree.Initialize(mult_order,&grad_ker);
   pvfmm::Vector<Real_t> trg_value;
   for(size_t it=0;it<2;it++){
     pvfmm::Profile::Tic("TotalTime",true);
