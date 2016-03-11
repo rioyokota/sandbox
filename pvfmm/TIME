@@ -16,9 +16,9 @@ U-List     : 1.267981e+00
 V-List     : 3.361643e+00
 [./fmm_pts -omp 72 -N 1000000 -m 4 -M 64] @ r2
 Error      : 9.716759e-05
-U-List     : 9.771921e-02
-V-List     : 1.172842e-01
+U-List     : 6.566905e-02
+V-List     : 4.657955e-02
 [./fmm_pts -omp 72 -N 1000000 -m 16 -M 320] @ r2
 Error      : 1.588667e-13
-U-List     : 8.817272e-01
-V-List     : 1.594586e+00
+U-List     : 4.676812e-01
+V-List     : 8.559153e-01
