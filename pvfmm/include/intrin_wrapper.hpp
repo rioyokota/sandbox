@@ -20,20 +20,12 @@ inline __m256d set_intrin(const double& a){
   return _mm256_set_pd(a,a,a,a);
 }
 
-inline __m256 load_intrin(float const* a){
+inline __m256 load_intrin(const float* a){
   return _mm256_load_ps(a);
 }
 
-inline __m256d load_intrin(double const* a){
+inline __m256d load_intrin(const double* a){
   return _mm256_load_pd(a);
-}
-
-inline __m256 bcast_intrin(float const* a){
-  return _mm256_broadcast_ss(a);
-}
-
-inline __m256d bcast_intrin(double const* a){
-  return _mm256_broadcast_sd(a);
 }
 
 inline void store_intrin(float* a, const __m256& b){
@@ -69,31 +61,15 @@ inline __m256d sub_intrin(const __m256d& a, const __m256d& b){
 }
 
 inline __m128 rsqrt_approx_intrin(const __m128& r2){
-#define RSQRT_INTRIN(a)     _mm_rsqrt_ps(a)
-#define CMPEQ_INTRIN(a,b)   _mm_cmpeq_ps(a,b)
-#define ANDNOT_INTRIN(a,b)  _mm_andnot_ps(a,b)
-  return ANDNOT_INTRIN(CMPEQ_INTRIN(r2,_mm_setzero_ps()),RSQRT_INTRIN(r2));
-  #undef RSQRT_INTRIN
-  #undef CMPEQ_INTRIN
-  #undef ANDNOT_INTRIN
+  return _mm_andnot_ps(_mm_cmpeq_ps(r2,_mm_setzero_ps()),_mm_rsqrt_ps(r2));
 }
 
 inline __m256 rsqrt_approx_intrin(const __m256& r2){
-  #define RSQRT_INTRIN(a)     _mm256_rsqrt_ps(a)
-  #define CMPEQ_INTRIN(a,b)   _mm256_cmp_ps(a,b,_CMP_EQ_OS)
-  #define ANDNOT_INTRIN(a,b)  _mm256_andnot_ps(a,b)
-  return ANDNOT_INTRIN(CMPEQ_INTRIN(r2,_mm256_setzero_ps()),RSQRT_INTRIN(r2));
-  #undef RSQRT_INTRIN
-  #undef CMPEQ_INTRIN
-  #undef ANDNOT_INTRIN
+  return _mm256_andnot_ps(_mm256_cmp_ps(r2,_mm256_setzero_ps(),_CMP_EQ_OS),_mm256_rsqrt_ps(r2));
 }
 
 inline __m256d rsqrt_approx_intrin(const __m256d& r2){
-  #define PD2PS(a) _mm256_cvtpd_ps(a)
-  #define PS2PD(a) _mm256_cvtps_pd(a)
-  return PS2PD(rsqrt_approx_intrin(PD2PS(r2)));
-  #undef PD2PS
-  #undef PS2PD
+  return _mm256_cvtps_pd(rsqrt_approx_intrin(_mm256_cvtpd_ps(r2)));
 }
 
 inline void rsqrt_newton_intrin(__m256& rinv, const __m256& r2, const float& nwtn_const){
@@ -115,27 +91,19 @@ inline __m128d zero_intrin(const double){
 }
 
 inline __m128 set_intrin(const float& a){
-  return _mm_set_ps1(a);
+  return _mm_set1_ps(a);
 }
 
 inline __m128d set_intrin(const double& a){
   return _mm_set1_pd(a);
 }
 
-inline __m128 load_intrin(float const* a){
+inline __m128 load_intrin(const float* a){
   return _mm_load_ps(a);
 }
 
-inline __m128d load_intrin(double const* a){
+inline __m128d load_intrin(const double* a){
   return _mm_load_pd(a);
-}
-
-inline __m128 bcast_intrin(float const* a){
-  return _mm_set_ps1(a[0]);
-}
-
-inline __m128d bcast_intrin(double const* a){
-  return _mm_load_pd1(a);
 }
 
 inline void store_intrin(float* a, const __m128& b){
@@ -171,21 +139,11 @@ inline __m128d sub_intrin(const __m128d& a, const __m128d& b){
 }
 
 inline __m128 rsqrt_approx_intrin(const __m128& r2){
-  #define RSQRT_INTRIN(a)     _mm_rsqrt_ps(a)
-  #define CMPEQ_INTRIN(a,b)   _mm_cmpeq_ps(a,b)
-  #define ANDNOT_INTRIN(a,b)  _mm_andnot_ps(a,b)
-  return ANDNOT_INTRIN(CMPEQ_INTRIN(r2,_mm_setzero_ps()),RSQRT_INTRIN(r2));
-  #undef RSQRT_INTRIN
-  #undef CMPEQ_INTRIN
-  #undef ANDNOT_INTRIN
+  return _mm_andnot_ps(_mm_cmpeq_ps(r2,_mm_setzero_ps()),_mm_rsqrt_ps(r2));
 }
 
 inline __m128d rsqrt_approx_intrin(const __m128d& r2){
-  #define PD2PS(a) _mm_cvtpd_ps(a)
-  #define PS2PD(a) _mm_cvtps_pd(a)
-  return PS2PD(rsqrt_approx_intrin(PD2PS(r2)));
-  #undef PD2PS
-  #undef PS2PD
+  return _mm_cvtps_pd(rsqrt_approx_intrin(_mm_cvtpd_ps(r2)));
 }
 
 inline void rsqrt_newton_intrin(__m128& rinv, const __m128& r2, const float& nwtn_const){

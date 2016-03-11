@@ -389,8 +389,8 @@ class FMM_Tree {
     Real_t a=r*RAD0;
     Real_t coord[3]={c[0],c[1],c[2]};
     int n1=p*2;
-    int n2=pow(n1,2);
-    int n3=pow(n1,3);
+    int n2=n1*n1;
+    int n3=n1*n1*n1;
     std::vector<Real_t> grid(n3*3);
     for(int i=0;i<n1;i++)
     for(int j=0;j<n1;j++)
