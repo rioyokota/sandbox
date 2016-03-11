@@ -435,7 +435,7 @@ std::vector<Real_t> cheb_integ(int m, Real_t* s_, Real_t r_, const Kernel<Real_t
   return U0;
 }
 
-template<typename T, void (*A)(Real_t*, int, Real_t*, int, Real_t*, int, Real_t*)>
+template<void (*A)(Real_t*, int, Real_t*, int, Real_t*, int, Real_t*)>
 Kernel<Real_t> BuildKernel(const char* name, std::pair<int,int> k_dim,
     const Kernel<Real_t>* k_s2m=NULL, const Kernel<Real_t>* k_s2l=NULL, const Kernel<Real_t>* k_s2t=NULL,
     const Kernel<Real_t>* k_m2m=NULL, const Kernel<Real_t>* k_m2l=NULL, const Kernel<Real_t>* k_m2t=NULL,
@@ -452,7 +452,7 @@ Kernel<Real_t> BuildKernel(const char* name, std::pair<int,int> k_dim,
   return K;
 }
 
-template<class T>
+template<typename T>
 struct LaplaceKernel{
   inline static const Kernel<T>& gradient();
 };
@@ -572,7 +572,7 @@ void Kernel<T>::Initialize(bool verbose) const{
     trg_scal.Resize(ker_dim[1]); trg_scal.SetZero();
     if(scale_invar){
       Matrix<Real_t> b(ker_dim[0]*ker_dim[1]+1,1); b.SetZero();
-      memcpy(&b[0][0],&M_scal[0][0],ker_dim[0]*ker_dim[1]*sizeof(T));
+      memcpy(&b[0][0],&M_scal[0][0],ker_dim[0]*ker_dim[1]*sizeof(Real_t));
       Matrix<Real_t> M(ker_dim[0]*ker_dim[1]+1,ker_dim[0]+ker_dim[1]); M.SetZero();
       M[ker_dim[0]*ker_dim[1]][0]=1;
       for(size_t i0=0;i0<ker_dim[0];i0++)
@@ -986,7 +986,7 @@ void Kernel<T>::Initialize(bool verbose) const{
 
 template <class T>
 void Kernel<T>::BuildMatrix(Real_t* r_src, int src_cnt, Real_t* r_trg, int trg_cnt, Real_t* k_out) const{
-  memset(k_out, 0, src_cnt*ker_dim[0]*trg_cnt*ker_dim[1]*sizeof(T));
+  memset(k_out, 0, src_cnt*ker_dim[0]*trg_cnt*ker_dim[1]*sizeof(Real_t));
   for(int i=0;i<src_cnt;i++)
     for(int j=0;j<ker_dim[0];j++){
       std::vector<Real_t> v_src(ker_dim[0],0);
@@ -1092,7 +1092,6 @@ void generic_kernel(Real_t* r_src, int src_cnt, Real_t* v_src, int dof, Real_t* 
   }
 }
 
-template <class Real_t, class Vec_t=Real_t>
 void laplace_poten_uKernel(Matrix<Real_t>& src_coord, Matrix<Real_t>& src_value, Matrix<Real_t>& trg_coord, Matrix<Real_t>& trg_value){
 #define SRC_BLK 1000
   size_t VecLen=sizeof(Vec_t)/sizeof(Real_t);
@@ -1131,16 +1130,15 @@ void laplace_poten_uKernel(Matrix<Real_t>& src_coord, Matrix<Real_t>& src_value,
   {
     Profile::Add_FLOP((long long)trg_cnt_*(long long)src_cnt_*20);
   }
-  #undef SRC_BLK
+#undef SRC_BLK
 }
 
 void laplace_poten(Real_t* r_src, int src_cnt, Real_t* v_src, int dof, Real_t* r_trg, int trg_cnt, Real_t* v_trg){
-  generic_kernel<Real_t, 1, 1, laplace_poten_uKernel<Real_t,Vec_t> >(r_src, src_cnt, v_src, dof, r_trg, trg_cnt, v_trg);
+  generic_kernel<Real_t, 1, 1, laplace_poten_uKernel>(r_src, src_cnt, v_src, dof, r_trg, trg_cnt, v_trg);
 }
 
-template <class Real_t, class Vec_t=Real_t>
 void laplace_grad_uKernel(Matrix<Real_t>& src_coord, Matrix<Real_t>& src_value, Matrix<Real_t>& trg_coord, Matrix<Real_t>& trg_value){
-  #define SRC_BLK 500
+#define SRC_BLK 500
   size_t VecLen=sizeof(Vec_t)/sizeof(Real_t);
   Real_t nwtn_scal=1;
   for(int i=0;i<2;i++){
@@ -1187,17 +1185,17 @@ void laplace_grad_uKernel(Matrix<Real_t>& src_coord, Matrix<Real_t>& src_value, 
   {
     Profile::Add_FLOP((long long)trg_cnt_*(long long)src_cnt_*27);
   }
-  #undef SRC_BLK
+#undef SRC_BLK
 }
 
 
 void laplace_grad(Real_t* r_src, int src_cnt, Real_t* v_src, int dof, Real_t* r_trg, int trg_cnt, Real_t* v_trg){
-  generic_kernel<Real_t, 1, 3, laplace_grad_uKernel<Real_t,Vec_t> >(r_src, src_cnt, v_src, dof, r_trg, trg_cnt, v_trg);
+  generic_kernel<Real_t, 1, 3, laplace_grad_uKernel>(r_src, src_cnt, v_src, dof, r_trg, trg_cnt, v_trg);
 }
 
 template<class T> const Kernel<T>& LaplaceKernel<T>::gradient(){
-  static Kernel<T> potn_ker=BuildKernel<T, laplace_poten >("laplace"     , std::pair<int,int>(1,1));
-  static Kernel<T> grad_ker=BuildKernel<T, laplace_grad >("laplace_grad", std::pair<int,int>(1,3),
+  static Kernel<Real_t> potn_ker=BuildKernel<laplace_poten >("laplace"     , std::pair<int,int>(1,1));
+  static Kernel<Real_t> grad_ker=BuildKernel<laplace_grad >("laplace_grad", std::pair<int,int>(1,3),
       &potn_ker, &potn_ker, NULL, &potn_ker, &potn_ker, NULL, &potn_ker, NULL);
   return grad_ker;
 }
