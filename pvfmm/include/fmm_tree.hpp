@@ -2051,7 +2051,7 @@ class FMM_Tree {
       std::vector<size_t> output_perm;
       size_t dof=0, M_dim0=0, M_dim1=0;
       size_t precomp_offset=0;
-      size_t buff_size=DEVICE_BUFFER_SIZE*1024l*1024l;
+      size_t buff_size=1024l*1024l*1024l;
       if(n_out && n_in) for(size_t type_indx=0; type_indx<interac_type_lst.size(); type_indx++){
         Mat_Type& interac_type=interac_type_lst[type_indx];
         size_t mat_cnt=interac_list.ListCount(interac_type);
@@ -3225,7 +3225,7 @@ class FMM_Tree {
         dof=1;
       }
       int omp_p=omp_get_max_threads();
-      size_t buff_size=DEVICE_BUFFER_SIZE*1024l*1024l;
+      size_t buff_size=1024l*1024l*1024l;
       size_t n_blk0=2*fftsize*dof*(ker_dim0*n_in +ker_dim1*n_out)*sizeof(Real_t)/buff_size;
       if(n_blk0==0) n_blk0=1;
       std::vector<std::vector<size_t> >  fft_vec(n_blk0);

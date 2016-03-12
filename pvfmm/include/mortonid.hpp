@@ -17,8 +17,7 @@ class MortonId{
     z=z & mask;
   }
 
-  template <class T>
-  inline MortonId(T x_f,T y_f, T z_f, uint8_t depth_=MAX_DEPTH) : depth(depth_) {
+  inline MortonId(Real_t x_f,Real_t y_f, Real_t z_f, uint8_t depth_=MAX_DEPTH) : depth(depth_) {
     static uint64_t max_int=((uint64_t)1)<<(MAX_DEPTH);
     x=(uint64_t)floor(x_f*max_int);
     y=(uint64_t)floor(y_f*max_int);

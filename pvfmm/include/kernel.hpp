@@ -1144,10 +1144,12 @@ Kernel BuildKernel(const char* name, std::pair<int,int> k_dim,
 template <class Real_t, int SRC_DIM, int TRG_DIM, void (*uKernel)(Matrix<Real_t>&, Matrix<Real_t>&, Matrix<Real_t>&, Matrix<Real_t>&)>
 void generic_kernel(Real_t* r_src, int src_cnt, Real_t* v_src, int dof, Real_t* r_trg, int trg_cnt, Real_t* v_trg){
   assert(dof==1);
+#if FLOAT
   int VecLen=8;
-  if(sizeof(Real_t)==sizeof( float)) VecLen=8;
-  if(sizeof(Real_t)==sizeof(double)) VecLen=4;
-  #define STACK_BUFF_SIZE 4096
+#else
+  int VecLen=4;
+#endif
+#define STACK_BUFF_SIZE 4096
   Real_t stack_buff[STACK_BUFF_SIZE+MEM_ALIGN];
   Real_t* buff=NULL;
   Matrix<Real_t> src_coord;
