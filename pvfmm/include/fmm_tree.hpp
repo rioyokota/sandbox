@@ -564,20 +564,19 @@ class FMM_Tree {
     }
     size_t mat_cnt=precomp_mat.Dim();
     size_t blk1_cnt=interac_dsp.Dim()/mat_cnt;
-    const size_t V_BLK_SIZE=V_BLK_CACHE*64/sizeof(Real_t);
-    Real_t** IN_ =mem::aligned_new<Real_t*>(2*V_BLK_SIZE*blk1_cnt*mat_cnt);
-    Real_t** OUT_=mem::aligned_new<Real_t*>(2*V_BLK_SIZE*blk1_cnt*mat_cnt);
+    Real_t** IN_ =mem::aligned_new<Real_t*>(CACHE_SIZE*blk1_cnt*mat_cnt);
+    Real_t** OUT_=mem::aligned_new<Real_t*>(CACHE_SIZE*blk1_cnt*mat_cnt);
 #pragma omp parallel for
     for(size_t interac_blk1=0; interac_blk1<blk1_cnt*mat_cnt; interac_blk1++){
       size_t interac_dsp0 = (interac_blk1==0?0:interac_dsp[interac_blk1-1]);
       size_t interac_dsp1 =                    interac_dsp[interac_blk1  ] ;
       size_t interac_cnt  = interac_dsp1-interac_dsp0;
       for(size_t j=0;j<interac_cnt;j++){
-        IN_ [2*V_BLK_SIZE*interac_blk1 +j]=&fft_in [interac_vec[(interac_dsp0+j)*2+0]];
-        OUT_[2*V_BLK_SIZE*interac_blk1 +j]=&fft_out[interac_vec[(interac_dsp0+j)*2+1]];
+        IN_ [CACHE_SIZE*interac_blk1 +j]=&fft_in [interac_vec[(interac_dsp0+j)*2+0]];
+        OUT_[CACHE_SIZE*interac_blk1 +j]=&fft_out[interac_vec[(interac_dsp0+j)*2+1]];
       }
-      IN_ [2*V_BLK_SIZE*interac_blk1 +interac_cnt]=zero_vec0;
-      OUT_[2*V_BLK_SIZE*interac_blk1 +interac_cnt]=zero_vec1;
+      IN_ [CACHE_SIZE*interac_blk1 +interac_cnt]=zero_vec0;
+      OUT_[CACHE_SIZE*interac_blk1 +interac_cnt]=zero_vec1;
     }
     int omp_p=omp_get_max_threads();
 #pragma omp parallel for
@@ -593,8 +592,8 @@ class FMM_Tree {
         size_t interac_dsp0 = (interac_blk1==0?0:interac_dsp[interac_blk1-1]);
         size_t interac_dsp1 =                    interac_dsp[interac_blk1  ] ;
         size_t interac_cnt  = interac_dsp1-interac_dsp0;
-        Real_t** IN = IN_ + 2*V_BLK_SIZE*interac_blk1;
-        Real_t** OUT= OUT_+ 2*V_BLK_SIZE*interac_blk1;
+        Real_t** IN = IN_ + CACHE_SIZE*interac_blk1;
+        Real_t** OUT= OUT_+ CACHE_SIZE*interac_blk1;
         Real_t* M = precomp_mat[mat_indx] + k*chld_cnt*chld_cnt*2 + (ot_dim+in_dim*ker_dim1)*M_dim*128;
         {
           for(size_t j=0;j<interac_cnt;j+=2){
@@ -3291,7 +3290,7 @@ class FMM_Tree {
           std::vector<FMM_Node*>& nodes_out_=nodes_blk_out[blk0];
           for(size_t i=0;i<nodes_in_.size();i++) nodes_in_[i]->node_id=i;
           {
-            size_t n_blk1=nodes_out_.size()*(2)*sizeof(Real_t)/(64*V_BLK_CACHE);
+            size_t n_blk1=nodes_out_.size()*sizeof(Real_t)/4/CACHE_SIZE;
             if(n_blk1==0) n_blk1=1;
             size_t interac_dsp_=0;
             for(size_t blk1=0;blk1<n_blk1;blk1++){

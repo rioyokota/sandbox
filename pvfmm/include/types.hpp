@@ -11,8 +11,8 @@
 
 #define MAX_DEPTH 62
 #define MEM_ALIGN 64
-#define DEVICE_BUFFER_SIZE 1024LL //in MB
-#define V_BLK_CACHE 8 //in KB
+#define DEVICE_BUFFER_SIZE 1024LL
+#define CACHE_SIZE 64
 
 #define UNUSED(x) (void)(x) // to ignore unused variable warning.
 
