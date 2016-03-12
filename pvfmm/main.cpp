@@ -30,8 +30,9 @@
 #include <immintrin.h>
 #endif
 
-//#include <vec.hpp>
+//#include <vec.h>
 #include <types.hpp>
+#include <args.h>
 #include <profile.hpp>
 #include <mem_mgr.hpp>
 #include <vector.hpp>
@@ -46,13 +47,15 @@
 #include <fmm_tree.hpp>
 
 using namespace pvfmm;
+using namespace exafmm;
 
 int main(int argc, char **argv){
-  omp_set_num_threads( atoi(commandline_option(argc, argv,  "-omp",     "1", false, "-omp  <int> =  (1)   : Number of OpenMP threads."          )));
-  size_t N=  (size_t)strtod(commandline_option(argc, argv,    "-N",     "1",  true, "-N    <int>          : Number of points."                  ),NULL);
-  size_t M=  (size_t)strtod(commandline_option(argc, argv,    "-M",   "350", false, "-M    <int>          : Number of points per octant."       ),NULL);
-  int mult_order=   strtoul(commandline_option(argc, argv,    "-m",    "10", false, "-m    <int> = (10)   : Multipole order (+ve even integer)."),NULL,10);
-  int depth=        strtoul(commandline_option(argc, argv,    "-d",    "15", false, "-d    <int> = (15)   : Maximum tree depth."                ),NULL,10);
+  Args args(argc, argv);
+  omp_set_num_threads(args.threads);
+  size_t N = args.numBodies;
+  size_t M = args.ncrit;
+  int mult_order = args.PP;
+  int depth = 15;
   Profile::Enable(true);
   Profile::Tic("FMM_Test",true);
   Kernel potn_ker=BuildKernel<laplace_poten >("laplace"    , std::pair<int,int>(1,1));

@@ -23,19 +23,19 @@ tags:
 	find . -name "*.cpp" -o -name "*.hpp" | xargs etags -f TAGS
 
 m4:
-	./a.out -omp 4 -N 100000 -m 4 -M 64
+	./a.out -T 4 -n 100000 -P 4 -c 64
 
 m16:
-	./a.out -omp 4 -N 100000 -m 16 -M 320
+	./a.out -T 4 -n 100000 -P 16 -c 320
 
 y4:
-	./a.out -omp 16 -N 1000000 -m 4 -M 64
+	./a.out -T 16 -n 1000000 -P 4 -c 64
 
 y16:
-	./a.out -omp 16 -N 1000000 -m 16 -M 320
+	./a.out -T 16 -n 1000000 -P 16 -c 320
 
 r4:
-	./a.out -omp 72 -N 1000000 -m 4 -M 64
+	./a.out -T 72 -n 1000000 -P 4 -c 64
 
 r16:
-	./a.out -omp 72 -N 1000000 -m 16 -M 320
+	./a.out -T 72 -n 1000000 -P 16 -c 320
