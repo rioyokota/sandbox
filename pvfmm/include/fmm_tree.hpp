@@ -653,11 +653,11 @@ class FMM_Tree {
     for(size_t i=0;i<Perm_Count;i++) {
       PrecompPerm(type, (Perm_Type) i);
     }
-    size_t mat_cnt=interacList.ListCount(type);
+    size_t mat_cnt=interac_list.ListCount(type);
     mat->Mat(level, type, mat_cnt-1);
     std::vector<size_t> indx_lst;
     for(size_t i=0; i<mat_cnt; i++) {
-      if(interacList.InteracClass(type,i)==i) {
+      if(interac_list.InteracClass(type,i)==i) {
         indx_lst.push_back(i);
       }
     }
@@ -665,9 +665,9 @@ class FMM_Tree {
       Precomp(level, type, indx_lst[i]);
     }
     for(size_t mat_indx=0;mat_indx<mat_cnt;mat_indx++){
-      Matrix<Real_t>& M0=interacList.ClassMat(level, type, mat_indx);
-      Permutation<Real_t>& pr=interacList.Perm_R(level, type, mat_indx);
-      Permutation<Real_t>& pc=interacList.Perm_C(level, type, mat_indx);
+      Matrix<Real_t>& M0=interac_list.ClassMat(level, type, mat_indx);
+      Permutation<Real_t>& pr=interac_list.Perm_R(level, type, mat_indx);
+      Permutation<Real_t>& pc=interac_list.Perm_C(level, type, mat_indx);
       if(pr.Dim()!=M0.Dim(0) || pc.Dim()!=M0.Dim(1)) Precomp(level, type, mat_indx);
     }
   }
@@ -724,14 +724,14 @@ class FMM_Tree {
     Matrix<Real_t>& M_ = mat->Mat(level, type, mat_indx);
     if(M_.Dim(0)!=0 && M_.Dim(1)!=0) return M_;
     else{
-      size_t class_indx = interacList.InteracClass(type, mat_indx);
+      size_t class_indx = interac_list.InteracClass(type, mat_indx);
       if(class_indx!=mat_indx){
         Matrix<Real_t>& M0 = Precomp(level, type, class_indx);
         if(M0.Dim(0)==0 || M0.Dim(1)==0) return M_;
   
         for(size_t i=0;i<Perm_Count;i++) PrecompPerm(type, (Perm_Type) i);
-        Permutation<Real_t>& Pr = interacList.Perm_R(level, type, mat_indx);
-        Permutation<Real_t>& Pc = interacList.Perm_C(level, type, mat_indx);
+        Permutation<Real_t>& Pr = interac_list.Perm_R(level, type, mat_indx);
+        Permutation<Real_t>& Pc = interac_list.Perm_C(level, type, mat_indx);
         if(Pr.Dim()>0 && Pc.Dim()>0 && M0.Dim(0)>0 && M0.Dim(1)>0) return M_;
       }
     }
@@ -821,7 +821,7 @@ class FMM_Tree {
         std::vector<Real_t> check_surf=u_check_surf(MultipoleOrder(),c,level);
         size_t n_uc=check_surf.size()/3;
         Real_t s=powf(0.5,(level+2));
-        int* coord=interacList.RelativeCoord(type,mat_indx);
+        int* coord=interac_list.RelativeCoord(type,mat_indx);
         Real_t child_coord[3]={(coord[0]+1)*s,(coord[1]+1)*s,(coord[2]+1)*s};
         std::vector<Real_t> equiv_surf=u_equiv_surf(MultipoleOrder(),child_coord,level+1);
         size_t n_ue=equiv_surf.size()/3;
@@ -838,7 +838,7 @@ class FMM_Tree {
         if(MultipoleOrder()==0) break;
         const int* ker_dim=kernel->k_l2l->ker_dim;
         Real_t s=powf(0.5,level+1);
-        int* coord=interacList.RelativeCoord(type,mat_indx);
+        int* coord=interac_list.RelativeCoord(type,mat_indx);
         Real_t c[3]={(coord[0]+1)*s,(coord[1]+1)*s,(coord[2]+1)*s};
         std::vector<Real_t> check_surf=d_check_surf(MultipoleOrder(),c,level);
         size_t n_dc=check_surf.size()/3;
@@ -893,7 +893,7 @@ class FMM_Tree {
         int n3 =n1*n1*n1;
         int n3_=n1*n1*(n1/2+1);
         Real_t s=powf(0.5,level);
-        int* coord2=interacList.RelativeCoord(type,mat_indx);
+        int* coord2=interac_list.RelativeCoord(type,mat_indx);
         Real_t coord_diff[3]={coord2[0]*s,coord2[1]*s,coord2[2]*s};
         std::vector<Real_t> r_trg(3,0.0);
         std::vector<Real_t> conv_poten(n3*ker_dim[0]*ker_dim[1]);
@@ -927,7 +927,7 @@ class FMM_Tree {
       {
         if(MultipoleOrder()==0) break;
         const int* ker_dim=kernel->k_m2l->ker_dim;
-        size_t mat_cnt =interacList.ListCount( V_Type);
+        size_t mat_cnt =interac_list.ListCount( V_Type);
         for(size_t k=0;k<mat_cnt;k++) Precomp(level, V_Type, k);
   
         const size_t chld_cnt=1UL<<3;
@@ -941,14 +941,14 @@ class FMM_Tree {
         Vector<Real_t*> M_ptr(chld_cnt*chld_cnt);
         for(size_t i=0;i<chld_cnt*chld_cnt;i++) M_ptr[i]=&zero_vec[0];
   
-        int* rel_coord_=interacList.RelativeCoord(V1_Type, mat_indx);
+        int* rel_coord_=interac_list.RelativeCoord(V1_Type, mat_indx);
         for(int j1=0;j1<chld_cnt;j1++)
         for(int j2=0;j2<chld_cnt;j2++){
           int rel_coord[3]={rel_coord_[0]*2-(j1/1)%2+(j2/1)%2,
                             rel_coord_[1]*2-(j1/2)%2+(j2/2)%2,
                             rel_coord_[2]*2-(j1/4)%2+(j2/4)%2};
           for(size_t k=0;k<mat_cnt;k++){
-            int* ref_coord=interacList.RelativeCoord(V_Type, k);
+            int* ref_coord=interac_list.RelativeCoord(V_Type, k);
             if(ref_coord[0]==rel_coord[0] &&
                ref_coord[1]==rel_coord[1] &&
                ref_coord[2]==rel_coord[2]){
@@ -976,7 +976,7 @@ class FMM_Tree {
         size_t n_trg=rel_trg_coord.size()/3;
         std::vector<Real_t> trg_coord(n_trg*3);
         for(size_t j=0;j<n_trg*3;j++) trg_coord[j]=rel_trg_coord[j]*s;
-        int* coord2=interacList.RelativeCoord(type,mat_indx);
+        int* coord2=interac_list.RelativeCoord(type,mat_indx);
         Real_t c[3]={(Real_t)((coord2[0]+1)*s*0.25),(Real_t)((coord2[1]+1)*s*0.25),(Real_t)((coord2[2]+1)*s*0.25)};
         std::vector<Real_t> equiv_surf=u_equiv_surf(MultipoleOrder(),c,level+1);
         size_t n_eq=equiv_surf.size()/3;
@@ -992,7 +992,7 @@ class FMM_Tree {
         if(kernel->k_m2l->ker_dim[0]!=kernel->k_m2m->ker_dim[0]) break;
         if(kernel->k_m2l->ker_dim[1]!=kernel->k_l2l->ker_dim[1]) break;
         int ker_dim[2]={kernel->k_m2l->ker_dim[0],kernel->k_m2l->ker_dim[1]};
-        size_t mat_cnt_m2m=interacList.ListCount(U2U_Type);
+        size_t mat_cnt_m2m=interac_list.ListCount(U2U_Type);
         size_t n_surf=(6*(MultipoleOrder()-1)*(MultipoleOrder()-1)+2);
         if((M.Dim(0)!=n_surf*ker_dim[0] || M.Dim(1)!=n_surf*ker_dim[1]) && level==0){
           Matrix<Real_t> M_m2m[MAX_DEPTH+1];
@@ -1051,16 +1051,16 @@ class FMM_Tree {
           for(int level=0; level>=-MAX_DEPTH; level--){
             {
               Precomp(level, D2D_Type, 0);
-              Permutation<Real_t>& Pr = interacList.Perm_R(level, D2D_Type, 0);
-              Permutation<Real_t>& Pc = interacList.Perm_C(level, D2D_Type, 0);
-              M_l2l[-level] = M_check_zero_avg * Pr * Precomp(level, D2D_Type, interacList.InteracClass(D2D_Type, 0)) * Pc * M_check_zero_avg;
+              Permutation<Real_t>& Pr = interac_list.Perm_R(level, D2D_Type, 0);
+              Permutation<Real_t>& Pc = interac_list.Perm_C(level, D2D_Type, 0);
+              M_l2l[-level] = M_check_zero_avg * Pr * Precomp(level, D2D_Type, interac_list.InteracClass(D2D_Type, 0)) * Pc * M_check_zero_avg;
               assert(M_l2l[-level].Dim(0)>0 && M_l2l[-level].Dim(1)>0);
             }
             for(size_t mat_indx=0; mat_indx<mat_cnt_m2m; mat_indx++){
               Precomp(level, U2U_Type, mat_indx);
-              Permutation<Real_t>& Pr = interacList.Perm_R(level, U2U_Type, mat_indx);
-              Permutation<Real_t>& Pc = interacList.Perm_C(level, U2U_Type, mat_indx);
-              Matrix<Real_t> M = Pr * Precomp(level, U2U_Type, interacList.InteracClass(U2U_Type, mat_indx)) * Pc;
+              Permutation<Real_t>& Pr = interac_list.Perm_R(level, U2U_Type, mat_indx);
+              Permutation<Real_t>& Pc = interac_list.Perm_C(level, U2U_Type, mat_indx);
+              Matrix<Real_t> M = Pr * Precomp(level, U2U_Type, interac_list.InteracClass(U2U_Type, mat_indx)) * Pc;
               assert(M.Dim(0)>0 && M.Dim(1)>0);
   
               if(mat_indx==0) M_m2m[-level] = M_equiv_zero_avg*M*M_equiv_zero_avg;
@@ -1169,37 +1169,37 @@ class FMM_Tree {
           if(!ScaleInvar()) {
             Mat_Type type=D2D_Type;
             for(int l=-MAX_DEPTH;l<0;l++)
-            for(size_t indx=0;indx<interacList.ListCount(type);indx++){
+            for(size_t indx=0;indx<interac_list.ListCount(type);indx++){
               Matrix<Real_t>& M=mat->Mat(l, type, indx);
               M.Resize(0,0);
             }
             type=U2U_Type;
             for(int l=-MAX_DEPTH;l<0;l++)
-            for(size_t indx=0;indx<interacList.ListCount(type);indx++){
+            for(size_t indx=0;indx<interac_list.ListCount(type);indx++){
               Matrix<Real_t>& M=mat->Mat(l, type, indx);
               M.Resize(0,0);
             }
             type=DC2DE0_Type;
             for(int l=-MAX_DEPTH;l<0;l++)
-            for(size_t indx=0;indx<interacList.ListCount(type);indx++){
+            for(size_t indx=0;indx<interac_list.ListCount(type);indx++){
               Matrix<Real_t>& M=mat->Mat(l, type, indx);
               M.Resize(0,0);
             }
             type=DC2DE1_Type;
             for(int l=-MAX_DEPTH;l<0;l++)
-            for(size_t indx=0;indx<interacList.ListCount(type);indx++){
+            for(size_t indx=0;indx<interac_list.ListCount(type);indx++){
               Matrix<Real_t>& M=mat->Mat(l, type, indx);
               M.Resize(0,0);
             }
             type=UC2UE0_Type;
             for(int l=-MAX_DEPTH;l<0;l++)
-            for(size_t indx=0;indx<interacList.ListCount(type);indx++){
+            for(size_t indx=0;indx<interac_list.ListCount(type);indx++){
               Matrix<Real_t>& M=mat->Mat(l, type, indx);
               M.Resize(0,0);
             }
             type=UC2UE1_Type;
             for(int l=-MAX_DEPTH;l<0;l++)
-            for(size_t indx=0;indx<interacList.ListCount(type);indx++){
+            for(size_t indx=0;indx<interac_list.ListCount(type);indx++){
               Matrix<Real_t>& M=mat->Mat(l, type, indx);
               M.Resize(0,0);
             }
@@ -1231,7 +1231,7 @@ class FMM_Tree {
 
   std::vector<Matrix<Real_t> > node_data_buff;
   pvfmm::Matrix<FMM_Node*> node_interac_lst;
-  InteracList interacList;
+  InteracList interac_list;
   std::vector<Matrix<char> > precomp_lst;
   std::vector<SetupData > setup_data;
   std::vector<Vector<Real_t> > upwd_check_surf;
@@ -1409,7 +1409,7 @@ class FMM_Tree {
       save_precomp=true;
     }
     mat->LoadFile(mat_fname.c_str());
-    interacList.Initialize(mat);
+    interac_list.Initialize(mat);
     Profile::Tic("PrecompUC2UE",false,4);
     PrecompAll(UC2UE0_Type);
     PrecompAll(UC2UE1_Type);
@@ -1600,7 +1600,7 @@ class FMM_Tree {
 
   void InitFMM_Tree(bool refine) {
     Profile::Tic("InitFMM_Tree",true);{
-      interacList.Initialize(mat);
+      interac_list.Initialize(mat);
     }Profile::Toc();
   }
 
@@ -1732,7 +1732,7 @@ class FMM_Tree {
       int indx=0;
       size_t vec_sz;
       {
-        Matrix<Real_t>& M_uc2ue = interacList.ClassMat(0, UC2UE1_Type, 0);
+        Matrix<Real_t>& M_uc2ue = interac_list.ClassMat(0, UC2UE1_Type, 0);
         vec_sz=M_uc2ue.Dim(1);
       }
       std::vector< FMM_Node* > node_lst;
@@ -1783,7 +1783,7 @@ class FMM_Tree {
       int indx=1;
       size_t vec_sz;
       {
-        Matrix<Real_t>& M_dc2de0 = interacList.ClassMat(0, DC2DE0_Type, 0);
+        Matrix<Real_t>& M_dc2de0 = interac_list.ClassMat(0, DC2DE0_Type, 0);
         vec_sz=M_dc2de0.Dim(0);
       }
       std::vector< FMM_Node* > node_lst;
@@ -2054,7 +2054,7 @@ class FMM_Tree {
       size_t buff_size=1024l*1024l*1024l;
       if(n_out && n_in) for(size_t type_indx=0; type_indx<interac_type_lst.size(); type_indx++){
         Mat_Type& interac_type=interac_type_lst[type_indx];
-        size_t mat_cnt=interacList.ListCount(interac_type);
+        size_t mat_cnt=interac_list.ListCount(interac_type);
         Matrix<size_t> precomp_data_offset;
         {
           struct HeaderData{
@@ -2071,6 +2071,16 @@ class FMM_Tree {
         }
         Matrix<FMM_Node*> src_interac_list(n_in ,mat_cnt); src_interac_list.SetZero();
         Matrix<FMM_Node*> trg_interac_list(n_out,mat_cnt); trg_interac_list.SetZero();
+        {
+#pragma omp parallel for
+          for(size_t i=0;i<n_out;i++){
+            if(!nodes_out[i]->IsGhost() && (level==-1 || nodes_out[i]->depth==level)){
+              Vector<FMM_Node*>& lst=nodes_out[i]->interac_list[interac_type];
+              memcpy(&trg_interac_list[i][0], &lst[0], lst.Dim()*sizeof(FMM_Node*));
+              assert(lst.Dim()==mat_cnt);
+            }
+          }
+        }
         {
 #pragma omp parallel for
           for(size_t i=0;i<n_out;i++){
@@ -2098,7 +2108,7 @@ class FMM_Tree {
         std::vector<size_t> interac_blk_dsp(1,0);
         {
           dof=1;
-	  Matrix<Real_t>& M0 = interacList.ClassMat(level, interac_type_lst[0], 0);
+	  Matrix<Real_t>& M0 = interac_list.ClassMat(level, interac_type_lst[0], 0);
           M_dim0=M0.Dim(0); M_dim1=M0.Dim(1);
         }
         {
@@ -2126,11 +2136,30 @@ class FMM_Tree {
               interac_dsp_-=offset;
               assert(interac_dsp_*vec_size<=buff_size);
             }
-            interac_mat.push_back(precomp_data_offset[interacList.InteracClass(interac_type,j)][0]);
+            interac_mat.push_back(precomp_data_offset[interac_list.InteracClass(interac_type,j)][0]);
             interac_cnt.push_back(interac_dsp_-interac_dsp[0][j]);
           }
           interac_blk.push_back(mat_cnt-interac_blk_dsp.back());
           interac_blk_dsp.push_back(mat_cnt);
+        }
+        {
+          size_t vec_size=M_dim0*dof;
+          for(size_t i=0;i<n_out;i++) nodes_out[i]->node_id=i;
+          for(size_t k=1;k<interac_blk_dsp.size();k++){
+            for(size_t i=0;i<n_in ;i++){
+              for(size_t j=interac_blk_dsp[k-1];j<interac_blk_dsp[k];j++){
+                FMM_Node* trg_node=src_interac_list[i][j];
+                if(trg_node!=NULL && trg_node->node_id<n_out){
+                  size_t depth=(ScaleInvar()?trg_node->depth:0);
+                  input_perm .push_back(precomp_data_offset[j][1+4*depth+0]);
+                  input_perm .push_back(precomp_data_offset[j][1+4*depth+1]);
+                  input_perm .push_back(interac_dsp[trg_node->node_id][j]*vec_size*sizeof(Real_t));
+                  input_perm .push_back((size_t)(& input_vector[i][0][0]- input_data[0]));
+                  assert(input_vector[i]->Dim()==vec_size);
+                }
+              }
+            }
+          }
         }
         {
           size_t vec_size=M_dim1*dof;
@@ -2624,7 +2653,7 @@ class FMM_Tree {
               in_node.push_back(snode_id);
               scal_idx.push_back(snode->depth);
               {
-                const int* rel_coord=interacList.RelativeCoord(type,j);
+                const int* rel_coord=interac_list.RelativeCoord(type,j);
                 const Real_t* scoord=snode->Coord();
                 const Real_t* tcoord=tnode->Coord();
                 Real_t shift[3];
@@ -2774,7 +2803,7 @@ class FMM_Tree {
     std::vector<size_t> interac_cnt(type_lst.size());
     std::vector<size_t> interac_dsp(type_lst.size(),0);
     for(size_t i=0;i<type_lst.size();i++){
-      interac_cnt[i]=interacList.ListCount(type_lst[i]);
+      interac_cnt[i]=interac_list.ListCount(type_lst[i]);
     }
     scan(&interac_cnt[0],&interac_dsp[0],type_lst.size());
     node_interac_lst.ReInit(node_cnt,interac_cnt.back()+interac_dsp.back());
@@ -2787,9 +2816,8 @@ class FMM_Tree {
         size_t b=(n_list.size()*(j+1))/omp_p;
         for(size_t i=a;i<b;i++){
           FMM_Node* n=n_list[i];
-	  Vector<FMM_Node*> tmp(interac_cnt[k],&node_interac_lst[i][interac_dsp[k]],false);
-	  n->interac_list[type_lst[k]].Swap(tmp);
-          interacList.BuildList(n,type_lst[k]);
+          n->interac_list[type_lst[k]].ReInit(interac_cnt[k],&node_interac_lst[i][interac_dsp[k]],false);
+          interac_list.BuildList(n,type_lst[k]);
         }
       }
     }
@@ -3173,7 +3201,7 @@ class FMM_Tree {
     if(n_out>0 && n_in >0){
       size_t precomp_offset=0;
       Mat_Type& interac_type=setup_data.interac_type[0];
-      size_t mat_cnt=interacList.ListCount(interac_type);
+      size_t mat_cnt=interac_list.ListCount(interac_type);
       Matrix<size_t> precomp_data_offset;
       std::vector<size_t> interac_mat;
       std::vector<Real_t*> interac_mat_ptr;
@@ -3766,7 +3794,7 @@ class FMM_Tree {
               in_node.push_back(snode_id);
               scal_idx.push_back(snode->depth);
               {
-                const int* rel_coord=interacList.RelativeCoord(type,j);
+                const int* rel_coord=interac_list.RelativeCoord(type,j);
                 const Real_t* scoord=snode->Coord();
                 const Real_t* tcoord=tnode->Coord();
                 Real_t shift[3];
@@ -3946,7 +3974,7 @@ class FMM_Tree {
               in_node.push_back(snode_id);
               scal_idx.push_back(snode->depth);
               {
-                const int* rel_coord=interacList.RelativeCoord(type,j);
+                const int* rel_coord=interac_list.RelativeCoord(type,j);
                 const Real_t* scoord=snode->Coord();
                 const Real_t* tcoord=tnode->Coord();
                 Real_t shift[3];
@@ -4143,7 +4171,7 @@ class FMM_Tree {
               in_node.push_back(snode_id);
               scal_idx.push_back(snode->depth);
               {
-                const int* rel_coord=interacList.RelativeCoord(type,j);
+                const int* rel_coord=interac_list.RelativeCoord(type,j);
                 const Real_t* scoord=snode->Coord();
                 const Real_t* tcoord=tnode->Coord();
                 Real_t shift[3];
@@ -4167,7 +4195,7 @@ class FMM_Tree {
               in_node.push_back(snode_id);
               scal_idx.push_back(snode->depth);
               {
-                const int* rel_coord=interacList.RelativeCoord(type,j);
+                const int* rel_coord=interac_list.RelativeCoord(type,j);
                 const Real_t* scoord=snode->Coord();
                 const Real_t* tcoord=tnode->Coord();
                 Real_t shift[3];
@@ -4191,7 +4219,7 @@ class FMM_Tree {
               in_node.push_back(snode_id);
               scal_idx.push_back(snode->depth);
               {
-                const int* rel_coord=interacList.RelativeCoord(type,j);
+                const int* rel_coord=interac_list.RelativeCoord(type,j);
                 const Real_t* scoord=snode->Coord();
                 const Real_t* tcoord=tnode->Coord();
                 Real_t shift[3];
@@ -4216,7 +4244,7 @@ class FMM_Tree {
               in_node.push_back(snode_id);
               scal_idx.push_back(snode->depth);
               {
-                const int* rel_coord=interacList.RelativeCoord(type,j);
+                const int* rel_coord=interac_list.RelativeCoord(type,j);
                 const Real_t* scoord=snode->Coord();
                 const Real_t* tcoord=tnode->Coord();
                 Real_t shift[3];
@@ -4242,7 +4270,7 @@ class FMM_Tree {
               in_node.push_back(snode_id);
               scal_idx.push_back(snode->depth);
               {
-                const int* rel_coord=interacList.RelativeCoord(type,j);
+                const int* rel_coord=interac_list.RelativeCoord(type,j);
                 const Real_t* scoord=snode->Coord();
                 const Real_t* tcoord=tnode->Coord();
                 Real_t shift[3];
@@ -4436,7 +4464,7 @@ class FMM_Tree {
               in_node.push_back(snode_id);
               scal_idx.push_back(snode->depth);
               {
-                const int* rel_coord=interacList.RelativeCoord(type,j);
+                const int* rel_coord=interac_list.RelativeCoord(type,j);
                 const Real_t* scoord=snode->Coord();
                 const Real_t* tcoord=tnode->Coord();
                 Real_t shift[3];
