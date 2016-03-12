@@ -15,19 +15,6 @@ extern "C" {
 namespace pvfmm{
 
   template <class T>
-  void tsvd(char *JOBU, char *JOBVT, int *M, int *N, T *A, int *LDA,
-	    T *S, T *U, int *LDU, T *VT, int *LDVT, T *WORK, int *LWORK,
-	    int *INFO) {
-    sgesvd_(JOBU,JOBVT,M,N,A,LDA,S,U,LDU,VT,LDVT,WORK,LWORK,INFO);
-  }
-
-  template<>
-  void tsvd<double>(char *JOBU, char *JOBVT, int *M, int *N, double *A, int *LDA,
-		    double *S, double *U, int *LDU, double *VT, int *LDVT, double *WORK, int *LWORK, int *INFO){
-    dgesvd_(JOBU,JOBVT,M,N,A,LDA,S,U,LDU,VT,LDVT,WORK,LWORK,INFO);
-  }
-
-  template <class T>
   void tpinv(T* M, int n1, int n2, T eps, T* M_){
     if(n1*n2==0) return;
     int m = n2;
@@ -43,8 +30,11 @@ namespace pvfmm{
     int wssize1 = 5*(m<n?m:n);
     wssize = (wssize>wssize1?wssize:wssize1);
     T* wsbuf = mem::aligned_new<T>(wssize);
-    tsvd(&JOBU, &JOBVT, &m, &n, &M[0], &m, &tS[0], &tU[0], &m, &tVT[0], &k,
-        wsbuf, &wssize, &INFO);
+#if FLOAT
+    sgesvd_(&JOBU, &JOBVT, &m, &n, &M[0], &m, &tS[0], &tU[0], &m, &tVT[0], &k, wsbuf, &wssize, &INFO);
+#else
+    dgesvd_(&JOBU, &JOBVT, &m, &n, &M[0], &m, &tS[0], &tU[0], &m, &tVT[0], &k, wsbuf, &wssize, &INFO);
+#endif
     if(INFO!=0)
       std::cout<<INFO<<'\n';
     assert(INFO==0);
