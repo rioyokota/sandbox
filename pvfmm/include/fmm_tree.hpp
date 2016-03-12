@@ -564,6 +564,7 @@ class FMM_Tree {
     }
     size_t mat_cnt=precomp_mat.Dim();
     size_t blk1_cnt=interac_dsp.Dim()/mat_cnt;
+    int BLOCK_SIZE = CACHE_SIZE * 4 / sizeof(Real_t);
     Real_t** IN_ =mem::aligned_new<Real_t*>(BLOCK_SIZE*blk1_cnt*mat_cnt);
     Real_t** OUT_=mem::aligned_new<Real_t*>(BLOCK_SIZE*blk1_cnt*mat_cnt);
 #pragma omp parallel for
@@ -3290,7 +3291,7 @@ class FMM_Tree {
           std::vector<FMM_Node*>& nodes_out_=nodes_blk_out[blk0];
           for(size_t i=0;i<nodes_in_.size();i++) nodes_in_[i]->node_id=i;
           {
-            size_t n_blk1=nodes_out_.size()*sizeof(Real_t)/4/BLOCK_SIZE;
+            size_t n_blk1=nodes_out_.size()*sizeof(Real_t)/CACHE_SIZE;
             if(n_blk1==0) n_blk1=1;
             size_t interac_dsp_=0;
             for(size_t blk1=0;blk1<n_blk1;blk1++){

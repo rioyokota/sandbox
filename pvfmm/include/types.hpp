@@ -11,7 +11,7 @@
 
 #define MAX_DEPTH 62
 #define MEM_ALIGN 64
-#define BLOCK_SIZE 64
+#define CACHE_SIZE 512
 
 #define UNUSED(x) (void)(x) // to ignore unused variable warning.
 
