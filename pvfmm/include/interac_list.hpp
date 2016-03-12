@@ -294,14 +294,15 @@ public:
   }
 
   void InitList(int max_r, int min_r, int step, Mat_Type t){
+    const int max_hash = 2000;
     int n1 = (max_r*2)/step+1;
     int n2 = (min_r*2)/step-1;
     size_t count=n1*n1*n1-(min_r>0?n2*n2*n2:0);
     Matrix<int>& M=rel_coord[t];
     M.Resize(count,3);
-    hash_lut[t].assign(PVFMM_MAX_COORD_HASH, -1);
-    std::vector<int> class_size_hash(PVFMM_MAX_COORD_HASH, 0);
-    std::vector<int> class_disp_hash(PVFMM_MAX_COORD_HASH, 0);
+    hash_lut[t].assign(max_hash, -1);
+    std::vector<int> class_size_hash(max_hash, 0);
+    std::vector<int> class_disp_hash(max_hash, 0);
     for(int k=-max_r;k<=max_r;k+=step)
       for(int j=-max_r;j<=max_r;j+=step)
 	for(int i=-max_r;i<=max_r;i+=step)
@@ -309,7 +310,7 @@ public:
 	    int c[3]={i,j,k};
 	    class_size_hash[class_hash(c)]++;
 	  }
-    scan(&class_size_hash[0], &class_disp_hash[0], PVFMM_MAX_COORD_HASH);
+    scan(&class_size_hash[0], &class_disp_hash[0], max_hash);
     size_t count_=0;
     for(int k=-max_r;k<=max_r;k+=step)
       for(int j=-max_r;j<=max_r;j+=step)
