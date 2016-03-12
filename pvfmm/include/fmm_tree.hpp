@@ -2133,25 +2133,6 @@ class FMM_Tree {
           interac_blk_dsp.push_back(mat_cnt);
         }
         {
-          size_t vec_size=M_dim0*dof;
-          for(size_t i=0;i<n_out;i++) nodes_out[i]->node_id=i;
-          for(size_t k=1;k<interac_blk_dsp.size();k++){
-            for(size_t i=0;i<n_in ;i++){
-              for(size_t j=interac_blk_dsp[k-1];j<interac_blk_dsp[k];j++){
-                FMM_Node* trg_node=src_interac_list[i][j];
-                if(trg_node!=NULL && trg_node->node_id<n_out){
-                  size_t depth=(ScaleInvar()?trg_node->depth:0);
-                  input_perm .push_back(precomp_data_offset[j][1+4*depth+0]);
-                  input_perm .push_back(precomp_data_offset[j][1+4*depth+1]);
-                  input_perm .push_back(interac_dsp[trg_node->node_id][j]*vec_size*sizeof(Real_t));
-                  input_perm .push_back((size_t)(& input_vector[i][0][0]- input_data[0]));
-                  assert(input_vector[i]->Dim()==vec_size);
-                }
-              }
-            }
-          }
-        }
-        {
           size_t vec_size=M_dim1*dof;
           for(size_t k=1;k<interac_blk_dsp.size();k++){
             for(size_t i=0;i<n_out;i++){
@@ -2806,7 +2787,8 @@ class FMM_Tree {
         size_t b=(n_list.size()*(j+1))/omp_p;
         for(size_t i=a;i<b;i++){
           FMM_Node* n=n_list[i];
-          n->interac_list[type_lst[k]].ReInit(interac_cnt[k],&node_interac_lst[i][interac_dsp[k]],false);
+	  Vector<FMM_Node*> tmp(interac_cnt[k],&node_interac_lst[i][interac_dsp[k]],false);
+	  n->interac_list[type_lst[k]].Swap(tmp);
           interacList.BuildList(n,type_lst[k]);
         }
       }
