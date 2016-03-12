@@ -15,16 +15,6 @@ extern "C" {
 namespace pvfmm{
 
   template <class T>
-  void tgemm(char TransA, char TransB,  int M,  int N,  int K,  T alpha,  T *A,  int lda,  T *B,  int ldb,  T beta, T *C,  int ldc) {
-    sgemm_(&TransA, &TransB, &M, &N, &K, &alpha, A, &lda, B, &ldb, &beta, C, &ldc);
-  }
-
-  template<>
-  void tgemm<double>(char TransA, char TransB,  int M,  int N,  int K,  double alpha,  double *A,  int lda,  double *B,  int ldb,  double beta, double *C,  int ldc){
-    dgemm_(&TransA, &TransB, &M, &N, &K, &alpha, A, &lda, B, &ldb, &beta, C, &ldc);
-  }
-
-  template <class T>
   void tsvd(char *JOBU, char *JOBVT, int *M, int *N, T *A, int *LDA,
 	    T *S, T *U, int *LDU, T *VT, int *LDVT, T *WORK, int *LWORK,
 	    int *INFO) {
@@ -70,7 +60,13 @@ namespace pvfmm{
         tU[i+j*m]*=tS[j];
       }
     }
-    tgemm<T>('T','T',n,m,k,1.0,&tVT[0],k,&tU[0],m,0.0,M_,n);
+    char TransA = 'T', TransB = 'T';
+    Real_t zero = 0, one = 1;
+#if FLOAT
+    sgemm_(&TransA,&TransB,&n,&m,&k,&one,&tVT[0],&k,&tU[0],&m,&zero,M_,&n);
+#else
+    dgemm_(&TransA,&TransB,&n,&m,&k,&one,&tVT[0],&k,&tU[0],&m,&zero,M_,&n);
+#endif
     mem::aligned_delete<T>(tU);
     mem::aligned_delete<T>(tS);
     mem::aligned_delete<T>(tVT);
