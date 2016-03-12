@@ -362,31 +362,31 @@ class FMM_Tree {
   
   std::vector<Real_t> u_check_surf(int p, Real_t* c, int depth){
     Real_t r=0.5*powf(0.5,depth);
-    Real_t coord[3]={(Real_t)(c[0]-r*(RAD1-1.0)),(Real_t)(c[1]-r*(RAD1-1.0)),(Real_t)(c[2]-r*(RAD1-1.0))};
-    return surface(p,coord,(Real_t)RAD1,depth);
+    Real_t coord[3]={(Real_t)(c[0]-r*1.95),(Real_t)(c[1]-r*1.95),(Real_t)(c[2]-r*1.95)};
+    return surface(p,coord,2.95,depth);
   }
   
   std::vector<Real_t> u_equiv_surf(int p, Real_t* c, int depth){
     Real_t r=0.5*powf(0.5,depth);
-    Real_t coord[3]={(Real_t)(c[0]-r*(RAD0-1.0)),(Real_t)(c[1]-r*(RAD0-1.0)),(Real_t)(c[2]-r*(RAD0-1.0))};
-    return surface(p,coord,(Real_t)RAD0,depth);
+    Real_t coord[3]={(Real_t)(c[0]-r*0.05),(Real_t)(c[1]-r*0.05),(Real_t)(c[2]-r*0.05)};
+    return surface(p,coord,1.05,depth);
   }
   
   std::vector<Real_t> d_check_surf(int p, Real_t* c, int depth){
     Real_t r=0.5*powf(0.5,depth);
-    Real_t coord[3]={(Real_t)(c[0]-r*(RAD0-1.0)),(Real_t)(c[1]-r*(RAD0-1.0)),(Real_t)(c[2]-r*(RAD0-1.0))};
-    return surface(p,coord,(Real_t)RAD0,depth);
+    Real_t coord[3]={(Real_t)(c[0]-r*0.05),(Real_t)(c[1]-r*0.05),(Real_t)(c[2]-r*0.05)};
+    return surface(p,coord,1.05,depth);
   }
   
   std::vector<Real_t> d_equiv_surf(int p, Real_t* c, int depth){
     Real_t r=0.5*powf(0.5,depth);
-    Real_t coord[3]={(Real_t)(c[0]-r*(RAD1-1.0)),(Real_t)(c[1]-r*(RAD1-1.0)),(Real_t)(c[2]-r*(RAD1-1.0))};
-    return surface(p,coord,(Real_t)RAD1,depth);
+    Real_t coord[3]={(Real_t)(c[0]-r*1.95),(Real_t)(c[1]-r*1.95),(Real_t)(c[2]-r*1.95)};
+    return surface(p,coord,2.95,depth);
   }
   
   std::vector<Real_t> conv_grid(int p, Real_t* c, int depth){
     Real_t r=powf(0.5,depth);
-    Real_t a=r*RAD0;
+    Real_t a=r*1.05;
     Real_t coord[3]={c[0],c[1],c[2]};
     int n1=p*2;
     int n2=n1*n1;
@@ -995,9 +995,9 @@ class FMM_Tree {
         size_t mat_cnt_m2m=interac_list.ListCount(U2U_Type);
         size_t n_surf=(6*(MultipoleOrder()-1)*(MultipoleOrder()-1)+2);
         if((M.Dim(0)!=n_surf*ker_dim[0] || M.Dim(1)!=n_surf*ker_dim[1]) && level==0){
-          Matrix<Real_t> M_m2m[BC_LEVELS+1];
-          Matrix<Real_t> M_m2l[BC_LEVELS+1];
-          Matrix<Real_t> M_l2l[BC_LEVELS+1];
+          Matrix<Real_t> M_m2m[MAX_DEPTH+1];
+          Matrix<Real_t> M_m2l[MAX_DEPTH+1];
+          Matrix<Real_t> M_l2l[MAX_DEPTH+1];
           Matrix<Real_t> M_equiv_zero_avg(n_surf*ker_dim[0],n_surf*ker_dim[0]);
           Matrix<Real_t> M_check_zero_avg(n_surf*ker_dim[1],n_surf*ker_dim[1]);
           {
@@ -1048,7 +1048,7 @@ class FMM_Tree {
                 for(size_t k=0;k<ker_dim[1];k++)
                   M_check_zero_avg[i*ker_dim[1]+k][j*ker_dim[1]+k]-=1.0/n_surf;
           }
-          for(int level=0; level>=-BC_LEVELS; level--){
+          for(int level=0; level>=-MAX_DEPTH; level--){
             {
               Precomp(level, D2D_Type, 0);
               Permutation<Real_t>& Pr = interac_list.Perm_R(level, D2D_Type, 0);
@@ -1101,8 +1101,8 @@ class FMM_Tree {
               }
             }
           }
-          for(int level=-BC_LEVELS;level<=0;level++){
-            if(level==-BC_LEVELS) M = M_m2l[-level];
+          for(int level=-MAX_DEPTH;level<=0;level++){
+            if(level==-MAX_DEPTH) M = M_m2l[-level];
             else                  M = M_equiv_zero_avg * (M_m2l[-level] + M_m2m[-level]*M*M_l2l[-level]) * M_check_zero_avg;
           }
           {
@@ -1168,37 +1168,37 @@ class FMM_Tree {
           }
           if(!ScaleInvar()) {
             Mat_Type type=D2D_Type;
-            for(int l=-BC_LEVELS;l<0;l++)
+            for(int l=-MAX_DEPTH;l<0;l++)
             for(size_t indx=0;indx<interac_list.ListCount(type);indx++){
               Matrix<Real_t>& M=mat->Mat(l, type, indx);
               M.Resize(0,0);
             }
             type=U2U_Type;
-            for(int l=-BC_LEVELS;l<0;l++)
+            for(int l=-MAX_DEPTH;l<0;l++)
             for(size_t indx=0;indx<interac_list.ListCount(type);indx++){
               Matrix<Real_t>& M=mat->Mat(l, type, indx);
               M.Resize(0,0);
             }
             type=DC2DE0_Type;
-            for(int l=-BC_LEVELS;l<0;l++)
+            for(int l=-MAX_DEPTH;l<0;l++)
             for(size_t indx=0;indx<interac_list.ListCount(type);indx++){
               Matrix<Real_t>& M=mat->Mat(l, type, indx);
               M.Resize(0,0);
             }
             type=DC2DE1_Type;
-            for(int l=-BC_LEVELS;l<0;l++)
+            for(int l=-MAX_DEPTH;l<0;l++)
             for(size_t indx=0;indx<interac_list.ListCount(type);indx++){
               Matrix<Real_t>& M=mat->Mat(l, type, indx);
               M.Resize(0,0);
             }
             type=UC2UE0_Type;
-            for(int l=-BC_LEVELS;l<0;l++)
+            for(int l=-MAX_DEPTH;l<0;l++)
             for(size_t indx=0;indx<interac_list.ListCount(type);indx++){
               Matrix<Real_t>& M=mat->Mat(l, type, indx);
               M.Resize(0,0);
             }
             type=UC2UE1_Type;
-            for(int l=-BC_LEVELS;l<0;l++)
+            for(int l=-MAX_DEPTH;l<0;l++)
             for(size_t indx=0;indx<interac_list.ListCount(type);indx++){
               Matrix<Real_t>& M=mat->Mat(l, type, indx);
               M.Resize(0,0);
