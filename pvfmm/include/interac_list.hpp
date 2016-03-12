@@ -60,7 +60,6 @@ public:
 
   void BuildList(FMM_Node* n, Mat_Type t){
     Vector<FMM_Node*>& interac_list=n->interac_list[t];
-    if(3!=ListCount(t)) interac_list.ReInit(ListCount(t));
     interac_list.SetZero();
 
     static const int n_collg=27;

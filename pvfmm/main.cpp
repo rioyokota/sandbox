@@ -41,7 +41,6 @@
 #include <kernel.hpp>
 #include <mortonid.hpp>
 #include <sort.hpp>
-#include <utils.hpp>
 #include <fmm_node.hpp>
 #include <interac_list.hpp>
 #include <fmm_tree.hpp>
