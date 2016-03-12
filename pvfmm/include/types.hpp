@@ -13,8 +13,6 @@
 #define MEM_ALIGN 64
 #define CACHE_SIZE 512
 
-#define UNUSED(x) (void)(x) // to ignore unused variable warning.
-
 #if FLOAT
 typedef float Real_t;
 #if defined __AVX__

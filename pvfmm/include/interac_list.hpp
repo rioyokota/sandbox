@@ -10,11 +10,11 @@ public:
   std::vector<std::vector<int> > hash_lut;
   std::vector<std::vector<size_t> > interac_class;
   std::vector<std::vector<std::vector<Perm_Type> > > perm_list;
-  PrecompMat<Real_t>* mat;
+  PrecompMat* mat;
 
   InteracList(){}
 
-  void Initialize(PrecompMat<Real_t>* mat_=NULL){
+  void Initialize(PrecompMat* mat_=NULL){
     mat=mat_;
     interac_class.resize(Type_Count);
     perm_list.resize(Type_Count);

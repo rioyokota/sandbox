@@ -1226,7 +1226,7 @@ class FMM_Tree {
   std::vector<FMM_Node*> node_lst;
   mem::MemoryManager memgr;
   const Kernel* kernel;
-  PrecompMat<Real_t>* mat;
+  PrecompMat* mat;
   Vector<char> dev_buffer;
 
   std::vector<Matrix<Real_t> > node_data_buff;
@@ -1337,7 +1337,6 @@ class FMM_Tree {
           size_t idx=(lin_oct.size()*i)/omp_p;
           FMM_Node* n=FindNode(lin_oct[idx], true);
           assert(n->GetMortonId()==lin_oct[idx]);
-          UNUSED(n);
         }
   
 #pragma omp parallel for
@@ -1384,7 +1383,7 @@ class FMM_Tree {
     kernel=kernel_;
     assert(kernel!=NULL);
     bool save_precomp=false;
-    mat=new PrecompMat<Real_t>(ScaleInvar());
+    mat=new PrecompMat(ScaleInvar());
     if(mat_fname.size()==0){
       std::stringstream st;
       if(!st.str().size()){
