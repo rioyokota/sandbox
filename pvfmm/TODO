@@ -1,5 +1,8 @@
 Vector -> std::vector
+ - interac_list
+ - node_lists
 vec.h <- kernel, fmm_tree
 template -> Real_t
+Deal with TODO comments
 Remove unnecessary "{}"
 "){" -> ") {", "}else{" -> "} else {"

@@ -19,6 +19,9 @@ link: main.o
 clean:
 	rm -f *.o *.out
 
+cleandat:
+	rm -f $(PVFMM_DIR)/
+
 tags:
 	find . -name "*.cpp" -o -name "*.hpp" | xargs etags -f TAGS
 
