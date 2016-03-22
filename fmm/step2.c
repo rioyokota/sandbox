@@ -4,82 +4,74 @@
 
 int main() {
   int i,j,N=10;
-  double xi[N], yi[N], ui[N*16];
-  double xj[N], yj[N], qj[N];
+  double x[N], y[N], u[N], q[N];
   for (i=0; i<N; i++) {
-    xi[i] = drand48();
-    yi[i] = drand48();
-    xj[i] = drand48();
-    yj[i] = drand48();
-    qj[i] = 1;
+    x[i] = drand48();
+    y[i] = drand48();
+    u[i] = 0;
+    q[i] = 1;
   }
-  for (i=0; i<16*N; i++) {
-    ui[i] = 0;
-  }
-  double xip,yip,uip;
-  xip = 0.5;
-  yip = 0.5;
-  double xjp,yjp,qjp;
-  xjp = yjp = 0.5;
-  // P2M
-  qjp = 0;
-  for (j=0; j<N; j++) {
-    qjp += qj[j];
-  }
-  double dx, dy, r;
-  int ix, iy, jx, jy;
+  int ix, iy;
+  double M[4][4], L[4][4];
   for (ix=0; ix<4; ix++) {
     for (iy=0; iy<4; iy++) {
-      int ibox = (ix+iy*4)*N;
-      uip = 0;
+      M[ix][iy] = 0;
+      L[ix][iy] = 0;
+    }
+  }
+  // P2M
+  for (i=0; i<N; i++) {
+    ix = x[i] * 4;
+    iy = y[i] * 4;
+    M[ix][iy] += q[i];
+  }
+  // M2L
+  int jx, jy;
+  for (ix=0; ix<4; ix++) {
+    for (iy=0; iy<4; iy++) {
       for (jx=0; jx<4; jx++) {
 	for (jy=0; jy<4; jy++) {
-	  if (abs(ix-jx)<2&&
-	      abs(iy-jy)<2) {
-	    for (i=0; i<N; i++) {
-	      for (j=0; j<N; j++) {
-		dx = xi[i]+ix - xj[j]-jx;
-		dy = yi[i]+iy - yj[j]-jy;
-		r = sqrt(dx*dx+dy*dy);
-		if(r!=0)
-		  ui[i+ibox] += qj[j] / r;
-	      }
-	    }
-	  } else {
-	    // M2L
-	    dx = ix - jx;
-	    dy = iy - jy;
-	    r = sqrt(dx*dx+dy*dy);
-	    uip += qjp / r;
-	  }	
+	  if(abs(ix-jx)>1||abs(iy-jy)>1) {
+	    double dx = (ix - jx) / 4.;
+	    double dy = (iy - jy) / 4.;
+	    double r = sqrt(dx*dx+dy*dy);
+	    L[ix][iy] += M[jx][jy] / r;
+	  }
 	}
       }
-      // L2P
-      for (i=0; i<N; i++) {
-	ui[i+ibox] += uip;
+    }
+  }
+  // L2P
+  for (i=0; i<N; i++) {
+    ix = x[i] * 4;
+    iy = y[i] * 4;
+    u[i] += L[ix][iy];
+  }
+  // P2P
+  for (i=0; i<N; i++) {
+    ix = x[i] * 4;
+    iy = y[i] * 4;
+    for (j=0; j<N; j++) {
+      jx = x[j] * 4;
+      jy = y[j] * 4;
+      if(abs(ix-jx)<=1&&abs(iy-jy)<=1) {
+	double dx = x[i] - x[j];
+	double dy = y[i] - y[j];
+	double r = sqrt(dx*dx+dy*dy);
+	if (r!=0) u[i] += q[j] / r;
       }
     }
   }
   // Check answer
-  for (ix=0; ix<4; ix++) {
-    for (iy=0; iy<4; iy++) {
-      int ibox = (ix+iy*4)*N;
-      for (i=0; i<N; i++) {
-	double uid = 0;
-	for (jx=0; jx<4; jx++) {
-	  for (jy=0; jy<4; jy++) {
-	    for (j=0; j<N; j++) {
-	      dx = xi[i]+ix - xj[j]-jx;
-	      dy = yi[i]+iy - yj[j]-jy;
-	      r = sqrt(dx*dx+dy*dy);
-	      if (r != 0)
-		uid += qj[j] / r;
-	    }
-	  }
-	}
-	printf("%lf %lf\n",ui[i+ibox],uid);
-      }
+  for (i=0; i<N; i++) {
+    double ui = 0;
+    for (j=0; j<N; j++) {
+      double dx = x[i] - x[j];
+      double dy = y[i] - y[j];
+      double r = sqrt(dx*dx+dy*dy);
+      if (r != 0) ui += q[j] / r;
     }
+    printf("%d %lf %lf\n",i,u[i],ui);
   }
   
 }
