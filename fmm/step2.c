@@ -21,12 +21,11 @@ int main() {
   yip = 0.5;
   double xjp,yjp,qjp;
   xjp = yjp = 0.5;
-  // Step 1.
+  // P2M
   qjp = 0;
   for (j=0; j<N; j++) {
     qjp += qj[j];
   }
-  // Step 2.
   double dx, dy, r;
   int ix, iy, jx, jy;
   for (ix=0; ix<4; ix++) {
@@ -47,7 +46,7 @@ int main() {
 	      }
 	    }
 	  } else {
-	    // Step 2.
+	    // M2L
 	    dx = ix - jx;
 	    dy = iy - jy;
 	    r = sqrt(dx*dx+dy*dy);
@@ -55,7 +54,7 @@ int main() {
 	  }	
 	}
       }
-      // Step 3.
+      // L2P
       for (i=0; i<N; i++) {
 	ui[i+ibox] += uip;
       }
