@@ -1,3 +1,5 @@
+// Step 3. Morton index
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
@@ -27,7 +29,7 @@ void getIX(int iX[2], int index) {
 }
 
 int main() {
-  int i,j,N=10;
+  int i, j, N = 10;
   double x[N], y[N], u[N], q[N];
   for (i=0; i<N; i++) {
     x[i] = drand48();
@@ -53,10 +55,10 @@ int main() {
     getIX(iX, i);
     for (j=0; j<16; j++) {
       getIX(jX, j);
-      if(abs(iX[0]-jX[0])>1||abs(iX[1]-jX[1])>1) {
+      if (abs(iX[0]-jX[0]) > 1 || abs(iX[1]-jX[1]) > 1) {
 	double dx = (iX[0] - jX[0]) / 4.;
 	double dy = (iX[1] - jX[1]) / 4.;
-	double r = sqrt(dx*dx+dy*dy);
+	double r = sqrt(dx * dx + dy * dy);
 	i = getIndex(iX, 2);
 	j = getIndex(jX, 2);
 	L[i] += M[j] / r;
@@ -77,10 +79,10 @@ int main() {
     for (j=0; j<N; j++) {
       jX[0] = x[j] * 4;
       jX[1] = y[j] * 4;
-      if(abs(iX[0]-jX[0])<=1&&abs(iX[1]-jX[1])<=1) {
+      if (abs(iX[0]-jX[0]) <= 1 && abs(iX[1]-jX[1]) <= 1) {
 	double dx = x[i] - x[j];
 	double dy = y[i] - y[j];
-	double r = sqrt(dx*dx+dy*dy);
+	double r = sqrt(dx * dx + dy * dy);
 	if (r!=0) u[i] += q[j] / r;
       }
     }
@@ -91,9 +93,9 @@ int main() {
     for (j=0; j<N; j++) {
       double dx = x[i] - x[j];
       double dy = y[i] - y[j];
-      double r = sqrt(dx*dx+dy*dy);
+      double r = sqrt(dx * dx + dy * dy);
       if (r != 0) ui += q[j] / r;
     }
-    printf("%d %lf %lf\n",i,u[i],ui);
+    printf("%d %lf %lf\n", i, u[i], ui);
   }
 }

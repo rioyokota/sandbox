@@ -1,9 +1,11 @@
+// Step 1. Far-field approximation
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
 
 int main() {
-  int i,j,N=10;
+  int i, j, N = 10;
   double xi[N], yi[N], ui[N];
   double xj[N], yj[N], qj[N];
   double r = 2;
@@ -32,9 +34,9 @@ int main() {
     for (j=0; j<N; j++) {
       double dx = xi[i] - xj[j];
       double dy = yi[i] - yj[j];
-      r = sqrt(dx*dx+dy*dy);
+      r = sqrt(dx * dx + dy * dy);
       uid += qj[j] / r;
     }
-    printf("%lf %lf\n",ui[i],uid);
+    printf("%lf %lf\n", ui[i], uid);
   }
 }

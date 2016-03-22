@@ -1,154 +1,104 @@
+// Step 4. Single-level at level 3
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
 
-void getIndex(int *index, int iX[2], int level){
-  int d,l;
-  *index = 0;
+int getIndex(int iX[2], int level){
+  int d, l, index = 0;
+  int jX[2] = {iX[0], iX[1]};
   for (l=0; l<level; l++) {
-    for (d=0; d<2; d++) {
-      *index += iX[d] % 2 << (2*l+1-d);
-      iX[d] >>= 1;
-    }
+    index += (jX[1] & 1) << (2*l);
+    jX[1] >>= 1;
+    index += (jX[0] & 1) << (2*l+1);
+    jX[0] >>= 1;
   }
+  return index;
 }
 
-void getIX(int index, int iX[2]) {
-  int level = 0;
-  int d = 0;
+void getIX(int iX[2], int index) {
+  int l = 0;
   iX[0] = iX[1] = 0;
-  while( index > 0 ) {
-    iX[1-d] += (index % 2) * (1 << level);
+  while (index > 0) {
+    iX[1] += (index & 1) << l;
     index >>= 1;
-    d = (d+1) % 2;
-    if( d == 0 ) level++;
+    iX[0] += (index & 1) << l;
+    index >>= 1;
+    l++;
   }
-}
-
-void radixSort(int * key, int * value, int size) {
-  const int bitStride = 8;
-  const int stride = 1 << bitStride;
-  const int mask = stride - 1;
-  int i, maxKey = 0;
-  int bucket[stride];
-  int * buffer = (int*) malloc(size*sizeof(int));
-  int * permutation = (int*) malloc(size*sizeof(int));
-  for (i=0; i<size; i++)
-    if (key[i] > maxKey)
-      maxKey = key[i];
-  while (maxKey > 0) {
-    for (i=0; i<stride; i++)
-      bucket[i] = 0;
-    for (i=0; i<size; i++)
-      bucket[key[i] & mask]++;
-    for (i=1; i<stride; i++)
-      bucket[i] += bucket[i-1];
-    for (i=size-1; i>=0; i--)
-      permutation[i] = --bucket[key[i] & mask];
-    for (i=0; i<size; i++)
-      buffer[permutation[i]] = value[i];
-    for (i=0; i<size; i++)
-      value[i] = buffer[i];
-    for (i=0; i<size; i++)
-      buffer[permutation[i]] = key[i];
-    for (i=0; i<size; i++)
-      key[i] = buffer[i] >> bitStride;
-    maxKey >>= bitStride;
-  }
-  free(buffer);
-  free(permutation);
 }
 
 int main() {
-  int i,j,N = 1000;
+  int i, j, N = 100;
   int level = 3;
-  int index[N];
   double x[N], y[N], u[N], q[N];
-  srand48(1);
   for (i=0; i<N; i++) {
     x[i] = drand48();
     y[i] = drand48();
     u[i] = 0;
     q[i] = 1;
   }
-  int iX[2],perm[N],index2[N];
-  double x2[N],y2[N];
-  for (i=0; i<N; i++) {
-    iX[0] = x[i] * 8;
-    iX[1] = y[i] * 8;
-    getIndex(&index[i], iX, level);
-    perm[i] = i;
-    index2[i] = index[i];
-    x2[i] = x[i];
-    y2[i] = y[i];
+  int nx = 1 << level;
+  int Ncell = nx * nx;
+  double M[Ncell], L[Ncell];
+  for (i=0; i<Ncell; i++) {
+    M[i] = L[i] = 0;
   }
-  radixSort(index,perm,N);
-  for (i=0; i<N; i++) {
-    index[i] = index2[perm[i]];
-    x[i] = x2[perm[i]];
-    y[i] = y2[perm[i]];
-  }
-  int ic = index[0], ncells = 1;
-  int offset[N];
-  offset[0] = 0;
-  for (i=0; i<N; i++) {
-    if (ic != index[i]) {
-      offset[ncells] = i;
-      ic = index[i];
-      ncells++;
-    }
-  }
-  offset[ncells] = N;
-  int maxcells = 0;
-  int levelOffset[4];
-  levelOffset[0] = 0;
-  for (i=0; i<=level; i++) {
-    maxcells += 1 << (2*i);
-    levelOffset[i+1] = maxcells;
-  }
-  double *Multipole = (double*)malloc(maxcells*sizeof(double));
   // P2M
-  for (i=0; i<ncells; i++) {
-    for (j=offset[i]; j<offset[i+1]; j++) {
-      Multipole[index[j]+levelOffset[level]] += q[j];
-    }
-  }
-  // M2M
-  int l;
-  for (l=level; l>0; l--) {
-    int nc = 1 << (2*l);
-    for (i=0; i<nc; i++) {
-      int ip = i/4 + levelOffset[l-1];
-      Multipole[ip] += Multipole[i+levelOffset[l]];
-    }
+  int iX[2];
+  for (i=0; i<N; i++) {
+    iX[0] = x[i] * nx;
+    iX[1] = y[i] * nx;
+    j = getIndex(iX, level);
+    M[j] += q[i];
   }
   // M2L
-  double *Local = (double*)malloc(maxcells*sizeof(double));
-  for (l=2; l<=level; l++) {
-    int nc = 1 << (2*l);
-    for (i=0; i<nc; i++) {
-      getIX(i/4, iX);
-      int ix, iy;
-      int ixmin = -1, iymin = -1;
-      int ixmax =  1, iymax =  1;
-      if(iX[0]==0) ixmin = 0;
-      if(iX[1]==0) iymin = 0;
-      if(iX[0]==(1<<(l-1))-1) ixmax = 0;
-      if(iX[1]==(1<<(l-1))-1) iymax = 0;
-      for (ix=ixmin; ix<=ixmax; ix++) {
-	for (iy=iymin; iy<=iymax; iy++) {
-	  int iX2[2];
-	  iX2[0] = iX[0]+ix;
-	  iX2[1] = iX[1]+iy;
-	  getIndex(&ic,iX2,3);
-	  for (j=0; j<4; j++) {
-	    ic*4+j;
-	  }
-	}
+  int jX[2];
+  for (i=0; i<Ncell; i++) {
+    getIX(iX, i);
+    for (j=0; j<Ncell; j++) {
+      getIX(jX, j);
+      if (abs(iX[0]-jX[0]) > 1 || abs(iX[1]-jX[1]) > 1) {
+	double dx = (double)(iX[0] - jX[0]) / nx;
+	double dy = (double)(iX[1] - jX[1]) / nx;
+	double r = sqrt(dx * dx + dy * dy);
+	i = getIndex(iX, level);
+	j = getIndex(jX, level);
+	L[i] += M[j] / r;
       }
     }
   }
-  free(Multipole);
-  free(Local);
+  // L2P
+  for (i=0; i<N; i++) {
+    iX[0] = x[i] * nx;
+    iX[1] = y[i] * nx;
+    j = getIndex(iX, level);
+    u[i] += L[j];
+  }
+  // P2P
+  for (i=0; i<N; i++) {
+    iX[0] = x[i] * nx;
+    iX[1] = y[i] * nx;
+    for (j=0; j<N; j++) {
+      jX[0] = x[j] * nx;
+      jX[1] = y[j] * nx;
+      if (abs(iX[0]-jX[0]) <= 1 && abs(iX[1]-jX[1]) <= 1) {
+	double dx = x[i] - x[j];
+	double dy = y[i] - y[j];
+	double r = sqrt(dx * dx + dy * dy);
+	if (r!=0) u[i] += q[j] / r;
+      }
+    }
+  }
+  // Check answer
+  for (i=0; i<N; i++) {
+    double ui = 0;
+    for (j=0; j<N; j++) {
+      double dx = x[i] - x[j];
+      double dy = y[i] - y[j];
+      double r = sqrt(dx * dx + dy * dy);
+      if (r != 0) ui += q[j] / r;
+    }
+    printf("%d %lf %lf\n", i, u[i], ui);
+  }
 }
-
