@@ -49,19 +49,17 @@ int main() {
   }
   // M2L
   int jX[2];
-  for (iX[0]=0; iX[0]<4; iX[0]++) {
-    for (iX[1]=0; iX[1]<4; iX[1]++) {
-      for (jX[0]=0; jX[0]<4; jX[0]++) {
-	for (jX[1]=0; jX[1]<4; jX[1]++) {
-	  if(abs(iX[0]-jX[0])>1||abs(iX[1]-jX[1])>1) {
-	    double dx = (iX[0] - jX[0]) / 4.;
-	    double dy = (iX[1] - jX[1]) / 4.;
-	    double r = sqrt(dx*dx+dy*dy);
-	    i = getIndex(iX, 2);
-	    j = getIndex(jX, 2);
-	    L[i] += M[j] / r;
-	  }
-	}
+  for (i=0; i<16; i++) {
+    getIX(iX, i);
+    for (j=0; j<16; j++) {
+      getIX(jX, j);
+      if(abs(iX[0]-jX[0])>1||abs(iX[1]-jX[1])>1) {
+	double dx = (iX[0] - jX[0]) / 4.;
+	double dy = (iX[1] - jX[1]) / 4.;
+	double r = sqrt(dx*dx+dy*dy);
+	i = getIndex(iX, 2);
+	j = getIndex(jX, 2);
+	L[i] += M[j] / r;
       }
     }
   }
