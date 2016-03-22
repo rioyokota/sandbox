@@ -15,22 +15,20 @@ int main() {
     yj[i] = drand48();
     qj[i] = 1;
   }
-  double xip,yip,uip;
-  xip = 0.5 + distance;
-  yip = 0.5;
-  double xjp,yjp,qjp;
-  xjp = yjp = 0.5;
+  double xip = 0.5 + distance;
+  double yip = 0.5;
+  double xjp = 0.5;
+  double yjp = 0.5;
   // P2M
-  qjp = 0;
+  double qjp = 0;
   for (j=0; j<N; j++) {
     qjp += qj[j];
   }
   // M2L
-  double dx, dy, r;
-  dx = xip - xjp;
-  dy = yip - yjp;
-  r = sqrt(dx*dx+dy*dy);
-  uip = qjp / r;
+  double dx = xip - xjp;
+  double dy = yip - yjp;
+  double r = sqrt(dx*dx+dy*dy);
+  double uip = qjp / r;
   // L2P
   for (i=0; i<N; i++) {
     ui[i] = uip;
