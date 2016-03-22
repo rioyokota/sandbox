@@ -72,6 +72,5 @@ int main() {
       if (r != 0) ui += q[j] / r;
     }
     printf("%d %lf %lf\n",i,u[i],ui);
-  }
-  
+  }  
 }
