@@ -1,4 +1,4 @@
-// Step 1. Direct summation
+// Step 1. OpenMP
 
 #include <stdio.h>
 #include <stdlib.h>

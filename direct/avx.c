@@ -19,8 +19,6 @@ int main() {
   float OPS = 20. * N * N * 1e-9;
   float EPS2 = 1e-6;
   double tic, toc;
-  float * x = (float*) _mm_malloc(N * sizeof(float), NALIGN);
-  float * y = (float*) _mm_malloc(N * sizeof(float), NALIGN);
   float * z = (float*) _mm_malloc(N * sizeof(float), NALIGN);
   float * m = (float*) _mm_malloc(N * sizeof(float), NALIGN);
   float * p = (float*) _mm_malloc(N * sizeof(float), NALIGN);
