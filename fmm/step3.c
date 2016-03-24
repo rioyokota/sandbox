@@ -51,6 +51,7 @@ int main() {
   }
   // M2L
   int jX[2];
+
   for (i=0; i<16; i++) {
     getIX(iX, i);
     for (j=0; j<16; j++) {

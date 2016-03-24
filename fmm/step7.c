@@ -68,15 +68,24 @@ int main() {
     iX[0] = x[i] * nx;
     iX[1] = y[i] * nx;
     icell[i] = getIndex(iX, level);
-    printf("%d %d %lf %lf\n",i,icell[i],x[i],y[i]);
   }
   bucketSort(N, icell, x, y);
+  int Nleaf = 0;
+  int ic = -1;
+  int cells[1 << (2*level)];
+  int offset[1 << (2*level)];
   for (i=0; i<N; i++) {
     iX[0] = x[i] * nx;
     iX[1] = y[i] * nx;
     icell[i] = getIndex(iX, level);
-    printf("%d %d %lf %lf\n",i,icell[i],x[i],y[i]);
+    if (ic != icell[i]) {
+      ic = icell[i];
+      cells[Nleaf] = ic;
+      offset[Nleaf] = i;
+      Nleaf++;
+    }
   }
+  offset[Nleaf] = N;
   int levelOffset[level+1];
   levelOffset[0] = 0;
   for (l=0; l<level; l++) {
@@ -88,18 +97,18 @@ int main() {
     M[i] = L[i] = 0;
   }
   // P2M
-  for (i=0; i<N; i++) {
-    iX[0] = x[i] * nx;
-    iX[1] = y[i] * nx;
-    j = getIndex(iX, level);
-    M[j+levelOffset[level]] += q[i];
+  for (i=0; i<Nleaf; i++) {
+    for (j=offset[i]; j<offset[i+1]; j++) {
+      M[cells[i]+levelOffset[level]] += q[j];
+    }
   }
   // M2M
   for (l=level; l>2; l--) {
     nx = 1 << l;
     Ncell = nx * nx;
-    for (i=0; i<Ncell; i++) {
-      M[i/4+levelOffset[l-1]] += M[i+levelOffset[l]];
+    for (i=0; i<Nleaf; i++) {
+      j = cells[i];
+      M[j/4+levelOffset[l-1]] += M[j+levelOffset[l]];
     }
   }
   // M2L
@@ -126,33 +135,32 @@ int main() {
   }
   // L2L
   for (l=3; l<=level; l++) {
-    nx = 1 << l;
-    Ncell = nx * nx;
-    for (i=0; i<Ncell; i++) {
-      L[i+levelOffset[l]] += L[i/4+levelOffset[l-1]];
+    for (i=0; i<Nleaf; i++) {
+      j = cells[i];
+      L[j+levelOffset[l]] += L[j/4+levelOffset[l-1]];
     }
   }
   // L2P
-  nx = 1 << level;
-  Ncell = nx * nx;
-  for (i=0; i<N; i++) {
-    iX[0] = x[i] * nx;
-    iX[1] = y[i] * nx;
-    j = getIndex(iX, level);
-    u[i] += L[j+levelOffset[level]];
+  for (i=0; i<Nleaf; i++) {
+    for (j=offset[i]; j<offset[i+1]; j++) {
+      u[j] += L[cells[i]+levelOffset[level]];
+    }
   }
   // P2P
-  for (i=0; i<N; i++) {
-    iX[0] = x[i] * nx;
-    iX[1] = y[i] * nx;
-    for (j=0; j<N; j++) {
-      jX[0] = x[j] * nx;
-      jX[1] = y[j] * nx;
+  int jc;
+  for (ic=0; ic<Nleaf; ic++) {
+    getIX(iX, cells[ic]);
+    for (jc=0; jc<Nleaf; jc++) {
+      getIX(jX, cells[jc]);
       if (abs(iX[0]-jX[0]) <= 1 && abs(iX[1]-jX[1]) <= 1) {
-	double dx = x[i] - x[j];
-	double dy = y[i] - y[j];
-	double r = sqrt(dx * dx + dy * dy);
-	if (r!=0) u[i] += q[j] / r;
+	for (i=offset[ic]; i<offset[ic+1]; i++) {
+	  for (j=offset[jc]; j<offset[jc+1]; j++) {
+	    double dx = x[i] - x[j];
+	    double dy = y[i] - y[j];
+	    double r = sqrt(dx * dx + dy * dy);
+	    if (r!=0) u[i] += q[j] / r;
+	  }
+	}
       }
     }
   }
