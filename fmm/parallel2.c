@@ -4,9 +4,16 @@
 #include <stdlib.h>
 #include <math.h>
 #include <immintrin.h>
+#include <sys/time.h>
+
+double get_time() {
+  struct timeval tv;
+  gettimeofday(&tv,NULL);
+  return (double)(tv.tv_sec+tv.tv_usec*1e-6);
+}
 
 int main() {
-  int N = 1 << 16;
+  int N = 1 << 12;
   int NALIGN = 32;
   int i, j;
   float EPS2 = 1e-6;
@@ -20,6 +27,7 @@ int main() {
     u[i] = 0;
     q[i] = 1;
   }
+  double tic = get_time();
 #pragma omp parallel for private(j)
   for (i=0; i<N; i+=8) {
     __m256 xi = _mm256_load_ps(x+i);
@@ -42,7 +50,11 @@ int main() {
     }
     _mm256_store_ps(u+i, ui);
   }
-  for (i=0; i<10; i++) {
+  double toc = get_time();
+  printf("%lf\n",toc-tic);
+  int u2[N];
+#pragma omp parallel private(j)
+  for (i=0; i<N; i++) {
     double ui = 0;
     for (j=0; j<N; j++) {
       double dx = x[i] - x[j];
@@ -50,8 +62,10 @@ int main() {
       double r = sqrt(dx * dx + dy * dy + EPS2);
       ui += q[j] / r;
     }
-    printf("%lf %lf\n", u[i], ui);
+    u2[i] = ui;
   }
+  tic = get_time();
+  printf("%lf\n",tic-toc);
   _mm_free(x);
   _mm_free(y);
   _mm_free(u);

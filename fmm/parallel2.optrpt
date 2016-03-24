@@ -1,0 +1,43 @@
+Intel(R) Advisor can now assist with vectorization and show optimization
+  report messages with your source code.
+See "https://software.intel.com/en-us/intel-advisor-xe" for details.
+
+
+Begin optimization report for: main()
+
+    Report from: Vector optimizations [vec]
+
+
+LOOP BEGIN at parallel2.c(32,3)
+   remark #15541: outer loop was not auto-vectorized: consider using SIMD directive
+
+   LOOP BEGIN at parallel2.c(36,5)
+      remark #15344: loop was not vectorized: vector dependence prevents vectorization. First dependence is shown below. Use level 5 report for details
+      remark #15346: vector dependence: assumed ANTI dependence between  line 49 and  line 49
+   LOOP END
+LOOP END
+
+LOOP BEGIN at parallel2.c(57,3)
+   remark #15542: loop was not vectorized: inner loop was already vectorized
+
+   LOOP BEGIN at parallel2.c(60,5)
+   <Peeled loop for vectorization>
+   LOOP END
+
+   LOOP BEGIN at parallel2.c(60,5)
+      remark #15301: SIMD LOOP WAS VECTORIZED
+   LOOP END
+
+   LOOP BEGIN at parallel2.c(60,5)
+   <Remainder loop for vectorization>
+   LOOP END
+LOOP END
+
+
+Non-optimizable loops:
+
+
+LOOP BEGIN at parallel2.c(24,3)
+   remark #15523: loop was not vectorized: loop control variable i.964 was found, but loop iteration count cannot be computed before executing the loop
+LOOP END
+===========================================================================
