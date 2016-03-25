@@ -1,8 +1,12 @@
-// Step 9. Kernel function
+// Step 12. High order kernels
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#include <complex.h>
+#include <tgmath.h>
+
+int P = 6;
 
 int getIndex(int iX[2], int level){
   int d, l, index = 0;
@@ -52,30 +56,89 @@ void bucketSort(int N, int * index, double * x, double * y) {
   free(bucket);
 }
 
-void P2M(double *M, double q, double dx, double dy) {
-  *M += q;
+void P2M(double complex *M, double q, double dx, double dy) {
+  double complex Z = dx + I * dy;
+  double complex powZ = 1;
+  int n;  
+  M[0] += q;
+  for (n=1; n<P; n++) {
+    powZ *= Z / n;
+    M[n] += powZ * q;
+  }
 }
 
-void M2M(double *Mi, double Mj, double dx, double dy) {
-  *Mi += Mj;
+void M2M(double complex *Mi, double complex *Mj, double dx, double dy) {
+  double complex Z = dx + I * dy;
+  int k, n;
+  for (k=0; k<P; k++) {
+    double complex powZ = 1;
+    Mi[k] += Mj[k];
+    for (n=1; n<=k; n++) {
+      powZ *= Z / n;
+      Mi[k] += Mj[k-n] * powZ;
+    }
+  }
 }
 
-void M2L(double *L, double M, double dx, double dy) {
-  double r = sqrt(dx * dx + dy * dy);
-  *L += M / r;
+void M2L(double complex *L, double complex *M, double dx, double dy) {
+  double complex Z = dx + I * dy;
+  double complex powZn = 1;
+  double complex powZnk = 1;
+  double complex invZ = powZn / Z;
+  L[0] += -M[0] * log(Z);
+  if (P>1) L[0] += M[1] * invZ;
+  powZn = invZ;
+  int k, n;
+  for (k=2; k<P; k++) {
+    powZn *= (k-1) * invZ;
+    L[0] += M[k] * powZn;
+  }
+  if (P>1) L[1] += -M[0] * invZ;
+  powZn = invZ;
+  for (k=1; k<P; k++) {
+    powZn *= k * invZ;
+    L[1] += -M[k] * powZn;
+  }
+  double Cnk = -1;
+  for (n=2; n<P; n++) {
+    Cnk *= -1;
+    powZnk *= invZ;
+    powZn = Cnk * powZnk;
+    for (k=0; k<P; k++) {
+      powZn *= (n+k-1) * invZ;
+      L[n] += M[k] * powZn;
+    }
+    powZnk *= n-1;
+  }
 }
 
-void L2L(double *Li, double Lj, double dx, double dy) {
-  *Li += Lj;
+void L2L(double complex *Li, double complex *Lj, double dx, double dy) {
+  double complex Z = dx + I * dy;
+  int k, n;
+  for (n=0; n<P; n++) {
+    double complex powZ = 1;
+    Li[n] += Lj[n];
+    for (k=1; k<P-n; k++) {
+      powZ *= Z / k;
+      Li[n] += Lj[n+k] * powZ;
+    }
+  }
 }
 
-void L2P(double *u, double L, double dx, double dy) {
-  *u += L;
+void L2P(double *u, double complex *L, double dx, double dy) {
+  double complex Z = dx + I * dy;
+  double complex powZ = 1;
+  *u += creal(L[0]);
+  int n;
+  for (n=1; n<P; n++) {
+    powZ *= Z / n;
+    *u += creal(L[n] * powZ);
+  }
 }
 
 void P2P(double *u, double q, double dx, double dy) {
   double r = sqrt(dx * dx + dy * dy);
-  if (r!=0) *u += q / r;
+  if (r!=0) *u -= q * log(r);
 }
 
 int main() {
@@ -137,30 +200,32 @@ int main() {
   for (l=0; l<level; l++) {
     levelOffset[l+1] = levelOffset[l] + Ncell[l];
   }
-  double M[Ncell[level]+levelOffset[level]], L[Ncell[level]+levelOffset[level]];
+  double complex M[Ncell[level]+levelOffset[level]][P], L[Ncell[level]+levelOffset[level]][P];
   for (i=0; i<Ncell[level]+levelOffset[level]; i++) {
-    M[i] = L[i] = 0;
+    for (j=0; j<P; j++) {
+      M[i][j] = L[i][j] = 0;
+    }
   }
   // P2M
   for (i=0; i<Ncell[level]; i++) {
     nx = 1 << level;
     getIX(iX, cells[level][i]);
     for (j=offset[i]; j<offset[i+1]; j++) {
-      double dx = (iX[0] + 0.5) / nx - x[j];
-      double dy = (iX[1] + 0.5) / nx - y[j];
-      P2M(&M[i+levelOffset[level]],q[j],dx,dy);
+      double dx = x[j] - (iX[0] + 0.5) / nx;
+      double dy = y[j] - (iX[1] + 0.5) / nx;
+      P2M(M[i+levelOffset[level]],q[j],dx,dy);
     }
   }
   // M2M
   for (l=level; l>2; l--) {
     nx = 1 << l;
     for (i=0; i<Ncell[level]; i++) {
-      getIX(iX, cells[l][i]);
       j = cells[l][i];
+      getIX(iX, j);
       if (cells2[l][j]>=0) {
-	double dx = (iX[0]/2 + 0.5) / (nx / 2) - (iX[0] + 0.5) / nx;
-	double dy = (iX[1]/2 + 0.5) / (nx / 2) - (iX[1] + 0.5) / nx;
-	M2M(&M[cells2[l-1][j/4]+levelOffset[l-1]],M[i+levelOffset[l]],dx,dy);
+	double dx = (iX[0] + 0.5) / nx - (iX[0]/2 + 0.5) / (nx / 2);
+	double dy = (iX[1] + 0.5) / nx - (iX[1]/2 + 0.5) / (nx / 2);
+	M2M(M[cells2[l-1][j/4]+levelOffset[l-1]],M[i+levelOffset[l]],-dx,-dy);
       }
     }
   }
@@ -179,7 +244,7 @@ int main() {
 	    i = getIndex(iX, level);
 	    j = getIndex(jX, level);
 	    if (cells2[l][i]>=0&&cells2[l][j]>=0)
-	      M2L(&L[cells2[l][i]+levelOffset[l]],M[cells2[l][j]+levelOffset[l]],dx,dy);
+	      M2L(L[cells2[l][i]+levelOffset[l]],M[cells2[l][j]+levelOffset[l]],dx,dy);
 	  }
 	}
       }
@@ -189,15 +254,17 @@ int main() {
   for (l=3; l<=level; l++) {
     for (i=0; i<Ncell[level]; i++) {
       j = cells[l][i];
+      getIX(iX, j);
       if (cells2[l][j]>=0) {
 	double dx = (iX[0] + 0.5) / nx - (iX[0]/2 + 0.5) / (nx / 2);
 	double dy = (iX[1] + 0.5) / nx - (iX[1]/2 + 0.5) / (nx / 2);
-	L2L(&L[i+levelOffset[l]],L[cells2[l-1][j/4]+levelOffset[l-1]],dx,dy);
+	L2L(L[i+levelOffset[l]],L[cells2[l-1][j/4]+levelOffset[l-1]],dx,dy);
       }
     }
   }
   // L2P
   for (i=0; i<Ncell[level]; i++) {
+    getIX(iX, cells[level][i]);
     for (j=offset[i]; j<offset[i+1]; j++) {
       double dx = x[j] - (iX[0] + 0.5) / nx;
       double dy = y[j] - (iX[1] + 0.5) / nx;
