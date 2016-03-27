@@ -1,3 +1,4 @@
+debug double Setup phase
 Vector -> std::vector
  - interac_list
  - node_lists

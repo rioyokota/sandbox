@@ -20,7 +20,7 @@ clean:
 	rm -f *.o *.out
 
 cleandat:
-	rm -f $(PVFMM_DIR)/
+	rm -f $(PVFMM_DIR)/*f.data
 
 tags:
 	find . -name "*.cpp" -o -name "*.hpp" | xargs etags -f TAGS
