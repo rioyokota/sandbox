@@ -1,24 +1,24 @@
-[./fmm_pts -omp 4 -N 100000 -m 4 -M 64] @ r0
+[./fmm_pts -T 4 -n 100000 -P 4 -c 64] @ r0
 Error      : 1.379760e-05
-U-List     : 2.154050e-01
-V-List     : 1.558261e-01
-[./fmm_pts -omp 4 -N 100000 -m 16 -M 320] @ r0
-Error      : 4.540572e-14
-U-List     : 2.216897e+00
-V-List     : 1.694868e+00
-[./fmm_pts -omp 16 -N 1000000 -m 4 -M 64] @ y1
+U-List     : 1.095021e-01
+V-List     : 8.292794e-02
+[./fmm_pts -T 4 -n 100000 -P 16 -c 320] @ r0
+Error      : 4.539913e-14
+U-List     : 9.759610e-01
+V-List     : 8.784208e-01
+[./fmm_pts -T 16 -n 1000000 -P 4 -c 64] @ y1
 Error      : 9.811069e-05
 U-List     : 1.264025e-01
 V-List     : 1.050769e-01
-[./fmm_pts -omp 16 -N 1000000 -m 16 -M 320] @ y1
+[./fmm_pts -T 16 -n 1000000 -P 16 -c 320] @ y1
 Error      : 1.588167e-13
 U-List     : 1.165731e+00
 V-List     : 2.170773e+00
-[./fmm_pts -omp 72 -N 1000000 -m 4 -M 64] @ r2
+[./fmm_pts -T 72 -n 1000000 -P 4 -c 64] @ r2
 Error      : 9.716759e-05
 U-List     : 6.566905e-02
 V-List     : 4.657955e-02
-[./fmm_pts -omp 72 -N 1000000 -m 16 -M 320] @ r2
+[./fmm_pts -T 72 -n 1000000 -P 16 -c 320] @ r2
 Error      : 1.588667e-13
 U-List     : 4.676812e-01
 V-List     : 8.559153e-01

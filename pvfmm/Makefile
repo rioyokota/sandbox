@@ -1,7 +1,7 @@
 .SUFFIXES: .cpp
 
 CXX = mpic++ -O3 -mavx -fabi-version=6 -std=gnu++11 -fopenmp -I./include
-#CXX = mpicxx -O3 -msse4 -std=c++11 -fopenmp -I./include
+#CXX = g++-mp-5 -O3 -msse4 -std=c++11 -fopenmp -I./include
 LDFLAGS = -lfftw3 -lfftw3f -llapack -lblas
 
 %.o: %.cpp

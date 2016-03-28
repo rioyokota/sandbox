@@ -1,5 +1,6 @@
 #ifndef kernel_h
 #define kernel_h
+#include <iostream>
 
 //!< P2P kernel between cells Ci and Cj 
 void P2P(Cell * Ci, Cell * Cj, real_t Xperiodic[2]) {
@@ -47,9 +48,9 @@ void M2M(Cell * Ci) {
       for (int k=0; k<P; k++) {                                 //   Loop over coefficients
 	complex_t Z(dX[0],dX[1]), powZ(1.0, 0.0);               //    z^0 = 1
 	Ci->M[k] += Cj->M[k];                                   //    Add constant term
-	for (int kml=1; kml<=k; kml++) {                        //    Loop over k-l
-	  powZ *= Z / real_t(kml);                              //     Store z^(k-l) / (k-l)!
-	  Ci->M[k] += Cj->M[k-kml] * powZ;                      //     Add to coefficient
+	for (int n=1; n<=k; n++) {                              //    Loop over k-l
+	  powZ *= Z / real_t(n);                                //     Store z^(k-l) / (k-l)!
+	  Ci->M[k] += Cj->M[k-n] * powZ;                        //     Add to coefficient
 	}                                                       //    End loop
       }                                                         //   End loop
     }                                                           //  End loop
@@ -71,7 +72,7 @@ void M2L(Cell * Ci, Cell * Cj, real_t Xperiodic[2]) {
   Ci->L[1] += -Cj->M[0] * invZ;                                 // Constant term (for 1st order)
   powZn = invZ;                                                 // 1/z term
   for (int k=1; k<P; k++) {                                     // Loop over coefficients
-    powZn *= real_t(1+k-1) * invZ;                              //  Store (k)! / z^k
+    powZn *= real_t(k) * invZ;                                  //  Store (k)! / z^k
     Ci->L[1] += -Cj->M[k] * powZn;                              //  Add to coefficient
   }                                                             // End loop
   real_t Cnk = -1;                                              // Fix sign term
