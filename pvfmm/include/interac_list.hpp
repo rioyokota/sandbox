@@ -59,8 +59,10 @@ public:
   }
 
   void BuildList(FMM_Node* n, Mat_Type t){
-    Vector<FMM_Node*>& interac_list=n->interac_list[t];
-    interac_list.SetZero();
+    std::vector<FMM_Node*>& interac_list=n->interac_list[t];
+    for (int i=0; i<interac_list.size(); i++) {
+      interac_list[i] = 0;
+    }
 
     static const int n_collg=27;
     static const int n_child=8;

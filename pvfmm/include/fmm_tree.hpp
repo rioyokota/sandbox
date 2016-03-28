@@ -2075,9 +2075,9 @@ class FMM_Tree {
 #pragma omp parallel for
           for(size_t i=0;i<n_out;i++){
             if(!nodes_out[i]->IsGhost() && (level==-1 || nodes_out[i]->depth==level)){
-              Vector<FMM_Node*>& lst=nodes_out[i]->interac_list[interac_type];
-              memcpy(&trg_interac_list[i][0], &lst[0], lst.Dim()*sizeof(FMM_Node*));
-              assert(lst.Dim()==mat_cnt);
+              std::vector<FMM_Node*>& lst=nodes_out[i]->interac_list[interac_type];
+              memcpy(&trg_interac_list[i][0], &lst[0], lst.size()*sizeof(FMM_Node*));
+              assert(lst.size()==mat_cnt);
             }
           }
         }
@@ -2645,8 +2645,8 @@ class FMM_Tree {
           size_t interac_cnt_=0;
           {
             Mat_Type type=S2U_Type;
-            Vector<FMM_Node*>& intlst=tnode->interac_list[type];
-            for(size_t j=0;j<intlst.Dim();j++) if(intlst[j]){
+            std::vector<FMM_Node*>& intlst=tnode->interac_list[type];
+            for(size_t j=0;j<intlst.size();j++) if(intlst[j]){
               FMM_Node* snode=intlst[j];
               size_t snode_id=snode->node_id;
               if(snode_id>=nodes_in.size() || nodes_in[snode_id]!=snode) continue;
@@ -2816,7 +2816,7 @@ class FMM_Tree {
         size_t b=(n_list.size()*(j+1))/omp_p;
         for(size_t i=a;i<b;i++){
           FMM_Node* n=n_list[i];
-          n->interac_list[type_lst[k]].Resize(interac_cnt[k]);
+          n->interac_list[type_lst[k]].resize(interac_cnt[k]);
           for(int l=0; l<interac_cnt[k]; l++) {
             n->interac_list[type_lst[k]][l] = node_interac_lst[i][interac_dsp[k]+l];
           }
@@ -3255,7 +3255,7 @@ class FMM_Tree {
             std::set<FMM_Node*> nodes_in;
             for(size_t i=blk0_start;i<blk0_end;i++){
               nodes_out_.push_back(nodes_out[i]);
-              Vector<FMM_Node*>& lst=nodes_out[i]->interac_list[interac_type];
+              std::vector<FMM_Node*>& lst=nodes_out[i]->interac_list[interac_type];
               for(size_t k=0;k<mat_cnt;k++) if(lst[k]!=NULL && lst[k]->pt_cnt[0]) nodes_in.insert(lst[k]);
             }
             for(typename std::set<FMM_Node*>::iterator node=nodes_in.begin(); node != nodes_in.end(); node++){
@@ -3301,7 +3301,7 @@ class FMM_Tree {
               size_t blk1_end  =(nodes_out_.size()*(blk1+1))/n_blk1;
               for(size_t k=0;k<mat_cnt;k++){
                 for(size_t i=blk1_start;i<blk1_end;i++){
-                  Vector<FMM_Node*>& lst=nodes_out_[i]->interac_list[interac_type];
+                  std::vector<FMM_Node*>& lst=nodes_out_[i]->interac_list[interac_type];
                   if(lst[k]!=NULL && lst[k]->pt_cnt[0]){
                     interac_vec[blk0].push_back(lst[k]->node_id*fftsize*ker_dim0*dof);
                     interac_vec[blk0].push_back(    i          *fftsize*ker_dim1*dof);
@@ -3789,8 +3789,8 @@ class FMM_Tree {
           size_t interac_cnt_=0;
           {
             Mat_Type type=X_Type;
-            Vector<FMM_Node*>& intlst=tnode->interac_list[type];
-            for(size_t j=0;j<intlst.Dim();j++) if(intlst[j]){
+            std::vector<FMM_Node*>& intlst=tnode->interac_list[type];
+            for(size_t j=0;j<intlst.size();j++) if(intlst[j]){
               FMM_Node* snode=intlst[j];
               size_t snode_id=snode->node_id;
               if(snode_id>=nodes_in.size() || nodes_in[snode_id]!=snode) continue;
@@ -3967,8 +3967,8 @@ class FMM_Tree {
           size_t interac_cnt_=0;
           {
             Mat_Type type=W_Type;
-            Vector<FMM_Node*>& intlst=tnode->interac_list[type];
-            for(size_t j=0;j<intlst.Dim();j++) if(intlst[j]){
+            std::vector<FMM_Node*>& intlst=tnode->interac_list[type];
+            for(size_t j=0;j<intlst.size();j++) if(intlst[j]){
               FMM_Node* snode=intlst[j];
               size_t snode_id=snode->node_id;
               if(snode_id>=nodes_in.size() || nodes_in[snode_id]!=snode) continue;
@@ -4166,8 +4166,8 @@ class FMM_Tree {
           size_t interac_cnt_=0;
           {
             Mat_Type type=U0_Type;
-            Vector<FMM_Node*>& intlst=tnode->interac_list[type];
-            for(size_t j=0;j<intlst.Dim();j++) if(intlst[j]){
+            std::vector<FMM_Node*>& intlst=tnode->interac_list[type];
+            for(size_t j=0;j<intlst.size();j++) if(intlst[j]){
               FMM_Node* snode=intlst[j];
               size_t snode_id=snode->node_id;
               if(snode_id>=nodes_in.size() || nodes_in[snode_id]!=snode) continue;
@@ -4190,8 +4190,8 @@ class FMM_Tree {
           }
           {
             Mat_Type type=U1_Type;
-            Vector<FMM_Node*>& intlst=tnode->interac_list[type];
-            for(size_t j=0;j<intlst.Dim();j++) if(intlst[j]){
+            std::vector<FMM_Node*>& intlst=tnode->interac_list[type];
+            for(size_t j=0;j<intlst.size();j++) if(intlst[j]){
               FMM_Node* snode=intlst[j];
               size_t snode_id=snode->node_id;
               if(snode_id>=nodes_in.size() || nodes_in[snode_id]!=snode) continue;
@@ -4214,8 +4214,8 @@ class FMM_Tree {
           }
           {
             Mat_Type type=U2_Type;
-            Vector<FMM_Node*>& intlst=tnode->interac_list[type];
-            for(size_t j=0;j<intlst.Dim();j++) if(intlst[j]){
+            std::vector<FMM_Node*>& intlst=tnode->interac_list[type];
+            for(size_t j=0;j<intlst.size();j++) if(intlst[j]){
               FMM_Node* snode=intlst[j];
               size_t snode_id=snode->node_id;
               if(snode_id>=nodes_in.size() || nodes_in[snode_id]!=snode) continue;
@@ -4238,9 +4238,9 @@ class FMM_Tree {
           }
           {
             Mat_Type type=X_Type;
-            Vector<FMM_Node*>& intlst=tnode->interac_list[type];
+            std::vector<FMM_Node*>& intlst=tnode->interac_list[type];
             if(tnode->pt_cnt[1]<=Nsrf)
-            for(size_t j=0;j<intlst.Dim();j++) if(intlst[j]){
+            for(size_t j=0;j<intlst.size();j++) if(intlst[j]){
               FMM_Node* snode=intlst[j];
               size_t snode_id=snode->node_id;
               if(snode_id>=nodes_in.size() || nodes_in[snode_id]!=snode) continue;
@@ -4263,8 +4263,8 @@ class FMM_Tree {
           }
           {
             Mat_Type type=W_Type;
-            Vector<FMM_Node*>& intlst=tnode->interac_list[type];
-            for(size_t j=0;j<intlst.Dim();j++) if(intlst[j]){
+            std::vector<FMM_Node*>& intlst=tnode->interac_list[type];
+            for(size_t j=0;j<intlst.size();j++) if(intlst[j]){
               FMM_Node* snode=intlst[j];
               size_t snode_id=snode->node_id;
               if(snode_id>=nodes_in.size() || nodes_in[snode_id]!=snode) continue;
@@ -4459,8 +4459,8 @@ class FMM_Tree {
           size_t interac_cnt_=0;
           {
             Mat_Type type=D2T_Type;
-            Vector<FMM_Node*>& intlst=tnode->interac_list[type];
-            for(size_t j=0;j<intlst.Dim();j++) if(intlst[j]){
+            std::vector<FMM_Node*>& intlst=tnode->interac_list[type];
+            for(size_t j=0;j<intlst.size();j++) if(intlst[j]){
               FMM_Node* snode=intlst[j];
               size_t snode_id=snode->node_id;
               if(snode_id>=nodes_in.size() || nodes_in[snode_id]!=snode) continue;

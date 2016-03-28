@@ -41,7 +41,7 @@ class FMM_Node {
   Vector<Real_t> trg_value;
   Vector<size_t> trg_scatter;
   size_t pt_cnt[2];
-  Vector<FMM_Node*> interac_list[Type_Count];
+  std::vector<FMM_Node*> interac_list[Type_Count];
 
   FMM_Data* fmm_data;
 
