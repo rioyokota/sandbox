@@ -2816,7 +2816,10 @@ class FMM_Tree {
         size_t b=(n_list.size()*(j+1))/omp_p;
         for(size_t i=a;i<b;i++){
           FMM_Node* n=n_list[i];
-          n->interac_list[type_lst[k]].ReInit(interac_cnt[k],&node_interac_lst[i][interac_dsp[k]],false);
+          n->interac_list[type_lst[k]].Resize(interac_cnt[k]);
+          for(int l=0; l<interac_cnt[k]; l++) {
+            n->interac_list[type_lst[k]][l] = node_interac_lst[i][interac_dsp[k]+l];
+          }
           interacList.BuildList(n,type_lst[k]);
         }
       }
