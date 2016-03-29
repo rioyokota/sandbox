@@ -1230,7 +1230,6 @@ class FMM_Tree {
   Vector<char> dev_buffer;
 
   std::vector<Matrix<Real_t> > node_data_buff;
-  pvfmm::Matrix<FMM_Node*> node_interac_lst;
   InteracList interacList;
   std::vector<Matrix<char> > precomp_lst;
   std::vector<SetupData > setup_data;
@@ -2069,14 +2068,28 @@ class FMM_Tree {
           precomp_data_offset.ReInit(header.mat_cnt,(1+(2+2)*header.max_depth), (size_t*)indx_ptr, false);
           precomp_offset+=header.total_size;
         }
-        Matrix<FMM_Node*> src_interac_list(n_in ,mat_cnt); src_interac_list.SetZero();
-        Matrix<FMM_Node*> trg_interac_list(n_out,mat_cnt); trg_interac_list.SetZero();
+        FMM_Node*** src_interac_list = new FMM_Node** [n_in];
+        for (int i=0; i<n_in; i++) {
+          src_interac_list[i] = new FMM_Node* [mat_cnt];
+          for (int j=0; j<mat_cnt; j++) {
+            src_interac_list[i][j] = NULL;
+          }
+        }
+        FMM_Node*** trg_interac_list = new FMM_Node** [n_out];
+        for (int i=0; i<n_out; i++) {
+          trg_interac_list[i] = new FMM_Node* [mat_cnt];
+          for (int j=0; j<mat_cnt; j++) {
+            trg_interac_list[i][j] = NULL;
+          }
+        }
         {
 #pragma omp parallel for
           for(size_t i=0;i<n_out;i++){
             if(!nodes_out[i]->IsGhost() && (level==-1 || nodes_out[i]->depth==level)){
               std::vector<FMM_Node*>& lst=nodes_out[i]->interac_list[interac_type];
-              memcpy(&trg_interac_list[i][0], &lst[0], lst.size()*sizeof(FMM_Node*));
+              for (int l=0; l<lst.size(); l++) {
+                trg_interac_list[i][l] = lst[l];
+              }
               assert(lst.size()==mat_cnt);
             }
           }
@@ -2177,7 +2190,16 @@ class FMM_Tree {
             }
           }
         }
+        for (int i=0; i<n_in; i++) {
+          delete[] src_interac_list[i];
+        }
+        delete[] src_interac_list;
+        for (int i=0; i<n_out; i++) {
+          delete[] trg_interac_list[i];
+        }
+        delete[] trg_interac_list;
       }
+
       if(dev_buffer.Dim()<buff_size) dev_buffer.ReInit(buff_size);
       {
         size_t data_size=sizeof(size_t)*4;
@@ -2806,7 +2828,6 @@ class FMM_Tree {
       interac_cnt[i]=interacList.ListCount(type_lst[i]);
     }
     scan(&interac_cnt[0],&interac_dsp[0],type_lst.size());
-    node_interac_lst.ReInit(node_cnt,interac_cnt.back()+interac_dsp.back());
     int omp_p=omp_get_max_threads();
 #pragma omp parallel for
     for(int j=0;j<omp_p;j++){
@@ -2817,9 +2838,6 @@ class FMM_Tree {
         for(size_t i=a;i<b;i++){
           FMM_Node* n=n_list[i];
           n->interac_list[type_lst[k]].resize(interac_cnt[k]);
-          for(int l=0; l<interac_cnt[k]; l++) {
-            n->interac_list[type_lst[k]][l] = node_interac_lst[i][interac_dsp[k]+l];
-          }
           interacList.BuildList(n,type_lst[k]);
         }
       }
