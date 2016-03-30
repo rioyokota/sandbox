@@ -1,0 +1,9 @@
+debug double Setup phase
+Vector -> std::vector
+ - interac_list
+ - node_lists
+vec.h <- kernel, fmm_tree
+template -> Real_t
+size_t -> int
+Remove unnecessary "{}"
+"){" -> ") {", "}else{" -> "} else {"
