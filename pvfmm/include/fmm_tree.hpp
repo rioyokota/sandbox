@@ -639,7 +639,7 @@ class FMM_Tree {
     for(size_t tid=0;tid<omp_p;tid++){
       vec_dsp[tid+1]=vec_dsp[tid]+vec_[tid].size();
     }
-    vec.ReInit(vec_dsp[omp_p]);
+    vec.Resize(vec_dsp[omp_p]);
 #pragma omp parallel for
     for(size_t tid=0;tid<omp_p;tid++){
       memcpy(&vec[0]+vec_dsp[tid],&vec_[tid][0],vec_[tid].size()*sizeof(ElemType));
@@ -1866,8 +1866,8 @@ class FMM_Tree {
         if(node[i]->IsLeaf()){
           node_lst.push_back(node[i]);
         }else{
-          node[i]->src_value.ReInit(0);
-          node[i]->surf_value.ReInit(0);
+          node[i]->src_value.Resize(0);
+          node[i]->surf_value.Resize(0);
         }
       }
       n_list[indx]=node_lst;
@@ -1896,7 +1896,7 @@ class FMM_Tree {
         if(node[i]->IsLeaf() && !node[i]->IsGhost()){
           node_lst.push_back(node[i]);
         }else{
-          node[i]->trg_value.ReInit(0);
+          node[i]->trg_value.Resize(0);
         }
       }
       n_list[indx]=node_lst;
@@ -1918,9 +1918,9 @@ class FMM_Tree {
         if(node[i]->IsLeaf()){
           node_lst.push_back(node[i]);
         }else{
-          node[i]->src_coord.ReInit(0);
-          node[i]->surf_coord.ReInit(0);
-          node[i]->trg_coord.ReInit(0);
+          node[i]->src_coord.Resize(0);
+          node[i]->surf_coord.Resize(0);
+          node[i]->trg_coord.Resize(0);
         }
       }
       n_list[indx]=node_lst;
@@ -1949,10 +1949,10 @@ class FMM_Tree {
           dnwd_equiv_surf.resize(MAX_DEPTH);
           for(size_t depth=0;depth<MAX_DEPTH;depth++){
             Real_t c[3]={0.0,0.0,0.0};
-            upwd_check_surf[depth].ReInit((6*(m-1)*(m-1)+2)*3);
-            upwd_equiv_surf[depth].ReInit((6*(m-1)*(m-1)+2)*3);
-            dnwd_check_surf[depth].ReInit((6*(m-1)*(m-1)+2)*3);
-            dnwd_equiv_surf[depth].ReInit((6*(m-1)*(m-1)+2)*3);
+            upwd_check_surf[depth].Resize((6*(m-1)*(m-1)+2)*3);
+            upwd_equiv_surf[depth].Resize((6*(m-1)*(m-1)+2)*3);
+            dnwd_check_surf[depth].Resize((6*(m-1)*(m-1)+2)*3);
+            dnwd_equiv_surf[depth].Resize((6*(m-1)*(m-1)+2)*3);
             upwd_check_surf[depth]=u_check_surf(m,c,depth);
             upwd_equiv_surf[depth]=u_equiv_surf(m,c,depth);
             dnwd_check_surf[depth]=d_check_surf(m,c,depth);
@@ -1986,7 +1986,7 @@ class FMM_Tree {
       if(!buff_size) continue;
       if(keep_data){
         if(dev_buffer.Dim()<buff_size*sizeof(Real_t)){
-          dev_buffer.ReInit(buff_size*sizeof(Real_t)*1.05);
+          dev_buffer.Resize(buff_size*sizeof(Real_t)*1.05);
         }
 #pragma omp parallel for
         for(size_t i=0;i<n_vec;i++){
@@ -2202,7 +2202,7 @@ class FMM_Tree {
         delete[] trg_interac_list;
       }
 
-      if(dev_buffer.Dim()<buff_size) dev_buffer.ReInit(buff_size);
+      if(dev_buffer.Dim()<buff_size) dev_buffer.Resize(buff_size);
       {
         size_t data_size=sizeof(size_t)*4;
         data_size+=sizeof(size_t)+interac_blk.size()*sizeof(size_t);
@@ -2379,8 +2379,8 @@ class FMM_Tree {
       InteracData& intdata=data.interac_data;
       Vector<size_t>  cnt;
       Vector<size_t>& dsp=intdata.interac_cst;
-      cnt.ReInit(intdata.interac_cnt.Dim());
-      dsp.ReInit(intdata.interac_dsp.Dim());
+      cnt.Resize(intdata.interac_cnt.Dim());
+      dsp.Resize(intdata.interac_dsp.Dim());
 #pragma omp parallel for
       for(size_t trg=0;trg<cnt.Dim();trg++){
         size_t trg_cnt=data.trg_coord.cnt[trg];
@@ -2503,7 +2503,7 @@ class FMM_Tree {
     }
     {
       size_t n=setup_data.output_data->Dim(0)*setup_data.output_data->Dim(1)*sizeof(Real_t);
-      if(dev_buffer.Dim()<n) dev_buffer.ReInit(n);
+      if(dev_buffer.Dim()<n) dev_buffer.Resize(n);
     }
   }
 
@@ -2541,10 +2541,10 @@ class FMM_Tree {
       value.ptr=setup_data. input_data;
       coord.len=coord.ptr->Dim(0)*coord.ptr->Dim(1);
       value.len=value.ptr->Dim(0)*value.ptr->Dim(1);
-      coord.cnt.ReInit(nodes.size());
-      coord.dsp.ReInit(nodes.size());
-      value.cnt.ReInit(nodes.size());
-      value.dsp.ReInit(nodes.size());
+      coord.cnt.Resize(nodes.size());
+      coord.dsp.Resize(nodes.size());
+      value.cnt.Resize(nodes.size());
+      value.dsp.Resize(nodes.size());
 #pragma omp parallel for
       for(size_t i=0;i<nodes.size();i++){
         nodes[i]->node_id=i;
@@ -2576,10 +2576,10 @@ class FMM_Tree {
       value.ptr=setup_data. input_data;
       coord.len=coord.ptr->Dim(0)*coord.ptr->Dim(1);
       value.len=value.ptr->Dim(0)*value.ptr->Dim(1);
-      coord.cnt.ReInit(nodes.size());
-      coord.dsp.ReInit(nodes.size());
-      value.cnt.ReInit(nodes.size());
-      value.dsp.ReInit(nodes.size());
+      coord.cnt.Resize(nodes.size());
+      coord.dsp.Resize(nodes.size());
+      value.cnt.Resize(nodes.size());
+      value.dsp.Resize(nodes.size());
 #pragma omp parallel for
       for(size_t i=0;i<nodes.size();i++){
         Vector<Real_t>& coord_vec=nodes[i]->surf_coord;
@@ -2610,10 +2610,10 @@ class FMM_Tree {
       value.ptr=setup_data.output_data;
       coord.len=coord.ptr->Dim(0)*coord.ptr->Dim(1);
       value.len=value.ptr->Dim(0)*value.ptr->Dim(1);
-      coord.cnt.ReInit(nodes.size());
-      coord.dsp.ReInit(nodes.size());
-      value.cnt.ReInit(nodes.size());
-      value.dsp.ReInit(nodes.size());
+      coord.cnt.Resize(nodes.size());
+      coord.dsp.Resize(nodes.size());
+      value.cnt.Resize(nodes.size());
+      value.dsp.Resize(nodes.size());
 #pragma omp parallel for
       for(size_t i=0;i<nodes.size();i++){
         Vector<Real_t>& coord_vec=upwd_check_surf[nodes[i]->depth];
@@ -2647,7 +2647,7 @@ class FMM_Tree {
         for(size_t l=0;l<MAX_DEPTH;l++){
           Vector<Real_t>& scal=data.interac_data.scal[l*4+2];
           Vector<Real_t>& scal_exp=ker->trg_scal;
-          scal.ReInit(scal_exp.Dim());
+          scal.Resize(scal_exp.Dim());
           for(size_t i=0;i<scal.Dim();i++){
             scal[i]=powf(2.0,-scal_exp[i]*l);
           }
@@ -2655,7 +2655,7 @@ class FMM_Tree {
         for(size_t l=0;l<MAX_DEPTH;l++){
           Vector<Real_t>& scal=data.interac_data.scal[l*4+3];
           Vector<Real_t>& scal_exp=ker->src_scal;
-          scal.ReInit(scal_exp.Dim());
+          scal.Resize(scal_exp.Dim());
           for(size_t i=0;i<scal.Dim();i++){
             scal[i]=powf(2.0,-scal_exp[i]*l);
           }
@@ -2709,7 +2709,7 @@ class FMM_Tree {
         {
           pvfmm::Vector<size_t>& cnt=interac_data.interac_cnt;
           pvfmm::Vector<size_t>& dsp=interac_data.interac_dsp;
-          dsp.ReInit(cnt.Dim()); if(dsp.Dim()) dsp[0]=0;
+          dsp.Resize(cnt.Dim()); if(dsp.Dim()) dsp[0]=0;
           scan(&cnt[0],&dsp[0],dsp.Dim());
         }
       }
@@ -3542,7 +3542,7 @@ class FMM_Tree {
     typename Matrix<char>::Device  interac_data;
     typename Matrix<Real_t>::Device  input_data;
     typename Matrix<Real_t>::Device output_data;
-    if(dev_buffer.Dim()<buff_size) dev_buffer.ReInit(buff_size);
+    if(dev_buffer.Dim()<buff_size) dev_buffer.Resize(buff_size);
     buff = dev_buffer;
     interac_data= setup_data.interac_data;
     input_data  =*setup_data.  input_data;
@@ -3694,10 +3694,10 @@ class FMM_Tree {
       value.ptr=setup_data. input_data;
       coord.len=coord.ptr->Dim(0)*coord.ptr->Dim(1);
       value.len=value.ptr->Dim(0)*value.ptr->Dim(1);
-      coord.cnt.ReInit(nodes.size());
-      coord.dsp.ReInit(nodes.size());
-      value.cnt.ReInit(nodes.size());
-      value.dsp.ReInit(nodes.size());
+      coord.cnt.Resize(nodes.size());
+      coord.dsp.Resize(nodes.size());
+      value.cnt.Resize(nodes.size());
+      value.dsp.Resize(nodes.size());
 #pragma omp parallel for
       for(size_t i=0;i<nodes.size();i++){
         ((FMM_Node*)nodes[i])->node_id=i;
@@ -3729,10 +3729,10 @@ class FMM_Tree {
       value.ptr=setup_data. input_data;
       coord.len=coord.ptr->Dim(0)*coord.ptr->Dim(1);
       value.len=value.ptr->Dim(0)*value.ptr->Dim(1);
-      coord.cnt.ReInit(nodes.size());
-      coord.dsp.ReInit(nodes.size());
-      value.cnt.ReInit(nodes.size());
-      value.dsp.ReInit(nodes.size());
+      coord.cnt.Resize(nodes.size());
+      coord.dsp.Resize(nodes.size());
+      value.cnt.Resize(nodes.size());
+      value.dsp.Resize(nodes.size());
 #pragma omp parallel for
       for(size_t i=0;i<nodes.size();i++){
         Vector<Real_t>& coord_vec=nodes[i]->surf_coord;
@@ -3763,10 +3763,10 @@ class FMM_Tree {
       value.ptr=setup_data.output_data;
       coord.len=coord.ptr->Dim(0)*coord.ptr->Dim(1);
       value.len=value.ptr->Dim(0)*value.ptr->Dim(1);
-      coord.cnt.ReInit(nodes.size());
-      coord.dsp.ReInit(nodes.size());
-      value.cnt.ReInit(nodes.size());
-      value.dsp.ReInit(nodes.size());
+      coord.cnt.Resize(nodes.size());
+      coord.dsp.Resize(nodes.size());
+      value.cnt.Resize(nodes.size());
+      value.dsp.Resize(nodes.size());
 #pragma omp parallel for
       for(size_t i=0;i<nodes.size();i++){
         Vector<Real_t>& coord_vec=dnwd_check_surf[nodes[i]->depth];
@@ -3849,7 +3849,7 @@ class FMM_Tree {
         {
           pvfmm::Vector<size_t>& cnt=interac_data.interac_cnt;
           pvfmm::Vector<size_t>& dsp=interac_data.interac_dsp;
-          dsp.ReInit(cnt.Dim()); if(dsp.Dim()) dsp[0]=0;
+          dsp.Resize(cnt.Dim()); if(dsp.Dim()) dsp[0]=0;
           scan(&cnt[0],&dsp[0],dsp.Dim());
         }
       }
@@ -3890,10 +3890,10 @@ class FMM_Tree {
       value.ptr=setup_data. input_data;
       coord.len=coord.ptr->Dim(0)*coord.ptr->Dim(1);
       value.len=value.ptr->Dim(0)*value.ptr->Dim(1);
-      coord.cnt.ReInit(nodes.size());
-      coord.dsp.ReInit(nodes.size());
-      value.cnt.ReInit(nodes.size());
-      value.dsp.ReInit(nodes.size());
+      coord.cnt.Resize(nodes.size());
+      coord.dsp.Resize(nodes.size());
+      value.cnt.Resize(nodes.size());
+      value.dsp.Resize(nodes.size());
 #pragma omp parallel for
       for(size_t i=0;i<nodes.size();i++){
         ((FMM_Node*)nodes[i])->node_id=i;
@@ -3925,10 +3925,10 @@ class FMM_Tree {
       value.ptr=setup_data. input_data;
       coord.len=coord.ptr->Dim(0)*coord.ptr->Dim(1);
       value.len=value.ptr->Dim(0)*value.ptr->Dim(1);
-      coord.cnt.ReInit(nodes.size());
-      coord.dsp.ReInit(nodes.size());
-      value.cnt.ReInit(nodes.size());
-      value.dsp.ReInit(nodes.size());
+      coord.cnt.Resize(nodes.size());
+      coord.dsp.Resize(nodes.size());
+      value.cnt.Resize(nodes.size());
+      value.dsp.Resize(nodes.size());
 #pragma omp parallel for
       for(size_t i=0;i<nodes.size();i++){
         coord.dsp[i]=0;
@@ -3945,10 +3945,10 @@ class FMM_Tree {
       value.ptr=setup_data.output_data;
       coord.len=coord.ptr->Dim(0)*coord.ptr->Dim(1);
       value.len=value.ptr->Dim(0)*value.ptr->Dim(1);
-      coord.cnt.ReInit(nodes.size());
-      coord.dsp.ReInit(nodes.size());
-      value.cnt.ReInit(nodes.size());
-      value.dsp.ReInit(nodes.size());
+      coord.cnt.Resize(nodes.size());
+      coord.dsp.Resize(nodes.size());
+      value.cnt.Resize(nodes.size());
+      value.dsp.Resize(nodes.size());
 #pragma omp parallel for
       for(size_t i=0;i<nodes.size();i++){
         Vector<Real_t>& coord_vec=nodes[i]->trg_coord;
@@ -4029,7 +4029,7 @@ class FMM_Tree {
         {
           pvfmm::Vector<size_t>& cnt=interac_data.interac_cnt;
           pvfmm::Vector<size_t>& dsp=interac_data.interac_dsp;
-          dsp.ReInit(cnt.Dim()); if(dsp.Dim()) dsp[0]=0;
+          dsp.Resize(cnt.Dim()); if(dsp.Dim()) dsp[0]=0;
           scan(&cnt[0],&dsp[0],dsp.Dim());
         }
       }
@@ -4075,10 +4075,10 @@ class FMM_Tree {
       value.ptr=setup_data. input_data;
       coord.len=coord.ptr->Dim(0)*coord.ptr->Dim(1);
       value.len=value.ptr->Dim(0)*value.ptr->Dim(1);
-      coord.cnt.ReInit(nodes.size());
-      coord.dsp.ReInit(nodes.size());
-      value.cnt.ReInit(nodes.size());
-      value.dsp.ReInit(nodes.size());
+      coord.cnt.Resize(nodes.size());
+      coord.dsp.Resize(nodes.size());
+      value.cnt.Resize(nodes.size());
+      value.dsp.Resize(nodes.size());
 #pragma omp parallel for
       for(size_t i=0;i<nodes.size();i++){
         nodes[i]->node_id=i;
@@ -4110,10 +4110,10 @@ class FMM_Tree {
       value.ptr=setup_data. input_data;
       coord.len=coord.ptr->Dim(0)*coord.ptr->Dim(1);
       value.len=value.ptr->Dim(0)*value.ptr->Dim(1);
-      coord.cnt.ReInit(nodes.size());
-      coord.dsp.ReInit(nodes.size());
-      value.cnt.ReInit(nodes.size());
-      value.dsp.ReInit(nodes.size());
+      coord.cnt.Resize(nodes.size());
+      coord.dsp.Resize(nodes.size());
+      value.cnt.Resize(nodes.size());
+      value.dsp.Resize(nodes.size());
 #pragma omp parallel for
       for(size_t i=0;i<nodes.size();i++){
         Vector<Real_t>& coord_vec=nodes[i]->surf_coord;
@@ -4144,10 +4144,10 @@ class FMM_Tree {
       value.ptr=setup_data.output_data;
       coord.len=coord.ptr->Dim(0)*coord.ptr->Dim(1);
       value.len=value.ptr->Dim(0)*value.ptr->Dim(1);
-      coord.cnt.ReInit(nodes.size());
-      coord.dsp.ReInit(nodes.size());
-      value.cnt.ReInit(nodes.size());
-      value.dsp.ReInit(nodes.size());
+      coord.cnt.Resize(nodes.size());
+      coord.dsp.Resize(nodes.size());
+      value.cnt.Resize(nodes.size());
+      value.dsp.Resize(nodes.size());
 #pragma omp parallel for
       for(size_t i=0;i<nodes.size();i++){
         Vector<Real_t>& coord_vec=nodes[i]->trg_coord;
@@ -4325,7 +4325,7 @@ class FMM_Tree {
         {
           pvfmm::Vector<size_t>& cnt=interac_data.interac_cnt;
           pvfmm::Vector<size_t>& dsp=interac_data.interac_dsp;
-          dsp.ReInit(cnt.Dim()); if(dsp.Dim()) dsp[0]=0;
+          dsp.Resize(cnt.Dim()); if(dsp.Dim()) dsp[0]=0;
           scan(&cnt[0],&dsp[0],dsp.Dim());
         }
       }
@@ -4365,10 +4365,10 @@ class FMM_Tree {
       value.ptr=setup_data. input_data;
       coord.len=coord.ptr->Dim(0)*coord.ptr->Dim(1);
       value.len=value.ptr->Dim(0)*value.ptr->Dim(1);
-      coord.cnt.ReInit(nodes.size());
-      coord.dsp.ReInit(nodes.size());
-      value.cnt.ReInit(nodes.size());
-      value.dsp.ReInit(nodes.size());
+      coord.cnt.Resize(nodes.size());
+      coord.dsp.Resize(nodes.size());
+      value.cnt.Resize(nodes.size());
+      value.dsp.Resize(nodes.size());
 #pragma omp parallel for
       for(size_t i=0;i<nodes.size();i++){
         nodes[i]->node_id=i;
@@ -4400,10 +4400,10 @@ class FMM_Tree {
       value.ptr=setup_data. input_data;
       coord.len=coord.ptr->Dim(0)*coord.ptr->Dim(1);
       value.len=value.ptr->Dim(0)*value.ptr->Dim(1);
-      coord.cnt.ReInit(nodes.size());
-      coord.dsp.ReInit(nodes.size());
-      value.cnt.ReInit(nodes.size());
-      value.dsp.ReInit(nodes.size());
+      coord.cnt.Resize(nodes.size());
+      coord.dsp.Resize(nodes.size());
+      value.cnt.Resize(nodes.size());
+      value.dsp.Resize(nodes.size());
 #pragma omp parallel for
       for(size_t i=0;i<nodes.size();i++){
         coord.dsp[i]=0;
@@ -4420,10 +4420,10 @@ class FMM_Tree {
       value.ptr=setup_data.output_data;
       coord.len=coord.ptr->Dim(0)*coord.ptr->Dim(1);
       value.len=value.ptr->Dim(0)*value.ptr->Dim(1);
-      coord.cnt.ReInit(nodes.size());
-      coord.dsp.ReInit(nodes.size());
-      value.cnt.ReInit(nodes.size());
-      value.dsp.ReInit(nodes.size());
+      coord.cnt.Resize(nodes.size());
+      coord.dsp.Resize(nodes.size());
+      value.cnt.Resize(nodes.size());
+      value.dsp.Resize(nodes.size());
 #pragma omp parallel for
       for(size_t i=0;i<nodes.size();i++){
         Vector<Real_t>& coord_vec=nodes[i]->trg_coord;
@@ -4457,7 +4457,7 @@ class FMM_Tree {
         for(size_t l=0;l<MAX_DEPTH;l++){
           Vector<Real_t>& scal=data.interac_data.scal[l*4+0];
           Vector<Real_t>& scal_exp=ker->trg_scal;
-          scal.ReInit(scal_exp.Dim());
+          scal.Resize(scal_exp.Dim());
           for(size_t i=0;i<scal.Dim();i++){
             scal[i]=powf(2.0,-scal_exp[i]*l);
           }
@@ -4465,7 +4465,7 @@ class FMM_Tree {
         for(size_t l=0;l<MAX_DEPTH;l++){
           Vector<Real_t>& scal=data.interac_data.scal[l*4+1];
           Vector<Real_t>& scal_exp=ker->src_scal;
-          scal.ReInit(scal_exp.Dim());
+          scal.Resize(scal_exp.Dim());
           for(size_t i=0;i<scal.Dim();i++){
             scal[i]=powf(2.0,-scal_exp[i]*l);
           }
@@ -4519,7 +4519,7 @@ class FMM_Tree {
         {
           pvfmm::Vector<size_t>& cnt=interac_data.interac_cnt;
           pvfmm::Vector<size_t>& dsp=interac_data.interac_dsp;
-          dsp.ReInit(cnt.Dim()); if(dsp.Dim()) dsp[0]=0;
+          dsp.Resize(cnt.Dim()); if(dsp.Dim()) dsp[0]=0;
           scan(&cnt[0],&dsp[0],dsp.Dim());
         }
       }
