@@ -36,7 +36,7 @@ public:
     own_data=own_data_;
     if(own_data){
       if(dim>0){
-	data_ptr=mem::aligned_new<T>(capacity);
+	int err = posix_memalign((void**)&data_ptr, MEM_ALIGN, capacity*sizeof(T));
 	if(data_!=NULL) memcpy(data_ptr,data_,dim*sizeof(T));
       }else data_ptr=NULL;
     }else
@@ -49,7 +49,7 @@ public:
     capacity=dim;
     own_data=true;
     if(dim>0){
-      data_ptr=mem::aligned_new<T>(capacity);
+      int err = posix_memalign((void**)&data_ptr, MEM_ALIGN, capacity*sizeof(T));
       memcpy(data_ptr,V.data_ptr,dim*sizeof(T));
     }else
       data_ptr=NULL;
@@ -61,7 +61,7 @@ public:
     capacity=dim;
     own_data=true;
     if(dim>0){
-      data_ptr=mem::aligned_new<T>(capacity);
+      int err = posix_memalign((void**)&data_ptr, MEM_ALIGN, capacity*sizeof(T));
       memcpy(data_ptr,&V[0],dim*sizeof(T));
     }else
       data_ptr=NULL;
@@ -72,7 +72,7 @@ public:
     FreeDevice(false);
     if(own_data){
       if(data_ptr!=NULL){
-	mem::aligned_delete(data_ptr);
+	free(data_ptr);
       }
     }
     data_ptr=NULL;
