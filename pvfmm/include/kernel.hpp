@@ -186,7 +186,7 @@ struct Kernel{
     scale_invar=true;
     src_scal.Resize(ker_dim[0]); src_scal.SetZero();
     trg_scal.Resize(ker_dim[1]); trg_scal.SetZero();
-    perm_vec.Resize(Perm_Count);
+    perm_vec.resize(Perm_Count);
     for(size_t p_type=0;p_type<C_Perm;p_type++){
       perm_vec[p_type       ]=Permutation<Real_t>(ker_dim[0]);
       perm_vec[p_type+C_Perm]=Permutation<Real_t>(ker_dim[1]);
@@ -657,7 +657,7 @@ struct Kernel{
       }
       for(size_t i=0;i<2*C_Perm;i++){
 	if(perm_vec[i].Dim()==0){
-	  perm_vec.Resize(0);
+	  perm_vec.resize(0);
 	  std::cout<<"no-symmetry for: "<<ker_name<<'\n';
 	  break;
 	}
@@ -714,7 +714,7 @@ struct Kernel{
   mutable bool scale_invar;
   mutable Vector<Real_t> src_scal;
   mutable Vector<Real_t> trg_scal;
-  mutable Vector<Permutation<Real_t> > perm_vec;
+  mutable std::vector<Permutation<Real_t> > perm_vec;
 
   mutable const Kernel* k_s2m;
   mutable const Kernel* k_s2l;
