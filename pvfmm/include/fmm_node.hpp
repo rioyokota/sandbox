@@ -142,8 +142,8 @@ class FMM_Node {
 
   void ClearData(){
     ClearFMMData();
-    pt_coord.ReInit(0);
-    pt_value.ReInit(0);
+    pt_coord.Resize(0);
+    pt_value.Resize(0);
   }
 
   void ClearFMMData(){
@@ -226,29 +226,39 @@ class FMM_Node {
 	if(pt_c[j]){
 	  Vector<Real_t>& vec=*pt_c[j];
 	  size_t dof=vec.Dim()/npts;
-	  if(dof>0) for(size_t i=0;i<nchld;i++){
-	      Vector<Real_t>& chld_vec=*chld_pt_c[i][j];
-	      chld_vec.ReInit((cdata[i+1]-cdata[i])*dof, &vec[0]+cdata[i]*dof);
-	    }
-	  vec.ReInit(0);
+          assert(dof>0);
+          for(size_t i=0;i<nchld;i++){
+            Vector<Real_t>& chld_vec=*chld_pt_c[i][j];
+            chld_vec.Resize((cdata[i+1]-cdata[i])*dof);
+            for (int k=cdata[i]*dof; k<cdata[i+1]*dof; k++) {
+              chld_vec[k-cdata[i]*dof] = vec[k];
+            } 
+          }
+	  vec.Resize(0);
 	}
 	if(pt_v[j]){
 	  Vector<Real_t>& vec=*pt_v[j];
 	  size_t dof=vec.Dim()/npts;
-	  if(dof>0) for(size_t i=0;i<nchld;i++){
-	      Vector<Real_t>& chld_vec=*chld_pt_v[i][j];
-	      chld_vec.ReInit((cdata[i+1]-cdata[i])*dof, &vec[0]+cdata[i]*dof);
-	    }
-	  vec.ReInit(0);
+          for(size_t i=0;i<nchld;i++){
+            Vector<Real_t>& chld_vec=*chld_pt_v[i][j];
+            chld_vec.Resize((cdata[i+1]-cdata[i])*dof);
+            for (int k=cdata[i]*dof; k<cdata[i+1]*dof; k++) {
+              chld_vec[k-cdata[i]*dof] = vec[k];
+            }
+          }
+	  vec.Resize(0);
 	}
 	if(pt_s[j]){
 	  Vector<size_t>& vec=*pt_s[j];
 	  size_t dof=vec.Dim()/npts;
-	  if(dof>0) for(size_t i=0;i<nchld;i++){
-	      Vector<size_t>& chld_vec=*chld_pt_s[i][j];
-	      chld_vec.ReInit((cdata[i+1]-cdata[i])*dof, &vec[0]+cdata[i]*dof);
-	    }
-	  vec.ReInit(0);
+          for(size_t i=0;i<nchld;i++){
+            Vector<size_t>& chld_vec=*chld_pt_s[i][j];
+            chld_vec.Resize((cdata[i+1]-cdata[i])*dof);
+            for (int k=cdata[i]*dof; k<cdata[i+1]*dof; k++) {
+              chld_vec[k-cdata[i]*dof] = vec[k];
+            }
+          }
+	  vec.Resize(0);
 	}
       }
     }

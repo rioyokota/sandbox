@@ -1,8 +1,7 @@
-debug double Setup phase
-Vector -> std::vector for non-Real_t
+Vector -> std::vector
+ - rm ReInit
 Matrix -> std::vector(std::vector) for non-Real_t
- - interac_list
- - node_lists
+debug double Setup phase
 vec.h <- kernel, fmm_tree
 template -> Real_t
 size_t -> int

@@ -80,7 +80,7 @@ public:
     dim=0;
   }
 
-  void Swap(Vector<T>& v1){
+  void swap(Vector<T>& v1){
     size_t dim_=dim;
     size_t capacity_=capacity;
     T* data_ptr_=data_ptr;
@@ -106,7 +106,7 @@ public:
       if(data_) memcpy(data_ptr,data_,dim*sizeof(T));
     }else{
       Vector<T> tmp(dim_,data_,own_data_);
-      this->Swap(tmp);
+      this->swap(tmp);
     }
   }
 
