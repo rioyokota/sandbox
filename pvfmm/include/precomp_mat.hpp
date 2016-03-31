@@ -92,6 +92,12 @@ class PrecompMat{
   }
 
 
+  inline uintptr_t align_ptr(uintptr_t ptr){
+    static uintptr_t     ALIGN_MINUS_ONE=MEM_ALIGN-1;
+    static uintptr_t NOT_ALIGN_MINUS_ONE=~ALIGN_MINUS_ONE;
+    return ((ptr+ALIGN_MINUS_ONE) & NOT_ALIGN_MINUS_ONE);
+  }
+
   size_t CompactData(int level, Mat_Type type, Matrix<char>& comp_data, size_t offset=0){
     struct HeaderData{
       size_t total_size;
@@ -117,24 +123,24 @@ class PrecompMat{
     {
       indx_size+=sizeof(HeaderData);
       indx_size+=mat_cnt*(1+(2+2)*(l1-l0))*sizeof(size_t);
-      indx_size=mem::align_ptr(indx_size);
+      indx_size=align_ptr(indx_size);
 
       for(size_t j=0;j<mat_cnt;j++){
 	Matrix     <Real_t>& M =Mat   (level,type,j);
 	if(M.Dim(0)>0 && M.Dim(1)>0){
-	  mem_size+=M.Dim(0)*M.Dim(1)*sizeof(Real_t); mem_size=mem::align_ptr(mem_size);
+	  mem_size+=M.Dim(0)*M.Dim(1)*sizeof(Real_t); mem_size=align_ptr(mem_size);
 	}
 
 	for(size_t l=l0;l<l1;l++){
 	  Permutation<Real_t>& Pr=Perm_R(l,type,j);
 	  Permutation<Real_t>& Pc=Perm_C(l,type,j);
 	  if(Pr.Dim()>0){
-	    mem_size+=Pr.Dim()*sizeof(size_t); mem_size=mem::align_ptr(mem_size);
-	    mem_size+=Pr.Dim()*sizeof(Real_t); mem_size=mem::align_ptr(mem_size);
+	    mem_size+=Pr.Dim()*sizeof(size_t); mem_size=align_ptr(mem_size);
+	    mem_size+=Pr.Dim()*sizeof(Real_t); mem_size=align_ptr(mem_size);
 	  }
 	  if(Pc.Dim()>0){
-	    mem_size+=Pc.Dim()*sizeof(size_t); mem_size=mem::align_ptr(mem_size);
-	    mem_size+=Pc.Dim()*sizeof(Real_t); mem_size=mem::align_ptr(mem_size);
+	    mem_size+=Pc.Dim()*sizeof(size_t); mem_size=align_ptr(mem_size);
+	    mem_size+=Pc.Dim()*sizeof(Real_t); mem_size=align_ptr(mem_size);
 	  }
 	}
       }
@@ -164,18 +170,18 @@ class PrecompMat{
       for(size_t j=0;j<mat_cnt;j++){
 	Matrix     <Real_t>& M =Mat   (level,type,j);
 	offset_indx[j][0]=data_offset; indx_ptr+=sizeof(size_t);
-	data_offset+=M.Dim(0)*M.Dim(1)*sizeof(Real_t); mem_size=mem::align_ptr(mem_size);
+	data_offset+=M.Dim(0)*M.Dim(1)*sizeof(Real_t); mem_size=align_ptr(mem_size);
 	for(size_t l=l0;l<l1;l++){
 	  Permutation<Real_t>& Pr=Perm_R(l,type,j);
 	  offset_indx[j][1+4*(l-l0)+0]=data_offset;
-	  data_offset+=Pr.Dim()*sizeof(size_t); mem_size=mem::align_ptr(mem_size);
+	  data_offset+=Pr.Dim()*sizeof(size_t); mem_size=align_ptr(mem_size);
 	  offset_indx[j][1+4*(l-l0)+1]=data_offset;
-	  data_offset+=Pr.Dim()*sizeof(Real_t); mem_size=mem::align_ptr(mem_size);
+	  data_offset+=Pr.Dim()*sizeof(Real_t); mem_size=align_ptr(mem_size);
 	  Permutation<Real_t>& Pc=Perm_C(l,type,j);
 	  offset_indx[j][1+4*(l-l0)+2]=data_offset;
-	  data_offset+=Pc.Dim()*sizeof(size_t); mem_size=mem::align_ptr(mem_size);
+	  data_offset+=Pc.Dim()*sizeof(size_t); mem_size=align_ptr(mem_size);
 	  offset_indx[j][1+4*(l-l0)+3]=data_offset;
-	  data_offset+=Pc.Dim()*sizeof(Real_t); mem_size=mem::align_ptr(mem_size);
+	  data_offset+=Pc.Dim()*sizeof(Real_t); mem_size=align_ptr(mem_size);
 	}
       }
     }
