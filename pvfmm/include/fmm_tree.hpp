@@ -3410,16 +3410,16 @@ class FMM_Tree {
     }
     {
       if(!vlist_fft_flag){
-        int nnn[3]={(int)n1,(int)n1,(int)n1};
-        void *fftw_in, *fftw_out;
-        fftw_in  = mem::aligned_new<Real_t>(  n3 *ker_dim0*chld_cnt);
-        fftw_out = mem::aligned_new<Real_t>(2*n3_*ker_dim0*chld_cnt);
+        int err, nnn[3]={(int)n1,(int)n1,(int)n1};
+        Real_t *fftw_in, *fftw_out;
+        err = posix_memalign((void**)&fftw_in,  MEM_ALIGN,   n3 *ker_dim0*chld_cnt*sizeof(Real_t));
+        err = posix_memalign((void**)&fftw_out, MEM_ALIGN, 2*n3_*ker_dim0*chld_cnt*sizeof(Real_t));
         vlist_fftplan = fft_plan_many_dft_r2c(3,nnn,ker_dim0*chld_cnt,
 					      (Real_t*)fftw_in, NULL, 1, n3,
 					      (fft_complex*)(fftw_out),NULL, 1, n3_,
 					      FFTW_ESTIMATE);
-        mem::aligned_delete<Real_t>((Real_t*)fftw_in );
-        mem::aligned_delete<Real_t>((Real_t*)fftw_out);
+        free(fftw_in );
+        free(fftw_out);
         vlist_fft_flag=true;
       }
     }
@@ -3443,7 +3443,7 @@ class FMM_Tree {
           }
           for(int i=0;i<dof;i++)
             fft_execute_dft_r2c(vlist_fftplan, (Real_t*)&upward_equiv_fft[i*  n3 *ker_dim0*chld_cnt],
-                                        (fft_complex*)&buffer          [i*2*n3_*ker_dim0*chld_cnt]);
+                                          (fft_complex*)&buffer          [i*2*n3_*ker_dim0*chld_cnt]);
           for(int i=0;i<ker_dim0*dof;i++)
           for(size_t j=0;j<n3_;j++)
           for(size_t k=0;k<chld_cnt;k++){
@@ -3478,16 +3478,16 @@ class FMM_Tree {
     }
     {
       if(!vlist_ifft_flag){
-        int nnn[3]={(int)n1,(int)n1,(int)n1};
+        int err, nnn[3]={(int)n1,(int)n1,(int)n1};
         Real_t *fftw_in, *fftw_out;
-        fftw_in  = mem::aligned_new<Real_t>(2*n3_*ker_dim1*chld_cnt);
-        fftw_out = mem::aligned_new<Real_t>(  n3 *ker_dim1*chld_cnt);
+        err = posix_memalign((void**)&fftw_in,  MEM_ALIGN, 2*n3_*ker_dim1*chld_cnt*sizeof(Real_t));
+        err = posix_memalign((void**)&fftw_out, MEM_ALIGN,   n3 *ker_dim1*chld_cnt*sizeof(Real_t));
         vlist_ifftplan = fft_plan_many_dft_c2r(3,nnn,ker_dim1*chld_cnt,
 					       (fft_complex*)fftw_in, NULL, 1, n3_,
 					       (Real_t*)(fftw_out),NULL, 1, n3,
 					       FFTW_ESTIMATE);
-        mem::aligned_delete<Real_t>(fftw_in);
-        mem::aligned_delete<Real_t>(fftw_out);
+        free(fftw_in);
+        free(fftw_out);
         vlist_ifft_flag=true;
       }
     }
