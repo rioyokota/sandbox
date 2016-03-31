@@ -5,30 +5,6 @@
 namespace pvfmm{
 namespace mem{
 
-template <class T>
-class TypeTraits{
-public:
-  static inline uintptr_t ID(){
-    return (uintptr_t)&ID;
-  }
-  static inline bool IsPOD(){
-    return false;
-  }
-};
-
-
-#define PVFMMDefinePOD(type) template<> bool inline TypeTraits<type>::IsPOD(){return true;};
-PVFMMDefinePOD(char);
-PVFMMDefinePOD(float);
-PVFMMDefinePOD(double);
-PVFMMDefinePOD(int);
-PVFMMDefinePOD(long long);
-PVFMMDefinePOD(unsigned long);
-PVFMMDefinePOD(char*);
-PVFMMDefinePOD(float*);
-PVFMMDefinePOD(double*);
-#undef PVFMMDefinePOD
-
 class MemoryManager{
 public:
   static const char init_mem_val=42;
@@ -169,16 +145,18 @@ inline uintptr_t align_ptr(uintptr_t ptr){
   
 template <class T>
 inline T* aligned_new(size_t n_elem=1, const MemoryManager* mem_mgr=&glbMemMgr) {
-  if(!n_elem) return NULL;
-  T* A=(T*)mem_mgr->malloc(n_elem, sizeof(T));
-  assert(A);
+  //if(!n_elem) return NULL;
+  T* A;
+  int err = posix_memalign((void**)&A, MEM_ALIGN, n_elem*sizeof(T));
+  //T* A=(T*)mem_mgr->malloc(n_elem, sizeof(T));
+  //assert(A);
   return A;
 }
 
 template <class T>
 inline void aligned_delete(T* A, const MemoryManager* mem_mgr=&glbMemMgr){
-  if (!A) return;
-  mem_mgr->free(A);
+  //if (!A) return;
+  free(A);
 }
 
 }//end namespace

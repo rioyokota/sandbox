@@ -1,5 +1,6 @@
 debug double Setup phase
-Vector -> std::vector
+Vector -> std::vector for non-Real_t
+Matrix -> std::vector(std::vector) for non-Real_t
  - interac_list
  - node_lists
 vec.h <- kernel, fmm_tree
