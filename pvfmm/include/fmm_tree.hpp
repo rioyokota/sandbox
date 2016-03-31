@@ -554,8 +554,10 @@ class FMM_Tree {
     size_t chld_cnt=1UL<<3;
     size_t fftsize_in =M_dim*ker_dim0*chld_cnt*2;
     size_t fftsize_out=M_dim*ker_dim1*chld_cnt*2;
-    Real_t* zero_vec0=mem::aligned_new<Real_t>(fftsize_in );
-    Real_t* zero_vec1=mem::aligned_new<Real_t>(fftsize_out);
+    int err;
+    Real_t * zero_vec0, * zero_vec1;
+    err = posix_memalign((void**)&zero_vec0, MEM_ALIGN, fftsize_in *sizeof(Real_t));
+    err = posix_memalign((void**)&zero_vec1, MEM_ALIGN, fftsize_out*sizeof(Real_t));
     size_t n_out=fft_out.Dim()/fftsize_out;
 #pragma omp parallel for
     for(size_t k=0;k<n_out;k++){
@@ -565,8 +567,9 @@ class FMM_Tree {
     size_t mat_cnt=precomp_mat.Dim();
     size_t blk1_cnt=interac_dsp.Dim()/mat_cnt;
     int BLOCK_SIZE = CACHE_SIZE * 4 / sizeof(Real_t);
-    Real_t** IN_ =mem::aligned_new<Real_t*>(BLOCK_SIZE*blk1_cnt*mat_cnt);
-    Real_t** OUT_=mem::aligned_new<Real_t*>(BLOCK_SIZE*blk1_cnt*mat_cnt);
+    Real_t **IN_, **OUT_;
+    err = posix_memalign((void**)&IN_ , MEM_ALIGN, BLOCK_SIZE*blk1_cnt*mat_cnt*sizeof(Real_t*));
+    err = posix_memalign((void**)&OUT_, MEM_ALIGN, BLOCK_SIZE*blk1_cnt*mat_cnt*sizeof(Real_t*));
 #pragma omp parallel for
     for(size_t interac_blk1=0; interac_blk1<blk1_cnt*mat_cnt; interac_blk1++){
       size_t interac_dsp0 = (interac_blk1==0?0:interac_dsp[interac_blk1-1]);
@@ -623,10 +626,10 @@ class FMM_Tree {
     {
       Profile::Add_FLOP(8*8*8*(interac_vec.Dim()/2)*M_dim*ker_dim0*ker_dim1*dof);
     }
-    mem::aligned_delete<Real_t*>(IN_ );
-    mem::aligned_delete<Real_t*>(OUT_);
-    mem::aligned_delete<Real_t>(zero_vec0);
-    mem::aligned_delete<Real_t>(zero_vec1);
+    free(IN_ );
+    free(OUT_);
+    free(zero_vec0);
+    free(zero_vec1);
   }
 
   template<typename ElemType>
@@ -901,10 +904,10 @@ class FMM_Tree {
         kernel->k_m2l->BuildMatrix(&conv_coord[0],n3,&r_trg[0],1,&conv_poten[0]);
         Matrix<Real_t> M_conv(n3,ker_dim[0]*ker_dim[1],&conv_poten[0],false);
         M_conv=M_conv.Transpose();
-        int nnn[3]={n1,n1,n1};
+        int err, nnn[3]={n1,n1,n1};
         Real_t *fftw_in, *fftw_out;
-        fftw_in  = mem::aligned_new<Real_t>(  n3 *ker_dim[0]*ker_dim[1]*sizeof(Real_t));
-        fftw_out = mem::aligned_new<Real_t>(2*n3_*ker_dim[0]*ker_dim[1]*sizeof(Real_t));
+        err = posix_memalign((void**)&fftw_in , MEM_ALIGN,   n3 *ker_dim[0]*ker_dim[1]*sizeof(Real_t));
+        err = posix_memalign((void**)&fftw_out, MEM_ALIGN, 2*n3_*ker_dim[0]*ker_dim[1]*sizeof(Real_t));
 #pragma omp critical (FFTW_PLAN)
         {
           if (!vprecomp_fft_flag){
@@ -919,8 +922,8 @@ class FMM_Tree {
         fft_execute_dft_r2c(vprecomp_fftplan, (Real_t*)fftw_in, (fft_complex*)(fftw_out));
         Matrix<Real_t> M_(2*n3_*ker_dim[0]*ker_dim[1],1,(Real_t*)fftw_out,false);
         M=M_;
-        mem::aligned_delete<Real_t>(fftw_in);
-        mem::aligned_delete<Real_t>(fftw_out);
+        free(fftw_in);
+        free(fftw_out);
         break;
       }
       case V1_Type:
