@@ -171,14 +171,6 @@ template <class T>
 inline T* aligned_new(size_t n_elem=1, const MemoryManager* mem_mgr=&glbMemMgr) {
   if(!n_elem) return NULL;
   T* A=(T*)mem_mgr->malloc(n_elem, sizeof(T));
-  if(!TypeTraits<T>::IsPOD()){ // Call constructors
-    std::cout << "Not POD: " << sizeof(T) << std::endl;
-#pragma omp parallel for
-    for(size_t i=0;i<n_elem;i++){
-      T* Ai=new(A+i) T();
-      assert(Ai==(A+i));
-    }
-  }
   assert(A);
   return A;
 }
@@ -186,14 +178,6 @@ inline T* aligned_new(size_t n_elem=1, const MemoryManager* mem_mgr=&glbMemMgr) 
 template <class T>
 inline void aligned_delete(T* A, const MemoryManager* mem_mgr=&glbMemMgr){
   if (!A) return;
-  if(!TypeTraits<T>::IsPOD()){ // Call destructors
-    MemoryManager::MemHead* mem_head=MemoryManager::GetMemHead(A);
-    size_t type_size=mem_head->type_size;
-    size_t n_elem=mem_head->n_elem;
-    for(size_t i=0;i<n_elem;i++){
-      ((T*)(((char*)A)+i*type_size))->~T();
-    }
-  }
   mem_mgr->free(A);
 }
 
