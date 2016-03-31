@@ -876,10 +876,13 @@ std::vector<Real_t> integ_pyramid(int m, Real_t* s, Real_t r, int nx, const Kern
     x_.swap(x_new);
   }
 
-  Vector<Real_t> k_out(   ny*nz*k_dim,mem::aligned_new<Real_t>(   ny*nz*k_dim),false);
-  Vector<Real_t> I0   (   ny*m *k_dim,mem::aligned_new<Real_t>(   ny*m *k_dim),false);
-  Vector<Real_t> I1   (   m *m *k_dim,mem::aligned_new<Real_t>(   m *m *k_dim),false);
-  Vector<Real_t> I2   (m *m *m *k_dim,mem::aligned_new<Real_t>(m *m *m *k_dim),false); I2.SetZero();
+  int err;
+  Real_t *k_out, *I0, *I1, *I2;
+  err = posix_memalign((void**)&k_out, MEM_ALIGN,   ny*nz*k_dim*sizeof(Real_t));
+  err = posix_memalign((void**)&I0,    MEM_ALIGN,   ny*m *k_dim*sizeof(Real_t));
+  err = posix_memalign((void**)&I1,    MEM_ALIGN,   m *m *k_dim*sizeof(Real_t));
+  err = posix_memalign((void**)&I2,    MEM_ALIGN,m *m *m *k_dim*sizeof(Real_t));
+  for (int j=0; j<m*m*m*k_dim; j++) I2[j] = 0;
   if(x_.size()>1)
   for(int k=0; k<x_.size()-1; k++){
     Real_t x0=x_[k];
@@ -946,7 +949,7 @@ std::vector<Real_t> integ_pyramid(int m, Real_t* s, Real_t r, int nx, const Kern
         }
       }
 
-      I0.SetZero();
+      for (int j=0; j<ny*m*k_dim; j++) I0[j] = 0;
       for(int kk=0; kk<k_dim; kk++){
         for(int i0=0; i0<ny; i0++){
           size_t indx0=(kk*ny+i0)*nz;
@@ -959,7 +962,7 @@ std::vector<Real_t> integ_pyramid(int m, Real_t* s, Real_t r, int nx, const Kern
         }
       }
 
-      I1.SetZero();
+      for (int j=0; j<m*m*k_dim; j++) I1[j] = 0;
       for(int kk=0; kk<k_dim; kk++){
         for(int i2=0; i2<ny; i2++){
           size_t indx0=(kk*ny+i2)*m;
@@ -997,11 +1000,11 @@ std::vector<Real_t> integ_pyramid(int m, Real_t* s, Real_t r, int nx, const Kern
                      +2*m*(m+1)*k_dim
                      +m*(m+1)*(m+2)/3*k_dim)*nx*(x_.size()-1));
 
-  std::vector<Real_t> I2_(&I2[0], &I2[0]+I2.Dim());
-  mem::aligned_delete<Real_t>(&k_out[0]);
-  mem::aligned_delete<Real_t>(&I0   [0]);
-  mem::aligned_delete<Real_t>(&I1   [0]);
-  mem::aligned_delete<Real_t>(&I2   [0]);
+  std::vector<Real_t> I2_(&I2[0], &I2[0]+m*m*m*k_dim);
+  free(k_out);
+  free(I0);
+  free(I1);
+  free(I2);
   return I2_;
 }
 
@@ -1163,7 +1166,7 @@ void generic_kernel(Real_t* r_src, int src_cnt, Real_t* v_src, int dof, Real_t* 
     size_t buff_size=src_cnt_*(3+SRC_DIM)+
                      trg_cnt_*(3+TRG_DIM);
     if(buff_size>STACK_BUFF_SIZE){
-      buff=mem::aligned_new<Real_t>(buff_size);
+      int err = posix_memalign((void**)&buff, MEM_ALIGN, buff_size*sizeof(Real_t));
     }
     Real_t* buff_ptr=buff;
     if(!buff_ptr){
@@ -1234,7 +1237,7 @@ void generic_kernel(Real_t* r_src, int src_cnt, Real_t* v_src, int dof, Real_t* 
     }
   }
   if(buff){
-    mem::aligned_delete<Real_t>(buff);
+    free(buff);
   }
 }
 
