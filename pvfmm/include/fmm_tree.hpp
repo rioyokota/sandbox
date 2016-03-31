@@ -1480,7 +1480,7 @@ class FMM_Tree {
 	curr_node->SetColleague(curr_node,(n1-1)/2);
         curr_node=PreorderNxt(curr_node);
       }
-      Vector<std::vector<FMM_Node*> > nodes(MAX_DEPTH);
+      std::vector<std::vector<FMM_Node*> > nodes(MAX_DEPTH);
       while(curr_node!=NULL){
         nodes[curr_node->depth].push_back(curr_node);
         curr_node=PreorderNxt(curr_node);
