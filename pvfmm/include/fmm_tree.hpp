@@ -1776,7 +1776,7 @@ class FMM_Tree {
       for(size_t i=0;i<node_lst.size();i++){
         FMM_Node* node=node_lst[i];
         Vector<Real_t>& data_vec=node->FMMData()->upward_equiv;
-        data_vec.ReInit(vec_sz,NULL,false);
+        data_vec.Resize(vec_sz);
         vec_lst.push_back(&data_vec);
       }
     }
@@ -1825,7 +1825,7 @@ class FMM_Tree {
       for(size_t i=0;i<node_lst.size();i++){
         FMM_Node* node=node_lst[i];
         Vector<Real_t>& data_vec=node->FMMData()->dnward_equiv;
-        data_vec.ReInit(vec_sz,NULL,false);
+        data_vec.Resize(vec_sz);
         vec_lst.push_back(&data_vec);
       }
     }
@@ -1877,13 +1877,13 @@ class FMM_Tree {
         {
           Vector<Real_t>& data_vec=node->src_value;
           size_t vec_sz=(node->src_coord.Dim()/3)*src_dof;
-          if(data_vec.Dim()!=vec_sz) data_vec.ReInit(vec_sz,NULL,false);
+          if(data_vec.Dim()!=vec_sz) data_vec.Resize(vec_sz);
           vec_lst.push_back(&data_vec);
         }
         {
           Vector<Real_t>& data_vec=node->surf_value;
           size_t vec_sz=(node->surf_coord.Dim()/3)*surf_dof;
-          if(data_vec.Dim()!=vec_sz) data_vec.ReInit(vec_sz,NULL,false);
+          if(data_vec.Dim()!=vec_sz) data_vec.Resize(vec_sz);
           vec_lst.push_back(&data_vec);
         }
       }
@@ -1906,7 +1906,7 @@ class FMM_Tree {
         {
           Vector<Real_t>& data_vec=node->trg_value;
           size_t vec_sz=(node->trg_coord.Dim()/3)*trg_dof;
-          data_vec.ReInit(vec_sz,NULL,false);
+          data_vec.Resize(vec_sz);
           vec_lst.push_back(&data_vec);
         }
       }
