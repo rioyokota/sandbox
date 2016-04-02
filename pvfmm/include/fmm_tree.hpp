@@ -1723,7 +1723,7 @@ class FMM_Tree {
   }
 
   void CollectNodeData(std::vector<FMM_Node*>& node, std::vector<Matrix<Real_t> >& buff_list, std::vector<std::vector<FMM_Node*> >& n_list) {
-    std::vector<std::vector<Vector<Real_t>* > > vec_list = std::vector<std::vector<Vector<Real_t>* > >(0);
+    std::vector<std::vector<Vector<Real_t>* > > vec_list(0);
     if(buff_list.size()<7) buff_list.resize(7);
     if(   n_list.size()<7)    n_list.resize(7);
     if( vec_list.size()<7)  vec_list.resize(7);
@@ -1990,7 +1990,7 @@ class FMM_Tree {
         }
 #pragma omp parallel for
         for(size_t i=0;i<n_vec;i++){
-          if((bool)&vec_lst[i][0][0]){
+          if(vec_size[i]>0){
             memcpy(((Real_t*)&dev_buffer[0])+vec_disp[i],&vec_lst[i][0][0],vec_size[i]*sizeof(Real_t));
           }
         }
