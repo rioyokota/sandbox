@@ -6,14 +6,14 @@ nx = 11
 ny = 11
 dx = 2./(nx-1)
 dy = 1./(ny-1)
-nt = 50
+nit = 50
 x = numpy.linspace(0,2,nx)
 y = numpy.linspace(0,1,ny)
 X, Y = numpy.meshgrid(x,y) 
 p = numpy.zeros((ny,nx))
 fig = pyplot.figure(figsize=(11,7), dpi=100)
 
-for n in range(nt):
+for it in range(nit):
     for i in range(0,nx):
         p[0,i] = p[1,i];
         p[ny-1,i] = p[ny-2,i];

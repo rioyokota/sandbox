@@ -6,7 +6,7 @@ nx = 11
 ny = 11
 dx = 2./(nx-1)
 dy = 1./(ny-1)
-nt = 50
+nit = 50
 x = numpy.linspace(0,2,nx)
 y = numpy.linspace(0,1,ny)
 X, Y = numpy.meshgrid(x,y) 
@@ -15,21 +15,17 @@ b  = numpy.zeros((ny,nx))
 b[5,5]  = 100
 fig = pyplot.figure(figsize=(11,7), dpi=100)
 
-for n in range(nt):
-    for i in range(0,nx):
-        p[0,i] = p[1,i];
-        p[ny-1,i] = p[ny-2,i];
-    for j in range(0,ny):
-        p[j,0] = 0
-        p[j,nx-1] = y[j]
+for it in range(nit):
+    p[0,:] = p[1,:];
+    p[-1,:] = p[-2,:];
+    p[:,0] = 0
+    p[:,-1] = y[:]
     pn = p.copy()
-    for i in range(1,nx-1):
-        for j in range(1,ny-1):
-            p[j,i] = (dy**2*(pn[j,i+1]+pn[j,i-1])+dx**2*(pn[j+1,i]+pn[j-1,i])-b[j,i]*dx**2*dy**2)/(2*(dx**2+dy**2))
+    p[1:-1,1:-1] = (dy**2*(pn[1:-1,2:]+pn[1:-1,:-2])+dx**2*(pn[2:,1:-1]+pn[:-2,1:-1])-b[1:-1,1:-1]*dx**2*dy**2)/(2*(dx**2+dy**2))
     ax = fig.gca(projection='3d')
     ax.plot_surface(X, Y, p, rstride=1, cstride=1, cmap=cm.coolwarm)
     ax.set_zlim3d(0, 1)
     ax.view_init(elev=50., azim=-130.)
-    pyplot.pause(0.05)
+    pyplot.pause(0.001)
     pyplot.clf()
 pyplot.show()
