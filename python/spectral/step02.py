@@ -1,14 +1,14 @@
 import math, numpy
 from matplotlib import pyplot
 
-nx = 16
+nx = 8
 pi = math.pi
-dx = 2*pi/(nx-1)
+dx = 2*pi/nx
 x = numpy.linspace(0,2*pi-dx,nx)
 k = numpy.linspace(0,nx-1,nx)
 f = numpy.sin(2*x)
 g = numpy.sin(3*x)
-h = f * g
+#h = f * g
 
 fk = numpy.fft.fft(f,nx)/nx
 gk = numpy.fft.fft(g,nx)/nx
@@ -18,7 +18,7 @@ for i in range(0,nx):
     for j in range(0,nx):
         hk[i] += fk[j] * gk[(i-j) % nx]
 
-#h = numpy.fft.ifft(hk,nx) * nx
+h = numpy.fft.ifft(hk,nx) * nx
 pyplot.subplot(121)
 pyplot.plot(x, f, 'o-', label='f(x)')
 pyplot.plot(x, g, 'o-', label='g(x)')

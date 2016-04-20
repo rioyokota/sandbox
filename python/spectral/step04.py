@@ -1,7 +1,7 @@
 import math, numpy
 from matplotlib import pyplot
 
-nx = 16
+nx = 32
 pi = math.pi
 dx = 2*pi/(nx-1)
 x = numpy.linspace(0,2*pi,nx)

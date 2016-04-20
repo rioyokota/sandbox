@@ -1,9 +1,9 @@
 import math, numpy
 from matplotlib import pyplot
 
-nx = 16
+nx = 8
 pi = math.pi
-dx = 2*pi/(nx-1)
+dx = 2*pi/nx
 x = numpy.linspace(0,2*pi-dx,nx)
 X = numpy.linspace(0,2*pi,1000)
 k = numpy.arange(nx)
@@ -19,7 +19,7 @@ spectral = numpy.fft.ifft(dfk,nx)*nx
 pyplot.subplot(121)
 pyplot.plot(X, exact, '-', label='Exact')
 pyplot.plot(x, fdm, 'o-', label='FDM')
-pyplot.plot(x, spectral, 'o-', label='Spectral')
+pyplot.plot(x, spectral.real, 'o-', label='Spectral')
 pyplot.axis([0, 2*pi, -6, 6])
 pyplot.legend(loc='upper right')
 pyplot.subplot(122)
