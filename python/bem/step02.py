@@ -56,17 +56,11 @@ for i in range(0,n):
 
 for i in range(0,n):
     if bc[i] == 1:
-        for j in range(0,n):
-            tmp = G[j,i]
-            G[j,i] = -H[j,i]
-            H[j,i] = -tmp
+        tmp = G[:,i]
+        G[:,i] = -H[:,i]
+        H[:,i] = -tmp
 
-b = numpy.zeros(n)
-for i in range(0,n):
-    bb = 0
-    for j in range(0,n):
-        bb += H[i,j]*u[j]
-    b[i] = bb
+b = H.dot(u)
 
 un = numpy.linalg.solve(G,b)
 
