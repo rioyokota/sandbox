@@ -2,11 +2,11 @@ import numpy
 from matplotlib import pyplot, cm
 from mpl_toolkits.mplot3d import Axes3D
 
-nx = 11
-ny = 11
+nx = 8
+ny = 8
 dx = 2./(nx-1)
 dy = 1./(ny-1)
-nit = 50
+nit = 200
 x = numpy.linspace(0,2,nx)
 y = numpy.linspace(0,1,ny)
 X, Y = numpy.meshgrid(x,y) 
