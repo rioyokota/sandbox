@@ -2,7 +2,7 @@ import numpy, math
 from matplotlib import pyplot
 
 n = 2
-nt = 10
+nt = 40
 dt = 0.2
 x = numpy.zeros(n)
 y = numpy.zeros(n)

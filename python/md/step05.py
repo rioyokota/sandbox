@@ -1,9 +1,9 @@
 import numpy, random
 from matplotlib import pyplot
 
-n = 10
-nt = 50
-dt = 2e-3
+n = 50
+nt = 100
+dt = 2e-4
 sigma = 0.4
 epsilon = 1e-4
 x = numpy.zeros(n)
@@ -27,15 +27,15 @@ for it in range(nt):
             dx = x[i]-x[j]
             dy = y[i]-y[j]
             R2 = dx*dx+dy*dy
-            if R2 < 0.01:
+            if R2 < 0.03:
                 invR2 = 0
             else:
                 invR2 = 1/R2
             invR2s = sigma*sigma*invR2
             invR6 = invR2s*invR2s*invR2s
-            tmp = epsilon*invR2s*invR6*(2*invR6-1)            
-            ax[i] -= dx*(tmp+invR2)
-            ay[i] -= dy*(tmp+invR2)
+            tmp = invR2s*invR6*(2*invR6-1)            
+            ax[i] -= dx*(tmp+invR2*epsilon)
+            ay[i] -= dy*(tmp+invR2*epsilon)
     for i in range(n):
         tmp = x[i]
         x[i] = 2*x[i]-xo[i]+ax[i]*dt*dt

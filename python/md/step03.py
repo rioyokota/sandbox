@@ -2,7 +2,7 @@ import numpy, random
 from matplotlib import pyplot
 
 n = 10
-nt = 50
+nt = 100
 dt = 1e-2
 x = numpy.zeros(n)
 y = numpy.zeros(n)

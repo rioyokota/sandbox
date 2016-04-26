@@ -2,7 +2,7 @@ import numpy, math
 from matplotlib import pyplot
 
 n = 2
-nt = 10
+nt = 40
 dt = 0.2
 x = numpy.zeros(n)
 y = numpy.zeros(n)
@@ -35,6 +35,7 @@ for it in range(nt):
         vy[i] += ay[i]*dt;
         x[i] += vx[i]*dt
         y[i] += vy[i]*dt
+    if it == nt/2: dt = -dt
     pyplot.plot(x, y, 'o')
     pyplot.axis([-1,1,-1,1])
     pyplot.gca().add_artist(pyplot.Circle((0,0),.5,color='b',fill=False))
