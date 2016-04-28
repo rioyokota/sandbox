@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <math.h>
 #include <sys/time.h>
+#include <omp.h>
 
 double get_time() {
   struct timeval tv;
@@ -81,6 +82,7 @@ int main() {
   toc = get_time();
   printf("%f\n",toc-tic);
   // Check answer
+#pragma omp parallel for private(j)
   for (i=0; i<N; i++) {
     double ui = 0;
     for (j=0; j<N; j++) {
