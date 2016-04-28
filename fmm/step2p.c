@@ -13,7 +13,7 @@ double get_time() {
 }
 
 int main() {
-  int i, j, N = 1000;
+  int i, j, N = 10000;
   double x[N], y[N], u[N], q[N];
   for (i=0; i<N; i++) {
     x[i] = drand48();
@@ -57,6 +57,7 @@ int main() {
   tic = get_time();
   printf("%f\n",tic-toc);
   // L2P
+#pragma omp parallel for private(ix,iy)
   for (i=0; i<N; i++) {
     ix = x[i] * 4;
     iy = y[i] * 4;
@@ -65,6 +66,7 @@ int main() {
   toc = get_time();
   printf("%f\n",toc-tic);
   // P2P
+#pragma omp parallel for private(j,ix,iy,jx,jy)
   for (i=0; i<N; i++) {
     ix = x[i] * 4;
     iy = y[i] * 4;
@@ -91,7 +93,7 @@ int main() {
       double r = sqrt(dx * dx + dy * dy);
       if (r != 0) ui += q[j] / r;
     }
-    //printf("%d %lf %lf\n", i, u[i], ui);
+    printf("%d %lf %lf\n", i, u[i], ui);
   }  
   tic = get_time();
   printf("%f\n",tic-toc);
