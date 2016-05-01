@@ -1,4 +1,4 @@
-import numpy, copy
+import numpy
 from matplotlib import pyplot
 from scipy import interpolate
 
@@ -8,10 +8,10 @@ nt = 50
 dt = .01
 c = 1
 x = numpy.linspace(0,2,nx)
-xp = copy.deepcopy(x)
+xp = x.copy()
 u = numpy.ones(nx)
 u[10:20] = 2
-up = copy.deepcopy(u)
+up = u.copy()
 
 for n in range(nt):
     un = u.copy()
@@ -20,8 +20,10 @@ for n in range(nt):
         xp[i] += c*dt
         if(xp[i] > 2): xp[i] -= 2
     ui = interpolate.interp1d(xp,up)
-    pyplot.plot(x, u, x, ui(x))
+    pyplot.plot(x, u, 'o-', label='FDM')
+    pyplot.plot(x, ui(x), 'o-', label='PM')
     pyplot.axis([0, 2, .5, 2.5])
+    pyplot.legend(loc='upper right')
     pyplot.pause(.05)
     pyplot.cla()
 pyplot.show()
