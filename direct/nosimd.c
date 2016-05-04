@@ -61,7 +61,7 @@ int main() {
     az[i] = azi;
   }
   toc = get_time();
-  printf("No SSE : %e s : %lf GFlops\n",toc-tic, OPS/(toc-tic));
+  printf("No SIMD: %e s : %lf GFlops\n",toc-tic, OPS/(toc-tic));
 
 // DEALLOCATE
   free(x);

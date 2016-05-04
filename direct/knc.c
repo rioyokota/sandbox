@@ -1,7 +1,6 @@
 #include <math.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include <papi.h>
 #include <sys/time.h>
 #include <immintrin.h>
 
@@ -35,12 +34,6 @@ int main() {
     m[i] = drand48() / N;
     p[i] = ax[i] = ay[i] = az[i] = 0;
   }
-  int Events[3] = {PAPI_L2_DCM, PAPI_L2_DCA, PAPI_TLB_DM};
-  int EventSet = PAPI_NULL;
-  long long values[3] = {0, 0, 0};
-  PAPI_library_init(PAPI_VER_CURRENT);
-  PAPI_create_eventset(&EventSet);
-  PAPI_add_events(EventSet, Events, 3);
   printf("N      : %d\n",N);
 
   float pdiff = 0, pnorm = 0, adiff = 0, anorm = 0;
@@ -48,10 +41,8 @@ int main() {
   {
 #pragma omp single
     {
-      PAPI_start(EventSet);
       tic = get_time();
     }
-    // i vectorized
 #pragma omp for
     for (i=0; i<N; i+=16) {
       __m512 pi = _mm512_setzero_ps();
@@ -90,60 +81,9 @@ int main() {
 #pragma omp single
     {
       toc = get_time();
-      PAPI_stop(EventSet,values);
-      printf("L2 Miss: %lld L2 Access: %lld TLB Miss: %lld\n",values[0],values[1],values[2]);
-      printf("I vect : %e s : %lf GFlops\n",toc-tic, OPS/(toc-tic));
-      for (i=0; i<3; i++) values[i] = 0;
-
-      // j vectorized
-      PAPI_start(EventSet);
-      tic = get_time();
-    }
-#pragma omp for
-    for (i=0; i<N; i++) {
-      __m512 pi = _mm512_setzero_ps();
-      __m512 axi = _mm512_setzero_ps();
-      __m512 ayi = _mm512_setzero_ps();
-      __m512 azi = _mm512_setzero_ps();
-      __m512 xi = _mm512_set1_ps(x[i]);
-      __m512 yi = _mm512_set1_ps(y[i]);
-      __m512 zi = _mm512_set1_ps(z[i]);
-      for (j=0; j<N; j+=16) {
-        __m512 xj = _mm512_load_ps(x+j);
-        xj = _mm512_sub_ps(xj, xi);
-        __m512 yj = _mm512_load_ps(y+j);
-        yj = _mm512_sub_ps(yj, yi);
-        __m512 zj = _mm512_load_ps(z+j);
-        zj = _mm512_sub_ps(zj, zi);
-        __m512 R2 = _mm512_set1_ps(EPS2);
-        R2 = _mm512_fmadd_ps(xj, xj, R2);
-        R2 = _mm512_fmadd_ps(yj, yj, R2);
-        R2 = _mm512_fmadd_ps(zj, zj, R2);
-        __m512 mj = _mm512_load_ps(m+j);
-        __m512 invR = _mm512_rsqrt23_ps(R2);
-        mj = _mm512_mul_ps(mj, invR);
-        pi = _mm512_add_ps(pi, mj);
-        invR = _mm512_mul_ps(invR, invR);
-        invR = _mm512_mul_ps(invR, mj);
-        axi = _mm512_fmadd_ps(xj, invR, axi);
-        ayi = _mm512_fmadd_ps(yj, invR, ayi);
-        azi = _mm512_fmadd_ps(zj, invR, azi);
-      }
-      p[i] = _mm512_reduce_add_ps(pi);
-      ax[i] = _mm512_reduce_add_ps(axi);
-      ay[i] = _mm512_reduce_add_ps(ayi);
-      az[i] = _mm512_reduce_add_ps(azi);
-    }
-#pragma omp single
-    {
-      toc = get_time();
-      PAPI_stop(EventSet,values);
-      printf("L2 Miss: %lld L2 Access: %lld TLB Miss: %lld\n",values[0],values[1],values[2]);
-      printf("J vect : %e s : %lf GFlops\n",toc-tic, OPS/(toc-tic));
-      for (i=0; i<3; i++) values[i] = 0;
+      printf("mm512  : %e s : %lf GFlops\n",toc-tic, OPS/(toc-tic));
 
       // w/o intrinsics
-      PAPI_start(EventSet);
       tic = get_time();
     }
 #pragma omp for
@@ -176,9 +116,7 @@ int main() {
     }
   }
   toc = get_time();
-  PAPI_stop(EventSet,values);
-  printf("L2 Miss: %lld L2 Access: %lld TLB Miss: %lld\n",values[0],values[1],values[2]);
-  printf("No intr: %e s : %lf GFlops\n",toc-tic, OPS/(toc-tic));
+  printf("No SIMD: %e s : %lf GFlops\n",toc-tic, OPS/(toc-tic));
   printf("P ERR  : %e\n",sqrt(pdiff/pnorm));
   printf("A ERR  : %e\n",sqrt(adiff/anorm));
 

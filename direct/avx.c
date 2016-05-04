@@ -1,7 +1,6 @@
 #include <math.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include <papi.h>
 #include <sys/time.h>
 #include <immintrin.h>
 
@@ -33,16 +32,9 @@ int main() {
     z[i] = drand48();
     m[i] = drand48() / N;
   }
-  int Events[3] = {PAPI_L2_DCM, PAPI_L2_DCA, PAPI_TLB_DM};
-  int EventSet = PAPI_NULL;
-  long long values[3] = {0, 0, 0};
-  PAPI_library_init(PAPI_VER_CURRENT);
-  PAPI_create_eventset(&EventSet);
-  PAPI_add_events(EventSet, Events, 3);
   printf("N      : %d\n",N);
 
 // AVX
-  PAPI_start(EventSet);
   tic = get_time();
 #pragma omp parallel for private(j)
   for (i=0; i<N; i+=8) {
@@ -146,14 +138,10 @@ int main() {
     _mm256_store_ps(az+i, azi);
   }
   toc = get_time();
-  PAPI_stop(EventSet,values);
-  printf("L2 Miss: %lld L2 Access: %lld TLB Miss: %lld\n",values[0],values[1],values[2]);
   printf("AVX    : %e s : %lf GFlops\n",toc-tic, OPS/(toc-tic));
-  for (i=0; i<3; i++) values[i] = 0;
 
 // No AVX
   float pdiff = 0, pnorm = 0, adiff = 0, anorm = 0;
-  PAPI_start(EventSet);
   tic = get_time();
 #pragma omp parallel for private(j) reduction(+: pdiff, pnorm, adiff, anorm)
   for (i=0; i<N; i++) {
@@ -184,9 +172,7 @@ int main() {
     anorm += axi * axi + ayi * ayi + azi * azi;    
   }
   toc = get_time();
-  PAPI_stop(EventSet,values);
-  printf("L2 Miss: %lld L2 Access: %lld TLB Miss: %lld\n",values[0],values[1],values[2]);
-  printf("No AVX : %e s : %lf GFlops\n",toc-tic, OPS/(toc-tic));
+  printf("No SIMD: %e s : %lf GFlops\n",toc-tic, OPS/(toc-tic));
   printf("P ERR  : %e\n",sqrt(pdiff/pnorm));
   printf("A ERR  : %e\n",sqrt(adiff/anorm));
 

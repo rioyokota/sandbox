@@ -1,7 +1,6 @@
 #include <math.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include <papi.h>
 #include <sys/time.h>
 #include <xmmintrin.h>
 
@@ -74,12 +73,6 @@ int main() {
     z[i] = drand48();
     m[i] = drand48() / N;
   }
-  int Events[3] = {PAPI_L2_DCM, PAPI_L2_DCA, PAPI_TLB_DM};
-  int EventSet = PAPI_NULL;
-  long long values[3] = {0, 0, 0};
-  PAPI_library_init(PAPI_VER_CURRENT);
-  PAPI_create_eventset(&EventSet);
-  PAPI_add_events(EventSet, Events, 3);
   printf("N      : %d\n",N);
 
 // CUDA
@@ -102,12 +95,9 @@ int main() {
   cudaMemcpy(m_d, m, N * sizeof(real_t), cudaMemcpyHostToDevice);
   toc = get_time();
   //printf("memcpy : %e s\n",toc-tic);
-  PAPI_start(EventSet);
   tic = get_time();
   GPUkernel<<<N/THREADS,THREADS>>>(N, x_d, y_d, z_d, m_d, p_d, ax_d, ay_d, az_d, EPS2);
   toc = get_time();
-  PAPI_stop(EventSet,values);
-  printf("L2 Miss: %lld L2 Access: %lld TLB Miss: %lld\n",values[0],values[1],values[2]);
   printf("CUDA   : %e s : %lf GFlops\n",toc-tic, OPS/(toc-tic));
   tic = get_time();
   cudaMemcpy(p, p_d, N * sizeof(real_t), cudaMemcpyDeviceToHost);
@@ -124,11 +114,9 @@ int main() {
   cudaFree(ax_d);
   cudaFree(ay_d);
   cudaFree(az_d);
-  for (i=0; i<3; i++) values[i] = 0;
 
 // No CUDA
   real_t pdiff = 0, pnorm = 0, adiff = 0, anorm = 0;
-  PAPI_start(EventSet);
   tic = get_time();
 #pragma omp parallel for private(j) reduction(+: pdiff, pnorm, adiff, anorm)
   for (i=0; i<N; i++) {
@@ -159,8 +147,6 @@ int main() {
     anorm += axi * axi + ayi * ayi + azi * azi;    
   }
   toc = get_time();
-  PAPI_stop(EventSet,values);
-  printf("L2 Miss: %lld L2 Access: %lld TLB Miss: %lld\n",values[0],values[1],values[2]);
   printf("No CUDA: %e s : %lf GFlops\n",toc-tic, OPS/(toc-tic));
   printf("P ERR  : %e\n",sqrt(pdiff/pnorm));
   printf("A ERR  : %e\n",sqrt(adiff/anorm));

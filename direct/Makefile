@@ -6,25 +6,22 @@ ICC = icc -Wall -qopenmp -O3 -fimf-domain-exclusion=15
 NVCC = nvcc -O3 -use_fast_math -arch=sm_35 -Xcompiler "-Wall -fopenmp -O3 -ffast-math -funroll-loops"
 
 sse: sse.c
-	$(CC) $< -lpapi
+	$(ICC) $<
 	./a.out
 avx: avx.c
-	$(CC) -mavx $< -lpapi
+	$(ICC) -mavx $<
 	./a.out
-mic: mic.c
-	$(ICC) -mmic $< -L/home/rio/.papi/mic/lib -lpapi -lpfm
-	ssh mic0 LD_LIBRARY_PATH=~/.lib sandbox/direct/a.out
-mic2: mic2.c
+knc: knc.c
 	$(ICC) -mmic $<
-	ssh mic0 LD_LIBRARY_PATH=~/.lib KMP_AFFINITY=compact sandbox/direct/a.out
+	ssh $(HOSTNAME)-mic0 LD_LIBRARY_PATH=/opt/intel/compiler/latest/lib/mic direct/a.out
 knl: knl.c
 	$(ICC) -xMIC-AVX512 $<
 	./a.out
 cuda: cuda.cu
-	$(NVCC) $< -lpapi
+	$(NVCC) $<
 	./a.out
 openacc: openacc.c
-	pgcc -fast -mp -acc -ta=nvidia $< -lpapi
+	pgcc -fast -mp -acc -ta=nvidia $<
 	./a.out
 clean:
 	@make -C .. clean
