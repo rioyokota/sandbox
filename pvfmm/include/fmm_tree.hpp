@@ -2009,8 +2009,7 @@ class FMM_Tree {
 #pragma omp parallel for
       for(size_t i=0;i<n_vec;i++){
         vec_lst[i]->Resize(vec_size[i]);
-        Vector<Real_t> tmp(vec_size[i],&buff[0][0]+vec_disp[i],false);
-	vec_lst[i]->swap(tmp);
+        vec_lst[i]->ReInit(vec_size[i],&buff[0][0]+vec_disp[i],false);
       }
     }
   }
