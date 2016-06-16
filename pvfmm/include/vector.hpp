@@ -20,14 +20,13 @@ public:
     }
     size_t dim;
     uintptr_t dev_ptr;
-  };
+    };
 
   Vector(){
     dim=0;
     capacity=0;
     own_data=true;
     data_ptr=NULL;
-    dev.dev_ptr=(uintptr_t)NULL;
   }
 
   Vector(size_t dim_, T* data_=NULL, bool own_data_=true){
@@ -41,7 +40,6 @@ public:
       }else data_ptr=NULL;
     }else
       data_ptr=data_;
-    dev.dev_ptr=(uintptr_t)NULL;
   }
 
   Vector(const Vector<T>& V){
@@ -53,7 +51,6 @@ public:
       memcpy(data_ptr,V.data_ptr,dim*sizeof(T));
     }else
       data_ptr=NULL;
-    dev.dev_ptr=(uintptr_t)NULL;
   }
 
   Vector(const std::vector<T>& V){
@@ -65,11 +62,9 @@ public:
       memcpy(data_ptr,&V[0],dim*sizeof(T));
     }else
       data_ptr=NULL;
-    dev.dev_ptr=(uintptr_t)NULL;
   }
 
   ~Vector(){
-    FreeDevice(false);
     if(own_data){
       if(data_ptr!=NULL){
 	free(data_ptr);
@@ -85,35 +80,32 @@ public:
     size_t capacity_=capacity;
     T* data_ptr_=data_ptr;
     bool own_data_=own_data;
-    Device dev_=dev;
 
     dim=v1.dim;
     capacity=v1.capacity;
     data_ptr=v1.data_ptr;
     own_data=v1.own_data;
-    dev=v1.dev;
 
     v1.dim=dim_;
     v1.capacity=capacity_;
     v1.data_ptr=data_ptr_;
     v1.own_data=own_data_;
-    v1.dev=dev_;
   }
 
   void ReInit(size_t dim_, T* data_=NULL, bool own_data_=true){
     if(own_data_ && own_data && dim_<=capacity){
-      if(dim!=dim_) FreeDevice(false); dim=dim_;
       if(data_) memcpy(data_ptr,data_,dim*sizeof(T));
     }else{
+#if 0
+      dim=dim_;
+      capacity=dim;
+      own_data=own_data_;
+      data_ptr=data_;
+#else
       Vector<T> tmp(dim_,data_,own_data_);
       this->swap(tmp);
+#endif
     }
-  }
-
-  void FreeDevice(bool copy){
-    if(dev.dev_ptr==(uintptr_t)NULL) return;
-    dev.dev_ptr=(uintptr_t)NULL;
-    dev.dim=0;
   }
 
   void Write(const char* fname){
@@ -137,7 +129,6 @@ public:
   }
 
   void Resize(size_t dim_){
-    if(dim!=dim_) FreeDevice(false);
     if(capacity>=dim_) dim=dim_;
     else ReInit(dim_);
   }
@@ -149,7 +140,6 @@ public:
 
   Vector<T>& operator=(const Vector<T>& V){
     if(this!=&V){
-      if(dim!=V.dim) FreeDevice(false);
       if(capacity<V.dim) ReInit(V.dim); dim=V.dim;
       memcpy(data_ptr,V.data_ptr,dim*sizeof(T));
     }
@@ -158,7 +148,6 @@ public:
 
   Vector<T>& operator=(const std::vector<T>& V){
     {
-      if(dim!=V.size()) FreeDevice(false);
       if(capacity<V.size()) ReInit(V.size()); dim=V.size();
       memcpy(data_ptr,&V[0],dim*sizeof(T));
     }
@@ -175,7 +164,6 @@ private:
   size_t capacity;
   T* data_ptr;
   bool own_data;
-  Device dev;
 };
 
 }//end namespace
