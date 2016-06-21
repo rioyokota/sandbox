@@ -142,13 +142,11 @@ public:
 
   public:
 
-
   Matrix(){
     dim[0]=0;
     dim[1]=0;
     own_data=true;
     data_ptr=NULL;
-    dev.dev_ptr=(uintptr_t)NULL;
   }
 
   Matrix(size_t dim1, size_t dim2, T* data_=NULL, bool own_data_=true) {
@@ -162,7 +160,6 @@ public:
       }else data_ptr=NULL;
     }else
       data_ptr=data_;
-    dev.dev_ptr=(uintptr_t)NULL;
   }
 
   Matrix(const Matrix<T>& M){
@@ -175,11 +172,9 @@ public:
       memcpy(data_ptr,M.data_ptr,dim[0]*dim[1]*sizeof(T));
     }else
       data_ptr=NULL;
-    dev.dev_ptr=(uintptr_t)NULL;
   }
 
   ~Matrix(){
-    FreeDevice(false);
     if(own_data){
       if(data_ptr!=NULL){
 	free(data_ptr);
@@ -214,20 +209,12 @@ public:
 
   void ReInit(size_t dim1, size_t dim2, T* data_=NULL, bool own_data_=true){
     if(own_data_ && own_data && dim[0]*dim[1]>=dim1*dim2){
-      if(dim[0]*dim[1]!=dim1*dim2) FreeDevice(false);
       dim[0]=dim1; dim[1]=dim2;
       if(data_) memcpy(data_ptr,data_,dim[0]*dim[1]*sizeof(T));
     }else{
       Matrix<T> tmp(dim1,dim2,data_,own_data_);
       this->Swap(tmp);
     }
-  }
-
-  void FreeDevice(bool copy){
-    if(dev.dev_ptr==(uintptr_t)NULL) return;
-    dev.dev_ptr=(uintptr_t)NULL;
-    dev.dim[0]=0;
-    dev.dim[1]=0;
   }
 
   void Write(const char* fname){
@@ -263,7 +250,6 @@ public:
   }
 
   void Resize(size_t i, size_t j){
-    if(dim[0]*dim[1]!=i*j) FreeDevice(false);
     if(dim[0]*dim[1]>=i*j){
       dim[0]=i; dim[1]=j;
     }else ReInit(i,j);
@@ -276,7 +262,6 @@ public:
 
   Matrix<T>& operator=(const Matrix<T>& M){
     if(this!=&M){
-      if(dim[0]*dim[1]!=M.dim[0]*M.dim[1]) FreeDevice(false);
       if(dim[0]*dim[1]<M.dim[0]*M.dim[1]){
 	ReInit(M.dim[0],M.dim[1]);
       }

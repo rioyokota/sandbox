@@ -7,21 +7,6 @@ template <class T>
 class Vector{
 
 public:
-
-  struct
-  Device{
-    Device& operator=(Vector& V){
-      dim=V.Dim();
-      dev_ptr=(uintptr_t)&V[0];
-      return *this;
-    }
-    inline T& operator[](size_t j) const{
-      return ((T*)dev_ptr)[j];
-    }
-    size_t dim;
-    uintptr_t dev_ptr;
-    };
-
   Vector(){
     dim=0;
     capacity=0;
@@ -35,7 +20,7 @@ public:
     own_data=own_data_;
     if(own_data){
       if(dim>0){
-	int err = posix_memalign((void**)&data_ptr, MEM_ALIGN, capacity*sizeof(T));
+	int err = posix_memalign((void**)&data_ptr, MEM_ALIGN, dim*sizeof(T));
 	if(data_!=NULL) memcpy(data_ptr,data_,dim*sizeof(T));
       }else data_ptr=NULL;
     }else
@@ -47,7 +32,7 @@ public:
     capacity=dim;
     own_data=true;
     if(dim>0){
-      int err = posix_memalign((void**)&data_ptr, MEM_ALIGN, capacity*sizeof(T));
+      int err = posix_memalign((void**)&data_ptr, MEM_ALIGN, dim*sizeof(T));
       memcpy(data_ptr,V.data_ptr,dim*sizeof(T));
     }else
       data_ptr=NULL;
@@ -58,7 +43,7 @@ public:
     capacity=dim;
     own_data=true;
     if(dim>0){
-      int err = posix_memalign((void**)&data_ptr, MEM_ALIGN, capacity*sizeof(T));
+      int err = posix_memalign((void**)&data_ptr, MEM_ALIGN, dim*sizeof(T));
       memcpy(data_ptr,&V[0],dim*sizeof(T));
     }else
       data_ptr=NULL;
@@ -75,36 +60,20 @@ public:
     dim=0;
   }
 
-  void swap(Vector<T>& v1){
-    size_t dim_=dim;
-    size_t capacity_=capacity;
-    T* data_ptr_=data_ptr;
-    bool own_data_=own_data;
-
-    dim=v1.dim;
-    capacity=v1.capacity;
-    data_ptr=v1.data_ptr;
-    own_data=v1.own_data;
-
-    v1.dim=dim_;
-    v1.capacity=capacity_;
-    v1.data_ptr=data_ptr_;
-    v1.own_data=own_data_;
-  }
-
   void ReInit(size_t dim_, T* data_=NULL, bool own_data_=true){
     if(own_data_ && own_data && dim_<=capacity){
       if(data_) memcpy(data_ptr,data_,dim*sizeof(T));
     }else{
-#if 0
       dim=dim_;
       capacity=dim;
       own_data=own_data_;
-      data_ptr=data_;
-#else
-      Vector<T> tmp(dim_,data_,own_data_);
-      this->swap(tmp);
-#endif
+      if(own_data){
+        if(dim>0){
+          int err = posix_memalign((void**)&data_ptr, MEM_ALIGN, dim*sizeof(T));
+          if(data_!=NULL) memcpy(data_ptr,data_,dim*sizeof(T));
+        }else data_ptr=NULL;
+      }else
+        data_ptr=data_;
     }
   }
 

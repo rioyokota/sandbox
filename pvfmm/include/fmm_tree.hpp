@@ -321,6 +321,17 @@ class FMM_Tree {
     PackedData trg_value;
     InteracData interac_data;
   };
+  template<typename T>
+  struct Device {
+    Device& operator=(Vector<T>& V){
+      dev_ptr=(uintptr_t)&V[0];
+      return *this;
+    }
+    inline T& operator[](size_t j) const{
+      return ((T*)dev_ptr)[j];
+    }
+    uintptr_t dev_ptr;
+  };
 
   std::vector<Real_t> surface(int p, Real_t* c, Real_t alpha, int depth){
     size_t n_=(6*(p-1)*(p-1)+2);
@@ -2256,7 +2267,7 @@ class FMM_Tree {
       return;
     }
     Profile::Tic("Host2Device",false,25);
-    typename Vector<char>::Device          buff;
+    Device<char> buff;
     typename Matrix<char>::Device  precomp_data;
     typename Matrix<char>::Device  interac_data;
     typename Matrix<Real_t>::Device  input_data;
@@ -2860,7 +2871,7 @@ class FMM_Tree {
     }
     bool have_gpu=false;
     Profile::Tic("Host2Device",false,25);
-    typename Vector<char>::Device      dev_buff;
+    Device<char> dev_buff;
     typename Matrix<char>::Device  interac_data;
     typename Matrix<Real_t>::Device  coord_data;
     typename Matrix<Real_t>::Device  input_data;
@@ -2957,7 +2968,8 @@ class FMM_Tree {
           Matrix<Real_t> trg_coord, trg_value;
           Vector<Real_t> buff;
           {
-            size_t thread_buff_size=dev_buff.dim/sizeof(Real_t)/omp_p;
+            size_t n=setup_data.output_data->Dim(0)*setup_data.output_data->Dim(1)*sizeof(Real_t);
+            size_t thread_buff_size=n/sizeof(Real_t)/omp_p;
             buff.ReInit(thread_buff_size, (Real_t*)&dev_buff[tid*thread_buff_size*sizeof(Real_t)], false);
           }
           size_t vcnt=0;
@@ -3539,7 +3551,7 @@ class FMM_Tree {
     Profile::Tic("Host2Device",false,25);
     int level=setup_data.level;
     size_t buff_size=*((size_t*)&setup_data.interac_data[0][0]);
-    typename Vector<char>::Device          buff;
+    Device<char> buff;
     typename Matrix<char>::Device  interac_data;
     typename Matrix<Real_t>::Device  input_data;
     typename Matrix<Real_t>::Device output_data;
