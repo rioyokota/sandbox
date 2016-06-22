@@ -2020,7 +2020,7 @@ class FMM_Tree {
 #pragma omp parallel for
       for(size_t i=0;i<n_vec;i++){
         vec_lst[i]->Resize(vec_size[i]);
-        vec_lst[i]->ReInit(vec_size[i],&buff[0][0]+vec_disp[i],false);
+        vec_lst[i]->ReInit2(vec_size[i],&buff[0][0]+vec_disp[i],false);
       }
     }
   }
@@ -2295,15 +2295,15 @@ class FMM_Tree {
         M_dim0   =((size_t*)data_ptr)[0]; data_ptr+=sizeof(size_t);
         M_dim1   =((size_t*)data_ptr)[0]; data_ptr+=sizeof(size_t);
         dof      =((size_t*)data_ptr)[0]; data_ptr+=sizeof(size_t);
-        interac_blk.ReInit(((size_t*)data_ptr)[0],(size_t*)(data_ptr+sizeof(size_t)),false);
+        interac_blk.ReInit2(((size_t*)data_ptr)[0],(size_t*)(data_ptr+sizeof(size_t)),false);
         data_ptr+=sizeof(size_t)+interac_blk.Dim()*sizeof(size_t);
-        interac_cnt.ReInit(((size_t*)data_ptr)[0],(size_t*)(data_ptr+sizeof(size_t)),false);
+        interac_cnt.ReInit2(((size_t*)data_ptr)[0],(size_t*)(data_ptr+sizeof(size_t)),false);
         data_ptr+=sizeof(size_t)+interac_cnt.Dim()*sizeof(size_t);
-        interac_mat.ReInit(((size_t*)data_ptr)[0],(size_t*)(data_ptr+sizeof(size_t)),false);
+        interac_mat.ReInit2(((size_t*)data_ptr)[0],(size_t*)(data_ptr+sizeof(size_t)),false);
         data_ptr+=sizeof(size_t)+interac_mat.Dim()*sizeof(size_t);
-        input_perm .ReInit(((size_t*)data_ptr)[0],(size_t*)(data_ptr+sizeof(size_t)),false);
+        input_perm .ReInit2(((size_t*)data_ptr)[0],(size_t*)(data_ptr+sizeof(size_t)),false);
         data_ptr+=sizeof(size_t)+ input_perm.Dim()*sizeof(size_t);
-        output_perm.ReInit(((size_t*)data_ptr)[0],(size_t*)(data_ptr+sizeof(size_t)),false);
+        output_perm.ReInit2(((size_t*)data_ptr)[0],(size_t*)(data_ptr+sizeof(size_t)),false);
         data_ptr+=sizeof(size_t)+output_perm.Dim()*sizeof(size_t);
       }
       {
@@ -2931,27 +2931,27 @@ class FMM_Tree {
         data.srf_value.ptr=pkd_data.srf_value;
         data.trg_coord.ptr=pkd_data.trg_coord;
         data.trg_value.ptr=pkd_data.trg_value;
-        data.src_coord.cnt.ReInit(pkd_data.src_coord_cnt_size, (size_t*)&setupdata[0][pkd_data.src_coord_cnt_offset], false);
-        data.src_coord.dsp.ReInit(pkd_data.src_coord_dsp_size, (size_t*)&setupdata[0][pkd_data.src_coord_dsp_offset], false);
-        data.src_value.cnt.ReInit(pkd_data.src_value_cnt_size, (size_t*)&setupdata[0][pkd_data.src_value_cnt_offset], false);
-        data.src_value.dsp.ReInit(pkd_data.src_value_dsp_size, (size_t*)&setupdata[0][pkd_data.src_value_dsp_offset], false);
-        data.srf_coord.cnt.ReInit(pkd_data.srf_coord_cnt_size, (size_t*)&setupdata[0][pkd_data.srf_coord_cnt_offset], false);
-        data.srf_coord.dsp.ReInit(pkd_data.srf_coord_dsp_size, (size_t*)&setupdata[0][pkd_data.srf_coord_dsp_offset], false);
-        data.srf_value.cnt.ReInit(pkd_data.srf_value_cnt_size, (size_t*)&setupdata[0][pkd_data.srf_value_cnt_offset], false);
-        data.srf_value.dsp.ReInit(pkd_data.srf_value_dsp_size, (size_t*)&setupdata[0][pkd_data.srf_value_dsp_offset], false);
-        data.trg_coord.cnt.ReInit(pkd_data.trg_coord_cnt_size, (size_t*)&setupdata[0][pkd_data.trg_coord_cnt_offset], false);
-        data.trg_coord.dsp.ReInit(pkd_data.trg_coord_dsp_size, (size_t*)&setupdata[0][pkd_data.trg_coord_dsp_offset], false);
-        data.trg_value.cnt.ReInit(pkd_data.trg_value_cnt_size, (size_t*)&setupdata[0][pkd_data.trg_value_cnt_offset], false);
-        data.trg_value.dsp.ReInit(pkd_data.trg_value_dsp_size, (size_t*)&setupdata[0][pkd_data.trg_value_dsp_offset], false);
+        data.src_coord.cnt.ReInit2(pkd_data.src_coord_cnt_size, (size_t*)&setupdata[0][pkd_data.src_coord_cnt_offset], false);
+        data.src_coord.dsp.ReInit2(pkd_data.src_coord_dsp_size, (size_t*)&setupdata[0][pkd_data.src_coord_dsp_offset], false);
+        data.src_value.cnt.ReInit2(pkd_data.src_value_cnt_size, (size_t*)&setupdata[0][pkd_data.src_value_cnt_offset], false);
+        data.src_value.dsp.ReInit2(pkd_data.src_value_dsp_size, (size_t*)&setupdata[0][pkd_data.src_value_dsp_offset], false);
+        data.srf_coord.cnt.ReInit2(pkd_data.srf_coord_cnt_size, (size_t*)&setupdata[0][pkd_data.srf_coord_cnt_offset], false);
+        data.srf_coord.dsp.ReInit2(pkd_data.srf_coord_dsp_size, (size_t*)&setupdata[0][pkd_data.srf_coord_dsp_offset], false);
+        data.srf_value.cnt.ReInit2(pkd_data.srf_value_cnt_size, (size_t*)&setupdata[0][pkd_data.srf_value_cnt_offset], false);
+        data.srf_value.dsp.ReInit2(pkd_data.srf_value_dsp_size, (size_t*)&setupdata[0][pkd_data.srf_value_dsp_offset], false);
+        data.trg_coord.cnt.ReInit2(pkd_data.trg_coord_cnt_size, (size_t*)&setupdata[0][pkd_data.trg_coord_cnt_offset], false);
+        data.trg_coord.dsp.ReInit2(pkd_data.trg_coord_dsp_size, (size_t*)&setupdata[0][pkd_data.trg_coord_dsp_offset], false);
+        data.trg_value.cnt.ReInit2(pkd_data.trg_value_cnt_size, (size_t*)&setupdata[0][pkd_data.trg_value_cnt_offset], false);
+        data.trg_value.dsp.ReInit2(pkd_data.trg_value_dsp_size, (size_t*)&setupdata[0][pkd_data.trg_value_dsp_offset], false);
         InteracData& intdata=data.interac_data;
-        intdata.    in_node.ReInit(pkd_data.    in_node_size, (size_t*)&setupdata[0][pkd_data.    in_node_offset],false);
-        intdata.   scal_idx.ReInit(pkd_data.   scal_idx_size, (size_t*)&setupdata[0][pkd_data.   scal_idx_offset],false);
-        intdata.coord_shift.ReInit(pkd_data.coord_shift_size, (Real_t*)&setupdata[0][pkd_data.coord_shift_offset],false);
-        intdata.interac_cnt.ReInit(pkd_data.interac_cnt_size, (size_t*)&setupdata[0][pkd_data.interac_cnt_offset],false);
-        intdata.interac_dsp.ReInit(pkd_data.interac_dsp_size, (size_t*)&setupdata[0][pkd_data.interac_dsp_offset],false);
-        intdata.interac_cst.ReInit(pkd_data.interac_cst_size, (size_t*)&setupdata[0][pkd_data.interac_cst_offset],false);
+        intdata.    in_node.ReInit2(pkd_data.    in_node_size, (size_t*)&setupdata[0][pkd_data.    in_node_offset],false);
+        intdata.   scal_idx.ReInit2(pkd_data.   scal_idx_size, (size_t*)&setupdata[0][pkd_data.   scal_idx_offset],false);
+        intdata.coord_shift.ReInit2(pkd_data.coord_shift_size, (Real_t*)&setupdata[0][pkd_data.coord_shift_offset],false);
+        intdata.interac_cnt.ReInit2(pkd_data.interac_cnt_size, (size_t*)&setupdata[0][pkd_data.interac_cnt_offset],false);
+        intdata.interac_dsp.ReInit2(pkd_data.interac_dsp_size, (size_t*)&setupdata[0][pkd_data.interac_dsp_offset],false);
+        intdata.interac_cst.ReInit2(pkd_data.interac_cst_size, (size_t*)&setupdata[0][pkd_data.interac_cst_offset],false);
         for(size_t i=0;i<4*MAX_DEPTH;i++){
-          intdata.scal[i].ReInit(pkd_data.scal_dim[i], (Real_t*)&setupdata[0][pkd_data.scal_offset[i]],false);
+          intdata.scal[i].ReInit2(pkd_data.scal_dim[i], (Real_t*)&setupdata[0][pkd_data.scal_offset[i]],false);
         }
         for(size_t i=0;i<4;i++){
           intdata.M[i].ReInit(pkd_data.Mdim[i][0], pkd_data.Mdim[i][1], (Real_t*)&setupdata[0][pkd_data.M_offset[i]],false);
@@ -2970,7 +2970,7 @@ class FMM_Tree {
           {
             size_t n=setup_data.output_data->Dim(0)*setup_data.output_data->Dim(1)*sizeof(Real_t);
             size_t thread_buff_size=n/sizeof(Real_t)/omp_p;
-            buff.ReInit(thread_buff_size, (Real_t*)&dev_buff[tid*thread_buff_size*sizeof(Real_t)], false);
+            buff.ReInit2(thread_buff_size, (Real_t*)&dev_buff[tid*thread_buff_size*sizeof(Real_t)], false);
           }
           size_t vcnt=0;
           std::vector<Matrix<Real_t> > vbuff(6);
@@ -3004,7 +3004,7 @@ class FMM_Tree {
             }
             for(size_t indx=0;indx<6;indx++){
               vbuff[indx].ReInit(vcnt,vdim[indx],&buff[0],false);
-              buff.ReInit(buff.Dim()-vdim[indx]*vcnt, &buff[vdim[indx]*vcnt], false);
+              buff.ReInit2(buff.Dim()-vdim[indx]*vcnt, &buff[vdim[indx]*vcnt], false);
             }
           }
           size_t trg_a=0, trg_b=0;
@@ -3585,27 +3585,27 @@ class FMM_Tree {
         interac_vec.resize(n_blk0);
         interac_dsp.resize(n_blk0);
         Vector<size_t> interac_mat;
-        interac_mat.ReInit(((size_t*)data_ptr)[0],(size_t*)(data_ptr+sizeof(size_t)),false);
+        interac_mat.ReInit2(((size_t*)data_ptr)[0],(size_t*)(data_ptr+sizeof(size_t)),false);
         data_ptr+=sizeof(size_t)+interac_mat.Dim()*sizeof(size_t);
         Vector<Real_t*> interac_mat_ptr;
-        interac_mat_ptr.ReInit(((size_t*)data_ptr)[0],(Real_t**)(data_ptr+sizeof(size_t)),false);
+        interac_mat_ptr.ReInit2(((size_t*)data_ptr)[0],(Real_t**)(data_ptr+sizeof(size_t)),false);
         data_ptr+=sizeof(size_t)+interac_mat_ptr.Dim()*sizeof(Real_t*);
         precomp_mat.Resize(interac_mat_ptr.Dim());
         for(size_t i=0;i<interac_mat_ptr.Dim();i++){
           precomp_mat[i]=interac_mat_ptr[i];
         }
         for(size_t blk0=0;blk0<n_blk0;blk0++){
-          fft_vec[blk0].ReInit(((size_t*)data_ptr)[0],(size_t*)(data_ptr+sizeof(size_t)),false);
+          fft_vec[blk0].ReInit2(((size_t*)data_ptr)[0],(size_t*)(data_ptr+sizeof(size_t)),false);
           data_ptr+=sizeof(size_t)+fft_vec[blk0].Dim()*sizeof(size_t);
-          ifft_vec[blk0].ReInit(((size_t*)data_ptr)[0],(size_t*)(data_ptr+sizeof(size_t)),false);
+          ifft_vec[blk0].ReInit2(((size_t*)data_ptr)[0],(size_t*)(data_ptr+sizeof(size_t)),false);
           data_ptr+=sizeof(size_t)+ifft_vec[blk0].Dim()*sizeof(size_t);
-          fft_scl[blk0].ReInit(((size_t*)data_ptr)[0],(Real_t*)(data_ptr+sizeof(size_t)),false);
+          fft_scl[blk0].ReInit2(((size_t*)data_ptr)[0],(Real_t*)(data_ptr+sizeof(size_t)),false);
           data_ptr+=sizeof(size_t)+fft_scl[blk0].Dim()*sizeof(Real_t);
-          ifft_scl[blk0].ReInit(((size_t*)data_ptr)[0],(Real_t*)(data_ptr+sizeof(size_t)),false);
+          ifft_scl[blk0].ReInit2(((size_t*)data_ptr)[0],(Real_t*)(data_ptr+sizeof(size_t)),false);
           data_ptr+=sizeof(size_t)+ifft_scl[blk0].Dim()*sizeof(Real_t);
-          interac_vec[blk0].ReInit(((size_t*)data_ptr)[0],(size_t*)(data_ptr+sizeof(size_t)),false);
+          interac_vec[blk0].ReInit2(((size_t*)data_ptr)[0],(size_t*)(data_ptr+sizeof(size_t)),false);
           data_ptr+=sizeof(size_t)+interac_vec[blk0].Dim()*sizeof(size_t);
-          interac_dsp[blk0].ReInit(((size_t*)data_ptr)[0],(size_t*)(data_ptr+sizeof(size_t)),false);
+          interac_dsp[blk0].ReInit2(((size_t*)data_ptr)[0],(size_t*)(data_ptr+sizeof(size_t)),false);
           data_ptr+=sizeof(size_t)+interac_dsp[blk0].Dim()*sizeof(size_t);
         }
       }

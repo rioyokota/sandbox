@@ -60,7 +60,7 @@ public:
     dim=0;
   }
 
-  void ReInit(size_t dim_, T* data_=NULL, bool own_data_=true){
+  void ReInit2(size_t dim_, T* data_=NULL, bool own_data_=true){
     if(own_data_ && own_data && dim_<=capacity){
       if(data_) memcpy(data_ptr,data_,dim*sizeof(T));
     }else{
@@ -99,7 +99,7 @@ public:
 
   void Resize(size_t dim_){
     if(capacity>=dim_) dim=dim_;
-    else ReInit(dim_);
+    else ReInit2(dim_);
   }
 
   void SetZero(){
@@ -109,7 +109,7 @@ public:
 
   Vector<T>& operator=(const Vector<T>& V){
     if(this!=&V){
-      if(capacity<V.dim) ReInit(V.dim); dim=V.dim;
+      if(capacity<V.dim) ReInit2(V.dim); dim=V.dim;
       memcpy(data_ptr,V.data_ptr,dim*sizeof(T));
     }
     return *this;
@@ -117,7 +117,7 @@ public:
 
   Vector<T>& operator=(const std::vector<T>& V){
     {
-      if(capacity<V.size()) ReInit(V.size()); dim=V.size();
+      if(capacity<V.size()) ReInit2(V.size()); dim=V.size();
       memcpy(data_ptr,&V[0],dim*sizeof(T));
     }
     return *this;
