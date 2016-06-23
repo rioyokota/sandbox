@@ -60,21 +60,26 @@ public:
     dim=0;
   }
 
-  void ReInit2(size_t dim_, T* data_=NULL, bool own_data_=true){
-    if(own_data_ && own_data && dim_<=capacity){
-      if(data_) memcpy(data_ptr,data_,dim*sizeof(T));
-    }else{
-      dim=dim_;
-      capacity=dim;
-      own_data=own_data_;
-      if(own_data){
-        if(dim>0){
-          int err = posix_memalign((void**)&data_ptr, MEM_ALIGN, dim*sizeof(T));
-          if(data_!=NULL) memcpy(data_ptr,data_,dim*sizeof(T));
-        }else data_ptr=NULL;
-      }else
-        data_ptr=data_;
-    }
+  void ReInit2(size_t dim_, T* data_){
+    dim=dim_;
+    capacity=dim;
+    own_data=true;
+    int err = posix_memalign((void**)&data_ptr, MEM_ALIGN, dim*sizeof(T));
+    memcpy(data_ptr,data_,dim*sizeof(T));
+  }
+
+  void ReInit3(size_t dim_, T* data_, bool own_data_){
+    dim=dim_;
+    capacity=dim;
+    own_data=own_data_;
+    data_ptr=data_;
+  }
+
+  void ReInit4(size_t dim_, T* data_=NULL, bool own_data_=true){
+    dim=dim_;
+    capacity=dim;
+    own_data=own_data_;
+    int err = posix_memalign((void**)&data_ptr, MEM_ALIGN, dim*sizeof(T));
   }
 
   void Write(const char* fname){
@@ -99,7 +104,7 @@ public:
 
   void Resize(size_t dim_){
     if(capacity>=dim_) dim=dim_;
-    else ReInit2(dim_);
+    else ReInit4(dim_);
   }
 
   void SetZero(){
@@ -109,7 +114,7 @@ public:
 
   Vector<T>& operator=(const Vector<T>& V){
     if(this!=&V){
-      if(capacity<V.dim) ReInit2(V.dim); dim=V.dim;
+      if(capacity<V.dim) ReInit4(V.dim); dim=V.dim;
       memcpy(data_ptr,V.data_ptr,dim*sizeof(T));
     }
     return *this;
@@ -117,7 +122,7 @@ public:
 
   Vector<T>& operator=(const std::vector<T>& V){
     {
-      if(capacity<V.size()) ReInit2(V.size()); dim=V.size();
+      if(capacity<V.size()) ReInit4(V.size()); dim=V.size();
       memcpy(data_ptr,&V[0],dim*sizeof(T));
     }
     return *this;
