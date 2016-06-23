@@ -2291,7 +2291,8 @@ class FMM_Tree {
       {
         char* data_ptr=&interac_data[0][0];
         data_size=((size_t*)data_ptr)[0]; data_ptr+=data_size;
-        data_size=((size_t*)data_ptr)[0]; data_ptr+=sizeof(size_t);
+        //data_size=((size_t*)data_ptr)[0];
+        data_ptr+=sizeof(size_t);
         M_dim0   =((size_t*)data_ptr)[0]; data_ptr+=sizeof(size_t);
         M_dim1   =((size_t*)data_ptr)[0]; data_ptr+=sizeof(size_t);
         dof      =((size_t*)data_ptr)[0]; data_ptr+=sizeof(size_t);
