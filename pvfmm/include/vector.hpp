@@ -60,16 +60,6 @@ public:
     dim=0;
   }
 
-  void ReInit2(size_t dim_, T* data_){
-    dim=dim_;
-    if(capacity<dim_){
-      capacity=dim;
-      own_data=true;
-      int err = posix_memalign((void**)&data_ptr, MEM_ALIGN, dim*sizeof(T));
-    }
-    memcpy(data_ptr,data_,dim*sizeof(T));
-  }
-
   void ReInit3(size_t dim_, T* data_, bool own_data_){
     dim=dim_;
     capacity=dim;
@@ -112,7 +102,8 @@ public:
   }
 
   Vector<T>& operator=(const Vector<T>& V){
-    ReInit2(V.dim,V.data_ptr);
+    Resize(V.dim);
+    memcpy(data_ptr,V.data_ptr,dim*sizeof(T));
     return *this;
   }
 

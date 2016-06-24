@@ -6,9 +6,6 @@ namespace pvfmm{
 class FMM_Data{
  public:
   ~FMM_Data(){}
-  void Clear() {
-    upward_equiv.Resize(0);
-  }
   Vector<Real_t> upward_equiv;
   Vector<Real_t> dnward_equiv;
 };
@@ -103,23 +100,20 @@ class FMM_Node {
     }
     int n=27;
     for(int i=0;i<n;i++) colleague[i]=NULL;
-    NodeData* mpi_data=dynamic_cast<NodeData*>(data_);
+    NodeData* data=dynamic_cast<NodeData*>(data_);
     if(data_){
-      max_pts =mpi_data->max_pts;
-      pt_coord=mpi_data->coord;
-      pt_value=mpi_data->value;
-    }else if(parent){
-      max_pts =parent->max_pts;
-      SetGhost(parent->IsGhost());
-    }
-    typename FMM_Node::NodeData* data=dynamic_cast<typename FMM_Node::NodeData*>(data_);
-    if(data_!=NULL){
+      max_pts=data->max_pts;
+      pt_coord=data->coord;
+      pt_value=data->value;
       src_coord=data->src_coord;
       src_value=data->src_value;
       surf_coord=data->surf_coord;
       surf_value=data->surf_value;
       trg_coord=data->trg_coord;
       trg_value=data->trg_value;
+    }else if(parent){
+      max_pts =parent->max_pts;
+      SetGhost(parent->IsGhost());
     }
   }
 
@@ -138,17 +132,6 @@ class FMM_Node {
     coord  .push_back(&trg_coord  );
     value  .push_back(&trg_value  );
     scatter.push_back(&trg_scatter);
-  }
-
-  void ClearData(){
-    ClearFMMData();
-    pt_coord.Resize(0);
-    pt_value.Resize(0);
-  }
-
-  void ClearFMMData(){
-    if(fmm_data!=NULL)
-      fmm_data->Clear();
   }
 
   void Truncate() {

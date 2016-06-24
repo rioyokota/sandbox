@@ -82,11 +82,11 @@ int main(int argc, char **argv){
     std::vector<FMM_Node*>& node=tree.GetNodeList();
 #pragma omp parallel for
     for(size_t i=0;i<node.size();i++){
-      node[i]->  trg_coord.ReInit2(node[i]->  pt_coord.Dim(), &node[i]->  pt_coord[0]);
-      node[i]->  src_coord.ReInit2(node[i]->  pt_coord.Dim(), &node[i]->  pt_coord[0]);
-      node[i]->  src_value.ReInit2(node[i]->  pt_value.Dim(), &node[i]->  pt_value[0]);
-      node[i]->trg_scatter.ReInit2(node[i]->pt_scatter.Dim(), &node[i]->pt_scatter[0]);
-      node[i]->src_scatter.ReInit2(node[i]->pt_scatter.Dim(), &node[i]->pt_scatter[0]);
+      node[i]->trg_coord = node[i]->pt_coord;
+      node[i]->src_coord = node[i]->pt_coord;
+      node[i]->src_value = node[i]->pt_value;
+      node[i]->trg_scatter = node[i]->pt_scatter;
+      node[i]->src_scatter = node[i]->pt_scatter;
     }
     Profile::Toc();
     tree.InitFMM_Tree(false);
