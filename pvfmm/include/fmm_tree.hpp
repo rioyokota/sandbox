@@ -2270,13 +2270,13 @@ class FMM_Tree {
     Device<char> buff;
     char* precomp_data;
     char* interac_data;
-    typename Matrix<Real_t>::Device  input_data;
-    typename Matrix<Real_t>::Device output_data;
+    Real_t* input_data;
+    Real_t* output_data;
     buff = dev_buffer;
     precomp_data=setup_data.precomp_data->data_ptr;
     interac_data=setup_data.interac_data.data_ptr;
-    input_data  =*setup_data.  input_data;
-    output_data =*setup_data. output_data;
+    input_data  =setup_data.  input_data->data_ptr;
+    output_data =setup_data. output_data->data_ptr;
     Profile::Toc();
     Profile::Tic("DeviceComp",false,20);
     int lock_idx=-1;
@@ -2326,8 +2326,8 @@ class FMM_Tree {
             for(size_t i=a;i<b;i++){
               const size_t*  perm=(size_t*)(precomp_data+input_perm[(interac_indx+i)*4+0]);
               const Real_t*  scal=(Real_t*)(precomp_data+input_perm[(interac_indx+i)*4+1]);
-              const Real_t* v_in =(Real_t*)(  input_data[0]+input_perm[(interac_indx+i)*4+3]);
-              Real_t*       v_out=(Real_t*)(     buff_in   +input_perm[(interac_indx+i)*4+2]);
+              const Real_t* v_in =(Real_t*)(  input_data+input_perm[(interac_indx+i)*4+3]);
+              Real_t*       v_out=(Real_t*)(     buff_in+input_perm[(interac_indx+i)*4+2]);
               for(size_t j=0;j<M_dim0;j++ ){
                 v_out[j]=v_in[perm[j]]*scal[j];
               }
@@ -2364,8 +2364,8 @@ class FMM_Tree {
             for(size_t i=a;i<b;i++){ // Compute permutations.
               const size_t*  perm=(size_t*)(precomp_data+output_perm[(interac_indx+i)*4+0]);
               const Real_t*  scal=(Real_t*)(precomp_data+output_perm[(interac_indx+i)*4+1]);
-              const Real_t* v_in =(Real_t*)(    buff_out   +output_perm[(interac_indx+i)*4+2]);
-              Real_t*       v_out=(Real_t*)( output_data[0]+output_perm[(interac_indx+i)*4+3]);
+              const Real_t* v_in =(Real_t*)(    buff_out+output_perm[(interac_indx+i)*4+2]);
+              Real_t*       v_out=(Real_t*)( output_data+output_perm[(interac_indx+i)*4+3]);
               for(size_t j=0;j<M_dim1;j++ ){
                 v_out[j]+=v_in[perm[j]]*scal[j];
               }
@@ -2872,13 +2872,13 @@ class FMM_Tree {
     bool have_gpu=false;
     Profile::Tic("Host2Device",false,25);
     Device<char> dev_buff;
-    typename Matrix<char>::Device  interac_data;
+    char* interac_data;
     typename Matrix<Real_t>::Device  coord_data;
     typename Matrix<Real_t>::Device  input_data;
     typename Matrix<Real_t>::Device output_data;
     size_t ptr_single_layer_kernel=(size_t)NULL;
     dev_buff = dev_buffer;
-    interac_data= setup_data.interac_data;
+    interac_data= setup_data.interac_data.data_ptr;
     if(setup_data.  coord_data!=NULL) coord_data  =*setup_data.  coord_data;
     if(setup_data.  input_data!=NULL) input_data  =*setup_data.  input_data;
     if(setup_data. output_data!=NULL) output_data =*setup_data. output_data;
@@ -2921,8 +2921,8 @@ class FMM_Tree {
           size_t scal_dim[4*MAX_DEPTH]; size_t scal_offset[4*MAX_DEPTH];
           size_t            Mdim[4][2]; size_t              M_offset[4];
         };
-        typename Matrix<char>::Device& setupdata=interac_data;
-        PackedSetupData& pkd_data=*((PackedSetupData*)setupdata[0]);
+        char* setupdata=interac_data;
+        PackedSetupData& pkd_data=*((PackedSetupData*)setupdata);
         data. level=pkd_data. level;
         data.kernel=pkd_data.kernel;
         data.src_coord.ptr=pkd_data.src_coord;
@@ -2931,30 +2931,30 @@ class FMM_Tree {
         data.srf_value.ptr=pkd_data.srf_value;
         data.trg_coord.ptr=pkd_data.trg_coord;
         data.trg_value.ptr=pkd_data.trg_value;
-        data.src_coord.cnt.ReInit3(pkd_data.src_coord_cnt_size, (size_t*)&setupdata[0][pkd_data.src_coord_cnt_offset], false);
-        data.src_coord.dsp.ReInit3(pkd_data.src_coord_dsp_size, (size_t*)&setupdata[0][pkd_data.src_coord_dsp_offset], false);
-        data.src_value.cnt.ReInit3(pkd_data.src_value_cnt_size, (size_t*)&setupdata[0][pkd_data.src_value_cnt_offset], false);
-        data.src_value.dsp.ReInit3(pkd_data.src_value_dsp_size, (size_t*)&setupdata[0][pkd_data.src_value_dsp_offset], false);
-        data.srf_coord.cnt.ReInit3(pkd_data.srf_coord_cnt_size, (size_t*)&setupdata[0][pkd_data.srf_coord_cnt_offset], false);
-        data.srf_coord.dsp.ReInit3(pkd_data.srf_coord_dsp_size, (size_t*)&setupdata[0][pkd_data.srf_coord_dsp_offset], false);
-        data.srf_value.cnt.ReInit3(pkd_data.srf_value_cnt_size, (size_t*)&setupdata[0][pkd_data.srf_value_cnt_offset], false);
-        data.srf_value.dsp.ReInit3(pkd_data.srf_value_dsp_size, (size_t*)&setupdata[0][pkd_data.srf_value_dsp_offset], false);
-        data.trg_coord.cnt.ReInit3(pkd_data.trg_coord_cnt_size, (size_t*)&setupdata[0][pkd_data.trg_coord_cnt_offset], false);
-        data.trg_coord.dsp.ReInit3(pkd_data.trg_coord_dsp_size, (size_t*)&setupdata[0][pkd_data.trg_coord_dsp_offset], false);
-        data.trg_value.cnt.ReInit3(pkd_data.trg_value_cnt_size, (size_t*)&setupdata[0][pkd_data.trg_value_cnt_offset], false);
-        data.trg_value.dsp.ReInit3(pkd_data.trg_value_dsp_size, (size_t*)&setupdata[0][pkd_data.trg_value_dsp_offset], false);
+        data.src_coord.cnt.ReInit3(pkd_data.src_coord_cnt_size, (size_t*)&setupdata[pkd_data.src_coord_cnt_offset], false);
+        data.src_coord.dsp.ReInit3(pkd_data.src_coord_dsp_size, (size_t*)&setupdata[pkd_data.src_coord_dsp_offset], false);
+        data.src_value.cnt.ReInit3(pkd_data.src_value_cnt_size, (size_t*)&setupdata[pkd_data.src_value_cnt_offset], false);
+        data.src_value.dsp.ReInit3(pkd_data.src_value_dsp_size, (size_t*)&setupdata[pkd_data.src_value_dsp_offset], false);
+        data.srf_coord.cnt.ReInit3(pkd_data.srf_coord_cnt_size, (size_t*)&setupdata[pkd_data.srf_coord_cnt_offset], false);
+        data.srf_coord.dsp.ReInit3(pkd_data.srf_coord_dsp_size, (size_t*)&setupdata[pkd_data.srf_coord_dsp_offset], false);
+        data.srf_value.cnt.ReInit3(pkd_data.srf_value_cnt_size, (size_t*)&setupdata[pkd_data.srf_value_cnt_offset], false);
+        data.srf_value.dsp.ReInit3(pkd_data.srf_value_dsp_size, (size_t*)&setupdata[pkd_data.srf_value_dsp_offset], false);
+        data.trg_coord.cnt.ReInit3(pkd_data.trg_coord_cnt_size, (size_t*)&setupdata[pkd_data.trg_coord_cnt_offset], false);
+        data.trg_coord.dsp.ReInit3(pkd_data.trg_coord_dsp_size, (size_t*)&setupdata[pkd_data.trg_coord_dsp_offset], false);
+        data.trg_value.cnt.ReInit3(pkd_data.trg_value_cnt_size, (size_t*)&setupdata[pkd_data.trg_value_cnt_offset], false);
+        data.trg_value.dsp.ReInit3(pkd_data.trg_value_dsp_size, (size_t*)&setupdata[pkd_data.trg_value_dsp_offset], false);
         InteracData& intdata=data.interac_data;
-        intdata.    in_node.ReInit3(pkd_data.    in_node_size, (size_t*)&setupdata[0][pkd_data.    in_node_offset],false);
-        intdata.   scal_idx.ReInit3(pkd_data.   scal_idx_size, (size_t*)&setupdata[0][pkd_data.   scal_idx_offset],false);
-        intdata.coord_shift.ReInit3(pkd_data.coord_shift_size, (Real_t*)&setupdata[0][pkd_data.coord_shift_offset],false);
-        intdata.interac_cnt.ReInit3(pkd_data.interac_cnt_size, (size_t*)&setupdata[0][pkd_data.interac_cnt_offset],false);
-        intdata.interac_dsp.ReInit3(pkd_data.interac_dsp_size, (size_t*)&setupdata[0][pkd_data.interac_dsp_offset],false);
-        intdata.interac_cst.ReInit3(pkd_data.interac_cst_size, (size_t*)&setupdata[0][pkd_data.interac_cst_offset],false);
+        intdata.    in_node.ReInit3(pkd_data.    in_node_size, (size_t*)&setupdata[pkd_data.    in_node_offset],false);
+        intdata.   scal_idx.ReInit3(pkd_data.   scal_idx_size, (size_t*)&setupdata[pkd_data.   scal_idx_offset],false);
+        intdata.coord_shift.ReInit3(pkd_data.coord_shift_size, (Real_t*)&setupdata[pkd_data.coord_shift_offset],false);
+        intdata.interac_cnt.ReInit3(pkd_data.interac_cnt_size, (size_t*)&setupdata[pkd_data.interac_cnt_offset],false);
+        intdata.interac_dsp.ReInit3(pkd_data.interac_dsp_size, (size_t*)&setupdata[pkd_data.interac_dsp_offset],false);
+        intdata.interac_cst.ReInit3(pkd_data.interac_cst_size, (size_t*)&setupdata[pkd_data.interac_cst_offset],false);
         for(size_t i=0;i<4*MAX_DEPTH;i++){
-          intdata.scal[i].ReInit3(pkd_data.scal_dim[i], (Real_t*)&setupdata[0][pkd_data.scal_offset[i]],false);
+          intdata.scal[i].ReInit3(pkd_data.scal_dim[i], (Real_t*)&setupdata[pkd_data.scal_offset[i]],false);
         }
         for(size_t i=0;i<4;i++){
-          intdata.M[i].ReInit(pkd_data.Mdim[i][0], pkd_data.Mdim[i][1], (Real_t*)&setupdata[0][pkd_data.M_offset[i]],false);
+          intdata.M[i].ReInit(pkd_data.Mdim[i][0], pkd_data.Mdim[i][1], (Real_t*)&setupdata[pkd_data.M_offset[i]],false);
         }
       }
       {
