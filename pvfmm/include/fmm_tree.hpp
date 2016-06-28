@@ -2267,12 +2267,12 @@ class FMM_Tree {
       return;
     }
     Profile::Tic("Host2Device",false,25);
-    Device<char> buff;
+    char* buff;
     char* precomp_data;
     char* interac_data;
     Real_t* input_data;
     Real_t* output_data;
-    buff = dev_buffer;
+    buff = dev_buffer.data_ptr;
     precomp_data=setup_data.precomp_data->data_ptr;
     interac_data=setup_data.interac_data.data_ptr;
     input_data  =setup_data.  input_data->data_ptr;
@@ -2317,8 +2317,8 @@ class FMM_Tree {
             interac_blk_dsp += interac_blk[k];
             continue;
           }
-          char* buff_in =&buff[0];
-          char* buff_out=&buff[vec_cnt*dof*M_dim0*sizeof(Real_t)];
+          char* buff_in =buff;
+          char* buff_out=buff+vec_cnt*dof*M_dim0*sizeof(Real_t);
 #pragma omp parallel for
           for(int tid=0;tid<omp_p;tid++){
             size_t a=( tid   *vec_cnt)/omp_p;
@@ -2871,10 +2871,10 @@ class FMM_Tree {
     }
     bool have_gpu=false;
     Profile::Tic("Host2Device",false,25);
-    Device<char> dev_buff;
+    char* dev_buff;
     char* interac_data;
     size_t ptr_single_layer_kernel=(size_t)NULL;
-    dev_buff = dev_buffer;
+    dev_buff = dev_buffer.data_ptr;
     interac_data= setup_data.interac_data.data_ptr;
     ptr_single_layer_kernel=(size_t)setup_data.kernel->ker_poten;
     Profile::Toc();
@@ -2964,7 +2964,7 @@ class FMM_Tree {
           {
             size_t n=setup_data.output_data->Dim(0)*setup_data.output_data->Dim(1)*sizeof(Real_t);
             size_t thread_buff_size=n/sizeof(Real_t)/omp_p;
-            buff.ReInit3(thread_buff_size, (Real_t*)&dev_buff[tid*thread_buff_size*sizeof(Real_t)], false);
+            buff.ReInit3(thread_buff_size, (Real_t*)(dev_buff+tid*thread_buff_size*sizeof(Real_t)), false);
           }
           size_t vcnt=0;
           std::vector<Matrix<Real_t> > vbuff(6);
@@ -3544,15 +3544,17 @@ class FMM_Tree {
     }
     Profile::Tic("Host2Device",false,25);
     int level=setup_data.level;
+    int dim0=setup_data.input_data->dim[0];
+    int dim1=setup_data.input_data->dim[1];
     size_t buff_size=*((size_t*)&setup_data.interac_data[0][0]);
-    Device<char> buff;
-    typename Matrix<char>::Device  interac_data;
-    typename Matrix<Real_t>::Device  input_data;
+    char* buff;
+    char* interac_data;
+    Real_t* input_data;
     typename Matrix<Real_t>::Device output_data;
     if(dev_buffer.Dim()<buff_size) dev_buffer.Resize(buff_size);
-    buff = dev_buffer;
-    interac_data= setup_data.interac_data;
-    input_data  =*setup_data.  input_data;
+    buff = dev_buffer.data_ptr;
+    interac_data=setup_data.interac_data.data_ptr;
+    input_data  =setup_data.input_data->data_ptr;
     output_data =*setup_data. output_data;
     Profile::Toc();
     {
@@ -3565,7 +3567,7 @@ class FMM_Tree {
       std::vector<Vector<size_t> > interac_dsp;
       Vector<Real_t*> precomp_mat;
       {
-        char* data_ptr=&interac_data[0][0];
+        char* data_ptr=interac_data;
         buff_size=((size_t*)data_ptr)[0]; data_ptr+=sizeof(size_t);
         m        =((size_t*)data_ptr)[0]; data_ptr+=sizeof(size_t);
         dof      =((size_t*)data_ptr)[0]; data_ptr+=sizeof(size_t);
@@ -3619,12 +3621,12 @@ class FMM_Tree {
         size_t  input_dim=n_in *ker_dim0*dof*fftsize;
         size_t output_dim=n_out*ker_dim1*dof*fftsize;
         size_t buffer_dim=2*(ker_dim0+ker_dim1)*dof*fftsize*omp_p;
-        Vector<Real_t> fft_in ( input_dim, (Real_t*)&buff[         0                           ],false);
-        Vector<Real_t> fft_out(output_dim, (Real_t*)&buff[ input_dim            *sizeof(Real_t)],false);
-        Vector<Real_t>  buffer(buffer_dim, (Real_t*)&buff[(input_dim+output_dim)*sizeof(Real_t)],false);
+        Vector<Real_t> fft_in ( input_dim, (Real_t*)buff,false);
+        Vector<Real_t> fft_out(output_dim, (Real_t*)(buff+input_dim*sizeof(Real_t)),false);
+        Vector<Real_t>  buffer(buffer_dim, (Real_t*)(buff+(input_dim+output_dim)*sizeof(Real_t)),false);
         {
           if(np==1) Profile::Tic("FFT",false,100);
-          Vector<Real_t>  input_data_( input_data.dim[0]* input_data.dim[1],  input_data[0], false);
+          Vector<Real_t>  input_data_(dim0*dim1,input_data,false);
           FFT_UpEquiv(dof, m, ker_dim0,  fft_vec[blk0],  fft_scl[blk0],  input_data_, fft_in, buffer);
           if(np==1) Profile::Toc();
         }

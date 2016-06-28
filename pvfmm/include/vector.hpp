@@ -112,10 +112,11 @@ public:
     return data_ptr[j];
   }
 
+  T* data_ptr;
+
 private:
   size_t dim;
   size_t capacity;
-  T* data_ptr;
   bool own_data;
 };
 

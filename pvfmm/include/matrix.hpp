@@ -88,10 +88,10 @@ public:
   };
 
   T* data_ptr;
+  size_t dim[2];
 
   private:
 
-  size_t dim[2];
   bool own_data;
 
   Device dev;
