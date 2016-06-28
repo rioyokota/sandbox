@@ -2269,13 +2269,12 @@ class FMM_Tree {
     Profile::Tic("Host2Device",false,25);
     Device<char> buff;
     char* precomp_data;
-    //typename Matrix<char>::Device  precomp_data;
-    typename Matrix<char>::Device  interac_data;
+    char* interac_data;
     typename Matrix<Real_t>::Device  input_data;
     typename Matrix<Real_t>::Device output_data;
     buff = dev_buffer;
-    precomp_data=(char*)setup_data.precomp_data->data_ptr;
-    interac_data= setup_data.interac_data;
+    precomp_data=setup_data.precomp_data->data_ptr;
+    interac_data=setup_data.interac_data.data_ptr;
     input_data  =*setup_data.  input_data;
     output_data =*setup_data. output_data;
     Profile::Toc();
@@ -2290,7 +2289,7 @@ class FMM_Tree {
       Vector<size_t>  input_perm;
       Vector<size_t> output_perm;
       {
-        char* data_ptr=&interac_data[0][0];
+        char* data_ptr=interac_data;
         data_size=((size_t*)data_ptr)[0]; data_ptr+=data_size;
         data_ptr+=sizeof(size_t);
         M_dim0   =((size_t*)data_ptr)[0]; data_ptr+=sizeof(size_t);
