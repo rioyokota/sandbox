@@ -1,5 +1,5 @@
 Vector -> std::vector
- - pt_ > src_
+ - rm own_data
  - rm ReInit
  - Resize -> resize
  - Dim -> size

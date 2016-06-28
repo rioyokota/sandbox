@@ -2268,12 +2268,13 @@ class FMM_Tree {
     }
     Profile::Tic("Host2Device",false,25);
     Device<char> buff;
-    typename Matrix<char>::Device  precomp_data;
+    char* precomp_data;
+    //typename Matrix<char>::Device  precomp_data;
     typename Matrix<char>::Device  interac_data;
     typename Matrix<Real_t>::Device  input_data;
     typename Matrix<Real_t>::Device output_data;
     buff = dev_buffer;
-    precomp_data=*setup_data.precomp_data;
+    precomp_data=(char*)setup_data.precomp_data->data_ptr;
     interac_data= setup_data.interac_data;
     input_data  =*setup_data.  input_data;
     output_data =*setup_data. output_data;
@@ -2291,7 +2292,6 @@ class FMM_Tree {
       {
         char* data_ptr=&interac_data[0][0];
         data_size=((size_t*)data_ptr)[0]; data_ptr+=data_size;
-        //data_size=((size_t*)data_ptr)[0];
         data_ptr+=sizeof(size_t);
         M_dim0   =((size_t*)data_ptr)[0]; data_ptr+=sizeof(size_t);
         M_dim1   =((size_t*)data_ptr)[0]; data_ptr+=sizeof(size_t);
@@ -2325,8 +2325,8 @@ class FMM_Tree {
             size_t a=( tid   *vec_cnt)/omp_p;
             size_t b=((tid+1)*vec_cnt)/omp_p;
             for(size_t i=a;i<b;i++){
-              const size_t*  perm=(size_t*)(precomp_data[0]+input_perm[(interac_indx+i)*4+0]);
-              const Real_t*  scal=(Real_t*)(precomp_data[0]+input_perm[(interac_indx+i)*4+1]);
+              const size_t*  perm=(size_t*)(precomp_data+input_perm[(interac_indx+i)*4+0]);
+              const Real_t*  scal=(Real_t*)(precomp_data+input_perm[(interac_indx+i)*4+1]);
               const Real_t* v_in =(Real_t*)(  input_data[0]+input_perm[(interac_indx+i)*4+3]);
               Real_t*       v_out=(Real_t*)(     buff_in   +input_perm[(interac_indx+i)*4+2]);
               for(size_t j=0;j<M_dim0;j++ ){
@@ -2339,7 +2339,7 @@ class FMM_Tree {
             size_t vec_cnt1=0;
             size_t interac_mat0=interac_mat[j];
             for(;j<interac_blk_dsp+interac_blk[k] && interac_mat[j]==interac_mat0;j++) vec_cnt1+=interac_cnt[j];
-            Matrix<Real_t> M(M_dim0, M_dim1, (Real_t*)(precomp_data[0]+interac_mat0), false);
+            Matrix<Real_t> M(M_dim0, M_dim1, (Real_t*)(precomp_data+interac_mat0), false);
 #pragma omp parallel for
             for(int tid=0;tid<omp_p;tid++){
               size_t a=(dof*vec_cnt1*(tid  ))/omp_p;
@@ -2363,8 +2363,8 @@ class FMM_Tree {
               if(tid<omp_p-1) while(b<vec_cnt && out_ptr==output_perm[(interac_indx+b)*4+3]) b++;
             }
             for(size_t i=a;i<b;i++){ // Compute permutations.
-              const size_t*  perm=(size_t*)(precomp_data[0]+output_perm[(interac_indx+i)*4+0]);
-              const Real_t*  scal=(Real_t*)(precomp_data[0]+output_perm[(interac_indx+i)*4+1]);
+              const size_t*  perm=(size_t*)(precomp_data+output_perm[(interac_indx+i)*4+0]);
+              const Real_t*  scal=(Real_t*)(precomp_data+output_perm[(interac_indx+i)*4+1]);
               const Real_t* v_in =(Real_t*)(    buff_out   +output_perm[(interac_indx+i)*4+2]);
               Real_t*       v_out=(Real_t*)( output_data[0]+output_perm[(interac_indx+i)*4+3]);
               for(size_t j=0;j<M_dim1;j++ ){

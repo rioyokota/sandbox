@@ -87,10 +87,11 @@ public:
     int lock_idx;
   };
 
+  T* data_ptr;
+
   private:
 
   size_t dim[2];
-  T* data_ptr;
   bool own_data;
 
   Device dev;
