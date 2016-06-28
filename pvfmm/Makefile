@@ -8,10 +8,10 @@ LDFLAGS = -lfftw3 -lfftw3f -llapack -lblas
 	$(CXX) -c $< -o $@
 
 float: main.cpp
-	$(CXX) -c $< -o main.o -DFLOAT
+	time $(CXX) -c $< -o main.o -DFLOAT
 
 double: main.cpp
-	$(CXX) -c $< -o main.o
+	time $(CXX) -c $< -o main.o
 
 link: main.o
 	$(CXX) $? $(LDFLAGS)

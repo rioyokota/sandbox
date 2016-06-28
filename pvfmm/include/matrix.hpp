@@ -71,31 +71,12 @@ template <class T>
 class Matrix{
 
 public:
-  struct Device{
-    Device& operator=(Matrix& M){
-      dim[0]=M.Dim(0);
-      dim[1]=M.Dim(1);
-      dev_ptr=(uintptr_t)M.data_ptr;
-      return *this;
-    }
-    inline T* operator[](size_t j) const{
-      assert(j<dim[0]);
-      return &((T*)dev_ptr)[j*dim[1]];
-    }
-    size_t dim[2];
-    uintptr_t dev_ptr;
-    int lock_idx;
-  };
-
   T* data_ptr;
   size_t dim[2];
 
   private:
 
   bool own_data;
-
-  Device dev;
-  Vector<char> dev_sig;
 
   static inline void gemm(char TransA, char TransB,  int M,  int N,  int K,  T alpha,  T *A,  int lda,  T *B,  int ldb,  T beta, T *C,  int ldc){
     if((TransA=='N' || TransA=='n') && (TransB=='N' || TransB=='n')){
@@ -190,22 +171,16 @@ public:
     size_t dim_[2]={dim[0],dim[1]};
     T* data_ptr_=data_ptr;
     bool own_data_=own_data;
-    Device dev_=dev;
-    Vector<char> dev_sig_=dev_sig;
 
     dim[0]=M.dim[0];
     dim[1]=M.dim[1];
     data_ptr=M.data_ptr;
     own_data=M.own_data;
-    dev=M.dev;
-    dev_sig=M.dev_sig;
 
     M.dim[0]=dim_[0];
     M.dim[1]=dim_[1];
     M.data_ptr=data_ptr_;
     M.own_data=own_data_;
-    M.dev=dev_;
-    M.dev_sig=dev_sig_;
   }
 
   void ReInit(size_t dim1, size_t dim2, T* data_=NULL, bool own_data_=true){

@@ -321,17 +321,6 @@ class FMM_Tree {
     PackedData trg_value;
     InteracData interac_data;
   };
-  template<typename T>
-  struct Device {
-    Device& operator=(Vector<T>& V){
-      dev_ptr=(uintptr_t)&V[0];
-      return *this;
-    }
-    inline T& operator[](size_t j) const{
-      return ((T*)dev_ptr)[j];
-    }
-    uintptr_t dev_ptr;
-  };
 
   std::vector<Real_t> surface(int p, Real_t* c, Real_t alpha, int depth){
     size_t n_=(6*(p-1)*(p-1)+2);
@@ -3550,12 +3539,12 @@ class FMM_Tree {
     char* buff;
     char* interac_data;
     Real_t* input_data;
-    typename Matrix<Real_t>::Device output_data;
+    Real_t* output_data;
     if(dev_buffer.Dim()<buff_size) dev_buffer.Resize(buff_size);
-    buff = dev_buffer.data_ptr;
+    buff=dev_buffer.data_ptr;
     interac_data=setup_data.interac_data.data_ptr;
-    input_data  =setup_data.input_data->data_ptr;
-    output_data =*setup_data. output_data;
+    input_data=setup_data.input_data->data_ptr;
+    output_data=setup_data.output_data->data_ptr;
     Profile::Toc();
     {
       size_t m, dof, ker_dim0, ker_dim1, n_blk0;
@@ -3637,7 +3626,7 @@ class FMM_Tree {
         }
         {
           if(np==1) Profile::Tic("IFFT",false,100);
-          Vector<Real_t> output_data_(output_data.dim[0]*output_data.dim[1], output_data[0], false);
+          Vector<Real_t> output_data_(dim0*dim1, output_data, false);
           FFT_Check2Equiv(dof, m, ker_dim1, ifft_vec[blk0], ifft_scl[blk0], fft_out, output_data_, buffer);
           if(np==1) Profile::Toc();
         }
