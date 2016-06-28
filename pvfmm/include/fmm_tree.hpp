@@ -2873,15 +2873,9 @@ class FMM_Tree {
     Profile::Tic("Host2Device",false,25);
     Device<char> dev_buff;
     char* interac_data;
-    typename Matrix<Real_t>::Device  coord_data;
-    typename Matrix<Real_t>::Device  input_data;
-    typename Matrix<Real_t>::Device output_data;
     size_t ptr_single_layer_kernel=(size_t)NULL;
     dev_buff = dev_buffer;
     interac_data= setup_data.interac_data.data_ptr;
-    if(setup_data.  coord_data!=NULL) coord_data  =*setup_data.  coord_data;
-    if(setup_data.  input_data!=NULL) input_data  =*setup_data.  input_data;
-    if(setup_data. output_data!=NULL) output_data =*setup_data. output_data;
     ptr_single_layer_kernel=(size_t)setup_data.kernel->ker_poten;
     Profile::Toc();
     Profile::Tic("DeviceComp",false,20);
