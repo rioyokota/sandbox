@@ -1,4 +1,5 @@
 Vector -> std::vector
+ - rm dev_buffer
  - rm own_data
  - rm ReInit
  - Resize -> resize

@@ -1969,7 +1969,7 @@ class FMM_Tree {
     }
     if(buff_list.size()<=vec_list.size()) buff_list.resize(vec_list.size()+1);
     for(size_t indx=0;indx<vec_list.size();indx++){
-      Matrix<Real_t>&                  buff=buff_list[indx];
+      Matrix<Real_t>& buff=buff_list[indx];
       std::vector<Vector<Real_t>*>& vec_lst= vec_list[indx];
       bool keep_data=(indx==4 || indx==6);
       size_t n_vec=vec_lst.size();
@@ -1984,6 +1984,9 @@ class FMM_Tree {
       scan(&vec_size[0],&vec_disp[0],n_vec);
       size_t buff_size=vec_size[n_vec-1]+vec_disp[n_vec-1];
       if(!buff_size) continue;
+      if(buff.Dim(0)*buff.Dim(1)<buff_size){
+        buff.ReInit(1,buff_size*1.05);
+      }
       if(keep_data){
         if(dev_buffer.Dim()<buff_size*sizeof(Real_t)){
           dev_buffer.Resize(buff_size*sizeof(Real_t)*1.05);
@@ -1991,19 +1994,8 @@ class FMM_Tree {
 #pragma omp parallel for
         for(size_t i=0;i<n_vec;i++){
           if(vec_size[i]>0){
-            memcpy(((Real_t*)&dev_buffer[0])+vec_disp[i],&vec_lst[i][0][0],vec_size[i]*sizeof(Real_t));
+            memcpy(&buff[0][0]+vec_disp[i],&vec_lst[i][0][0],vec_size[i]*sizeof(Real_t));
           }
-        }
-      }
-      if(buff.Dim(0)*buff.Dim(1)<buff_size){
-        buff.ReInit(1,buff_size*1.05);
-      }
-      if(keep_data){
-#pragma omp parallel for
-        for(size_t tid=0;tid<omp_p;tid++){
-          size_t a=(buff_size*(tid+0))/omp_p;
-          size_t b=(buff_size*(tid+1))/omp_p;
-          memcpy(&buff[0][0]+a,((Real_t*)&dev_buffer[0])+a,(b-a)*sizeof(Real_t));
         }
       }
 #pragma omp parallel for
