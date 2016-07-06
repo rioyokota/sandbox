@@ -523,29 +523,26 @@ class FMM_Tree {
     Profile::Toc();
 
     Profile::Tic("RemoveDuplicates", true, 10);
-    {
-      size_t node_cnt=nodes_local.size();
-      MortonId first_node;
-      MortonId  last_node=nodes_local[node_cnt-1];
-      size_t i=0;
-      std::vector<MortonId> node_lst;
-      if(myrank){
-	while(i<node_cnt && nodes_local[i].getDFD(maxDepth)<first_node) i++; assert(i);
-	last_node=nodes_local[i>0?i-1:0].NextId();
+    size_t node_cnt=nodes_local.size();
+    MortonId first_node;
+    MortonId  last_node=nodes_local[node_cnt-1];
+    size_t i=0;
+    std::vector<MortonId> node_lst;
+    if(myrank){
+      while(i<node_cnt && nodes_local[i].getDFD(maxDepth)<first_node) i++; assert(i);
+      last_node=nodes_local[i>0?i-1:0].NextId();
 
-	while(first_node<last_node){
-	  while(first_node.isAncestor(last_node))
-	    first_node=first_node.getDFD(first_node.GetDepth()+1);
-	  if(first_node==last_node) break;
-	  node_lst.push_back(first_node);
-	  first_node=first_node.NextId();
-	}
+      while(first_node<last_node){
+        while(first_node.isAncestor(last_node))
+          first_node=first_node.getDFD(first_node.GetDepth()+1);
+        if(first_node==last_node) break;
+        node_lst.push_back(first_node);
+        first_node=first_node.NextId();
       }
-      for(;i<node_cnt-(myrank==np-1?0:1);i++) node_lst.push_back(nodes_local[i]);
-      nodes=node_lst;
     }
+    for(;i<node_cnt-(myrank==np-1?0:1);i++) node_lst.push_back(nodes_local[i]);
+    nodes=node_lst;
     Profile::Toc();
-
     return 0;
   }
 
@@ -599,33 +596,29 @@ class FMM_Tree {
         Real_t** IN = IN_ + BLOCK_SIZE*interac_blk1;
         Real_t** OUT= OUT_+ BLOCK_SIZE*interac_blk1;
         Real_t* M = precomp_mat[mat_indx] + k*chld_cnt*chld_cnt*2 + (ot_dim+in_dim*ker_dim1)*M_dim*128;
-        {
-          for(size_t j=0;j<interac_cnt;j+=2){
-            Real_t* M_   = M;
-            Real_t* IN0  = IN [j+0] + (in_dim*M_dim+k)*chld_cnt*2;
-            Real_t* IN1  = IN [j+1] + (in_dim*M_dim+k)*chld_cnt*2;
-            Real_t* OUT0 = OUT[j+0] + (ot_dim*M_dim+k)*chld_cnt*2;
-            Real_t* OUT1 = OUT[j+1] + (ot_dim*M_dim+k)*chld_cnt*2;
+        for(size_t j=0;j<interac_cnt;j+=2){
+          Real_t* M_   = M;
+          Real_t* IN0  = IN [j+0] + (in_dim*M_dim+k)*chld_cnt*2;
+          Real_t* IN1  = IN [j+1] + (in_dim*M_dim+k)*chld_cnt*2;
+          Real_t* OUT0 = OUT[j+0] + (ot_dim*M_dim+k)*chld_cnt*2;
+          Real_t* OUT1 = OUT[j+1] + (ot_dim*M_dim+k)*chld_cnt*2;
 #ifdef __SSE__
-            if (j+2 < interac_cnt) {
-              _mm_prefetch(((char *)(IN[j+2] + (in_dim*M_dim+k)*chld_cnt*2)), _MM_HINT_T0);
-              _mm_prefetch(((char *)(IN[j+2] + (in_dim*M_dim+k)*chld_cnt*2) + 64), _MM_HINT_T0);
-              _mm_prefetch(((char *)(IN[j+3] + (in_dim*M_dim+k)*chld_cnt*2)), _MM_HINT_T0);
-              _mm_prefetch(((char *)(IN[j+3] + (in_dim*M_dim+k)*chld_cnt*2) + 64), _MM_HINT_T0);
-              _mm_prefetch(((char *)(OUT[j+2] + (ot_dim*M_dim+k)*chld_cnt*2)), _MM_HINT_T0);
-              _mm_prefetch(((char *)(OUT[j+2] + (ot_dim*M_dim+k)*chld_cnt*2) + 64), _MM_HINT_T0);
-              _mm_prefetch(((char *)(OUT[j+3] + (ot_dim*M_dim+k)*chld_cnt*2)), _MM_HINT_T0);
-              _mm_prefetch(((char *)(OUT[j+3] + (ot_dim*M_dim+k)*chld_cnt*2) + 64), _MM_HINT_T0);
-            }
-#endif
-            matmult_8x8x2(M_, IN0, IN1, OUT0, OUT1);
+          if (j+2 < interac_cnt) {
+            _mm_prefetch(((char *)(IN[j+2] + (in_dim*M_dim+k)*chld_cnt*2)), _MM_HINT_T0);
+            _mm_prefetch(((char *)(IN[j+2] + (in_dim*M_dim+k)*chld_cnt*2) + 64), _MM_HINT_T0);
+            _mm_prefetch(((char *)(IN[j+3] + (in_dim*M_dim+k)*chld_cnt*2)), _MM_HINT_T0);
+            _mm_prefetch(((char *)(IN[j+3] + (in_dim*M_dim+k)*chld_cnt*2) + 64), _MM_HINT_T0);
+            _mm_prefetch(((char *)(OUT[j+2] + (ot_dim*M_dim+k)*chld_cnt*2)), _MM_HINT_T0);
+            _mm_prefetch(((char *)(OUT[j+2] + (ot_dim*M_dim+k)*chld_cnt*2) + 64), _MM_HINT_T0);
+            _mm_prefetch(((char *)(OUT[j+3] + (ot_dim*M_dim+k)*chld_cnt*2)), _MM_HINT_T0);
+            _mm_prefetch(((char *)(OUT[j+3] + (ot_dim*M_dim+k)*chld_cnt*2) + 64), _MM_HINT_T0);
           }
+#endif
+          matmult_8x8x2(M_, IN0, IN1, OUT0, OUT1);
         }
       }
     }
-    {
-      Profile::Add_FLOP(8*8*8*(interac_vec.Dim()/2)*M_dim*ker_dim0*ker_dim1*dof);
-    }
+    Profile::Add_FLOP(8*8*8*(interac_vec.Dim()/2)*M_dim*ker_dim0*ker_dim1*dof);
     free(IN_ );
     free(OUT_);
     free(zero_vec0);
@@ -681,39 +674,38 @@ class FMM_Tree {
     size_t m=MultipoleOrder();
     size_t p_indx=perm_indx % C_Perm;
     Permutation<Real_t> P;
-    switch (type){
-      case U2U_Type:
-      {
-        Vector<Real_t> scal_exp;
-        Permutation<Real_t> ker_perm;
-        if(perm_indx<C_Perm) {
-          ker_perm=kernel->k_m2m->perm_vec[0     +p_indx];
-          scal_exp=kernel->k_m2m->src_scal;
-        }else{
-          ker_perm=kernel->k_m2m->perm_vec[0     +p_indx];
-          scal_exp=kernel->k_m2m->src_scal;
-          for(size_t i=0;i<scal_exp.Dim();i++) scal_exp[i]=-scal_exp[i];
-        }
-        P=equiv_surf_perm(m, p_indx, ker_perm, (ScaleInvar()?&scal_exp:NULL));
-        break;
+    switch (type) {
+    case U2U_Type: {
+      Vector<Real_t> scal_exp;
+      Permutation<Real_t> ker_perm;
+      if(perm_indx<C_Perm) {
+        ker_perm=kernel->k_m2m->perm_vec[0     +p_indx];
+        scal_exp=kernel->k_m2m->src_scal;
+      }else{
+        ker_perm=kernel->k_m2m->perm_vec[0     +p_indx];
+        scal_exp=kernel->k_m2m->src_scal;
+        for(size_t i=0;i<scal_exp.Dim();i++) scal_exp[i]=-scal_exp[i];
       }
-      case D2D_Type:
-      {
-        Vector<Real_t> scal_exp;
-        Permutation<Real_t> ker_perm;
-        if(perm_indx<C_Perm){
-          ker_perm=kernel->k_l2l->perm_vec[C_Perm+p_indx];
-          scal_exp=kernel->k_l2l->trg_scal;
-          for(size_t i=0;i<scal_exp.Dim();i++) scal_exp[i]=-scal_exp[i];
-        }else{
-          ker_perm=kernel->k_l2l->perm_vec[C_Perm+p_indx];
-          scal_exp=kernel->k_l2l->trg_scal;
-        }
-        P=equiv_surf_perm(m, p_indx, ker_perm, (ScaleInvar()?&scal_exp:NULL));
-        break;
+      P=equiv_surf_perm(m, p_indx, ker_perm, (ScaleInvar()?&scal_exp:NULL));
+      break;
+    }
+    case D2D_Type: {
+      Vector<Real_t> scal_exp;
+      Permutation<Real_t> ker_perm;
+      if(perm_indx<C_Perm){
+        ker_perm=kernel->k_l2l->perm_vec[C_Perm+p_indx];
+        scal_exp=kernel->k_l2l->trg_scal;
+        for(size_t i=0;i<scal_exp.Dim();i++) scal_exp[i]=-scal_exp[i];
+      }else{
+        ker_perm=kernel->k_l2l->perm_vec[C_Perm+p_indx];
+        scal_exp=kernel->k_l2l->trg_scal;
       }
-      default:
-        break;
+      P=equiv_surf_perm(m, p_indx, ker_perm, (ScaleInvar()?&scal_exp:NULL));
+      break;
+    }
+    default: {
+      break;
+    }
     }
 #pragma omp critical (PRECOMP_MATRIX_PTS)
     {
@@ -1005,23 +997,18 @@ class FMM_Tree {
           Matrix<Real_t> M_check_zero_avg(n_surf*ker_dim[1],n_surf*ker_dim[1]);
           {
             Matrix<Real_t> M_s2c;
-            {
-              int ker_dim[2]={kernel->k_m2m->ker_dim[0],kernel->k_m2m->ker_dim[1]};
-              M_s2c.ReInit(ker_dim[0],n_surf*ker_dim[1]);
-              std::vector<Real_t> uc_coord;
-              {
-                Real_t c[3]={0,0,0};
-                uc_coord=u_check_surf(MultipoleOrder(),c,0);
-              }
+            int ker_dim[2]={kernel->k_m2m->ker_dim[0],kernel->k_m2m->ker_dim[1]};
+            M_s2c.ReInit(ker_dim[0],n_surf*ker_dim[1]);
+            std::vector<Real_t> uc_coord;
+            Real_t c[3]={0,0,0};
+            uc_coord=u_check_surf(MultipoleOrder(),c,0);
 #pragma omp parallel for schedule(dynamic)
-              for(size_t i=0;i<n_surf;i++){
-                std::vector<Real_t> M_=cheb_integ(0, &uc_coord[i*3], 1.0, *kernel->k_m2m);
-                for(size_t j=0; j<ker_dim[0]; j++)
-                  for(int k=0; k<ker_dim[1]; k++)
-                    M_s2c[j][i*ker_dim[1]+k] = M_[j+k*ker_dim[0]];
-              }
+            for(size_t i=0;i<n_surf;i++){
+              std::vector<Real_t> M_=cheb_integ(0, &uc_coord[i*3], 1.0, *kernel->k_m2m);
+              for(size_t j=0; j<ker_dim[0]; j++)
+                for(int k=0; k<ker_dim[1]; k++)
+                  M_s2c[j][i*ker_dim[1]+k] = M_[j+k*ker_dim[0]];
             }
-  
             Matrix<Real_t>& M_c2e0 = Precomp(level, UC2UE0_Type, 0);
             Matrix<Real_t>& M_c2e1 = Precomp(level, UC2UE1_Type, 0);
             Matrix<Real_t> M_s2e=(M_s2c*M_c2e0)*M_c2e1;
