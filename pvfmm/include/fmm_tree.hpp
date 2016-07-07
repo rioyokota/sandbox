@@ -1735,6 +1735,8 @@ class FMM_Tree {
       vec_sz=M_dc2de0.Dim(0);
       node_lst.clear();
       std::vector<std::vector< FMM_Node* > > node_lst_(MAX_DEPTH+1);
+      for(int i=0;i<=MAX_DEPTH;i++)
+        node_lst_[i].clear();
       FMM_Node* r_node=NULL;
       for(size_t i=0;i<node.size();i++){
         if(!node[i]->IsLeaf()){
