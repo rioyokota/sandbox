@@ -1078,67 +1078,60 @@ class FMM_Tree {
           if(level==-MAX_DEPTH) M = M_m2l[-level];
           else                  M = M_equiv_zero_avg * (M_m2l[-level] + M_m2m[-level]*M*M_l2l[-level]) * M_check_zero_avg;
         }
-        {
-          std::vector<Real_t> corner_pts;
-          corner_pts.push_back(0); corner_pts.push_back(0); corner_pts.push_back(0);
-          corner_pts.push_back(1); corner_pts.push_back(0); corner_pts.push_back(0);
-          corner_pts.push_back(0); corner_pts.push_back(1); corner_pts.push_back(0);
-          corner_pts.push_back(0); corner_pts.push_back(0); corner_pts.push_back(1);
-          corner_pts.push_back(0); corner_pts.push_back(1); corner_pts.push_back(1);
-          corner_pts.push_back(1); corner_pts.push_back(0); corner_pts.push_back(1);
-          corner_pts.push_back(1); corner_pts.push_back(1); corner_pts.push_back(0);
-          corner_pts.push_back(1); corner_pts.push_back(1); corner_pts.push_back(1);
-          size_t n_corner=corner_pts.size()/3;
-          Real_t c[3]={0,0,0};
-          std::vector<Real_t> up_equiv_surf=u_equiv_surf(MultipoleOrder(),c,0);
-          std::vector<Real_t> dn_equiv_surf=d_equiv_surf(MultipoleOrder(),c,0);
-          std::vector<Real_t> dn_check_surf=d_check_surf(MultipoleOrder(),c,0);
+        std::vector<Real_t> corner_pts;
+        corner_pts.push_back(0); corner_pts.push_back(0); corner_pts.push_back(0);
+        corner_pts.push_back(1); corner_pts.push_back(0); corner_pts.push_back(0);
+        corner_pts.push_back(0); corner_pts.push_back(1); corner_pts.push_back(0);
+        corner_pts.push_back(0); corner_pts.push_back(0); corner_pts.push_back(1);
+        corner_pts.push_back(0); corner_pts.push_back(1); corner_pts.push_back(1);
+        corner_pts.push_back(1); corner_pts.push_back(0); corner_pts.push_back(1);
+        corner_pts.push_back(1); corner_pts.push_back(1); corner_pts.push_back(0);
+        corner_pts.push_back(1); corner_pts.push_back(1); corner_pts.push_back(1);
+        size_t n_corner=corner_pts.size()/3;
+        c[0]=0; c[1]=0; c[2]=0;
+        std::vector<Real_t> up_equiv_surf=u_equiv_surf(MultipoleOrder(),c,0);
+        std::vector<Real_t> dn_equiv_surf=d_equiv_surf(MultipoleOrder(),c,0);
+        std::vector<Real_t> dn_check_surf=d_check_surf(MultipoleOrder(),c,0);
   
-          Matrix<Real_t> M_err;
-          {
-            {
-              Matrix<Real_t> M_e2pt(n_surf*kernel->k_l2l->ker_dim[0],n_corner*kernel->k_l2l->ker_dim[1]);
-              kernel->k_l2l->BuildMatrix(&dn_equiv_surf[0], n_surf,
-                                         &corner_pts[0], n_corner, &(M_e2pt[0][0]));
-              Matrix<Real_t>& M_dc2de0 = Precomp(0, DC2DE0_Type, 0);
-              Matrix<Real_t>& M_dc2de1 = Precomp(0, DC2DE1_Type, 0);
-              M_err=(M*M_dc2de0)*(M_dc2de1*M_e2pt);
-            }
-            for(size_t k=0;k<n_corner;k++) {
-              for(int j0=-1;j0<=1;j0++)
-                for(int j1=-1;j1<=1;j1++)
-                  for(int j2=-1;j2<=1;j2++){
-                    Real_t pt_c[3]={corner_pts[k*3+0]-j0,
-                                    corner_pts[k*3+1]-j1,
-                                    corner_pts[k*3+2]-j2};
-                    if(fabs(pt_c[0]-0.5)>1.0 || fabs(pt_c[1]-0.5)>1.0 || fabs(pt_c[2]-0.5)>1.0){
-                      Matrix<Real_t> M_e2pt(n_surf*ker_dim[0],ker_dim[1]);
-                      kernel->k_m2l->BuildMatrix(&up_equiv_surf[0], n_surf,
-                                                 &pt_c[0], 1, &(M_e2pt[0][0]));
-                      for(size_t i=0;i<M_e2pt.Dim(0);i++)
-                        for(size_t j=0;j<M_e2pt.Dim(1);j++)
-                          M_err[i][k*ker_dim[1]+j]+=M_e2pt[i][j];
-                    }
-                  }
-            }
-          }
-  
-          Matrix<Real_t> M_grad(M_err.Dim(0),n_surf*ker_dim[1]);
-          for(size_t i=0;i<M_err.Dim(0);i++)
-            for(size_t k=0;k<ker_dim[1];k++)
-              for(size_t j=0;j<n_surf;j++){
-                M_grad[i][j*ker_dim[1]+k]=  M_err[i][0*ker_dim[1]+k]
-                  +(M_err[i][1*ker_dim[1]+k]-M_err[i][0*ker_dim[1]+k])*dn_check_surf[j*3+0]
-                  +(M_err[i][2*ker_dim[1]+k]-M_err[i][0*ker_dim[1]+k])*dn_check_surf[j*3+1]
-                  +(M_err[i][3*ker_dim[1]+k]-M_err[i][0*ker_dim[1]+k])*dn_check_surf[j*3+2]
-                  +(M_err[i][4*ker_dim[1]+k]+M_err[i][0*ker_dim[1]+k]-M_err[i][2*ker_dim[1]+k]-M_err[i][3*ker_dim[1]+k])*dn_check_surf[j*3+1]*dn_check_surf[j*3+2]
-                  +(M_err[i][5*ker_dim[1]+k]+M_err[i][0*ker_dim[1]+k]-M_err[i][1*ker_dim[1]+k]-M_err[i][3*ker_dim[1]+k])*dn_check_surf[j*3+2]*dn_check_surf[j*3+0]
-                  +(M_err[i][6*ker_dim[1]+k]+M_err[i][0*ker_dim[1]+k]-M_err[i][1*ker_dim[1]+k]-M_err[i][2*ker_dim[1]+k])*dn_check_surf[j*3+0]*dn_check_surf[j*3+1]
-                  +(M_err[i][7*ker_dim[1]+k]+M_err[i][1*ker_dim[1]+k]+M_err[i][2*ker_dim[1]+k]+M_err[i][3*ker_dim[1]+k]
-                    -M_err[i][0*ker_dim[1]+k]-M_err[i][4*ker_dim[1]+k]-M_err[i][5*ker_dim[1]+k]-M_err[i][6*ker_dim[1]+k])*dn_check_surf[j*3+0]*dn_check_surf[j*3+1]*dn_check_surf[j*3+2];
+        Matrix<Real_t> M_err;
+        Matrix<Real_t> M_e2pt(n_surf*kernel->k_l2l->ker_dim[0],n_corner*kernel->k_l2l->ker_dim[1]);
+        kernel->k_l2l->BuildMatrix(&dn_equiv_surf[0], n_surf,
+                                   &corner_pts[0], n_corner, &(M_e2pt[0][0]));
+        Matrix<Real_t>& M_dc2de0 = Precomp(0, DC2DE0_Type, 0);
+        Matrix<Real_t>& M_dc2de1 = Precomp(0, DC2DE1_Type, 0);
+        M_err=(M*M_dc2de0)*(M_dc2de1*M_e2pt);
+        for(size_t k=0;k<n_corner;k++) {
+          for(int j0=-1;j0<=1;j0++)
+            for(int j1=-1;j1<=1;j1++)
+              for(int j2=-1;j2<=1;j2++){
+                Real_t pt_c[3]={corner_pts[k*3+0]-j0,
+                                corner_pts[k*3+1]-j1,
+                                corner_pts[k*3+2]-j2};
+                if(fabs(pt_c[0]-0.5)>1.0 || fabs(pt_c[1]-0.5)>1.0 || fabs(pt_c[2]-0.5)>1.0){
+                  Matrix<Real_t> M_e2pt(n_surf*ker_dim[0],ker_dim[1]);
+                  kernel->k_m2l->BuildMatrix(&up_equiv_surf[0], n_surf,
+                                             &pt_c[0], 1, &(M_e2pt[0][0]));
+                  for(size_t i=0;i<M_e2pt.Dim(0);i++)
+                    for(size_t j=0;j<M_e2pt.Dim(1);j++)
+                      M_err[i][k*ker_dim[1]+j]+=M_e2pt[i][j];
+                }
               }
-          M-=M_grad;
         }
+        Matrix<Real_t> M_grad(M_err.Dim(0),n_surf*ker_dim[1]);
+        for(size_t i=0;i<M_err.Dim(0);i++)
+          for(size_t k=0;k<ker_dim[1];k++)
+            for(size_t j=0;j<n_surf;j++){
+              M_grad[i][j*ker_dim[1]+k]=  M_err[i][0*ker_dim[1]+k]
+                +(M_err[i][1*ker_dim[1]+k]-M_err[i][0*ker_dim[1]+k])*dn_check_surf[j*3+0]
+                +(M_err[i][2*ker_dim[1]+k]-M_err[i][0*ker_dim[1]+k])*dn_check_surf[j*3+1]
+                +(M_err[i][3*ker_dim[1]+k]-M_err[i][0*ker_dim[1]+k])*dn_check_surf[j*3+2]
+                +(M_err[i][4*ker_dim[1]+k]+M_err[i][0*ker_dim[1]+k]-M_err[i][2*ker_dim[1]+k]-M_err[i][3*ker_dim[1]+k])*dn_check_surf[j*3+1]*dn_check_surf[j*3+2]
+                +(M_err[i][5*ker_dim[1]+k]+M_err[i][0*ker_dim[1]+k]-M_err[i][1*ker_dim[1]+k]-M_err[i][3*ker_dim[1]+k])*dn_check_surf[j*3+2]*dn_check_surf[j*3+0]
+                +(M_err[i][6*ker_dim[1]+k]+M_err[i][0*ker_dim[1]+k]-M_err[i][1*ker_dim[1]+k]-M_err[i][2*ker_dim[1]+k])*dn_check_surf[j*3+0]*dn_check_surf[j*3+1]
+                +(M_err[i][7*ker_dim[1]+k]+M_err[i][1*ker_dim[1]+k]+M_err[i][2*ker_dim[1]+k]+M_err[i][3*ker_dim[1]+k]
+                  -M_err[i][0*ker_dim[1]+k]-M_err[i][4*ker_dim[1]+k]-M_err[i][5*ker_dim[1]+k]-M_err[i][6*ker_dim[1]+k])*dn_check_surf[j*3+0]*dn_check_surf[j*3+1]*dn_check_surf[j*3+2];
+            }
+        M-=M_grad;
         if(!ScaleInvar()) {
           Mat_Type type=D2D_Type;
           for(int l=-MAX_DEPTH;l<0;l++)
@@ -1252,97 +1245,89 @@ class FMM_Tree {
   
       Profile::Tic("Points2Octee",true,5);
       std::vector<MortonId> lin_oct;
-      {
-        std::vector<MortonId> pt_mid;
-        Vector<Real_t>& pt_c=rnode->pt_coord;
+      std::vector<MortonId> pt_mid;
+      Vector<Real_t>& pt_c=rnode->pt_coord;
+      size_t pt_cnt=pt_c.Dim()/3;
+      pt_mid.resize(pt_cnt);
+#pragma omp parallel for
+      for(size_t i=0;i<pt_cnt;i++){
+        pt_mid[i]=MortonId(pt_c[i*3+0],pt_c[i*3+1],pt_c[i*3+2],max_depth);
+      }
+      points2Octree(pt_mid,lin_oct,max_depth,init_data->max_pts);
+      Profile::Toc();
+  
+      Profile::Tic("ScatterPoints",true,5);
+      std::vector<Vector<Real_t>*> coord_lst;
+      std::vector<Vector<Real_t>*> value_lst;
+      std::vector<Vector<size_t>*> scatter_lst;
+      rnode->NodeDataVec(coord_lst, value_lst, scatter_lst);
+      assert(coord_lst.size()==value_lst.size());
+      assert(coord_lst.size()==scatter_lst.size());
+  
+      Vector<size_t> scatter_index;
+      for(size_t i=0;i<coord_lst.size();i++){
+        if(!coord_lst[i]) continue;
+        Vector<Real_t>& pt_c=*coord_lst[i];
         size_t pt_cnt=pt_c.Dim()/3;
         pt_mid.resize(pt_cnt);
 #pragma omp parallel for
         for(size_t i=0;i<pt_cnt;i++){
-        pt_mid[i]=MortonId(pt_c[i*3+0],pt_c[i*3+1],pt_c[i*3+2],max_depth);
-      }
-        points2Octree(pt_mid,lin_oct,max_depth,init_data->max_pts);
-      }
-      Profile::Toc();
-  
-      Profile::Tic("ScatterPoints",true,5);
-      {
-        std::vector<Vector<Real_t>*> coord_lst;
-        std::vector<Vector<Real_t>*> value_lst;
-        std::vector<Vector<size_t>*> scatter_lst;
-        rnode->NodeDataVec(coord_lst, value_lst, scatter_lst);
-        assert(coord_lst.size()==value_lst.size());
-        assert(coord_lst.size()==scatter_lst.size());
-  
-        std::vector<MortonId> pt_mid;
-        Vector<size_t> scatter_index;
-        for(size_t i=0;i<coord_lst.size();i++){
-          if(!coord_lst[i]) continue;
-          Vector<Real_t>& pt_c=*coord_lst[i];
-          size_t pt_cnt=pt_c.Dim()/3;
-          pt_mid.resize(pt_cnt);
-#pragma omp parallel for
-          for(size_t i=0;i<pt_cnt;i++){
     	  pt_mid[i]=MortonId(pt_c[i*3+0],pt_c[i*3+1],pt_c[i*3+2],max_depth);
-          }
-          SortScatterIndex(pt_mid  , scatter_index, &lin_oct[0]);
-          ScatterForward  (pt_c, scatter_index);
-          if(value_lst[i]!=NULL){
-            Vector<Real_t>& pt_v=*value_lst[i];
-            ScatterForward(pt_v, scatter_index);
-          }
-          if(scatter_lst[i]!=NULL){
-            Vector<size_t>& pt_s=*scatter_lst[i];
-            pt_s=scatter_index;
-          }
+        }
+        SortScatterIndex(pt_mid  , scatter_index, &lin_oct[0]);
+        ScatterForward  (pt_c, scatter_index);
+        if(value_lst[i]!=NULL){
+          Vector<Real_t>& pt_v=*value_lst[i];
+          ScatterForward(pt_v, scatter_index);
+        }
+        if(scatter_lst[i]!=NULL){
+          Vector<size_t>& pt_s=*scatter_lst[i];
+          pt_s=scatter_index;
         }
       }
       Profile::Toc();
   
       Profile::Tic("PointerTree",false,5);
-      {
-        int omp_p=omp_get_max_threads();
-  
-        rnode->SetGhost(false);
-        for(int i=0;i<omp_p;i++){
-          size_t idx=(lin_oct.size()*i)/omp_p;
-          FMM_Node* n=FindNode(lin_oct[idx], true);
-          assert(n->GetMortonId()==lin_oct[idx]);
-        }
-  
+      int omp_p=omp_get_max_threads();  
+      rnode->SetGhost(false);
+      for(int i=0;i<omp_p;i++){
+        size_t idx=(lin_oct.size()*i)/omp_p;
+        FMM_Node* n=FindNode(lin_oct[idx], true);
+        assert(n->GetMortonId()==lin_oct[idx]);
+      }
 #pragma omp parallel for
-        for(int i=0;i<omp_p;i++){
-          size_t a=(lin_oct.size()* i   )/omp_p;
-          size_t b=(lin_oct.size()*(i+1))/omp_p;
-  
-          size_t idx=a;
-          FMM_Node* n=FindNode(lin_oct[idx], false);
-          if(a==0) n=rnode;
-          while(n!=NULL && (idx<b || i==omp_p-1)){
-            n->SetGhost(false);
-            MortonId dn=n->GetMortonId();
-            if(idx<b && dn.isAncestor(lin_oct[idx])){
-              if(n->IsLeaf()) n->Subdivide();
-            }else if(idx<b && dn==lin_oct[idx]){
-              if(!n->IsLeaf()) n->Truncate();
-              assert(n->IsLeaf());
-              idx++;
-            }else{
-              n->Truncate();
-              n->SetGhost(true);
-            }
-            n=PreorderNxt(n);
+      for(int i=0;i<omp_p;i++){
+        size_t a=(lin_oct.size()* i   )/omp_p;
+        size_t b=(lin_oct.size()*(i+1))/omp_p;  
+        size_t idx=a;
+        FMM_Node* n=FindNode(lin_oct[idx], false);
+        if(a==0) n=rnode;
+        while(n!=NULL && (idx<b || i==omp_p-1)){
+          n->SetGhost(false);
+          MortonId dn=n->GetMortonId();
+          if(idx<b && dn.isAncestor(lin_oct[idx])){
+            if(n->IsLeaf()) n->Subdivide();
+          }else if(idx<b && dn==lin_oct[idx]){
+            if(!n->IsLeaf()) n->Truncate();
+            assert(n->IsLeaf());
+            idx++;
+          }else{
+            n->Truncate();
+            n->SetGhost(true);
           }
+          n=PreorderNxt(n);
         }
-      }Profile::Toc();
-      Profile::Tic("InitFMMData",true,5);{
-	std::vector<FMM_Node*>& nodes=GetNodeList();
+      }
+      Profile::Toc();
+      Profile::Tic("InitFMMData",true,5);
+      std::vector<FMM_Node*>& nodes=GetNodeList();
 #pragma omp parallel for
-	for(size_t i=0;i<nodes.size();i++){
-	  if(nodes[i]->FMMData()==NULL) nodes[i]->FMMData()=new FMM_Data();
-	}
-      }Profile::Toc();   
-    }Profile::Toc();
+      for(size_t i=0;i<nodes.size();i++){
+        if(nodes[i]->FMMData()==NULL) nodes[i]->FMMData()=new FMM_Data();
+      }
+      Profile::Toc();   
+    }
+    Profile::Toc();
   }
 
   void Initialize(int mult_order, const Kernel* kernel_) {
@@ -1652,7 +1637,7 @@ class FMM_Tree {
   }
   
   void ClearFMMData() {
-  Profile::Tic("ClearFMMData",true);{
+    Profile::Tic("ClearFMMData",true);
     int omp_p=omp_get_max_threads();
 #pragma omp parallel for
     for(int j=0;j<omp_p;j++){
@@ -1676,7 +1661,7 @@ class FMM_Tree {
         memset(&(*mat)[0][a],0,(b-a)*sizeof(Real_t));
       }
     }
-  }Profile::Toc();
+    Profile::Toc();
   }
   
   void RunFMM() {
@@ -1699,98 +1684,86 @@ class FMM_Tree {
     if( vec_list.size()<7)  vec_list.resize(7);
     int omp_p=omp_get_max_threads();
     if(node.size()==0) return;
-    {
-      int indx=0;
-      size_t vec_sz;
-      {
-        Matrix<Real_t>& M_uc2ue = interacList.ClassMat(0, UC2UE1_Type, 0);
-        vec_sz=M_uc2ue.Dim(1);
+    int indx=0;
+    size_t vec_sz;
+    Matrix<Real_t>& M_uc2ue = interacList.ClassMat(0, UC2UE1_Type, 0);
+    vec_sz=M_uc2ue.Dim(1);
+    std::vector< FMM_Node* > node_lst;
+    node_lst.clear();
+    std::vector<std::vector< FMM_Node* > > node_lst_(MAX_DEPTH+1);
+    FMM_Node* r_node=NULL;
+    for(size_t i=0;i<node.size();i++){
+      if(!node[i]->IsLeaf()){
+        node_lst_[node[i]->depth].push_back(node[i]);
+      }else{
+        node[i]->pt_cnt[0]+=node[i]-> src_coord.Dim()/3;
+        node[i]->pt_cnt[0]+=node[i]->surf_coord.Dim()/3;
+        if(node[i]->IsGhost()) node[i]->pt_cnt[0]++; // TODO: temporary fix, pt_cnt not known for ghost nodes
       }
-      std::vector< FMM_Node* > node_lst;
-      {
-        node_lst.clear();
-        std::vector<std::vector< FMM_Node* > > node_lst_(MAX_DEPTH+1);
-        FMM_Node* r_node=NULL;
-        for(size_t i=0;i<node.size();i++){
-          if(!node[i]->IsLeaf()){
-            node_lst_[node[i]->depth].push_back(node[i]);
-          }else{
-            node[i]->pt_cnt[0]+=node[i]-> src_coord.Dim()/3;
-            node[i]->pt_cnt[0]+=node[i]->surf_coord.Dim()/3;
-            if(node[i]->IsGhost()) node[i]->pt_cnt[0]++; // TODO: temporary fix, pt_cnt not known for ghost nodes
-          }
-          if(node[i]->depth==0) r_node=node[i];
+      if(node[i]->depth==0) r_node=node[i];
+    }
+    size_t chld_cnt=1UL<<3;
+    for(int i=MAX_DEPTH;i>=0;i--){
+      for(size_t j=0;j<node_lst_[i].size();j++){
+        for(size_t k=0;k<chld_cnt;k++){
+          FMM_Node* node=node_lst_[i][j]->Child(k);
+          node_lst_[i][j]->pt_cnt[0]+=node->pt_cnt[0];
         }
-        size_t chld_cnt=1UL<<3;
-        for(int i=MAX_DEPTH;i>=0;i--){
-          for(size_t j=0;j<node_lst_[i].size();j++){
-            for(size_t k=0;k<chld_cnt;k++){
-              FMM_Node* node=node_lst_[i][j]->Child(k);
-              node_lst_[i][j]->pt_cnt[0]+=node->pt_cnt[0];
-            }
-          }
-        }
-        for(int i=0;i<=MAX_DEPTH;i++){
-          for(size_t j=0;j<node_lst_[i].size();j++){
-            if(node_lst_[i][j]->pt_cnt[0])
-            for(size_t k=0;k<chld_cnt;k++){
-              FMM_Node* node=node_lst_[i][j]->Child(k);
-              node_lst.push_back(node);
-            }
-          }
-        }
-        if(r_node!=NULL) node_lst.push_back(r_node);
-        n_list[indx]=node_lst;
-      }
-      std::vector<Vector<Real_t>*>& vec_lst=vec_list[indx];
-      for(size_t i=0;i<node_lst.size();i++){
-        FMM_Node* node=node_lst[i];
-        Vector<Real_t>& data_vec=node->FMMData()->upward_equiv;
-        data_vec.Resize(vec_sz);
-        vec_lst.push_back(&data_vec);
       }
     }
-    {
-      int indx=1;
-      size_t vec_sz;
-      {
-        Matrix<Real_t>& M_dc2de0 = interacList.ClassMat(0, DC2DE0_Type, 0);
-        vec_sz=M_dc2de0.Dim(0);
+    for(int i=0;i<=MAX_DEPTH;i++){
+      for(size_t j=0;j<node_lst_[i].size();j++){
+        if(node_lst_[i][j]->pt_cnt[0])
+          for(size_t k=0;k<chld_cnt;k++){
+            FMM_Node* node=node_lst_[i][j]->Child(k);
+            node_lst.push_back(node);
+          }
       }
-      std::vector< FMM_Node* > node_lst;
-      {
-        node_lst.clear();
-        std::vector<std::vector< FMM_Node* > > node_lst_(MAX_DEPTH+1);
-        FMM_Node* r_node=NULL;
-        for(size_t i=0;i<node.size();i++){
-          if(!node[i]->IsLeaf()){
-            node_lst_[node[i]->depth].push_back(node[i]);
-          }else{
-            node[i]->pt_cnt[1]+=node[i]->trg_coord.Dim()/3;
-          }
-          if(node[i]->depth==0) r_node=node[i];
+    }
+    if(r_node!=NULL) node_lst.push_back(r_node);
+    n_list[indx]=node_lst;
+    std::vector<Vector<Real_t>*>& vec_lst=vec_list[indx];
+    for(size_t i=0;i<node_lst.size();i++){
+      FMM_Node* node=node_lst[i];
+      Vector<Real_t>& data_vec=node->FMMData()->upward_equiv;
+      data_vec.Resize(vec_sz);
+      vec_lst.push_back(&data_vec);
+    }
+    {
+      indx=1;
+      Matrix<Real_t>& M_dc2de0 = interacList.ClassMat(0, DC2DE0_Type, 0);
+      vec_sz=M_dc2de0.Dim(0);
+      node_lst.clear();
+      std::vector<std::vector< FMM_Node* > > node_lst_(MAX_DEPTH+1);
+      FMM_Node* r_node=NULL;
+      for(size_t i=0;i<node.size();i++){
+        if(!node[i]->IsLeaf()){
+          node_lst_[node[i]->depth].push_back(node[i]);
+        }else{
+          node[i]->pt_cnt[1]+=node[i]->trg_coord.Dim()/3;
         }
-        size_t chld_cnt=1UL<<3;
-        for(int i=MAX_DEPTH;i>=0;i--){
-          for(size_t j=0;j<node_lst_[i].size();j++){
-            for(size_t k=0;k<chld_cnt;k++){
-              FMM_Node* node=node_lst_[i][j]->Child(k);
-              node_lst_[i][j]->pt_cnt[1]+=node->pt_cnt[1];
-            }
+        if(node[i]->depth==0) r_node=node[i];
+      }
+      size_t chld_cnt=1UL<<3;
+      for(int i=MAX_DEPTH;i>=0;i--){
+        for(size_t j=0;j<node_lst_[i].size();j++){
+          for(size_t k=0;k<chld_cnt;k++){
+            FMM_Node* node=node_lst_[i][j]->Child(k);
+            node_lst_[i][j]->pt_cnt[1]+=node->pt_cnt[1];
           }
         }
-        for(int i=0;i<=MAX_DEPTH;i++){
-          for(size_t j=0;j<node_lst_[i].size();j++){
-            if(node_lst_[i][j]->pt_cnt[1])
+      }
+      for(int i=0;i<=MAX_DEPTH;i++){
+        for(size_t j=0;j<node_lst_[i].size();j++){
+          if(node_lst_[i][j]->pt_cnt[1])
             for(size_t k=0;k<chld_cnt;k++){
               FMM_Node* node=node_lst_[i][j]->Child(k);
               node_lst.push_back(node);
             }
-          }
         }
-        if(r_node!=NULL) node_lst.push_back(r_node);
-        n_list[indx]=node_lst;
       }
+      if(r_node!=NULL) node_lst.push_back(r_node);
+      n_list[indx]=node_lst;
       std::vector<Vector<Real_t>*>& vec_lst=vec_list[indx];
       for(size_t i=0;i<node_lst.size();i++){
         FMM_Node* node=node_lst[i];
@@ -1801,37 +1774,35 @@ class FMM_Tree {
     }
     {
       int indx=2;
-      std::vector< FMM_Node* > node_lst;
-      {
-        std::vector<std::vector< FMM_Node* > > node_lst_(MAX_DEPTH+1);
-        for(size_t i=0;i<node.size();i++)
-          if(!node[i]->IsLeaf())
-            node_lst_[node[i]->depth].push_back(node[i]);
-        for(int i=0;i<=MAX_DEPTH;i++)
-          for(size_t j=0;j<node_lst_[i].size();j++)
-            node_lst.push_back(node_lst_[i][j]);
-      }
+      node_lst.clear();
+      for(int i=0;i<=MAX_DEPTH;i++)
+        node_lst_[i].clear();
+      for(size_t i=0;i<node.size();i++)
+        if(!node[i]->IsLeaf())
+          node_lst_[node[i]->depth].push_back(node[i]);
+      for(int i=0;i<=MAX_DEPTH;i++)
+        for(size_t j=0;j<node_lst_[i].size();j++)
+          node_lst.push_back(node_lst_[i][j]);
       n_list[indx]=node_lst;
     }
     {
       int indx=3;
-      std::vector< FMM_Node* > node_lst;
-      {
-        std::vector<std::vector< FMM_Node* > > node_lst_(MAX_DEPTH+1);
-        for(size_t i=0;i<node.size();i++)
-          if(!node[i]->IsLeaf() && !node[i]->IsGhost())
-            node_lst_[node[i]->depth].push_back(node[i]);
-        for(int i=0;i<=MAX_DEPTH;i++)
-          for(size_t j=0;j<node_lst_[i].size();j++)
-            node_lst.push_back(node_lst_[i][j]);
-      }
+      node_lst.clear();
+      for(int i=0;i<=MAX_DEPTH;i++)
+        node_lst_[i].clear();
+      for(size_t i=0;i<node.size();i++)
+        if(!node[i]->IsLeaf() && !node[i]->IsGhost())
+          node_lst_[node[i]->depth].push_back(node[i]);
+      for(int i=0;i<=MAX_DEPTH;i++)
+        for(size_t j=0;j<node_lst_[i].size();j++)
+          node_lst.push_back(node_lst_[i][j]);
       n_list[indx]=node_lst;
     }
     {
       int indx=4;
       int src_dof=kernel->ker_dim[0];
       int surf_dof=3+src_dof;
-      std::vector< FMM_Node* > node_lst;
+      node_lst.clear();
       for(size_t i=0;i<node.size();i++) {
         if(node[i]->IsLeaf()){
           node_lst.push_back(node[i]);
@@ -1844,18 +1815,14 @@ class FMM_Tree {
       std::vector<Vector<Real_t>*>& vec_lst=vec_list[indx];
       for(size_t i=0;i<node_lst.size();i++){
         FMM_Node* node=node_lst[i];
-        {
-          Vector<Real_t>& data_vec=node->src_value;
-          size_t vec_sz=(node->src_coord.Dim()/3)*src_dof;
-          if(data_vec.Dim()!=vec_sz) data_vec.Resize(vec_sz);
-          vec_lst.push_back(&data_vec);
-        }
-        {
-          Vector<Real_t>& data_vec=node->surf_value;
-          size_t vec_sz=(node->surf_coord.Dim()/3)*surf_dof;
-          if(data_vec.Dim()!=vec_sz) data_vec.Resize(vec_sz);
-          vec_lst.push_back(&data_vec);
-        }
+        Vector<Real_t>& data_vec=node->src_value;
+        size_t vec_sz=(node->src_coord.Dim()/3)*src_dof;
+        if(data_vec.Dim()!=vec_sz) data_vec.Resize(vec_sz);
+        vec_lst.push_back(&data_vec);
+        Vector<Real_t>& data_vec2=node->surf_value;
+        vec_sz=(node->surf_coord.Dim()/3)*surf_dof;
+        if(data_vec2.Dim()!=vec_sz) data_vec2.Resize(vec_sz);
+        vec_lst.push_back(&data_vec2);
       }
     }
     {
