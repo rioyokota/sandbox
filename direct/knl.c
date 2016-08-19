@@ -43,7 +43,7 @@ int main() {
     {
       tic = get_time();
     }
-#pragma omp for
+#pragma omp for schedule(dynamic)
     for (i=0; i<N; i+=16) {
       __m512 pi = _mm512_setzero_ps();
       __m512 axi = _mm512_setzero_ps();

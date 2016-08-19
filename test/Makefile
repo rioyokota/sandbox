@@ -22,6 +22,9 @@ hello: hello.asm
 nitadori: nitadori.o
 	$(CXX) $?
 	./a.out
+opencl: opencl.o
+	$(CXX) $? -lOpenCL
+	./a.out
 pthreads: pthreads.o
 	$(CXX) $?
 	./a.out
