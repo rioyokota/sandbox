@@ -20,16 +20,14 @@ int main(int argc, char* argv[])
   int devType=CL_DEVICE_TYPE_CPU;
   
   cl_int err;
-  
   size_t global;
   size_t local;
-  
   cl_platform_id platform_id;
   cl_device_id device_id;
   cl_context context;
-  cl_command_queue command_queue; // compute command queue
-  cl_program program;        // compute program
-  cl_kernel kernel;          // compute kernel
+  cl_command_queue command_queue;
+  cl_program program;
+  cl_kernel kernel;
   
   // Connect to a compute device
   err = clGetPlatformIDs(1, &platform_id, NULL);
