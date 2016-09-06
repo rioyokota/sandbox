@@ -34,11 +34,3 @@ template: template.o
 vtk: vtk.o
 	$(CXX) $? -lvtkCharts -lvtkRendering -lvtkGraphics -lvtkFiltering -lvtkViews -lvtkCommon -lvtkWidgets -lvtkIO
 	./a.out
-clean:
-	@make -C .. clean
-commit:
-	@make -C .. commit
-save:
-	@make -C .. save
-revert:
-	@make -C .. revert
