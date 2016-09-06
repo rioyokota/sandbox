@@ -14,6 +14,9 @@ platform: platform.o
 vadd: vadd.o
 	$(CXX) $? -lOpenCL
 	./a.out
+vmul: vmul.o
+	$(CXX) $? -lOpenCL
+	./a.out
 
 clean:
 	@find . -name "*.o" -o -name "*.out*" -o -name "*.mod" | xargs rm -rf
