@@ -1,6 +1,5 @@
 Vector -> std::vector
- - rm dev_buffer
- - rm own_data
+ - interac_data
  - rm ReInit
  - Resize -> resize
  - Dim -> size
