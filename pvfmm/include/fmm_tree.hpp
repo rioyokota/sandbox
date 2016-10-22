@@ -2119,29 +2119,29 @@ class FMM_Tree {
       }
 
       if(dev_buffer.Dim()<buff_size) dev_buffer.Resize(buff_size);
-      size_t data_size=sizeof(size_t)*4;
-      data_size+=sizeof(size_t)+interac_blk.size()*sizeof(size_t);
-      data_size+=sizeof(size_t)+interac_cnt.size()*sizeof(size_t);
-      data_size+=sizeof(size_t)+interac_mat.size()*sizeof(size_t);
-      data_size+=sizeof(size_t)+ input_perm.size()*sizeof(size_t);
-      data_size+=sizeof(size_t)+output_perm.size()*sizeof(size_t);
+      size_t data_size=4;
+      data_size+=1+interac_blk.size();
+      data_size+=1+interac_cnt.size();
+      data_size+=1+interac_mat.size();
+      data_size+=1+ input_perm.size();
+      data_size+=1+output_perm.size();
       if(interac_data.Dim(0)*interac_data.Dim(1)<sizeof(size_t)){
-        data_size+=sizeof(size_t);
-        interac_data.ReInit(1,data_size);
+        data_size+=1;
+        interac_data.ReInit(1,data_size*sizeof(size_t));
         ((size_t*)&interac_data[0][0])[0]=sizeof(size_t);
       }else{
         size_t pts_data_size=*((size_t*)&interac_data[0][0]);
         assert(interac_data.Dim(0)*interac_data.Dim(1)>=pts_data_size);
-        data_size+=pts_data_size;
-        if(data_size>interac_data.Dim(0)*interac_data.Dim(1)){
+        data_size+=pts_data_size/sizeof(size_t);
+        if(data_size*sizeof(size_t)>interac_data.Dim(0)*interac_data.Dim(1)){
           Matrix< char> pts_interac_data=interac_data;
-          interac_data.ReInit(1,data_size);
+          interac_data.ReInit(1,data_size*sizeof(size_t));
           memcpy(&interac_data[0][0],&pts_interac_data[0][0],pts_data_size);
         }
       }
       size_t* data_ptr=(size_t*)&interac_data[0][0];
       data_ptr+=data_ptr[0]/sizeof(size_t);
-      data_ptr[0]=data_size;
+      data_ptr[0]=data_size*sizeof(size_t);
       data_ptr[1]=   M_dim0;
       data_ptr[2]=   M_dim1;
       data_ptr[3]=      dof;
