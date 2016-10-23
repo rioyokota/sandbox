@@ -788,22 +788,21 @@ class FMM_Tree {
       M=V.Transpose()*S;
       break;
     }
-    case DC2DE1_Type:
-      {
-        if(MultipoleOrder()==0) break;
-        const int* ker_dim=kernel->k_l2l->ker_dim;
-        Real_t c[3]={0,0,0};
-        std::vector<Real_t> check_surf=d_check_surf(MultipoleOrder(),c,level);
-        size_t n_ch=check_surf.size()/3;
-        std::vector<Real_t> equiv_surf=d_equiv_surf(MultipoleOrder(),c,level);
-        size_t n_eq=equiv_surf.size()/3;
-        Matrix<Real_t> M_e2c(n_eq*ker_dim[0],n_ch*ker_dim[1]);
-        kernel->k_l2l->BuildMatrix(&equiv_surf[0], n_eq, &check_surf[0], n_ch, &(M_e2c[0][0]));
-        Matrix<Real_t> U,S,V;
-        M_e2c.SVD(U,S,V);
-        M=U.Transpose();
-        break;
-      }
+    case DC2DE1_Type:{
+      if(MultipoleOrder()==0) break;
+      const int* ker_dim=kernel->k_l2l->ker_dim;
+      Real_t c[3]={0,0,0};
+      std::vector<Real_t> check_surf=d_check_surf(MultipoleOrder(),c,level);
+      size_t n_ch=check_surf.size()/3;
+      std::vector<Real_t> equiv_surf=d_equiv_surf(MultipoleOrder(),c,level);
+      size_t n_eq=equiv_surf.size()/3;
+      Matrix<Real_t> M_e2c(n_eq*ker_dim[0],n_ch*ker_dim[1]);
+      kernel->k_l2l->BuildMatrix(&equiv_surf[0], n_eq, &check_surf[0], n_ch, &(M_e2c[0][0]));
+      Matrix<Real_t> U,S,V;
+      M_e2c.SVD(U,S,V);
+      M=U.Transpose();
+      break;
+    }
     case U2U_Type:{
       if(MultipoleOrder()==0) break;
       const int* ker_dim=kernel->k_m2m->ker_dim;
@@ -1029,49 +1028,49 @@ class FMM_Tree {
           Permutation<Real_t>& Pc = interacList.Perm_C(level, D2D_Type, 0);
           M_l2l[-level] = M_check_zero_avg * Pr * Precomp(level, D2D_Type, interacList.InteracClass(D2D_Type, 0)) * Pc * M_check_zero_avg;
           assert(M_l2l[-level].Dim(0)>0 && M_l2l[-level].Dim(1)>0);
-        }
-        for(size_t mat_indx=0; mat_indx<mat_cnt_m2m; mat_indx++){
-          Precomp(level, U2U_Type, mat_indx);
-          Permutation<Real_t>& Pr = interacList.Perm_R(level, U2U_Type, mat_indx);
-          Permutation<Real_t>& Pc = interacList.Perm_C(level, U2U_Type, mat_indx);
-          Matrix<Real_t> M = Pr * Precomp(level, U2U_Type, interacList.InteracClass(U2U_Type, mat_indx)) * Pc;
-          assert(M.Dim(0)>0 && M.Dim(1)>0);
+          for(size_t mat_indx=0; mat_indx<mat_cnt_m2m; mat_indx++){
+            Precomp(level, U2U_Type, mat_indx);
+            Permutation<Real_t>& Pr = interacList.Perm_R(level, U2U_Type, mat_indx);
+            Permutation<Real_t>& Pc = interacList.Perm_C(level, U2U_Type, mat_indx);
+            Matrix<Real_t> M = Pr * Precomp(level, U2U_Type, interacList.InteracClass(U2U_Type, mat_indx)) * Pc;
+            assert(M.Dim(0)>0 && M.Dim(1)>0);
 
-          if(mat_indx==0) M_m2m[-level] = M_equiv_zero_avg*M*M_equiv_zero_avg;
-          else M_m2m[-level] += M_equiv_zero_avg*M*M_equiv_zero_avg;
-        }
-        if(!ScaleInvar() || level==0){
-          Real_t s=(1UL<<(-level));
-          Real_t dc_coord[3]={0,0,0};
-          std::vector<Real_t> trg_coord=d_check_surf(MultipoleOrder(), dc_coord, level);
-          Matrix<Real_t> M_ue2dc(n_surf*ker_dim[0], n_surf*ker_dim[1]); M_ue2dc.SetZero();
-
-          for(int x0=-2;x0<4;x0++)
-            for(int x1=-2;x1<4;x1++)
-              for(int x2=-2;x2<4;x2++)
-                if(abs(x0)>1 || abs(x1)>1 || abs(x2)>1){
-                  Real_t ue_coord[3]={x0*s, x1*s, x2*s};
-                  std::vector<Real_t> src_coord=u_equiv_surf(MultipoleOrder(), ue_coord, level);
-                  Matrix<Real_t> M_tmp(n_surf*ker_dim[0], n_surf*ker_dim[1]);
-                  kernel->k_m2l->BuildMatrix(&src_coord[0], n_surf, &trg_coord[0], n_surf, &(M_tmp[0][0]));
-                  M_ue2dc+=M_tmp;
-                }
-          M_m2l[-level]=M_equiv_zero_avg*M_ue2dc * M_check_zero_avg;
-        }else{
-          M_m2l[-level]=M_equiv_zero_avg * M_m2l[-level-1] * M_check_zero_avg;
-          if(ScaleInvar()) {
-            Permutation<Real_t> ker_perm=kernel->k_m2l->perm_vec[0     +Scaling];
-            Vector<Real_t> scal_exp=kernel->k_m2l->src_scal;
-            for(size_t i=0;i<scal_exp.Dim();i++) scal_exp[i]=-scal_exp[i];
-            Permutation<Real_t> P=equiv_surf_perm(MultipoleOrder(), Scaling, ker_perm, &scal_exp);
-            M_m2l[-level]=P*M_m2l[-level];
+            if(mat_indx==0) M_m2m[-level] = M_equiv_zero_avg*M*M_equiv_zero_avg;
+            else M_m2m[-level] += M_equiv_zero_avg*M*M_equiv_zero_avg;
           }
-          if(ScaleInvar()) {
-            Permutation<Real_t> ker_perm=kernel->k_m2l->perm_vec[C_Perm+Scaling];
-            Vector<Real_t> scal_exp=kernel->k_m2l->trg_scal;
-            for(size_t i=0;i<scal_exp.Dim();i++) scal_exp[i]=-scal_exp[i];
-            Permutation<Real_t> P=equiv_surf_perm(MultipoleOrder(), Scaling, ker_perm, &scal_exp);
-            M_m2l[-level]=M_m2l[-level]*P;
+          if(!ScaleInvar() || level==0){
+            Real_t s=(1UL<<(-level));
+            Real_t dc_coord[3]={0,0,0};
+            std::vector<Real_t> trg_coord=d_check_surf(MultipoleOrder(), dc_coord, level);
+            Matrix<Real_t> M_ue2dc(n_surf*ker_dim[0], n_surf*ker_dim[1]); M_ue2dc.SetZero();
+
+            for(int x0=-2;x0<4;x0++)
+              for(int x1=-2;x1<4;x1++)
+                for(int x2=-2;x2<4;x2++)
+                  if(abs(x0)>1 || abs(x1)>1 || abs(x2)>1){
+                    Real_t ue_coord[3]={x0*s, x1*s, x2*s};
+                    std::vector<Real_t> src_coord=u_equiv_surf(MultipoleOrder(), ue_coord, level);
+                    Matrix<Real_t> M_tmp(n_surf*ker_dim[0], n_surf*ker_dim[1]);
+                    kernel->k_m2l->BuildMatrix(&src_coord[0], n_surf, &trg_coord[0], n_surf, &(M_tmp[0][0]));
+                    M_ue2dc+=M_tmp;
+                  }
+            M_m2l[-level]=M_equiv_zero_avg*M_ue2dc * M_check_zero_avg;
+          }else{
+            M_m2l[-level]=M_equiv_zero_avg * M_m2l[-level-1] * M_check_zero_avg;
+            if(ScaleInvar()) {
+              Permutation<Real_t> ker_perm=kernel->k_m2l->perm_vec[0     +Scaling];
+              Vector<Real_t> scal_exp=kernel->k_m2l->src_scal;
+              for(size_t i=0;i<scal_exp.Dim();i++) scal_exp[i]=-scal_exp[i];
+              Permutation<Real_t> P=equiv_surf_perm(MultipoleOrder(), Scaling, ker_perm, &scal_exp);
+              M_m2l[-level]=P*M_m2l[-level];
+            }
+            if(ScaleInvar()) {
+              Permutation<Real_t> ker_perm=kernel->k_m2l->perm_vec[C_Perm+Scaling];
+              Vector<Real_t> scal_exp=kernel->k_m2l->trg_scal;
+              for(size_t i=0;i<scal_exp.Dim();i++) scal_exp[i]=-scal_exp[i];
+              Permutation<Real_t> P=equiv_surf_perm(MultipoleOrder(), Scaling, ker_perm, &scal_exp);
+              M_m2l[-level]=M_m2l[-level]*P;
+            }
           }
         }
         for(int level=-MAX_DEPTH;level<=0;level++){
@@ -1088,7 +1087,7 @@ class FMM_Tree {
         corner_pts.push_back(1); corner_pts.push_back(1); corner_pts.push_back(0);
         corner_pts.push_back(1); corner_pts.push_back(1); corner_pts.push_back(1);
         size_t n_corner=corner_pts.size()/3;
-        c[0]=0; c[1]=0; c[2]=0;
+        c[0]=0, c[1]=0, c[2]=0;
         std::vector<Real_t> up_equiv_surf=u_equiv_surf(MultipoleOrder(),c,0);
         std::vector<Real_t> dn_equiv_surf=d_equiv_surf(MultipoleOrder(),c,0);
         std::vector<Real_t> dn_check_surf=d_check_surf(MultipoleOrder(),c,0);
@@ -1101,13 +1100,13 @@ class FMM_Tree {
         Matrix<Real_t>& M_dc2de1 = Precomp(0, DC2DE1_Type, 0);
         M_err=(M*M_dc2de0)*(M_dc2de1*M_e2pt);
         for(size_t k=0;k<n_corner;k++) {
-          for(int j0=-1;j0<=1;j0++)
-            for(int j1=-1;j1<=1;j1++)
-              for(int j2=-1;j2<=1;j2++){
+          for(int j0=-1;j0<=1;j0++) {
+            for(int j1=-1;j1<=1;j1++) {
+              for(int j2=-1;j2<=1;j2++) {
                 Real_t pt_c[3]={corner_pts[k*3+0]-j0,
                                 corner_pts[k*3+1]-j1,
                                 corner_pts[k*3+2]-j2};
-                if(fabs(pt_c[0]-0.5)>1.0 || fabs(pt_c[1]-0.5)>1.0 || fabs(pt_c[2]-0.5)>1.0){
+                if(fabs(pt_c[0]-0.5)>1.0 || fabs(pt_c[1]-0.5)>1.0 || fabs(pt_c[2]-0.5)>1.0) {
                   Matrix<Real_t> M_e2pt(n_surf*ker_dim[0],ker_dim[1]);
                   kernel->k_m2l->BuildMatrix(&up_equiv_surf[0], n_surf,
                                              &pt_c[0], 1, &(M_e2pt[0][0]));
@@ -1116,6 +1115,8 @@ class FMM_Tree {
                       M_err[i][k*ker_dim[1]+j]+=M_e2pt[i][j];
                 }
               }
+            }
+          }
         }
         Matrix<Real_t> M_grad(M_err.Dim(0),n_surf*ker_dim[1]);
         for(size_t i=0;i<M_err.Dim(0);i++)
