@@ -2129,20 +2129,15 @@ class FMM_Tree {
       if(interac_data.Dim(0)*interac_data.Dim(1)<sizeof(size_t)){
         data_size+=1;
         interac_data.ReInit(1,data_size*sizeof(size_t));
-        ((size_t*)&interac_data[0][0])[0]=sizeof(size_t);
+        ((size_t*)&interac_data[0][0])[0]=1;
       }else{
-        size_t pts_data_size=*((size_t*)&interac_data[0][0]);
-        assert(interac_data.Dim(0)*interac_data.Dim(1)>=pts_data_size);
-        data_size+=pts_data_size/sizeof(size_t);
-        if(data_size*sizeof(size_t)>interac_data.Dim(0)*interac_data.Dim(1)){
-          Matrix< char> pts_interac_data=interac_data;
-          interac_data.ReInit(1,data_size*sizeof(size_t));
-          memcpy(&interac_data[0][0],&pts_interac_data[0][0],pts_data_size);
-        }
+        size_t pts_data_size=((size_t*)&interac_data[0][0])[0];
+        assert(interac_data.Dim(0)*interac_data.Dim(1)>=pts_data_size*sizeof(size_t));
+        data_size+=pts_data_size;
       }
       size_t* data_ptr=(size_t*)&interac_data[0][0];
-      data_ptr+=data_ptr[0]/sizeof(size_t);
-      data_ptr[0]=data_size*sizeof(size_t);
+      data_ptr+=data_ptr[0];
+      data_ptr[0]=data_size;
       data_ptr[1]=   M_dim0;
       data_ptr[2]=   M_dim1;
       data_ptr[3]=      dof;
@@ -2192,11 +2187,10 @@ class FMM_Tree {
       Vector<size_t> output_perm;
       {
         size_t* data_ptr=(size_t*)interac_data;
-        data_size=data_ptr[0]; data_ptr+=data_size/sizeof(size_t);
-        data_ptr+=1;
-        M_dim0   =data_ptr[0]; data_ptr+=1;
-        M_dim1   =data_ptr[0]; data_ptr+=1;
-        dof      =data_ptr[0]; data_ptr+=1;
+        data_size=data_ptr[0]; data_ptr+=data_size;
+        M_dim0   =data_ptr[1];
+        M_dim1   =data_ptr[2];
+        dof      =data_ptr[3]; data_ptr+=4;
         interac_blk.ReInit3(data_ptr[0]/sizeof(size_t),data_ptr+1,false);
         data_ptr+=1+interac_blk.Dim();
         interac_cnt.ReInit3(data_ptr[0]/sizeof(size_t),data_ptr+1,false);
