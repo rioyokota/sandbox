@@ -2126,14 +2126,10 @@ class FMM_Tree {
       data_size+=1+interac_mat.size();
       data_size+=1+ input_perm.size();
       data_size+=1+output_perm.size();
+      data_size+=1;
       if(interac_data.Dim(0)*interac_data.Dim(1)<sizeof(size_t)){
-        data_size+=1;
         interac_data.ReInit(1,data_size*sizeof(size_t));
         ((size_t*)&interac_data[0][0])[0]=1;
-      }else{
-        size_t pts_data_size=((size_t*)&interac_data[0][0])[0];
-        assert(interac_data.Dim(0)*interac_data.Dim(1)>=pts_data_size*sizeof(size_t));
-        data_size+=pts_data_size;
       }
       size_t* data_ptr=(size_t*)&interac_data[0][0];
       data_ptr+=data_ptr[0];
