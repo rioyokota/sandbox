@@ -320,7 +320,7 @@ class FMM_Tree {
     PackedData srf_value;
     PackedData trg_coord;
     PackedData trg_value;
-    InteracData interac_data;
+    InteracData pt_interac_data;
   };
 
   std::vector<Real_t> surface(int p, Real_t* c, Real_t alpha, int depth){
@@ -2280,8 +2280,8 @@ class FMM_Tree {
 
   void PtSetup(SetupData& setup_data, ptSetupData* data_){
     ptSetupData& data=*(ptSetupData*)data_;
-    if(data.interac_data.interac_cnt.Dim()){
-      InteracData& intdata=data.interac_data;
+    if(data.pt_interac_data.interac_cnt.Dim()){
+      InteracData& intdata=data.pt_interac_data;
       Vector<size_t>  cnt;
       Vector<size_t>& dsp=intdata.interac_cst;
       cnt.Resize(intdata.interac_cnt.Dim());
@@ -2356,7 +2356,7 @@ class FMM_Tree {
         pkd_data.trg_coord_dsp_offset=offset; pkd_data.trg_coord_dsp_size=data.trg_coord.dsp.Dim(); offset+=align_ptr(sizeof(size_t)*pkd_data.trg_coord_dsp_size);
         pkd_data.trg_value_cnt_offset=offset; pkd_data.trg_value_cnt_size=data.trg_value.cnt.Dim(); offset+=align_ptr(sizeof(size_t)*pkd_data.trg_value_cnt_size);
         pkd_data.trg_value_dsp_offset=offset; pkd_data.trg_value_dsp_size=data.trg_value.dsp.Dim(); offset+=align_ptr(sizeof(size_t)*pkd_data.trg_value_dsp_size);
-        InteracData& intdata=data.interac_data;
+        InteracData& intdata=data.pt_interac_data;
         pkd_data.    in_node_offset=offset; pkd_data.    in_node_size=intdata.    in_node.Dim(); offset+=align_ptr(sizeof(size_t)*pkd_data.    in_node_size);
         pkd_data.   scal_idx_offset=offset; pkd_data.   scal_idx_size=intdata.   scal_idx.Dim(); offset+=align_ptr(sizeof(size_t)*pkd_data.   scal_idx_size);
         pkd_data.coord_shift_offset=offset; pkd_data.coord_shift_size=intdata.coord_shift.Dim(); offset+=align_ptr(sizeof(Real_t)*pkd_data.coord_shift_size);
@@ -2391,7 +2391,7 @@ class FMM_Tree {
         if(pkd_data.trg_coord_dsp_size) memcpy(&buff[0][pkd_data.trg_coord_dsp_offset], &data.trg_coord.dsp[0], pkd_data.trg_coord_dsp_size*sizeof(size_t));
         if(pkd_data.trg_value_cnt_size) memcpy(&buff[0][pkd_data.trg_value_cnt_offset], &data.trg_value.cnt[0], pkd_data.trg_value_cnt_size*sizeof(size_t));
         if(pkd_data.trg_value_dsp_size) memcpy(&buff[0][pkd_data.trg_value_dsp_offset], &data.trg_value.dsp[0], pkd_data.trg_value_dsp_size*sizeof(size_t));
-        InteracData& intdata=data.interac_data;
+        InteracData& intdata=data.pt_interac_data;
         if(pkd_data.    in_node_size) memcpy(&buff[0][pkd_data.    in_node_offset], &intdata.    in_node[0], pkd_data.    in_node_size*sizeof(size_t));
         if(pkd_data.   scal_idx_size) memcpy(&buff[0][pkd_data.   scal_idx_offset], &intdata.   scal_idx[0], pkd_data.   scal_idx_size*sizeof(size_t));
         if(pkd_data.coord_shift_size) memcpy(&buff[0][pkd_data.coord_shift_offset], &intdata.coord_shift[0], pkd_data.coord_shift_size*sizeof(Real_t));
@@ -2550,7 +2550,7 @@ class FMM_Tree {
       if(ScaleInvar()){
         const Kernel* ker=kernel->k_m2m;
         for(size_t l=0;l<MAX_DEPTH;l++){
-          Vector<Real_t>& scal=data.interac_data.scal[l*4+2];
+          Vector<Real_t>& scal=data.pt_interac_data.scal[l*4+2];
           Vector<Real_t>& scal_exp=ker->trg_scal;
           scal.Resize(scal_exp.Dim());
           for(size_t i=0;i<scal.Dim();i++){
@@ -2558,7 +2558,7 @@ class FMM_Tree {
           }
         }
         for(size_t l=0;l<MAX_DEPTH;l++){
-          Vector<Real_t>& scal=data.interac_data.scal[l*4+3];
+          Vector<Real_t>& scal=data.pt_interac_data.scal[l*4+3];
           Vector<Real_t>& scal_exp=ker->src_scal;
           scal.Resize(scal_exp.Dim());
           for(size_t i=0;i<scal.Dim();i++){
@@ -2606,28 +2606,28 @@ class FMM_Tree {
         }
       }
       {
-        InteracData& interac_data=data.interac_data;
-	CopyVec(in_node_,interac_data.in_node);
-	CopyVec(scal_idx_,interac_data.scal_idx);
-	CopyVec(coord_shift_,interac_data.coord_shift);
-	CopyVec(interac_cnt_,interac_data.interac_cnt);
+        InteracData& pt_interac_data=data.pt_interac_data;
+	CopyVec(in_node_,pt_interac_data.in_node);
+	CopyVec(scal_idx_,pt_interac_data.scal_idx);
+	CopyVec(coord_shift_,pt_interac_data.coord_shift);
+	CopyVec(interac_cnt_,pt_interac_data.interac_cnt);
         {
-          pvfmm::Vector<size_t>& cnt=interac_data.interac_cnt;
-          pvfmm::Vector<size_t>& dsp=interac_data.interac_dsp;
+          pvfmm::Vector<size_t>& cnt=pt_interac_data.interac_cnt;
+          pvfmm::Vector<size_t>& dsp=pt_interac_data.interac_dsp;
           dsp.Resize(cnt.Dim()); if(dsp.Dim()) dsp[0]=0;
           scan(&cnt[0],&dsp[0],dsp.Dim());
         }
       }
       {
-        InteracData& interac_data=data.interac_data;
-        pvfmm::Vector<size_t>& cnt=interac_data.interac_cnt;
-        pvfmm::Vector<size_t>& dsp=interac_data.interac_dsp;
+        InteracData& pt_interac_data=data.pt_interac_data;
+        pvfmm::Vector<size_t>& cnt=pt_interac_data.interac_cnt;
+        pvfmm::Vector<size_t>& dsp=pt_interac_data.interac_dsp;
         if(cnt.Dim() && cnt[cnt.Dim()-1]+dsp[dsp.Dim()-1]){
-          data.interac_data.M[2]=mat->Mat(level, UC2UE0_Type, 0);
-          data.interac_data.M[3]=mat->Mat(level, UC2UE1_Type, 0);
+          data.pt_interac_data.M[2]=mat->Mat(level, UC2UE0_Type, 0);
+          data.pt_interac_data.M[3]=mat->Mat(level, UC2UE1_Type, 0);
         }else{
-          data.interac_data.M[2].ReInit(0,0);
-          data.interac_data.M[3].ReInit(0,0);
+          data.pt_interac_data.M[2].ReInit(0,0);
+          data.pt_interac_data.M[3].ReInit(0,0);
         }
       }
     }
@@ -2830,7 +2830,7 @@ class FMM_Tree {
         data.trg_coord.dsp.ReInit3(pkd_data.trg_coord_dsp_size, (size_t*)&setupdata[pkd_data.trg_coord_dsp_offset], false);
         data.trg_value.cnt.ReInit3(pkd_data.trg_value_cnt_size, (size_t*)&setupdata[pkd_data.trg_value_cnt_offset], false);
         data.trg_value.dsp.ReInit3(pkd_data.trg_value_dsp_size, (size_t*)&setupdata[pkd_data.trg_value_dsp_offset], false);
-        InteracData& intdata=data.interac_data;
+        InteracData& intdata=data.pt_interac_data;
         intdata.    in_node.ReInit3(pkd_data.    in_node_size, (size_t*)&setupdata[pkd_data.    in_node_offset],false);
         intdata.   scal_idx.ReInit3(pkd_data.   scal_idx_size, (size_t*)&setupdata[pkd_data.   scal_idx_offset],false);
         intdata.coord_shift.ReInit3(pkd_data.coord_shift_size, (Real_t*)&setupdata[pkd_data.coord_shift_offset],false);
@@ -2845,7 +2845,7 @@ class FMM_Tree {
         }
       }
       {
-        InteracData& intdata=data.interac_data;
+        InteracData& intdata=data.pt_interac_data;
         typename Kernel::Ker_t single_layer_kernel=(typename Kernel::Ker_t)ptr_single_layer_kernel;
         int omp_p=omp_get_max_threads();
 #pragma omp parallel for
@@ -3743,14 +3743,14 @@ class FMM_Tree {
         }
       }
       {
-        InteracData& interac_data=data.interac_data;
-	CopyVec(in_node_,interac_data.in_node);
-	CopyVec(scal_idx_,interac_data.scal_idx);
-	CopyVec(coord_shift_,interac_data.coord_shift);
-	CopyVec(interac_cnt_,interac_data.interac_cnt);
+        InteracData& pt_interac_data=data.pt_interac_data;
+	CopyVec(in_node_,pt_interac_data.in_node);
+	CopyVec(scal_idx_,pt_interac_data.scal_idx);
+	CopyVec(coord_shift_,pt_interac_data.coord_shift);
+	CopyVec(interac_cnt_,pt_interac_data.interac_cnt);
         {
-          pvfmm::Vector<size_t>& cnt=interac_data.interac_cnt;
-          pvfmm::Vector<size_t>& dsp=interac_data.interac_dsp;
+          pvfmm::Vector<size_t>& cnt=pt_interac_data.interac_cnt;
+          pvfmm::Vector<size_t>& dsp=pt_interac_data.interac_dsp;
           dsp.Resize(cnt.Dim()); if(dsp.Dim()) dsp[0]=0;
           scan(&cnt[0],&dsp[0],dsp.Dim());
         }
@@ -3923,14 +3923,14 @@ class FMM_Tree {
         }
       }
       {
-        InteracData& interac_data=data.interac_data;
-	CopyVec(in_node_,interac_data.in_node);
-	CopyVec(scal_idx_,interac_data.scal_idx);
-	CopyVec(coord_shift_,interac_data.coord_shift);
-	CopyVec(interac_cnt_,interac_data.interac_cnt);
+        InteracData& pt_interac_data=data.pt_interac_data;
+	CopyVec(in_node_,pt_interac_data.in_node);
+	CopyVec(scal_idx_,pt_interac_data.scal_idx);
+	CopyVec(coord_shift_,pt_interac_data.coord_shift);
+	CopyVec(interac_cnt_,pt_interac_data.interac_cnt);
         {
-          pvfmm::Vector<size_t>& cnt=interac_data.interac_cnt;
-          pvfmm::Vector<size_t>& dsp=interac_data.interac_dsp;
+          pvfmm::Vector<size_t>& cnt=pt_interac_data.interac_cnt;
+          pvfmm::Vector<size_t>& dsp=pt_interac_data.interac_dsp;
           dsp.Resize(cnt.Dim()); if(dsp.Dim()) dsp[0]=0;
           scan(&cnt[0],&dsp[0],dsp.Dim());
         }
@@ -4219,14 +4219,14 @@ class FMM_Tree {
         }
       }
       {
-        InteracData& interac_data=data.interac_data;
-	CopyVec(in_node_,interac_data.in_node);
-	CopyVec(scal_idx_,interac_data.scal_idx);
-	CopyVec(coord_shift_,interac_data.coord_shift);
-	CopyVec(interac_cnt_,interac_data.interac_cnt);
+        InteracData& pt_interac_data=data.pt_interac_data;
+	CopyVec(in_node_,pt_interac_data.in_node);
+	CopyVec(scal_idx_,pt_interac_data.scal_idx);
+	CopyVec(coord_shift_,pt_interac_data.coord_shift);
+	CopyVec(interac_cnt_,pt_interac_data.interac_cnt);
         {
-          pvfmm::Vector<size_t>& cnt=interac_data.interac_cnt;
-          pvfmm::Vector<size_t>& dsp=interac_data.interac_dsp;
+          pvfmm::Vector<size_t>& cnt=pt_interac_data.interac_cnt;
+          pvfmm::Vector<size_t>& dsp=pt_interac_data.interac_dsp;
           dsp.Resize(cnt.Dim()); if(dsp.Dim()) dsp[0]=0;
           scan(&cnt[0],&dsp[0],dsp.Dim());
         }
@@ -4357,7 +4357,7 @@ class FMM_Tree {
       if(ScaleInvar()){
         const Kernel* ker=kernel->k_l2l;
         for(size_t l=0;l<MAX_DEPTH;l++){
-          Vector<Real_t>& scal=data.interac_data.scal[l*4+0];
+          Vector<Real_t>& scal=data.pt_interac_data.scal[l*4+0];
           Vector<Real_t>& scal_exp=ker->trg_scal;
           scal.Resize(scal_exp.Dim());
           for(size_t i=0;i<scal.Dim();i++){
@@ -4365,7 +4365,7 @@ class FMM_Tree {
           }
         }
         for(size_t l=0;l<MAX_DEPTH;l++){
-          Vector<Real_t>& scal=data.interac_data.scal[l*4+1];
+          Vector<Real_t>& scal=data.pt_interac_data.scal[l*4+1];
           Vector<Real_t>& scal_exp=ker->src_scal;
           scal.Resize(scal_exp.Dim());
           for(size_t i=0;i<scal.Dim();i++){
@@ -4413,28 +4413,28 @@ class FMM_Tree {
         }
       }
       {
-        InteracData& interac_data=data.interac_data;
-	CopyVec(in_node_,interac_data.in_node);
-	CopyVec(scal_idx_,interac_data.scal_idx);
-	CopyVec(coord_shift_,interac_data.coord_shift);
-	CopyVec(interac_cnt_,interac_data.interac_cnt);
+        InteracData& pt_interac_data=data.pt_interac_data;
+	CopyVec(in_node_,pt_interac_data.in_node);
+	CopyVec(scal_idx_,pt_interac_data.scal_idx);
+	CopyVec(coord_shift_,pt_interac_data.coord_shift);
+	CopyVec(interac_cnt_,pt_interac_data.interac_cnt);
         {
-          pvfmm::Vector<size_t>& cnt=interac_data.interac_cnt;
-          pvfmm::Vector<size_t>& dsp=interac_data.interac_dsp;
+          pvfmm::Vector<size_t>& cnt=pt_interac_data.interac_cnt;
+          pvfmm::Vector<size_t>& dsp=pt_interac_data.interac_dsp;
           dsp.Resize(cnt.Dim()); if(dsp.Dim()) dsp[0]=0;
           scan(&cnt[0],&dsp[0],dsp.Dim());
         }
       }
       {
-        InteracData& interac_data=data.interac_data;
-        pvfmm::Vector<size_t>& cnt=interac_data.interac_cnt;
-        pvfmm::Vector<size_t>& dsp=interac_data.interac_dsp;
+        InteracData& pt_interac_data=data.pt_interac_data;
+        pvfmm::Vector<size_t>& cnt=pt_interac_data.interac_cnt;
+        pvfmm::Vector<size_t>& dsp=pt_interac_data.interac_dsp;
         if(cnt.Dim() && cnt[cnt.Dim()-1]+dsp[dsp.Dim()-1]){
-          data.interac_data.M[0]=mat->Mat(level, DC2DE0_Type, 0);
-          data.interac_data.M[1]=mat->Mat(level, DC2DE1_Type, 0);
+          data.pt_interac_data.M[0]=mat->Mat(level, DC2DE0_Type, 0);
+          data.pt_interac_data.M[1]=mat->Mat(level, DC2DE1_Type, 0);
         }else{
-          data.interac_data.M[0].ReInit(0,0);
-          data.interac_data.M[1].ReInit(0,0);
+          data.pt_interac_data.M[0].ReInit(0,0);
+          data.pt_interac_data.M[1].ReInit(0,0);
         }
       }
     }
