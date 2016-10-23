@@ -30,6 +30,7 @@ struct SetupData {
   std::vector<Vector<Real_t>*>  input_vector;
   std::vector<Vector<Real_t>*> output_vector;
   Matrix< char>  interac_data;
+  Matrix< char>  packed_data;
   Matrix< char>* precomp_data;
   Matrix<Real_t>*  coord_data;
   Matrix<Real_t>*  input_data;
@@ -2373,7 +2374,7 @@ class FMM_Tree {
         pkd_data.size=offset;
       }
       {
-        Matrix<char>& buff=setup_data.interac_data;
+        Matrix<char>& buff=setup_data.packed_data;
         if(pkd_data.size>buff.Dim(0)*buff.Dim(1)){
           buff.ReInit(1,pkd_data.size);
         }
@@ -2758,16 +2759,16 @@ class FMM_Tree {
 
   void EvalListPts(SetupData& setup_data) {
     if(setup_data.kernel->ker_dim[0]*setup_data.kernel->ker_dim[1]==0) return;
-    if(setup_data.interac_data.Dim(0)==0 || setup_data.interac_data.Dim(1)==0){
+    if(setup_data.packed_data.Dim(0)==0 || setup_data.packed_data.Dim(1)==0){
       return;
     }
     bool have_gpu=false;
     Profile::Tic("Host2Device",false,25);
     char* dev_buff;
-    char* interac_data;
+    char* packed_data;
     size_t ptr_single_layer_kernel=(size_t)NULL;
     dev_buff = dev_buffer.data_ptr;
-    interac_data= setup_data.interac_data.data_ptr;
+    packed_data= setup_data.packed_data.data_ptr;
     ptr_single_layer_kernel=(size_t)setup_data.kernel->ker_poten;
     Profile::Toc();
     Profile::Tic("DeviceComp",false,20);
@@ -2807,7 +2808,7 @@ class FMM_Tree {
           size_t scal_dim[4*MAX_DEPTH]; size_t scal_offset[4*MAX_DEPTH];
           size_t            Mdim[4][2]; size_t              M_offset[4];
         };
-        char* setupdata=interac_data;
+        char* setupdata=packed_data;
         PackedSetupData& pkd_data=*((PackedSetupData*)setupdata);
         data. level=pkd_data. level;
         data.kernel=pkd_data.kernel;
