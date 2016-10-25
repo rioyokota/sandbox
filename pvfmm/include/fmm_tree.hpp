@@ -2345,32 +2345,32 @@ class FMM_Tree {
         pkd_data.srf_value=data.srf_value.ptr;
         pkd_data.trg_coord=data.trg_coord.ptr;
         pkd_data.trg_value=data.trg_value.ptr;
-        pkd_data.src_coord_cnt_offset=offset; pkd_data.src_coord_cnt_size=data.src_coord.cnt.Dim(); offset+=align_ptr(sizeof(size_t)*pkd_data.src_coord_cnt_size);
-        pkd_data.src_coord_dsp_offset=offset; pkd_data.src_coord_dsp_size=data.src_coord.dsp.Dim(); offset+=align_ptr(sizeof(size_t)*pkd_data.src_coord_dsp_size);
-        pkd_data.src_value_cnt_offset=offset; pkd_data.src_value_cnt_size=data.src_value.cnt.Dim(); offset+=align_ptr(sizeof(size_t)*pkd_data.src_value_cnt_size);
-        pkd_data.src_value_dsp_offset=offset; pkd_data.src_value_dsp_size=data.src_value.dsp.Dim(); offset+=align_ptr(sizeof(size_t)*pkd_data.src_value_dsp_size);
-        pkd_data.srf_coord_cnt_offset=offset; pkd_data.srf_coord_cnt_size=data.srf_coord.cnt.Dim(); offset+=align_ptr(sizeof(size_t)*pkd_data.srf_coord_cnt_size);
-        pkd_data.srf_coord_dsp_offset=offset; pkd_data.srf_coord_dsp_size=data.srf_coord.dsp.Dim(); offset+=align_ptr(sizeof(size_t)*pkd_data.srf_coord_dsp_size);
-        pkd_data.srf_value_cnt_offset=offset; pkd_data.srf_value_cnt_size=data.srf_value.cnt.Dim(); offset+=align_ptr(sizeof(size_t)*pkd_data.srf_value_cnt_size);
-        pkd_data.srf_value_dsp_offset=offset; pkd_data.srf_value_dsp_size=data.srf_value.dsp.Dim(); offset+=align_ptr(sizeof(size_t)*pkd_data.srf_value_dsp_size);
-        pkd_data.trg_coord_cnt_offset=offset; pkd_data.trg_coord_cnt_size=data.trg_coord.cnt.Dim(); offset+=align_ptr(sizeof(size_t)*pkd_data.trg_coord_cnt_size);
-        pkd_data.trg_coord_dsp_offset=offset; pkd_data.trg_coord_dsp_size=data.trg_coord.dsp.Dim(); offset+=align_ptr(sizeof(size_t)*pkd_data.trg_coord_dsp_size);
-        pkd_data.trg_value_cnt_offset=offset; pkd_data.trg_value_cnt_size=data.trg_value.cnt.Dim(); offset+=align_ptr(sizeof(size_t)*pkd_data.trg_value_cnt_size);
-        pkd_data.trg_value_dsp_offset=offset; pkd_data.trg_value_dsp_size=data.trg_value.dsp.Dim(); offset+=align_ptr(sizeof(size_t)*pkd_data.trg_value_dsp_size);
+        pkd_data.src_coord_cnt_offset=offset; pkd_data.src_coord_cnt_size=data.src_coord.cnt.Dim(); offset+=sizeof(size_t)*pkd_data.src_coord_cnt_size;
+        pkd_data.src_coord_dsp_offset=offset; pkd_data.src_coord_dsp_size=data.src_coord.dsp.Dim(); offset+=sizeof(size_t)*pkd_data.src_coord_dsp_size;
+        pkd_data.src_value_cnt_offset=offset; pkd_data.src_value_cnt_size=data.src_value.cnt.Dim(); offset+=sizeof(size_t)*pkd_data.src_value_cnt_size;
+        pkd_data.src_value_dsp_offset=offset; pkd_data.src_value_dsp_size=data.src_value.dsp.Dim(); offset+=sizeof(size_t)*pkd_data.src_value_dsp_size;
+        pkd_data.srf_coord_cnt_offset=offset; pkd_data.srf_coord_cnt_size=data.srf_coord.cnt.Dim(); offset+=sizeof(size_t)*pkd_data.srf_coord_cnt_size;
+        pkd_data.srf_coord_dsp_offset=offset; pkd_data.srf_coord_dsp_size=data.srf_coord.dsp.Dim(); offset+=sizeof(size_t)*pkd_data.srf_coord_dsp_size;
+        pkd_data.srf_value_cnt_offset=offset; pkd_data.srf_value_cnt_size=data.srf_value.cnt.Dim(); offset+=sizeof(size_t)*pkd_data.srf_value_cnt_size;
+        pkd_data.srf_value_dsp_offset=offset; pkd_data.srf_value_dsp_size=data.srf_value.dsp.Dim(); offset+=sizeof(size_t)*pkd_data.srf_value_dsp_size;
+        pkd_data.trg_coord_cnt_offset=offset; pkd_data.trg_coord_cnt_size=data.trg_coord.cnt.Dim(); offset+=sizeof(size_t)*pkd_data.trg_coord_cnt_size;
+        pkd_data.trg_coord_dsp_offset=offset; pkd_data.trg_coord_dsp_size=data.trg_coord.dsp.Dim(); offset+=sizeof(size_t)*pkd_data.trg_coord_dsp_size;
+        pkd_data.trg_value_cnt_offset=offset; pkd_data.trg_value_cnt_size=data.trg_value.cnt.Dim(); offset+=sizeof(size_t)*pkd_data.trg_value_cnt_size;
+        pkd_data.trg_value_dsp_offset=offset; pkd_data.trg_value_dsp_size=data.trg_value.dsp.Dim(); offset+=sizeof(size_t)*pkd_data.trg_value_dsp_size;
         InteracData& intdata=data.pt_interac_data;
-        pkd_data.    in_node_offset=offset; pkd_data.    in_node_size=intdata.    in_node.Dim(); offset+=align_ptr(sizeof(size_t)*pkd_data.    in_node_size);
-        pkd_data.   scal_idx_offset=offset; pkd_data.   scal_idx_size=intdata.   scal_idx.Dim(); offset+=align_ptr(sizeof(size_t)*pkd_data.   scal_idx_size);
-        pkd_data.coord_shift_offset=offset; pkd_data.coord_shift_size=intdata.coord_shift.Dim(); offset+=align_ptr(sizeof(Real_t)*pkd_data.coord_shift_size);
-        pkd_data.interac_cnt_offset=offset; pkd_data.interac_cnt_size=intdata.interac_cnt.Dim(); offset+=align_ptr(sizeof(size_t)*pkd_data.interac_cnt_size);
-        pkd_data.interac_dsp_offset=offset; pkd_data.interac_dsp_size=intdata.interac_dsp.Dim(); offset+=align_ptr(sizeof(size_t)*pkd_data.interac_dsp_size);
-        pkd_data.interac_cst_offset=offset; pkd_data.interac_cst_size=intdata.interac_cst.Dim(); offset+=align_ptr(sizeof(size_t)*pkd_data.interac_cst_size);
+        pkd_data.    in_node_offset=offset; pkd_data.    in_node_size=intdata.    in_node.Dim(); offset+=sizeof(size_t)*pkd_data.    in_node_size;
+        pkd_data.   scal_idx_offset=offset; pkd_data.   scal_idx_size=intdata.   scal_idx.Dim(); offset+=sizeof(size_t)*pkd_data.   scal_idx_size;
+        pkd_data.coord_shift_offset=offset; pkd_data.coord_shift_size=intdata.coord_shift.Dim(); offset+=sizeof(Real_t)*pkd_data.coord_shift_size;
+        pkd_data.interac_cnt_offset=offset; pkd_data.interac_cnt_size=intdata.interac_cnt.Dim(); offset+=sizeof(size_t)*pkd_data.interac_cnt_size;
+        pkd_data.interac_dsp_offset=offset; pkd_data.interac_dsp_size=intdata.interac_dsp.Dim(); offset+=sizeof(size_t)*pkd_data.interac_dsp_size;
+        pkd_data.interac_cst_offset=offset; pkd_data.interac_cst_size=intdata.interac_cst.Dim(); offset+=sizeof(size_t)*pkd_data.interac_cst_size;
         for(size_t i=0;i<4*MAX_DEPTH;i++){
-          pkd_data.scal_offset[i]=offset; pkd_data.scal_dim[i]=intdata.scal[i].Dim(); offset+=align_ptr(sizeof(Real_t)*pkd_data.scal_dim[i]);
+          pkd_data.scal_offset[i]=offset; pkd_data.scal_dim[i]=intdata.scal[i].Dim(); offset+=sizeof(Real_t)*pkd_data.scal_dim[i];
         }
         for(size_t i=0;i<4;i++){
           size_t& Mdim0=pkd_data.Mdim[i][0];
           size_t& Mdim1=pkd_data.Mdim[i][1];
-          pkd_data.M_offset[i]=offset; Mdim0=intdata.M[i].Dim(0); Mdim1=intdata.M[i].Dim(1); offset+=align_ptr(sizeof(Real_t)*Mdim0*Mdim1);
+          pkd_data.M_offset[i]=offset; Mdim0=intdata.M[i].Dim(0); Mdim1=intdata.M[i].Dim(1); offset+=sizeof(Real_t)*Mdim0*Mdim1;
         }
         pkd_data.size=offset;
       }
