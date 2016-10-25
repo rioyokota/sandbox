@@ -29,8 +29,8 @@ struct SetupData {
   std::vector<FMM_Node*> nodes_out;
   std::vector<Vector<Real_t>*>  input_vector;
   std::vector<Vector<Real_t>*> output_vector;
-  std::vector<size_t> interac_data;
-  Vector< char>  packed_data;
+  std::vector<char> interac_data;
+  Vector<char> packed_data;
   Matrix< char>  vlist_data;
   Matrix< char>* precomp_data;
   Matrix<Real_t>*  coord_data;
@@ -1089,7 +1089,7 @@ class FMM_Tree {
         corner_pts.push_back(1); corner_pts.push_back(1); corner_pts.push_back(0);
         corner_pts.push_back(1); corner_pts.push_back(1); corner_pts.push_back(1);
         size_t n_corner=corner_pts.size()/3;
-        c[0]=0, c[1]=0, c[2]=0;
+        c[0]=0; c[1]=0; c[2]=0;
         std::vector<Real_t> up_equiv_surf=u_equiv_surf(MultipoleOrder(),c,0);
         std::vector<Real_t> dn_equiv_surf=d_equiv_surf(MultipoleOrder(),c,0);
         std::vector<Real_t> dn_check_surf=d_check_surf(MultipoleOrder(),c,0);
@@ -1102,13 +1102,13 @@ class FMM_Tree {
         Matrix<Real_t>& M_dc2de1 = Precomp(0, DC2DE1_Type, 0);
         M_err=(M*M_dc2de0)*(M_dc2de1*M_e2pt);
         for(size_t k=0;k<n_corner;k++) {
-          for(int j0=-1;j0<=1;j0++) {
-            for(int j1=-1;j1<=1;j1++) {
-              for(int j2=-1;j2<=1;j2++) {
+          for(int j0=-1;j0<=1;j0++)
+            for(int j1=-1;j1<=1;j1++)
+              for(int j2=-1;j2<=1;j2++){
                 Real_t pt_c[3]={corner_pts[k*3+0]-j0,
                                 corner_pts[k*3+1]-j1,
                                 corner_pts[k*3+2]-j2};
-                if(fabs(pt_c[0]-0.5)>1.0 || fabs(pt_c[1]-0.5)>1.0 || fabs(pt_c[2]-0.5)>1.0) {
+                if(fabs(pt_c[0]-0.5)>1.0 || fabs(pt_c[1]-0.5)>1.0 || fabs(pt_c[2]-0.5)>1.0){
                   Matrix<Real_t> M_e2pt(n_surf*ker_dim[0],ker_dim[1]);
                   kernel->k_m2l->BuildMatrix(&up_equiv_surf[0], n_surf,
                                              &pt_c[0], 1, &(M_e2pt[0][0]));
@@ -1117,8 +1117,6 @@ class FMM_Tree {
                       M_err[i][k*ker_dim[1]+j]+=M_e2pt[i][j];
                 }
               }
-            }
-          }
         }
         Matrix<Real_t> M_grad(M_err.Dim(0),n_surf*ker_dim[1]);
         for(size_t i=0;i<M_err.Dim(0);i++)
@@ -1962,7 +1960,7 @@ class FMM_Tree {
     size_t n_out=nodes_out.size();
     if(setup_data.precomp_data->Dim(0)*setup_data.precomp_data->Dim(1)==0) SetupPrecomp(setup_data);
     Profile::Tic("Interac-Data",true,25);
-    std::vector<size_t>& interac_data=setup_data.interac_data;
+    std::vector<char>& interac_data=setup_data.interac_data;
     {
       std::vector<size_t> interac_mat;
       std::vector<size_t> interac_cnt;
@@ -2122,37 +2120,38 @@ class FMM_Tree {
       }
 
       if(dev_buffer.Dim()<buff_size) dev_buffer.Resize(buff_size);
-      size_t data_size=4;
-      data_size+=1+interac_blk.size();
-      data_size+=1+interac_cnt.size();
-      data_size+=1+interac_mat.size();
-      data_size+=1+ input_perm.size();
-      data_size+=1+output_perm.size();
-      data_size+=1;
+      size_t data_size=sizeof(size_t)*4;
+      data_size+=sizeof(size_t)+interac_blk.size()*sizeof(size_t);
+      data_size+=sizeof(size_t)+interac_cnt.size()*sizeof(size_t);
+      data_size+=sizeof(size_t)+interac_mat.size()*sizeof(size_t);
+      data_size+=sizeof(size_t)+ input_perm.size()*sizeof(size_t);
+      data_size+=sizeof(size_t)+output_perm.size()*sizeof(size_t);
       if(interac_data.empty()){
+        data_size+=sizeof(size_t);
         interac_data.resize(data_size);
-        interac_data[0]=1;
+        ((size_t*)&interac_data[0])[0]=sizeof(size_t);
       }
-      size_t* data_ptr=&interac_data[0];
-      data_ptr+=data_ptr[0];
-      data_ptr[0]=data_size;
-      data_ptr[1]=   M_dim0;
-      data_ptr[2]=   M_dim1;
-      data_ptr[3]=      dof;
-      data_ptr[4]=interac_blk.size(); data_ptr+=5;
+      char* data_ptr=&interac_data[0];
+      data_ptr+=((size_t*)data_ptr)[0];
+      ((size_t*)data_ptr)[0]=data_size;
+      ((size_t*)data_ptr)[1]=   M_dim0;
+      ((size_t*)data_ptr)[2]=   M_dim1;
+      ((size_t*)data_ptr)[3]=      dof;
+      ((size_t*)data_ptr)[4]=interac_blk.size(); data_ptr+=5*sizeof(size_t);
       memcpy(data_ptr, &interac_blk[0], interac_blk.size()*sizeof(size_t));
-      data_ptr+=interac_blk.size();
-      data_ptr[0]=interac_cnt.size(); data_ptr+=1;
+      data_ptr+=interac_blk.size()*sizeof(size_t);
+      ((size_t*)data_ptr)[0]=interac_cnt.size(); data_ptr+=sizeof(size_t);
       memcpy(data_ptr, &interac_cnt[0], interac_cnt.size()*sizeof(size_t));
-      data_ptr+=interac_cnt.size();
-      data_ptr[0]=interac_mat.size(); data_ptr+=1;
+      data_ptr+=interac_cnt.size()*sizeof(size_t);
+      ((size_t*)data_ptr)[0]=interac_mat.size(); data_ptr+=sizeof(size_t);
       memcpy(data_ptr, &interac_mat[0], interac_mat.size()*sizeof(size_t));
-      data_ptr+=interac_mat.size();
-      data_ptr[0]= input_perm.size(); data_ptr+=1;
+      data_ptr+=interac_mat.size()*sizeof(size_t);
+      ((size_t*)data_ptr)[0]= input_perm.size(); data_ptr+=sizeof(size_t);
       memcpy(data_ptr, & input_perm[0],  input_perm.size()*sizeof(size_t));
-      data_ptr+= input_perm.size();
-      data_ptr[0]=output_perm.size(); data_ptr+=1;
+      data_ptr+= input_perm.size()*sizeof(size_t);
+      ((size_t*)data_ptr)[0]=output_perm.size(); data_ptr+=sizeof(size_t);
       memcpy(data_ptr, &output_perm[0], output_perm.size()*sizeof(size_t));
+      data_ptr+=output_perm.size()*sizeof(size_t);
     }
     Profile::Toc();
   }
@@ -2164,7 +2163,7 @@ class FMM_Tree {
     Profile::Tic("Host2Device",false,25);
     char* buff;
     char* precomp_data;
-    size_t* interac_data;
+    char* interac_data;
     Real_t* input_data;
     Real_t* output_data;
     buff = dev_buffer.data_ptr;
@@ -2184,21 +2183,22 @@ class FMM_Tree {
       Vector<size_t>  input_perm;
       Vector<size_t> output_perm;
       {
-        size_t* data_ptr=interac_data;
-        data_size=data_ptr[0]; data_ptr+=data_size;
-        M_dim0   =data_ptr[1];
-        M_dim1   =data_ptr[2];
-        dof      =data_ptr[3]; data_ptr+=4;
-        interac_blk.ReInit3(data_ptr[0]/sizeof(size_t),data_ptr+1,false);
-        data_ptr+=1+interac_blk.Dim();
-        interac_cnt.ReInit3(data_ptr[0]/sizeof(size_t),data_ptr+1,false);
-        data_ptr+=1+interac_cnt.Dim();
-        interac_mat.ReInit3(data_ptr[0]/sizeof(size_t),data_ptr+1,false);
-        data_ptr+=1+interac_mat.Dim();
-        input_perm .ReInit3(data_ptr[0]/sizeof(size_t),data_ptr+1,false);
-        data_ptr+=1+ input_perm.Dim();
-        output_perm.ReInit3(data_ptr[0]/sizeof(size_t),data_ptr+1,false);
-        data_ptr+=1+output_perm.Dim();
+        char* data_ptr=interac_data;
+        data_size=((size_t*)data_ptr)[0]; data_ptr+=data_size;
+        data_ptr+=sizeof(size_t);
+        M_dim0   =((size_t*)data_ptr)[0]; data_ptr+=sizeof(size_t);
+        M_dim1   =((size_t*)data_ptr)[0]; data_ptr+=sizeof(size_t);
+        dof      =((size_t*)data_ptr)[0]; data_ptr+=sizeof(size_t);
+        interac_blk.ReInit3(((size_t*)data_ptr)[0],(size_t*)(data_ptr+sizeof(size_t)),false);
+        data_ptr+=sizeof(size_t)+interac_blk.Dim()*sizeof(size_t);
+        interac_cnt.ReInit3(((size_t*)data_ptr)[0],(size_t*)(data_ptr+sizeof(size_t)),false);
+        data_ptr+=sizeof(size_t)+interac_cnt.Dim()*sizeof(size_t);
+        interac_mat.ReInit3(((size_t*)data_ptr)[0],(size_t*)(data_ptr+sizeof(size_t)),false);
+        data_ptr+=sizeof(size_t)+interac_mat.Dim()*sizeof(size_t);
+        input_perm .ReInit3(((size_t*)data_ptr)[0],(size_t*)(data_ptr+sizeof(size_t)),false);
+        data_ptr+=sizeof(size_t)+ input_perm.Dim()*sizeof(size_t);
+        output_perm.ReInit3(((size_t*)data_ptr)[0],(size_t*)(data_ptr+sizeof(size_t)),false);
+        data_ptr+=sizeof(size_t)+output_perm.Dim()*sizeof(size_t);
       }
       {
         int omp_p=omp_get_max_threads();
