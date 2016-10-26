@@ -2120,19 +2120,19 @@ class FMM_Tree {
       }
 
       if(dev_buffer.Dim()<buff_size) dev_buffer.Resize(buff_size);
-      size_t data_size=sizeof(size_t)*4;
-      data_size+=sizeof(size_t)+interac_blk.size()*sizeof(size_t);
-      data_size+=sizeof(size_t)+interac_cnt.size()*sizeof(size_t);
-      data_size+=sizeof(size_t)+interac_mat.size()*sizeof(size_t);
-      data_size+=sizeof(size_t)+ input_perm.size()*sizeof(size_t);
-      data_size+=sizeof(size_t)+output_perm.size()*sizeof(size_t);
+      size_t data_size=4;
+      data_size+=1+interac_blk.size();
+      data_size+=1+interac_cnt.size();
+      data_size+=1+interac_mat.size();
+      data_size+=1+ input_perm.size();
+      data_size+=1+output_perm.size();
       if(interac_data.empty()){
-        data_size+=sizeof(size_t);
-        interac_data.resize(data_size/sizeof(size_t));
-        interac_data[0]=sizeof(size_t);
+        data_size+=1;
+        interac_data.resize(data_size);
+        interac_data[0]=1;
       }
       size_t* data_ptr=&interac_data[0];
-      data_ptr += data_ptr[0]/sizeof(size_t);
+      data_ptr += data_ptr[0];
       data_ptr[0] = data_size;
       data_ptr[1] = M_dim0;
       data_ptr[2] = M_dim1;
@@ -2179,7 +2179,7 @@ class FMM_Tree {
       Vector<size_t> output_perm;
       {
         size_t* data_ptr=interac_data;
-        data_size=data_ptr[0]; data_ptr+=data_size/sizeof(size_t);
+        data_size=data_ptr[0]; data_ptr+=data_size;
         M_dim0   =data_ptr[1];
         M_dim1   =data_ptr[2];
         dof      =data_ptr[3]; data_ptr+=4;
