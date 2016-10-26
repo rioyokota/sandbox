@@ -2131,27 +2131,27 @@ class FMM_Tree {
         interac_data.resize(data_size);
         ((size_t*)&interac_data[0])[0]=sizeof(size_t);
       }
-      char* data_ptr=&interac_data[0];
-      data_ptr+=((size_t*)data_ptr)[0];
-      ((size_t*)data_ptr)[0]=data_size;
-      ((size_t*)data_ptr)[1]=   M_dim0;
-      ((size_t*)data_ptr)[2]=   M_dim1;
-      ((size_t*)data_ptr)[3]=      dof;
-      ((size_t*)data_ptr)[4]=interac_blk.size(); data_ptr+=5*sizeof(size_t);
+      size_t* data_ptr=(size_t*)&interac_data[0];
+      data_ptr += data_ptr[0]/sizeof(size_t);
+      data_ptr[0] = data_size;
+      data_ptr[1] = M_dim0;
+      data_ptr[2] = M_dim1;
+      data_ptr[3] = dof; data_ptr+=4;
+      data_ptr[0]=interac_blk.size(); data_ptr+=1;
       memcpy(data_ptr, &interac_blk[0], interac_blk.size()*sizeof(size_t));
-      data_ptr+=interac_blk.size()*sizeof(size_t);
-      ((size_t*)data_ptr)[0]=interac_cnt.size(); data_ptr+=sizeof(size_t);
+      data_ptr+=interac_blk.size();
+      data_ptr[0]=interac_cnt.size(); data_ptr+=1;
       memcpy(data_ptr, &interac_cnt[0], interac_cnt.size()*sizeof(size_t));
-      data_ptr+=interac_cnt.size()*sizeof(size_t);
-      ((size_t*)data_ptr)[0]=interac_mat.size(); data_ptr+=sizeof(size_t);
+      data_ptr+=interac_cnt.size();
+      data_ptr[0]=interac_mat.size(); data_ptr+=1;
       memcpy(data_ptr, &interac_mat[0], interac_mat.size()*sizeof(size_t));
-      data_ptr+=interac_mat.size()*sizeof(size_t);
-      ((size_t*)data_ptr)[0]= input_perm.size(); data_ptr+=sizeof(size_t);
+      data_ptr+=interac_mat.size();
+      data_ptr[0]= input_perm.size(); data_ptr+=1;
       memcpy(data_ptr, & input_perm[0],  input_perm.size()*sizeof(size_t));
-      data_ptr+= input_perm.size()*sizeof(size_t);
-      ((size_t*)data_ptr)[0]=output_perm.size(); data_ptr+=sizeof(size_t);
+      data_ptr+= input_perm.size();
+      data_ptr[0]=output_perm.size(); data_ptr+=1;
       memcpy(data_ptr, &output_perm[0], output_perm.size()*sizeof(size_t));
-      data_ptr+=output_perm.size()*sizeof(size_t);
+      data_ptr+=output_perm.size();
     }
     Profile::Toc();
   }
