@@ -2184,21 +2184,19 @@ class FMM_Tree {
       Vector<size_t> output_perm;
       {
         char* data_ptr=interac_data;
-        data_size=((size_t*)data_ptr)[0]; data_ptr+=data_size;
-        data_ptr+=sizeof(size_t);
-        M_dim0   =((size_t*)data_ptr)[0]; data_ptr+=sizeof(size_t);
-        M_dim1   =((size_t*)data_ptr)[0]; data_ptr+=sizeof(size_t);
-        dof      =((size_t*)data_ptr)[0]; data_ptr+=sizeof(size_t);
-        interac_blk.ReInit3(((size_t*)data_ptr)[0],(size_t*)(data_ptr+sizeof(size_t)),false);
-        data_ptr+=sizeof(size_t)+interac_blk.Dim()*sizeof(size_t);
-        interac_cnt.ReInit3(((size_t*)data_ptr)[0],(size_t*)(data_ptr+sizeof(size_t)),false);
-        data_ptr+=sizeof(size_t)+interac_cnt.Dim()*sizeof(size_t);
-        interac_mat.ReInit3(((size_t*)data_ptr)[0],(size_t*)(data_ptr+sizeof(size_t)),false);
-        data_ptr+=sizeof(size_t)+interac_mat.Dim()*sizeof(size_t);
-        input_perm .ReInit3(((size_t*)data_ptr)[0],(size_t*)(data_ptr+sizeof(size_t)),false);
-        data_ptr+=sizeof(size_t)+ input_perm.Dim()*sizeof(size_t);
-        output_perm.ReInit3(((size_t*)data_ptr)[0],(size_t*)(data_ptr+sizeof(size_t)),false);
-        data_ptr+=sizeof(size_t)+output_perm.Dim()*sizeof(size_t);
+        data_size=((size_t*)data_ptr)[0]; data_ptr=(char*)((size_t*)data_ptr+data_size/sizeof(size_t));
+        M_dim0   =((size_t*)data_ptr)[1];
+        M_dim1   =((size_t*)data_ptr)[2];
+        dof      =((size_t*)data_ptr)[3]; data_ptr=(char*)((size_t*)data_ptr+4);
+        interac_blk.ReInit3(((size_t*)data_ptr)[0],((size_t*)data_ptr+1),false);
+        data_ptr=(char*)((size_t*)data_ptr+interac_blk.Dim()+1);
+        interac_cnt.ReInit3(((size_t*)data_ptr)[0],((size_t*)data_ptr+1),false);
+        data_ptr=(char*)((size_t*)data_ptr+interac_cnt.Dim()+1);
+        interac_mat.ReInit3(((size_t*)data_ptr)[0],((size_t*)data_ptr+1),false);
+        data_ptr=(char*)((size_t*)data_ptr+interac_mat.Dim()+1);
+        input_perm .ReInit3(((size_t*)data_ptr)[0],((size_t*)data_ptr+1),false);
+        data_ptr=(char*)((size_t*)data_ptr+input_perm.Dim()+1);
+        output_perm.ReInit3(((size_t*)data_ptr)[0],((size_t*)data_ptr+1),false);
       }
       {
         int omp_p=omp_get_max_threads();
@@ -2273,12 +2271,6 @@ class FMM_Tree {
     Profile::Toc();
   }
 
-  inline uintptr_t align_ptr(uintptr_t ptr){
-    static uintptr_t     ALIGN_MINUS_ONE=MEM_ALIGN-1;
-    static uintptr_t NOT_ALIGN_MINUS_ONE=~ALIGN_MINUS_ONE;
-    return ((ptr+ALIGN_MINUS_ONE) & NOT_ALIGN_MINUS_ONE);
-  }
-
   void PtSetup(SetupData& setup_data, ptSetupData* data_){
     ptSetupData& data=*(ptSetupData*)data_;
     if(data.pt_interac_data.interac_cnt.Dim()){
@@ -2336,7 +2328,7 @@ class FMM_Tree {
       };
       PackedSetupData pkd_data;
       {
-        size_t offset=align_ptr(sizeof(PackedSetupData));
+        size_t offset=sizeof(PackedSetupData);
         pkd_data. level=data. level;
         pkd_data.kernel=data.kernel;
         pkd_data.src_coord=data.src_coord.ptr;
@@ -2767,10 +2759,8 @@ class FMM_Tree {
     Profile::Tic("Host2Device",false,25);
     char* dev_buff;
     char* packed_data;
-    size_t ptr_single_layer_kernel=(size_t)NULL;
     dev_buff = dev_buffer.data_ptr;
     packed_data= setup_data.packed_data.data_ptr;
-    ptr_single_layer_kernel=(size_t)setup_data.kernel->ker_poten;
     Profile::Toc();
     Profile::Tic("DeviceComp",false,20);
     int lock_idx=-1;
@@ -2847,7 +2837,6 @@ class FMM_Tree {
       }
       {
         InteracData& intdata=data.pt_interac_data;
-        typename Kernel::Ker_t single_layer_kernel=(typename Kernel::Ker_t)ptr_single_layer_kernel;
         int omp_p=omp_get_max_threads();
 #pragma omp parallel for
         for(size_t tid=0;tid<omp_p;tid++){
@@ -3014,9 +3003,8 @@ class FMM_Tree {
                         src_coord.ReInit(1, vdim, &new_coord[0], false);
                       }
                     }
-                    assert(ptr_single_layer_kernel);
-                    single_layer_kernel(src_coord[0], src_coord.Dim(1)/3, vbuff2_ptr, 1,
-                                        trg_coord[0], trg_coord.Dim(1)/3, vbuff3_ptr);
+                    setup_data.kernel->ker_poten(src_coord[0], src_coord.Dim(1)/3, vbuff2_ptr, 1,
+                                                 trg_coord[0], trg_coord.Dim(1)/3, vbuff3_ptr);
                   }
                   if(srf_coord.Dim(1)){
                     {
