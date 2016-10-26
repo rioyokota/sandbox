@@ -2161,16 +2161,11 @@ class FMM_Tree {
       return;
     }
     Profile::Tic("Host2Device",false,25);
-    char* buff;
-    char* precomp_data;
-    char* interac_data;
-    Real_t* input_data;
-    Real_t* output_data;
-    buff = dev_buffer.data_ptr;
-    precomp_data=setup_data.precomp_data->data_ptr;
-    interac_data=&setup_data.interac_data[0];
-    input_data  =setup_data.  input_data->data_ptr;
-    output_data =setup_data. output_data->data_ptr;
+    char* buff = dev_buffer.data_ptr;
+    char* precomp_data = setup_data.precomp_data->data_ptr;
+    size_t* interac_data = (size_t*)&setup_data.interac_data[0];
+    Real_t* input_data = setup_data.input_data->data_ptr;
+    Real_t* output_data = setup_data.output_data->data_ptr;
     Profile::Toc();
     Profile::Tic("DeviceComp",false,20);
     int lock_idx=-1;
@@ -2183,20 +2178,20 @@ class FMM_Tree {
       Vector<size_t>  input_perm;
       Vector<size_t> output_perm;
       {
-        char* data_ptr=interac_data;
-        data_size=((size_t*)data_ptr)[0]; data_ptr=(char*)((size_t*)data_ptr+data_size/sizeof(size_t));
-        M_dim0   =((size_t*)data_ptr)[1];
-        M_dim1   =((size_t*)data_ptr)[2];
-        dof      =((size_t*)data_ptr)[3]; data_ptr=(char*)((size_t*)data_ptr+4);
-        interac_blk.ReInit3(((size_t*)data_ptr)[0],((size_t*)data_ptr+1),false);
-        data_ptr=(char*)((size_t*)data_ptr+interac_blk.Dim()+1);
-        interac_cnt.ReInit3(((size_t*)data_ptr)[0],((size_t*)data_ptr+1),false);
-        data_ptr=(char*)((size_t*)data_ptr+interac_cnt.Dim()+1);
-        interac_mat.ReInit3(((size_t*)data_ptr)[0],((size_t*)data_ptr+1),false);
-        data_ptr=(char*)((size_t*)data_ptr+interac_mat.Dim()+1);
-        input_perm .ReInit3(((size_t*)data_ptr)[0],((size_t*)data_ptr+1),false);
-        data_ptr=(char*)((size_t*)data_ptr+input_perm.Dim()+1);
-        output_perm.ReInit3(((size_t*)data_ptr)[0],((size_t*)data_ptr+1),false);
+        size_t* data_ptr=interac_data;
+        data_size=data_ptr[0]; data_ptr+=data_size/sizeof(size_t);
+        M_dim0   =data_ptr[1];
+        M_dim1   =data_ptr[2];
+        dof      =data_ptr[3]; data_ptr+=4;
+        interac_blk.ReInit3(data_ptr[0],data_ptr+1,false);
+        data_ptr+=interac_blk.Dim()+1;
+        interac_cnt.ReInit3(data_ptr[0],data_ptr+1,false);
+        data_ptr+=interac_cnt.Dim()+1;
+        interac_mat.ReInit3(data_ptr[0],data_ptr+1,false);
+        data_ptr+=interac_mat.Dim()+1;
+        input_perm .ReInit3(data_ptr[0],data_ptr+1,false);
+        data_ptr+=input_perm.Dim()+1;
+        output_perm.ReInit3(data_ptr[0],data_ptr+1,false);
       }
       {
         int omp_p=omp_get_max_threads();
