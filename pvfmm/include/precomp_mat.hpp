@@ -98,15 +98,15 @@ class PrecompMat{
     return ((ptr+ALIGN_MINUS_ONE) & NOT_ALIGN_MINUS_ONE);
   }
 
-  size_t CompactData(int level, Mat_Type type, Matrix<char>& comp_data, size_t offset=0){
+  size_t CompactData(int level, Mat_Type type, Vector<char>& comp_data, size_t offset=0){
     struct HeaderData{
       size_t total_size;
       size_t      level;
       size_t   mat_cnt ;
       size_t  max_depth;
     };
-    if(comp_data.Dim(0)*comp_data.Dim(1)>offset){
-      char* indx_ptr=comp_data[0]+offset;
+    if(comp_data.Dim()>offset){
+      char* indx_ptr=&comp_data[0]+offset;
       HeaderData& header=*(HeaderData*)indx_ptr; indx_ptr+=sizeof(HeaderData);
       if(level==header.level){
 	offset+=header.total_size;
@@ -145,21 +145,21 @@ class PrecompMat{
 	}
       }
     }
-    if(comp_data.Dim(0)*comp_data.Dim(1)<offset+indx_size+mem_size){
-      Matrix<char> old_data;
+    if(comp_data.Dim()<offset+indx_size+mem_size){
+      Vector<char> old_data;
       if(offset>0) old_data=comp_data;
-      comp_data.Resize(1,offset+indx_size+mem_size);
+      comp_data.Resize(offset+indx_size+mem_size);
       if(offset>0){
 #pragma omp parallel for
 	for(int tid=0;tid<omp_p;tid++){
 	  size_t a=(offset*(tid+0))/omp_p;
 	  size_t b=(offset*(tid+1))/omp_p;
-	  memcpy(comp_data[0]+a, old_data[0]+a, b-a);
+	  memcpy(&comp_data[0]+a, &old_data[0]+a, b-a);
 	}
       }
     }
     {
-      char* indx_ptr=comp_data[0]+offset;
+      char* indx_ptr=&comp_data[0]+offset;
       HeaderData& header=*(HeaderData*)indx_ptr; indx_ptr+=sizeof(HeaderData);
       Matrix<size_t> offset_indx(mat_cnt,1+(2+2)*(l1-l0), (size_t*)indx_ptr, false);
       header.total_size=indx_size+mem_size;
@@ -187,7 +187,7 @@ class PrecompMat{
     }
 #pragma omp parallel for
     for(int tid=0;tid<omp_p;tid++){
-      char* indx_ptr=comp_data[0]+offset;
+      char* indx_ptr=&comp_data[0]+offset;
       indx_ptr+=sizeof(HeaderData);
       Matrix<size_t> offset_indx(mat_cnt,1+(2+2)*(l1-l0), (size_t*)indx_ptr, false);
       for(size_t j=0;j<mat_cnt;j++){
@@ -195,7 +195,7 @@ class PrecompMat{
 	if(M.Dim(0)>0 && M.Dim(1)>0){
 	  size_t a=(M.Dim(0)*M.Dim(1)* tid   )/omp_p;
 	  size_t b=(M.Dim(0)*M.Dim(1)*(tid+1))/omp_p;
-	  memcpy(comp_data[0]+offset_indx[j][0]+a*sizeof(Real_t), &M[0][a], (b-a)*sizeof(Real_t));
+	  memcpy(&comp_data[0]+offset_indx[j][0]+a*sizeof(Real_t), &M[0][a], (b-a)*sizeof(Real_t));
 	}
 	for(size_t l=l0;l<l1;l++){
 	  Permutation<Real_t>& Pr=Perm_R(l,type,j);
@@ -203,14 +203,14 @@ class PrecompMat{
 	  if(Pr.Dim()>0){
 	    size_t a=(Pr.Dim()* tid   )/omp_p;
 	    size_t b=(Pr.Dim()*(tid+1))/omp_p;
-	    memcpy(comp_data[0]+offset_indx[j][1+4*(l-l0)+0]+a*sizeof(size_t), &Pr.perm[a], (b-a)*sizeof(size_t));
-	    memcpy(comp_data[0]+offset_indx[j][1+4*(l-l0)+1]+a*sizeof(Real_t), &Pr.scal[a], (b-a)*sizeof(Real_t));
+	    memcpy(&comp_data[0]+offset_indx[j][1+4*(l-l0)+0]+a*sizeof(size_t), &Pr.perm[a], (b-a)*sizeof(size_t));
+	    memcpy(&comp_data[0]+offset_indx[j][1+4*(l-l0)+1]+a*sizeof(Real_t), &Pr.scal[a], (b-a)*sizeof(Real_t));
 	  }
 	  if(Pc.Dim()>0){
 	    size_t a=(Pc.Dim()* tid   )/omp_p;
 	    size_t b=(Pc.Dim()*(tid+1))/omp_p;
-	    memcpy(comp_data[0]+offset_indx[j][1+4*(l-l0)+2]+a*sizeof(size_t), &Pc.perm[a], (b-a)*sizeof(size_t));
-	    memcpy(comp_data[0]+offset_indx[j][1+4*(l-l0)+3]+a*sizeof(Real_t), &Pc.scal[a], (b-a)*sizeof(Real_t));
+	    memcpy(&comp_data[0]+offset_indx[j][1+4*(l-l0)+2]+a*sizeof(size_t), &Pc.perm[a], (b-a)*sizeof(size_t));
+	    memcpy(&comp_data[0]+offset_indx[j][1+4*(l-l0)+3]+a*sizeof(Real_t), &Pc.scal[a], (b-a)*sizeof(Real_t));
 	  }
 	}
       }

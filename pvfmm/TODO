@@ -1,8 +1,9 @@
 Vector -> std::vector
- - rm pkd_data
+ - Matrix -> Vector
  - rm ReInit
  - Resize -> resize
  - Dim -> size
+ - Vector -> std::vector
 Matrix -> std::vector(std::vector) for non-Real_t
 debug double Setup phase
 vec.h <- kernel, fmm_tree

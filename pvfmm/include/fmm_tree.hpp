@@ -31,10 +31,10 @@ struct SetupData {
   std::vector<Vector<Real_t>*> output_vector;
   std::vector<size_t> interac_data;
   Vector<char> packed_data;
-  Matrix<char>  vlist_data;
-  Matrix< char>* precomp_data;
-  Matrix<Real_t>*  coord_data;
-  Matrix<Real_t>*  input_data;
+  Vector<char> vlist_data;
+  Vector<char>* precomp_data;
+  Matrix<Real_t>* coord_data;
+  Matrix<Real_t>* input_data;
   Matrix<Real_t>* output_data;
 };
 
@@ -1197,7 +1197,7 @@ class FMM_Tree {
 
   std::vector<Matrix<Real_t> > node_data_buff;
   InteracList interacList;
-  std::vector<Matrix<char> > precomp_lst;
+  std::vector<Vector<char> > precomp_lst;
   std::vector<SetupData > setup_data;
   std::vector<Vector<Real_t> > upwd_check_surf;
   std::vector<Vector<Real_t> > upwd_equiv_surf;
@@ -1936,7 +1936,7 @@ class FMM_Tree {
     {
       size_t precomp_offset=0;
       int level=setup_data.level;
-      Matrix<char>& precomp_data=*setup_data.precomp_data;
+      Vector<char>& precomp_data=*setup_data.precomp_data;
       std::vector<Mat_Type>& interac_type_lst=setup_data.interac_type;
       for(size_t type_indx=0; type_indx<interac_type_lst.size(); type_indx++){
         Mat_Type& interac_type=interac_type_lst[type_indx];
@@ -1958,7 +1958,7 @@ class FMM_Tree {
     std::vector<Vector<Real_t>*>& output_vector=setup_data.output_vector;
     size_t n_in =nodes_in .size();
     size_t n_out=nodes_out.size();
-    if(setup_data.precomp_data->Dim(0)*setup_data.precomp_data->Dim(1)==0) SetupPrecomp(setup_data);
+    if(setup_data.precomp_data->Dim()==0) SetupPrecomp(setup_data);
     Profile::Tic("Interac-Data",true,25);
     std::vector<size_t>& interac_data=setup_data.interac_data;
     {
@@ -1981,8 +1981,8 @@ class FMM_Tree {
             size_t   mat_cnt ;
             size_t  max_depth;
           };
-          Matrix<char>& precomp_data=*setup_data.precomp_data;
-          char* indx_ptr=precomp_data[0]+precomp_offset;
+          Vector<char>& precomp_data=*setup_data.precomp_data;
+          char* indx_ptr=&precomp_data[0]+precomp_offset;
           HeaderData& header=*(HeaderData*)indx_ptr;indx_ptr+=sizeof(HeaderData);
           precomp_data_offset.ReInit(header.mat_cnt,(1+(2+2)*header.max_depth), (size_t*)indx_ptr, false);
           precomp_offset+=header.total_size;
@@ -3110,7 +3110,7 @@ class FMM_Tree {
     size_t n_in =nodes_in .size();
     size_t n_out=nodes_out.size();
     Profile::Tic("Interac-Data",true,25);
-    Matrix<char>& vlist_data=setup_data.vlist_data;
+    Vector<char>& vlist_data=setup_data.vlist_data;
     if(n_out>0 && n_in >0){
       size_t precomp_offset=0;
       Mat_Type& interac_type=setup_data.interac_type[0];
@@ -3236,9 +3236,9 @@ class FMM_Tree {
         }
         data_size+=sizeof(size_t)+interac_mat.size()*sizeof(size_t);
         data_size+=sizeof(size_t)+interac_mat_ptr.size()*sizeof(Real_t*);
-        if(data_size>vlist_data.Dim(0)*vlist_data.Dim(1))
-          vlist_data.ReInit(1,data_size);
-        char* data_ptr=&vlist_data[0][0];
+        if(data_size>vlist_data.Dim())
+          vlist_data.Resize(data_size);
+        char* data_ptr=&vlist_data[0];
         ((size_t*)data_ptr)[0]=buff_size; data_ptr+=sizeof(size_t);
         ((size_t*)data_ptr)[0]=        m; data_ptr+=sizeof(size_t);
         ((size_t*)data_ptr)[0]=      dof; data_ptr+=sizeof(size_t);
@@ -3416,14 +3416,14 @@ class FMM_Tree {
   void V_List(SetupData&  setup_data){
     if(!MultipoleOrder()) return;
     int np=1;
-    if(setup_data.vlist_data.Dim(0)==0 || setup_data.vlist_data.Dim(1)==0){
+    if(setup_data.vlist_data.Dim()==0){
       return;
     }
     Profile::Tic("Host2Device",false,25);
     int level=setup_data.level;
     int dim0=setup_data.input_data->dim[0];
     int dim1=setup_data.input_data->dim[1];
-    size_t buff_size=*((size_t*)&setup_data.vlist_data[0][0]);
+    size_t buff_size=*((size_t*)&setup_data.vlist_data[0]);
     char* buff;
     char* vlist_data;
     Real_t* input_data;
