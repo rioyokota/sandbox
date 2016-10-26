@@ -27,11 +27,11 @@ struct SetupData {
   std::vector<Mat_Type> interac_type;
   std::vector<FMM_Node*> nodes_in ;
   std::vector<FMM_Node*> nodes_out;
-  std::vector<Vector<Real_t>*>  input_vector;
+  std::vector<Vector<Real_t>*> input_vector;
   std::vector<Vector<Real_t>*> output_vector;
-  std::vector<char> interac_data;
+  std::vector<size_t> interac_data;
   Vector<char> packed_data;
-  Matrix< char>  vlist_data;
+  Matrix<char>  vlist_data;
   Matrix< char>* precomp_data;
   Matrix<Real_t>*  coord_data;
   Matrix<Real_t>*  input_data;
@@ -1960,7 +1960,7 @@ class FMM_Tree {
     size_t n_out=nodes_out.size();
     if(setup_data.precomp_data->Dim(0)*setup_data.precomp_data->Dim(1)==0) SetupPrecomp(setup_data);
     Profile::Tic("Interac-Data",true,25);
-    std::vector<char>& interac_data=setup_data.interac_data;
+    std::vector<size_t>& interac_data=setup_data.interac_data;
     {
       std::vector<size_t> interac_mat;
       std::vector<size_t> interac_cnt;
@@ -2128,10 +2128,10 @@ class FMM_Tree {
       data_size+=sizeof(size_t)+output_perm.size()*sizeof(size_t);
       if(interac_data.empty()){
         data_size+=sizeof(size_t);
-        interac_data.resize(data_size);
-        ((size_t*)&interac_data[0])[0]=sizeof(size_t);
+        interac_data.resize(data_size/sizeof(size_t));
+        interac_data[0]=sizeof(size_t);
       }
-      size_t* data_ptr=(size_t*)&interac_data[0];
+      size_t* data_ptr=&interac_data[0];
       data_ptr += data_ptr[0]/sizeof(size_t);
       data_ptr[0] = data_size;
       data_ptr[1] = M_dim0;
@@ -2163,7 +2163,7 @@ class FMM_Tree {
     Profile::Tic("Host2Device",false,25);
     char* buff = dev_buffer.data_ptr;
     char* precomp_data = setup_data.precomp_data->data_ptr;
-    size_t* interac_data = (size_t*)&setup_data.interac_data[0];
+    size_t* interac_data = &setup_data.interac_data[0];
     Real_t* input_data = setup_data.input_data->data_ptr;
     Real_t* output_data = setup_data.output_data->data_ptr;
     Profile::Toc();
