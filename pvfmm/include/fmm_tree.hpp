@@ -21,29 +21,59 @@ typedef fftw_plan fft_plan;
 
 namespace pvfmm{
 
-struct SetupData {
-  int level;
-  const Kernel* kernel;
-  std::vector<Mat_Type> interac_type;
-  std::vector<FMM_Node*> nodes_in ;
-  std::vector<FMM_Node*> nodes_out;
-  std::vector<Vector<Real_t>*> input_vector;
-  std::vector<Vector<Real_t>*> output_vector;
-  size_t M_dim0;
-  size_t M_dim1;
-  size_t dof;
-  std::vector<size_t> interac_blk;
-  std::vector<size_t> interac_cnt;
-  std::vector<size_t> interac_mat;
-  std::vector<size_t>  input_perm;
-  std::vector<size_t> output_perm;
-  Vector<char> packed_data;
-  Vector<char> vlist_data;
-  Vector<char>* precomp_data;
-  Matrix<Real_t>* coord_data;
-  Matrix<Real_t>* input_data;
-  Matrix<Real_t>* output_data;
-};
+  struct PackedData{
+    size_t len;
+    Matrix<Real_t>* ptr;
+    Vector<size_t> cnt;
+    Vector<size_t> dsp;
+  };
+  struct InteracData{
+    Vector<size_t> in_node;
+    Vector<size_t> scal_idx;
+    Vector<Real_t> coord_shift;
+    Vector<size_t> interac_cnt;
+    Vector<size_t> interac_dsp;
+    Vector<size_t> interac_cst;
+    Vector<Real_t> scal[4*MAX_DEPTH];
+    Matrix<Real_t> M[4];
+  };
+  struct ptSetupData{
+    int level;
+    const Kernel* kernel;
+    PackedData src_coord;
+    PackedData src_value;
+    PackedData srf_coord;
+    PackedData srf_value;
+    PackedData trg_coord;
+    PackedData trg_value;
+    InteracData pt_interac_data;
+  };
+
+  struct SetupData {
+    int level;
+    const Kernel* kernel;
+    std::vector<Mat_Type> interac_type;
+    std::vector<FMM_Node*> nodes_in ;
+    std::vector<FMM_Node*> nodes_out;
+    std::vector<Vector<Real_t>*> input_vector;
+    std::vector<Vector<Real_t>*> output_vector;
+
+    size_t M_dim0;
+    size_t M_dim1;
+    size_t dof;
+    std::vector<size_t> interac_blk;
+    std::vector<size_t> interac_cnt;
+    std::vector<size_t> interac_mat;
+    std::vector<size_t>  input_perm;
+    std::vector<size_t> output_perm;
+
+    ptSetupData pt_setup_data;
+    Vector<char> vlist_data;
+    Vector<char>* precomp_data;
+    Matrix<Real_t>* coord_data;
+    Matrix<Real_t>* input_data;
+    Matrix<Real_t>* output_data;
+  };
 
 #if defined(__AVX__) || defined(__SSE3__)
 inline void matmult_8x8x2(double*& M_, double*& IN0, double*& IN1, double*& OUT0, double*& OUT1){
@@ -303,34 +333,6 @@ inline void matmult_8x8x2(float*& M_, float*& IN0, float*& IN1, float*& OUT0, fl
 class FMM_Tree {
 
  public:
-  struct PackedData{
-    size_t len;
-    Matrix<Real_t>* ptr;
-    Vector<size_t> cnt;
-    Vector<size_t> dsp;
-  };
-  struct InteracData{
-    Vector<size_t> in_node;
-    Vector<size_t> scal_idx;
-    Vector<Real_t> coord_shift;
-    Vector<size_t> interac_cnt;
-    Vector<size_t> interac_dsp;
-    Vector<size_t> interac_cst;
-    Vector<Real_t> scal[4*MAX_DEPTH];
-    Matrix<Real_t> M[4];
-  };
-  struct ptSetupData{
-    int level;
-    const Kernel* kernel;
-    PackedData src_coord;
-    PackedData src_value;
-    PackedData srf_coord;
-    PackedData srf_value;
-    PackedData trg_coord;
-    PackedData trg_value;
-    InteracData pt_interac_data;
-  };
-
   std::vector<Real_t> surface(int p, Real_t* c, Real_t alpha, int depth){
     size_t n_=(6*(p-1)*(p-1)+2);
     std::vector<Real_t> coord(n_*3);
@@ -2256,111 +2258,7 @@ class FMM_Tree {
       dsp[0]=cnt[0];
       scan(&cnt[0],&dsp[0],dsp.Dim());
     }
-    {
-      struct PackedSetupData{
-        size_t size;
-        int level;
-        const Kernel* kernel;
-        Matrix<Real_t>* src_coord;
-        Matrix<Real_t>* src_value;
-        Matrix<Real_t>* srf_coord;
-        Matrix<Real_t>* srf_value;
-        Matrix<Real_t>* trg_coord;
-        Matrix<Real_t>* trg_value;
-        size_t src_coord_cnt_size; size_t src_coord_cnt_offset;
-        size_t src_coord_dsp_size; size_t src_coord_dsp_offset;
-        size_t src_value_cnt_size; size_t src_value_cnt_offset;
-        size_t src_value_dsp_size; size_t src_value_dsp_offset;
-        size_t srf_coord_cnt_size; size_t srf_coord_cnt_offset;
-        size_t srf_coord_dsp_size; size_t srf_coord_dsp_offset;
-        size_t srf_value_cnt_size; size_t srf_value_cnt_offset;
-        size_t srf_value_dsp_size; size_t srf_value_dsp_offset;
-        size_t trg_coord_cnt_size; size_t trg_coord_cnt_offset;
-        size_t trg_coord_dsp_size; size_t trg_coord_dsp_offset;
-        size_t trg_value_cnt_size; size_t trg_value_cnt_offset;
-        size_t trg_value_dsp_size; size_t trg_value_dsp_offset;
-        size_t          in_node_size; size_t           in_node_offset;
-        size_t         scal_idx_size; size_t          scal_idx_offset;
-        size_t      coord_shift_size; size_t       coord_shift_offset;
-        size_t      interac_cnt_size; size_t       interac_cnt_offset;
-        size_t      interac_dsp_size; size_t       interac_dsp_offset;
-        size_t      interac_cst_size; size_t       interac_cst_offset;
-        size_t scal_dim[4*MAX_DEPTH]; size_t scal_offset[4*MAX_DEPTH];
-        size_t            Mdim[4][2]; size_t              M_offset[4];
-      };
-      PackedSetupData pkd_data;
-      {
-        size_t offset=sizeof(PackedSetupData);
-        pkd_data. level=data. level;
-        pkd_data.kernel=data.kernel;
-        pkd_data.src_coord=data.src_coord.ptr;
-        pkd_data.src_value=data.src_value.ptr;
-        pkd_data.srf_coord=data.srf_coord.ptr;
-        pkd_data.srf_value=data.srf_value.ptr;
-        pkd_data.trg_coord=data.trg_coord.ptr;
-        pkd_data.trg_value=data.trg_value.ptr;
-        pkd_data.src_coord_cnt_offset=offset; pkd_data.src_coord_cnt_size=data.src_coord.cnt.Dim(); offset+=sizeof(size_t)*pkd_data.src_coord_cnt_size;
-        pkd_data.src_coord_dsp_offset=offset; pkd_data.src_coord_dsp_size=data.src_coord.dsp.Dim(); offset+=sizeof(size_t)*pkd_data.src_coord_dsp_size;
-        pkd_data.src_value_cnt_offset=offset; pkd_data.src_value_cnt_size=data.src_value.cnt.Dim(); offset+=sizeof(size_t)*pkd_data.src_value_cnt_size;
-        pkd_data.src_value_dsp_offset=offset; pkd_data.src_value_dsp_size=data.src_value.dsp.Dim(); offset+=sizeof(size_t)*pkd_data.src_value_dsp_size;
-        pkd_data.srf_coord_cnt_offset=offset; pkd_data.srf_coord_cnt_size=data.srf_coord.cnt.Dim(); offset+=sizeof(size_t)*pkd_data.srf_coord_cnt_size;
-        pkd_data.srf_coord_dsp_offset=offset; pkd_data.srf_coord_dsp_size=data.srf_coord.dsp.Dim(); offset+=sizeof(size_t)*pkd_data.srf_coord_dsp_size;
-        pkd_data.srf_value_cnt_offset=offset; pkd_data.srf_value_cnt_size=data.srf_value.cnt.Dim(); offset+=sizeof(size_t)*pkd_data.srf_value_cnt_size;
-        pkd_data.srf_value_dsp_offset=offset; pkd_data.srf_value_dsp_size=data.srf_value.dsp.Dim(); offset+=sizeof(size_t)*pkd_data.srf_value_dsp_size;
-        pkd_data.trg_coord_cnt_offset=offset; pkd_data.trg_coord_cnt_size=data.trg_coord.cnt.Dim(); offset+=sizeof(size_t)*pkd_data.trg_coord_cnt_size;
-        pkd_data.trg_coord_dsp_offset=offset; pkd_data.trg_coord_dsp_size=data.trg_coord.dsp.Dim(); offset+=sizeof(size_t)*pkd_data.trg_coord_dsp_size;
-        pkd_data.trg_value_cnt_offset=offset; pkd_data.trg_value_cnt_size=data.trg_value.cnt.Dim(); offset+=sizeof(size_t)*pkd_data.trg_value_cnt_size;
-        pkd_data.trg_value_dsp_offset=offset; pkd_data.trg_value_dsp_size=data.trg_value.dsp.Dim(); offset+=sizeof(size_t)*pkd_data.trg_value_dsp_size;
-        InteracData& intdata=data.pt_interac_data;
-        pkd_data.    in_node_offset=offset; pkd_data.    in_node_size=intdata.    in_node.Dim(); offset+=sizeof(size_t)*pkd_data.    in_node_size;
-        pkd_data.   scal_idx_offset=offset; pkd_data.   scal_idx_size=intdata.   scal_idx.Dim(); offset+=sizeof(size_t)*pkd_data.   scal_idx_size;
-        pkd_data.coord_shift_offset=offset; pkd_data.coord_shift_size=intdata.coord_shift.Dim(); offset+=sizeof(Real_t)*pkd_data.coord_shift_size;
-        pkd_data.interac_cnt_offset=offset; pkd_data.interac_cnt_size=intdata.interac_cnt.Dim(); offset+=sizeof(size_t)*pkd_data.interac_cnt_size;
-        pkd_data.interac_dsp_offset=offset; pkd_data.interac_dsp_size=intdata.interac_dsp.Dim(); offset+=sizeof(size_t)*pkd_data.interac_dsp_size;
-        pkd_data.interac_cst_offset=offset; pkd_data.interac_cst_size=intdata.interac_cst.Dim(); offset+=sizeof(size_t)*pkd_data.interac_cst_size;
-        for(size_t i=0;i<4*MAX_DEPTH;i++){
-          pkd_data.scal_offset[i]=offset; pkd_data.scal_dim[i]=intdata.scal[i].Dim(); offset+=sizeof(Real_t)*pkd_data.scal_dim[i];
-        }
-        for(size_t i=0;i<4;i++){
-          size_t& Mdim0=pkd_data.Mdim[i][0];
-          size_t& Mdim1=pkd_data.Mdim[i][1];
-          pkd_data.M_offset[i]=offset; Mdim0=intdata.M[i].Dim(0); Mdim1=intdata.M[i].Dim(1); offset+=sizeof(Real_t)*Mdim0*Mdim1;
-        }
-        pkd_data.size=offset;
-      }
-      {
-        Vector<char>& buff=setup_data.packed_data;
-        if(pkd_data.size>buff.Dim()){
-          buff.Resize(pkd_data.size);
-        }
-        ((PackedSetupData*)&buff[0])[0]=pkd_data;
-        if(pkd_data.src_coord_cnt_size) memcpy(&buff[pkd_data.src_coord_cnt_offset], &data.src_coord.cnt[0], pkd_data.src_coord_cnt_size*sizeof(size_t));
-        if(pkd_data.src_coord_dsp_size) memcpy(&buff[pkd_data.src_coord_dsp_offset], &data.src_coord.dsp[0], pkd_data.src_coord_dsp_size*sizeof(size_t));
-        if(pkd_data.src_value_cnt_size) memcpy(&buff[pkd_data.src_value_cnt_offset], &data.src_value.cnt[0], pkd_data.src_value_cnt_size*sizeof(size_t));
-        if(pkd_data.src_value_dsp_size) memcpy(&buff[pkd_data.src_value_dsp_offset], &data.src_value.dsp[0], pkd_data.src_value_dsp_size*sizeof(size_t));
-        if(pkd_data.srf_coord_cnt_size) memcpy(&buff[pkd_data.srf_coord_cnt_offset], &data.srf_coord.cnt[0], pkd_data.srf_coord_cnt_size*sizeof(size_t));
-        if(pkd_data.srf_coord_dsp_size) memcpy(&buff[pkd_data.srf_coord_dsp_offset], &data.srf_coord.dsp[0], pkd_data.srf_coord_dsp_size*sizeof(size_t));
-        if(pkd_data.srf_value_cnt_size) memcpy(&buff[pkd_data.srf_value_cnt_offset], &data.srf_value.cnt[0], pkd_data.srf_value_cnt_size*sizeof(size_t));
-        if(pkd_data.srf_value_dsp_size) memcpy(&buff[pkd_data.srf_value_dsp_offset], &data.srf_value.dsp[0], pkd_data.srf_value_dsp_size*sizeof(size_t));
-        if(pkd_data.trg_coord_cnt_size) memcpy(&buff[pkd_data.trg_coord_cnt_offset], &data.trg_coord.cnt[0], pkd_data.trg_coord_cnt_size*sizeof(size_t));
-        if(pkd_data.trg_coord_dsp_size) memcpy(&buff[pkd_data.trg_coord_dsp_offset], &data.trg_coord.dsp[0], pkd_data.trg_coord_dsp_size*sizeof(size_t));
-        if(pkd_data.trg_value_cnt_size) memcpy(&buff[pkd_data.trg_value_cnt_offset], &data.trg_value.cnt[0], pkd_data.trg_value_cnt_size*sizeof(size_t));
-        if(pkd_data.trg_value_dsp_size) memcpy(&buff[pkd_data.trg_value_dsp_offset], &data.trg_value.dsp[0], pkd_data.trg_value_dsp_size*sizeof(size_t));
-        InteracData& intdata=data.pt_interac_data;
-        if(pkd_data.    in_node_size) memcpy(&buff[pkd_data.    in_node_offset], &intdata.    in_node[0], pkd_data.    in_node_size*sizeof(size_t));
-        if(pkd_data.   scal_idx_size) memcpy(&buff[pkd_data.   scal_idx_offset], &intdata.   scal_idx[0], pkd_data.   scal_idx_size*sizeof(size_t));
-        if(pkd_data.coord_shift_size) memcpy(&buff[pkd_data.coord_shift_offset], &intdata.coord_shift[0], pkd_data.coord_shift_size*sizeof(Real_t));
-        if(pkd_data.interac_cnt_size) memcpy(&buff[pkd_data.interac_cnt_offset], &intdata.interac_cnt[0], pkd_data.interac_cnt_size*sizeof(size_t));
-        if(pkd_data.interac_dsp_size) memcpy(&buff[pkd_data.interac_dsp_offset], &intdata.interac_dsp[0], pkd_data.interac_dsp_size*sizeof(size_t));
-        if(pkd_data.interac_cst_size) memcpy(&buff[pkd_data.interac_cst_offset], &intdata.interac_cst[0], pkd_data.interac_cst_size*sizeof(size_t));
-        for(size_t i=0;i<4*MAX_DEPTH;i++){
-          if(intdata.scal[i].Dim()) memcpy(&buff[pkd_data.scal_offset[i]], &intdata.scal[i][0], intdata.scal[i].Dim()*sizeof(Real_t));
-        }
-        for(size_t i=0;i<4;i++){
-          if(intdata.M[i].Dim(0)*intdata.M[i].Dim(1)) memcpy(&buff[pkd_data.M_offset[i]], &intdata.M[i][0][0], intdata.M[i].Dim(0)*intdata.M[i].Dim(1)*sizeof(Real_t));
-        }
-      }
-    }
+    setup_data.pt_setup_data = data;
     {
       size_t n=setup_data.output_data->Dim(0)*setup_data.output_data->Dim(1)*sizeof(Real_t);
       if(dev_buffer.Dim()<n) dev_buffer.Resize(n);
@@ -2714,91 +2612,17 @@ class FMM_Tree {
 
   void EvalListPts(SetupData& setup_data) {
     if(setup_data.kernel->ker_dim[0]*setup_data.kernel->ker_dim[1]==0) return;
-    if(setup_data.packed_data.Dim()==0){
-      return;
-    }
     bool have_gpu=false;
     Profile::Tic("Host2Device",false,25);
-    char* dev_buff;
-    char* packed_data;
-    dev_buff = dev_buffer.data_ptr;
-    packed_data= setup_data.packed_data.data_ptr;
+    char* dev_buff = dev_buffer.data_ptr;
     Profile::Toc();
     Profile::Tic("DeviceComp",false,20);
     int lock_idx=-1;
     int wait_lock_idx=-1;
     {
-      ptSetupData data;
+      ptSetupData data = setup_data.pt_setup_data;
       {
-        struct PackedSetupData{
-          size_t size;
-          int level;
-          const Kernel* kernel;
-          Matrix<Real_t>* src_coord;
-          Matrix<Real_t>* src_value;
-          Matrix<Real_t>* srf_coord;
-          Matrix<Real_t>* srf_value;
-          Matrix<Real_t>* trg_coord;
-          Matrix<Real_t>* trg_value;
-          size_t src_coord_cnt_size; size_t src_coord_cnt_offset;
-          size_t src_coord_dsp_size; size_t src_coord_dsp_offset;
-          size_t src_value_cnt_size; size_t src_value_cnt_offset;
-          size_t src_value_dsp_size; size_t src_value_dsp_offset;
-          size_t srf_coord_cnt_size; size_t srf_coord_cnt_offset;
-          size_t srf_coord_dsp_size; size_t srf_coord_dsp_offset;
-          size_t srf_value_cnt_size; size_t srf_value_cnt_offset;
-          size_t srf_value_dsp_size; size_t srf_value_dsp_offset;
-          size_t trg_coord_cnt_size; size_t trg_coord_cnt_offset;
-          size_t trg_coord_dsp_size; size_t trg_coord_dsp_offset;
-          size_t trg_value_cnt_size; size_t trg_value_cnt_offset;
-          size_t trg_value_dsp_size; size_t trg_value_dsp_offset;
-          size_t          in_node_size; size_t           in_node_offset;
-          size_t         scal_idx_size; size_t          scal_idx_offset;
-          size_t      coord_shift_size; size_t       coord_shift_offset;
-          size_t      interac_cnt_size; size_t       interac_cnt_offset;
-          size_t      interac_dsp_size; size_t       interac_dsp_offset;
-          size_t      interac_cst_size; size_t       interac_cst_offset;
-          size_t scal_dim[4*MAX_DEPTH]; size_t scal_offset[4*MAX_DEPTH];
-          size_t            Mdim[4][2]; size_t              M_offset[4];
-        };
-        char* setupdata=packed_data;
-        PackedSetupData& pkd_data=*((PackedSetupData*)setupdata);
-        data. level=pkd_data. level;
-        data.kernel=pkd_data.kernel;
-        data.src_coord.ptr=pkd_data.src_coord;
-        data.src_value.ptr=pkd_data.src_value;
-        data.srf_coord.ptr=pkd_data.srf_coord;
-        data.srf_value.ptr=pkd_data.srf_value;
-        data.trg_coord.ptr=pkd_data.trg_coord;
-        data.trg_value.ptr=pkd_data.trg_value;
-        data.src_coord.cnt.ReInit3(pkd_data.src_coord_cnt_size, (size_t*)&setupdata[pkd_data.src_coord_cnt_offset], false);
-        data.src_coord.dsp.ReInit3(pkd_data.src_coord_dsp_size, (size_t*)&setupdata[pkd_data.src_coord_dsp_offset], false);
-        data.src_value.cnt.ReInit3(pkd_data.src_value_cnt_size, (size_t*)&setupdata[pkd_data.src_value_cnt_offset], false);
-        data.src_value.dsp.ReInit3(pkd_data.src_value_dsp_size, (size_t*)&setupdata[pkd_data.src_value_dsp_offset], false);
-        data.srf_coord.cnt.ReInit3(pkd_data.srf_coord_cnt_size, (size_t*)&setupdata[pkd_data.srf_coord_cnt_offset], false);
-        data.srf_coord.dsp.ReInit3(pkd_data.srf_coord_dsp_size, (size_t*)&setupdata[pkd_data.srf_coord_dsp_offset], false);
-        data.srf_value.cnt.ReInit3(pkd_data.srf_value_cnt_size, (size_t*)&setupdata[pkd_data.srf_value_cnt_offset], false);
-        data.srf_value.dsp.ReInit3(pkd_data.srf_value_dsp_size, (size_t*)&setupdata[pkd_data.srf_value_dsp_offset], false);
-        data.trg_coord.cnt.ReInit3(pkd_data.trg_coord_cnt_size, (size_t*)&setupdata[pkd_data.trg_coord_cnt_offset], false);
-        data.trg_coord.dsp.ReInit3(pkd_data.trg_coord_dsp_size, (size_t*)&setupdata[pkd_data.trg_coord_dsp_offset], false);
-        data.trg_value.cnt.ReInit3(pkd_data.trg_value_cnt_size, (size_t*)&setupdata[pkd_data.trg_value_cnt_offset], false);
-        data.trg_value.dsp.ReInit3(pkd_data.trg_value_dsp_size, (size_t*)&setupdata[pkd_data.trg_value_dsp_offset], false);
-        InteracData& intdata=data.pt_interac_data;
-        intdata.    in_node.ReInit3(pkd_data.    in_node_size, (size_t*)&setupdata[pkd_data.    in_node_offset],false);
-        intdata.   scal_idx.ReInit3(pkd_data.   scal_idx_size, (size_t*)&setupdata[pkd_data.   scal_idx_offset],false);
-        intdata.coord_shift.ReInit3(pkd_data.coord_shift_size, (Real_t*)&setupdata[pkd_data.coord_shift_offset],false);
-        intdata.interac_cnt.ReInit3(pkd_data.interac_cnt_size, (size_t*)&setupdata[pkd_data.interac_cnt_offset],false);
-        intdata.interac_dsp.ReInit3(pkd_data.interac_dsp_size, (size_t*)&setupdata[pkd_data.interac_dsp_offset],false);
-        intdata.interac_cst.ReInit3(pkd_data.interac_cst_size, (size_t*)&setupdata[pkd_data.interac_cst_offset],false);
-        for(size_t i=0;i<4*MAX_DEPTH;i++){
-          intdata.scal[i].ReInit3(pkd_data.scal_dim[i], (Real_t*)&setupdata[pkd_data.scal_offset[i]],false);
-        }
-        for(size_t i=0;i<4;i++){
-          intdata.M[i].ReInit(pkd_data.Mdim[i][0], pkd_data.Mdim[i][1], (Real_t*)&setupdata[pkd_data.M_offset[i]],false);
-        }
-      }
-      {
-        InteracData& intdata=data.pt_interac_data;
+        InteracData& intdata = data.pt_interac_data;
         int omp_p=omp_get_max_threads();
 #pragma omp parallel for
         for(size_t tid=0;tid<omp_p;tid++){
