@@ -37,7 +37,6 @@ struct SetupData {
   std::vector<size_t> interac_mat;
   std::vector<size_t>  input_perm;
   std::vector<size_t> output_perm;
-  std::vector<size_t> interac_data;
   Vector<char> packed_data;
   Vector<char> vlist_data;
   Vector<char>* precomp_data;
@@ -1968,7 +1967,6 @@ class FMM_Tree {
     size_t n_out=nodes_out.size();
     if(setup_data.precomp_data->Dim()==0) SetupPrecomp(setup_data);
     Profile::Tic("Interac-Data",true,25);
-    std::vector<size_t>& interac_data=setup_data.interac_data;
     {
       std::vector<size_t> interac_mat;
       std::vector<size_t> interac_cnt;
@@ -2128,17 +2126,6 @@ class FMM_Tree {
       }
 
       if(dev_buffer.Dim()<buff_size) dev_buffer.Resize(buff_size);
-      size_t data_size=4;
-      data_size+=1+interac_blk.size();
-      data_size+=1+interac_cnt.size();
-      data_size+=1+interac_mat.size();
-      data_size+=1+ input_perm.size();
-      data_size+=1+output_perm.size();
-      if(interac_data.empty()){
-        data_size+=1;
-        interac_data.resize(data_size);
-        interac_data[0]=1;
-      }
       setup_data.M_dim0 = M_dim0;
       setup_data.M_dim1 = M_dim1;
       setup_data.dof = dof;
@@ -2152,13 +2139,12 @@ class FMM_Tree {
   }
 
   void EvalList(SetupData& setup_data){
-    if(setup_data.interac_data.empty()){
+    if(setup_data.interac_cnt.empty()){
       return;
     }
     Profile::Tic("Host2Device",false,25);
     char* buff = dev_buffer.data_ptr;
     char* precomp_data = setup_data.precomp_data->data_ptr;
-    size_t* interac_data = &setup_data.interac_data[0];
     Real_t* input_data = setup_data.input_data->data_ptr;
     Real_t* output_data = setup_data.output_data->data_ptr;
     Profile::Toc();
