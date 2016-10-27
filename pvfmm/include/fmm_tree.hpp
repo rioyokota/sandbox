@@ -29,6 +29,14 @@ struct SetupData {
   std::vector<FMM_Node*> nodes_out;
   std::vector<Vector<Real_t>*> input_vector;
   std::vector<Vector<Real_t>*> output_vector;
+  size_t M_dim0;
+  size_t M_dim1;
+  size_t dof;
+  std::vector<size_t> interac_blk;
+  std::vector<size_t> interac_cnt;
+  std::vector<size_t> interac_mat;
+  std::vector<size_t>  input_perm;
+  std::vector<size_t> output_perm;
   std::vector<size_t> interac_data;
   Vector<char> packed_data;
   Vector<char> vlist_data;
@@ -2131,27 +2139,14 @@ class FMM_Tree {
         interac_data.resize(data_size);
         interac_data[0]=1;
       }
-      size_t* data_ptr=&interac_data[0];
-      data_ptr += data_ptr[0];
-      data_ptr[0] = data_size;
-      data_ptr[1] = M_dim0;
-      data_ptr[2] = M_dim1;
-      data_ptr[3] = dof; data_ptr+=4;
-      data_ptr[0]=interac_blk.size(); data_ptr+=1;
-      memcpy(data_ptr, &interac_blk[0], interac_blk.size()*sizeof(size_t));
-      data_ptr+=interac_blk.size();
-      data_ptr[0]=interac_cnt.size(); data_ptr+=1;
-      memcpy(data_ptr, &interac_cnt[0], interac_cnt.size()*sizeof(size_t));
-      data_ptr+=interac_cnt.size();
-      data_ptr[0]=interac_mat.size(); data_ptr+=1;
-      memcpy(data_ptr, &interac_mat[0], interac_mat.size()*sizeof(size_t));
-      data_ptr+=interac_mat.size();
-      data_ptr[0]= input_perm.size(); data_ptr+=1;
-      memcpy(data_ptr, & input_perm[0],  input_perm.size()*sizeof(size_t));
-      data_ptr+= input_perm.size();
-      data_ptr[0]=output_perm.size(); data_ptr+=1;
-      memcpy(data_ptr, &output_perm[0], output_perm.size()*sizeof(size_t));
-      data_ptr+=output_perm.size();
+      setup_data.M_dim0 = M_dim0;
+      setup_data.M_dim1 = M_dim1;
+      setup_data.dof = dof;
+      setup_data.interac_blk = interac_blk;
+      setup_data.interac_cnt = interac_cnt;
+      setup_data.interac_mat = interac_mat;
+      setup_data.input_perm = input_perm;
+      setup_data.output_perm = output_perm;
     }
     Profile::Toc();
   }
@@ -2171,28 +2166,14 @@ class FMM_Tree {
     int lock_idx=-1;
     int wait_lock_idx=-1;
     {
-      size_t data_size, M_dim0, M_dim1, dof;
-      Vector<size_t> interac_blk;
-      Vector<size_t> interac_cnt;
-      Vector<size_t> interac_mat;
-      Vector<size_t>  input_perm;
-      Vector<size_t> output_perm;
-      {
-        size_t* data_ptr=interac_data;
-        data_size=data_ptr[0]; data_ptr+=data_size;
-        M_dim0   =data_ptr[1];
-        M_dim1   =data_ptr[2];
-        dof      =data_ptr[3]; data_ptr+=4;
-        interac_blk.ReInit3(data_ptr[0],data_ptr+1,false);
-        data_ptr+=interac_blk.Dim()+1;
-        interac_cnt.ReInit3(data_ptr[0],data_ptr+1,false);
-        data_ptr+=interac_cnt.Dim()+1;
-        interac_mat.ReInit3(data_ptr[0],data_ptr+1,false);
-        data_ptr+=interac_mat.Dim()+1;
-        input_perm .ReInit3(data_ptr[0],data_ptr+1,false);
-        data_ptr+=input_perm.Dim()+1;
-        output_perm.ReInit3(data_ptr[0],data_ptr+1,false);
-      }
+      size_t M_dim0 = setup_data.M_dim0;
+      size_t M_dim1 = setup_data.M_dim1;
+      size_t dof = setup_data.dof;
+      Vector<size_t> interac_blk = setup_data.interac_blk;
+      Vector<size_t> interac_cnt = setup_data.interac_cnt;
+      Vector<size_t> interac_mat = setup_data.interac_mat;
+      Vector<size_t>  input_perm = setup_data.input_perm;
+      Vector<size_t> output_perm = setup_data.output_perm;
       {
         int omp_p=omp_get_max_threads();
         size_t interac_indx=0;
