@@ -2537,24 +2537,20 @@ class FMM_Tree {
   }
 
   void UpwardPass() {
-    int max_depth=0;
-    {
-      int max_depth_loc=0;
-      std::vector<FMM_Node*>& nodes=GetNodeList();
-      for(size_t i=0;i<nodes.size();i++){
-        FMM_Node* n=nodes[i];
-        if(n->depth>max_depth_loc) max_depth_loc=n->depth;
-      }
-      max_depth = max_depth_loc;
+    int depth=0;
+    std::vector<FMM_Node*>& nodes=GetNodeList();
+    for(size_t i=0;i<nodes.size();i++){
+      FMM_Node* n=nodes[i];
+      if(n->depth>depth) depth=n->depth;
     }
     Profile::Tic("S2U",false,5);
-    for(int i=0; i<=(ScaleInvar()?0:max_depth); i++){
+    for(int i=0; i<=(ScaleInvar()?0:depth); i++){
       if(!ScaleInvar()) SetupPrecomp(setup_data[i+MAX_DEPTH*6]);
       Source2Up(setup_data[i+MAX_DEPTH*6]);
     }
     Profile::Toc();
     Profile::Tic("U2U",false,5);
-    for(int i=max_depth-1; i>=0; i--){
+    for(int i=depth-1; i>=0; i--){
       if(!ScaleInvar()) SetupPrecomp(setup_data[i+MAX_DEPTH*7]);
       Up2Up(setup_data[i+MAX_DEPTH*7]);
     }
@@ -4224,17 +4220,15 @@ class FMM_Tree {
   void DownwardPass() {
     Profile::Tic("Setup",true,3);
     std::vector<FMM_Node*> leaf_nodes;
-    int max_depth=0;
-    int max_depth_loc=0;
+    int depth=0;
     std::vector<FMM_Node*>& nodes=GetNodeList();
     for(size_t i=0;i<nodes.size();i++){
       FMM_Node* n=nodes[i];
       if(!n->IsGhost() && n->IsLeaf()) leaf_nodes.push_back(n);
-      if(n->depth>max_depth_loc) max_depth_loc=n->depth;
+      if(n->depth>depth) depth=n->depth;
     }
-    max_depth = max_depth_loc;
     Profile::Toc();
-    for(size_t i=0; i<=(ScaleInvar()?0:max_depth); i++) {
+    for(size_t i=0; i<=(ScaleInvar()?0:depth); i++) {
       if(!ScaleInvar()) {
         std::stringstream level_str;
         level_str<<"Level-"<<std::setfill('0')<<std::setw(2)<<i<<"\0";
@@ -4273,13 +4267,13 @@ class FMM_Tree {
       }
     }
     Profile::Tic("D2D",false,5);
-    for(size_t i=0; i<=max_depth; i++) {
+    for(size_t i=0; i<=depth; i++) {
       if(!ScaleInvar()) SetupPrecomp(setup_data[i+MAX_DEPTH*4]);
       Down2Down(setup_data[i+MAX_DEPTH*4]);
     }
     Profile::Toc();
     Profile::Tic("D2T",false,5);
-    for(int i=0; i<=(ScaleInvar()?0:max_depth); i++) {
+    for(int i=0; i<=(ScaleInvar()?0:depth); i++) {
       if(!ScaleInvar()) SetupPrecomp(setup_data[i+MAX_DEPTH*5]);
       Down2Target(setup_data[i+MAX_DEPTH*5]);
     }
