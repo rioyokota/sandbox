@@ -332,7 +332,30 @@ inline void matmult_8x8x2(float*& M_, float*& IN0, float*& IN1, float*& OUT0, fl
 
 class FMM_Tree {
 
- public:
+private:
+  int multipole_order;
+  FMM_Node* root_node;
+  std::vector<FMM_Node*> node_lst;
+  const Kernel* kernel;
+  PrecompMat* mat;
+  Vector<char> dev_buffer;
+
+  std::vector<Matrix<Real_t> > node_data_buff;
+  InteracList interacList;
+  std::vector<Vector<char> > precomp_lst;
+  std::vector<SetupData > setup_data;
+  std::vector<Vector<Real_t> > upwd_check_surf;
+  std::vector<Vector<Real_t> > upwd_equiv_surf;
+  std::vector<Vector<Real_t> > dnwd_check_surf;
+  std::vector<Vector<Real_t> > dnwd_equiv_surf;
+
+  fft_plan vprecomp_fftplan;
+  bool vprecomp_fft_flag;
+  fft_plan vlist_fftplan;
+  bool vlist_fft_flag;
+  fft_plan vlist_ifftplan;
+  bool vlist_ifft_flag;
+
   std::vector<Real_t> surface(int p, Real_t* c, Real_t alpha, int depth){
     size_t n_=(6*(p-1)*(p-1)+2);
     std::vector<Real_t> coord(n_*3);
@@ -1193,39 +1216,13 @@ class FMM_Tree {
     return M_;
   }
 
- public:
+public:
 
-  int max_depth;
-  int multipole_order;
-  FMM_Node* root_node;
-  std::string mat_fname;
-  std::vector<FMM_Node*> node_lst;
-  const Kernel* kernel;
-  PrecompMat* mat;
-  Vector<char> dev_buffer;
-
-  std::vector<Matrix<Real_t> > node_data_buff;
-  InteracList interacList;
-  std::vector<Vector<char> > precomp_lst;
-  std::vector<SetupData > setup_data;
-  std::vector<Vector<Real_t> > upwd_check_surf;
-  std::vector<Vector<Real_t> > upwd_equiv_surf;
-  std::vector<Vector<Real_t> > dnwd_check_surf;
-  std::vector<Vector<Real_t> > dnwd_equiv_surf;
-
-  fft_plan vprecomp_fftplan;
-  bool vprecomp_fft_flag;
-  fft_plan vlist_fftplan;
-  bool vlist_fft_flag;
-  fft_plan vlist_ifftplan;
-  bool vlist_ifft_flag;
-
-
-  FMM_Tree(): root_node(NULL), max_depth(MAX_DEPTH), vprecomp_fft_flag(false), vlist_fft_flag(false),
+  FMM_Tree(): root_node(NULL), vprecomp_fft_flag(false), vlist_fft_flag(false),
 	      vlist_ifft_flag(false), mat(NULL), kernel(NULL) { };
 
   ~FMM_Tree(){
-    if(RootNode()!=NULL){
+    if(root_node!=NULL){
       delete root_node;
     }
     if(mat!=NULL){
@@ -1245,18 +1242,17 @@ class FMM_Tree {
   void Initialize(typename FMM_Node::NodeData* init_data) {
     Profile::Tic("InitTree",true);{
       Profile::Tic("InitRoot",false,5);
-      max_depth=init_data->max_depth;
+      int max_depth=init_data->max_depth;
       if(max_depth>MAX_DEPTH) max_depth=MAX_DEPTH;
       if(root_node) delete root_node;
       root_node=new FMM_Node();
       root_node->Initialize(NULL,0,init_data);
-      FMM_Node* rnode=RootNode();
       Profile::Toc();
 
       Profile::Tic("Points2Octee",true,5);
       std::vector<MortonId> lin_oct;
       std::vector<MortonId> pt_mid;
-      Vector<Real_t>& pt_c=rnode->pt_coord;
+      Vector<Real_t>& pt_c=root_node->pt_coord;
       size_t pt_cnt=pt_c.Dim()/3;
       pt_mid.resize(pt_cnt);
 #pragma omp parallel for
@@ -1270,7 +1266,7 @@ class FMM_Tree {
       std::vector<Vector<Real_t>*> coord_lst;
       std::vector<Vector<Real_t>*> value_lst;
       std::vector<Vector<size_t>*> scatter_lst;
-      rnode->NodeDataVec(coord_lst, value_lst, scatter_lst);
+      root_node->NodeDataVec(coord_lst, value_lst, scatter_lst);
       assert(coord_lst.size()==value_lst.size());
       assert(coord_lst.size()==scatter_lst.size());
 
@@ -1299,7 +1295,7 @@ class FMM_Tree {
 
       Profile::Tic("PointerTree",false,5);
       int omp_p=omp_get_max_threads();
-      rnode->SetGhost(false);
+      root_node->SetGhost(false);
       for(int i=0;i<omp_p;i++){
         size_t idx=(lin_oct.size()*i)/omp_p;
         FMM_Node* n=FindNode(lin_oct[idx], true);
@@ -1311,7 +1307,7 @@ class FMM_Tree {
         size_t b=(lin_oct.size()*(i+1))/omp_p;
         size_t idx=a;
         FMM_Node* n=FindNode(lin_oct[idx], false);
-        if(a==0) n=rnode;
+        if(a==0) n=root_node;
         while(n!=NULL && (idx<b || i==omp_p-1)){
           n->SetGhost(false);
           MortonId dn=n->GetMortonId();
@@ -1350,6 +1346,7 @@ class FMM_Tree {
     assert(kernel!=NULL);
     bool save_precomp=false;
     mat=new PrecompMat(ScaleInvar());
+    std::string mat_fname;
     if(mat_fname.size()==0){
       std::stringstream st;
       if(!st.str().size()){
@@ -1412,10 +1409,6 @@ class FMM_Tree {
     }Profile::Toc();
   }
 
-  FMM_Node* RootNode() {return root_node;}
-
-  FMM_Node* PreorderFirst() {return root_node;}
-
   int MultipoleOrder(){return multipole_order;}
 
   bool ScaleInvar(){return kernel->scale_invar;}
@@ -1442,7 +1435,7 @@ class FMM_Tree {
     int n1=27;
     int n2=8;
     if(node==NULL){
-      FMM_Node* curr_node=PreorderFirst();
+      FMM_Node* curr_node=root_node;
       if(curr_node!=NULL){
 	curr_node->SetColleague(curr_node,(n1-1)/2);
         curr_node=PreorderNxt(curr_node);
@@ -1497,7 +1490,7 @@ class FMM_Tree {
   std::vector<FMM_Node*>& GetNodeList() {
     if(root_node->GetStatus() & 1){
       node_lst.clear();
-      FMM_Node* n=PreorderFirst();
+      FMM_Node* n=root_node;
       while(n!=NULL){
 	int& status=n->GetStatus();
 	status=(status & (~(int)1));
@@ -1511,7 +1504,7 @@ class FMM_Tree {
   FMM_Node* FindNode(MortonId& key, bool subdiv, FMM_Node* start=NULL) {
     int num_child=1UL<<3;
     FMM_Node* n=start;
-    if(n==NULL) n=RootNode();
+    if(n==NULL) n=root_node;
     while(n->GetMortonId()<key && (!n->IsLeaf()||subdiv)){
       if(n->IsLeaf() && !n->IsGhost()) n->Subdivide();
       if(n->IsLeaf()) break;
@@ -4286,7 +4279,7 @@ class FMM_Tree {
 
     std::vector<Real_t> src_coord;
     std::vector<Real_t> src_value;
-    FMM_Node* n=static_cast<FMM_Node*>(PreorderFirst());
+    FMM_Node* n=root_node;
     while(n!=NULL){
       if(n->IsLeaf() && !n->IsGhost()){
         pvfmm::Vector<Real_t>& coord_vec=n->src_coord;
@@ -4305,7 +4298,7 @@ class FMM_Tree {
     std::vector<Real_t> trg_poten_fmm;
     long long trg_iter=0;
     size_t step_size=1+src_cnt*src_cnt*1e-9/p;
-    n=static_cast<FMM_Node*>(PreorderFirst());
+    n=root_node;
     while(n!=NULL){
       if(n->IsLeaf() && !n->IsGhost()){
         pvfmm::Vector<Real_t>& coord_vec=n->trg_coord;
