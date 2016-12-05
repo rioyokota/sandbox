@@ -47,7 +47,7 @@ int main() {
 
   /* プラットフォーム・デバイスの情報の取得 */
   ret = clGetPlatformIDs(1, &platform_id, &ret_num_platforms);
-  ret = clGetDeviceIDs(platform_id, CL_DEVICE_TYPE_DEFAULT, 1, &device_id, &ret_num_devices);
+  ret = clGetDeviceIDs(platform_id, CL_DEVICE_TYPE_ALL, 1, &device_id, &ret_num_devices);
 
   /* OpenCLコンテキストの作成 */
   context = clCreateContext( NULL, 1, &device_id, NULL, NULL, &ret);
@@ -101,4 +101,3 @@ int main() {
 
   return 0;
 }
-
