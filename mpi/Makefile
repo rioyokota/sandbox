@@ -1,6 +1,7 @@
 .SUFFIXES: .cxx .f90 .o
 
-CXX = mpicxx -ggdb3 -Wall -O3 -fopenmp -ffast-math -funroll-loops -I../include
+CXX = mpiFCCpx -Xg -Kfast,openmp
+#CXX = mpicxx -ggdb3 -Wall -O3 -fopenmp -ffast-math -funroll-loops -I../include
 FC = mpif90 -ggdb3 -Wall -O3 -fopenmp -ffast-math -funroll-loops -I../include
 
 .cxx.o	:
@@ -8,6 +9,8 @@ FC = mpif90 -ggdb3 -Wall -O3 -fopenmp -ffast-math -funroll-loops -I../include
 .f90.o	:
 	$(FC) -c $? -o $@
 
+direct: direct.o
+	$(CXX) $?
 host: host.o
 	$(CXX) $?
 	mpirun -np 2 ./a.out
