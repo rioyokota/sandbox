@@ -5,6 +5,10 @@ CXX = mpicxx -ggdb3 -Wall -O3 -fopenmp -mavx -ffast-math -funroll-loops -DNDEBUG
 .cxx.o  :
 	$(CXX) -c $? -o $@
 
+all:
+	@make run_kernel
+	@make run_fmm
+
 kernel: kernel.o
 	$(CXX) $? -o $@
 
@@ -17,7 +21,7 @@ fmm: fmm.o
 	$(CXX) $? -o $@
 
 run_fmm: fmm
-	./fmm -aDv -r 1 -n 100000
+	./fmm -aDv -c 256 -r 1 -n 10000
 
 clean:
 	$(RM) ./*.o ./kernel ./fmm
