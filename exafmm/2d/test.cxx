@@ -21,7 +21,7 @@ int main(int argc, char ** argv) {                              // Main function
   const int ncrit = 8;                                          // Number of bodies per leaf cell
   theta = 0.4;                                                  // Multipole acceptance criterion
 
-  //! Initialize dsitribution, source & target value of bodies
+  //! Initialize distribution, source & target value of bodies
   printf("--- FMM Profiling ----------------\n");               // Start profiling
   double time = getTime();                                      // Start timer
   srand48(0);                                                   // Set seed for random number generator

@@ -1,17 +1,19 @@
-#include "args.h"
-#include <fstream>
-#include "kernel.h"
+#include <cmath>
+#include <cstdlib>
+#include <iostream>
 #include "namespace.h"
+#include "kernel.h"
+#include <stdint.h>
 #include <vector>
 #include "verify.h"
 using namespace EXAFMM_NAMESPACE;
 
 int main(int argc, char ** argv) {
+  const int P = atoi(argv[1]);
   const real_t eps2 = 0.0;
   const complex_t wavek = complex_t(1.,.1) / real_t(2 * M_PI);
-  Args args(argc, argv);
   Bodies bodies(1), bodies2(1), jbodies(1);
-  Kernel kernel(args.P, eps2, wavek);
+  Kernel kernel(P, eps2, wavek);
   logger::verbose = true;
 
   Cells cells(4);
@@ -76,7 +78,7 @@ int main(int argc, char ** argv) {
   double potNrm = verify.getNrmScalar(bodies);
   double accDif = verify.getDifVector(bodies, bodies2);
   double accNrm = verify.getNrmVector(bodies);
-  std::cout << args.P << " " << std::sqrt(potDif/potNrm) << "  " << std::sqrt(accDif/accNrm) << std::endl;
+  std::cout << P << " " << std::sqrt(potDif/potNrm) << "  " << std::sqrt(accDif/accNrm) << std::endl;
   double potRel = std::sqrt(potDif/potNrm);
   double accRel = std::sqrt(accDif/accNrm);
   verify.print("Rel. L2 Error (pot)",potRel);
