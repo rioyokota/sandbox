@@ -1,5 +1,6 @@
 #include <mpi.h>
 #include <cmath>
+#include <cstdlib>
 #include <iostream>
 #include <unistd.h>
 #include <sys/time.h>
