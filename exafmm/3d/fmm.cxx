@@ -13,6 +13,7 @@ using namespace EXAFMM_NAMESPACE;
 
 int main(int argc, char ** argv) {
   const int numBodies = 1000;
+  const int ncrit = 64;
   const int ksize = 11;
   const vec3 cycle = 2 * M_PI;
   const real_t alpha = ksize / max(cycle);
@@ -26,22 +27,16 @@ int main(int argc, char ** argv) {
   Bodies bodies, bodies2, jbodies, gbodies, buffer;
   BoundBox boundBox;
   Bounds bounds;
-  BuildTree localTree(args.ncrit);
+  BuildTree buildTree(ncrit);
   Cells cells, jcells;
   Dataset data;
   Ewald ewald(ksize, alpha, sigma, cutoff, cycle);
   Kernel kernel(args.P, eps2, wavek);
-  Traversal traversal(kernel, args.theta, args.nspawn, args.images, args.path);
+  Traversal traversal(kernel, args.theta, args.nspawn, args.images);
   UpDownPass upDownPass(kernel);
-  Verify verify(args.path);
-  num_threads(args.threads);
+  Verify verify;
 
-  verify.verbose = args.verbose;
-  logger::verbose = args.verbose;
-  logger::path = args.path;
-  logger::printTitle("Ewald Parameters");
-  args.print(logger::stringLength);
-  ewald.print(logger::stringLength);
+  logger::verbose = true;
   bodies = data.initBodies(args.numBodies, args.distribution);
   for (B_iter B=bodies.begin(); B!=bodies.end(); B++) {
     B->X *= cycle / (2 * M_PI);
@@ -49,13 +44,10 @@ int main(int argc, char ** argv) {
   buffer.reserve(bodies.size());
   logger::printTitle("FMM Profiling");
   logger::startTimer("Total FMM");
-  logger::startPAPI();
   data.initTarget(bodies);
   bounds = boundBox.getBounds(bodies);
-  cells = localTree.buildTree(bodies, buffer, bounds);
+  cells = buildTree.buildTree(bodies, buffer, bounds);
   upDownPass.upwardPass(cells);
-  traversal.initListCount(cells);
-  traversal.initWeight(cells);
   traversal.traverse(cells, cells, cycle, args.dual);
   upDownPass.downwardPass(cells);
 
@@ -68,7 +60,7 @@ int main(int argc, char ** argv) {
   logger::startTimer("Total Ewald");
   jbodies = bodies;
   bounds = boundBox.getBounds(jbodies);
-  jcells = localTree.buildTree(jbodies, buffer, bounds);
+  jcells = buildTree.buildTree(jbodies, buffer, bounds);
   ewald.wavePart(bodies, jbodies);
   ewald.realPart(cells, jcells);
   ewald.selfTerm(bodies);
@@ -86,7 +78,6 @@ int main(int argc, char ** argv) {
   logger::printTitle("FMM vs. Ewald");
   verify.print("Rel. L2 Error (pot)",potRel);
   verify.print("Rel. L2 Error (acc)",accRel);
-  localTree.printTreeData(cells);
-  traversal.printTraversalData();
+  buildTree.printTreeData(cells);
   return 0;
 }

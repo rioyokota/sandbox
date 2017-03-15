@@ -21,7 +21,7 @@ fmm: fmm.o
 	$(CXX) $? -o $@
 
 run_fmm: fmm
-	./fmm -aDgv -r 1
+	./fmm
 
 clean:
 	$(RM) ./*.o ./kernel ./fmm

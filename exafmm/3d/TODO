@@ -1,8 +1,6 @@
 [Remove]
-MPI
-local* > *
 unused driver components
-unused functions
+unused header functions
 unused macros
 wavek
 namespace
