@@ -1,5 +1,6 @@
 #ifndef laplace_h
 #define laplace_h
+#include <cstdlib>
 #include "types.h"
 #include "namespace.h"
 

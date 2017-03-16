@@ -1,7 +1,5 @@
-#include "args.h"
 #include "bound_box.h"
 #include "build_tree.h"
-#include "dataset.h"
 #include "ewald.h"
 #include "kernel.h"
 #include "logger.h"

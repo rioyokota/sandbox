@@ -2,7 +2,6 @@
 #define build_tree_tbb_h
 #include "logger.h"
 #include "namespace.h"
-#include "thread.h"
 #include "types.h"
 
 namespace EXAFMM_NAMESPACE {

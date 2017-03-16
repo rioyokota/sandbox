@@ -12,7 +12,6 @@
 #include <string>
 #include <sstream>
 #include <sys/time.h>
-#include "thread.h"
 #include <vector>
 
 #if EXAFMM_USE_PAPI

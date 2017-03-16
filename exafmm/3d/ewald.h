@@ -109,28 +109,18 @@ namespace exafmm_laplace {
       }                                                         // End loop over target bodies
     }
 
-    //! Recursive functor for traversing tree to find neighbors
-    struct Neighbor {
-      Ewald * ewald;                                            //!< Ewald object
-      C_iter Ci;                                                //!< Iterator of current target cell
-      C_iter Cj;                                                //!< Iterator of current source cell
-      C_iter C0;                                                //!< Iterator of first source cell
-      Neighbor(Ewald * _ewald, C_iter _Ci, C_iter _Cj, C_iter _C0) :// Constructor
-	ewald(_ewald), Ci(_Ci), Cj(_Cj), C0(_C0) {}             // Initialize variables
-      void operator() () const {                                // Overload operator()
-	vec3 dX = Ci->X - Cj->X;                                //  Distance vector from source to target
-	wrap(dX, ewald->cycle);                                 //  Wrap around periodic domain
-	vec3 Xperiodic = Ci->X - Cj->X - dX;                    //  Coordinate offset for periodic B.C.
-	real_t R = std::sqrt(norm(dX));                         //  Scalar distance
-	if (R - Ci->R - Cj->R < sqrtf(3) * ewald->cutoff) {     //  If cells are close
-	  if(Cj->NCHILD == 0) ewald->P2P(Ci,Cj,Xperiodic);      //   Ewald real part
-	  for (C_iter CC=C0+Cj->ICHILD; CC!=C0+Cj->ICHILD+Cj->NCHILD; CC++) {// Loop over cell's children
-	    Neighbor neighbor(ewald, Ci, CC, C0);               //    Instantiate recursive functor
-	    neighbor();                                         //    Recursive call
-	  }                                                     //   End loop over cell's children
-	}                                                       //  End if for far cells
-      }                                                         // End overload operator()
-    };
+    void neighbor(C_iter Ci, C_iter Cj, C_iter C0) {            // Traverse tree to find neighbor
+      vec3 dX = Ci->X - Cj->X;                                  //  Distance vector from source to target
+      wrap(dX, cycle);                                          //  Wrap around periodic domain
+      vec3 Xperiodic = Ci->X - Cj->X - dX;                      //  Coordinate offset for periodic B.C.
+      real_t R = std::sqrt(norm(dX));                           //  Scalar distance
+      if (R - Ci->R - Cj->R < sqrtf(3) * cutoff) {              //  If cells are close
+        if(Cj->NCHILD == 0) P2P(Ci, Cj, Xperiodic);             //   Ewald real part
+        for (C_iter CC=C0+Cj->ICHILD; CC!=C0+Cj->ICHILD+Cj->NCHILD; CC++) {// Loop over cell's children
+          neighbor(Ci, CC, C0);                                 //    Instantiate recursive functor
+        }                                                       //   End loop over cell's children
+      }                                                         //  End if for far cells
+    }                                                           // End overload operator()
 
   public:
     //! Constructor
@@ -141,14 +131,11 @@ namespace exafmm_laplace {
     void realPart(Cells & cells, Cells & jcells) {
       logger::startTimer("Ewald real part");                    // Start timer
       C_iter Cj = jcells.begin();                               // Set begin iterator of source cells
-      mk_task_group;                                            // Intitialize tasks
       for (C_iter Ci=cells.begin(); Ci!=cells.end(); Ci++) {    // Loop over target cells
 	if (Ci->NCHILD == 0) {                                  //  If target cell is leaf
-	  Neighbor neighbor(this, Ci, Cj, Cj);                  //   Instantiate recursive functor
-	  create_taskc(neighbor);                               //   Create task for recursive call
+	  neighbor(Ci, Cj, Cj);                                 //   Find neighbors
 	}                                                       //  End if for leaf target cell
       }                                                         // End loop over target cells
-      wait_tasks;                                               // Synchronize tasks
       logger::stopTimer("Ewald real part");                     // Stop timer
     }
 
