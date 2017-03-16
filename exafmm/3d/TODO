@@ -1,3 +1,2 @@
 [Remove]
-bound_box
-verify
+double > real_t

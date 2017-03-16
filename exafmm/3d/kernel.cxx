@@ -1,21 +1,20 @@
 #include <cmath>
 #include <cstdlib>
-#include <iostream>
+#include <cstdio>
 #include "kernel.h"
 #include <stdint.h>
 #include <vector>
-#include "verify.h"
 using namespace exafmm;
 
 int main(int argc, char ** argv) {
   const int P = atoi(argv[1]);
-  Bodies bodies(1), bodies2(1), jbodies(1);
   Kernel kernel(P);
 
-  Cells cells(4);
-  Verify verify;
+  // P2M
+  Bodies jbodies(1);
   jbodies[0].X = 2;
   jbodies[0].SRC = 1;
+  Cells cells(4);
   C_iter Cj = cells.begin();
   Cj->X = 1;
   Cj->X[0] = 3;
@@ -25,6 +24,7 @@ int main(int argc, char ** argv) {
   Cj->M.resize(kernel.NTERM, 0.0);
   kernel.P2M(Cj);
 
+  // M2M
   C_iter CJ = cells.begin()+1;
   CJ->ICHILD = Cj-cells.begin();
   CJ->NCHILD = 1;
@@ -34,6 +34,7 @@ int main(int argc, char ** argv) {
   CJ->M.resize(kernel.NTERM, 0.0);
   kernel.M2M(CJ, cells.begin());
 
+  // M2L
   C_iter CI = cells.begin()+2;
   CI->X = 0;
   CI->X[0] = -4;
@@ -41,6 +42,7 @@ int main(int argc, char ** argv) {
   CI->L.resize(kernel.NTERM, 0.0);
   kernel.M2L(CI, CJ);
 
+  // L2L
   C_iter Ci = cells.begin()+3;
   Ci->X = 1;
   Ci->X[0] = -3;
@@ -49,6 +51,8 @@ int main(int argc, char ** argv) {
   Ci->L.resize(kernel.NTERM, 0.0);
   kernel.L2L(Ci, cells.begin());
 
+  // L2P
+  Bodies bodies(1);
   bodies[0].X = 2;
   bodies[0].X[0] = -2;
   bodies[0].SRC = 1;
@@ -57,6 +61,8 @@ int main(int argc, char ** argv) {
   Ci->NBODY = bodies.size();
   kernel.L2P(Ci);
 
+  // P2P
+  Bodies bodies2(1);
   for (B_iter B=bodies2.begin(); B!=bodies2.end(); B++) {
     *B = bodies[B-bodies2.begin()];
     B->TRG = 0;
@@ -69,15 +75,20 @@ int main(int argc, char ** argv) {
     B->TRG /= B->SRC;
   }
 
-  std::fstream file;
-  double potDif = verify.getDifScalar(bodies, bodies2);
-  double potNrm = verify.getNrmScalar(bodies);
-  double accDif = verify.getDifVector(bodies, bodies2);
-  double accNrm = verify.getNrmVector(bodies);
-  std::cout << P << " " << std::sqrt(potDif/potNrm) << "  " << std::sqrt(accDif/accNrm) << std::endl;
+  // Verify results
+  real_t potDif = 0, potNrm = 0, accDif = 0, accNrm = 0;
+  B_iter B2 = bodies2.begin();
+  for (B_iter B=bodies.begin(); B!=bodies.end(); B++, B2++) {
+    potDif += (B->TRG[0] - B2->TRG[0]) * (B->TRG[0] - B2->TRG[0]);
+    potNrm += B->TRG[0] * B->TRG[0];
+    accDif += (B->TRG[1] - B2->TRG[1]) * (B->TRG[1] - B2->TRG[1]) +
+      (B->TRG[2] - B2->TRG[2]) * (B->TRG[2] - B2->TRG[2]) +
+      (B->TRG[3] - B2->TRG[3]) * (B->TRG[3] - B2->TRG[3]);
+    accNrm += B->TRG[1] * B->TRG[1] + B->TRG[2] * B->TRG[2] + B->TRG[3] * B->TRG[3];
+  }
   double potRel = std::sqrt(potDif/potNrm);
   double accRel = std::sqrt(accDif/accNrm);
-  verify.print("Rel. L2 Error (pot)",potRel);
-  verify.print("Rel. L2 Error (acc)",accRel);
+  printf("%-20s : %8.5e s\n","Rel. L2 Error (pot)", potRel);
+  printf("%-20s : %8.5e s\n","Rel. L2 Error (acc)", accRel);
   return 0;
 }

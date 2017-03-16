@@ -4,7 +4,6 @@
 #include "timer.h"
 #include "traversal.h"
 #include "up_down_pass.h"
-#include "verify.h"
 using namespace exafmm;
 
 int main(int argc, char ** argv) {
@@ -40,7 +39,6 @@ int main(int argc, char ** argv) {
 
   // Build tree
   timer::printTitle("FMM Profiling");
-  timer::start("Total FMM");
   Bodies buffer(numBodies);
   BuildTree buildTree(ncrit);
   Cells cells = buildTree.buildTree(bodies, buffer);
@@ -55,12 +53,20 @@ int main(int argc, char ** argv) {
 
   // Dipole correction
   buffer = bodies;
-  vec3 dipole = upDownPass.getDipole(bodies,0);
-  upDownPass.dipoleCorrection(bodies, dipole, numBodies, cycle);
+  vec3 dipole = 0;
+  for (B_iter B=bodies.begin(); B!=bodies.end(); B++) {
+    dipole += B->X * B->SRC;
+  }
+  real_t coef = 4 * M_PI / (3 * cycle * cycle * cycle);
+  for (B_iter B=bodies.begin(); B!=bodies.end(); B++) {
+    B->TRG[0] -= coef * norm(dipole) / numBodies / B->SRC;
+    for (int d=0; d!=3; d++) {
+      B->TRG[d+1] -= coef * dipole[d];
+    }
+  }
 
   // Ewald summation
   timer::printTitle("Ewald Profiling");
-  timer::start("Total Ewald");
   Bodies bodies2 = bodies;
   for (B_iter B=bodies.begin(); B!=bodies.end(); B++) {
     B->TRG = 0;
@@ -71,22 +77,24 @@ int main(int argc, char ** argv) {
   ewald.wavePart(bodies, jbodies);
   ewald.realPart(cells, jcells);
   ewald.selfTerm(bodies);
-  timer::printTitle("Total runtime");
-  timer::printTime("Total FMM");
-  timer::stop("Total Ewald");
 
   // Verify result
-  Verify verify;
-  double potSum = verify.getSumScalar(bodies);
-  double potSum2 = verify.getSumScalar(bodies2);
-  double accDif = verify.getDifVector(bodies, bodies2);
-  double accNrm = verify.getNrmVector(bodies);
+  real_t potSum = 0, potSum2 = 0, accDif = 0, accNrm = 0;
+  B_iter B2 = bodies2.begin();
+  for (B_iter B=bodies.begin(); B!=bodies.end(); B++, B2++) {
+    potSum += B->TRG[0] * B->SRC;
+    potSum2 += B2->TRG[0] * B2->SRC;
+    accDif += (B->TRG[1] - B2->TRG[1]) * (B->TRG[1] - B2->TRG[1]) +
+      (B->TRG[2] - B2->TRG[2]) * (B->TRG[2] - B2->TRG[2]) +
+      (B->TRG[3] - B2->TRG[3]) * (B->TRG[3] - B2->TRG[3]);
+    accNrm += B->TRG[1] * B->TRG[1] + B->TRG[2] * B->TRG[2] + B->TRG[3] * B->TRG[3];
+  }
   double potDif = (potSum - potSum2) * (potSum - potSum2);
   double potNrm = potSum * potSum;
   double potRel = std::sqrt(potDif/potNrm);
   double accRel = std::sqrt(accDif/accNrm);
   timer::printTitle("FMM vs. Ewald");
-  verify.print("Rel. L2 Error (pot)",potRel);
-  verify.print("Rel. L2 Error (acc)",accRel);
+  printf("%-20s : %8.5e s\n","Rel. L2 Error (pot)", potRel);
+  printf("%-20s : %8.5e s\n","Rel. L2 Error (acc)", accRel);
   return 0;
 }

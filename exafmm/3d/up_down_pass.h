@@ -63,26 +63,6 @@ namespace exafmm {
       }                                                         // End if for empty cell vector
       timer::stop("Downward pass");                             // Stop timer
     }
-
-    //! Get dipole of entire system
-    vec3 getDipole(Bodies & bodies, vec3 X0) {
-      vec3 dipole = 0;                                          // Initialize dipole correction
-      for (B_iter B=bodies.begin(); B!=bodies.end(); B++) {     // Loop over bodies
-	dipole += (B->X - X0) * std::real(complex_t(B->SRC));   //  Calcuate dipole of the whole system
-      }                                                         // End loop over bodies
-      return dipole;                                            // Return dipole
-    }
-
-    //! Dipole correction
-    void dipoleCorrection(Bodies & bodies, vec3 dipole, int numBodies, vec3 cycle) {
-      real_t coef = 4 * M_PI / (3 * cycle[0] * cycle[1] * cycle[2]);// Precalcualte constant
-      for (B_iter B=bodies.begin(); B!=bodies.end(); B++) {     // Loop over bodies
-	B->TRG[0] -= coef * norm(dipole) / numBodies / B->SRC;  //  Dipole correction for potential
-	for (int d=0; d!=3; d++) {                              //  Loop over dimensions
-	  B->TRG[d+1] -= coef * dipole[d];                      //   Dipole correction for forces
-	}                                                       //  End loop over dimensions
-      }                                                         // End loop over bodies
-    }
   };
 }
 #endif

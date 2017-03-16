@@ -30,12 +30,7 @@ namespace exafmm {
 
     //! Print message to standard output
     inline void printTitle(std::string title) {
-      title += " ";                                             //  Append space to end of title
-      std::cout << "--- " << std::setw(stringLength)            //  Align string length
-                << std::left                                    //  Left shift
-                << std::setfill('-')                            //  Set to fill with '-'
-                << title << std::setw(10) << "-"                //  Fill until end of line
-                << std::setfill(' ') << std::endl;              //  Set back to fill with ' '
+      printf("--- %-16s ------------\n", title.c_str());
     }
 
     //! Start timer for given event
@@ -43,18 +38,11 @@ namespace exafmm {
       beginTimer[event] = get_time();                           // Get time of day and store in beginTimer
     }
 
-    //! Print timings of a specific event
-    inline void printTime(std::string event) {
-      std::cout << std::setw(stringLength) << std::left         //  Set format
-                << event << " : " << std::setprecision(decimal) << std::fixed
-                << timer[event] << " s" << std::endl;           //  Print event and timer
-    }
-
     //! Stop timer for given event
-    double stop(std::string event, int print=1) {
+    double stop(std::string event) {
       double endTimer = get_time();                             // Get time of day and store in endTimer
       timer[event] += endTimer - beginTimer[event];             // Accumulate event time to timer
-      if (print) printTime(event);                              // Print event and timer to screen
+      printf("%-20s : %lf s\n", event.c_str(), timer[event]);   // Print time
       return endTimer - beginTimer[event];                      // Return the event time
     }
   };
