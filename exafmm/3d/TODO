@@ -1,4 +1,5 @@
 [Remove]
+remote in traversal
 unused driver components
 unused header functions
 unused macros

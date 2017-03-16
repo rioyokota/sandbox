@@ -163,7 +163,8 @@ namespace EXAFMM_NAMESPACE {
     {}
 
     //! Evaluate P2P and M2L using list based traversal
-    void traverse(Cells & icells, Cells & jcells, vec3 cycle, bool dual, real_t remote=1) {
+    void traverse(Cells & icells, Cells & jcells, vec3 cycle) {
+      int remote = 0;
       if (icells.empty() || jcells.empty()) return;             // Quit if either of the cell vectors are empty
       logger::startTimer("Traverse");                           // Start timer
       logger::initTracer();                                     // Initialize tracer

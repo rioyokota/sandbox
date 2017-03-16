@@ -13,61 +13,78 @@ using namespace EXAFMM_NAMESPACE;
 
 int main(int argc, char ** argv) {
   const int numBodies = 1000;
+  const int P = 10;
   const int ncrit = 64;
   const int images = 4;
   const int ksize = 11;
-  const vec3 cycle = 2 * M_PI;
-  const real_t alpha = ksize / max(cycle);
+  const real_t cycle = 2 * M_PI;
+  const real_t alpha = ksize / cycle;
   const real_t sigma = .25 / M_PI;
-  const real_t cutoff = max(cycle) / 2;
+  const real_t cutoff = cycle / 2;
   const real_t eps2 = 0.0;
   const real_t theta = 0.4;
   const complex_t wavek = complex_t(10.,1.) / real_t(2 * M_PI);
-  Args args(argc, argv);
-  args.numBodies = numBodies;
-  Bodies bodies, bodies2, jbodies, gbodies, buffer;
-  BoundBox boundBox;
-  Bounds bounds;
-  BuildTree buildTree(ncrit);
-  Cells cells, jcells;
-  Dataset data;
-  Ewald ewald(ksize, alpha, sigma, cutoff, cycle);
-  Kernel kernel(args.P, eps2, wavek);
-  Traversal traversal(kernel, theta, images);
-  UpDownPass upDownPass(kernel);
-  Verify verify;
-
   logger::verbose = true;
-  bodies = data.initBodies(numBodies, args.distribution);
+
+  // Initialize bodies
+  Bodies bodies(numBodies);
+  real_t average = 0;
+  srand48(0);
   for (B_iter B=bodies.begin(); B!=bodies.end(); B++) {
-    B->X *= cycle / (2 * M_PI);
+    for (int d=0; d<3; d++) {
+      B->X[d] = drand48() * cycle - cycle;
+    }
+    B->SRC = drand48() - .5;
+    average += B->SRC;
   }
-  buffer.reserve(bodies.size());
+  average /= numBodies;
+  for (B_iter B=bodies.begin(); B!=bodies.end(); B++) {
+    B->SRC -= average;
+    B->TRG = 0;
+  }
+
+  // Build tree
   logger::printTitle("FMM Profiling");
   logger::startTimer("Total FMM");
-  data.initTarget(bodies);
-  bounds = boundBox.getBounds(bodies);
-  cells = buildTree.buildTree(bodies, buffer, bounds);
+  BoundBox boundBox;
+  Bounds bounds = boundBox.getBounds(bodies);
+  Bodies buffer(numBodies);
+  BuildTree buildTree(ncrit);
+  Cells cells = buildTree.buildTree(bodies, buffer, bounds);
+
+  // FMM evaluation
+  Kernel kernel(P, eps2, wavek);
+  UpDownPass upDownPass(kernel);
   upDownPass.upwardPass(cells);
-  traversal.traverse(cells, cells, cycle, args.dual);
+  Traversal traversal(kernel, theta, images);
+  traversal.traverse(cells, cells, cycle);
   upDownPass.downwardPass(cells);
 
+  // Dipole correction
   buffer = bodies;
   vec3 dipole = upDownPass.getDipole(bodies,0);
   upDownPass.dipoleCorrection(bodies, dipole, numBodies, cycle);
-  bodies2 = bodies;
-  data.initTarget(bodies);
+
+  // Ewald summation
   logger::printTitle("Ewald Profiling");
   logger::startTimer("Total Ewald");
-  jbodies = bodies;
+  Bodies bodies2 = bodies;
+  for (B_iter B=bodies.begin(); B!=bodies.end(); B++) {
+    B->TRG = 0;
+  }
+  Bodies jbodies = bodies;
   bounds = boundBox.getBounds(jbodies);
-  jcells = buildTree.buildTree(jbodies, buffer, bounds);
+  Cells jcells = buildTree.buildTree(jbodies, buffer, bounds);
+  Ewald ewald(ksize, alpha, sigma, cutoff, cycle);
   ewald.wavePart(bodies, jbodies);
   ewald.realPart(cells, jcells);
   ewald.selfTerm(bodies);
   logger::printTitle("Total runtime");
   logger::printTime("Total FMM");
   logger::stopTimer("Total Ewald");
+
+  // Verify result
+  Verify verify;
   double potSum = verify.getSumScalar(bodies);
   double potSum2 = verify.getSumScalar(bodies2);
   double accDif = verify.getDifVector(bodies, bodies2);

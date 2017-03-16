@@ -19,13 +19,13 @@ namespace exafmm_laplace {
     const real_t alpha;                                         //!< Scaling parameter for Ewald summation
     const real_t sigma;                                         //!< Scaling parameter for Ewald summation
     const real_t cutoff;                                        //!< Cutoff distance
-    const vec3 cycle;                                           //!< Periodic cycle
+    const real_t cycle;                                         //!< Periodic cycle
 
   private:
     //! Forward DFT
     void dft(Waves & waves, Bodies & bodies) const {
       vec3 scale;
-      for (int d=0; d<3; d++) scale[d]= 2 * M_PI / cycle[d];    // Scale conversion
+      for (int d=0; d<3; d++) scale[d]= 2 * M_PI / cycle;       // Scale conversion
 #pragma omp parallel for
       for (int w=0; w<int(waves.size()); w++) {                 // Loop over waves
 	W_iter W=waves.begin()+w;                               //  Wave iterator
@@ -42,7 +42,7 @@ namespace exafmm_laplace {
     //! Inverse DFT
     void idft(Waves & waves, Bodies & bodies) const {
       vec3 scale;
-      for (int d=0; d<3; d++) scale[d] = 2 * M_PI / cycle[d];   // Scale conversion
+      for (int d=0; d<3; d++) scale[d] = 2 * M_PI / cycle;      // Scale conversion
 #pragma omp parallel for
       for (int b=0; b<int(bodies.size()); b++) {                // Loop over bodies
 	B_iter B=bodies.begin()+b;                              //  Body iterator
@@ -134,7 +134,7 @@ namespace exafmm_laplace {
 
   public:
     //! Constructor
-    Ewald(int _ksize, real_t _alpha, real_t _sigma, real_t _cutoff, vec3 _cycle) :
+    Ewald(int _ksize, real_t _alpha, real_t _sigma, real_t _cutoff, real_t _cycle) :
       ksize(_ksize), alpha(_alpha), sigma(_sigma), cutoff(_cutoff), cycle(_cycle) {} // Initialize variables
 
     //! Ewald real part
@@ -165,8 +165,8 @@ namespace exafmm_laplace {
       Waves waves = initWaves();                                // Initialize wave vector
       dft(waves,jbodies);                                       // Apply DFT to bodies to get waves
       vec3 scale;
-      for (int d=0; d<3; d++) scale[d] = 2 * M_PI / cycle[d];   // Scale conversion
-      real_t coef = 2 / sigma / cycle[0] / cycle[1] / cycle[2]; // First constant
+      for (int d=0; d<3; d++) scale[d] = 2 * M_PI / cycle;      // Scale conversion
+      real_t coef = 2 / sigma / cycle / cycle / cycle;          // First constant
       real_t coef2 = 1 / (4 * alpha * alpha);                   // Second constant
       for (W_iter W=waves.begin(); W!=waves.end(); W++) {       // Loop over waves
 	vec3 K = W->K * scale;                                  //  Wave number scaled
