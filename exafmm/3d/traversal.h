@@ -16,7 +16,6 @@ namespace EXAFMM_NAMESPACE {
   private:
     Kernel & kernel;                                            //!< Kernel class
     const real_t theta;                                         //!< Multipole acceptance criteria
-    const int nspawn;                                           //!< Threshold of NBODY for spawning new threads
     const int images;                                           //!< Number of periodic image sublevels
     C_iter Ci0;                                                 //!< Iterator of first target cell
     C_iter Cj0;                                                 //!< Iterator of first source cell
@@ -65,19 +64,13 @@ namespace EXAFMM_NAMESPACE {
     //! Split cell and call traverse() recursively for child
     void splitCell(C_iter Ci, C_iter Cj, real_t remote) {
       if (Cj->NCHILD == 0) {                                    // If Cj is leaf
-	assert(Ci->NCHILD > 0);                                 //  Make sure Ci is not leaf
 	for (C_iter ci=Ci0+Ci->ICHILD; ci!=Ci0+Ci->ICHILD+Ci->NCHILD; ci++) {// Loop over Ci's children
 	  dualTreeTraversal(ci, Cj, remote);                    //   Traverse a single pair of cells
 	}                                                       //  End loop over Ci's children
       } else if (Ci->NCHILD == 0) {                             // Else if Ci is leaf
-	assert(Cj->NCHILD > 0);                                 //  Make sure Cj is not leaf
 	for (C_iter cj=Cj0+Cj->ICHILD; cj!=Cj0+Cj->ICHILD+Cj->NCHILD; cj++) {// Loop over Cj's children
 	  dualTreeTraversal(Ci, cj, remote);                    //   Traverse a single pair of cells
 	}                                                       //  End loop over Cj's children
-      } else if (Ci->NBODY + Cj->NBODY >= nspawn || (Ci == Cj)) {// Else if cells are still large
-	TraverseRange traverseRange(this, Ci0+Ci->ICHILD, Ci0+Ci->ICHILD+Ci->NCHILD,// Instantiate recursive functor
-				    Cj0+Cj->ICHILD, Cj0+Cj->ICHILD+Cj->NCHILD, remote);
-	traverseRange();                                        //  Traverse for range of cell pairs
       } else if (Ci->R >= Cj->R) {                              // Else if Ci is larger than Cj
 	for (C_iter ci=Ci0+Ci->ICHILD; ci!=Ci0+Ci->ICHILD+Ci->NCHILD; ci++) {// Loop over Ci's children
 	  dualTreeTraversal(ci, Cj, remote);                    //   Traverse a single pair of cells
@@ -105,59 +98,6 @@ namespace EXAFMM_NAMESPACE {
 	splitCell(Ci, Cj, remote);                              //  Split cell and call function recursively for child
       }                                                         // End if for multipole acceptance
     }
-
-    //! Recursive functor for dual tree traversal of a range of Ci and Cj
-    struct TraverseRange {
-      Traversal * traversal;                                    //!< Traversal object
-      C_iter CiBegin;                                           //!< Begin iterator of target cells
-      C_iter CiEnd;                                             //!< End iterator of target cells
-      C_iter CjBegin;                                           //!< Begin Iterator of source cells
-      C_iter CjEnd;                                             //!< End iterator of source cells
-      real_t remote;                                            //!< Weight for remote work load
-      TraverseRange(Traversal * _traversal, C_iter _CiBegin, C_iter _CiEnd,// Constructor
-		    C_iter _CjBegin, C_iter _CjEnd, real_t _remote) :
-	traversal(_traversal), CiBegin(_CiBegin), CiEnd(_CiEnd),// Initialize variables
-	CjBegin(_CjBegin), CjEnd(_CjEnd), remote(_remote) {}
-      void operator() () const {                                // Overload operator()
-	Tracer tracer;                                          //  Instantiate tracer
-	logger::startTracer(tracer);                            //  Start tracer
-	if (CiEnd - CiBegin == 1 || CjEnd - CjBegin == 1) {     //  If only one cell in range
-	  if (CiBegin == CjBegin) {                             //   If Ci == Cj
-	    assert(CiEnd == CjEnd);                             //    Check if self interaction
-	    traversal->dualTreeTraversal(CiBegin, CjBegin, remote);//   Call traverse for single pair
-	  } else {                                              //   If Ci != Cj
-	    for (C_iter Ci=CiBegin; Ci!=CiEnd; Ci++) {          //    Loop over all Ci cells
-	      for (C_iter Cj=CjBegin; Cj!=CjEnd; Cj++) {        //     Loop over all Cj cells
-		traversal->dualTreeTraversal(Ci, Cj, remote);   //      Call traverse for single pair
-	      }                                                 //     End loop over all Cj cells
-	    }                                                   //    End loop over all Ci cells
-	  }                                                     //   End if for Ci == Cj
-	} else {                                                //  If many cells are in the range
-	  C_iter CiMid = CiBegin + (CiEnd - CiBegin) / 2;       //   Split range of Ci cells in half
-	  C_iter CjMid = CjBegin + (CjEnd - CjBegin) / 2;       //   Split range of Cj cells in half
-	  mk_task_group;                                        //   Initialize task group
-	  {
-	    TraverseRange leftBranch(traversal, CiBegin, CiMid, //    Instantiate recursive functor
-				     CjBegin, CjMid, remote);
-	    create_taskc(leftBranch);                           //    Ci:former Cj:former
-	    TraverseRange rightBranch(traversal, CiMid, CiEnd,  //    Instantiate recursive functor
-				      CjMid, CjEnd, remote);
-	    rightBranch();                                      //    Ci:latter Cj:latter
-	    wait_tasks;                                         //    Synchronize task group
-	  }
-	  {
-	    TraverseRange leftBranch(traversal, CiBegin, CiMid, //    Instantiate recursive functor
-				     CjMid, CjEnd, remote);
-	    create_taskc(leftBranch);                           //    Ci:former Cj:latter
-            TraverseRange rightBranch(traversal, CiMid, CiEnd,  //    Instantiate recursive functor
-                                      CjBegin, CjMid, remote);
-            rightBranch();                                      //    Ci:latter Cj:former
-	    wait_tasks;                                         //    Synchronize task group
-	  }
-	}                                                       //  End if for many cells in range
-	logger::stopTracer(tracer);                             //  Stop tracer
-      }                                                         // End overload operator()
-    };
 
     //! Tree traversal of periodic cells
     void traversePeriodic(vec3 cycle) {
@@ -218,8 +158,8 @@ namespace EXAFMM_NAMESPACE {
 
   public:
     //! Constructor
-    Traversal(Kernel & _kernel, real_t _theta, int _nspawn, int _images) : // Constructor
-      kernel(_kernel), theta(_theta), nspawn(_nspawn), images(_images) // Initialize variables
+    Traversal(Kernel & _kernel, real_t _theta, int _images) :   // Constructor
+      kernel(_kernel), theta(_theta), images(_images)           // Initialize variables
     {}
 
     //! Evaluate P2P and M2L using list based traversal

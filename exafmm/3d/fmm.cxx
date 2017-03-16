@@ -14,16 +14,17 @@ using namespace EXAFMM_NAMESPACE;
 int main(int argc, char ** argv) {
   const int numBodies = 1000;
   const int ncrit = 64;
+  const int images = 4;
   const int ksize = 11;
   const vec3 cycle = 2 * M_PI;
   const real_t alpha = ksize / max(cycle);
   const real_t sigma = .25 / M_PI;
   const real_t cutoff = max(cycle) / 2;
   const real_t eps2 = 0.0;
+  const real_t theta = 0.4;
   const complex_t wavek = complex_t(10.,1.) / real_t(2 * M_PI);
   Args args(argc, argv);
   args.numBodies = numBodies;
-  args.images = 4;
   Bodies bodies, bodies2, jbodies, gbodies, buffer;
   BoundBox boundBox;
   Bounds bounds;
@@ -32,12 +33,12 @@ int main(int argc, char ** argv) {
   Dataset data;
   Ewald ewald(ksize, alpha, sigma, cutoff, cycle);
   Kernel kernel(args.P, eps2, wavek);
-  Traversal traversal(kernel, args.theta, args.nspawn, args.images);
+  Traversal traversal(kernel, theta, images);
   UpDownPass upDownPass(kernel);
   Verify verify;
 
   logger::verbose = true;
-  bodies = data.initBodies(args.numBodies, args.distribution);
+  bodies = data.initBodies(numBodies, args.distribution);
   for (B_iter B=bodies.begin(); B!=bodies.end(); B++) {
     B->X *= cycle / (2 * M_PI);
   }
@@ -78,6 +79,5 @@ int main(int argc, char ** argv) {
   logger::printTitle("FMM vs. Ewald");
   verify.print("Rel. L2 Error (pot)",potRel);
   verify.print("Rel. L2 Error (acc)",accRel);
-  buildTree.printTreeData(cells);
   return 0;
 }

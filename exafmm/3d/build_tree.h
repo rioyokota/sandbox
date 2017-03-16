@@ -207,19 +207,6 @@ namespace EXAFMM_NAMESPACE {
       logger::stopTimer("Link tree");                           // Stop timer
       return cells;                                             // Return cells array
     }
-
-    //! Print tree structure statistics
-    void printTreeData(Cells & cells) {
-      if (logger::verbose && !cells.empty()) {                  // If verbose flag is true
-	logger::printTitle("Tree stats");                       //  Print title
-	std::cout  << std::setw(logger::stringLength) << std::left//  Set format
-		   << "Bodies"     << " : " << cells.front().NBODY << std::endl// Print number of bodies
-		   << std::setw(logger::stringLength) << std::left//  Set format
-		   << "Cells"      << " : " << cells.size() << std::endl// Print number of cells
-		   << std::setw(logger::stringLength) << std::left//  Set format
-		   << "Tree depth" << " : " << numLevels << std::endl;//  Print number of levels
-      }                                                         // End if for verbose flag
-    }
   };
 }
 #endif
