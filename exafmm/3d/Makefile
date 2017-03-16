@@ -1,6 +1,6 @@
 .SUFFIXES: .cxx .o
 
-CXX = mpicxx -ggdb3 -Wall -O3 -fopenmp -mavx -ffast-math -funroll-loops -DEXAFMM_LAPLACE -DEXAFMM_PMAX=10
+CXX = mpicxx -ggdb3 -Wall -O3 -fopenmp -mavx -ffast-math -funroll-loops -DEXAFMM_LAPLACE
 
 .cxx.o  :
 	$(CXX) -c $? -o $@

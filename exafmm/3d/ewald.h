@@ -46,7 +46,7 @@ namespace exafmm_laplace {
 #pragma omp parallel for
       for (int b=0; b<int(bodies.size()); b++) {                // Loop over bodies
 	B_iter B=bodies.begin()+b;                              //  Body iterator
-	kvec4 TRG = kreal_t(0);                                 //  Initialize target values
+	vec4 TRG = 0;                                           //  Initialize target values
 	for (W_iter W=waves.begin(); W!=waves.end(); W++) {     //   Loop over waves
 	  real_t th = 0;                                        //    Initialzie phase
 	  for (int d=0; d<3; d++) th += W->K[d] * B->X[d] * scale[d];// Determine phase

@@ -10,9 +10,8 @@ using namespace EXAFMM_NAMESPACE;
 
 int main(int argc, char ** argv) {
   const int P = atoi(argv[1]);
-  const real_t eps2 = 0.0;
   Bodies bodies(1), bodies2(1), jbodies(1);
-  Kernel kernel(P, eps2);
+  Kernel kernel(P);
 
   Cells cells(4);
   Verify verify;

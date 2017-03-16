@@ -14,7 +14,6 @@ namespace EXAFMM_NAMESPACE {
   public:
     const int P;
     const int NTERM;
-    real_t eps2;
     vec3 Xperiodic;
 
   private:
@@ -111,7 +110,7 @@ namespace EXAFMM_NAMESPACE {
     }
 
   public:
-    Kernel(int _P, real_t _eps2) : P(_P), NTERM(P*(P+1)/2), eps2(_eps2) {
+    Kernel(int _P) : P(_P), NTERM(P*(P+1)/2) {
       Xperiodic = 0;
       prefactor.resize(4*P*P);
       Anm.resize(4*P*P);
@@ -151,13 +150,13 @@ namespace EXAFMM_NAMESPACE {
       int ni = Ci->NBODY;
       int nj = Cj->NBODY;
       for (int i=0; i<ni; i++) {
-        kreal_t pot = 0;
-        kreal_t ax = 0;
-        kreal_t ay = 0;
-        kreal_t az = 0;
+        real_t pot = 0;
+        real_t ax = 0;
+        real_t ay = 0;
+        real_t az = 0;
         for (int j=0; j<nj; j++) {
           vec3 dX = Bi[i].X - Bj[j].X - Xperiodic;
-          real_t R2 = norm(dX) + eps2;
+          real_t R2 = norm(dX);
           if (R2 != 0) {
             real_t invR2 = 1.0 / R2;
             real_t invR = Bj[j].SRC * sqrt(invR2);

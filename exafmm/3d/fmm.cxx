@@ -19,7 +19,6 @@ int main(int argc, char ** argv) {
   const real_t alpha = ksize / cycle;
   const real_t sigma = .25 / M_PI;
   const real_t cutoff = cycle / 2;
-  const real_t eps2 = 0.0;
   const real_t theta = 0.4;
 
   // Initialize bodies
@@ -51,7 +50,7 @@ int main(int argc, char ** argv) {
   Cells cells = buildTree.buildTree(bodies, buffer, bounds);
 
   // FMM evaluation
-  Kernel kernel(P, eps2);
+  Kernel kernel(P);
   UpDownPass upDownPass(kernel);
   upDownPass.upwardPass(cells);
   Traversal traversal(kernel, theta, images);
