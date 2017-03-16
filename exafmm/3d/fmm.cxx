@@ -1,4 +1,3 @@
-#include "bound_box.h"
 #include "build_tree.h"
 #include "ewald.h"
 #include "kernel.h"
@@ -42,11 +41,9 @@ int main(int argc, char ** argv) {
   // Build tree
   timer::printTitle("FMM Profiling");
   timer::start("Total FMM");
-  BoundBox boundBox;
-  Bounds bounds = boundBox.getBounds(bodies);
   Bodies buffer(numBodies);
   BuildTree buildTree(ncrit);
-  Cells cells = buildTree.buildTree(bodies, buffer, bounds);
+  Cells cells = buildTree.buildTree(bodies, buffer);
 
   // FMM evaluation
   Kernel kernel(P);
@@ -69,8 +66,7 @@ int main(int argc, char ** argv) {
     B->TRG = 0;
   }
   Bodies jbodies = bodies;
-  bounds = boundBox.getBounds(jbodies);
-  Cells jcells = buildTree.buildTree(jbodies, buffer, bounds);
+  Cells jcells = buildTree.buildTree(jbodies, buffer);
   Ewald ewald(ksize, alpha, sigma, cutoff, cycle);
   ewald.wavePart(bodies, jbodies);
   ewald.realPart(cells, jcells);

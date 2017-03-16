@@ -131,7 +131,6 @@ namespace exafmm {
       if (octNode->NNODE == 1) {                                //  If node has no children
         C->ICHILD = 0;                                          //   Set index of first child cell to zero
         C->NCHILD = 0;                                          //   Number of child cells
-        assert(C->NBODY > 0);                                   //   Check for empty leaf cells
         maxLevel = std::max(maxLevel, level);                   //   Update maximum level of tree
       } else {                                                  //  Else if node has children
         int nchild = 0;                                         //   Initialize number of child cells
@@ -145,7 +144,6 @@ namespace exafmm {
         C_iter Ci = CN;                                         //   CN points to the next free memory address
         C->ICHILD = Ci - C0;                                    //   Set Index of first child cell
         C->NCHILD = nchild;                                     //   Number of child cells
-        assert(C->NCHILD > 0);                                  //   Check for childless non-leaf cells
         CN += nchild;                                           //   Increment next free memory address
         for (int i=0; i<nchild; i++) {                          //   Loop over children
           int octant = octants[i];                              //    Get octant from child index
@@ -163,9 +161,15 @@ namespace exafmm {
     };
 
     //! Transform Xmin & Xmax to X (center) & R (radius)
-    Box bounds2box(Bounds bounds) {
-      vec3 Xmin = bounds.Xmin;                                  // Set local Xmin
-      vec3 Xmax = bounds.Xmax;                                  // Set local Xmax
+    Box getBox(Bodies & bodies) {
+      timer::start("Get bounds");                               // Start timer
+      vec3 Xmin, Xmax;                                          // Set local Xmin
+      Xmin = Xmax = bodies.front().X;                           // Initialize Xmin, Xmax
+      for (B_iter B=bodies.begin(); B!=bodies.end(); B++) {     // Loop over bodies
+        Xmin = min(B->X, Xmin);                                 //  Update Xmin
+        Xmax = max(B->X, Xmax);                                 //  Update Xmax
+      }                                                         // End loop over bodies
+      timer::stop("Get bounds");                                // Stop timer
       Box box;                                                  // Bounding box
       for (int d=0; d<3; d++) box.X[d] = (Xmax[d] + Xmin[d]) / 2; // Calculate center of domain
       box.R = 0;                                                // Initialize localRadius
@@ -181,14 +185,13 @@ namespace exafmm {
     BuildTree(int _ncrit) : ncrit(_ncrit), numLevels(0) {}
 
     //! Build tree structure top down
-    Cells buildTree(Bodies & bodies, Bodies & buffer, Bounds bounds) {
+    Cells buildTree(Bodies & bodies, Bodies & buffer) {
       timer::start("Grow tree");                                // Start timer
-      Box box = bounds2box(bounds);                             // Get box from bounds
+      Box box = getBox(bodies);                                 // Get bounding box
       if (bodies.empty()) {                                     // If bodies vector is empty
 	N0 = NULL;                                              //  Reinitialize N0 with NULL
       } else {                                                  // If bodies vector is not empty
 	if (bodies.size() > buffer.size()) buffer.resize(bodies.size());// Enlarge buffer if necessary
-        assert(box.R > 0);                                      // Check for bounds validity
         B0 = bodies.begin();                                    // Bodies iterator
         buildNodes(N0, bodies, buffer, 0, bodies.size(),        // Build octree nodes
                    box.X, box.R);
