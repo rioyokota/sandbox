@@ -15,7 +15,6 @@ namespace EXAFMM_NAMESPACE {
     const int P;
     const int NTERM;
     real_t eps2;
-    complex_t wavek;
     vec3 Xperiodic;
 
   private:
@@ -112,7 +111,7 @@ namespace EXAFMM_NAMESPACE {
     }
 
   public:
-    Kernel(int _P, real_t _eps2, complex_t _wavek) : P(_P), NTERM(P*(P+1)/2), eps2(_eps2), wavek(_wavek) {
+    Kernel(int _P, real_t _eps2) : P(_P), NTERM(P*(P+1)/2), eps2(_eps2) {
       Xperiodic = 0;
       prefactor.resize(4*P*P);
       Anm.resize(4*P*P);

@@ -1,8 +1,8 @@
 [Remove]
-remote in traversal
-unused driver components
-unused header functions
-unused macros
-wavek
+logger
+eps2
+kahan
 namespace
-args
+macros
+bound_box
+verify

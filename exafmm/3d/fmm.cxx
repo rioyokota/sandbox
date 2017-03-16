@@ -21,7 +21,6 @@ int main(int argc, char ** argv) {
   const real_t cutoff = cycle / 2;
   const real_t eps2 = 0.0;
   const real_t theta = 0.4;
-  const complex_t wavek = complex_t(10.,1.) / real_t(2 * M_PI);
   logger::verbose = true;
 
   // Initialize bodies
@@ -30,8 +29,10 @@ int main(int argc, char ** argv) {
   srand48(0);
   for (B_iter B=bodies.begin(); B!=bodies.end(); B++) {
     for (int d=0; d<3; d++) {
-      B->X[d] = drand48() * cycle - cycle;
+      B->X[d] = drand48() * cycle - cycle * .5;
     }
+  }
+  for (B_iter B=bodies.begin(); B!=bodies.end(); B++) {
     B->SRC = drand48() - .5;
     average += B->SRC;
   }
@@ -51,7 +52,7 @@ int main(int argc, char ** argv) {
   Cells cells = buildTree.buildTree(bodies, buffer, bounds);
 
   // FMM evaluation
-  Kernel kernel(P, eps2, wavek);
+  Kernel kernel(P, eps2);
   UpDownPass upDownPass(kernel);
   upDownPass.upwardPass(cells);
   Traversal traversal(kernel, theta, images);

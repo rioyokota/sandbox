@@ -11,9 +11,8 @@ using namespace EXAFMM_NAMESPACE;
 int main(int argc, char ** argv) {
   const int P = atoi(argv[1]);
   const real_t eps2 = 0.0;
-  const complex_t wavek = complex_t(1.,.1) / real_t(2 * M_PI);
   Bodies bodies(1), bodies2(1), jbodies(1);
-  Kernel kernel(P, eps2, wavek);
+  Kernel kernel(P, eps2);
   logger::verbose = true;
 
   Cells cells(4);

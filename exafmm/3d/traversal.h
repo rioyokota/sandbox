@@ -20,81 +20,37 @@ namespace EXAFMM_NAMESPACE {
     C_iter Cj0;                                                 //!< Iterator of first source cell
 
   private:
-    //! Get level from key
-    int getLevel(uint64_t key) {
-      int level = -1;                                           // Initialize level
-      while( int(key) >= 0 ) {                                  // While key has level offsets to subtract
-	level++;                                                //  Increment level
-	key -= 1 << 3*level;                                    //  Subtract level offset
-      }                                                         // End while loop for level offsets
-      return level;                                             // Return level
-    }
-
-    //! Get 3-D index from key
-    ivec3 getIndex(uint64_t key) {
-      int level = -1;                                           // Initialize level
-      while( int(key) >= 0 ) {                                  // While key has level offsets to subtract
-	level++;                                                //  Increment level
-	key -= 1 << 3*level;                                    //  Subtract level offset
-      }                                                         // End while loop for level offsets
-      key += 1 << 3*level;                                      // Compensate for over-subtraction
-      level = 0;                                                // Initialize level
-      ivec3 iX = 0;                                             // Initialize 3-D index
-      int d = 0;                                                // Initialize dimension
-      while( key > 0 ) {                                        // While key has bits to shift
-	iX[d] += (key % 2) * (1 << level);                      //  Deinterleave key bits to 3-D bits
-	key >>= 1;                                              //  Shift bits in key
-	d = (d+1) % 3;                                          //  Increment dimension
-	if( d == 0 ) level++;                                   //  Increment level
-      }                                                         // End while loop for key bits to shift
-      return iX;                                                // Return 3-D index
-    }
-
-    //! Get 3-D index from periodic key
-    ivec3 getPeriodicIndex(int key) {
-      ivec3 iX;                                                 // Initialize 3-D periodic index
-      iX[0] = key % 3;                                          // x periodic index
-      iX[1] = (key / 3) % 3;                                    // y periodic index
-      iX[2] = key / 9;                                          // z periodic index
-      iX -= 1;                                                  // {0,1,2} -> {-1,0,1}
-      return iX;                                                // Return 3-D periodic index
-    }
-
     //! Split cell and call traverse() recursively for child
-    void splitCell(C_iter Ci, C_iter Cj, real_t remote) {
+    void splitCell(C_iter Ci, C_iter Cj) {
       if (Cj->NCHILD == 0) {                                    // If Cj is leaf
 	for (C_iter ci=Ci0+Ci->ICHILD; ci!=Ci0+Ci->ICHILD+Ci->NCHILD; ci++) {// Loop over Ci's children
-	  dualTreeTraversal(ci, Cj, remote);                    //   Traverse a single pair of cells
+	  dualTreeTraversal(ci, Cj);                            //   Traverse a single pair of cells
 	}                                                       //  End loop over Ci's children
       } else if (Ci->NCHILD == 0) {                             // Else if Ci is leaf
 	for (C_iter cj=Cj0+Cj->ICHILD; cj!=Cj0+Cj->ICHILD+Cj->NCHILD; cj++) {// Loop over Cj's children
-	  dualTreeTraversal(Ci, cj, remote);                    //   Traverse a single pair of cells
+	  dualTreeTraversal(Ci, cj);                            //   Traverse a single pair of cells
 	}                                                       //  End loop over Cj's children
       } else if (Ci->R >= Cj->R) {                              // Else if Ci is larger than Cj
 	for (C_iter ci=Ci0+Ci->ICHILD; ci!=Ci0+Ci->ICHILD+Ci->NCHILD; ci++) {// Loop over Ci's children
-	  dualTreeTraversal(ci, Cj, remote);                    //   Traverse a single pair of cells
+	  dualTreeTraversal(ci, Cj);                            //   Traverse a single pair of cells
 	}                                                       //  End loop over Ci's children
       } else {                                                  // Else if Cj is larger than Ci
 	for (C_iter cj=Cj0+Cj->ICHILD; cj!=Cj0+Cj->ICHILD+Cj->NCHILD; cj++) {// Loop over Cj's children
-	  dualTreeTraversal(Ci, cj, remote);                    //   Traverse a single pair of cells
+	  dualTreeTraversal(Ci, cj);                            //   Traverse a single pair of cells
 	}                                                       //  End loop over Cj's children
       }                                                         // End if for leafs and Ci Cj size
     }
 
     //! Dual tree traversal for a single pair of cells
-    void dualTreeTraversal(C_iter Ci, C_iter Cj, real_t remote) {
+    void dualTreeTraversal(C_iter Ci, C_iter Cj) {
       vec3 dX = Ci->X - Cj->X - kernel.Xperiodic;               // Distance vector from source to target
       real_t RT2 = norm(dX) * theta * theta;                    // Scalar distance squared
       if (RT2 > (Ci->R+Cj->R) * (Ci->R+Cj->R) * (1 - 1e-3)) {   // If distance is far enough
 	kernel.M2L(Ci, Cj);                                     //  M2L kernel
       } else if (Ci->NCHILD == 0 && Cj->NCHILD == 0) {          // Else if both cells are bodies
-	if (Cj->NBODY == 0) {                                   //  If the bodies weren't sent from remote node
-	  kernel.M2L(Ci, Cj);                                   //   M2L kernel
-	} else {
-          kernel.P2P(Ci, Cj);                                   //   P2P kernel for pair of cells
-	}                                                       //  End if for bodies
+        kernel.P2P(Ci, Cj);                                     //  P2P kernel
       } else {                                                  // Else if cells are close but not bodies
-	splitCell(Ci, Cj, remote);                              //  Split cell and call function recursively for child
+	splitCell(Ci, Cj);                                      //  Split cell recursively for child
       }                                                         // End if for multipole acceptance
     }
 
@@ -163,7 +119,6 @@ namespace EXAFMM_NAMESPACE {
 
     //! Evaluate P2P and M2L using list based traversal
     void traverse(Cells & icells, Cells & jcells, vec3 cycle) {
-      int remote = 0;
       if (icells.empty() || jcells.empty()) return;             // Quit if either of the cell vectors are empty
       logger::startTimer("Traverse");                           // Start timer
       logger::initTracer();                                     // Initialize tracer
@@ -173,7 +128,7 @@ namespace EXAFMM_NAMESPACE {
       Cj0 = jcells.begin();                                     // Iterator of first source cell
       kernel.Xperiodic = 0;                                     // Set periodic coordinate offset to 0
       if (images == 0) {                                        //  If non-periodic boundary condition
-        dualTreeTraversal(Ci0, Cj0, remote);                    //   Traverse the tree
+        dualTreeTraversal(Ci0, Cj0);                            //   Traverse the tree
       } else {                                                  //  If periodic boundary condition
         for (int ix=-prange; ix<=prange; ix++) {                //   Loop over x periodic direction
           for (int iy=-prange; iy<=prange; iy++) {              //    Loop over y periodic direction
@@ -181,7 +136,7 @@ namespace EXAFMM_NAMESPACE {
               kernel.Xperiodic[0] = ix * cycle[0];              //      Coordinate shift for x periodic direction
               kernel.Xperiodic[1] = iy * cycle[1];              //      Coordinate shift for y periodic direction
               kernel.Xperiodic[2] = iz * cycle[2];              //      Coordinate shift for z periodic direction
-              dualTreeTraversal(Ci0, Cj0, remote);              //      Traverse the tree for this periodic image
+              dualTreeTraversal(Ci0, Cj0);                      //      Traverse the tree for this periodic image
             }                                                   //     End loop over z periodic direction
           }                                                     //    End loop over y periodic direction
         }                                                       //   End loop over x periodic direction
