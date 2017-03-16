@@ -13,7 +13,6 @@ int main(int argc, char ** argv) {
   const real_t eps2 = 0.0;
   Bodies bodies(1), bodies2(1), jbodies(1);
   Kernel kernel(P, eps2);
-  logger::verbose = true;
 
   Cells cells(4);
   Verify verify;

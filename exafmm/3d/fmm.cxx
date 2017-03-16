@@ -2,8 +2,8 @@
 #include "build_tree.h"
 #include "ewald.h"
 #include "kernel.h"
-#include "logger.h"
 #include "namespace.h"
+#include "timer.h"
 #include "traversal.h"
 #include "up_down_pass.h"
 #include "verify.h"
@@ -21,7 +21,6 @@ int main(int argc, char ** argv) {
   const real_t cutoff = cycle / 2;
   const real_t eps2 = 0.0;
   const real_t theta = 0.4;
-  logger::verbose = true;
 
   // Initialize bodies
   Bodies bodies(numBodies);
@@ -43,8 +42,8 @@ int main(int argc, char ** argv) {
   }
 
   // Build tree
-  logger::printTitle("FMM Profiling");
-  logger::startTimer("Total FMM");
+  timer::printTitle("FMM Profiling");
+  timer::start("Total FMM");
   BoundBox boundBox;
   Bounds bounds = boundBox.getBounds(bodies);
   Bodies buffer(numBodies);
@@ -65,8 +64,8 @@ int main(int argc, char ** argv) {
   upDownPass.dipoleCorrection(bodies, dipole, numBodies, cycle);
 
   // Ewald summation
-  logger::printTitle("Ewald Profiling");
-  logger::startTimer("Total Ewald");
+  timer::printTitle("Ewald Profiling");
+  timer::start("Total Ewald");
   Bodies bodies2 = bodies;
   for (B_iter B=bodies.begin(); B!=bodies.end(); B++) {
     B->TRG = 0;
@@ -78,9 +77,9 @@ int main(int argc, char ** argv) {
   ewald.wavePart(bodies, jbodies);
   ewald.realPart(cells, jcells);
   ewald.selfTerm(bodies);
-  logger::printTitle("Total runtime");
-  logger::printTime("Total FMM");
-  logger::stopTimer("Total Ewald");
+  timer::printTitle("Total runtime");
+  timer::printTime("Total FMM");
+  timer::stop("Total Ewald");
 
   // Verify result
   Verify verify;
@@ -92,7 +91,7 @@ int main(int argc, char ** argv) {
   double potNrm = potSum * potSum;
   double potRel = std::sqrt(potDif/potNrm);
   double accRel = std::sqrt(accDif/accNrm);
-  logger::printTitle("FMM vs. Ewald");
+  timer::printTitle("FMM vs. Ewald");
   verify.print("Rel. L2 Error (pot)",potRel);
   verify.print("Rel. L2 Error (acc)",accRel);
   return 0;

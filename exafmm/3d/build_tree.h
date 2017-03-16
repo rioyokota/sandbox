@@ -1,6 +1,6 @@
 #ifndef build_tree_tbb_h
 #define build_tree_tbb_h
-#include "logger.h"
+#include "timer.h"
 #include "namespace.h"
 #include "types.h"
 
@@ -183,7 +183,7 @@ namespace EXAFMM_NAMESPACE {
 
     //! Build tree structure top down
     Cells buildTree(Bodies & bodies, Bodies & buffer, Bounds bounds) {
-      logger::startTimer("Grow tree");                          // Start timer
+      timer::start("Grow tree");                                // Start timer
       Box box = bounds2box(bounds);                             // Get box from bounds
       if (bodies.empty()) {                                     // If bodies vector is empty
 	N0 = NULL;                                              //  Reinitialize N0 with NULL
@@ -194,8 +194,8 @@ namespace EXAFMM_NAMESPACE {
         buildNodes(N0, bodies, buffer, 0, bodies.size(),        // Build octree nodes
                    box.X, box.R);
       }                                                         // End if for empty root
-      logger::stopTimer("Grow tree");                           // Stop timer
-      logger::startTimer("Link tree");                          // Start timer
+      timer::stop("Grow tree");                                 // Stop timer
+      timer::start("Link tree");                                // Start timer
       Cells cells;                                              // Initialize cell array
       if (N0 != NULL) {                                         // If the node tree is not empty
 	cells.resize(N0->NNODE);                                //  Allocate cells array
@@ -203,7 +203,7 @@ namespace EXAFMM_NAMESPACE {
 	nodes2cells(N0, C0, C0, C0+1, box.X, box.R, numLevels); // Instantiate recursive functor
 	delete N0;                                              //  Deallocate nodes
       }                                                         // End if for empty node tree
-      logger::stopTimer("Link tree");                           // Stop timer
+      timer::stop("Link tree");                                 // Stop timer
       return cells;                                             // Return cells array
     }
   };

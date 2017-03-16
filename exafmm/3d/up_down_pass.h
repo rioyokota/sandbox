@@ -1,6 +1,6 @@
 #ifndef up_down_pass_h
 #define up_down_pass_h
-#include "logger.h"
+#include "timer.h"
 #include "namespace.h"
 #include "types.h"
 
@@ -47,7 +47,7 @@ namespace EXAFMM_NAMESPACE {
 
     //! Upward pass (P2M, M2M)
     void upwardPass(Cells & cells) {
-      logger::startTimer("Upward pass");                        // Start timer
+      timer::start("Upward pass");                              // Start timer
       if (!cells.empty()) {                                     // If cell vector is not empty
 	C_iter C0 = cells.begin();                              //  Set iterator of target root cell
         for (C_iter C=cells.begin(); C!=cells.end(); C++) {     //  Loop over cells
@@ -56,12 +56,12 @@ namespace EXAFMM_NAMESPACE {
         }                                                       //  End loop over cells
 	postOrderTraversal(C0, C0);                             //  Start post-order traversal from root
       }                                                         // End if for empty cell vector
-      logger::stopTimer("Upward pass");                         // Stop timer
+      timer::stop("Upward pass");                               // Stop timer
     }
 
     //! Downward pass (L2L, L2P)
     void downwardPass(Cells & cells) {
-      logger::startTimer("Downward pass");                      // Start timer
+      timer::start("Downward pass");                            // Start timer
       if (!cells.empty()) {                                     // If cell vector is not empty
 	C_iter C0 = cells.begin();                              //  Root cell
 	if (C0->NCHILD == 0 ) {                                 //  If root is the only cell
@@ -71,7 +71,7 @@ namespace EXAFMM_NAMESPACE {
 	  preOrderTraversal(CC, C0);                            //   Start pre-order traversal from root
 	}                                                       //  End loop over child cells
       }                                                         // End if for empty cell vector
-      logger::stopTimer("Downward pass");                       // Stop timer
+      timer::stop("Downward pass");                             // Stop timer
     }
 
     //! Get dipole of entire system

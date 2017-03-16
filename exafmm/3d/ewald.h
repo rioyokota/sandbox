@@ -1,6 +1,6 @@
 #ifndef ewald_h
 #define ewald_h
-#include "logger.h"
+#include "timer.h"
 #include "types.h"
 
 namespace exafmm_laplace {
@@ -129,14 +129,14 @@ namespace exafmm_laplace {
 
     //! Ewald real part
     void realPart(Cells & cells, Cells & jcells) {
-      logger::startTimer("Ewald real part");                    // Start timer
+      timer::start("Ewald real part");                          // Start timer
       C_iter Cj = jcells.begin();                               // Set begin iterator of source cells
       for (C_iter Ci=cells.begin(); Ci!=cells.end(); Ci++) {    // Loop over target cells
 	if (Ci->NCHILD == 0) {                                  //  If target cell is leaf
 	  neighbor(Ci, Cj, Cj);                                 //   Find neighbors
 	}                                                       //  End if for leaf target cell
       }                                                         // End loop over target cells
-      logger::stopTimer("Ewald real part");                     // Stop timer
+      timer::stop("Ewald real part");                           // Stop timer
     }
 
     //! Subtract self term
@@ -148,7 +148,7 @@ namespace exafmm_laplace {
 
     //! Ewald wave part
     void wavePart(Bodies & bodies, Bodies & jbodies) {
-      logger::startTimer("Ewald wave part");                    // Start timer
+      timer::start("Ewald wave part");                          // Start timer
       Waves waves = initWaves();                                // Initialize wave vector
       dft(waves,jbodies);                                       // Apply DFT to bodies to get waves
       vec3 scale;
@@ -163,23 +163,21 @@ namespace exafmm_laplace {
 	W->IMAG *= factor;                                      //  Apply wave factor to imaginary part
       }                                                         // End loop over waves
       idft(waves,bodies);                                       // Inverse DFT
-      logger::stopTimer("Ewald wave part");                     // Stop timer
+      timer::stop("Ewald wave part");                           // Stop timer
     }
 
     void print(int stringLength) {
-      if (logger::verbose) {                                    // If verbose flag is true
-	std::cout << std::setw(stringLength) << std::fixed << std::left// Set format
-		  << "ksize" << " : " << ksize << std::endl     //  Print ksize
-		  << std::setw(stringLength)                    //  Set format
-		  << "alpha" << " : " << alpha << std::endl     //  Print alpha
-		  << std::setw(stringLength)                    //  Set format
-		  << "sigma" << " : " << sigma << std::endl     //  Print sigma
-		  << std::setw(stringLength)                    //  Set format
-		  << "cutoff" << " : " << cutoff << std::endl   //  Print cutoff
-		  << std::setw(stringLength)                    //  Set format
-		  << "cycle" << " : " << cycle << std::endl;    //  Print cycle
-      }                                                         // End if for verbose flag
-    }
+      std::cout << std::setw(stringLength) << std::fixed << std::left// Set format
+                << "ksize" << " : " << ksize << std::endl       //  Print ksize
+                << std::setw(stringLength)                      //  Set format
+                << "alpha" << " : " << alpha << std::endl       //  Print alpha
+                << std::setw(stringLength)                      //  Set format
+                << "sigma" << " : " << sigma << std::endl       //  Print sigma
+                << std::setw(stringLength)                      //  Set format
+                << "cutoff" << " : " << cutoff << std::endl     //  Print cutoff
+                << std::setw(stringLength)                      //  Set format
+                << "cycle" << " : " << cycle << std::endl;      //  Print cycle
+    }                                                           // End if for verbose flag
   };
 }
 #endif

@@ -1,7 +1,7 @@
 #ifndef traversal_h
 #define traversal_h
-#include "logger.h"
 #include "namespace.h"
+#include "timer.h"
 #include "types.h"
 
 #if EXAFMM_COUNT_KERNEL
@@ -56,7 +56,7 @@ namespace EXAFMM_NAMESPACE {
 
     //! Tree traversal of periodic cells
     void traversePeriodic(vec3 cycle) {
-      logger::startTimer("Traverse periodic");                  // Start timer
+      timer::start("Traverse periodic");                        // Start timer
       int prange = .5 / theta + 1;                              // Periodic range
       int neighbor = 2 * prange + 1;                            // Neighbor region size
       int listSize = neighbor * neighbor * neighbor;            // Neighbor list size
@@ -108,7 +108,7 @@ namespace EXAFMM_NAMESPACE {
 	cycle *= neighbor;                                      //  Increase periodic cycle by number of neighbors
 	Cj0 = C0;                                               //  Reset Cj0 back
       }                                                         // End loop over sublevels of tree
-      logger::stopTimer("Traverse periodic");                   // Stop timer
+      timer::stop("Traverse periodic");                         // Stop timer
     }
 
   public:
@@ -120,8 +120,7 @@ namespace EXAFMM_NAMESPACE {
     //! Evaluate P2P and M2L using list based traversal
     void traverse(Cells & icells, Cells & jcells, vec3 cycle) {
       if (icells.empty() || jcells.empty()) return;             // Quit if either of the cell vectors are empty
-      logger::startTimer("Traverse");                           // Start timer
-      logger::initTracer();                                     // Initialize tracer
+      timer::start("Traverse");                                 // Start timer
       int prange = .5 / theta + 1;                              // Periodic range
       prange = 1;
       Ci0 = icells.begin();                                     // Iterator of first target cell
@@ -142,8 +141,7 @@ namespace EXAFMM_NAMESPACE {
         }                                                       //   End loop over x periodic direction
         traversePeriodic(cycle);                                //   Traverse tree for periodic images
       }                                                         //  End if for periodic boundary condition
-      logger::stopTimer("Traverse");                            // Stop timer
-      logger::writeTracer();                                    // Write tracer to file
+      timer::stop("Traverse");                                  // Stop timer
     }
 
     //! Direct summation

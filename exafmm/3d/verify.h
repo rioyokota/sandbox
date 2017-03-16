@@ -1,6 +1,6 @@
 #ifndef verify_h
 #define verify_h
-#include "logger.h"
+#include "timer.h"
 #include "namespace.h"
 #include "types.h"
 
@@ -99,13 +99,10 @@ namespace EXAFMM_NAMESPACE {
 
     //! Print relative L2 norm scalar error
     void print(std::string title, double v) {
-      if (logger::verbose) {                                    // If verbose flag is true
-	std::cout << std::setw(logger::stringLength) << std::left //  Set format
-		  << title << " : " << std::setprecision(logger::decimal) << std::scientific // Set title
-		  << v << std::endl;                            //  Print potential error
-      }                                                         // End if for verbose flag
+      std::cout << std::setw(timer::stringLength) << std::left  //  Set format
+                << title << " : " << std::setprecision(timer::decimal) << std::scientific // Set title
+                << v << std::endl;                              //  Print potential error
     }
-
   };
 }
 #endif
