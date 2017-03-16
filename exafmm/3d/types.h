@@ -2,13 +2,11 @@
 #define types_h
 #include <assert.h>                                             // Some compilers don't have cassert
 #include <complex>
-#include "macros.h"
-#include "namespace.h"
 #include <stdint.h>
 #include <vector>
 #include "vec.h"
 
-namespace EXAFMM_NAMESPACE {
+namespace exafmm {
   // Basic type definitions
 #if EXAFMM_SINGLE
   typedef float real_t;                                         //!< Floating point type is single precision

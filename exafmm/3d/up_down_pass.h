@@ -1,10 +1,9 @@
 #ifndef up_down_pass_h
 #define up_down_pass_h
 #include "timer.h"
-#include "namespace.h"
 #include "types.h"
 
-namespace EXAFMM_NAMESPACE {
+namespace exafmm {
   class UpDownPass {
   private:
     Kernel & kernel;                                            //!< Kernel class
@@ -27,15 +26,6 @@ namespace EXAFMM_NAMESPACE {
       if (C->NCHILD==0) {                                       //  If leaf cell
         kernel.L2P(C);                                          //  L2P kernel
       }                                                         // End if for leaf cell
-#if EXAFMM_USE_WEIGHT
-      C_iter CP = C0 + C->IPARENT;                              // Parent cell
-      C->WEIGHT += CP->WEIGHT;                                  // Add parent's weight
-      if (C->NCHILD==0) {                                       // If leaf cell
-        for (B_iter B=C->BODY; B!=C->BODY+C->NBODY; B++) {      //  Loop over bodies in cell
-          B->WEIGHT += C->WEIGHT;                               //   Add cell weights to bodies
-        }                                                       //  End loop over bodies in cell
-      }                                                         // End if for leaf cell
-#endif
       for (C_iter CC=C0+C->ICHILD; CC!=C0+C->ICHILD+C->NCHILD; CC++) {// Loop over child cells
         preOrderTraversal(CC, C0);                              //  Recursive call for child cell
       }                                                         // End loop over chlid cells

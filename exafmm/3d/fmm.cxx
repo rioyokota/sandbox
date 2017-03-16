@@ -2,12 +2,11 @@
 #include "build_tree.h"
 #include "ewald.h"
 #include "kernel.h"
-#include "namespace.h"
 #include "timer.h"
 #include "traversal.h"
 #include "up_down_pass.h"
 #include "verify.h"
-using namespace EXAFMM_NAMESPACE;
+using namespace exafmm;
 
 int main(int argc, char ** argv) {
   const int numBodies = 1000;

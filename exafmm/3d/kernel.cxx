@@ -1,12 +1,11 @@
 #include <cmath>
 #include <cstdlib>
 #include <iostream>
-#include "namespace.h"
 #include "kernel.h"
 #include <stdint.h>
 #include <vector>
 #include "verify.h"
-using namespace EXAFMM_NAMESPACE;
+using namespace exafmm;
 
 int main(int argc, char ** argv) {
   const int P = atoi(argv[1]);

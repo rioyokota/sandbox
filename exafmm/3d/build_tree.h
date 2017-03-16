@@ -1,10 +1,9 @@
 #ifndef build_tree_tbb_h
 #define build_tree_tbb_h
 #include "timer.h"
-#include "namespace.h"
 #include "types.h"
 
-namespace EXAFMM_NAMESPACE {
+namespace exafmm {
   class BuildTree {
     typedef vec<8,int> ivec8;                                   //!< Vector of 8 integer types
 

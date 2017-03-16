@@ -1,7 +1,5 @@
 [Remove]
-eps2
-kahan
-namespace
+weight
 macros
 bound_box
 verify

@@ -1,12 +1,8 @@
 #ifndef vec_h
 #define vec_h
-#include "namespace.h"
 #include <ostream>
-#ifndef EXAFMM_VEC_NEWTON
-#define EXAFMM_VEC_NEWTON 1
-#endif
 
-namespace EXAFMM_NAMESPACE {
+namespace exafmm {
   template<int N, typename T>
   class vec {
   private:

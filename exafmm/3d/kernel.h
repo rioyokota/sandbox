@@ -2,9 +2,8 @@
 #define laplace_h
 #include <cstdlib>
 #include "types.h"
-#include "namespace.h"
 
-namespace EXAFMM_NAMESPACE {
+namespace exafmm {
   class Kernel {
   private:
     std::vector<real_t> prefactor;                              // sqrt( (n - |m|)! / (n + |m|)! )

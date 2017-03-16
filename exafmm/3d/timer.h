@@ -5,14 +5,13 @@
 #include <iomanip>
 #include <iostream>
 #include <map>
-#include "namespace.h"
 #include <stdint.h>
 #include <string>
 #include <sstream>
 #include <sys/time.h>
 #include <vector>
 
-namespace EXAFMM_NAMESPACE {
+namespace exafmm {
   //! Timer and Tracer logger
   namespace timer {
     typedef std::map<std::string,double> Timer;                 //!< Map of timer event name to timed value

@@ -1,16 +1,9 @@
 #ifndef traversal_h
 #define traversal_h
-#include "namespace.h"
 #include "timer.h"
 #include "types.h"
 
-#if EXAFMM_COUNT_KERNEL
-#define countKernel(N) N++
-#else
-#define countKernel(N)
-#endif
-
-namespace EXAFMM_NAMESPACE {
+namespace exafmm {
   class Traversal {
   private:
     Kernel & kernel;                                            //!< Kernel class

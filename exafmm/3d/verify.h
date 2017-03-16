@@ -1,19 +1,12 @@
 #ifndef verify_h
 #define verify_h
 #include "timer.h"
-#include "namespace.h"
 #include "types.h"
 
-namespace EXAFMM_NAMESPACE {
+namespace exafmm {
   //! Verify results
   class Verify {
   public:
-    bool verbose;                                               //!< Print to screen
-    double average, average2;                                   //!< Average for regression
-
-    //! Constructor
-    Verify() : average(0), average2(0) {}
-
     //! Get sum of scalar component of a vector of target bodies
     double getSumScalar(Bodies & bodies) {
       double v = 0;                                             // Initialize difference
@@ -42,17 +35,6 @@ namespace EXAFMM_NAMESPACE {
       return v;                                                 // Return difference
     }
 
-    //! Get difference between scalar component of two vectors of target bodies
-    double getRelScalar(Bodies & bodies, Bodies & bodies2) {
-      double v = 0;                                             // Initialize difference
-      B_iter B2 = bodies2.begin();                              // Set iterator of bodies2
-      for (B_iter B=bodies.begin(); B!=bodies.end(); B++, B2++) { // Loop over bodies & bodies2
-	v += std::abs(((B->TRG[0] - B2->TRG[0]) * (B->TRG[0] - B2->TRG[0]))
-		      / (B2->TRG[0] * B2->TRG[0]));             //  Difference of scalar component
-      }                                                         // End loop over bodies & bodies2
-      return v;                                                 // Return difference
-    }
-
     //! Get norm of scalar component of a vector of target bodies
     double getNrmVector(Bodies & bodies) {
       double v = 0;                                             // Initialize norm
@@ -72,21 +54,6 @@ namespace EXAFMM_NAMESPACE {
 	v += std::abs((B->TRG[1] - B2->TRG[1]) * (B->TRG[1] - B2->TRG[1]) + //  Difference of vector x component
 		      (B->TRG[2] - B2->TRG[2]) * (B->TRG[2] - B2->TRG[2]) + //  Difference of vector y component
 		      (B->TRG[3] - B2->TRG[3]) * (B->TRG[3] - B2->TRG[3])); //  Difference of vector z component
-      }                                                         // End loop over bodies & bodies2
-      return v;                                                 // Return difference
-    }
-
-    //! Get difference between scalar component of two vectors of target bodies
-    double getRelVector(Bodies & bodies, Bodies & bodies2) {
-      double v = 0;                                             // Initialize difference
-      B_iter B2 = bodies2.begin();                              // Set iterator of bodies2
-      for (B_iter B=bodies.begin(); B!=bodies.end(); B++, B2++) { // Loop over bodies & bodies2
-	v += std::abs(((B->TRG[1] - B2->TRG[1]) * (B->TRG[1] - B2->TRG[1]) +//  Difference of vector x component
-		       (B->TRG[2] - B2->TRG[2]) * (B->TRG[2] - B2->TRG[2]) +//  Difference of vector y component
-		       (B->TRG[3] - B2->TRG[3]) * (B->TRG[3] - B2->TRG[3]))//   Difference of vector z component
-		      / (B2->TRG[1] * B2->TRG[1] +              //  Norm of vector x component
-			 B2->TRG[2] * B2->TRG[2] +              //  Norm of vector y component
-			 B2->TRG[3] * B2->TRG[3]));             //  Norm of vector z component
       }                                                         // End loop over bodies & bodies2
       return v;                                                 // Return difference
     }
