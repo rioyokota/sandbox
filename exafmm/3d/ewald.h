@@ -139,13 +139,6 @@ namespace exafmm {
       timer::stop("Ewald real part");                           // Stop timer
     }
 
-    //! Subtract self term
-    void selfTerm(Bodies & bodies) {
-      for (B_iter B=bodies.begin(); B!=bodies.end(); B++) {     // Loop over all bodies
-	B->TRG[0] -= M_2_SQRTPI * B->SRC * alpha;               //  Self term of Ewald real part
-      }                                                         // End loop over all bodies in cell
-    }
-
     //! Ewald wave part
     void wavePart(Bodies & bodies, Bodies & jbodies) {
       timer::start("Ewald wave part");                          // Start timer
@@ -166,18 +159,12 @@ namespace exafmm {
       timer::stop("Ewald wave part");                           // Stop timer
     }
 
-    void print(int stringLength) {
-      std::cout << std::setw(stringLength) << std::fixed << std::left// Set format
-                << "ksize" << " : " << ksize << std::endl       //  Print ksize
-                << std::setw(stringLength)                      //  Set format
-                << "alpha" << " : " << alpha << std::endl       //  Print alpha
-                << std::setw(stringLength)                      //  Set format
-                << "sigma" << " : " << sigma << std::endl       //  Print sigma
-                << std::setw(stringLength)                      //  Set format
-                << "cutoff" << " : " << cutoff << std::endl     //  Print cutoff
-                << std::setw(stringLength)                      //  Set format
-                << "cycle" << " : " << cycle << std::endl;      //  Print cycle
-    }                                                           // End if for verbose flag
+    //! Subtract self term
+    void selfTerm(Bodies & bodies) {
+      for (B_iter B=bodies.begin(); B!=bodies.end(); B++) {     // Loop over all bodies
+	B->TRG[0] -= M_2_SQRTPI * B->SRC * alpha;               //  Self term of Ewald real part
+      }                                                         // End loop over all bodies in cell
+    }
   };
 }
 #endif

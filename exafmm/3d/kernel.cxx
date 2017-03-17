@@ -86,8 +86,8 @@ int main(int argc, char ** argv) {
       (B->TRG[3] - B2->TRG[3]) * (B->TRG[3] - B2->TRG[3]);
     accNrm += B->TRG[1] * B->TRG[1] + B->TRG[2] * B->TRG[2] + B->TRG[3] * B->TRG[3];
   }
-  double potRel = std::sqrt(potDif/potNrm);
-  double accRel = std::sqrt(accDif/accNrm);
+  real_t potRel = std::sqrt(potDif/potNrm);
+  real_t accRel = std::sqrt(accDif/accNrm);
   printf("%-20s : %8.5e s\n","Rel. L2 Error (pot)", potRel);
   printf("%-20s : %8.5e s\n","Rel. L2 Error (acc)", accRel);
   return 0;

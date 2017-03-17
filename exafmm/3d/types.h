@@ -7,13 +7,8 @@
 
 namespace exafmm {
   // Basic type definitions
-#if EXAFMM_SINGLE
-  typedef float real_t;                                         //!< Floating point type is single precision
-  const real_t EPS = 1e-8f;                                     //!< Single precision epsilon
-#else
-  typedef double real_t;                                        //!< Floating point type is double precision
-  const real_t EPS = 1e-16;                                     //!< Double precision epsilon
-#endif
+  typedef double real_t;                                        //!< Floating point type is single precision
+  const real_t EPS = 1e-16f;                                    //!< Single precision epsilon
   typedef std::complex<real_t> complex_t;                       //!< Complex type
   const complex_t I(0.,1.);                                     //!< Imaginary unit
 
@@ -24,12 +19,6 @@ namespace exafmm {
   struct Box {
     vec3   X;                                                   //!< Box center
     real_t R;                                                   //!< Box radius
-  };
-
-  //! Min & max bounds of bounding box
-  struct Bounds {
-    vec3 Xmin;                                                  //!< Minimum value of coordinates
-    vec3 Xmax;                                                  //!< Maximum value of coordinates
   };
 
   //! Structure of bodies

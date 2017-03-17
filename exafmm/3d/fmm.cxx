@@ -1,7 +1,6 @@
 #include "build_tree.h"
 #include "ewald.h"
 #include "kernel.h"
-#include "timer.h"
 #include "traversal.h"
 #include "up_down_pass.h"
 using namespace exafmm;
@@ -38,7 +37,8 @@ int main(int argc, char ** argv) {
   }
 
   // Build tree
-  timer::printTitle("FMM Profiling");
+
+  printf("--- %-16s ------------\n", "FMM Profiling");
   Bodies buffer(numBodies);
   BuildTree buildTree(ncrit);
   Cells cells = buildTree.buildTree(bodies, buffer);
@@ -66,7 +66,7 @@ int main(int argc, char ** argv) {
   }
 
   // Ewald summation
-  timer::printTitle("Ewald Profiling");
+  printf("--- %-16s ------------\n", "Ewald Profiling");
   Bodies bodies2 = bodies;
   for (B_iter B=bodies.begin(); B!=bodies.end(); B++) {
     B->TRG = 0;
@@ -89,11 +89,11 @@ int main(int argc, char ** argv) {
       (B->TRG[3] - B2->TRG[3]) * (B->TRG[3] - B2->TRG[3]);
     accNrm += B->TRG[1] * B->TRG[1] + B->TRG[2] * B->TRG[2] + B->TRG[3] * B->TRG[3];
   }
-  double potDif = (potSum - potSum2) * (potSum - potSum2);
-  double potNrm = potSum * potSum;
-  double potRel = std::sqrt(potDif/potNrm);
-  double accRel = std::sqrt(accDif/accNrm);
-  timer::printTitle("FMM vs. Ewald");
+  real_t potDif = (potSum - potSum2) * (potSum - potSum2);
+  real_t potNrm = potSum * potSum;
+  real_t potRel = std::sqrt(potDif/potNrm);
+  real_t accRel = std::sqrt(accDif/accNrm);
+  printf("--- %-16s ------------\n", "FMM vs. Ewald");
   printf("%-20s : %8.5e s\n","Rel. L2 Error (pot)", potRel);
   printf("%-20s : %8.5e s\n","Rel. L2 Error (acc)", accRel);
   return 0;

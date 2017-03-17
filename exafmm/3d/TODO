@@ -1,2 +1,4 @@
 [Remove]
-double > real_t
+iterators
+merge up_down_pass
+simplify traversal
