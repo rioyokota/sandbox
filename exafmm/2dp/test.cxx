@@ -20,8 +20,9 @@ int main(int argc, char ** argv) {                              // Main function
   const int numTargets = 10;                                    // Number of targets for checking answer
   const int ncrit = 8;                                          // Number of bodies per leaf cell
   const real_t cycle = 2 * M_PI;                                // Cycle of periodic boundary condition
-  images = 3;                                                   // 3^images * 3^images * 3^images periodic images
+  P = 6;                                                        // Order of expansions
   theta = 0.4;                                                  // Multipole acceptance criterion
+  images = 3;                                                   // 3^images * 3^images * 3^images periodic images
 
   //! Initialize dsitribution, source & target value of bodies
   printf("--- FMM Profiling ----------------\n");               // Start profiling
@@ -45,7 +46,7 @@ int main(int argc, char ** argv) {                              // Main function
   printf("%-20s : %lf s\n","Init bodies",getTime()-time);       // Stop timer
 
   // ! Get Xmin and Xmax of domain
-  time = getTime();                                             // Start timer 
+  time = getTime();                                             // Start timer
   real_t R0;                                                    // Radius of root cell
   real_t Xmin[2], Xmax[2], X0[2];                               // Min, max of domain, and center of root cell
   for (int d=0; d<2; d++) Xmin[d] = Xmax[d] = bodies[0].X[d];   // Initialize Xmin, Xmax
@@ -60,27 +61,27 @@ int main(int argc, char ** argv) {                              // Main function
     R0 = fmax(Xmax[d] - X0[d], R0);                             //  Calculate max distance from center
   }                                                             // End loop over dimensions
   R0 *= 1.00001;                                                // Add some leeway to radius
-  printf("%-20s : %lf s\n","Get bounds",getTime()-time);        // Stop timer 
+  printf("%-20s : %lf s\n","Get bounds",getTime()-time);        // Stop timer
 
   //! Build tree structure
-  time = getTime();                                             // Start timer 
+  time = getTime();                                             // Start timer
   Body * buffer = new Body [numBodies];                         // Buffer for bodies
   for (int b=0; b<numBodies; b++) buffer[b] = bodies[b];        // Copy bodies to buffer
   Cell * C0 = buildTree(bodies, buffer, 0, numBodies, X0, R0, ncrit);// Build tree recursively
-  printf("%-20s : %lf s\n","Grow tree",getTime()-time);         // Stop timer 
+  printf("%-20s : %lf s\n","Grow tree",getTime()-time);         // Stop timer
 
   //! FMM evaluation
-  time = getTime();                                             // Start timer 
+  time = getTime();                                             // Start timer
   upwardPass(C0);                                               // Upward pass for P2M, M2M
-  printf("%-20s : %lf s\n","Upward pass",getTime()-time);       // Stop timer 
-  time = getTime();                                             // Start timer 
+  printf("%-20s : %lf s\n","Upward pass",getTime()-time);       // Stop timer
+  time = getTime();                                             // Start timer
   traversal(C0, C0, cycle);                                     // Traversal for M2L, P2P
-  printf("%-20s : %lf s\n","Traverse",getTime()-time);          // Stop timer 
-  time = getTime();                                             // Start timer 
+  printf("%-20s : %lf s\n","Traverse",getTime()-time);          // Stop timer
+  time = getTime();                                             // Start timer
   downwardPass(C0);                                             // Downward pass for L2L, L2P
-  printf("%-20s : %lf s\n","Downward pass",getTime()-time);     // Stop timer 
+  printf("%-20s : %lf s\n","Downward pass",getTime()-time);     // Stop timer
 
-  //! Downsize target bodies by even sampling 
+  //! Downsize target bodies by even sampling
   Body * jbodies = new Body [numBodies];                        // Source bodies
   for (int b=0; b<numBodies; b++) jbodies[b] = bodies[b];       // Save bodies in jbodies
   int stride = numBodies / numTargets;                          // Stride of sampling
@@ -95,9 +96,9 @@ int main(int argc, char ** argv) {                              // Main function
     bodies[b].p = 0;                                            //  Clear potential
     for (int d=0; d<2; d++) bodies[b].F[d] = 0;                 //  Clear force
   }                                                             // End loop over bodies
-  time = getTime();                                             // Start timer 
+  time = getTime();                                             // Start timer
   direct(numTargets, bodies, numBodies, jbodies, cycle);        // Direc N-body
-  printf("%-20s : %lf s\n","Direct N-Body",getTime()-time);     // Stop timer 
+  printf("%-20s : %lf s\n","Direct N-Body",getTime()-time);     // Stop timer
 
   //! Evaluate relaitve L2 norm error
   double dp2 = 0, p2 = 0, df2 = 0, f2 = 0;
