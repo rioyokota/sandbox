@@ -1,13 +1,13 @@
 .SUFFIXES: .cxx .o
 
-CXX = g++ -O3 -fopenmp -ffast-math
+CXX = g++ -g -Wall -O3 -fopenmp
 
 .cxx.o  :
 	$(CXX) -c $^ -o $@
 
-test: test.o
-	$(CXX) $?
-	./a.out
+fmm: fmm.o
+	$(CXX) $? -o $@
+	./fmm
 
 clean:
-	$(RM) *.o *.out
+	$(RM) ./*.o ./fmm

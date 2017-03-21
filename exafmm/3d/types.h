@@ -1,14 +1,12 @@
 #ifndef types_h
 #define types_h
 #include <complex>
-#include <stdint.h>
 #include <vector>
 #include "vec.h"
 
 namespace exafmm {
   // Basic type definitions
-  typedef double real_t;                                        //!< Floating point type is single precision
-  const real_t EPS = 1e-16f;                                    //!< Single precision epsilon
+  typedef double real_t;                                        //!< Floating point type
   typedef std::complex<real_t> complex_t;                       //!< Complex type
   const complex_t I(0.,1.);                                     //!< Imaginary unit
 
@@ -17,16 +15,16 @@ namespace exafmm {
 
   //! Center and radius of bounding box
   struct Box {
-    vec3   X;                                                   //!< Box center
+    vec3 X;                                                     //!< Box center
     real_t R;                                                   //!< Box radius
   };
 
   //! Structure of bodies
   struct Body {                                                 //!< Base components of body structure
-    int64_t ICELL;                                              //!< Cell index
-    vec3    X;                                                  //!< Position
+    int ICELL;                                                  //!< Cell index
+    vec3  X;                                                    //!< Position
     real_t  SRC;                                                //!< Scalar real values
-    vec4    TRG;                                                //!< Scalar+vector3 real values
+    vec4 TRG;                                                   //!< Scalar+vector3 real values
   };
   typedef std::vector<Body> Bodies;                             //!< Vector of bodies
   typedef typename Bodies::iterator B_iter;                     //!< Iterator of body vector
@@ -38,7 +36,7 @@ namespace exafmm {
     int NCHILD;                                                 //!< Number of child cells
     int IBODY;                                                  //!< Index of first body
     int NBODY;                                                  //!< Number of descendant bodies
-    uint64_t ICELL;                                             //!< Cell index
+    int ICELL;                                                  //!< Cell index
     vec3 X;                                                     //!< Cell center
     real_t R;                                                   //!< Cell radius
     B_iter BODY;                                                //!< Iterator of first body

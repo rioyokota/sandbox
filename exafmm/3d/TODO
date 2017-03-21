@@ -1,4 +1,6 @@
-[Remove]
-iterators
+remove classes
+iterators > pointers
 merge up_down_pass
 simplify traversal
+add kernel to 2d
+remove vec.h

@@ -1,12 +1,9 @@
-#include <cmath>
-#include <cstdlib>
-#include <cstdio>
 #include <sys/time.h>
 
-#include "types.h"
-#include "buildtree.h"
+#include "build_tree.h"
 #include "kernel.h"
 #include "traversal.h"
+using namespace exafmm;
 
 //! Get the current time in seconds
 double getTime() {
@@ -19,10 +16,12 @@ int main(int argc, char ** argv) {                              // Main function
   const int numBodies = 10000;                                  // Number of bodies
   const int numTargets = 10;                                    // Number of targets for checking answer
   const int ncrit = 8;                                          // Number of bodies per leaf cell
+  const real_t cycle = 2 * M_PI;                                // Cycle of periodic boundary condition
   P = 6;                                                        // Order of expansions
   theta = 0.4;                                                  // Multipole acceptance criterion
+  images = 3;                                                   // 3^images * 3^images * 3^images periodic images
 
-  //! Initialize distribution, source & target value of bodies
+  //! Initialize dsitribution, source & target value of bodies
   printf("--- FMM Profiling ----------------\n");               // Start profiling
   double time = getTime();                                      // Start timer
   srand48(0);                                                   // Set seed for random number generator
@@ -73,7 +72,7 @@ int main(int argc, char ** argv) {                              // Main function
   upwardPass(C0);                                               // Upward pass for P2M, M2M
   printf("%-20s : %lf s\n","Upward pass",getTime()-time);       // Stop timer
   time = getTime();                                             // Start timer
-  dualTreeTraversal(C0, C0);                                    // Traversal for M2L, P2P
+  traversal(C0, C0, cycle);                                     // Traversal for M2L, P2P
   printf("%-20s : %lf s\n","Traverse",getTime()-time);          // Stop timer
   time = getTime();                                             // Start timer
   downwardPass(C0);                                             // Downward pass for L2L, L2P
@@ -95,7 +94,7 @@ int main(int argc, char ** argv) {                              // Main function
     for (int d=0; d<2; d++) bodies[b].F[d] = 0;                 //  Clear force
   }                                                             // End loop over bodies
   time = getTime();                                             // Start timer
-  direct(numTargets, bodies, numBodies, jbodies);               // Direc N-body
+  direct(numTargets, bodies, numBodies, jbodies, cycle);        // Direc N-body
   printf("%-20s : %lf s\n","Direct N-Body",getTime()-time);     // Stop timer
 
   //! Evaluate relaitve L2 norm error

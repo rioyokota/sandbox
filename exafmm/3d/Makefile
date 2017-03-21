@@ -1,26 +1,22 @@
 .SUFFIXES: .cxx .o
 
-CXX = mpicxx -ggdb3 -Wall -O3 -fopenmp
+CXX = g++ -g -Wall -O3 -fopenmp
 
 .cxx.o  :
 	$(CXX) -c $? -o $@
 
 all:
-	@make run_kernel
-	@make run_fmm
+	@make kernel
+	@make fmm
 
 kernel: kernel.o
 	$(CXX) $? -o $@
-
-run_kernel: kernel
 	./kernel 10
 	./kernel 20
 	./kernel 30
 
 fmm: fmm.o
 	$(CXX) $? -o $@
-
-run_fmm: fmm
 	./fmm
 
 clean:

@@ -1,5 +1,5 @@
-#ifndef laplace_h
-#define laplace_h
+#ifndef kernel_h
+#define kernel_h
 #include <cstdlib>
 #include "types.h"
 
@@ -118,9 +118,9 @@ namespace exafmm {
         for (int m=-n; m<=n; m++) {                             //  Loop over m in Anm
           int nm = n*n+n+m;                                     //   Index of Anm
           int nabsm = abs(m);                                   //   |m|
-          real_t fnmm = EPS;                                    //   Initialize (n - m)!
+          real_t fnmm = 1.0;                                    //   Initialize (n - m)!
           for (int i=1; i<=n-m; i++) fnmm *= i;                 //   (n - m)!
-          real_t fnpm = EPS;                                    //   Initialize (n + m)!
+          real_t fnpm = 1.0;                                    //   Initialize (n + m)!
           for (int i=1; i<=n+m; i++) fnpm *= i;                 //   (n + m)!
           real_t fnma = 1.0;                                    //   Initialize (n - |m|)!
           for (int i=1; i<=n-nabsm; i++) fnma *= i;             //   (n - |m|)!
@@ -136,7 +136,7 @@ namespace exafmm {
             for (int m=-n; m<=n; m++, nm++, jknm++) {           //    Loop over m in Cjknm
               const int jnkm = (j+n)*(j+n)+j+n+m-k;             //     Index C_{j+n}^{m-k}
               Cnm[jknm] = std::pow(I,real_t(abs(k-m)-abs(k)-abs(m)))//     Cjknm
-                * real_t(oddOrEven(j)*Anm[nm]*Anm[jk]/Anm[jnkm]) * EPS;
+                * real_t(oddOrEven(j)*Anm[nm]*Anm[jk]/Anm[jnkm]);
             }                                                   //    End loop over m in Cjknm
           }                                                     //   End loop over n in Cjknm
         }                                                       //  End loop over in k in Cjknm
@@ -222,7 +222,7 @@ namespace exafmm {
                 }
               }
             }
-            Ci->M[jks] += M * EPS;
+            Ci->M[jks] += M;
           }
         }
       }
@@ -290,7 +290,7 @@ namespace exafmm {
               }
             }
           }
-          Ci->L[jks] += L * EPS;
+          Ci->L[jks] += L;
         }
       }
     }
@@ -298,7 +298,7 @@ namespace exafmm {
     void L2P(C_iter Ci) {
       complex_t Ynm[P*P], YnmTheta[P*P];
       for (B_iter B=Ci->BODY; B!=Ci->BODY+Ci->NBODY; B++) {
-        vec3 dX = B->X - Ci->X + EPS;
+        vec3 dX = B->X - Ci->X;
         vec3 spherical = 0;
         vec3 cartesian = 0;
         real_t r, theta, phi;

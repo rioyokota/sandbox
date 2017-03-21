@@ -1,9 +1,4 @@
-#include <cmath>
-#include <cstdlib>
-#include <cstdio>
 #include "kernel.h"
-#include <stdint.h>
-#include <vector>
 using namespace exafmm;
 
 int main(int argc, char ** argv) {
