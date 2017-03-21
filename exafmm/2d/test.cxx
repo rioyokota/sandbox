@@ -19,6 +19,7 @@ int main(int argc, char ** argv) {                              // Main function
   const int numBodies = 10000;                                  // Number of bodies
   const int numTargets = 10;                                    // Number of targets for checking answer
   const int ncrit = 8;                                          // Number of bodies per leaf cell
+  P = 6;                                                        // Order of expansions
   theta = 0.4;                                                  // Multipole acceptance criterion
 
   //! Initialize distribution, source & target value of bodies

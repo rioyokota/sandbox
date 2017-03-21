@@ -2,6 +2,8 @@
 #define kernel_h
 #include <iostream>
 
+int P;                                                          //!< Order of expansions
+
 //!< P2P kernel between cells Ci and Cj
 void P2P(Cell * Ci, Cell * Cj) {
   Body * Bi = Ci->BODY;                                         // Target body pointer
