@@ -48,6 +48,8 @@ void traversePeriodic(Cell * Ci0, Cell * Cj0, real_t cycle) {
   for (int d=0; d<2; d++) Xperiodic[d] = 0;                     // Periodic coordinate offset
   Cell * Cp = new Cell();                                       // Last cell is periodic parent cell
   Cell * Cj = new Cell();                                       // Last cell is periodic parent cell
+  Cp->M.resize(P, 0);                                           // Allocate and initialize multipole coefs
+  Cj->M.resize(P, 0);                                           // Allocate and initialize multipole coefs
   *Cp = *Cj = *Cj0;                                             // Copy values from source root
   Cp->CHILD[0] = Cj;                                            // Child cells for periodic center cell
   for (int i=1; i<4; i++) Cp->CHILD[i] = NULL;                  // Define only one child
@@ -65,7 +67,7 @@ void traversePeriodic(Cell * Ci0, Cell * Cj0, real_t cycle) {
 	}                                                       //    Endif for periodic center cell
       }                                                         //   End loop over y periodic direction
     }                                                           //  End loop over x periodic direction
-    complex_t M[P];                                             //  Multipole expansions
+    std::vector<complex_t> M(P);                                //  Multipole expansions
     for (int n=0; n<P; n++) {                                   //  Loop over order of expansions
       M[n] = Cp->M[n];                                          //   Save multipoles of periodic parent
       Cp->M[n] = 0;                                             //   Reset multipoles of periodic parent
@@ -84,13 +86,13 @@ void traversePeriodic(Cell * Ci0, Cell * Cj0, real_t cycle) {
   }                                                             // End loop over sublevels of tree
 }
 
-//! Recursive call for upward pass 
+//! Recursive call for upward pass
 void upwardPass(Cell * C) {
   for (int i=0; i<4; i++) {                                     // Loop over child cells
     if (C->CHILD[i]) upwardPass(C->CHILD[i]);                   //  Recursive call with new task
   }                                                             // End loop over child cells
-  for (int n=0; n<P; n++) C->M[n] = 0;                          // Initialize multipole expansion coefficients
-  for (int n=0; n<P; n++) C->L[n] = 0;                          // Initialize local expansion coefficients
+  C->M.resize(P, 0);                                            // Allocate and initialize multipole coefs
+  C->L.resize(P, 0);                                            // Allocate and initialize local coefs
   if (C->NNODE == 1) P2M(C);                                    // P2M kernel
   M2M(C);                                                       // M2M kernel
 }
@@ -120,7 +122,7 @@ void downwardPass(Cell * C) {
     if (C->CHILD[i]) downwardPass(C->CHILD[i]);                 //  Recursive call with new task
   }                                                             // End loop over child cells
 }
-  
+
 //! Direct summation
 void direct(int ni, Body * ibodies, int nj, Body * jbodies, real_t cycle) {
   Cell * Ci = new Cell();                                       // Allocate single target cell

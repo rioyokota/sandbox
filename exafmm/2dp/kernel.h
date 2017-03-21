@@ -2,7 +2,9 @@
 #define kernel_h
 #include <iostream>
 
-//!< P2P kernel between cells Ci and Cj 
+int P;                                                          //!< Order of expansions
+
+//!< P2P kernel between cells Ci and Cj
 void P2P(Cell * Ci, Cell * Cj, real_t Xperiodic[2]) {
   Body * Bi = Ci->BODY;                                         // Target body pointer
   Body * Bj = Cj->BODY;                                         // Source body pointer
@@ -76,7 +78,7 @@ void M2L(Cell * Ci, Cell * Cj, real_t Xperiodic[2]) {
     Ci->L[1] += -Cj->M[k] * powZn;                              //  Add to coefficient
   }                                                             // End loop
   real_t Cnk = -1;                                              // Fix sign term
-  for (int n=2; n<P; n++) {                                     // Loop over 
+  for (int n=2; n<P; n++) {                                     // Loop over
     Cnk *= -1;                                                  //  Flip sign
     powZnk *= invZ;                                             //  Store 1 / z^n
     powZn = Cnk * powZnk;                                       //  Combine terms

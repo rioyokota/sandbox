@@ -1,13 +1,11 @@
 #ifndef types_h
 #define types_h
 #include <complex>
+#include <vector>
 
 // Basic type definitions
 typedef float real_t;                                           //!< Floating point type is single precision
 typedef std::complex<real_t> complex_t;                         //!< Complex type
-
-// Multipole/local expansion coefficients
-const int P = 6;                                                //!< Order of expansions
 
 //! Structure of bodies
 struct Body {
@@ -25,8 +23,8 @@ struct Cell {
   Body * BODY;                                                  //!< Pointer of first body
   real_t X[2];                                                  //!< Cell center
   real_t R;                                                     //!< Cell radius
-  complex_t M[P];                                               //!< Multipole expansion coefficients
-  complex_t L[P];                                               //!< Local expansion coefficients
+  std::vector<complex_t> M;                                     //!< Multipole expansion coefficients
+  std::vector<complex_t> L;                                     //!< Local expansion coefficients
 };
 
 #endif
