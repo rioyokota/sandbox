@@ -1,6 +1,5 @@
 #ifndef ewald_h
 #define ewald_h
-#include "timer.h"
 #include "types.h"
 
 namespace exafmm {
@@ -129,19 +128,16 @@ namespace exafmm {
 
     //! Ewald real part
     void realPart(Cells & cells, Cells & jcells) {
-      timer::start("Ewald real part");                          // Start timer
       C_iter Cj = jcells.begin();                               // Set begin iterator of source cells
       for (C_iter Ci=cells.begin(); Ci!=cells.end(); Ci++) {    // Loop over target cells
 	if (Ci->NCHILD == 0) {                                  //  If target cell is leaf
 	  neighbor(Ci, Cj, Cj);                                 //   Find neighbors
 	}                                                       //  End if for leaf target cell
       }                                                         // End loop over target cells
-      timer::stop("Ewald real part");                           // Stop timer
     }
 
     //! Ewald wave part
     void wavePart(Bodies & bodies, Bodies & jbodies) {
-      timer::start("Ewald wave part");                          // Start timer
       Waves waves = initWaves();                                // Initialize wave vector
       dft(waves,jbodies);                                       // Apply DFT to bodies to get waves
       vec3 scale;
@@ -156,7 +152,6 @@ namespace exafmm {
 	W->IMAG *= factor;                                      //  Apply wave factor to imaginary part
       }                                                         // End loop over waves
       idft(waves,bodies);                                       // Inverse DFT
-      timer::stop("Ewald wave part");                           // Stop timer
     }
 
     //! Subtract self term

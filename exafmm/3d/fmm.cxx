@@ -1,6 +1,7 @@
 #include "build_tree.h"
 #include "ewald.h"
 #include "kernel.h"
+#include "timer.h"
 #include "traversal.h"
 #include "up_down_pass.h"
 using namespace exafmm;
@@ -17,7 +18,9 @@ int main(int argc, char ** argv) {
   const real_t cutoff = cycle / 2;
   const real_t theta = 0.4;
 
+  printf("--- %-16s ------------\n", "FMM Profiling");
   // Initialize bodies
+  start("Initialize bodies");
   Bodies bodies(numBodies);
   real_t average = 0;
   srand48(0);
@@ -35,23 +38,31 @@ int main(int argc, char ** argv) {
     B->SRC -= average;
     B->TRG = 0;
   }
+  stop("Initialize bodies");
 
   // Build tree
-
-  printf("--- %-16s ------------\n", "FMM Profiling");
+  start("Build tree");
   Bodies buffer(numBodies);
   BuildTree buildTree(ncrit);
   Cells cells = buildTree.buildTree(bodies, buffer);
+  stop("Build tree");
 
   // FMM evaluation
+  start("Upward pass");
   Kernel kernel(P);
   UpDownPass upDownPass(kernel);
   upDownPass.upwardPass(cells);
+  stop("Upward pass");
+  start("Traversal");
   Traversal traversal(kernel, theta, images);
   traversal.traverse(cells, cells, cycle);
+  stop("Traversal");
+  start("Downward pass");
   upDownPass.downwardPass(cells);
+  stop("Downward pass");
 
   // Dipole correction
+  start("Dipole correction");
   buffer = bodies;
   vec3 dipole = 0;
   for (B_iter B=bodies.begin(); B!=bodies.end(); B++) {
@@ -64,19 +75,26 @@ int main(int argc, char ** argv) {
       B->TRG[d+1] -= coef * dipole[d];
     }
   }
+  stop("Dipole correction");
 
-  // Ewald summation
   printf("--- %-16s ------------\n", "Ewald Profiling");
+  // Ewald summation
+  start("Build tree");
   Bodies bodies2 = bodies;
   for (B_iter B=bodies.begin(); B!=bodies.end(); B++) {
     B->TRG = 0;
   }
   Bodies jbodies = bodies;
   Cells jcells = buildTree.buildTree(jbodies, buffer);
+  stop("Build tree");
+  start("Wave part");
   Ewald ewald(ksize, alpha, sigma, cutoff, cycle);
   ewald.wavePart(bodies, jbodies);
+  stop("Wave part");
+  start("Real part");
   ewald.realPart(cells, jcells);
   ewald.selfTerm(bodies);
+  stop("Real part");
 
   // Verify result
   real_t potSum = 0, potSum2 = 0, accDif = 0, accNrm = 0;

@@ -1,6 +1,5 @@
 #ifndef traversal_h
 #define traversal_h
-#include "timer.h"
 #include "types.h"
 
 namespace exafmm {
@@ -49,7 +48,6 @@ namespace exafmm {
 
     //! Tree traversal of periodic cells
     void traversePeriodic(vec3 cycle) {
-      timer::start("Traverse periodic");                        // Start timer
       int prange = .5 / theta + 1;                              // Periodic range
       int neighbor = 2 * prange + 1;                            // Neighbor region size
       int listSize = neighbor * neighbor * neighbor;            // Neighbor list size
@@ -101,7 +99,6 @@ namespace exafmm {
 	cycle *= neighbor;                                      //  Increase periodic cycle by number of neighbors
 	Cj0 = C0;                                               //  Reset Cj0 back
       }                                                         // End loop over sublevels of tree
-      timer::stop("Traverse periodic");                         // Stop timer
     }
 
   public:
@@ -113,7 +110,6 @@ namespace exafmm {
     //! Evaluate P2P and M2L using list based traversal
     void traverse(Cells & icells, Cells & jcells, vec3 cycle) {
       if (icells.empty() || jcells.empty()) return;             // Quit if either of the cell vectors are empty
-      timer::start("Traverse");                                 // Start timer
       int prange = .5 / theta + 1;                              // Periodic range
       prange = 1;
       Ci0 = icells.begin();                                     // Iterator of first target cell
@@ -134,7 +130,6 @@ namespace exafmm {
         }                                                       //   End loop over x periodic direction
         traversePeriodic(cycle);                                //   Traverse tree for periodic images
       }                                                         //  End if for periodic boundary condition
-      timer::stop("Traverse");                                  // Stop timer
     }
 
     //! Direct summation
