@@ -10,13 +10,13 @@ int main(int argc, char ** argv) {
   const int numBodies = 1000;
   const int P = 10;
   const int images = 4;
-  const int ksize = 11;
-  const real_t cycle = 2 * M_PI;
-  const real_t alpha = ksize / cycle;
-  const real_t sigma = .25 / M_PI;
-  const real_t cutoff = cycle / 2;
   const real_t theta = 0.4;
   ncrit = 64;
+  cycle = 2 * M_PI;
+  ksize = 11;
+  alpha = ksize / cycle;
+  sigma = .25 / M_PI;
+  cutoff = cycle / 2;
 
   printf("--- %-16s ------------\n", "FMM Profiling");
   // Initialize bodies
@@ -87,12 +87,11 @@ int main(int argc, char ** argv) {
   Cells jcells = buildTree(jbodies, buffer);
   stop("Build tree");
   start("Wave part");
-  Ewald ewald(ksize, alpha, sigma, cutoff, cycle);
-  ewald.wavePart(bodies, jbodies);
+  wavePart(bodies, jbodies);
   stop("Wave part");
   start("Real part");
-  ewald.realPart(cells, jcells);
-  ewald.selfTerm(bodies);
+  realPart(cells, jcells);
+  selfTerm(bodies);
   stop("Real part");
 
   // Verify result
