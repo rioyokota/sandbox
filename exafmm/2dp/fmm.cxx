@@ -1,5 +1,3 @@
-#include <sys/time.h>
-
 #include "build_tree.h"
 #include "kernel.h"
 #include "timer.h"

@@ -1,13 +1,10 @@
 [3d]
-
 remove classes
 iterators > pointers
 merge up_down_pass
 simplify traversal
 remove vec.h
+unify kernel interface
 
 [2d/2dp]
 add kernel.cxx
-
-[2d/2dp/3d]
-NNODE > NBODY
