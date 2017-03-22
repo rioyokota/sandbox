@@ -9,7 +9,6 @@ using namespace exafmm;
 int main(int argc, char ** argv) {
   const int numBodies = 1000;
   const int P = 10;
-  const int ncrit = 64;
   const int images = 4;
   const int ksize = 11;
   const real_t cycle = 2 * M_PI;
@@ -17,6 +16,7 @@ int main(int argc, char ** argv) {
   const real_t sigma = .25 / M_PI;
   const real_t cutoff = cycle / 2;
   const real_t theta = 0.4;
+  ncrit = 64;
 
   printf("--- %-16s ------------\n", "FMM Profiling");
   // Initialize bodies
@@ -43,8 +43,7 @@ int main(int argc, char ** argv) {
   // Build tree
   start("Build tree");
   Bodies buffer(numBodies);
-  BuildTree buildTree(ncrit);
-  Cells cells = buildTree.buildTree(bodies, buffer);
+  Cells cells = buildTree(bodies, buffer);
   stop("Build tree");
 
   // FMM evaluation
@@ -85,7 +84,7 @@ int main(int argc, char ** argv) {
     B->TRG = 0;
   }
   Bodies jbodies = bodies;
-  Cells jcells = buildTree.buildTree(jbodies, buffer);
+  Cells jcells = buildTree(jbodies, buffer);
   stop("Build tree");
   start("Wave part");
   Ewald ewald(ksize, alpha, sigma, cutoff, cycle);

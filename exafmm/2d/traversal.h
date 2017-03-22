@@ -46,12 +46,12 @@ namespace exafmm {
   }
 
   //! Direct summation
-  void direct(int ni, Body * ibodies, int nj, Body * jbodies) {
+  void direct(int ni, Body * Bi, int nj, Body * Bj) {
     Cell * Ci = new Cell();                                     // Allocate single target cell
     Cell * Cj = new Cell();                                     // Allocate single source cell
-    Ci->BODY = ibodies;                                         // Pointer of first target body
+    Ci->BODY = Bi;                                              // Pointer of first target body
     Ci->NBODY = ni;                                             // Number of target bodies
-    Cj->BODY = jbodies;                                         // Pointer of first source body
+    Cj->BODY = Bj;                                              // Pointer of first source body
     Cj->NBODY = nj;                                             // Number of source bodies
     P2P(Ci, Cj);                                                // Evaluate P2P kernel
   }
