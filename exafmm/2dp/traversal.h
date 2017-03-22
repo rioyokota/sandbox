@@ -14,7 +14,7 @@ namespace exafmm {
     }                                                           // End loop over child cells
     C->M.resize(P, 0);                                          // Allocate and initialize multipole coefs
     C->L.resize(P, 0);                                          // Allocate and initialize local coefs
-    if (C->NNODE == 1) P2M(C);                                  // P2M kernel
+    if (C->NCHILD == 0) P2M(C);                                 // P2M kernel
     M2M(C);                                                     // M2M kernel
   }
 
@@ -25,9 +25,9 @@ namespace exafmm {
     real_t R2 = (dX[0] * dX[0] + dX[1] * dX[1]) * theta * theta;// Scalar distance squared
     if (R2 > (Ci->R + Cj->R) * (Ci->R + Cj->R)) {               // If distance is far enough
       M2L(Ci, Cj, Xperiodic);                                   //  Use approximate kernels
-    } else if (Ci->NNODE == 1 && Cj->NNODE == 1) {              // Else if both cells are bodies
+    } else if (Ci->NCHILD == 0 && Cj->NCHILD == 0) {            // Else if both cells are leafs
       P2P(Ci, Cj, Xperiodic);                                   //   Use exact kernel
-    } else if (Cj->NNODE == 1 || Ci->R >= Cj->R) {              // Else if Cj is leaf or Ci is larger
+    } else if (Cj->NCHILD == 0 || Ci->R >= Cj->R) {             // Else if Cj is leaf or Ci is larger
       for (int i=0; i<4; i++) {                                 //  Loop over Ci's children
         if (Ci->CHILD[i]) traversal(Ci->CHILD[i], Cj);          //   Traverse a single pair of cells
       }                                                         //  End loop over Ci's children
@@ -101,7 +101,7 @@ namespace exafmm {
   //! Recursive call for downward pass
   void downwardPass(Cell * C) {
     L2L(C);                                                     // L2L kernel
-    if (C->NNODE == 1) L2P(C);                                  // L2P kernel
+    if (C->NCHILD == 0) L2P(C);                                 // L2P kernel
     for (int i=0; i<4; i++) {                                   // Loop over child cells
       if (C->CHILD[i]) downwardPass(C->CHILD[i]);               //  Recursive call with new task
     }                                                           // End loop over child cells

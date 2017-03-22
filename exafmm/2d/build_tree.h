@@ -12,7 +12,7 @@ namespace exafmm {
     cell->BODY = bodies + begin;                                // Pointer of first body in cell
     if(direction) cell->BODY = buffer + begin;                  // Pointer of first body in cell
     cell->NBODY = end - begin;                                  // Number of bodies in cell
-    cell->NNODE = 1;                                            // Initialize counter for decendant cells
+    cell->NCHILD = 0;                                           // Initialize counter for child cells
     for (int d=0; d<2; d++) cell->X[d] = X[d];                  // Center position of cell
     cell->R = R / (1 << level);                                 // Cell radius
     for (int i=0; i<4; i++) cell->CHILD[i] = NULL;              // Initialize pointers to children
@@ -65,7 +65,7 @@ namespace exafmm {
     //! Accumulate number of decendant cells
     for (int i=0; i<4; i++) {                                   // Loop over children
       if (cell->CHILD[i]) {                                     //  If child exists
-        cell->NNODE += cell->CHILD[i]->NNODE;                   //   Increment child cell counter
+        cell->NCHILD++;                                         //   Increment child cell counter
       }                                                         //  End if for child
     }                                                           // End loop over chlidren
     return cell;                                                // Return quadtree cell

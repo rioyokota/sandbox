@@ -18,7 +18,7 @@ namespace exafmm {
 
   //! Structure of cells
   struct Cell {
-    int NNODE;                                                  //!< Number of child cells
+    int NCHILD;                                                 //!< Number of child cells
     int NBODY;                                                  //!< Number of descendant bodies
     Cell * CHILD[4];                                            //!< Pointer of child cells
     Body * BODY;                                                //!< Pointer of first body
