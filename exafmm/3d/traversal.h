@@ -5,7 +5,6 @@
 namespace exafmm {
   class Traversal {
   private:
-    Kernel & kernel;                                            //!< Kernel class
     const real_t theta;                                         //!< Multipole acceptance criteria
     const int images;                                           //!< Number of periodic image sublevels
     C_iter Ci0;                                                 //!< Iterator of first target cell
@@ -35,12 +34,12 @@ namespace exafmm {
 
     //! Dual tree traversal for a single pair of cells
     void dualTreeTraversal(C_iter Ci, C_iter Cj) {
-      vec3 dX = Ci->X - Cj->X - kernel.Xperiodic;               // Distance vector from source to target
+      vec3 dX = Ci->X - Cj->X - Xperiodic;                      // Distance vector from source to target
       real_t RT2 = norm(dX) * theta * theta;                    // Scalar distance squared
       if (RT2 > (Ci->R+Cj->R) * (Ci->R+Cj->R) * (1 - 1e-3)) {   // If distance is far enough
-	kernel.M2L(Ci, Cj);                                     //  M2L kernel
+	M2L(Ci, Cj);                                            //  M2L kernel
       } else if (Ci->NCHILD == 0 && Cj->NCHILD == 0) {          // Else if both cells are bodies
-        kernel.P2P(Ci, Cj);                                     //  P2P kernel
+        P2P(Ci, Cj);                                            //  P2P kernel
       } else {                                                  // Else if cells are close but not bodies
 	splitCell(Ci, Cj);                                      //  Split cell recursively for child
       }                                                         // End if for multipole acceptance
@@ -53,8 +52,8 @@ namespace exafmm {
       int listSize = neighbor * neighbor * neighbor;            // Neighbor list size
       Cells pcells; pcells.resize(listSize);                    // Create cells
       for (C_iter C=pcells.begin(); C!=pcells.end(); C++) {     // Loop over periodic cells
-        C->M.resize(kernel.NTERM, 0.0);                         //  Allocate & initialize M coefs
-        C->L.resize(kernel.NTERM, 0.0);                         //  Allocate & initialize L coefs
+        C->M.resize(NTERM, 0.0);                                //  Allocate & initialize M coefs
+        C->L.resize(NTERM, 0.0);                                //  Allocate & initialize L coefs
       }                                                         // End loop over periodic cells
       C_iter Ci = pcells.end()-1;                               // Last cell is periodic parent cell
       *Ci = *Cj0;                                               // Copy values from source root
@@ -69,10 +68,10 @@ namespace exafmm {
 		for (int cx=-prange; cx<=prange; cx++) {        //      Loop over x periodic direction (child)
 		  for (int cy=-prange; cy<=prange; cy++) {      //       Loop over y periodic direction (child)
 		    for (int cz=-prange; cz<=prange; cz++) {    //        Loop over z periodic direction (child)
-		      kernel.Xperiodic[0] = (ix * neighbor + cx) * cycle[0];//   Coordinate offset for x periodic direction
-		      kernel.Xperiodic[1] = (iy * neighbor + cy) * cycle[1];//   Coordinate offset for y periodic direction
-		      kernel.Xperiodic[2] = (iz * neighbor + cz) * cycle[2];//   Coordinate offset for z periodic direction
-		      kernel.M2L(Ci0, Ci);                      //         M2L kernel
+		      Xperiodic[0] = (ix * neighbor + cx) * cycle[0];//   Coordinate offset for x periodic direction
+		      Xperiodic[1] = (iy * neighbor + cy) * cycle[1];//   Coordinate offset for y periodic direction
+		      Xperiodic[2] = (iz * neighbor + cz) * cycle[2];//   Coordinate offset for z periodic direction
+		      M2L(Ci0, Ci);                             //         M2L kernel
 		    }                                           //        End loop over z periodic direction (child)
 		  }                                             //       End loop over y periodic direction (child)
 		}                                               //      End loop over x periodic direction (child)
@@ -95,7 +94,7 @@ namespace exafmm {
 	    }                                                   //    End loop over z periodic direction
 	  }                                                     //   End loop over y periodic direction
 	}                                                       //  End loop over x periodic direction
-	kernel.M2M(Ci,Cj0);                                     //  Evaluate periodic M2M kernels for this sublevel
+	M2M(Ci,Cj0);                                            //  Evaluate periodic M2M kernels for this sublevel
 	cycle *= neighbor;                                      //  Increase periodic cycle by number of neighbors
 	Cj0 = C0;                                               //  Reset Cj0 back
       }                                                         // End loop over sublevels of tree
@@ -103,8 +102,8 @@ namespace exafmm {
 
   public:
     //! Constructor
-    Traversal(Kernel & _kernel, real_t _theta, int _images) :   // Constructor
-      kernel(_kernel), theta(_theta), images(_images)           // Initialize variables
+    Traversal(real_t _theta, int _images) :                     // Constructor
+      theta(_theta), images(_images)                            // Initialize variables
     {}
 
     //! Evaluate P2P and M2L using list based traversal
@@ -114,16 +113,16 @@ namespace exafmm {
       prange = 1;
       Ci0 = icells.begin();                                     // Iterator of first target cell
       Cj0 = jcells.begin();                                     // Iterator of first source cell
-      kernel.Xperiodic = 0;                                     // Set periodic coordinate offset to 0
+      Xperiodic = 0;                                            // Set periodic coordinate offset to 0
       if (images == 0) {                                        //  If non-periodic boundary condition
         dualTreeTraversal(Ci0, Cj0);                            //   Traverse the tree
       } else {                                                  //  If periodic boundary condition
         for (int ix=-prange; ix<=prange; ix++) {                //   Loop over x periodic direction
           for (int iy=-prange; iy<=prange; iy++) {              //    Loop over y periodic direction
             for (int iz=-prange; iz<=prange; iz++) {            //     Loop over z periodic direction
-              kernel.Xperiodic[0] = ix * cycle[0];              //      Coordinate shift for x periodic direction
-              kernel.Xperiodic[1] = iy * cycle[1];              //      Coordinate shift for y periodic direction
-              kernel.Xperiodic[2] = iz * cycle[2];              //      Coordinate shift for z periodic direction
+              Xperiodic[0] = ix * cycle[0];                     //      Coordinate shift for x periodic direction
+              Xperiodic[1] = iy * cycle[1];                     //      Coordinate shift for y periodic direction
+              Xperiodic[2] = iz * cycle[2];                     //      Coordinate shift for z periodic direction
               dualTreeTraversal(Ci0, Cj0);                      //      Traverse the tree for this periodic image
             }                                                   //     End loop over z periodic direction
           }                                                     //    End loop over y periodic direction
@@ -144,14 +143,14 @@ namespace exafmm {
       for (int ix=-prange; ix<=prange; ix++) {                  //  Loop over x periodic direction
 	for (int iy=-prange; iy<=prange; iy++) {                //   Loop over y periodic direction
 	  for (int iz=-prange; iz<=prange; iz++) {              //    Loop over z periodic direction
-	    kernel.Xperiodic[0] = ix * cycle[0];                //     Coordinate shift for x periodic direction
-	    kernel.Xperiodic[1] = iy * cycle[1];                //     Coordinate shift for y periodic direction
-	    kernel.Xperiodic[2] = iz * cycle[2];                //     Coordinate shift for z periodic direction
+	    Xperiodic[0] = ix * cycle[0];                       //     Coordinate shift for x periodic direction
+	    Xperiodic[1] = iy * cycle[1];                       //     Coordinate shift for y periodic direction
+	    Xperiodic[2] = iz * cycle[2];                       //     Coordinate shift for z periodic direction
 	    Ci->BODY = ibodies.begin();                         //     Iterator of first target body
 	    Ci->NBODY = ibodies.size();                         //     Number of target bodies
 	    Cj->BODY = jbodies.begin();                         //     Iterator of first source body
 	    Cj->NBODY = jbodies.size();                         //     Number of source bodies
-            kernel.P2P(Ci, Cj);                                 //     Evaluate P2P kenrel
+            P2P(Ci, Cj);                                        //     Evaluate P2P kenrel
 	  }                                                     //    End loop over z periodic direction
 	}                                                       //   End loop over y periodic direction
       }                                                         //  End loop over x periodic direction

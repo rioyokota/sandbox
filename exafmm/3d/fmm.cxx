@@ -8,9 +8,9 @@ using namespace exafmm;
 
 int main(int argc, char ** argv) {
   const int numBodies = 1000;
-  const int P = 10;
   const int images = 4;
   const real_t theta = 0.4;
+  P = 10;
   ncrit = 64;
   cycle = 2 * M_PI;
   ksize = 11;
@@ -48,12 +48,12 @@ int main(int argc, char ** argv) {
 
   // FMM evaluation
   start("Upward pass");
-  Kernel kernel(P);
-  UpDownPass upDownPass(kernel);
+  initKernel();
+  UpDownPass upDownPass;
   upDownPass.upwardPass(cells);
   stop("Upward pass");
   start("Traversal");
-  Traversal traversal(kernel, theta, images);
+  Traversal traversal(theta, images);
   traversal.traverse(cells, cells, cycle);
   stop("Traversal");
   start("Downward pass");
