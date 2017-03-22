@@ -8,11 +8,12 @@ using namespace exafmm;
 
 int main(int argc, char ** argv) {
   const int numBodies = 1000;
-  const int images = 4;
-  const real_t theta = 0.4;
-  P = 10;
   ncrit = 64;
   cycle = 2 * M_PI;
+  P = 10;
+  theta = 0.4;
+  images = 4;
+
   ksize = 11;
   alpha = ksize / cycle;
   sigma = .25 / M_PI;
@@ -49,15 +50,13 @@ int main(int argc, char ** argv) {
   // FMM evaluation
   start("Upward pass");
   initKernel();
-  UpDownPass upDownPass;
-  upDownPass.upwardPass(cells);
+  upwardPass(cells);
   stop("Upward pass");
   start("Traversal");
-  Traversal traversal(theta, images);
-  traversal.traverse(cells, cells, cycle);
+  traverse(cells, cells, cycle);
   stop("Traversal");
   start("Downward pass");
-  upDownPass.downwardPass(cells);
+  downwardPass(cells);
   stop("Downward pass");
 
   // Dipole correction
