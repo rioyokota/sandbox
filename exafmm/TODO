@@ -1,7 +1,13 @@
-dualTreeTraversal > traversal
+[3d]
+
 remove classes
 iterators > pointers
 merge up_down_pass
 simplify traversal
-add kernel.cxx to 2d/2dp
 remove vec.h
+
+[2d/2dp]
+add kernel.cxx
+
+[2d/2dp/3d]
+NNODE > NBODY
