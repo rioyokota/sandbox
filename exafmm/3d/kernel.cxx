@@ -2,8 +2,8 @@
 using namespace exafmm;
 
 int main(int argc, char ** argv) {
-  const int P = atoi(argv[1]);
-  Kernel kernel(P);
+  P = atoi(argv[1]);
+  initKernel();
 
   // P2M
   Bodies jbodies(1);
@@ -16,8 +16,8 @@ int main(int argc, char ** argv) {
   Cj->R = 1;
   Cj->BODY = jbodies.begin();
   Cj->NBODY = jbodies.size();
-  Cj->M.resize(kernel.NTERM, 0.0);
-  kernel.P2M(Cj);
+  Cj->M.resize(NTERM, 0.0);
+  P2M(Cj);
 
   // M2M
   C_iter CJ = cells.begin()+1;
@@ -26,16 +26,16 @@ int main(int argc, char ** argv) {
   CJ->X = 0;
   CJ->X[0] = 4;
   CJ->R = 2;
-  CJ->M.resize(kernel.NTERM, 0.0);
-  kernel.M2M(CJ, cells.begin());
+  CJ->M.resize(NTERM, 0.0);
+  M2M(CJ, cells.begin());
 
   // M2L
   C_iter CI = cells.begin()+2;
   CI->X = 0;
   CI->X[0] = -4;
   CI->R = 2;
-  CI->L.resize(kernel.NTERM, 0.0);
-  kernel.M2L(CI, CJ);
+  CI->L.resize(NTERM, 0.0);
+  M2L(CI, CJ);
 
   // L2L
   C_iter Ci = cells.begin()+3;
@@ -43,8 +43,8 @@ int main(int argc, char ** argv) {
   Ci->X[0] = -3;
   Ci->R = 1;
   Ci->IPARENT = 2;
-  Ci->L.resize(kernel.NTERM, 0.0);
-  kernel.L2L(Ci, cells.begin());
+  Ci->L.resize(NTERM, 0.0);
+  L2L(Ci, cells.begin());
 
   // L2P
   Bodies bodies(1);
@@ -54,7 +54,7 @@ int main(int argc, char ** argv) {
   bodies[0].TRG = 0;
   Ci->BODY = bodies.begin();
   Ci->NBODY = bodies.size();
-  kernel.L2P(Ci);
+  L2P(Ci);
 
   // P2P
   Bodies bodies2(1);
@@ -65,7 +65,7 @@ int main(int argc, char ** argv) {
   Cj->NBODY = jbodies.size();
   Ci->NBODY = bodies2.size();
   Ci->BODY = bodies2.begin();
-  kernel.P2P(Ci, Cj);
+  P2P(Ci, Cj);
   for (B_iter B=bodies2.begin(); B!=bodies2.end(); B++) {
     B->TRG /= B->SRC;
   }

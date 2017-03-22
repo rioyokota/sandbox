@@ -3,7 +3,6 @@
 #include "kernel.h"
 #include "timer.h"
 #include "traversal.h"
-#include "up_down_pass.h"
 using namespace exafmm;
 
 int main(int argc, char ** argv) {
@@ -50,13 +49,13 @@ int main(int argc, char ** argv) {
   // FMM evaluation
   start("Upward pass");
   initKernel();
-  upwardPass(cells);
+  upwardPass(cells.begin(), cells.begin());
   stop("Upward pass");
   start("Traversal");
   traverse(cells, cells, cycle);
   stop("Traversal");
   start("Downward pass");
-  downwardPass(cells);
+  downwardPass(cells.begin(), cells.begin());
   stop("Downward pass");
 
   // Dipole correction
