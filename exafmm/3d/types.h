@@ -15,7 +15,7 @@ namespace exafmm {
 
   //! Center and radius of bounding box
   struct Box {
-    vec3 X;                                                     //!< Box center
+    real_t X[3];                                                //!< Box center
     real_t R;                                                   //!< Box radius
   };
 

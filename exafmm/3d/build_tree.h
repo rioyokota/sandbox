@@ -99,7 +99,7 @@ namespace exafmm {
   }
 
   //! Get Morton key
-  uint64_t getKey(vec3 X, vec3 Xmin, real_t diameter, int level) {
+  uint64_t getKey(vec3 X, real_t * Xmin, real_t diameter, int level) {
     int iX[3] = {0, 0, 0};                                      // Initialize 3-D index
     for (int d=0; d<3; d++) iX[d] = int((X[d] - Xmin[d]) / diameter);// 3-D index
     uint64_t index = ((1 << 3 * level) - 1) / 7;                // Levelwise offset
@@ -112,7 +112,7 @@ namespace exafmm {
 
   //! Creating cell data structure from nodes
   void nodes2cells(OctreeNode * octNode, C_iter C,
-                   C_iter C0, C_iter CN, vec3 X0, real_t R0,
+                   C_iter C0, C_iter CN, real_t * X0, real_t R0,
                    int level=0, int iparent=0) {
     C->IPARENT = iparent;                                       //  Index of parent cell
     C->R = R0 / (1 << level);                                   //  Cell radius
@@ -120,7 +120,9 @@ namespace exafmm {
     C->NBODY = octNode->NBODY;                                  //  Number of decendant bodies
     C->IBODY = octNode->IBODY;                                  //  Index of first body in cell
     C->BODY = B0 + C->IBODY;                                    //  Iterator of first body in cell
-    C->ICELL = getKey(C->X, X0-R0, 2*C->R, level);              //  Get Morton key
+    real_t Xmin[3];                                             //  Min bounds for X
+    for (int d=0; d<3; d++) Xmin[d] = X0[d] - R0;               //  Get min bounds
+    C->ICELL = getKey(C->X, Xmin, 2*C->R, level);              //  Get Morton key
     if (octNode->NNODE == 1) {                                  //  If node has no children
       C->ICHILD = 0;                                            //   Set index of first child cell to zero
       C->NCHILD = 0;                                            //   Number of child cells
@@ -153,18 +155,18 @@ namespace exafmm {
 
   //! Transform Xmin & Xmax to X (center) & R (radius)
   Box getBox(Bodies & bodies) {
-    vec3 Xmin, Xmax;                                            // Set local Xmin
-    Xmin = Xmax = bodies.front().X;                             // Initialize Xmin, Xmax
+    real_t Xmin[3], Xmax[3];                                    // Set local Xmin
+    for (int d=0; d<3; d++) Xmin[d] = Xmax[d] = bodies.front().X[d];// Initialize Xmin, Xmax
     for (B_iter B=bodies.begin(); B!=bodies.end(); B++) {       // Loop over bodies
-      Xmin = min(B->X, Xmin);                                   //  Update Xmin
-      Xmax = max(B->X, Xmax);                                   //  Update Xmax
+      for (int d=0; d<3; d++) Xmin[d] = fmin(B->X[d], Xmin[d]); //  Update Xmin
+      for (int d=0; d<3; d++) Xmax[d] = fmax(B->X[d], Xmax[d]); //  Update Xmax
     }                                                           // End loop over bodies
     Box box;                                                    // Bounding box
     for (int d=0; d<3; d++) box.X[d] = (Xmax[d] + Xmin[d]) / 2; // Calculate center of domain
     box.R = 0;                                                  // Initialize localRadius
     for (int d=0; d<3; d++) {                                   // Loop over dimensions
-      box.R = std::max(box.X[d] - Xmin[d], box.R);              //  Calculate min distance from center
-      box.R = std::max(Xmax[d] - box.X[d], box.R);              //  Calculate max distance from center
+      box.R = fmax(box.X[d] - Xmin[d], box.R);                  //  Calculate min distance from center
+      box.R = fmax(Xmax[d] - box.X[d], box.R);                  //  Calculate max distance from center
     }                                                           // End loop over dimensions
     box.R *= 1.00001;                                           // Add some leeway to radius
     return box;                                                 // Return box.X and box.R
@@ -179,7 +181,7 @@ namespace exafmm {
       if (bodies.size() > buffer.size()) buffer.resize(bodies.size());// Enlarge buffer if necessary
       B0 = bodies.begin();                                      // Bodies iterator
       buildNodes(N0, bodies, buffer, 0, bodies.size(),          // Build octree nodes
-                 &box.X[0], box.R);
+                 box.X, box.R);
     }                                                           // End if for empty root
     Cells cells;                                                // Initialize cell array
     if (N0 != NULL) {                                           // If the node tree is not empty
