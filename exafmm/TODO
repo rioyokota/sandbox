@@ -1,10 +1,8 @@
 [3d]
-remove classes
-iterators > pointers
-merge up_down_pass
-simplify traversal
 remove vec.h
+iterators > pointers
 unify kernel interface
+remove uint64_t
 
 [2d/2dp]
 add kernel.cxx

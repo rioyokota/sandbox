@@ -15,14 +15,15 @@ namespace exafmm {
   };
 
   int ncrit;                                                    //!< Number of bodies per leaf cell
+  real_t x[3];                                                  //!< Coordinate vector
   B_iter B0;                                                    //!< Iterator of first body
   OctreeNode * N0;                                              //!< Pointer to octree root node
 
   //! Counting bodies in each octant
-  void countBodies(Bodies & bodies, int begin, int end, vec3 X, ivec8 & NBODY) {
+  void countBodies(Bodies & bodies, int begin, int end, real_t * X, ivec8 & NBODY) {
     for (int i=0; i<8; i++) NBODY[i] = 0;                       // Initialize number of bodies in octant
     for (int i=begin; i<end; i++) {                             // Loop over bodies in node
-      vec3 x = bodies[i].X;                                     //  Coordinates of body
+      for (int d=0; d<3; d++) x[d] = bodies[i].X[d];            //  Coordinates of body
       int octant = (x[0] > X[0]) + ((x[1] > X[1]) << 1) + ((x[2] > X[2]) << 2);// Which octant body belongs to
       NBODY[octant]++;                                          //  Increment body count in octant
     }                                                           // End loop over bodies in node
@@ -30,9 +31,9 @@ namespace exafmm {
 
   //! Sorting bodies according to octant (Morton order)
   void moveBodies(Bodies & bodies, Bodies & buffer, int begin, int end,
-                  ivec8 octantOffset, vec3 X) {
+                  ivec8 octantOffset, real_t * X) {
     for (int i=begin; i<end; i++) {                             // Loop over bodies
-      vec3 x = bodies[i].X;                                     //  Coordinates of body
+      for (int d=0; d<3; d++) x[d] = bodies[i].X[d];            //  Coordinates of body
       int octant = (x[0] > X[0]) + ((x[1] > X[1]) << 1) + ((x[2] > X[2]) << 2);// Which octant body belongs to`
       buffer[octantOffset[octant]] = bodies[i];                 //   Permute bodies out-of-place according to octant
       octantOffset[octant]++;                                   //  Increment body count in octant
@@ -40,12 +41,12 @@ namespace exafmm {
   }
 
   //! Create an octree node
-  OctreeNode * makeOctNode(OctreeNode *& octNode, int begin, int end, vec3 X, bool nochild) {
+  OctreeNode * makeOctNode(OctreeNode *& octNode, int begin, int end, real_t * X, bool nochild) {
     octNode = new OctreeNode();                                 // Allocate memory for single node
     octNode->IBODY = begin;                                     // Index of first body in node
     octNode->NBODY = end - begin;                               // Number of bodies in node
     octNode->NNODE = 1;                                         // Initialize counter for decendant nodes
-    octNode->X = X;                                             // Center coordinates of node
+    for (int d=0; d<3; d++) octNode->X[d] = X[d];               // Center coordinates of node
     if (nochild) {                                              // If node has no children
       for (int i=0; i<8; i++) octNode->CHILD[i] = NULL;         //  Initialize pointers to children
     }                                                           // End if for node children
@@ -64,7 +65,7 @@ namespace exafmm {
 
   //! Recursive functor for building nodes of an octree adaptively using a top-down approach
   void buildNodes(OctreeNode *& octNode, Bodies & bodies, Bodies & buffer,
-                  int begin, int end, vec3 X, real_t R0,
+                  int begin, int end, real_t * X, real_t R0,
                   int level=0, bool direction=false) {
     if (begin == end) {                                         // If no bodies are left
       octNode = NULL;                                           //  Assign null pointer
@@ -73,16 +74,17 @@ namespace exafmm {
     if (end - begin <= ncrit) {                                 // If number of bodies is less than threshold
       if (direction)                                            //  If direction of data is from bodies to buffer
         for (int i=begin; i<end; i++) buffer[i] = bodies[i];    //   Copy bodies to buffer
-      octNode = makeOctNode(octNode,begin,end,X,true);          //  Create an octree node and assign it's pointer
+      octNode = makeOctNode(octNode, begin, end, X, true);      //  Create an octree node and assign it's pointer
       return;                                                   //  End buildNodes()
     }                                                           // End if for number of bodies
-    octNode = makeOctNode(octNode,begin,end,X,false);           // Create an octree node with child nodes
+    octNode = makeOctNode(octNode, begin, end, X, false);       // Create an octree node with child nodes
     ivec8 NBODY;                                                // Number of bodies in node
     countBodies(bodies, begin, end, X, NBODY);                  // Count bodies in each octant
     ivec8 octantOffset = exclusiveScan(NBODY, begin);           // Exclusive scan to obtain offset from octant count
     moveBodies(bodies, buffer, begin, end, octantOffset, X);    // Sort bodies according to octant
+    real_t Xchild[3];                                           // Coordinates of child node
     for (int i=0; i<8; i++) {                                   // Loop over children
-      vec3 Xchild = X;                                          //  Initialize center coordinates of child node
+      for (int d=0; d<3; d++) Xchild[d] = X[d];                 //  Initialize center coordinates of child node
       real_t r = R0 / (1 << (level + 1));                       //  Radius of cells for child's level
       for (int d=0; d<3; d++) {                                 //  Loop over dimensions
         Xchild[d] += r * (((i & 1 << d) >> d) * 2 - 1);         //   Shift center coordinates to that of child node
@@ -113,12 +115,12 @@ namespace exafmm {
                    C_iter C0, C_iter CN, vec3 X0, real_t R0,
                    int level=0, int iparent=0) {
     C->IPARENT = iparent;                                       //  Index of parent cell
-    C->R       = R0 / (1 << level);                             //  Cell radius
-    C->X       = octNode->X;                                    //  Cell center
-    C->NBODY   = octNode->NBODY;                                //  Number of decendant bodies
-    C->IBODY   = octNode->IBODY;                                //  Index of first body in cell
-    C->BODY    = B0 + C->IBODY;                                 //  Iterator of first body in cell
-    C->ICELL   = getKey(C->X, X0-R0, 2*C->R, level);            //  Get Morton key
+    C->R = R0 / (1 << level);                                   //  Cell radius
+    for (int d=0; d<3; d++) C->X[d] = octNode->X[d];            //  Cell center
+    C->NBODY = octNode->NBODY;                                  //  Number of decendant bodies
+    C->IBODY = octNode->IBODY;                                  //  Index of first body in cell
+    C->BODY = B0 + C->IBODY;                                    //  Iterator of first body in cell
+    C->ICELL = getKey(C->X, X0-R0, 2*C->R, level);              //  Get Morton key
     if (octNode->NNODE == 1) {                                  //  If node has no children
       C->ICHILD = 0;                                            //   Set index of first child cell to zero
       C->NCHILD = 0;                                            //   Number of child cells
@@ -177,7 +179,7 @@ namespace exafmm {
       if (bodies.size() > buffer.size()) buffer.resize(bodies.size());// Enlarge buffer if necessary
       B0 = bodies.begin();                                      // Bodies iterator
       buildNodes(N0, bodies, buffer, 0, bodies.size(),          // Build octree nodes
-                 box.X, box.R);
+                 &box.X[0], box.R);
     }                                                           // End if for empty root
     Cells cells;                                                // Initialize cell array
     if (N0 != NULL) {                                           // If the node tree is not empty
