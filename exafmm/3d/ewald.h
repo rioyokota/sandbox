@@ -17,6 +17,7 @@ namespace exafmm {
   real_t sigma;                                                 //!< Scaling parameter for Ewald summation
   real_t cutoff;                                                //!< Cutoff distance
   real_t cycle;                                                 //!< Periodic cycle
+  real_t dX[3];                                                 //!< Distance vector
 
   //! Forward DFT
   void dft(Waves & waves, Bodies & bodies) {
@@ -42,7 +43,8 @@ namespace exafmm {
 #pragma omp parallel for
     for (int b=0; b<int(bodies.size()); b++) {                  // Loop over bodies
       B_iter B=bodies.begin()+b;                                //  Body iterator
-      vec4 TRG = 0;                                             //  Initialize target values
+      real_t TRG[4];                                            //  Temporary target values
+      for (int d=0; d<4; d++) TRG[d] = 0;                       //  Initialize target values
       for (W_iter W=waves.begin(); W!=waves.end(); W++) {       //   Loop over waves
         real_t th = 0;                                          //    Initialzie phase
         for (int d=0; d<3; d++) th += W->K[d] * B->X[d] * scale[d];// Determine phase
@@ -51,7 +53,7 @@ namespace exafmm {
         for (int d=0; d<3; d++) TRG[d+1] -= dtmp * W->K[d];     //    Accumulate force
       }                                                         //   End loop over waves
       for (int d=0; d<3; d++) TRG[d+1] *= scale[d];             //   Scale forces
-      B->TRG += TRG;                                            //  Copy results to bodies
+      for (int d=0; d<4; d++) B->TRG[d] += TRG[d];              //  Copy results to bodies
     }                                                           // End loop over bodies
   }
 
@@ -83,11 +85,11 @@ namespace exafmm {
   }
 
   //! Ewald real part P2P kernel
-  void P2P(C_iter Ci, C_iter Cj, vec3 Xperiodic) {
+  void realPart(C_iter Ci, C_iter Cj) {
     for (B_iter Bi=Ci->BODY; Bi!=Ci->BODY+Ci->NBODY; Bi++) {    // Loop over target bodies
       for (B_iter Bj=Cj->BODY; Bj!=Cj->BODY+Cj->NBODY; Bj++) {  //  Loop over source bodies
-        vec3 dX = Bi->X - Bj->X - Xperiodic;                    //   Distance vector from source to target
-        real_t R2 = norm(dX);                                   //   R^2
+        for (int d=0; d<3; d++) dX[d] = Bi->X[d] - Bj->X[d] - Xperiodic[d];//   Distance vector from source to target
+        real_t R2 = dX[0] * dX[0] + dX[1] * dX[1] + dX[2] * dX[2];//   R^2
         if (0 < R2 && R2 < cutoff * cutoff) {                   //   Exclude self interaction and cutoff
           real_t R2s = R2 * alpha * alpha;                      //    (R * alpha)^2
           real_t Rs = std::sqrt(R2s);                           //    R * alpha
@@ -106,12 +108,15 @@ namespace exafmm {
   }
 
   void neighbor(C_iter Ci, C_iter Cj, C_iter C0) {              // Traverse tree to find neighbor
-    vec3 dX = Ci->X - Cj->X;                                    //  Distance vector from source to target
-    wrap(dX, cycle);                                            //  Wrap around periodic domain
-    vec3 Xperiodic = Ci->X - Cj->X - dX;                        //  Coordinate offset for periodic B.C.
-    real_t R = std::sqrt(norm(dX));                             //  Scalar distance
+    for (int d=0; d<3; d++) dX[d] = Ci->X[d] - Cj->X[d];        //  Distance vector from source to target
+    for (int d=0; d<3; d++) {                                   //  Loop over dimensions
+      if(dX[d] < -cycle / 2) dX[d] += cycle;                    //   Wrap around positive
+      if(dX[d] >  cycle / 2) dX[d] -= cycle;                    //   Wrap around negative
+    }                                                           //  End loop over dimensions
+    for (int d=0; d<3; d++) Xperiodic[d] = Ci->X[d] - Cj->X[d] - dX[d];//  Coordinate offset for periodic B.C.
+    real_t R = std::sqrt(dX[0] * dX[0] + dX[1] * dX[1] + dX[2] * dX[2]);//  Scalar distance
     if (R - Ci->R - Cj->R < sqrtf(3) * cutoff) {                //  If cells are close
-      if(Cj->NCHILD == 0) P2P(Ci, Cj, Xperiodic);               //   Ewald real part
+      if(Cj->NCHILD == 0) realPart(Ci, Cj);                     //   Ewald real part
       for (C_iter CC=C0+Cj->ICHILD; CC!=C0+Cj->ICHILD+Cj->NCHILD; CC++) {// Loop over cell's children
         neighbor(Ci, CC, C0);                                   //    Instantiate recursive functor
       }                                                         //   End loop over cell's children

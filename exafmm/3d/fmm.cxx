@@ -1,6 +1,6 @@
 #include "build_tree.h"
-#include "ewald.h"
 #include "kernel.h"
+#include "ewald.h"
 #include "timer.h"
 #include "traversal.h"
 using namespace exafmm;

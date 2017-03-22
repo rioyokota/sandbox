@@ -11,7 +11,7 @@ namespace exafmm {
     int          NBODY;                                         //!< Number of descendant bodies
     int          NNODE;                                         //!< Number of descendant nodes
     OctreeNode * CHILD[8];                                      //!< Pointer to child node
-    vec3         X;                                             //!< Coordinate at center
+    real_t       X[3];                                          //!< Coordinate at center
   };
 
   int ncrit;                                                    //!< Number of bodies per leaf cell
