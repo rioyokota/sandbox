@@ -97,22 +97,22 @@ int main(int argc, char ** argv) {
   stop("Real part");
 
   // Verify result
-  real_t potSum = 0, potSum2 = 0, accDif = 0, accNrm = 0;
+  real_t pSum = 0, pSum2 = 0, FDif = 0, FNrm = 0;
   B_iter B2 = bodies2.begin();
   for (B_iter B=bodies.begin(); B!=bodies.end(); B++, B2++) {
-    potSum += B->TRG[0] * B->SRC;
-    potSum2 += B2->TRG[0] * B2->SRC;
-    accDif += (B->TRG[1] - B2->TRG[1]) * (B->TRG[1] - B2->TRG[1]) +
+    pSum += B->TRG[0] * B->SRC;
+    pSum2 += B2->TRG[0] * B2->SRC;
+    FDif += (B->TRG[1] - B2->TRG[1]) * (B->TRG[1] - B2->TRG[1]) +
       (B->TRG[2] - B2->TRG[2]) * (B->TRG[2] - B2->TRG[2]) +
       (B->TRG[3] - B2->TRG[3]) * (B->TRG[3] - B2->TRG[3]);
-    accNrm += B->TRG[1] * B->TRG[1] + B->TRG[2] * B->TRG[2] + B->TRG[3] * B->TRG[3];
+    FNrm += B->TRG[1] * B->TRG[1] + B->TRG[2] * B->TRG[2] + B->TRG[3] * B->TRG[3];
   }
-  real_t potDif = (potSum - potSum2) * (potSum - potSum2);
-  real_t potNrm = potSum * potSum;
-  real_t potRel = std::sqrt(potDif/potNrm);
-  real_t accRel = std::sqrt(accDif/accNrm);
+  real_t pDif = (pSum - pSum2) * (pSum - pSum2);
+  real_t pNrm = pSum * pSum;
+  real_t pRel = std::sqrt(pDif/pNrm);
+  real_t FRel = std::sqrt(FDif/FNrm);
   printf("--- %-16s ------------\n", "FMM vs. Ewald");
-  printf("%-20s : %8.5e s\n","Rel. L2 Error (pot)", potRel);
-  printf("%-20s : %8.5e s\n","Rel. L2 Error (acc)", accRel);
+  printf("%-20s : %8.5e s\n","Rel. L2 Error (p)", pRel);
+  printf("%-20s : %8.5e s\n","Rel. L2 Error (F)", FRel);
   return 0;
 }

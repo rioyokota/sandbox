@@ -1,6 +1,7 @@
+dualTreeTraversal > traversal
 remove classes
 iterators > pointers
 merge up_down_pass
 simplify traversal
-add kernel to 2d
+add kernel.cxx to 2d/2dp
 remove vec.h
