@@ -5,7 +5,7 @@
 namespace exafmm {
   //! Wave structure for Ewald summation
   struct Wave {
-    vec3   K;                                                   //!< 3-D wave number vector
+    real_t K[3];                                                //!< 3-D wave number vector
     real_t REAL;                                                //!< real part of wave
     real_t IMAG;                                                //!< imaginary part of wave
   };
@@ -17,11 +17,12 @@ namespace exafmm {
   real_t sigma;                                                 //!< Scaling parameter for Ewald summation
   real_t cutoff;                                                //!< Cutoff distance
   real_t cycle;                                                 //!< Periodic cycle
+  real_t K[3];                                                  //!< Wave number vector
   real_t dX[3];                                                 //!< Distance vector
+  real_t scale[3];                                              //!< Scale vector
 
   //! Forward DFT
   void dft(Waves & waves, Bodies & bodies) {
-    vec3 scale;
     for (int d=0; d<3; d++) scale[d]= 2 * M_PI / cycle;         // Scale conversion
 #pragma omp parallel for
     for (int w=0; w<int(waves.size()); w++) {                   // Loop over waves
@@ -38,7 +39,6 @@ namespace exafmm {
 
   //! Inverse DFT
   void idft(Waves & waves, Bodies & bodies) {
-    vec3 scale;
     for (int d=0; d<3; d++) scale[d] = 2 * M_PI / cycle;        // Scale conversion
 #pragma omp parallel for
     for (int b=0; b<int(bodies.size()); b++) {                  // Loop over bodies
@@ -137,13 +137,12 @@ namespace exafmm {
   void wavePart(Bodies & bodies, Bodies & jbodies) {
     Waves waves = initWaves();                                  // Initialize wave vector
     dft(waves,jbodies);                                         // Apply DFT to bodies to get waves
-    vec3 scale;
     for (int d=0; d<3; d++) scale[d] = 2 * M_PI / cycle;        // Scale conversion
     real_t coef = 2 / sigma / cycle / cycle / cycle;            // First constant
     real_t coef2 = 1 / (4 * alpha * alpha);                     // Second constant
     for (W_iter W=waves.begin(); W!=waves.end(); W++) {         // Loop over waves
-      vec3 K = W->K * scale;                                    //  Wave number scaled
-      real_t K2 = norm(K);                                      //  Wave number squared
+      for (int d=0; d<3; d++) K[d] = W->K[d] * scale[d];        //  Wave number scaled
+      real_t K2 = K[0] * K[0] + K[1] * K[1] + K[2] * K[2];      //  Wave number squared
       real_t factor = coef * std::exp(-K2 * coef2) / K2;        //  Wave factor
       W->REAL *= factor;                                        //  Apply wave factor to real part
       W->IMAG *= factor;                                        //  Apply wave factor to imaginary part
