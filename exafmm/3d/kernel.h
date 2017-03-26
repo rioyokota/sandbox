@@ -1,6 +1,5 @@
 #ifndef kernel_h
 #define kernel_h
-#include <cstdlib>
 #include "types.h"
 
 namespace exafmm {
@@ -256,37 +255,38 @@ namespace exafmm {
     }
   }
 
-  void L2L(C_iter Ci, C_iter C0) {
+  void L2L(C_iter Cj, C_iter C0) {
     complex_t Ynm[P*P], YnmTheta[P*P];
-    C_iter Cj = C0 + Ci->IPARENT;
-    vec3 dX = Ci->X - Cj->X;
-    real_t rho, alpha, beta;
-    cart2sph(dX, rho, alpha, beta);
-    evalMultipole(rho, alpha, beta, Ynm, YnmTheta);
-    for (int j=0; j<P; j++) {
-      for (int k=0; k<=j; k++) {
-        int jk = j * j + j + k;
-        int jks = j * (j + 1) / 2 + k;
-        complex_t L = 0;
-        for (int n=j; n<P; n++) {
-          for (int m=j+k-n; m<0; m++) {
-            int jnkm = (n - j) * (n - j) + n - j + m - k;
-            int nm   = n * n + n - m;
-            int nms  = n * (n + 1) / 2 - m;
-            L += std::conj(Cj->L[nms]) * Ynm[jnkm]
-              * real_t(oddOrEven(k) * Anm[jnkm] * Anm[jk] / Anm[nm]);
-          }
-          for (int m=0; m<=n; m++) {
-            if (n-j >= abs(m-k)) {
+    for (C_iter Ci=C0+Cj->ICHILD; Ci!=C0+Cj->ICHILD+Cj->NCHILD; Ci++) {
+      vec3 dX = Ci->X - Cj->X;
+      real_t rho, alpha, beta;
+      cart2sph(dX, rho, alpha, beta);
+      evalMultipole(rho, alpha, beta, Ynm, YnmTheta);
+      for (int j=0; j<P; j++) {
+        for (int k=0; k<=j; k++) {
+          int jk = j * j + j + k;
+          int jks = j * (j + 1) / 2 + k;
+          complex_t L = 0;
+          for (int n=j; n<P; n++) {
+            for (int m=j+k-n; m<0; m++) {
               int jnkm = (n - j) * (n - j) + n - j + m - k;
-              int nm   = n * n + n + m;
-              int nms  = n * (n + 1) / 2 + m;
-              L += Cj->L[nms] * std::pow(I,real_t(m-k-abs(m-k)))
-                * Ynm[jnkm] * Anm[jnkm] * Anm[jk] / Anm[nm];
+              int nm   = n * n + n - m;
+              int nms  = n * (n + 1) / 2 - m;
+              L += std::conj(Cj->L[nms]) * Ynm[jnkm]
+                * real_t(oddOrEven(k) * Anm[jnkm] * Anm[jk] / Anm[nm]);
+            }
+            for (int m=0; m<=n; m++) {
+              if (n-j >= abs(m-k)) {
+                int jnkm = (n - j) * (n - j) + n - j + m - k;
+                int nm   = n * n + n + m;
+                int nms  = n * (n + 1) / 2 + m;
+                L += Cj->L[nms] * std::pow(I,real_t(m-k-abs(m-k)))
+                  * Ynm[jnkm] * Anm[jnkm] * Anm[jk] / Anm[nm];
+              }
             }
           }
+          Ci->L[jks] += L;
         }
-        Ci->L[jks] += L;
       }
     }
   }

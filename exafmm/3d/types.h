@@ -1,6 +1,8 @@
 #ifndef types_h
 #define types_h
 #include <complex>
+#include <cstdlib>
+#include <cstdio>
 #include <vector>
 #include "vec.h"
 

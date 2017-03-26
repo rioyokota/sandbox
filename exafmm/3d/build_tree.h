@@ -99,10 +99,10 @@ namespace exafmm {
   }
 
   //! Get Morton key
-  uint64_t getKey(vec3 X, real_t * Xmin, real_t diameter, int level) {
+  int getKey(vec3 X, real_t * Xmin, real_t diameter, int level) {
     int iX[3] = {0, 0, 0};                                      // Initialize 3-D index
     for (int d=0; d<3; d++) iX[d] = int((X[d] - Xmin[d]) / diameter);// 3-D index
-    uint64_t index = ((1 << 3 * level) - 1) / 7;                // Levelwise offset
+    int index = ((1 << 3 * level) - 1) / 7;                     // Levelwise offset
     for (int l=0; l<level; l++) {                               // Loop over levels
       for (int d=0; d<3; d++) index += (iX[d] & 1) << (3 * l + d);// Interleave bits into Morton key
       for (int d=0; d<3; d++) iX[d] >>= 1;                      //  Bitshift 3-D index
