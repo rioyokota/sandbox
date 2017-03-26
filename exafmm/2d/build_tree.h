@@ -61,13 +61,10 @@ namespace exafmm {
       cell->CHILD[i] = buildTree(buffer, bodies,                //  Recursive call for each child
                                  offsets[i], offsets[i] + size[i],//  Range of bodies is calcuated from quadrant offset
                                  Xchild, R, ncrit, level+1, !direction);//  Alternate copy direction bodies <-> buffer
-    }                                                           // End loop over children
-    //! Accumulate number of decendant cells
-    for (int i=0; i<4; i++) {                                   // Loop over children
       if (cell->CHILD[i]) {                                     //  If child exists
         cell->NCHILD++;                                         //   Increment child cell counter
       }                                                         //  End if for child
-    }                                                           // End loop over chlidren
+    }                                                           // End loop over children
     return cell;                                                // Return quadtree cell
   }
 }

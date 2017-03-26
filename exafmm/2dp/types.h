@@ -1,6 +1,8 @@
 #ifndef types_h
 #define types_h
 #include <complex>
+#include <cstdio>
+#include <cstdlib>
 #include <vector>
 
 namespace exafmm {

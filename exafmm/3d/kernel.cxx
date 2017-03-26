@@ -14,7 +14,7 @@ int main(int argc, char ** argv) {
   Cj->X = 1;
   Cj->X[0] = 3;
   Cj->R = 1;
-  Cj->BODY = jbodies.begin();
+  Cj->BODY = &jbodies[0];
   Cj->NBODY = jbodies.size();
   Cj->M.resize(NTERM, 0.0);
   P2M(Cj);
@@ -53,7 +53,7 @@ int main(int argc, char ** argv) {
   bodies[0].X[0] = -2;
   bodies[0].SRC = 1;
   bodies[0].TRG = 0;
-  Ci->BODY = bodies.begin();
+  Ci->BODY = &bodies[0];
   Ci->NBODY = bodies.size();
   L2P(Ci);
 
@@ -65,7 +65,7 @@ int main(int argc, char ** argv) {
   }
   Cj->NBODY = jbodies.size();
   Ci->NBODY = bodies2.size();
-  Ci->BODY = bodies2.begin();
+  Ci->BODY = &bodies2[0];
   P2P(Ci, Cj);
   for (B_iter B=bodies2.begin(); B!=bodies2.end(); B++) {
     B->TRG /= B->SRC;
