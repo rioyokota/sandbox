@@ -40,14 +40,14 @@ namespace exafmm {
 
   //! Tree traversal of periodic cells
   void traversePeriodic(Cell * Ci0, Cell * Cj0, real_t cycle) {
-    for (int d=0; d<2; d++) Xperiodic[d] = 0;                   // Periodic coordinate offset
-    Cell * Cp = new Cell();                                     // Last cell is periodic parent cell
-    Cell * Cj = new Cell();                                     // Last cell is periodic parent cell
-    Cp->M.resize(P, 0);                                         // Allocate and initialize multipole coefs
-    Cj->M.resize(P, 0);                                         // Allocate and initialize multipole coefs
-    *Cp = *Cj = *Cj0;                                           // Copy values from source root
-    Cp->CHILD = Cj;                                             // Child cells for periodic center cell
-    Cp->NCHILD = 1;                                             // Define only one child
+    Cells pcells(9);                                            // Create cells
+    for (int c=0; c<int(pcells.size()); c++) {                  // Loop over periodic cells
+      pcells[c].M.resize(P, 0.0);                               //  Allocate & initialize M coefs
+      pcells[c].L.resize(P, 0.0);                               //  Allocate & initialize L coefs
+    }                                                           // End loop over periodic cells
+    Cell * Ci = &pcells.back();                                 // Last cell is periodic parent cell
+    *Ci = *Cj0;                                                 // Copy values from source root
+    Ci->NCHILD = 8;                                             // Number of child cells for periodic center cell
     for (int level=0; level<images-1; level++) {                // Loop over sublevels of tree
       for (int ix=-1; ix<=1; ix++) {                            //  Loop over x periodic direction
         for (int iy=-1; iy<=1; iy++) {                          //   Loop over y periodic direction
@@ -56,27 +56,25 @@ namespace exafmm {
               for (int cy=-1; cy<=1; cy++) {                    //      Loop over y periodic direction (child)
                 Xperiodic[0] = (ix * 3 + cx) * cycle;           //       Coordinate offset for x periodic direction
                 Xperiodic[1] = (iy * 3 + cy) * cycle;           //       Coordinate offset for y periodic direction
-                M2L(Ci0, Cp, Xperiodic);                        //       Perform M2L kernel
+                M2L(Ci0, Ci, Xperiodic);                        //       Perform M2L kernel
               }                                                 //      End loop over y periodic direction (child)
             }                                                   //     End loop over x periodic direction (child)
           }                                                     //    Endif for periodic center cell
         }                                                       //   End loop over y periodic direction
       }                                                         //  End loop over x periodic direction
-      std::vector<complex_t> M(P);                              //  Multipole expansions
-      for (int n=0; n<P; n++) {                                 //  Loop over order of expansions
-        M[n] = Cp->M[n];                                        //   Save multipoles of periodic parent
-        Cp->M[n] = 0;                                           //   Reset multipoles of periodic parent
-      }                                                         //  End loop over order of expansions
+      Cell * Cj = &pcells.front();                              //  Iterator of periodic neighbor cells
+      Ci->CHILD = Cj;                                           //  Child cells for periodic center cell
       for (int ix=-1; ix<=1; ix++) {                            //  Loop over x periodic direction
         for (int iy=-1; iy<=1; iy++) {                          //   Loop over y periodic direction
           if( ix != 0 || iy != 0) {                             //    If periodic cell is not at center
-            Cj->X[0] = Cp->X[0] + ix * cycle;                   //     Set new x coordinate for periodic image
-            Cj->X[1] = Cp->X[1] + iy * cycle;                   //     Set new y cooridnate for periodic image
-            for (int n=0; n<P; n++) Cj->M[n] = M[n];            //     Copy multipoles to new periodic image
-            M2M(Cp);                                            //     Evaluate periodic M2M kernels for this sublevel
+            Cj->X[0] = Ci->X[0] + ix * cycle;                   //     Set new x coordinate for periodic image
+            Cj->X[1] = Ci->X[1] + iy * cycle;                   //     Set new y cooridnate for periodic image
+            for (int n=0; n<P; n++) Cj->M[n] = Ci->M[n];        //     Copy multipoles to new periodic image
+            Cj++;                                               //     Increment periodic cell iterator
           }                                                     //    Endif for periodic center cell
         }                                                       //   End loop over y periodic direction
       }                                                         //  End loop over x periodic direction
+      M2M(Ci);                                                  //  Evaluate periodic M2M kernels for this sublevel
       cycle *= 3;                                               //  Increase center cell size three times
     }                                                           // End loop over sublevels of tree
   }

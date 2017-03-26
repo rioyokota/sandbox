@@ -9,7 +9,7 @@ int main(int argc, char ** argv) {                              // Main function
   const int numTargets = 10;                                    // Number of targets for checking answer
   const int ncrit = 8;                                          // Number of bodies per leaf cell
   const real_t cycle = 2 * M_PI;                                // Cycle of periodic boundary condition
-  P = 6;                                                        // Order of expansions
+  P = 10;                                                       // Order of expansions
   theta = 0.4;                                                  // Multipole acceptance criterion
   images = 3;                                                   // 3^images * 3^images * 3^images periodic images
 

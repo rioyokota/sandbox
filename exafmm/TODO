@@ -1,6 +1,4 @@
 [3d]
-dualTreeTraversal > traversal
-traverse > traversal
 iterators > pointers
 B_iter > Body *
 C_iter > Cell *
