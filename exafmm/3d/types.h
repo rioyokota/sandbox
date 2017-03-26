@@ -35,7 +35,8 @@ namespace exafmm {
     int NCHILD;                                                 //!< Number of child cells
     int NBODY;                                                  //!< Number of descendant bodies
     int ICHILD;                                                 //!< Index of first child cell
-    Body * BODY;                                                //!< Iterator of first body
+    std::vector<Cell>::iterator CHILD;                          //!< Pointer of first child cell
+    Body * BODY;                                                //!< Pointer of first body
     vec3 X;                                                     //!< Cell center
     real_t R;                                                   //!< Cell radius
     std::vector<complex_t> M;                                   //!< Multipole expansion coefs

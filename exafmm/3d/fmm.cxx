@@ -24,9 +24,9 @@ int main(int argc, char ** argv) {
   Bodies bodies(numBodies);
   real_t average = 0;
   srand48(0);
-  for (B_iter B=bodies.begin(); B!=bodies.end(); B++) {
+  for (int b=0; b<numBodies; b++) {
     for (int d=0; d<3; d++) {
-      B->X[d] = drand48() * cycle - cycle * .5;
+      bodies[b].X[d] = drand48() * cycle - cycle * .5;
     }
   }
   for (B_iter B=bodies.begin(); B!=bodies.end(); B++) {
