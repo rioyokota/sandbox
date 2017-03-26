@@ -3,7 +3,7 @@
 #include "types.h"
 
 namespace exafmm {
-  //! Build cells of tree adaptively using a top-down approach based on recursion (uses task based thread parallelism)
+  //! Build cells of tree adaptively using a top-down approach based on recursion
   void buildTree(Body * bodies, Body * buffer, int begin, int end, Cell * cell,
                  real_t X[2], real_t R, int ncrit, int level=0, bool direction=false) {
     //! Create a tree cell

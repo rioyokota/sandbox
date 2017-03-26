@@ -58,7 +58,7 @@ namespace exafmm {
   }
 
   //!< M2L kernel between cells Ci and Cj
-  void M2L(Cell * Ci, Cell * Cj) {
+  void M2L(Cell * Ci, Cell * Cj, ) {
     real_t dX[2];                                               // Distance vector
     for (int d=0; d<2; d++) dX[d] = Ci->X[d] - Cj->X[d];        // Get distance vector
     complex_t Z(dX[0],dX[1]), powZn(1.0, 0.0), powZnk(1.0, 0.0), invZ(powZn/Z);// Convert to complex plane

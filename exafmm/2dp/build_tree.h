@@ -3,19 +3,16 @@
 #include "types.h"
 
 namespace exafmm {
-  //! Build cells of tree adaptively using a top-down approach based on recursion (uses task based thread parallelism)
-  Cell * buildTree(Body * bodies, Body * buffer, int begin, int end,
-                   real_t X[2], real_t R, int ncrit, int level=0, bool direction=false) {
-    if (begin == end) return NULL;                              // If no bodies left, return null pointer
+  //! Build cells of tree adaptively using a top-down approach based on recursion
+  void buildTree(Body * bodies, Body * buffer, int begin, int end, Cell * cell,
+                 real_t X[2], real_t R, int ncrit, int level=0, bool direction=false) {
     //! Create a tree cell
-    Cell * cell = new Cell();                                   // Allocate memory for single cell
     cell->BODY = bodies + begin;                                // Pointer of first body in cell
     if(direction) cell->BODY = buffer + begin;                  // Pointer of first body in cell
     cell->NBODY = end - begin;                                  // Number of bodies in cell
     cell->NCHILD = 0;                                           // Initialize counter for child cells
     for (int d=0; d<2; d++) cell->X[d] = X[d];                  // Center position of cell
     cell->R = R / (1 << level);                                 // Cell radius
-    for (int i=0; i<4; i++) cell->CHILD[i] = NULL;              // Initialize pointers to children
     //! If cell is a leaf
     if (end - begin <= ncrit) {                                 // If number of bodies is less than threshold
       if (direction) {                                          //  If direction of data is from bodies to buffer
@@ -24,7 +21,7 @@ namespace exafmm {
           buffer[i].q = bodies[i].q;                            //    Copy bodies source to buffer
         }                                                       //   End loop over bodies in cell
       }                                                         //  End if for direction of data
-      return cell;                                              //  Return cell pointer
+      return;                                                   //  Return without recursion
     }                                                           // End if for number of bodies
     //! Count number of bodies in each quadrant
     int size[4] = {0,0,0,0};
@@ -40,6 +37,7 @@ namespace exafmm {
     for (int i=0; i<4; i++) {                                   // Loop over elements
       offsets[i] = offset;                                      //  Set value
       offset += size[i];                                        //  Increment offset
+      if (size[i]) cell->NCHILD++;                              //  Increment child cell counter
     }                                                           // End loop over elements
     //! Sort bodies by quadrant
     for (int i=0; i<4; i++) counter[i] = offsets[i];            // Copy offsets to counter
@@ -52,20 +50,21 @@ namespace exafmm {
     }                                                           // End loop over bodies
     //! Loop over children and recurse
     real_t Xchild[2];                                           // Coordinates of children
+    Cell * child = new Cell[cell->NCHILD];                      // Allocate memory for child cells
+    cell->CHILD = child;                                        // Pointer for first child cell
+    int c = 0;                                                  // Counter for child cells
     for (int i=0; i<4; i++) {                                   // Loop over children
       for (int d=0; d<2; d++) Xchild[d] = X[d];                 //  Initialize center position of child cell
       real_t r = R / (1 << (level + 1));                        //  Radius of cells for child's level
       for (int d=0; d<2; d++) {                                 //  Loop over dimensions
         Xchild[d] += r * (((i & 1 << d) >> d) * 2 - 1);         //   Shift center position to that of child cell
       }                                                         //  End loop over dimensions
-      cell->CHILD[i] = buildTree(buffer, bodies,                //  Recursive call for each child
-                                 offsets[i], offsets[i] + size[i],//  Range of bodies is calcuated from quadrant offset
-                                 Xchild, R, ncrit, level+1, !direction);//  Alternate copy direction bodies <-> buffer
-      if (cell->CHILD[i]) {                                     //  If child exists
-        cell->NCHILD++;                                         //   Increment child cell counter
+      if (size[i]) {                                            //  If child exists
+        buildTree(buffer, bodies, offsets[i], offsets[i] + size[i],// Recursive call for each child
+                  &child[c], Xchild, R, ncrit, level+1, !direction);
+        c++;                                                    //   Increment child cell counter
       }                                                         //  End if for child
     }                                                           // End loop over children
-    return cell;                                                // Return quadtree cell
   }
 }
 

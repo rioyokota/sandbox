@@ -54,18 +54,19 @@ int main(int argc, char ** argv) {                              // Main function
   //! Build tree structure
   Body * buffer = new Body [numBodies];                         // Buffer for bodies
   for (int b=0; b<numBodies; b++) buffer[b] = bodies[b];        // Copy bodies to buffer
-  Cell * C0 = buildTree(bodies, buffer, 0, numBodies, X0, R0, ncrit);// Build tree recursively
+  Cell * cells = new Cell();
+  buildTree(bodies, buffer, 0, numBodies, cells, X0, R0, ncrit);// Build tree recursively
   stop("Build tree");                                           // Stop timer
 
   //! FMM evaluation
   start("Upward pass");                                         // Start timer
-  upwardPass(C0);                                               // Upward pass for P2M, M2M
+  upwardPass(cells);                                            // Upward pass for P2M, M2M
   stop("Upward pass");                                          // Stop timer
   start("Traversal");                                           // Start timer
-  traversal(C0, C0, cycle);                                     // Traversal for M2L, P2P
+  traversal(cells, cells, cycle);                               // Traversal for M2L, P2P
   stop("Traversal");                                            // Stop timer
   start("Downward pass");                                       // Start timer
-  downwardPass(C0);                                             // Downward pass for L2L, L2P
+  downwardPass(cells);                                          // Downward pass for L2L, L2P
   stop("Downward pass");                                        // Stop timer
 
   // Direct N-Body
