@@ -26,12 +26,12 @@ namespace exafmm {
     } else if (Ci->NCHILD == 0 && Cj->NCHILD == 0) {            // Else if both cells are leafs
       P2P(Ci, Cj);                                              //   Use exact kernel
     } else if (Cj->NCHILD == 0 || Ci->R >= Cj->R) {             // Else if Cj is leaf or Ci is larger
-      for (Cell * Cc=Ci->CHILD; Cc!=Ci->CHILD+Ci->NCHILD; Cc++) {// Loop over Ci's children
-        traversal(Cc, Cj);                                      //   Traverse a single pair of cells
+      for (Cell * ci=Ci->CHILD; ci!=Ci->CHILD+Ci->NCHILD; ci++) {// Loop over Ci's children
+        traversal(ci, Cj);                                      //   Traverse a single pair of cells
       }                                                         //  End loop over Ci's children
     } else {                                                    // Else if Ci is leaf or Cj is larger
-      for (Cell * Cc=Cj->CHILD; Cc!=Cj->CHILD+Cj->NCHILD; Cc++) {//  Loop over Cj's children
-        traversal(Ci, Cc);                                      //  Traverse a single pair of cells
+      for (Cell * cj=Cj->CHILD; cj!=Cj->CHILD+Cj->NCHILD; cj++) {//  Loop over Cj's children
+        traversal(Ci, cj);                                      //  Traverse a single pair of cells
       }                                                         //  End loop over Cj's children
     }                                                           // End if for leafs and Ci Cj size
   }

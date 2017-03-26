@@ -1,8 +1,12 @@
 [3d]
+dualTreeTraversal > traversal
+traverse > traversal
 remove vec.h
 iterators > pointers
 unify kernel interface
-remove uint64_t
+remove [0]
 
 [2d/2dp]
+Xperiodic > global
+Copy 3D traversePeriodic
 add kernel.cxx

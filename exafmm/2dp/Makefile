@@ -1,6 +1,6 @@
 .SUFFIXES: .cxx .o
 
-CXX = g++ -g -Wall -O3 -fopenmp
+CXX = g++ -g -Wall -Wfatal-errors -O3 -fopenmp
 
 .cxx.o  :
 	$(CXX) -c $^ -o $@
