@@ -29,14 +29,14 @@ int main(int argc, char ** argv) {
       bodies[b].X[d] = drand48() * cycle - cycle * .5;
     }
   }
-  for (B_iter B=bodies.begin(); B!=bodies.end(); B++) {
-    B->SRC = drand48() - .5;
-    average += B->SRC;
+  for (int b=0; b<numBodies; b++) {
+    bodies[b].SRC = drand48() - .5;
+    average += bodies[b].SRC;
   }
   average /= numBodies;
-  for (B_iter B=bodies.begin(); B!=bodies.end(); B++) {
-    B->SRC -= average;
-    B->TRG = 0;
+  for (int b=0; b<numBodies; b++) {
+    bodies[b].SRC -= average;
+    bodies[b].TRG = 0;
   }
   stop("Initialize bodies");
 
@@ -62,14 +62,14 @@ int main(int argc, char ** argv) {
   start("Dipole correction");
   buffer = bodies;
   vec3 dipole = 0;
-  for (B_iter B=bodies.begin(); B!=bodies.end(); B++) {
-    dipole += B->X * B->SRC;
+  for (int b=0; b<numBodies; b++) {
+    dipole += bodies[b].X * bodies[b].SRC;
   }
   real_t coef = 4 * M_PI / (3 * cycle * cycle * cycle);
-  for (B_iter B=bodies.begin(); B!=bodies.end(); B++) {
-    B->TRG[0] -= coef * norm(dipole) / numBodies / B->SRC;
+  for (int b=0; b<numBodies; b++) {
+    bodies[b].TRG[0] -= coef * norm(dipole) / numBodies / bodies[b].SRC;
     for (int d=0; d!=3; d++) {
-      B->TRG[d+1] -= coef * dipole[d];
+      bodies[b].TRG[d+1] -= coef * dipole[d];
     }
   }
   stop("Dipole correction");
@@ -78,8 +78,8 @@ int main(int argc, char ** argv) {
   // Ewald summation
   start("Build tree");
   Bodies bodies2 = bodies;
-  for (B_iter B=bodies.begin(); B!=bodies.end(); B++) {
-    B->TRG = 0;
+  for (int b=0; b<numBodies; b++) {
+    bodies[b].TRG = 0;
   }
   Bodies jbodies = bodies;
   Cells jcells = buildTree(jbodies, buffer);
@@ -94,14 +94,14 @@ int main(int argc, char ** argv) {
 
   // Verify result
   real_t pSum = 0, pSum2 = 0, FDif = 0, FNrm = 0;
-  B_iter B2 = bodies2.begin();
-  for (B_iter B=bodies.begin(); B!=bodies.end(); B++, B2++) {
-    pSum += B->TRG[0] * B->SRC;
-    pSum2 += B2->TRG[0] * B2->SRC;
-    FDif += (B->TRG[1] - B2->TRG[1]) * (B->TRG[1] - B2->TRG[1]) +
-      (B->TRG[2] - B2->TRG[2]) * (B->TRG[2] - B2->TRG[2]) +
-      (B->TRG[3] - B2->TRG[3]) * (B->TRG[3] - B2->TRG[3]);
-    FNrm += B->TRG[1] * B->TRG[1] + B->TRG[2] * B->TRG[2] + B->TRG[3] * B->TRG[3];
+  for (int b=0; b<numBodies; b++) {
+    pSum += bodies[b].TRG[0] * bodies[b].SRC;
+    pSum2 += bodies2[b].TRG[0] * bodies2[b].SRC;
+    FDif += (bodies[b].TRG[1] - bodies2[b].TRG[1]) * (bodies[b].TRG[1] - bodies2[b].TRG[1]) +
+      (bodies[b].TRG[2] - bodies2[b].TRG[2]) * (bodies[b].TRG[2] - bodies2[b].TRG[2]) +
+      (bodies[b].TRG[3] - bodies2[b].TRG[3]) * (bodies[b].TRG[3] - bodies2[b].TRG[3]);
+    FNrm += bodies[b].TRG[1] * bodies[b].TRG[1] + bodies[b].TRG[2] * bodies[b].TRG[2] +
+      bodies[b].TRG[3] * bodies[b].TRG[3];
   }
   real_t pDif = (pSum - pSum2) * (pSum - pSum2);
   real_t pNrm = pSum * pSum;
