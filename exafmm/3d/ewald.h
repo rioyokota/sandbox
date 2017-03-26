@@ -26,13 +26,12 @@ namespace exafmm {
     for (int d=0; d<3; d++) scale[d]= 2 * M_PI / cycle;         // Scale conversion
 #pragma omp parallel for
     for (int w=0; w<int(waves.size()); w++) {                   // Loop over waves
-      W_iter W=waves.begin()+w;                                 //  Wave iterator
-      W->REAL = W->IMAG = 0;                                    //  Initialize waves
-      for (B_iter B=bodies.begin(); B!=bodies.end(); B++) {     //  Loop over bodies
+      waves[w].REAL = waves[w].IMAG = 0;                        //  Initialize waves
+      for (int b=0; b<int(bodies.size()); b++) {                //  Loop over bodies
         real_t th = 0;                                          //   Initialize phase
-        for (int d=0; d<3; d++) th += W->K[d] * B->X[d] * scale[d];//  Determine phase
-        W->REAL += B->SRC * std::cos(th);                       //   Accumulate real component
-        W->IMAG += B->SRC * std::sin(th);                       //   Accumulate imaginary component
+        for (int d=0; d<3; d++) th += waves[w].K[d] * bodies[b].X[d] * scale[d];//  Determine phase
+        waves[w].REAL += bodies[b].SRC * std::cos(th);          //   Accumulate real component
+        waves[w].IMAG += bodies[b].SRC * std::sin(th);          //   Accumulate imaginary component
       }                                                         //  End loop over bodies
     }                                                           // End loop over waves
   }
