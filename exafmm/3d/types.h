@@ -33,10 +33,8 @@ namespace exafmm {
 
   //! Structure of cells
   struct Cell {
-    int IPARENT;                                                //!< Index of parent cell
     int ICHILD;                                                 //!< Index of first child cell
     int NCHILD;                                                 //!< Number of child cells
-    int IBODY;                                                  //!< Index of first body
     int NBODY;                                                  //!< Number of descendant bodies
     int ICELL;                                                  //!< Cell index
     vec3 X;                                                     //!< Cell center

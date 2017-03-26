@@ -113,13 +113,11 @@ namespace exafmm {
   //! Creating cell data structure from nodes
   void nodes2cells(OctreeNode * octNode, C_iter C,
                    C_iter C0, C_iter CN, real_t * X0, real_t R0,
-                   int level=0, int iparent=0) {
-    C->IPARENT = iparent;                                       //  Index of parent cell
+                   int level=0) {
     C->R = R0 / (1 << level);                                   //  Cell radius
     for (int d=0; d<3; d++) C->X[d] = octNode->X[d];            //  Cell center
     C->NBODY = octNode->NBODY;                                  //  Number of decendant bodies
-    C->IBODY = octNode->IBODY;                                  //  Index of first body in cell
-    C->BODY = B0 + C->IBODY;                                    //  Iterator of first body in cell
+    C->BODY = B0 + octNode->IBODY;                              //  Iterator of first body in cell
     real_t Xmin[3];                                             //  Min bounds for X
     for (int d=0; d<3; d++) Xmin[d] = X0[d] - R0;               //  Get min bounds
     C->ICELL = getKey(C->X, Xmin, 2*C->R, level);              //  Get Morton key
@@ -142,7 +140,7 @@ namespace exafmm {
       for (int i=0; i<nchild; i++) {                            //   Loop over children
         int octant = octants[i];                                //    Get octant from child index
         nodes2cells(octNode->CHILD[octant], Ci, C0, CN,         //    Recursive call for child cells
-                    X0, R0, level+1, C-C0);
+                    X0, R0, level+1);
         Ci++;                                                   //    Increment cell iterator
         CN += octNode->CHILD[octant]->NNODE - 1;                //    Increment next free memory address
       }                                                         //   End loop over children

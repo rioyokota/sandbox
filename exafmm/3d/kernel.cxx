@@ -39,12 +39,13 @@ int main(int argc, char ** argv) {
 
   // L2L
   C_iter Ci = cells.begin()+3;
+  CI->ICHILD = Ci-cells.begin();
+  CI->NCHILD = 1;
   Ci->X = 1;
   Ci->X[0] = -3;
   Ci->R = 1;
-  Ci->IPARENT = 2;
   Ci->L.resize(NTERM, 0.0);
-  L2L(Ci, cells.begin());
+  L2L(CI, cells.begin());
 
   // L2P
   Bodies bodies(1);
