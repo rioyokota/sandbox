@@ -24,17 +24,17 @@ int main(int argc, char ** argv) {
   Bodies bodies(numBodies);
   real_t average = 0;
   srand48(0);
-  for (int b=0; b<numBodies; b++) {
+  for (int b=0; b<int(bodies.size()); b++) {
     for (int d=0; d<3; d++) {
       bodies[b].X[d] = drand48() * cycle - cycle * .5;
     }
   }
-  for (int b=0; b<numBodies; b++) {
+  for (int b=0; b<int(bodies.size()); b++) {
     bodies[b].SRC = drand48() - .5;
     average += bodies[b].SRC;
   }
-  average /= numBodies;
-  for (int b=0; b<numBodies; b++) {
+  average /= bodies.size();
+  for (int b=0; b<int(bodies.size()); b++) {
     bodies[b].SRC -= average;
     bodies[b].TRG = 0;
   }
@@ -42,7 +42,7 @@ int main(int argc, char ** argv) {
 
   // Build tree
   start("Build tree");
-  Bodies buffer(numBodies);
+  Bodies buffer(bodies.size());
   Cells cells = buildTree(bodies, buffer);
   stop("Build tree");
 
@@ -62,12 +62,12 @@ int main(int argc, char ** argv) {
   start("Dipole correction");
   buffer = bodies;
   vec3 dipole = 0;
-  for (int b=0; b<numBodies; b++) {
+  for (int b=0; b<int(bodies.size()); b++) {
     dipole += bodies[b].X * bodies[b].SRC;
   }
   real_t coef = 4 * M_PI / (3 * cycle * cycle * cycle);
-  for (int b=0; b<numBodies; b++) {
-    bodies[b].TRG[0] -= coef * norm(dipole) / numBodies / bodies[b].SRC;
+  for (int b=0; b<int(bodies.size()); b++) {
+    bodies[b].TRG[0] -= coef * norm(dipole) / bodies.size() / bodies[b].SRC;
     for (int d=0; d!=3; d++) {
       bodies[b].TRG[d+1] -= coef * dipole[d];
     }
@@ -78,7 +78,7 @@ int main(int argc, char ** argv) {
   // Ewald summation
   start("Build tree");
   Bodies bodies2 = bodies;
-  for (int b=0; b<numBodies; b++) {
+  for (int b=0; b<int(bodies.size()); b++) {
     bodies[b].TRG = 0;
   }
   Bodies jbodies = bodies;
@@ -94,7 +94,7 @@ int main(int argc, char ** argv) {
 
   // Verify result
   real_t pSum = 0, pSum2 = 0, FDif = 0, FNrm = 0;
-  for (int b=0; b<numBodies; b++) {
+  for (int b=0; b<int(bodies.size()); b++) {
     pSum += bodies[b].TRG[0] * bodies[b].SRC;
     pSum2 += bodies2[b].TRG[0] * bodies2[b].SRC;
     FDif += (bodies[b].TRG[1] - bodies2[b].TRG[1]) * (bodies[b].TRG[1] - bodies2[b].TRG[1]) +
