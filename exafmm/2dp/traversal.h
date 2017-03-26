@@ -109,8 +109,9 @@ namespace exafmm {
 
   //! Direct summation
   void direct(Bodies & bodies, Bodies & jbodies, real_t cycle) {
-    Cell * Ci = new Cell();                                     // Allocate single target cell
-    Cell * Cj = new Cell();                                     // Allocate single source cell
+    Cells cells(2);                                             // Define a pair of cells to pass to P2P kernel
+    Cell * Ci = &cells[0];                                      // Allocate single target cell
+    Cell * Cj = &cells[1];                                      // Allocate single source cell
     Ci->BODY = &bodies[0];                                      // Pointer of first target body
     Ci->NBODY = bodies.size();                                  // Number of target bodies
     Cj->BODY = &jbodies[0];                                     // Pointer of first source body
@@ -126,8 +127,6 @@ namespace exafmm {
         P2P(Ci, Cj, Xperiodic);                                 //   Evaluate P2P kernel
       }                                                         //  End loop over y periodic direction
     }                                                           // End loop over x periodic direction
-    delete Ci;                                                  // Deallocate target cell
-    delete Cj;                                                  // Deallocate source cell
   }
 }
 

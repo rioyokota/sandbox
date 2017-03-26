@@ -17,6 +17,7 @@ namespace exafmm {
     real_t p;                                                   //!< Potential
     real_t F[2];                                                //!< Force
   };
+  typedef std::vector<Body> Bodies;                             //!< Vector of bodies
 
   //! Structure of cells
   struct Cell {
@@ -29,6 +30,7 @@ namespace exafmm {
     std::vector<complex_t> M;                                   //!< Multipole expansion coefficients
     std::vector<complex_t> L;                                   //!< Local expansion coefficients
   };
+  typedef std::vector<Cell> Cells;                              //!< Vector of cells
 }
 
 #endif

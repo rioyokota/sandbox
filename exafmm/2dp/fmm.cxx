@@ -52,10 +52,9 @@ int main(int argc, char ** argv) {                              // Main function
   R0 *= 1.00001;                                                // Add some leeway to radius
 
   //! Build tree structure
-  Body * buffer = new Body [bodies.size()];                     // Buffer for bodies
-  for (int b=0; b<int(bodies.size()); b++) buffer[b] = bodies[b];// Copy bodies to buffer
-  Cell * cells = new Cell();
-  buildTree(&bodies[0], buffer, 0, bodies.size(), cells, X0, R0, ncrit);// Build tree recursively
+  Bodies buffer = bodies;                                       // Copy bodies to buffer
+  Cell * cells = new Cell();                                    // Create root cell
+  buildTree(&bodies[0], &buffer[0], 0, bodies.size(), cells, X0, R0, ncrit);// Build tree recursively
   stop("Build tree");                                           // Stop timer
 
   //! FMM evaluation
@@ -78,7 +77,7 @@ int main(int argc, char ** argv) {                              // Main function
   }                                                             // End loop over target samples
   bodies.resize(numTargets);                                    // Resize bodies
   Bodies bodies2 = bodies;                                      // Backup bodies
-  for (int b=0; b<numTargets; b++) {                            // Loop over bodies
+  for (int b=0; b<int(bodies.size()); b++) {                    // Loop over bodies
     bodies[b].p = 0;                                            //  Clear potential
     for (int d=0; d<2; d++) bodies[b].F[d] = 0;                 //  Clear force
   }                                                             // End loop over bodies
@@ -87,7 +86,7 @@ int main(int argc, char ** argv) {                              // Main function
 
   //! Evaluate relaitve L2 norm error
   double pDif = 0, pNrm = 0, FDif = 0, FNrm = 0;
-  for (int b=0; b<numTargets; b++) {                            // Loop over bodies & bodies2
+  for (int b=0; b<int(bodies.size()); b++) {                    // Loop over bodies & bodies2
     pDif += (bodies[b].p - bodies2[b].p) * (bodies[b].p - bodies2[b].p);// Difference of potential
     pNrm += bodies2[b].p * bodies2[b].p;                        //  Value of potential
     FDif += (bodies[b].F[0] - bodies2[b].F[0]) * (bodies[b].F[0] - bodies2[b].F[0])// Difference of force

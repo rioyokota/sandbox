@@ -128,7 +128,7 @@ namespace exafmm {
 
   //! Direct summation
   void direct(Bodies & ibodies, Bodies & jbodies, vec3 cycle) {
-    Cells cells; cells.resize(2);                               // Define a pair of cells to pass to P2P kernel
+    Cells cells(2);                                             // Define a pair of cells to pass to P2P kernel
     C_iter Ci = cells.begin(), Cj = cells.begin()+1;            // First cell is target, second cell is source
     for (int ix=-1; ix<=1; ix++) {                              //  Loop over x periodic direction
       for (int iy=-1; iy<=1; iy++) {                            //   Loop over y periodic direction
