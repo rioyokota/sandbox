@@ -41,18 +41,17 @@ namespace exafmm {
     for (int d=0; d<3; d++) scale[d] = 2 * M_PI / cycle;        // Scale conversion
 #pragma omp parallel for
     for (int b=0; b<int(bodies.size()); b++) {                  // Loop over bodies
-      B_iter B=bodies.begin()+b;                                //  Body iterator
       real_t TRG[4];                                            //  Temporary target values
       for (int d=0; d<4; d++) TRG[d] = 0;                       //  Initialize target values
-      for (W_iter W=waves.begin(); W!=waves.end(); W++) {       //   Loop over waves
+      for (int w=0; w<int(waves.size()); w++) {                 //   Loop over waves
         real_t th = 0;                                          //    Initialzie phase
-        for (int d=0; d<3; d++) th += W->K[d] * B->X[d] * scale[d];// Determine phase
-        real_t dtmp = W->REAL * std::sin(th) - W->IMAG * std::cos(th);// Temporary value
-        TRG[0]     += W->REAL * std::cos(th) + W->IMAG * std::sin(th);// Accumulate potential
-        for (int d=0; d<3; d++) TRG[d+1] -= dtmp * W->K[d];     //    Accumulate force
+        for (int d=0; d<3; d++) th += waves[w].K[d] * bodies[b].X[d] * scale[d];// Determine phase
+        real_t dtmp = waves[w].REAL * std::sin(th) - waves[w].IMAG * std::cos(th);// Temporary value
+        TRG[0]     += waves[w].REAL * std::cos(th) + waves[w].IMAG * std::sin(th);// Accumulate potential
+        for (int d=0; d<3; d++) TRG[d+1] -= dtmp * waves[w].K[d];//   Accumulate force
       }                                                         //   End loop over waves
       for (int d=0; d<3; d++) TRG[d+1] *= scale[d];             //   Scale forces
-      for (int d=0; d<4; d++) B->TRG[d] += TRG[d];              //  Copy results to bodies
+      for (int d=0; d<4; d++) bodies[b].TRG[d] += TRG[d];       //  Copy results to bodies
     }                                                           // End loop over bodies
   }
 
@@ -139,20 +138,20 @@ namespace exafmm {
     for (int d=0; d<3; d++) scale[d] = 2 * M_PI / cycle;        // Scale conversion
     real_t coef = 2 / sigma / cycle / cycle / cycle;            // First constant
     real_t coef2 = 1 / (4 * alpha * alpha);                     // Second constant
-    for (W_iter W=waves.begin(); W!=waves.end(); W++) {         // Loop over waves
-      for (int d=0; d<3; d++) K[d] = W->K[d] * scale[d];        //  Wave number scaled
+    for (int w=0; w<int(waves.size()); w++) {                   // Loop over waves
+      for (int d=0; d<3; d++) K[d] = waves[w].K[d] * scale[d];  //  Wave number scaled
       real_t K2 = K[0] * K[0] + K[1] * K[1] + K[2] * K[2];      //  Wave number squared
       real_t factor = coef * std::exp(-K2 * coef2) / K2;        //  Wave factor
-      W->REAL *= factor;                                        //  Apply wave factor to real part
-      W->IMAG *= factor;                                        //  Apply wave factor to imaginary part
+      waves[w].REAL *= factor;                                  //  Apply wave factor to real part
+      waves[w].IMAG *= factor;                                  //  Apply wave factor to imaginary part
     }                                                           // End loop over waves
     idft(waves,bodies);                                         // Inverse DFT
   }
 
   //! Subtract self term
   void selfTerm(Bodies & bodies) {
-    for (B_iter B=bodies.begin(); B!=bodies.end(); B++) {       // Loop over all bodies
-      B->TRG[0] -= M_2_SQRTPI * B->SRC * alpha;                 //  Self term of Ewald real part
+    for (int b=0; b<int(bodies.size()); b++) {                  // Loop over all bodies
+      bodies[b].TRG[0] -= M_2_SQRTPI * bodies[b].SRC * alpha;   //  Self term of Ewald real part
     }                                                           // End loop over all bodies in cell
   }
 }

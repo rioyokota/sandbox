@@ -1,14 +1,18 @@
 [3d]
 dualTreeTraversal > traversal
 traverse > traversal
+iterators > pointers
+B_iter > Body *
 C_iter > Cell *
+W_iter > Wave *
 SRC, TRG > q, p, F
 remove vec.h
-iterators > pointers
 unify kernel interface
 remove [0]
+remove new, delete
 
 [2d/2dp]
 Xperiodic > global
 Copy 3D traversePeriodic
 add kernel.cxx
+Use STL vector for bodies, cells
