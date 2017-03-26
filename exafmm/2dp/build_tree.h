@@ -42,7 +42,7 @@ namespace exafmm {
       offset += size[i];                                        //  Increment offset
     }                                                           // End loop over elements
     //! Sort bodies by quadrant
-    for (int i=0; i<4; i++) counter[i] = offsets[i];            // Copy offsets yo counter
+    for (int i=0; i<4; i++) counter[i] = offsets[i];            // Copy offsets to counter
     for (int i=begin; i<end; i++) {                             // Loop over bodies
       for (int d=0; d<2; d++) x[d] = bodies[i].X[d];            //  Position of body
       int quadrant = (x[0] > X[0]) + ((x[1] > X[1]) << 1);      //  Which quadrant body belongs to`

@@ -43,18 +43,15 @@ namespace exafmm {
 
   //!< M2M kernel for one parent cell Ci
   void M2M(Cell * Ci) {
-    for (int i=0; i<4; i++) {                                   // Loop over child cells
-      if (Ci->CHILD[i]) {                                       //  If child exists
-        Cell * Cj = Ci->CHILD[i];                               //   Child cell
-        real_t dX[2];                                           //   Distance vector
-        for (int d=0; d<2; d++) dX[d] = Cj->X[d] - Ci->X[d];    //   Get distance vector
-        for (int k=0; k<P; k++) {                               //   Loop over coefficients
-          complex_t Z(dX[0],dX[1]), powZ(1.0, 0.0);             //    z^0 = 1
-          Ci->M[k] += Cj->M[k];                                 //    Add constant term
-          for (int n=1; n<=k; n++) {                            //    Loop over k-l
-            powZ *= Z / real_t(n);                              //     Store z^(k-l) / (k-l)!
-            Ci->M[k] += Cj->M[k-n] * powZ;                      //     Add to coefficient
-          }                                                     //    End loop
+    for (Cell * Cj=Ci->CHILD; Cj!=Ci->CHILD+Ci->NCHILD; Cj++) { // Loop over child cells
+      real_t dX[2];                                             //  Distance vector
+      for (int d=0; d<2; d++) dX[d] = Cj->X[d] - Ci->X[d];      //  Get distance vector
+      for (int k=0; k<P; k++) {                                 //  Loop over coefficients
+        complex_t Z(dX[0],dX[1]), powZ(1.0, 0.0);               //   z^0 = 1
+        Ci->M[k] += Cj->M[k];                                   //   Add constant term
+        for (int n=1; n<=k; n++) {                              //   Loop over k-l
+          powZ *= Z / real_t(n);                                //    Store z^(k-l) / (k-l)!
+          Ci->M[k] += Cj->M[k-n] * powZ;                        //    Add to coefficient
         }                                                       //   End loop
       }                                                         //  End loop
     }                                                           // End loop
@@ -93,19 +90,16 @@ namespace exafmm {
 
   //!< L2L kernel for one parent cell Cj
   void L2L(Cell * Cj) {
-    for (int i=0; i<4; i++) {                                   // Loop over child cells
-      if (Cj->CHILD[i]) {                                       //  If child exists
-        Cell * Ci = Cj->CHILD[i];                               //   Child cell
-        real_t dX[2];                                           //   Distance vector
-        for (int d=0; d<2; d++) dX[d] = Ci->X[d] - Cj->X[d];    //   Get distance vector
-        complex_t Z(dX[0],dX[1]);                               //   Convert to complex plane
-        for (int l=0; l<P; l++) {                               //   Loop over coefficients
-          complex_t powZ(1.0, 0.0);                             //    z^0 = 1
-          Ci->L[l] += Cj->L[l];                                 //    Add constant term
-          for (int k=1; k<P-l; k++) {                           //    Loop over coefficients
-            powZ *= Z / real_t(k);                              //     Store z^k / k!
-            Ci->L[l] += Cj->L[l+k] * powZ;                      //     Add to coefficient
-          }                                                     //    End loop
+    for (Cell * Ci=Cj->CHILD; Ci<Cj->CHILD+Cj->NCHILD; Ci++) {  // Loop over child cells
+      real_t dX[2];                                             //  Distance vector
+      for (int d=0; d<2; d++) dX[d] = Ci->X[d] - Cj->X[d];      //  Get distance vector
+      complex_t Z(dX[0],dX[1]);                                 //  Convert to complex plane
+      for (int l=0; l<P; l++) {                                 //  Loop over coefficients
+        complex_t powZ(1.0, 0.0);                               //   z^0 = 1
+        Ci->L[l] += Cj->L[l];                                   //   Add constant term
+        for (int k=1; k<P-l; k++) {                             //   Loop over coefficients
+          powZ *= Z / real_t(k);                                //    Store z^k / k!
+          Ci->L[l] += Cj->L[l+k] * powZ;                        //    Add to coefficient
         }                                                       //   End loop
       }                                                         //  End loop
     }                                                           // End loop

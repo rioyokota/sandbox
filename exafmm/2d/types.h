@@ -22,7 +22,7 @@ namespace exafmm {
   struct Cell {
     int NCHILD;                                                 //!< Number of child cells
     int NBODY;                                                  //!< Number of descendant bodies
-    Cell * CHILD[4];                                            //!< Pointer of child cells
+    Cell * CHILD;                                               //!< Pointer of first child cell
     Body * BODY;                                                //!< Pointer of first body
     real_t X[2];                                                //!< Cell center
     real_t R;                                                   //!< Cell radius
