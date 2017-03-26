@@ -17,9 +17,9 @@ int main(int argc, char ** argv) {                              // Main function
   printf("--- FMM Profiling ----------------\n");               // Start profiling
   start("Initialize bodies");                                   // Start timer
   srand48(0);                                                   // Set seed for random number generator
-  Body * bodies = new Body [numBodies];                         // Initialize bodies
+  Bodies bodies(numBodies);                                     // Initialize bodies
   real_t average = 0;                                           // Average charge
-  for (int b=0; b<numBodies; b++) {                             // Loop over bodies
+  for (int b=0; b<int(bodies.size()); b++) {                    // Loop over bodies
     for (int d=0; d<2; d++) {                                   //  Loop over dimension
       bodies[b].X[d] = drand48() * 2 * M_PI - M_PI;             //   Initialize positions
     }                                                           //  End loop over dimension
@@ -28,8 +28,8 @@ int main(int argc, char ** argv) {                              // Main function
     bodies[b].p = 0;                                            //  Clear potential
     for (int d=0; d<2; d++) bodies[b].F[d] = 0;                 //  Clear force
   }                                                             // End loop over bodies
-  average /= numBodies;                                         // Average charge
-  for (int b=0; b<numBodies; b++) {                             // Loop over bodies
+  average /= bodies.size();                                     // Average charge
+  for (int b=0; b<int(bodies.size()); b++) {                    // Loop over bodies
     bodies[b].q -= average;                                     // Charge neutral
   }                                                             // End loop over bodies
   stop("Initialize bodies");                                    // Stop timer
@@ -39,7 +39,7 @@ int main(int argc, char ** argv) {                              // Main function
   real_t R0;                                                    // Radius of root cell
   real_t Xmin[2], Xmax[2], X0[2];                               // Min, max of domain, and center of root cell
   for (int d=0; d<2; d++) Xmin[d] = Xmax[d] = bodies[0].X[d];   // Initialize Xmin, Xmax
-  for (int b=0; b<numBodies; b++) {                             // Loop over range of bodies
+  for (int b=0; b<int(bodies.size()); b++) {                             // Loop over range of bodies
     for (int d=0; d<2; d++) Xmin[d] = fmin(bodies[b].X[d], Xmin[d]);//  Update Xmin
     for (int d=0; d<2; d++) Xmax[d] = fmax(bodies[b].X[d], Xmax[d]);//  Update Xmax
   }                                                             // End loop over range of bodies
@@ -52,10 +52,10 @@ int main(int argc, char ** argv) {                              // Main function
   R0 *= 1.00001;                                                // Add some leeway to radius
 
   //! Build tree structure
-  Body * buffer = new Body [numBodies];                         // Buffer for bodies
-  for (int b=0; b<numBodies; b++) buffer[b] = bodies[b];        // Copy bodies to buffer
+  Body * buffer = new Body [bodies.size()];                     // Buffer for bodies
+  for (int b=0; b<int(bodies.size()); b++) buffer[b] = bodies[b];// Copy bodies to buffer
   Cell * cells = new Cell();
-  buildTree(bodies, buffer, 0, numBodies, cells, X0, R0, ncrit);// Build tree recursively
+  buildTree(&bodies[0], buffer, 0, bodies.size(), cells, X0, R0, ncrit);// Build tree recursively
   stop("Build tree");                                           // Stop timer
 
   //! FMM evaluation
@@ -71,21 +71,18 @@ int main(int argc, char ** argv) {                              // Main function
 
   // Direct N-Body
   start("Direct N-Body");                                       // Start timer
-  Body * jbodies = new Body [numBodies];                        // Source bodies
-  for (int b=0; b<numBodies; b++) jbodies[b] = bodies[b];       // Save bodies in jbodies
-  int stride = numBodies / numTargets;                          // Stride of sampling
+  Bodies jbodies = bodies;                                      // Save bodies in jbodies
+  int stride = bodies.size() / numTargets;                      // Stride of sampling
   for (int b=0; b<numTargets; b++) {                            // Loop over target samples
     bodies[b] = bodies[b*stride];                               //  Sample targets
   }                                                             // End loop over target samples
-  Body * bodies2 = new Body [numTargets];                       // Backup bodies
-  for (int b=0; b<numTargets; b++) {                            // Loop over bodies
-    bodies2[b] = bodies[b];                                     //  Save bodies in bodies2
-  }                                                             // End loop over bodies
+  bodies.resize(numTargets);                                    // Resize bodies
+  Bodies bodies2 = bodies;                                      // Backup bodies
   for (int b=0; b<numTargets; b++) {                            // Loop over bodies
     bodies[b].p = 0;                                            //  Clear potential
     for (int d=0; d<2; d++) bodies[b].F[d] = 0;                 //  Clear force
   }                                                             // End loop over bodies
-  direct(numTargets, bodies, numBodies, jbodies, cycle);        // Direct N-Body
+  direct(bodies, jbodies, cycle);                               // Direct N-Body
   stop("Direct N-Body");                                        // Stop timer
 
   //! Evaluate relaitve L2 norm error

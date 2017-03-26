@@ -22,7 +22,7 @@ namespace exafmm {
   }
 
   //! Dual tree traversal for a single pair of cells
-  void dualTreeTraversal(C_iter Ci, C_iter Cj) {
+  void traversal(C_iter Ci, C_iter Cj) {
     vec3 dX = Ci->X - Cj->X - Xperiodic;                        // Distance vector from source to target
     real_t RT2 = norm(dX) * theta * theta;                      // Scalar distance squared
     if (RT2 > (Ci->R+Cj->R) * (Ci->R+Cj->R) * (1 - 1e-3)) {     // If distance is far enough
@@ -31,11 +31,11 @@ namespace exafmm {
       P2P(Ci, Cj);                                              //  P2P kernel
     } else if (Cj->NCHILD == 0 || Ci->R >= Cj->R) {             // If Cj is leaf or Ci is larger
       for (C_iter ci=Ci0+Ci->ICHILD; ci!=Ci0+Ci->ICHILD+Ci->NCHILD; ci++) {// Loop over Ci's children
-        dualTreeTraversal(ci, Cj);                              //   Traverse a single pair of cells
+        traversal(ci, Cj);                                      //   Traverse a single pair of cells
       }                                                         //  End loop over Ci's children
     } else {                                                    // Else if Ci is leaf or Cj is larger
       for (C_iter cj=Cj0+Cj->ICHILD; cj!=Cj0+Cj->ICHILD+Cj->NCHILD; cj++) {// Loop over Cj's children
-        dualTreeTraversal(Ci, cj);                              //   Traverse a single pair of cells
+        traversal(Ci, cj);                                      //   Traverse a single pair of cells
       }                                                         //  End loop over Cj's children
     }                                                           // End if for leafs and Ci Cj size
   }
@@ -93,13 +93,13 @@ namespace exafmm {
   }
 
   //! Evaluate P2P and M2L using list based traversal
-  void traverse(Cells & icells, Cells & jcells, vec3 cycle) {
+  void traversal(Cells & icells, Cells & jcells, vec3 cycle) {
     if (icells.empty() || jcells.empty()) return;               // Quit if either of the cell vectors are empty
     Ci0 = icells.begin();                                       // Iterator of first target cell
     Cj0 = jcells.begin();                                       // Iterator of first source cell
     Xperiodic = 0;                                              // Set periodic coordinate offset to 0
     if (images == 0) {                                          //  If non-periodic boundary condition
-      dualTreeTraversal(Ci0, Cj0);                              //   Traverse the tree
+      traversal(Ci0, Cj0);                                      //   Traverse the tree
     } else {                                                    //  If periodic boundary condition
       for (int ix=-1; ix<=1; ix++) {                            //   Loop over x periodic direction
         for (int iy=-1; iy<=1; iy++) {                          //    Loop over y periodic direction
@@ -107,7 +107,7 @@ namespace exafmm {
             Xperiodic[0] = ix * cycle[0];                       //      Coordinate shift for x periodic direction
             Xperiodic[1] = iy * cycle[1];                       //      Coordinate shift for y periodic direction
             Xperiodic[2] = iz * cycle[2];                       //      Coordinate shift for z periodic direction
-            dualTreeTraversal(Ci0, Cj0);                        //      Traverse the tree for this periodic image
+            traversal(Ci0, Cj0);                                //      Traverse the tree for this periodic image
           }                                                     //     End loop over z periodic direction
         }                                                       //    End loop over y periodic direction
       }                                                         //   End loop over x periodic direction

@@ -52,7 +52,7 @@ int main(int argc, char ** argv) {
   upwardPass(cells.begin(), cells.begin());
   stop("Upward pass");
   start("Traversal");
-  traverse(cells, cells, cycle);
+  traversal(cells, cells, cycle);
   stop("Traversal");
   start("Downward pass");
   downwardPass(cells.begin(), cells.begin());

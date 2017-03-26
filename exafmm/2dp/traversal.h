@@ -108,13 +108,13 @@ namespace exafmm {
   }
 
   //! Direct summation
-  void direct(int ni, Body * Bi, int nj, Body * Bj, real_t cycle) {
+  void direct(Bodies & bodies, Bodies & jbodies, real_t cycle) {
     Cell * Ci = new Cell();                                     // Allocate single target cell
     Cell * Cj = new Cell();                                     // Allocate single source cell
-    Ci->BODY = Bi;                                              // Pointer of first target body
-    Ci->NBODY = ni;                                             // Number of target bodies
-    Cj->BODY = Bj;                                              // Pointer of first source body
-    Cj->NBODY = nj;                                             // Number of source bodies
+    Ci->BODY = &bodies[0];                                      // Pointer of first target body
+    Ci->NBODY = bodies.size();                                  // Number of target bodies
+    Cj->BODY = &jbodies[0];                                     // Pointer of first source body
+    Cj->NBODY = jbodies.size();                                 // Number of source bodies
     int prange = 0;                                             // Range of periodic images
     for (int i=0; i<images; i++) {                              // Loop over periodic image sublevels
       prange += int(powf(3.,i));                                //  Accumulate range of periodic images
