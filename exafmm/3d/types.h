@@ -23,9 +23,8 @@ namespace exafmm {
 
   //! Structure of bodies
   struct Body {                                                 //!< Base components of body structure
-    int ICELL;                                                  //!< Cell index
     vec3  X;                                                    //!< Position
-    real_t  SRC;                                                //!< Scalar real values
+    real_t SRC;                                                 //!< Scalar real values
     vec4 TRG;                                                   //!< Scalar+vector3 real values
   };
   typedef std::vector<Body> Bodies;                             //!< Vector of bodies
@@ -33,13 +32,12 @@ namespace exafmm {
 
   //! Structure of cells
   struct Cell {
-    int ICHILD;                                                 //!< Index of first child cell
     int NCHILD;                                                 //!< Number of child cells
     int NBODY;                                                  //!< Number of descendant bodies
-    int ICELL;                                                  //!< Cell index
+    int ICHILD;                                                 //!< Index of first child cell
+    Body * BODY;                                                //!< Iterator of first body
     vec3 X;                                                     //!< Cell center
     real_t R;                                                   //!< Cell radius
-    B_iter BODY;                                                //!< Iterator of first body
     std::vector<complex_t> M;                                   //!< Multipole expansion coefs
     std::vector<complex_t> L;                                   //!< Local expansion coefs
   };

@@ -16,7 +16,7 @@ namespace exafmm {
 
   int ncrit;                                                    //!< Number of bodies per leaf cell
   real_t x[3];                                                  //!< Coordinate vector
-  B_iter B0;                                                    //!< Iterator of first body
+  Body * B0;                                                    //!< Pointer of first body
   OctreeNode * N0;                                              //!< Pointer to octree root node
 
   //! Counting bodies in each octant
@@ -98,18 +98,6 @@ namespace exafmm {
     }                                                           // End loop over chlidren
   }
 
-  //! Get Morton key
-  int getKey(vec3 X, real_t * Xmin, real_t diameter, int level) {
-    int iX[3] = {0, 0, 0};                                      // Initialize 3-D index
-    for (int d=0; d<3; d++) iX[d] = int((X[d] - Xmin[d]) / diameter);// 3-D index
-    int index = ((1 << 3 * level) - 1) / 7;                     // Levelwise offset
-    for (int l=0; l<level; l++) {                               // Loop over levels
-      for (int d=0; d<3; d++) index += (iX[d] & 1) << (3 * l + d);// Interleave bits into Morton key
-      for (int d=0; d<3; d++) iX[d] >>= 1;                      //  Bitshift 3-D index
-    }                                                           // End loop over levels
-    return index;                                               // Return Morton key
-  }
-
   //! Creating cell data structure from nodes
   void nodes2cells(OctreeNode * octNode, C_iter C,
                    C_iter C0, C_iter CN, real_t * X0, real_t R0,
@@ -118,9 +106,6 @@ namespace exafmm {
     for (int d=0; d<3; d++) C->X[d] = octNode->X[d];            //  Cell center
     C->NBODY = octNode->NBODY;                                  //  Number of decendant bodies
     C->BODY = B0 + octNode->IBODY;                              //  Iterator of first body in cell
-    real_t Xmin[3];                                             //  Min bounds for X
-    for (int d=0; d<3; d++) Xmin[d] = X0[d] - R0;               //  Get min bounds
-    C->ICELL = getKey(C->X, Xmin, 2*C->R, level);              //  Get Morton key
     if (octNode->NNODE == 1) {                                  //  If node has no children
       C->ICHILD = 0;                                            //   Set index of first child cell to zero
       C->NCHILD = 0;                                            //   Number of child cells
@@ -177,7 +162,7 @@ namespace exafmm {
       N0 = NULL;                                                //  Reinitialize N0 with NULL
     } else {                                                    // If bodies vector is not empty
       if (bodies.size() > buffer.size()) buffer.resize(bodies.size());// Enlarge buffer if necessary
-      B0 = bodies.begin();                                      // Bodies iterator
+      B0 = &bodies[0];                                          // Pointer of first body
       buildNodes(N0, bodies, buffer, 0, bodies.size(),          // Build octree nodes
                  box.X, box.R);
     }                                                           // End if for empty root

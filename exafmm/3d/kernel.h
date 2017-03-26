@@ -139,8 +139,8 @@ namespace exafmm {
   }
 
   void P2P(C_iter Ci, C_iter Cj) {
-    B_iter Bi = Ci->BODY;
-    B_iter Bj = Cj->BODY;
+    Body * Bi = Ci->BODY;
+    Body * Bj = Cj->BODY;
     int ni = Ci->NBODY;
     int nj = Cj->NBODY;
     for (int i=0; i<ni; i++) {
@@ -170,7 +170,7 @@ namespace exafmm {
 
   void P2M(C_iter C) {
     complex_t Ynm[P*P], YnmTheta[P*P];
-    for (B_iter B=C->BODY; B!=C->BODY+C->NBODY; B++) {
+    for (Body * B=C->BODY; B!=C->BODY+C->NBODY; B++) {
       vec3 dX = B->X - C->X;
       real_t rho, alpha, beta;
       cart2sph(dX, rho, alpha, beta);
@@ -293,7 +293,7 @@ namespace exafmm {
 
   void L2P(C_iter Ci) {
     complex_t Ynm[P*P], YnmTheta[P*P];
-    for (B_iter B=Ci->BODY; B!=Ci->BODY+Ci->NBODY; B++) {
+    for (Body * B=Ci->BODY; B!=Ci->BODY+Ci->NBODY; B++) {
       vec3 dX = B->X - Ci->X;
       vec3 spherical = 0;
       vec3 cartesian = 0;

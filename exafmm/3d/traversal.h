@@ -136,9 +136,9 @@ namespace exafmm {
           Xperiodic[0] = ix * cycle[0];                         //     Coordinate shift for x periodic direction
           Xperiodic[1] = iy * cycle[1];                         //     Coordinate shift for y periodic direction
           Xperiodic[2] = iz * cycle[2];                         //     Coordinate shift for z periodic direction
-          Ci->BODY = ibodies.begin();                           //     Iterator of first target body
+          Ci->BODY = &ibodies[0];                               //     Iterator of first target body
           Ci->NBODY = ibodies.size();                           //     Number of target bodies
-          Cj->BODY = jbodies.begin();                           //     Iterator of first source body
+          Cj->BODY = &jbodies[0];                               //     Iterator of first source body
           Cj->NBODY = jbodies.size();                           //     Number of source bodies
           P2P(Ci, Cj);                                          //     Evaluate P2P kenrel
         }                                                       //    End loop over z periodic direction

@@ -86,8 +86,8 @@ namespace exafmm {
 
   //! Ewald real part P2P kernel
   void realPart(C_iter Ci, C_iter Cj) {
-    for (B_iter Bi=Ci->BODY; Bi!=Ci->BODY+Ci->NBODY; Bi++) {    // Loop over target bodies
-      for (B_iter Bj=Cj->BODY; Bj!=Cj->BODY+Cj->NBODY; Bj++) {  //  Loop over source bodies
+    for (Body * Bi=Ci->BODY; Bi!=Ci->BODY+Ci->NBODY; Bi++) {    // Loop over target bodies
+      for (Body * Bj=Cj->BODY; Bj!=Cj->BODY+Cj->NBODY; Bj++) {  //  Loop over source bodies
         for (int d=0; d<3; d++) dX[d] = Bi->X[d] - Bj->X[d] - Xperiodic[d];//   Distance vector from source to target
         real_t R2 = dX[0] * dX[0] + dX[1] * dX[1] + dX[2] * dX[2];//   R^2
         if (0 < R2 && R2 < cutoff * cutoff) {                   //   Exclude self interaction and cutoff
