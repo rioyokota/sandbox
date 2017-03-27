@@ -19,8 +19,8 @@ namespace exafmm {
 
   //! Dual tree traversal for a single pair of cells
   void traversal(Cell * Ci, Cell * Cj) {
-    vec3 dX = Ci->X - Cj->X - Xperiodic;                        // Distance vector from source to target
-    real_t R2 = norm(dX) * theta * theta;                       // Scalar distance squared
+    for (int d=0; d<3; d++) dX[d] = Ci->X[d] - Cj->X[d] - Xperiodic[d];// Distance vector from source to target
+    real_t R2 = (dX[0] * dX[0] + dX[1] * dX[1] + dX[2] * dX[2]) * theta * theta;// Scalar distance squared
     if (R2 > (Ci->R + Cj->R) * (Ci->R + Cj->R)) {               // If distance is far enough
       M2L(Ci, Cj);                                              //  M2L kernel
     } else if (Ci->NCHILD == 0 && Cj->NCHILD == 0) {            // Else if both cells are leafs

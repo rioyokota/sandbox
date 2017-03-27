@@ -10,7 +10,7 @@ namespace exafmm {
   int P;                                                        //!< Order of expansions
   int NTERM;                                                    //!< Number of coefficients
   real_t dX[3];                                                 //!< Distance vector
-  vec3 Xperiodic;                                               //!< Periodic coordinate offset
+  real_t Xperiodic[3];                                          //!< Periodic coordinate offset
 
   //! Odd or even
   inline int oddOrEven(int n) {
