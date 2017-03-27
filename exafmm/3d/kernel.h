@@ -25,7 +25,7 @@ namespace exafmm {
   }
 
   //! Spherical to cartesian coordinates
-  void sph2cart(real_t r, real_t theta, real_t phi, vec3 spherical, vec3 & cartesian) {
+  void sph2cart(real_t r, real_t theta, real_t phi, real_t * spherical, real_t * cartesian) {
     cartesian[0] = std::sin(theta) * std::cos(phi) * spherical[0]// x component (not x itself)
       + std::cos(theta) * std::cos(phi) / r * spherical[1]
       - std::sin(phi) / r / std::sin(theta) * spherical[2];
@@ -296,8 +296,8 @@ namespace exafmm {
     complex_t Ynm[P*P], YnmTheta[P*P];
     for (Body * B=Ci->BODY; B!=Ci->BODY+Ci->NBODY; B++) {
       for (int d=0; d<3; d++) dX[d] = B->X[d] - Ci->X[d];
-      vec3 spherical = 0;
-      vec3 cartesian = 0;
+      real_t spherical[3] = {0, 0, 0};
+      real_t cartesian[3] = {0, 0, 0};
       real_t r, theta, phi;
       cart2sph(dX, r, theta, phi);
       evalMultipole(r, theta, phi, Ynm, YnmTheta);

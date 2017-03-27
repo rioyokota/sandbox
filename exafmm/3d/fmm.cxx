@@ -62,13 +62,14 @@ int main(int argc, char ** argv) {
   // Dipole correction
   start("Dipole correction");
   buffer = bodies;
-  vec3 dipole = 0;
+  real_t dipole[3] = {0, 0, 0};
   for (int b=0; b<int(bodies.size()); b++) {
     for (int d=0; d<3; d++) dipole[d] += bodies[b].X[d] * bodies[b].q;
   }
   real_t coef = 4 * M_PI / (3 * cycle * cycle * cycle);
   for (int b=0; b<int(bodies.size()); b++) {
-    bodies[b].p -= coef * norm(dipole) / bodies.size() / bodies[b].q;
+    real_t dnorm = dipole[0] * dipole[0] + dipole[1] * dipole[1] + dipole[2] * dipole[2];
+    bodies[b].p -= coef * dnorm / bodies.size() / bodies[b].q;
     for (int d=0; d!=3; d++) bodies[b].F[d] -= coef * dipole[d];
   }
   stop("Dipole correction");
