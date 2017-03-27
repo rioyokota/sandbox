@@ -43,25 +43,23 @@ int main(int argc, char ** argv) {
 
   // Build tree
   start("Build tree");
-  Bodies buffer(bodies.size());
-  Cells cells = buildTree(bodies, buffer);
+  Cell * cells = buildTree(bodies);
   stop("Build tree");
 
   // FMM evaluation
   start("Upward pass");
   initKernel();
-  upwardPass(&cells[0]);
+  upwardPass(cells);
   stop("Upward pass");
   start("Traversal");
-  traversal(&cells[0], &cells[0], cycle);
+  traversal(cells, cells, cycle);
   stop("Traversal");
   start("Downward pass");
-  downwardPass(&cells[0]);
+  downwardPass(cells);
   stop("Downward pass");
 
   // Dipole correction
   start("Dipole correction");
-  buffer = bodies;
   real_t dipole[3] = {0, 0, 0};
   for (int b=0; b<int(bodies.size()); b++) {
     for (int d=0; d<3; d++) dipole[d] += bodies[b].X[d] * bodies[b].q;
@@ -83,7 +81,7 @@ int main(int argc, char ** argv) {
     for (int d=0; d<3; d++) bodies[b].F[d] = 0;
   }
   Bodies jbodies = bodies;
-  Cells jcells = buildTree(jbodies, buffer);
+  Cell * jcells = buildTree(jbodies);
   stop("Build tree");
   start("Wave part");
   wavePart(bodies, jbodies, cycle);

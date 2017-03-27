@@ -118,9 +118,10 @@ namespace exafmm {
   }                                                             // End overload operator()
 
   //! Ewald real part
-  void realPart(Cells & cells, Cells & jcells, real_t cycle) {
-    for (int c=0; c<int(cells.size()); c++) {                   // Loop over target cells
-      if (cells[c].NCHILD == 0) neighbor(&cells[c], &jcells[0], cycle);//  If target cell is leaf, find neighbors
+  void realPart(Cell * Ci, Cell * Cj, real_t cycle) {
+    if (Ci->NCHILD == 0) neighbor(Ci, Cj, cycle);               // If target cell is leaf, find neighbors
+    for (Cell * ci=Ci->CHILD; ci!=Ci->CHILD+Ci->NCHILD; ci++) { // Loop over target child cells
+      realPart(ci, Cj, cycle);                                  //  Recursively subdivide target cells
     }                                                           // End loop over target cells
   }
 
