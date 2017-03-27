@@ -36,7 +36,8 @@ int main(int argc, char ** argv) {
   average /= bodies.size();
   for (int b=0; b<int(bodies.size()); b++) {
     bodies[b].q -= average;
-    bodies[b].TRG = 0;
+    bodies[b].p = 0;
+    bodies[b].F = 0;
   }
   stop("Initialize bodies");
 
@@ -67,9 +68,9 @@ int main(int argc, char ** argv) {
   }
   real_t coef = 4 * M_PI / (3 * cycle * cycle * cycle);
   for (int b=0; b<int(bodies.size()); b++) {
-    bodies[b].TRG[0] -= coef * norm(dipole) / bodies.size() / bodies[b].q;
+    bodies[b].p -= coef * norm(dipole) / bodies.size() / bodies[b].q;
     for (int d=0; d!=3; d++) {
-      bodies[b].TRG[d+1] -= coef * dipole[d];
+      bodies[b].F[d] -= coef * dipole[d];
     }
   }
   stop("Dipole correction");
@@ -79,7 +80,8 @@ int main(int argc, char ** argv) {
   start("Build tree");
   Bodies bodies2 = bodies;
   for (int b=0; b<int(bodies.size()); b++) {
-    bodies[b].TRG = 0;
+    bodies[b].p = 0;
+    bodies[b].F = 0;
   }
   Bodies jbodies = bodies;
   Cells jcells = buildTree(jbodies, buffer);
@@ -95,13 +97,13 @@ int main(int argc, char ** argv) {
   // Verify result
   real_t pSum = 0, pSum2 = 0, FDif = 0, FNrm = 0;
   for (int b=0; b<int(bodies.size()); b++) {
-    pSum += bodies[b].TRG[0] * bodies[b].q;
-    pSum2 += bodies2[b].TRG[0] * bodies2[b].q;
-    FDif += (bodies[b].TRG[1] - bodies2[b].TRG[1]) * (bodies[b].TRG[1] - bodies2[b].TRG[1]) +
-      (bodies[b].TRG[2] - bodies2[b].TRG[2]) * (bodies[b].TRG[2] - bodies2[b].TRG[2]) +
-      (bodies[b].TRG[3] - bodies2[b].TRG[3]) * (bodies[b].TRG[3] - bodies2[b].TRG[3]);
-    FNrm += bodies[b].TRG[1] * bodies[b].TRG[1] + bodies[b].TRG[2] * bodies[b].TRG[2] +
-      bodies[b].TRG[3] * bodies[b].TRG[3];
+    pSum += bodies[b].p * bodies[b].q;
+    pSum2 += bodies2[b].p * bodies2[b].q;
+    FDif += (bodies[b].F[0] - bodies2[b].F[0]) * (bodies[b].F[0] - bodies2[b].F[0]) +
+      (bodies[b].F[1] - bodies2[b].F[1]) * (bodies[b].F[1] - bodies2[b].F[1]) +
+      (bodies[b].F[2] - bodies2[b].F[2]) * (bodies[b].F[2] - bodies2[b].F[2]);
+    FNrm += bodies[b].F[0] * bodies[b].F[0] + bodies[b].F[1] * bodies[b].F[1] +
+      bodies[b].F[2] * bodies[b].F[2];
   }
   real_t pDif = (pSum - pSum2) * (pSum - pSum2);
   real_t pNrm = pSum * pSum;

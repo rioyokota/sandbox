@@ -52,7 +52,8 @@ int main(int argc, char ** argv) {
   bodies[0].X = 2;
   bodies[0].X[0] = -2;
   bodies[0].q = 1;
-  bodies[0].TRG = 0;
+  bodies[0].p = 0;
+  bodies[0].F = 0;
   Ci->BODY = &bodies[0];
   Ci->NBODY = bodies.size();
   L2P(Ci);
@@ -61,26 +62,28 @@ int main(int argc, char ** argv) {
   Bodies bodies2(1);
   for (int b=0; b<int(bodies2.size()); b++) {
     bodies2[b] = bodies[b];
-    bodies2[b].TRG = 0;
+    bodies2[b].p = 0;
+    bodies2[b].F = 0;
   }
   Cj->NBODY = jbodies.size();
   Ci->NBODY = bodies2.size();
   Ci->BODY = &bodies2[0];
   P2P(Ci, Cj);
   for (int b=0; b<int(bodies2.size()); b++) {
-    bodies2[b].TRG /= bodies2[b].q;
+    bodies2[b].p /= bodies2[b].q;
+    bodies2[b].F /= bodies2[b].q;
   }
 
   // Verify results
   real_t potDif = 0, potNrm = 0, accDif = 0, accNrm = 0;
   for (int b=0; b<int(bodies.size()); b++) {
-    potDif += (bodies[b].TRG[0] - bodies2[b].TRG[0]) * (bodies[b].TRG[0] - bodies2[b].TRG[0]);
-    potNrm += bodies[b].TRG[0] * bodies[b].TRG[0];
-    accDif += (bodies[b].TRG[1] - bodies2[b].TRG[1]) * (bodies[b].TRG[1] - bodies2[b].TRG[1]) +
-      (bodies[b].TRG[2] - bodies2[b].TRG[2]) * (bodies[b].TRG[2] - bodies2[b].TRG[2]) +
-      (bodies[b].TRG[3] - bodies2[b].TRG[3]) * (bodies[b].TRG[3] - bodies2[b].TRG[3]);
-    accNrm += bodies[b].TRG[1] * bodies[b].TRG[1] + bodies[b].TRG[2] * bodies[b].TRG[2] +
-      bodies[b].TRG[3] * bodies[b].TRG[3];
+    potDif += (bodies[b].p - bodies2[b].p) * (bodies[b].p - bodies2[b].p);
+    potNrm += bodies[b].p * bodies[b].p;
+    accDif += (bodies[b].F[0] - bodies2[b].F[0]) * (bodies[b].F[0] - bodies2[b].F[0]) +
+      (bodies[b].F[1] - bodies2[b].F[1]) * (bodies[b].F[1] - bodies2[b].F[1]) +
+      (bodies[b].F[2] - bodies2[b].F[2]) * (bodies[b].F[2] - bodies2[b].F[2]);
+    accNrm += bodies[b].F[0] * bodies[b].F[0] + bodies[b].F[1] * bodies[b].F[1] +
+      bodies[b].F[2] * bodies[b].F[2];
   }
   real_t potRel = std::sqrt(potDif/potNrm);
   real_t accRel = std::sqrt(accDif/accNrm);

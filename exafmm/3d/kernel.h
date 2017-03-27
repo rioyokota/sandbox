@@ -25,10 +25,10 @@ namespace exafmm {
 
   //! Spherical to cartesian coordinates
   void sph2cart(real_t r, real_t theta, real_t phi, vec3 spherical, vec3 & cartesian) {
-    cartesian[0] = std::sin(theta) * std::cos(phi) * spherical[0]   // x component (not x itself)
+    cartesian[0] = std::sin(theta) * std::cos(phi) * spherical[0] // x component (not x itself)
       + std::cos(theta) * std::cos(phi) / r * spherical[1]
       - std::sin(phi) / r / std::sin(theta) * spherical[2];
-    cartesian[1] = std::sin(theta) * std::sin(phi) * spherical[0]   // y component (not y itself)
+    cartesian[1] = std::sin(theta) * std::sin(phi) * spherical[0] // y component (not y itself)
       + std::cos(theta) * std::sin(phi) / r * spherical[1]
       + std::cos(phi) / r / std::sin(theta) * spherical[2];
     cartesian[2] = std::cos(theta) * spherical[0]               // z component (not z itself)
@@ -161,10 +161,10 @@ namespace exafmm {
           az += dX[2];
         }
       }
-      Bi[i].TRG[0] += pot;
-      Bi[i].TRG[1] -= ax;
-      Bi[i].TRG[2] -= ay;
-      Bi[i].TRG[3] -= az;
+      Bi[i].p += pot;
+      Bi[i].F[0] -= ax;
+      Bi[i].F[1] -= ay;
+      Bi[i].F[2] -= az;
     }
   }
 
@@ -303,22 +303,22 @@ namespace exafmm {
       for (int n=0; n<P; n++) {
         int nm  = n * n + n;
         int nms = n * (n + 1) / 2;
-        B->TRG[0] += std::real(Ci->L[nms] * Ynm[nm]);
+        B->p += std::real(Ci->L[nms] * Ynm[nm]);
         spherical[0] += std::real(Ci->L[nms] * Ynm[nm]) / r * n;
         spherical[1] += std::real(Ci->L[nms] * YnmTheta[nm]);
         for (int m=1; m<=n; m++) {
           nm  = n * n + n + m;
           nms = n * (n + 1) / 2 + m;
-          B->TRG[0] += 2 * std::real(Ci->L[nms] * Ynm[nm]);
+          B->p += 2 * std::real(Ci->L[nms] * Ynm[nm]);
           spherical[0] += 2 * std::real(Ci->L[nms] * Ynm[nm]) / r * n;
           spherical[1] += 2 * std::real(Ci->L[nms] * YnmTheta[nm]);
           spherical[2] += 2 * std::real(Ci->L[nms] * Ynm[nm] * I) * m;
         }
       }
       sph2cart(r, theta, phi, spherical, cartesian);
-      B->TRG[1] += cartesian[0];
-      B->TRG[2] += cartesian[1];
-      B->TRG[3] += cartesian[2];
+      B->F[0] += cartesian[0];
+      B->F[1] += cartesian[1];
+      B->F[2] += cartesian[2];
     }
   }
 }

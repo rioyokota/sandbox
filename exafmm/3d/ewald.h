@@ -40,17 +40,17 @@ namespace exafmm {
     for (int d=0; d<3; d++) scale[d] = 2 * M_PI / cycle;        // Scale conversion
 #pragma omp parallel for
     for (int b=0; b<int(bodies.size()); b++) {                  // Loop over bodies
-      real_t TRG[4];                                            //  Temporary target values
-      for (int d=0; d<4; d++) TRG[d] = 0;                       //  Initialize target values
+      real_t p = 0, F[3] = {0, 0, 0};                           //  Initialize potential, force
       for (int w=0; w<int(waves.size()); w++) {                 //   Loop over waves
         real_t th = 0;                                          //    Initialzie phase
         for (int d=0; d<3; d++) th += waves[w].K[d] * bodies[b].X[d] * scale[d];// Determine phase
         real_t dtmp = waves[w].REAL * std::sin(th) - waves[w].IMAG * std::cos(th);// Temporary value
-        TRG[0]     += waves[w].REAL * std::cos(th) + waves[w].IMAG * std::sin(th);// Accumulate potential
-        for (int d=0; d<3; d++) TRG[d+1] -= dtmp * waves[w].K[d];//   Accumulate force
-      }                                                         //   End loop over waves
-      for (int d=0; d<3; d++) TRG[d+1] *= scale[d];             //   Scale forces
-      for (int d=0; d<4; d++) bodies[b].TRG[d] += TRG[d];       //  Copy results to bodies
+        p += waves[w].REAL * std::cos(th) + waves[w].IMAG * std::sin(th);// Accumulate potential
+        for (int d=0; d<3; d++) F[d] -= dtmp * waves[w].K[d];   //   Accumulate force
+      }                                                         //  End loop over waves
+      for (int d=0; d<3; d++) F[d] *= scale[d];                 //  Scale forces
+      bodies[b].p += p;                                         //  Copy potential to bodies
+      for (int d=0; d<3; d++) bodies[b].F[d] += F[d];           //  Copy force to bodies
     }                                                           // End loop over bodies
   }
 
@@ -95,10 +95,10 @@ namespace exafmm {
           real_t invR3s = invR2s * invRs;                       //    1 / (R * alpha)^3
           real_t dtmp = Bj->q * (M_2_SQRTPI * std::exp(-R2s) * invR2s + erfc(Rs) * invR3s);
           dtmp *= alpha * alpha * alpha;                        //    Scale temporary value
-          Bi->TRG[0] += Bj->q * erfc(Rs) * invRs * alpha;       //    Ewald real potential
-          Bi->TRG[1] -= dX[0] * dtmp;                           //    x component of Ewald real force
-          Bi->TRG[2] -= dX[1] * dtmp;                           //    y component of Ewald real force
-          Bi->TRG[3] -= dX[2] * dtmp;                           //    z component of Ewald real force
+          Bi->p += Bj->q * erfc(Rs) * invRs * alpha;            //    Ewald real potential
+          Bi->F[0] -= dX[0] * dtmp;                             //    x component of Ewald real force
+          Bi->F[1] -= dX[1] * dtmp;                             //    y component of Ewald real force
+          Bi->F[2] -= dX[2] * dtmp;                             //    z component of Ewald real force
         }                                                       //   End if for self interaction
       }                                                         //  End loop over source bodies
     }                                                           // End loop over target bodies
@@ -147,7 +147,7 @@ namespace exafmm {
   //! Subtract self term
   void selfTerm(Bodies & bodies) {
     for (int b=0; b<int(bodies.size()); b++) {                  // Loop over all bodies
-      bodies[b].TRG[0] -= M_2_SQRTPI * bodies[b].q * alpha;     //  Self term of Ewald real part
+      bodies[b].p -= M_2_SQRTPI * bodies[b].q * alpha;          //  Self term of Ewald real part
     }                                                           // End loop over all bodies in cell
   }
 }
