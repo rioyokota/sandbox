@@ -4,9 +4,10 @@
 
 namespace exafmm {
   int P;                                                        //!< Order of expansions
+  real_t Xperiodic[2];                                          //!< Periodic coordinate offset
 
   //!< P2P kernel between cells Ci and Cj
-  void P2P(Cell * Ci, Cell * Cj, real_t Xperiodic[2]) {
+  void P2P(Cell * Ci, Cell * Cj) {
     Body * Bi = Ci->BODY;                                       // Target body pointer
     Body * Bj = Cj->BODY;                                       // Source body pointer
     for (int i=0; i<Ci->NBODY; i++) {                           // Loop over target bodies
@@ -58,7 +59,7 @@ namespace exafmm {
   }
 
   //!< M2L kernel between cells Ci and Cj
-  void M2L(Cell * Ci, Cell * Cj, real_t Xperiodic[2]) {
+  void M2L(Cell * Ci, Cell * Cj) {
     real_t dX[2];                                               // Distance vector
     for (int d=0; d<2; d++) dX[d] = Ci->X[d] - Cj->X[d] - Xperiodic[d];// Get distance vector
     complex_t Z(dX[0],dX[1]), powZn(1.0, 0.0), powZnk(1.0, 0.0), invZ(powZn/Z);// Convert to complex plane

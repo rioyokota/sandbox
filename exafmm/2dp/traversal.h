@@ -5,7 +5,6 @@
 namespace exafmm {
   int images;                                                   //!< Number of periodic image sublevels
   real_t theta;                                                 //!< Multipole acceptance criterion
-  real_t Xperiodic[2];                                          //!< Periodic coordinate offset
 
   //! Recursive call for upward pass
   void upwardPass(Cell * Ci) {
@@ -24,9 +23,9 @@ namespace exafmm {
     for (int d=0; d<2; d++) dX[d] = Ci->X[d] - Cj->X[d] - Xperiodic[d];// Distance vector from source to target
     real_t R2 = (dX[0] * dX[0] + dX[1] * dX[1]) * theta * theta;// Scalar distance squared
     if (R2 > (Ci->R + Cj->R) * (Ci->R + Cj->R)) {               // If distance is far enough
-      M2L(Ci, Cj, Xperiodic);                                   //  Use approximate kernels
+      M2L(Ci, Cj);                                              //  Use approximate kernels
     } else if (Ci->NCHILD == 0 && Cj->NCHILD == 0) {            // Else if both cells are leafs
-      P2P(Ci, Cj, Xperiodic);                                   //   Use exact kernel
+      P2P(Ci, Cj);                                              //   Use exact kernel
     } else if (Cj->NCHILD == 0 || Ci->R >= Cj->R) {             // Else if Cj is leaf or Ci is larger
       for (Cell * ci=Ci->CHILD; ci!=Ci->CHILD+Ci->NCHILD; ci++) {// Loop over Ci's children
         traversal(ci, Cj);                                      //   Traverse a single pair of cells
@@ -56,7 +55,7 @@ namespace exafmm {
               for (int cy=-1; cy<=1; cy++) {                    //      Loop over y periodic direction (child)
                 Xperiodic[0] = (ix * 3 + cx) * cycle;           //       Coordinate offset for x periodic direction
                 Xperiodic[1] = (iy * 3 + cy) * cycle;           //       Coordinate offset for y periodic direction
-                M2L(Ci0, Ci, Xperiodic);                        //       Perform M2L kernel
+                M2L(Ci0, Ci);                                   //       Perform M2L kernel
               }                                                 //      End loop over y periodic direction (child)
             }                                                   //     End loop over x periodic direction (child)
           }                                                     //    Endif for periodic center cell
@@ -122,7 +121,7 @@ namespace exafmm {
       for (int iy=-prange; iy<=prange; iy++) {                  //  Loop over y periodic direction
         Xperiodic[0] = ix * cycle;                              //   Coordinate shift for x periodic direction
         Xperiodic[1] = iy * cycle;                              //   Coordinate shift for y periodic direction
-        P2P(Ci, Cj, Xperiodic);                                 //   Evaluate P2P kernel
+        P2P(Ci, Cj);                                            //   Evaluate P2P kernel
       }                                                         //  End loop over y periodic direction
     }                                                           // End loop over x periodic direction
   }

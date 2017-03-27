@@ -49,7 +49,7 @@ int main(int argc, char ** argv) {
   // FMM evaluation
   start("Upward pass");
   initKernel();
-  upwardPass(cells.begin(), cells.begin());
+  upwardPass(cells.begin());
   stop("Upward pass");
   start("Traversal");
   traversal(cells, cells, cycle);

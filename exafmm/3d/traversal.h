@@ -9,23 +9,21 @@ namespace exafmm {
   C_iter Cj0;                                                   //!< Iterator of first source cell
 
   //! Post-order traversal for upward pass
-  void upwardPass(C_iter C, C_iter C0) {
-    for (C_iter CC=C0+C->ICHILD; CC!=C0+C->ICHILD+C->NCHILD; CC++) {// Loop over child cells
-      upwardPass(CC, C0);                                       //  Recursive call for child cell
+  void upwardPass(C_iter Ci) {
+    for (C_iter Cj=Ci->CHILD; Cj!=Ci->CHILD+Ci->NCHILD; Cj++) { // Loop over child cells
+      upwardPass(Cj);                                           //  Recursive call for child cell
     }                                                           // End loop over child cells
-    C->M.resize(NTERM, 0.0);                                    // Allocate and initialize multipole coefs
-    C->L.resize(NTERM, 0.0);                                    // Allocate and initialize local coefs
-    if(C->NCHILD==0) P2M(C);                                    // P2M kernel
-    else {                                                      // If not leaf cell
-      M2M(C);                                                   //  M2M kernel
-    }                                                           // End if for non leaf cell
+    Ci->M.resize(NTERM, 0.0);                                   // Allocate and initialize multipole coefs
+    Ci->L.resize(NTERM, 0.0);                                   // Allocate and initialize local coefs
+    if(Ci->NCHILD==0) P2M(Ci);                                  // P2M kernel
+    M2M(Ci);                                                    // M2M kernel
   }
 
   //! Dual tree traversal for a single pair of cells
   void traversal(C_iter Ci, C_iter Cj) {
     vec3 dX = Ci->X - Cj->X - Xperiodic;                        // Distance vector from source to target
-    real_t RT2 = norm(dX) * theta * theta;                      // Scalar distance squared
-    if (RT2 > (Ci->R+Cj->R) * (Ci->R+Cj->R) * (1 - 1e-3)) {     // If distance is far enough
+    real_t R2 = norm(dX) * theta * theta;                       // Scalar distance squared
+    if (R2 > (Ci->R + Cj->R) * (Ci->R + Cj->R)) {               // If distance is far enough
       M2L(Ci, Cj);                                              //  M2L kernel
     } else if (Ci->NCHILD == 0 && Cj->NCHILD == 0) {            // Else if both cells are leafs
       P2P(Ci, Cj);                                              //  P2P kernel
