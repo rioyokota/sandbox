@@ -150,8 +150,8 @@ namespace exafmm {
       real_t ay = 0;
       real_t az = 0;
       for (int j=0; j<nj; j++) {
-        dX = Bi[i].X - Bj[j].X - Xperiodic;
-        real_t R2 = norm(dX);
+        for (int d=0; d<3; d++) dX[d] = Bi[i].X[d] - Bj[j].X[d] - Xperiodic[d];
+        real_t R2 = dX[0] * dX[0] + dX[1] * dX[1] + dX[2] * dX[2];
         if (R2 != 0) {
           real_t invR2 = 1.0 / R2;
           real_t invR = Bj[j].q * sqrt(invR2);
@@ -172,7 +172,7 @@ namespace exafmm {
   void P2M(Cell * C) {
     complex_t Ynm[P*P], YnmTheta[P*P];
     for (Body * B=C->BODY; B!=C->BODY+C->NBODY; B++) {
-      dX = B->X - C->X;
+      for (int d=0; d<3; d++) dX[d] = B->X[d] - C->X[d];
       real_t rho, alpha, beta;
       cart2sph(dX, rho, alpha, beta);
       evalMultipole(rho, alpha, -beta, Ynm, YnmTheta);
@@ -189,7 +189,7 @@ namespace exafmm {
   void M2M(Cell * Ci) {
     complex_t Ynm[P*P], YnmTheta[P*P];
     for (Cell * Cj=Ci->CHILD; Cj!=Ci->CHILD+Ci->NCHILD; Cj++) {
-      dX = Ci->X - Cj->X;
+      for (int d=0; d<3; d++) dX[d] = Ci->X[d] - Cj->X[d];
       real_t rho, alpha, beta;
       cart2sph(dX, rho, alpha, beta);
       evalMultipole(rho, alpha, -beta, Ynm, YnmTheta);
@@ -226,7 +226,7 @@ namespace exafmm {
 
   void M2L(Cell * Ci, Cell * Cj) {
     complex_t Ynm2[4*P*P];
-    dX = Ci->X - Cj->X - Xperiodic;
+    for (int d=0; d<3; d++) dX[d] = Ci->X[d] - Cj->X[d] - Xperiodic[d];
     real_t rho, alpha, beta;
     cart2sph(dX, rho, alpha, beta);
     evalLocal(rho, alpha, beta, Ynm2);
@@ -259,7 +259,7 @@ namespace exafmm {
   void L2L(Cell * Cj) {
     complex_t Ynm[P*P], YnmTheta[P*P];
     for (Cell * Ci=Cj->CHILD; Ci!=Cj->CHILD+Cj->NCHILD; Ci++) {
-      dX = Ci->X - Cj->X;
+      for (int d=0; d<3; d++) dX[d] = Ci->X[d] - Cj->X[d];
       real_t rho, alpha, beta;
       cart2sph(dX, rho, alpha, beta);
       evalMultipole(rho, alpha, beta, Ynm, YnmTheta);
@@ -295,7 +295,7 @@ namespace exafmm {
   void L2P(Cell * Ci) {
     complex_t Ynm[P*P], YnmTheta[P*P];
     for (Body * B=Ci->BODY; B!=Ci->BODY+Ci->NBODY; B++) {
-      dX = B->X - Ci->X;
+      for (int d=0; d<3; d++) dX[d] = B->X[d] - Ci->X[d];
       vec3 spherical = 0;
       vec3 cartesian = 0;
       real_t r, theta, phi;
