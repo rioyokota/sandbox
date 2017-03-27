@@ -107,6 +107,7 @@ namespace exafmm {
     C->NBODY = octNode->NBODY;                                  //  Number of decendant bodies
     C->BODY = B0 + octNode->IBODY;                              //  Iterator of first body in cell
     if (octNode->NNODE == 1) {                                  //  If node has no children
+      C->CHILD = C0;                                            //   Set pointer of first child cell
       C->ICHILD = 0;                                            //   Set index of first child cell to zero
       C->NCHILD = 0;                                            //   Number of child cells
     } else {                                                    //  Else if node has children

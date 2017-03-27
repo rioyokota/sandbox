@@ -17,7 +17,7 @@ namespace exafmm {
     C->L.resize(NTERM, 0.0);                                    // Allocate and initialize local coefs
     if(C->NCHILD==0) P2M(C);                                    // P2M kernel
     else {                                                      // If not leaf cell
-      M2M(C, C0);                                               //  M2M kernel
+      M2M(C);                                                   //  M2M kernel
     }                                                           // End if for non leaf cell
   }
 
@@ -34,7 +34,7 @@ namespace exafmm {
         traversal(ci, Cj);                                      //   Traverse a single pair of cells
       }                                                         //  End loop over Ci's children
     } else {                                                    // Else if Ci is leaf or Cj is larger
-      for (C_iter cj=Cj0+Cj->ICHILD; cj!=Cj0+Cj->ICHILD+Cj->NCHILD; cj++) {// Loop over Cj's children
+      for (C_iter cj=Cj->CHILD; cj!=Cj->CHILD+Cj->NCHILD; cj++) {// Loop over Cj's children
         traversal(Ci, cj);                                      //   Traverse a single pair of cells
       }                                                         //  End loop over Cj's children
     }                                                           // End if for leafs and Ci Cj size
@@ -49,9 +49,8 @@ namespace exafmm {
     }                                                           // End loop over periodic cells
     C_iter Ci = pcells.end()-1;                                 // Last cell is periodic parent cell
     *Ci = *Cj0;                                                 // Copy values from source root
-    Ci->ICHILD = 0;                                             // Child cells for periodic center cell
-    Ci->NCHILD = 26;                                            // Number of child cells for periodic center cell
-    C_iter C0 = Cj0;                                            // Placeholder for Cj0
+    Ci->CHILD = pcells.begin();                                 // Pointer of first periodic child cell
+    Ci->NCHILD = 26;                                            // Number of periodic child cells
     for (int level=0; level<images-1; level++) {                // Loop over sublevels of tree
       for (int ix=-1; ix<=1; ix++) {                            //  Loop over x periodic direction
         for (int iy=-1; iy<=1; iy++) {                          //   Loop over y periodic direction
@@ -71,8 +70,7 @@ namespace exafmm {
           }                                                     //    End loop over z periodic direction
         }                                                       //   End loop over y periodic direction
       }                                                         //  End loop over x periodic direction
-      Cj0 = pcells.begin();                                     //  Redefine Cj0 for M2M
-      C_iter Cj = Cj0;                                          //  Iterator of periodic neighbor cells
+      C_iter Cj = pcells.begin();                               //  Iterator of periodic neighbor cells
       for (int ix=-1; ix<=1; ix++) {                            //  Loop over x periodic direction
         for (int iy=-1; iy<=1; iy++) {                          //   Loop over y periodic direction
           for (int iz=-1; iz<=1; iz++) {                        //    Loop over z periodic direction
@@ -86,9 +84,8 @@ namespace exafmm {
           }                                                     //    End loop over z periodic direction
         }                                                       //   End loop over y periodic direction
       }                                                         //  End loop over x periodic direction
-      M2M(Ci,Cj0);                                              //  Evaluate periodic M2M kernels for this sublevel
+      M2M(Ci);                                                  //  Evaluate periodic M2M kernels for this sublevel
       cycle *= 3;                                               //  Increase periodic cycle by number of neighbors
-      Cj0 = C0;                                                 //  Reset Cj0 back
     }                                                           // End loop over sublevels of tree
   }
 
@@ -117,7 +114,7 @@ namespace exafmm {
 
   //! Pre-order traversal for downward pass
   void downwardPass(C_iter C, C_iter C0) {
-    L2L(C, C0);                                                 //  L2L kernel
+    L2L(C);                                                     //  L2L kernel
     if (C->NCHILD==0) {                                         //  If leaf cell
       L2P(C);                                                   //  L2P kernel
     }                                                           // End if for leaf cell
