@@ -15,13 +15,11 @@ namespace exafmm {
   real_t alpha;                                                 //!< Scaling parameter for Ewald summation
   real_t sigma;                                                 //!< Scaling parameter for Ewald summation
   real_t cutoff;                                                //!< Cutoff distance
-  real_t cycle;                                                 //!< Periodic cycle
   real_t K[3];                                                  //!< Wave number vector
   real_t scale[3];                                              //!< Scale vector
 
   //! Forward DFT
   void dft(Waves & waves, Bodies & bodies) {
-    for (int d=0; d<3; d++) scale[d]= 2 * M_PI / cycle;         // Scale conversion
 #pragma omp parallel for
     for (int w=0; w<int(waves.size()); w++) {                   // Loop over waves
       waves[w].REAL = waves[w].IMAG = 0;                        //  Initialize waves
@@ -36,7 +34,6 @@ namespace exafmm {
 
   //! Inverse DFT
   void idft(Waves & waves, Bodies & bodies) {
-    for (int d=0; d<3; d++) scale[d] = 2 * M_PI / cycle;        // Scale conversion
 #pragma omp parallel for
     for (int b=0; b<int(bodies.size()); b++) {                  // Loop over bodies
       real_t p = 0, F[3] = {0, 0, 0};                           //  Initialize potential, force
@@ -54,7 +51,8 @@ namespace exafmm {
   }
 
   //! Initialize wave vector
-  Waves initWaves() {
+  Waves initWaves(real_t cycle) {
+    for (int d=0; d<3; d++) scale[d]= 2 * M_PI / cycle;         // Scale conversion
     Waves waves;                                                // Initialzie wave vector
     int kmaxsq = ksize * ksize;                                 // kmax squared
     int kmax = ksize;                                           // kmax as integer
@@ -103,7 +101,7 @@ namespace exafmm {
     }                                                           // End loop over target bodies
   }
 
-  void neighbor(Cell * Ci, Cell * Cj) {                         // Traverse tree to find neighbor
+  void neighbor(Cell * Ci, Cell * Cj, real_t cycle) {           // Traverse tree to find neighbor
     for (int d=0; d<3; d++) dX[d] = Ci->X[d] - Cj->X[d];        //  Distance vector from source to target
     for (int d=0; d<3; d++) {                                   //  Loop over dimensions
       if(dX[d] < -cycle / 2) dX[d] += cycle;                    //   Wrap around positive
@@ -114,23 +112,22 @@ namespace exafmm {
     if (R - Ci->R - Cj->R < sqrtf(3) * cutoff) {                //  If cells are close
       if(Cj->NCHILD == 0) realPart(Ci, Cj);                     //   Ewald real part
       for (Cell * cj=Cj->CHILD; cj!=Cj->CHILD+Cj->NCHILD; cj++) {// Loop over cell's children
-        neighbor(Ci, cj);                                       //    Instantiate recursive functor
+        neighbor(Ci, cj, cycle);                                //    Instantiate recursive functor
       }                                                         //   End loop over cell's children
     }                                                           //  End if for far cells
   }                                                             // End overload operator()
 
   //! Ewald real part
-  void realPart(Cells & cells, Cells & jcells) {
+  void realPart(Cells & cells, Cells & jcells, real_t cycle) {
     for (int c=0; c<int(cells.size()); c++) {                   // Loop over target cells
-      if (cells[c].NCHILD == 0) neighbor(&cells[c], &jcells[0]);//  If target cell is leaf, find neighbors
+      if (cells[c].NCHILD == 0) neighbor(&cells[c], &jcells[0], cycle);//  If target cell is leaf, find neighbors
     }                                                           // End loop over target cells
   }
 
   //! Ewald wave part
-  void wavePart(Bodies & bodies, Bodies & jbodies) {
-    Waves waves = initWaves();                                  // Initialize wave vector
+  void wavePart(Bodies & bodies, Bodies & jbodies, real_t cycle) {
+    Waves waves = initWaves(cycle);                             // Initialize wave vector
     dft(waves,jbodies);                                         // Apply DFT to bodies to get waves
-    for (int d=0; d<3; d++) scale[d] = 2 * M_PI / cycle;        // Scale conversion
     real_t coef = 2 / sigma / cycle / cycle / cycle;            // First constant
     real_t coef2 = 1 / (4 * alpha * alpha);                     // Second constant
     for (int w=0; w<int(waves.size()); w++) {                   // Loop over waves

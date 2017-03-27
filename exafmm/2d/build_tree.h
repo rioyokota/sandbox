@@ -3,9 +3,11 @@
 #include "types.h"
 
 namespace exafmm {
+  int ncrit;                                                    //!< Number of bodies per leaf cell
+
   //! Build cells of tree adaptively using a top-down approach based on recursion
   void buildTree(Body * bodies, Body * buffer, int begin, int end, Cell * cell,
-                 real_t X[2], real_t R, int ncrit, int level=0, bool direction=false) {
+                 real_t X[2], real_t R, int level=0, bool direction=false) {
     //! Create a tree cell
     cell->BODY = bodies + begin;                                // Pointer of first body in cell
     if(direction) cell->BODY = buffer + begin;                  // Pointer of first body in cell
@@ -61,7 +63,7 @@ namespace exafmm {
       }                                                         //  End loop over dimensions
       if (size[i]) {                                            //  If child exists
         buildTree(buffer, bodies, offsets[i], offsets[i] + size[i],// Recursive call for each child
-                  &child[c], Xchild, R, ncrit, level+1, !direction);
+                  &child[c], Xchild, R, level+1, !direction);
         c++;                                                    //   Increment child cell counter
       }                                                         //  End if for child
     }                                                           // End loop over children

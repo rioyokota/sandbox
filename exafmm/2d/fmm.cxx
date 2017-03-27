@@ -7,8 +7,8 @@ using namespace exafmm;
 int main(int argc, char ** argv) {                              // Main function
   const int numBodies = 10000;                                  // Number of bodies
   const int numTargets = 10;                                    // Number of targets for checking answer
-  const int ncrit = 8;                                          // Number of bodies per leaf cell
   P = 10;                                                       // Order of expansions
+  ncrit = 8;                                                    // Number of bodies per leaf cell
   theta = 0.4;                                                  // Multipole acceptance criterion
 
   //! Initialize distribution, source & target value of bodies
@@ -52,7 +52,7 @@ int main(int argc, char ** argv) {                              // Main function
   //! Build tree structure
   Bodies buffer = bodies;                                       // Copy bodies to buffer
   Cell * cells = new Cell();                                    // Allocate root cell
-  buildTree(&bodies[0], &buffer[0], 0, bodies.size(), cells, X0, R0, ncrit); // Build tree recursively
+  buildTree(&bodies[0], &buffer[0], 0, bodies.size(), cells, X0, R0); // Build tree recursively
   stop("Build tree");                                           // Stop timer
 
   //! FMM evaluation

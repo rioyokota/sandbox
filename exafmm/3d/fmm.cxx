@@ -7,9 +7,9 @@ using namespace exafmm;
 
 int main(int argc, char ** argv) {
   const int numBodies = 1000;
-  ncrit = 64;
-  cycle = 2 * M_PI;
+  const real_t cycle = 2 * M_PI;
   P = 10;
+  ncrit = 64;
   theta = 0.4;
   images = 4;
 
@@ -85,10 +85,10 @@ int main(int argc, char ** argv) {
   Cells jcells = buildTree(jbodies, buffer);
   stop("Build tree");
   start("Wave part");
-  wavePart(bodies, jbodies);
+  wavePart(bodies, jbodies, cycle);
   stop("Wave part");
   start("Real part");
-  realPart(cells, jcells);
+  realPart(cells, jcells, cycle);
   selfTerm(bodies);
   stop("Real part");
 
