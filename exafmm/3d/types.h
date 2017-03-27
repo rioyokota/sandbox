@@ -23,7 +23,7 @@ namespace exafmm {
 
   //! Structure of bodies
   struct Body {
-    vec3 X;                                                     //!< Position
+    real_t X[3];                                                //!< Position
     real_t q;                                                   //!< Charge
     real_t p;                                                   //!< Potential
     vec3 F;                                                     //!< Force
