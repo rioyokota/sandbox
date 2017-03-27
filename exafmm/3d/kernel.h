@@ -3,13 +3,14 @@
 #include "types.h"
 
 namespace exafmm {
-  std::vector<real_t> prefactor;                                // sqrt( (n - |m|)! / (n + |m|)! )
-  std::vector<real_t> Anm;                                      // (-1)^n / sqrt( (n + m)! / (n - m)! )
-  std::vector<complex_t> Cnm;                                   // M2L translation matrix Cjknm
+  std::vector<real_t> prefactor;                                //!< sqrt( (n - |m|)! / (n + |m|)! )
+  std::vector<real_t> Anm;                                      //!< (-1)^n / sqrt( (n + m)! / (n - m)! )
+  std::vector<complex_t> Cnm;                                   //!< M2L translation matrix Cjknm
 
-  int P;
-  int NTERM;
-  vec3 Xperiodic;
+  int P;                                                        //!< Order of expansions
+  int NTERM;                                                    //!< Number of coefficients
+  vec3 dX;                                                      //!< Distance vector
+  vec3 Xperiodic;                                               //!< Periodic coordinate offset
 
   //! Odd or even
   inline int oddOrEven(int n) {
@@ -18,17 +19,17 @@ namespace exafmm {
 
   //! Get r,theta,phi from x,y,z
   void cart2sph(vec3 dX, real_t & r, real_t & theta, real_t & phi) {
-    r = sqrt(norm(dX));                                         // r = sqrt(x^2 + y^2 + z^2)
+    r = sqrt(dX[0] * dX[0] + dX[1] * dX[1] + dX[2] * dX[2]);    // r = sqrt(x^2 + y^2 + z^2)
     theta = r == 0 ? 0 : acos(dX[2] / r);                       // theta = acos(z / r)
     phi = atan2(dX[1], dX[0]);                                  // phi = atan(y / x)
   }
 
   //! Spherical to cartesian coordinates
   void sph2cart(real_t r, real_t theta, real_t phi, vec3 spherical, vec3 & cartesian) {
-    cartesian[0] = std::sin(theta) * std::cos(phi) * spherical[0] // x component (not x itself)
+    cartesian[0] = std::sin(theta) * std::cos(phi) * spherical[0]// x component (not x itself)
       + std::cos(theta) * std::cos(phi) / r * spherical[1]
       - std::sin(phi) / r / std::sin(theta) * spherical[2];
-    cartesian[1] = std::sin(theta) * std::sin(phi) * spherical[0] // y component (not y itself)
+    cartesian[1] = std::sin(theta) * std::sin(phi) * spherical[0]// y component (not y itself)
       + std::cos(theta) * std::sin(phi) / r * spherical[1]
       + std::cos(phi) / r / std::sin(theta) * spherical[2];
     cartesian[2] = std::cos(theta) * spherical[0]               // z component (not z itself)
@@ -149,7 +150,7 @@ namespace exafmm {
       real_t ay = 0;
       real_t az = 0;
       for (int j=0; j<nj; j++) {
-        vec3 dX = Bi[i].X - Bj[j].X - Xperiodic;
+        dX = Bi[i].X - Bj[j].X - Xperiodic;
         real_t R2 = norm(dX);
         if (R2 != 0) {
           real_t invR2 = 1.0 / R2;
@@ -171,7 +172,7 @@ namespace exafmm {
   void P2M(Cell * C) {
     complex_t Ynm[P*P], YnmTheta[P*P];
     for (Body * B=C->BODY; B!=C->BODY+C->NBODY; B++) {
-      vec3 dX = B->X - C->X;
+      dX = B->X - C->X;
       real_t rho, alpha, beta;
       cart2sph(dX, rho, alpha, beta);
       evalMultipole(rho, alpha, -beta, Ynm, YnmTheta);
@@ -188,7 +189,7 @@ namespace exafmm {
   void M2M(Cell * Ci) {
     complex_t Ynm[P*P], YnmTheta[P*P];
     for (Cell * Cj=Ci->CHILD; Cj!=Ci->CHILD+Ci->NCHILD; Cj++) {
-      vec3 dX = Ci->X - Cj->X;
+      dX = Ci->X - Cj->X;
       real_t rho, alpha, beta;
       cart2sph(dX, rho, alpha, beta);
       evalMultipole(rho, alpha, -beta, Ynm, YnmTheta);
@@ -225,7 +226,7 @@ namespace exafmm {
 
   void M2L(Cell * Ci, Cell * Cj) {
     complex_t Ynm2[4*P*P];
-    vec3 dX = Ci->X - Cj->X - Xperiodic;
+    dX = Ci->X - Cj->X - Xperiodic;
     real_t rho, alpha, beta;
     cart2sph(dX, rho, alpha, beta);
     evalLocal(rho, alpha, beta, Ynm2);
@@ -258,7 +259,7 @@ namespace exafmm {
   void L2L(Cell * Cj) {
     complex_t Ynm[P*P], YnmTheta[P*P];
     for (Cell * Ci=Cj->CHILD; Ci!=Cj->CHILD+Cj->NCHILD; Ci++) {
-      vec3 dX = Ci->X - Cj->X;
+      dX = Ci->X - Cj->X;
       real_t rho, alpha, beta;
       cart2sph(dX, rho, alpha, beta);
       evalMultipole(rho, alpha, beta, Ynm, YnmTheta);
@@ -294,7 +295,7 @@ namespace exafmm {
   void L2P(Cell * Ci) {
     complex_t Ynm[P*P], YnmTheta[P*P];
     for (Body * B=Ci->BODY; B!=Ci->BODY+Ci->NBODY; B++) {
-      vec3 dX = B->X - Ci->X;
+      dX = B->X - Ci->X;
       vec3 spherical = 0;
       vec3 cartesian = 0;
       real_t r, theta, phi;

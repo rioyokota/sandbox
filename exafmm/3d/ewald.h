@@ -17,7 +17,6 @@ namespace exafmm {
   real_t cutoff;                                                //!< Cutoff distance
   real_t cycle;                                                 //!< Periodic cycle
   real_t K[3];                                                  //!< Wave number vector
-  real_t dX[3];                                                 //!< Distance vector
   real_t scale[3];                                              //!< Scale vector
 
   //! Forward DFT
