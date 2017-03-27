@@ -37,7 +37,7 @@ int main(int argc, char ** argv) {
   for (int b=0; b<int(bodies.size()); b++) {
     bodies[b].q -= average;
     bodies[b].p = 0;
-    bodies[b].F = 0;
+    for (int d=0; d<3; d++) bodies[b].F[d] = 0;
   }
   stop("Initialize bodies");
 
@@ -80,7 +80,7 @@ int main(int argc, char ** argv) {
   Bodies bodies2 = bodies;
   for (int b=0; b<int(bodies.size()); b++) {
     bodies[b].p = 0;
-    bodies[b].F = 0;
+    for (int d=0; d<3; d++) bodies[b].F[d] = 0;
   }
   Bodies jbodies = bodies;
   Cells jcells = buildTree(jbodies, buffer);
