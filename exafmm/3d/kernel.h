@@ -168,7 +168,7 @@ namespace exafmm {
     }
   }
 
-  void P2M(C_iter C) {
+  void P2M(Cell * C) {
     complex_t Ynm[P*P], YnmTheta[P*P];
     for (Body * B=C->BODY; B!=C->BODY+C->NBODY; B++) {
       vec3 dX = B->X - C->X;
@@ -185,7 +185,7 @@ namespace exafmm {
     }
   }
 
-  void M2M(C_iter Ci) {
+  void M2M(Cell * Ci) {
     complex_t Ynm[P*P], YnmTheta[P*P];
     for (C_iter Cj=Ci->CHILD2; Cj!=Ci->CHILD2+Ci->NCHILD; Cj++) {
       vec3 dX = Ci->X - Cj->X;

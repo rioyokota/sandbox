@@ -7,8 +7,8 @@ namespace exafmm {
   real_t theta;                                                 //!< Multipole acceptance criteria
 
   //! Post-order traversal for upward pass
-  void upwardPass(C_iter Ci) {
-    for (C_iter Cj=Ci->CHILD2; Cj!=Ci->CHILD2+Ci->NCHILD; Cj++) { // Loop over child cells
+  void upwardPass(Cell * Ci) {
+    for (Cell * Cj=Ci->CHILD; Cj!=Ci->CHILD+Ci->NCHILD; Cj++) { // Loop over child cells
       upwardPass(Cj);                                           //  Recursive call for child cell
     }                                                           // End loop over child cells
     Ci->M.resize(NTERM, 0.0);                                   // Allocate and initialize multipole coefs
@@ -45,7 +45,8 @@ namespace exafmm {
     }                                                           // End loop over periodic cells
     C_iter Ci = pcells.end()-1;                                 // Last cell is periodic parent cell
     *Ci = *Cj0;                                                 // Copy values from source root
-    Ci->CHILD2 = pcells.begin();                                 // Pointer of first periodic child cell
+    Ci->CHILD = &pcells[0];                                     // Pointer of first periodic child cell
+    Ci->CHILD2 = pcells.begin();                                // Pointer of first periodic child cell
     Ci->NCHILD = 26;                                            // Number of periodic child cells
     for (int level=0; level<images-1; level++) {                // Loop over sublevels of tree
       for (int ix=-1; ix<=1; ix++) {                            //  Loop over x periodic direction
@@ -80,7 +81,7 @@ namespace exafmm {
           }                                                     //    End loop over z periodic direction
         }                                                       //   End loop over y periodic direction
       }                                                         //  End loop over x periodic direction
-      M2M(Ci);                                                  //  Evaluate periodic M2M kernels for this sublevel
+      M2M(&Ci[0]);                                              //  Evaluate periodic M2M kernels for this sublevel
       cycle *= 3;                                               //  Increase periodic cycle by number of neighbors
     }                                                           // End loop over sublevels of tree
   }
