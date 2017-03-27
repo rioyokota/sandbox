@@ -18,7 +18,7 @@ namespace exafmm {
   }
 
   //! Dual tree traversal for a single pair of cells
-  void traversal(C_iter Ci, C_iter Cj) {
+  void traversal(Cell * Ci, Cell * Cj) {
     vec3 dX = Ci->X - Cj->X - Xperiodic;                        // Distance vector from source to target
     real_t R2 = norm(dX) * theta * theta;                       // Scalar distance squared
     if (R2 > (Ci->R + Cj->R) * (Ci->R + Cj->R)) {               // If distance is far enough
@@ -26,24 +26,24 @@ namespace exafmm {
     } else if (Ci->NCHILD == 0 && Cj->NCHILD == 0) {            // Else if both cells are leafs
       P2P(Ci, Cj);                                              //  P2P kernel
     } else if (Cj->NCHILD == 0 || Ci->R >= Cj->R) {             // If Cj is leaf or Ci is larger
-      for (C_iter ci=Ci->CHILD2; ci!=Ci->CHILD2+Ci->NCHILD; ci++) {// Loop over Ci's children
+      for (Cell * ci=Ci->CHILD; ci!=Ci->CHILD+Ci->NCHILD; ci++) {// Loop over Ci's children
         traversal(ci, Cj);                                      //   Traverse a single pair of cells
       }                                                         //  End loop over Ci's children
     } else {                                                    // Else if Ci is leaf or Cj is larger
-      for (C_iter cj=Cj->CHILD2; cj!=Cj->CHILD2+Cj->NCHILD; cj++) {// Loop over Cj's children
+      for (Cell * cj=Cj->CHILD; cj!=Cj->CHILD+Cj->NCHILD; cj++) {// Loop over Cj's children
         traversal(Ci, cj);                                      //   Traverse a single pair of cells
       }                                                         //  End loop over Cj's children
     }                                                           // End if for leafs and Ci Cj size
   }
 
   //! Tree traversal of periodic cells
-  void traversePeriodic(C_iter Ci0, C_iter Cj0, vec3 cycle) {
+  void traversePeriodic(Cell * Ci0, Cell * Cj0, vec3 cycle) {
     Cells pcells(27);                                           // Create cells
-    for (C_iter C=pcells.begin(); C!=pcells.end(); C++) {       // Loop over periodic cells
-      C->M.resize(NTERM, 0.0);                                  //  Allocate & initialize M coefs
-      C->L.resize(NTERM, 0.0);                                  //  Allocate & initialize L coefs
+    for (int c=0; c<int(pcells.size()); c++) {                  // Loop over periodic cells
+      pcells[c].M.resize(NTERM, 0.0);                           //  Allocate & initialize M coefs
+      pcells[c].L.resize(NTERM, 0.0);                           //  Allocate & initialize L coefs
     }                                                           // End loop over periodic cells
-    C_iter Ci = pcells.end()-1;                                 // Last cell is periodic parent cell
+    Cell * Ci = &pcells.back();                                 // Last cell is periodic parent cell
     *Ci = *Cj0;                                                 // Copy values from source root
     Ci->CHILD = &pcells[0];                                     // Pointer of first periodic child cell
     Ci->CHILD2 = pcells.begin();                                // Pointer of first periodic child cell
@@ -67,7 +67,7 @@ namespace exafmm {
           }                                                     //    End loop over z periodic direction
         }                                                       //   End loop over y periodic direction
       }                                                         //  End loop over x periodic direction
-      C_iter Cj = pcells.begin();                               //  Iterator of periodic neighbor cells
+      Cell * Cj = &pcells[0];                                   //  Iterator of periodic neighbor cells
       for (int ix=-1; ix<=1; ix++) {                            //  Loop over x periodic direction
         for (int iy=-1; iy<=1; iy++) {                          //   Loop over y periodic direction
           for (int iz=-1; iz<=1; iz++) {                        //    Loop over z periodic direction
@@ -81,13 +81,13 @@ namespace exafmm {
           }                                                     //    End loop over z periodic direction
         }                                                       //   End loop over y periodic direction
       }                                                         //  End loop over x periodic direction
-      M2M(&Ci[0]);                                              //  Evaluate periodic M2M kernels for this sublevel
+      M2M(Ci);                                                  //  Evaluate periodic M2M kernels for this sublevel
       cycle *= 3;                                               //  Increase periodic cycle by number of neighbors
     }                                                           // End loop over sublevels of tree
   }
 
   //! Evaluate P2P and M2L using list based traversal
-  void traversal(C_iter Ci0, C_iter Cj0, vec3 cycle) {
+  void traversal(Cell * Ci0, Cell * Cj0, vec3 cycle) {
     if (images == 0) {                                          // If non-periodic boundary condition
       traversal(Ci0, Cj0);                                      //  Traverse the tree
     } else {                                                    // If periodic boundary condition
@@ -106,10 +106,10 @@ namespace exafmm {
   }
 
   //! Pre-order traversal for downward pass
-  void downwardPass(C_iter Cj) {
+  void downwardPass(Cell * Cj) {
     L2L(Cj);                                                    // L2L kernel
     if (Cj->NCHILD==0) L2P(Cj);                                 // L2P kernel
-    for (C_iter Ci=Cj->CHILD2; Ci!=Cj->CHILD2+Cj->NCHILD; Ci++) { // Loop over child cells
+    for (Cell * Ci=Cj->CHILD; Ci!=Cj->CHILD+Cj->NCHILD; Ci++) { // Loop over child cells
       downwardPass(Ci);                                         //  Recursive call for child cell
     }                                                           // End loop over chlid cells
   }
@@ -117,8 +117,8 @@ namespace exafmm {
   //! Direct summation
   void direct(Bodies & bodies, Bodies & jbodies, vec3 cycle) {
     Cells cells(2);                                             // Define a pair of cells to pass to P2P kernel
-    C_iter Ci = cells.begin();                                  // Allocate single target
-    C_iter Cj = cells.begin()+1;                                // Allocate single source
+    Cell * Ci = &cells[0];                                      // Allocate single target
+    Cell * Cj = &cells[1];                                      // Allocate single source
     for (int ix=-1; ix<=1; ix++) {                              //  Loop over x periodic direction
       for (int iy=-1; iy<=1; iy++) {                            //   Loop over y periodic direction
         for (int iz=-1; iz<=1; iz++) {                          //    Loop over z periodic direction

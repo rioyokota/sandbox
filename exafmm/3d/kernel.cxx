@@ -10,7 +10,7 @@ int main(int argc, char ** argv) {
   jbodies[0].X = 2;
   jbodies[0].SRC = 1;
   Cells cells(4);
-  C_iter Cj = cells.begin();
+  Cell * Cj = &cells[0];
   Cj->X = 1;
   Cj->X[0] = 3;
   Cj->R = 1;
@@ -20,8 +20,8 @@ int main(int argc, char ** argv) {
   P2M(Cj);
 
   // M2M
-  C_iter CJ = cells.begin()+1;
-  CJ->CHILD2 = Cj;
+  Cell * CJ = &cells[1];
+  CJ->CHILD = Cj;
   CJ->NCHILD = 1;
   CJ->X = 0;
   CJ->X[0] = 4;
@@ -30,7 +30,7 @@ int main(int argc, char ** argv) {
   M2M(CJ);
 
   // M2L
-  C_iter CI = cells.begin()+2;
+  Cell * CI = &cells[2];
   CI->X = 0;
   CI->X[0] = -4;
   CI->R = 2;
@@ -38,8 +38,8 @@ int main(int argc, char ** argv) {
   M2L(CI, CJ);
 
   // L2L
-  C_iter Ci = cells.begin()+3;
-  CI->CHILD2 = Ci;
+  Cell * Ci = &cells[3];
+  CI->CHILD = Ci;
   CI->NCHILD = 1;
   Ci->X = 1;
   Ci->X[0] = -3;

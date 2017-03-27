@@ -52,10 +52,10 @@ int main(int argc, char ** argv) {
   upwardPass(&cells[0]);
   stop("Upward pass");
   start("Traversal");
-  traversal(cells.begin(), cells.begin(), cycle);
+  traversal(&cells[0], &cells[0], cycle);
   stop("Traversal");
   start("Downward pass");
-  downwardPass(cells.begin());
+  downwardPass(&cells[0]);
   stop("Downward pass");
 
   // Dipole correction

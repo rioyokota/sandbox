@@ -138,7 +138,7 @@ namespace exafmm {
     }                                                           // End loop over in j in Cjknm
   }
 
-  void P2P(C_iter Ci, C_iter Cj) {
+  void P2P(Cell * Ci, Cell * Cj) {
     Body * Bi = Ci->BODY;
     Body * Bj = Cj->BODY;
     int ni = Ci->NBODY;
@@ -187,7 +187,7 @@ namespace exafmm {
 
   void M2M(Cell * Ci) {
     complex_t Ynm[P*P], YnmTheta[P*P];
-    for (C_iter Cj=Ci->CHILD2; Cj!=Ci->CHILD2+Ci->NCHILD; Cj++) {
+    for (Cell * Cj=Ci->CHILD; Cj!=Ci->CHILD+Ci->NCHILD; Cj++) {
       vec3 dX = Ci->X - Cj->X;
       real_t rho, alpha, beta;
       cart2sph(dX, rho, alpha, beta);
@@ -223,7 +223,7 @@ namespace exafmm {
     }
   }
 
-  void M2L(C_iter Ci, C_iter Cj) {
+  void M2L(Cell * Ci, Cell * Cj) {
     complex_t Ynm2[4*P*P];
     vec3 dX = Ci->X - Cj->X - Xperiodic;
     real_t rho, alpha, beta;
@@ -255,9 +255,9 @@ namespace exafmm {
     }
   }
 
-  void L2L(C_iter Cj) {
+  void L2L(Cell * Cj) {
     complex_t Ynm[P*P], YnmTheta[P*P];
-    for (C_iter Ci=Cj->CHILD2; Ci!=Cj->CHILD2+Cj->NCHILD; Ci++) {
+    for (Cell * Ci=Cj->CHILD; Ci!=Cj->CHILD+Cj->NCHILD; Ci++) {
       vec3 dX = Ci->X - Cj->X;
       real_t rho, alpha, beta;
       cart2sph(dX, rho, alpha, beta);
@@ -291,7 +291,7 @@ namespace exafmm {
     }
   }
 
-  void L2P(C_iter Ci) {
+  void L2P(Cell * Ci) {
     complex_t Ynm[P*P], YnmTheta[P*P];
     for (Body * B=Ci->BODY; B!=Ci->BODY+Ci->NBODY; B++) {
       vec3 dX = B->X - Ci->X;
