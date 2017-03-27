@@ -5,6 +5,7 @@
 namespace exafmm {
   int P;                                                        //!< Order of expansions
   real_t dX[2];                                                 //!< Distance vector
+#pragma omp threadprivate(dX)                                   //!< Make global variables private
 
   //!< L2 norm of vector X
   inline real_t norm(real_t * X) {

@@ -3,6 +3,7 @@
 #include <complex>
 #include <cstdio>
 #include <cstdlib>
+#include <omp.h>
 #include <vector>
 
 namespace exafmm {

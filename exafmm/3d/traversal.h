@@ -19,7 +19,7 @@ namespace exafmm {
 
   //! Dual tree traversal for a single pair of cells
   void traversal(Cell * Ci, Cell * Cj) {
-    for (int d=0; d<3; d++) dX[d] = Ci->X[d] - Cj->X[d] - Xperiodic[d];// Distance vector from source to target
+    for (int d=0; d<3; d++) dX[d] = Ci->X[d] - Cj->X[d];        // Distance vector from source to target
     real_t R2 = norm(dX) * theta * theta;                       // Scalar distance squared
     if (R2 > (Ci->R + Cj->R) * (Ci->R + Cj->R)) {               // If distance is far enough
       M2L(Ci, Cj);                                              //  M2L kernel
@@ -27,6 +27,7 @@ namespace exafmm {
       P2P(Ci, Cj);                                              //  P2P kernel
     } else if (Cj->NCHILD == 0 || (Ci->R >= Cj->R && Ci->NCHILD != 0)) {// If Cj is leaf or Ci is larger
       for (Cell * ci=Ci->CHILD; ci!=Ci->CHILD+Ci->NCHILD; ci++) {// Loop over Ci's children
+#pragma omp task untied if(ci->NBODY > 100)                     //   Start OpenMP task if large enough task
         traversal(ci, Cj);                                      //   Traverse a single pair of cells
       }                                                         //  End loop over Ci's children
     } else {                                                    // Else if Ci is leaf or Cj is larger
@@ -34,6 +35,7 @@ namespace exafmm {
         traversal(Ci, cj);                                      //   Traverse a single pair of cells
       }                                                         //  End loop over Cj's children
     }                                                           // End if for leafs and Ci Cj size
+#pragma omp taskwait                                            // Synchronize OpenMP tasks
   }
 
   //! Pre-order traversal for downward pass

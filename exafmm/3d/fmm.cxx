@@ -42,6 +42,8 @@ int main(int argc, char ** argv) {
   upwardPass(cells);                                            // Upward pass for P2M, M2M
   stop("Upward pass");                                          // Stop timer
   start("Traversal");                                           // Start timer
+#pragma omp parallel                                            // Start OpenMP
+#pragma omp single nowait                                       // Start OpenMP single region with nowait
   traversal(cells, cells);                                      // Traversal for M2L, P2P
   stop("Traversal");                                            // Stop timer
   start("Downward pass");                                       // Start timer

@@ -7,10 +7,10 @@ namespace exafmm {
   int P;                                                        //!< Order of expansions
   int NTERM;                                                    //!< Number of coefficients
   real_t dX[3];                                                 //!< Distance vector
-  real_t Xperiodic[3];                                          //!< Periodic coordinate offset
   std::vector<real_t> prefactor;                                //!< sqrt( (n - |m|)! / (n + |m|)! )
   std::vector<real_t> Anm;                                      //!< (-1)^n / sqrt( (n + m)! / (n - m)! )
   std::vector<complex_t> Cnm;                                   //!< M2L translation matrix Cjknm
+#pragma omp threadprivate(dX)                                   //!< Make global variables private
 
   //!< L2 norm of vector X
   inline real_t norm(real_t * X) {
@@ -111,7 +111,6 @@ namespace exafmm {
 
   void initKernel() {
     NTERM = P * (P + 1) / 2;                                    // Calculate number of coefficients
-    for (int d=0; d<3; d++) Xperiodic[d] = 0;                   // Initialize periodic coordinate shift
     prefactor.resize(4*P*P);                                    // Resize prefactor
     Anm.resize(4*P*P);                                          // Resize Anm
     Cnm.resize(P*P*P*P);                                        // Resize Cnm
@@ -155,7 +154,7 @@ namespace exafmm {
       real_t ay = 0;
       real_t az = 0;
       for (int j=0; j<nj; j++) {
-        for (int d=0; d<3; d++) dX[d] = Bi[i].X[d] - Bj[j].X[d] - Xperiodic[d];
+        for (int d=0; d<3; d++) dX[d] = Bi[i].X[d] - Bj[j].X[d];
         real_t R2 = norm(dX);
         if (R2 != 0) {
           real_t invR2 = 1.0 / R2;
@@ -231,7 +230,7 @@ namespace exafmm {
 
   void M2L(Cell * Ci, Cell * Cj) {
     complex_t Ynm2[4*P*P];
-    for (int d=0; d<3; d++) dX[d] = Ci->X[d] - Cj->X[d] - Xperiodic[d];
+    for (int d=0; d<3; d++) dX[d] = Ci->X[d] - Cj->X[d];
     real_t rho, alpha, beta;
     cart2sph(dX, rho, alpha, beta);
     evalLocal(rho, alpha, beta, Ynm2);

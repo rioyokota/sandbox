@@ -5,7 +5,7 @@
 using namespace exafmm;
 
 int main(int argc, char ** argv) {
-  const int numBodies = 10000;                                  // Number of bodies
+  const int numBodies = 100000;                                 // Number of bodies
   P = 10;                                                       // Order of expansions
   ncrit = 8;                                                    // Number of bodies per leaf cell
   theta = 0.4;                                                  // Multipole acceptance criterion
@@ -41,6 +41,8 @@ int main(int argc, char ** argv) {
   upwardPass(cells);                                            // Upward pass for P2M, M2M
   stop("Upward pass");                                          // Stop timer
   start("Traversal");                                           // Start timer
+#pragma omp parallel                                            // Start OpenMP
+#pragma omp single nowait                                       // Start OpenMP single region with nowait
   traversal(cells, cells);                                      // Traversal for M2L, P2P
   stop("Traversal");                                            // Stop timer
   start("Downward pass");                                       // Start timer
