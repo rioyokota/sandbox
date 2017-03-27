@@ -21,7 +21,7 @@ int main(int argc, char ** argv) {
 
   // M2M
   C_iter CJ = cells.begin()+1;
-  CJ->CHILD = Cj;
+  CJ->CHILD2 = Cj;
   CJ->NCHILD = 1;
   CJ->X = 0;
   CJ->X[0] = 4;
@@ -39,7 +39,7 @@ int main(int argc, char ** argv) {
 
   // L2L
   C_iter Ci = cells.begin()+3;
-  CI->CHILD = Ci;
+  CI->CHILD2 = Ci;
   CI->NCHILD = 1;
   Ci->X = 1;
   Ci->X[0] = -3;
@@ -59,28 +59,28 @@ int main(int argc, char ** argv) {
 
   // P2P
   Bodies bodies2(1);
-  for (B_iter B=bodies2.begin(); B!=bodies2.end(); B++) {
-    *B = bodies[B-bodies2.begin()];
-    B->TRG = 0;
+  for (int b=0; b<int(bodies2.size()); b++) {
+    bodies2[b] = bodies[b];
+    bodies2[b].TRG = 0;
   }
   Cj->NBODY = jbodies.size();
   Ci->NBODY = bodies2.size();
   Ci->BODY = &bodies2[0];
   P2P(Ci, Cj);
-  for (B_iter B=bodies2.begin(); B!=bodies2.end(); B++) {
-    B->TRG /= B->SRC;
+  for (int b=0; b<int(bodies2.size()); b++) {
+    bodies2[b].TRG /= bodies2[b].SRC;
   }
 
   // Verify results
   real_t potDif = 0, potNrm = 0, accDif = 0, accNrm = 0;
-  B_iter B2 = bodies2.begin();
-  for (B_iter B=bodies.begin(); B!=bodies.end(); B++, B2++) {
-    potDif += (B->TRG[0] - B2->TRG[0]) * (B->TRG[0] - B2->TRG[0]);
-    potNrm += B->TRG[0] * B->TRG[0];
-    accDif += (B->TRG[1] - B2->TRG[1]) * (B->TRG[1] - B2->TRG[1]) +
-      (B->TRG[2] - B2->TRG[2]) * (B->TRG[2] - B2->TRG[2]) +
-      (B->TRG[3] - B2->TRG[3]) * (B->TRG[3] - B2->TRG[3]);
-    accNrm += B->TRG[1] * B->TRG[1] + B->TRG[2] * B->TRG[2] + B->TRG[3] * B->TRG[3];
+  for (int b=0; b<int(bodies.size()); b++) {
+    potDif += (bodies[b].TRG[0] - bodies2[b].TRG[0]) * (bodies[b].TRG[0] - bodies2[b].TRG[0]);
+    potNrm += bodies[b].TRG[0] * bodies[b].TRG[0];
+    accDif += (bodies[b].TRG[1] - bodies2[b].TRG[1]) * (bodies[b].TRG[1] - bodies2[b].TRG[1]) +
+      (bodies[b].TRG[2] - bodies2[b].TRG[2]) * (bodies[b].TRG[2] - bodies2[b].TRG[2]) +
+      (bodies[b].TRG[3] - bodies2[b].TRG[3]) * (bodies[b].TRG[3] - bodies2[b].TRG[3]);
+    accNrm += bodies[b].TRG[1] * bodies[b].TRG[1] + bodies[b].TRG[2] * bodies[b].TRG[2] +
+      bodies[b].TRG[3] * bodies[b].TRG[3];
   }
   real_t potRel = std::sqrt(potDif/potNrm);
   real_t accRel = std::sqrt(accDif/accNrm);

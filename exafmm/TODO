@@ -4,13 +4,13 @@ B_iter > Body *
 C_iter > Cell *
 W_iter > Wave *
 SRC, TRG > q, p, F
+remove normalization
 remove vec.h
 unify kernel interface
 remove [0]
 remove new, delete
+Copy 2-D build_tree
 
 [2d/2dp]
-Xperiodic > global
-Copy 3D traversePeriodic
 add kernel.cxx
 Use STL vector for bodies, cells

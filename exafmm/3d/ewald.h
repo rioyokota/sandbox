@@ -115,7 +115,7 @@ namespace exafmm {
     real_t R = std::sqrt(dX[0] * dX[0] + dX[1] * dX[1] + dX[2] * dX[2]);//  Scalar distance
     if (R - Ci->R - Cj->R < sqrtf(3) * cutoff) {                //  If cells are close
       if(Cj->NCHILD == 0) realPart(Ci, Cj);                     //   Ewald real part
-      for (C_iter cj=Cj->CHILD; cj!=Cj->CHILD+Cj->NCHILD; cj++) {// Loop over cell's children
+      for (C_iter cj=Cj->CHILD2; cj!=Cj->CHILD2+Cj->NCHILD; cj++) {// Loop over cell's children
         neighbor(Ci, cj);                                       //    Instantiate recursive functor
       }                                                         //   End loop over cell's children
     }                                                           //  End if for far cells

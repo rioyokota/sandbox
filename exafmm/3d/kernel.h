@@ -187,7 +187,7 @@ namespace exafmm {
 
   void M2M(C_iter Ci) {
     complex_t Ynm[P*P], YnmTheta[P*P];
-    for (C_iter Cj=Ci->CHILD; Cj!=Ci->CHILD+Ci->NCHILD; Cj++) {
+    for (C_iter Cj=Ci->CHILD2; Cj!=Ci->CHILD2+Ci->NCHILD; Cj++) {
       vec3 dX = Ci->X - Cj->X;
       real_t rho, alpha, beta;
       cart2sph(dX, rho, alpha, beta);
@@ -257,7 +257,7 @@ namespace exafmm {
 
   void L2L(C_iter Cj) {
     complex_t Ynm[P*P], YnmTheta[P*P];
-    for (C_iter Ci=Cj->CHILD; Ci!=Cj->CHILD+Cj->NCHILD; Ci++) {
+    for (C_iter Ci=Cj->CHILD2; Ci!=Cj->CHILD2+Cj->NCHILD; Ci++) {
       vec3 dX = Ci->X - Cj->X;
       real_t rho, alpha, beta;
       cart2sph(dX, rho, alpha, beta);

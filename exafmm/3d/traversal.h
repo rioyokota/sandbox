@@ -8,7 +8,7 @@ namespace exafmm {
 
   //! Post-order traversal for upward pass
   void upwardPass(C_iter Ci) {
-    for (C_iter Cj=Ci->CHILD; Cj!=Ci->CHILD+Ci->NCHILD; Cj++) { // Loop over child cells
+    for (C_iter Cj=Ci->CHILD2; Cj!=Ci->CHILD2+Ci->NCHILD; Cj++) { // Loop over child cells
       upwardPass(Cj);                                           //  Recursive call for child cell
     }                                                           // End loop over child cells
     Ci->M.resize(NTERM, 0.0);                                   // Allocate and initialize multipole coefs
@@ -26,11 +26,11 @@ namespace exafmm {
     } else if (Ci->NCHILD == 0 && Cj->NCHILD == 0) {            // Else if both cells are leafs
       P2P(Ci, Cj);                                              //  P2P kernel
     } else if (Cj->NCHILD == 0 || Ci->R >= Cj->R) {             // If Cj is leaf or Ci is larger
-      for (C_iter ci=Ci->CHILD; ci!=Ci->CHILD+Ci->NCHILD; ci++) {// Loop over Ci's children
+      for (C_iter ci=Ci->CHILD2; ci!=Ci->CHILD2+Ci->NCHILD; ci++) {// Loop over Ci's children
         traversal(ci, Cj);                                      //   Traverse a single pair of cells
       }                                                         //  End loop over Ci's children
     } else {                                                    // Else if Ci is leaf or Cj is larger
-      for (C_iter cj=Cj->CHILD; cj!=Cj->CHILD+Cj->NCHILD; cj++) {// Loop over Cj's children
+      for (C_iter cj=Cj->CHILD2; cj!=Cj->CHILD2+Cj->NCHILD; cj++) {// Loop over Cj's children
         traversal(Ci, cj);                                      //   Traverse a single pair of cells
       }                                                         //  End loop over Cj's children
     }                                                           // End if for leafs and Ci Cj size
@@ -45,7 +45,7 @@ namespace exafmm {
     }                                                           // End loop over periodic cells
     C_iter Ci = pcells.end()-1;                                 // Last cell is periodic parent cell
     *Ci = *Cj0;                                                 // Copy values from source root
-    Ci->CHILD = pcells.begin();                                 // Pointer of first periodic child cell
+    Ci->CHILD2 = pcells.begin();                                 // Pointer of first periodic child cell
     Ci->NCHILD = 26;                                            // Number of periodic child cells
     for (int level=0; level<images-1; level++) {                // Loop over sublevels of tree
       for (int ix=-1; ix<=1; ix++) {                            //  Loop over x periodic direction
@@ -108,7 +108,7 @@ namespace exafmm {
   void downwardPass(C_iter Cj) {
     L2L(Cj);                                                    // L2L kernel
     if (Cj->NCHILD==0) L2P(Cj);                                 // L2P kernel
-    for (C_iter Ci=Cj->CHILD; Ci!=Cj->CHILD+Cj->NCHILD; Ci++) { // Loop over child cells
+    for (C_iter Ci=Cj->CHILD2; Ci!=Cj->CHILD2+Cj->NCHILD; Ci++) { // Loop over child cells
       downwardPass(Ci);                                         //  Recursive call for child cell
     }                                                           // End loop over chlid cells
   }

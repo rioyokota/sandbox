@@ -28,14 +28,13 @@ namespace exafmm {
     vec4 TRG;                                                   //!< Scalar+vector3 real values
   };
   typedef std::vector<Body> Bodies;                             //!< Vector of bodies
-  typedef typename Bodies::iterator B_iter;                     //!< Iterator of body vector
 
   //! Structure of cells
   struct Cell {
     int NCHILD;                                                 //!< Number of child cells
     int NBODY;                                                  //!< Number of descendant bodies
-    int ICHILD;                                                 //!< Index of first child cell
-    std::vector<Cell>::iterator CHILD;                          //!< Pointer of first child cell
+    Cell * CHILD;                                               //!< Pointer of first child cell
+    std::vector<Cell>::iterator CHILD2;                         //!< Pointer of first child cell
     Body * BODY;                                                //!< Pointer of first body
     vec3 X;                                                     //!< Cell center
     real_t R;                                                   //!< Cell radius
