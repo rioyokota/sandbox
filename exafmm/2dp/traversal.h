@@ -26,7 +26,7 @@ namespace exafmm {
       M2L(Ci, Cj);                                              //  M2L kernel
     } else if (Ci->NCHILD == 0 && Cj->NCHILD == 0) {            // Else if both cells are leafs
       P2P(Ci, Cj);                                              //  P2P kernel
-    } else if (Cj->NCHILD == 0 || Ci->R >= Cj->R) {             // Else if Cj is leaf or Ci is larger
+    } else if (Cj->NCHILD == 0 || (Ci->R >= Cj->R && Ci->NCHILD != 0)) {// Else if Cj is leaf or Ci is larger
       for (Cell * ci=Ci->CHILD; ci!=Ci->CHILD+Ci->NCHILD; ci++) {// Loop over Ci's children
         traversal(ci, Cj);                                      //   Traverse a single pair of cells
       }                                                         //  End loop over Ci's children

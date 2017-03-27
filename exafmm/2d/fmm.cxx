@@ -20,8 +20,6 @@ int main(int argc, char ** argv) {
     for (int d=0; d<2; d++) {                                   //  Loop over dimension
       bodies[b].X[d] = drand48() * 2 * M_PI - M_PI;             //   Initialize positions
     }                                                           //  End loop over dimension
-    //real_t r = sqrt(norm(bodies[b].X));                         //  Distance from center
-    //for (int d=0; d<2; d++) bodies[b].X[d] *= M_PI / r;         //  Normalize coordinates
     bodies[b].q = drand48() - .5;                               //  Initialize charge
     average += bodies[b].q;                                     //  Accumulate charge
     bodies[b].p = 0;                                            //  Clear potential
@@ -30,7 +28,6 @@ int main(int argc, char ** argv) {
   average /= bodies.size();                                     // Average charge
   for (int b=0; b<int(bodies.size()); b++) {                    // Loop over bodies
     bodies[b].q -= average;                                     // Charge neutral
-    //bodies[b].q = 1. / numBodies;
   }                                                             // End loop over bodies
   stop("Initialize bodies");                                    // Stop timer
 
