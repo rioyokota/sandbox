@@ -6,6 +6,11 @@ namespace exafmm {
   int P;                                                        //!< Order of expansions
   real_t dX[2];                                                 //!< Distance vector
 
+  //!< L2 norm of vector X
+  inline real_t norm(real_t * X) {
+    return X[0] * X[0] + X[1] * X[1];                           // L2 norm
+  }
+
   //!< P2P kernel between cells Ci and Cj
   void P2P(Cell * Ci, Cell * Cj) {
     Body * Bi = Ci->BODY;                                       // Target body pointer
@@ -14,7 +19,7 @@ namespace exafmm {
       real_t p = 0, F[2] = {0, 0};                              //  Initialize potential, force
       for (int j=0; j<Cj->NBODY; j++) {                         //  Loop over source bodies
         for (int d=0; d<2; d++) dX[d] = Bi[i].X[d] - Bj[j].X[d];// Calculate distance vector
-        real_t R2 = dX[0] * dX[0] + dX[1] * dX[1];              //   Calculate distance squared
+        real_t R2 = norm(dX);                                   //   Calculate distance squared
         if (R2 != 0) {                                          //   If not the same point
           real_t invR = 1 / sqrt(R2);                           //    1 / R
           real_t logR = Bj[j].q * log(invR);                    //    q * log(R)

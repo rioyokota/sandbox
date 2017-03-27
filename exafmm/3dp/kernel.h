@@ -12,14 +12,19 @@ namespace exafmm {
   std::vector<real_t> Anm;                                      //!< (-1)^n / sqrt( (n + m)! / (n - m)! )
   std::vector<complex_t> Cnm;                                   //!< M2L translation matrix Cjknm
 
+  //!< L2 norm of vector X
+  inline real_t norm(real_t * X) {
+    return X[0] * X[0] + X[1] * X[1] + X[2] * X[2];             // L2 norm
+  }
+
   //! Odd or even
   inline int oddOrEven(int n) {
-    return (((n) & 1) == 1) ? -1 : 1;
+    return (((n) & 1) == 1) ? -1 : 1;                           // Odd: -1, Even: 1
   }
 
   //! Get r,theta,phi from x,y,z
   void cart2sph(real_t * dX, real_t & r, real_t & theta, real_t & phi) {
-    r = sqrt(dX[0] * dX[0] + dX[1] * dX[1] + dX[2] * dX[2]);    // r = sqrt(x^2 + y^2 + z^2)
+    r = sqrt(norm(dX));                                         // r = sqrt(x^2 + y^2 + z^2)
     theta = r == 0 ? 0 : acos(dX[2] / r);                       // theta = acos(z / r)
     phi = atan2(dX[1], dX[0]);                                  // phi = atan(y / x)
   }
@@ -151,7 +156,7 @@ namespace exafmm {
       real_t az = 0;
       for (int j=0; j<nj; j++) {
         for (int d=0; d<3; d++) dX[d] = Bi[i].X[d] - Bj[j].X[d] - Xperiodic[d];
-        real_t R2 = dX[0] * dX[0] + dX[1] * dX[1] + dX[2] * dX[2];
+        real_t R2 = norm(dX);
         if (R2 != 0) {
           real_t invR2 = 1.0 / R2;
           real_t invR = Bj[j].q * sqrt(invR2);

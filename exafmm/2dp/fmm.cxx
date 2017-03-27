@@ -76,7 +76,7 @@ int main(int argc, char ** argv) {
     FNrm += bodies2[b].F[0] * bodies2[b].F[0] + bodies2[b].F[1] * bodies2[b].F[1];//  Value of force
   }                                                             // End loop over bodies & bodies2
   printf("--- %-16s ------------\n", "FMM vs. direct");         // Print message
-  printf("Rel. L2 Error (p)  : %e\n",sqrt(pDif/pNrm));          // Print potential error
-  printf("Rel. L2 Error (F)  : %e\n",sqrt(FDif/FNrm));          // Print force error
+  printf("%-20s : %8.5e s\n","Rel. L2 Error (p)", sqrt(pDif/pNrm));// Print potential error
+  printf("%-20s : %8.5e s\n","Rel. L2 Error (F)", sqrt(FDif/FNrm));// Print force error
   return 0;
 }
