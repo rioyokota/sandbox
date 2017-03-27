@@ -69,10 +69,6 @@ int main(int argc, char ** argv) {
   Ci->NBODY = bodies2.size();
   Ci->BODY = &bodies2[0];
   P2P(Ci, Cj);
-  for (int b=0; b<int(bodies2.size()); b++) {
-    bodies2[b].p /= bodies2[b].q;
-    bodies2[b].F /= bodies2[b].q;
-  }
 
   // Verify results
   real_t potDif = 0, potNrm = 0, accDif = 0, accNrm = 0;

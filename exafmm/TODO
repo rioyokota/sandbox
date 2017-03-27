@@ -1,5 +1,4 @@
 [3d]
-SRC, TRG > q, p, F
 remove normalization
 remove vec.h
 unify kernel interface
