@@ -12,8 +12,8 @@ int main(int argc, char ** argv) {                              // Main function
   theta = 0.4;                                                  // Multipole acceptance criterion
   images = 3;                                                   // 3^images * 3^images * 3^images periodic images
 
-  //! Initialize dsitribution, source & target value of bodies
-  printf("--- FMM Profiling ----------------\n");               // Start profiling
+  printf("--- %-16s ------------\n", "FMM Profiling");          // Start profiling
+  //! Initialize bodies
   start("Initialize bodies");                                   // Start timer
   srand48(0);                                                   // Set seed for random number generator
   Bodies bodies(numBodies);                                     // Initialize bodies
@@ -75,7 +75,7 @@ int main(int argc, char ** argv) {                              // Main function
       + (bodies[b].F[0] - bodies2[b].F[0]) * (bodies[b].F[0] - bodies2[b].F[0]);// Difference of force
     FNrm += bodies2[b].F[0] * bodies2[b].F[0] + bodies2[b].F[1] * bodies2[b].F[1];//  Value of force
   }                                                             // End loop over bodies & bodies2
-  printf("--- FMM vs. direct ---------------\n");               // Print message
+  printf("--- %-16s ------------\n", "FMM vs. direct");         // Print message
   printf("Rel. L2 Error (p)  : %e\n",sqrtf(pDif/pNrm));         // Print potential error
   printf("Rel. L2 Error (F)  : %e\n",sqrtf(FDif/FNrm));         // Print force error
   return 0;

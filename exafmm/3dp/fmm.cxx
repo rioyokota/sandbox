@@ -19,7 +19,7 @@ int main(int argc, char ** argv) {
   cutoff = cycle / 2;
 
   printf("--- %-16s ------------\n", "FMM Profiling");
-  // Initialize bodies
+  //! Initialize bodies
   start("Initialize bodies");
   Bodies bodies(numBodies);
   real_t average = 0;
@@ -41,12 +41,12 @@ int main(int argc, char ** argv) {
   }
   stop("Initialize bodies");
 
-  // Build tree
+  //! Build tree
   start("Build tree");
   Cell * cells = buildTree(bodies);
   stop("Build tree");
 
-  // FMM evaluation
+  //! FMM evaluation
   start("Upward pass");
   initKernel();
   upwardPass(cells);
@@ -58,7 +58,7 @@ int main(int argc, char ** argv) {
   downwardPass(cells);
   stop("Downward pass");
 
-  // Dipole correction
+  //! Dipole correction
   start("Dipole correction");
   real_t dipole[3] = {0, 0, 0};
   for (int b=0; b<int(bodies.size()); b++) {
@@ -73,7 +73,7 @@ int main(int argc, char ** argv) {
   stop("Dipole correction");
 
   printf("--- %-16s ------------\n", "Ewald Profiling");
-  // Ewald summation
+  //! Ewald summation
   start("Build tree");
   Bodies bodies2 = bodies;
   for (int b=0; b<int(bodies.size()); b++) {
@@ -91,7 +91,7 @@ int main(int argc, char ** argv) {
   selfTerm(bodies);
   stop("Real part");
 
-  // Verify result
+  //! Verify result
   real_t pSum = 0, pSum2 = 0, FDif = 0, FNrm = 0;
   for (int b=0; b<int(bodies.size()); b++) {
     pSum += bodies[b].p * bodies[b].q;

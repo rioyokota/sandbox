@@ -7,26 +7,19 @@ using namespace exafmm;
 
 int main(int argc, char ** argv) {
   const int numBodies = 1000;
-  const real_t cycle = 2 * M_PI;
   P = 10;
   ncrit = 64;
   theta = 0.4;
-  images = 4;
-
-  ksize = 11;
-  alpha = ksize / cycle;
-  sigma = .25 / M_PI;
-  cutoff = cycle / 2;
 
   printf("--- %-16s ------------\n", "FMM Profiling");
-  // Initialize bodies
+  //! Initialize bodies
   start("Initialize bodies");
   Bodies bodies(numBodies);
   real_t average = 0;
   srand48(0);
   for (int b=0; b<int(bodies.size()); b++) {
     for (int d=0; d<3; d++) {
-      bodies[b].X[d] = drand48() * cycle - cycle * .5;
+      bodies[b].X[d] = drand48() * 2 * M_PI - M_PI;
     }
   }
   for (int b=0; b<int(bodies.size()); b++) {
@@ -41,57 +34,41 @@ int main(int argc, char ** argv) {
   }
   stop("Initialize bodies");
 
-  // Build tree
+  //! Build tree
   start("Build tree");
   Cell * cells = buildTree(bodies);
   stop("Build tree");
 
-  // FMM evaluation
+  //! FMM evaluation
   start("Upward pass");
   initKernel();
   upwardPass(cells);
   stop("Upward pass");
   start("Traversal");
-  traversal(cells, cells, cycle);
+  traversal(cells, cells);
   stop("Traversal");
   start("Downward pass");
   downwardPass(cells);
   stop("Downward pass");
 
-  // Dipole correction
-  start("Dipole correction");
-  real_t dipole[3] = {0, 0, 0};
-  for (int b=0; b<int(bodies.size()); b++) {
-    for (int d=0; d<3; d++) dipole[d] += bodies[b].X[d] * bodies[b].q;
-  }
-  real_t coef = 4 * M_PI / (3 * cycle * cycle * cycle);
-  for (int b=0; b<int(bodies.size()); b++) {
-    real_t dnorm = dipole[0] * dipole[0] + dipole[1] * dipole[1] + dipole[2] * dipole[2];
-    bodies[b].p -= coef * dnorm / bodies.size() / bodies[b].q;
-    for (int d=0; d!=3; d++) bodies[b].F[d] -= coef * dipole[d];
-  }
-  stop("Dipole correction");
+  //! Direct N-Body
+  start("Direct N-Body");                                       // Start timer
+  const int numTargets = 10;                                    // Number of targets for checking answer
+  Bodies jbodies = bodies;                                      // Save bodies in jbodies
+  int stride = bodies.size() / numTargets;                      // Stride of sampling
+  for (int b=0; b<numTargets; b++) {                            // Loop over target samples
+    bodies[b] = bodies[b*stride];                               //  Sample targets
+  }                                                             // End loop over target samples
+  bodies.resize(numTargets);                                    // Resize bodies
+  Bodies bodies2 = bodies;                                      // Backup bodies
+  for (int b=0; b<int(bodies.size()); b++) {                    // Loop over bodies
+    bodies[b].p = 0;                                            //  Clear potential
+    for (int d=0; d<3; d++) bodies[b].F[d] = 0;                 //  Clear force
+  }                                                             // End loop over bodies
+  direct(bodies, jbodies);                                      // Direct N-Body
+  stop("Direct N-Body");                                        // Stop timer
 
-  printf("--- %-16s ------------\n", "Ewald Profiling");
-  // Ewald summation
-  start("Build tree");
-  Bodies bodies2 = bodies;
-  for (int b=0; b<int(bodies.size()); b++) {
-    bodies[b].p = 0;
-    for (int d=0; d<3; d++) bodies[b].F[d] = 0;
-  }
-  Bodies jbodies = bodies;
-  Cell * jcells = buildTree(jbodies);
-  stop("Build tree");
-  start("Wave part");
-  wavePart(bodies, jbodies, cycle);
-  stop("Wave part");
-  start("Real part");
-  realPart(cells, jcells, cycle);
-  selfTerm(bodies);
-  stop("Real part");
-
-  // Verify result
+  //! Verify result
   real_t pSum = 0, pSum2 = 0, FDif = 0, FNrm = 0;
   for (int b=0; b<int(bodies.size()); b++) {
     pSum += bodies[b].p * bodies[b].q;
