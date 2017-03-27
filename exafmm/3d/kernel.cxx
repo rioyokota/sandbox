@@ -21,13 +21,13 @@ int main(int argc, char ** argv) {
 
   // M2M
   C_iter CJ = cells.begin()+1;
-  CJ->ICHILD = Cj-cells.begin();
+  CJ->CHILD = Cj;
   CJ->NCHILD = 1;
   CJ->X = 0;
   CJ->X[0] = 4;
   CJ->R = 2;
   CJ->M.resize(NTERM, 0.0);
-  M2M(CJ, cells.begin());
+  M2M(CJ);
 
   // M2L
   C_iter CI = cells.begin()+2;
@@ -39,13 +39,13 @@ int main(int argc, char ** argv) {
 
   // L2L
   C_iter Ci = cells.begin()+3;
-  CI->ICHILD = Ci-cells.begin();
+  CI->CHILD = Ci;
   CI->NCHILD = 1;
   Ci->X = 1;
   Ci->X[0] = -3;
   Ci->R = 1;
   Ci->L.resize(NTERM, 0.0);
-  L2L(CI, cells.begin());
+  L2L(CI);
 
   // L2P
   Bodies bodies(1);

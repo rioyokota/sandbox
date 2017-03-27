@@ -3,10 +3,8 @@
 #include "types.h"
 
 namespace exafmm {
-  real_t theta;                                                 //!< Multipole acceptance criteria
   int images;                                                   //!< Number of periodic image sublevels
-  C_iter Ci0;                                                   //!< Iterator of first target cell
-  C_iter Cj0;                                                   //!< Iterator of first source cell
+  real_t theta;                                                 //!< Multipole acceptance criteria
 
   //! Post-order traversal for upward pass
   void upwardPass(C_iter Ci) {
@@ -28,7 +26,7 @@ namespace exafmm {
     } else if (Ci->NCHILD == 0 && Cj->NCHILD == 0) {            // Else if both cells are leafs
       P2P(Ci, Cj);                                              //  P2P kernel
     } else if (Cj->NCHILD == 0 || Ci->R >= Cj->R) {             // If Cj is leaf or Ci is larger
-      for (C_iter ci=Ci0+Ci->ICHILD; ci!=Ci0+Ci->ICHILD+Ci->NCHILD; ci++) {// Loop over Ci's children
+      for (C_iter ci=Ci->CHILD; ci!=Ci->CHILD+Ci->NCHILD; ci++) {// Loop over Ci's children
         traversal(ci, Cj);                                      //   Traverse a single pair of cells
       }                                                         //  End loop over Ci's children
     } else {                                                    // Else if Ci is leaf or Cj is larger
@@ -39,7 +37,7 @@ namespace exafmm {
   }
 
   //! Tree traversal of periodic cells
-  void traversePeriodic(vec3 cycle) {
+  void traversePeriodic(C_iter Ci0, C_iter Cj0, vec3 cycle) {
     Cells pcells(27);                                           // Create cells
     for (C_iter C=pcells.begin(); C!=pcells.end(); C++) {       // Loop over periodic cells
       C->M.resize(NTERM, 0.0);                                  //  Allocate & initialize M coefs
@@ -88,51 +86,46 @@ namespace exafmm {
   }
 
   //! Evaluate P2P and M2L using list based traversal
-  void traversal(Cells & icells, Cells & jcells, vec3 cycle) {
-    if (icells.empty() || jcells.empty()) return;               // Quit if either of the cell vectors are empty
-    Ci0 = icells.begin();                                       // Iterator of first target cell
-    Cj0 = jcells.begin();                                       // Iterator of first source cell
-    Xperiodic = 0;                                              // Set periodic coordinate offset to 0
-    if (images == 0) {                                          //  If non-periodic boundary condition
-      traversal(Ci0, Cj0);                                      //   Traverse the tree
-    } else {                                                    //  If periodic boundary condition
-      for (int ix=-1; ix<=1; ix++) {                            //   Loop over x periodic direction
-        for (int iy=-1; iy<=1; iy++) {                          //    Loop over y periodic direction
-          for (int iz=-1; iz<=1; iz++) {                        //     Loop over z periodic direction
-            Xperiodic[0] = ix * cycle[0];                       //      Coordinate shift for x periodic direction
-            Xperiodic[1] = iy * cycle[1];                       //      Coordinate shift for y periodic direction
-            Xperiodic[2] = iz * cycle[2];                       //      Coordinate shift for z periodic direction
-            traversal(Ci0, Cj0);                                //      Traverse the tree for this periodic image
-          }                                                     //     End loop over z periodic direction
-        }                                                       //    End loop over y periodic direction
-      }                                                         //   End loop over x periodic direction
-      traversePeriodic(cycle);                                  //   Traverse tree for periodic images
-    }                                                           //  End if for periodic boundary condition
+  void traversal(C_iter Ci0, C_iter Cj0, vec3 cycle) {
+    if (images == 0) {                                          // If non-periodic boundary condition
+      traversal(Ci0, Cj0);                                      //  Traverse the tree
+    } else {                                                    // If periodic boundary condition
+      for (int ix=-1; ix<=1; ix++) {                            //  Loop over x periodic direction
+        for (int iy=-1; iy<=1; iy++) {                          //   Loop over y periodic direction
+          for (int iz=-1; iz<=1; iz++) {                        //    Loop over z periodic direction
+            Xperiodic[0] = ix * cycle[0];                       //     Coordinate shift for x periodic direction
+            Xperiodic[1] = iy * cycle[1];                       //     Coordinate shift for y periodic direction
+            Xperiodic[2] = iz * cycle[2];                       //     Coordinate shift for z periodic direction
+            traversal(Ci0, Cj0);                                //     Traverse the tree for this periodic image
+          }                                                     //    End loop over z periodic direction
+        }                                                       //   End loop over y periodic direction
+      }                                                         //  End loop over x periodic direction
+      traversePeriodic(Ci0, Cj0, cycle);                        //  Traverse tree for periodic images
+    }                                                           // End if for periodic boundary condition
   }
 
   //! Pre-order traversal for downward pass
-  void downwardPass(C_iter C, C_iter C0) {
-    L2L(C);                                                     //  L2L kernel
-    if (C->NCHILD==0) {                                         //  If leaf cell
-      L2P(C);                                                   //  L2P kernel
-    }                                                           // End if for leaf cell
-    for (C_iter CC=C0+C->ICHILD; CC!=C0+C->ICHILD+C->NCHILD; CC++) {// Loop over child cells
-      downwardPass(CC, C0);                                     //  Recursive call for child cell
+  void downwardPass(C_iter Cj) {
+    L2L(Cj);                                                    // L2L kernel
+    if (Cj->NCHILD==0) L2P(Cj);                                 // L2P kernel
+    for (C_iter Ci=Cj->CHILD; Ci!=Cj->CHILD+Cj->NCHILD; Ci++) { // Loop over child cells
+      downwardPass(Ci);                                         //  Recursive call for child cell
     }                                                           // End loop over chlid cells
   }
 
   //! Direct summation
-  void direct(Bodies & ibodies, Bodies & jbodies, vec3 cycle) {
+  void direct(Bodies & bodies, Bodies & jbodies, vec3 cycle) {
     Cells cells(2);                                             // Define a pair of cells to pass to P2P kernel
-    C_iter Ci = cells.begin(), Cj = cells.begin()+1;            // First cell is target, second cell is source
+    C_iter Ci = cells.begin();                                  // Allocate single target
+    C_iter Cj = cells.begin()+1;                                // Allocate single source
     for (int ix=-1; ix<=1; ix++) {                              //  Loop over x periodic direction
       for (int iy=-1; iy<=1; iy++) {                            //   Loop over y periodic direction
         for (int iz=-1; iz<=1; iz++) {                          //    Loop over z periodic direction
           Xperiodic[0] = ix * cycle[0];                         //     Coordinate shift for x periodic direction
           Xperiodic[1] = iy * cycle[1];                         //     Coordinate shift for y periodic direction
           Xperiodic[2] = iz * cycle[2];                         //     Coordinate shift for z periodic direction
-          Ci->BODY = &ibodies[0];                               //     Iterator of first target body
-          Ci->NBODY = ibodies.size();                           //     Number of target bodies
+          Ci->BODY = &bodies[0];                                //     Iterator of first target body
+          Ci->NBODY = bodies.size();                            //     Number of target bodies
           Cj->BODY = &jbodies[0];                               //     Iterator of first source body
           Cj->NBODY = jbodies.size();                           //     Number of source bodies
           P2P(Ci, Cj);                                          //     Evaluate P2P kenrel

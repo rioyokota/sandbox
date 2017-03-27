@@ -108,7 +108,6 @@ namespace exafmm {
     C->BODY = B0 + octNode->IBODY;                              //  Iterator of first body in cell
     if (octNode->NNODE == 1) {                                  //  If node has no children
       C->CHILD = C0;                                            //   Set pointer of first child cell
-      C->ICHILD = 0;                                            //   Set index of first child cell to zero
       C->NCHILD = 0;                                            //   Number of child cells
     } else {                                                    //  Else if node has children
       int nchild = 0;                                           //   Initialize number of child cells
@@ -121,7 +120,6 @@ namespace exafmm {
       }                                                         //   End loop over octants
       C_iter Ci = CN;                                           //   CN points to the next free memory address
       C->CHILD = Ci;                                            //   Set pointer of first child cell
-      C->ICHILD = Ci - C0;                                      //   Set index of first child cell
       C->NCHILD = nchild;                                       //   Number of child cells
       CN += nchild;                                             //   Increment next free memory address
       for (int i=0; i<nchild; i++) {                            //   Loop over children

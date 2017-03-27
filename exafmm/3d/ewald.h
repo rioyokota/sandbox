@@ -105,7 +105,7 @@ namespace exafmm {
     }                                                           // End loop over target bodies
   }
 
-  void neighbor(C_iter Ci, C_iter Cj, C_iter C0) {              // Traverse tree to find neighbor
+  void neighbor(C_iter Ci, C_iter Cj) {                         // Traverse tree to find neighbor
     for (int d=0; d<3; d++) dX[d] = Ci->X[d] - Cj->X[d];        //  Distance vector from source to target
     for (int d=0; d<3; d++) {                                   //  Loop over dimensions
       if(dX[d] < -cycle / 2) dX[d] += cycle;                    //   Wrap around positive
@@ -115,8 +115,8 @@ namespace exafmm {
     real_t R = std::sqrt(dX[0] * dX[0] + dX[1] * dX[1] + dX[2] * dX[2]);//  Scalar distance
     if (R - Ci->R - Cj->R < sqrtf(3) * cutoff) {                //  If cells are close
       if(Cj->NCHILD == 0) realPart(Ci, Cj);                     //   Ewald real part
-      for (C_iter CC=C0+Cj->ICHILD; CC!=C0+Cj->ICHILD+Cj->NCHILD; CC++) {// Loop over cell's children
-        neighbor(Ci, CC, C0);                                   //    Instantiate recursive functor
+      for (C_iter cj=Cj->CHILD; cj!=Cj->CHILD+Cj->NCHILD; cj++) {// Loop over cell's children
+        neighbor(Ci, cj);                                       //    Instantiate recursive functor
       }                                                         //   End loop over cell's children
     }                                                           //  End if for far cells
   }                                                             // End overload operator()
@@ -125,9 +125,7 @@ namespace exafmm {
   void realPart(Cells & cells, Cells & jcells) {
     C_iter Cj = jcells.begin();                                 // Set begin iterator of source cells
     for (C_iter Ci=cells.begin(); Ci!=cells.end(); Ci++) {      // Loop over target cells
-      if (Ci->NCHILD == 0) {                                    //  If target cell is leaf
-        neighbor(Ci, Cj, Cj);                                   //   Find neighbors
-      }                                                         //  End if for leaf target cell
+      if (Ci->NCHILD == 0) neighbor(Ci, Cj);                    //  If target cell is leaf, find neighbors
     }                                                           // End loop over target cells
   }
 
