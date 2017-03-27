@@ -16,7 +16,7 @@ namespace exafmm {
         for (int d=0; d<2; d++) dX[d] = Bi[i].X[d] - Bj[j].X[d];// Calculate distance vector
         real_t R2 = dX[0] * dX[0] + dX[1] * dX[1];              //   Calculate distance squared
         if (R2 != 0) {                                          //   If not the same point
-          real_t invR = 1 / sqrtf(R2);                          //    1 / R
+          real_t invR = 1 / sqrt(R2);                           //    1 / R
           real_t logR = Bj[j].q * log(invR);                    //    q * log(R)
           p += logR;                                            //    Potential
           for (int d=0; d<2; d++) F[d] += dX[d] * Bj[j].q / R2; //    Force

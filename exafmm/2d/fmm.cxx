@@ -4,7 +4,7 @@
 #include "traversal.h"
 using namespace exafmm;
 
-int main(int argc, char ** argv) {                              // Main function
+int main(int argc, char ** argv) {
   const int numBodies = 10000;                                  // Number of bodies
   P = 10;                                                       // Order of expansions
   ncrit = 8;                                                    // Number of bodies per leaf cell
@@ -13,10 +13,10 @@ int main(int argc, char ** argv) {                              // Main function
   printf("--- %-16s ------------\n", "FMM Profiling");          // Start profiling
   //! Initialize bodie
   start("Initialize bodies");                                   // Start timer
-  srand48(0);                                                   // Set seed for random number generator
   Bodies bodies(numBodies);                                     // Initialize bodies
   real_t average = 0;                                           // Average charge
-  for (int b=0; b<int(bodies.size()); b++) {                             // Loop over bodies
+  srand48(0);                                                   // Set seed for random number generator
+  for (int b=0; b<int(bodies.size()); b++) {                    // Loop over bodies
     for (int d=0; d<2; d++) {                                   //  Loop over dimension
       bodies[b].X[d] = drand48() * 2 * M_PI - M_PI;             //   Initialize positions
     }                                                           //  End loop over dimension
@@ -25,8 +25,8 @@ int main(int argc, char ** argv) {                              // Main function
     bodies[b].p = 0;                                            //  Clear potential
     for (int d=0; d<2; d++) bodies[b].F[d] = 0;                 //  Clear force
   }                                                             // End loop over bodies
-  average /= bodies.size();                                         // Average charge
-  for (int b=0; b<int(bodies.size()); b++) {                             // Loop over bodies
+  average /= bodies.size();                                     // Average charge
+  for (int b=0; b<int(bodies.size()); b++) {                    // Loop over bodies
     bodies[b].q -= average;                                     // Charge neutral
   }                                                             // End loop over bodies
   stop("Initialize bodies");                                    // Stop timer
@@ -64,7 +64,7 @@ int main(int argc, char ** argv) {                              // Main function
   direct(bodies, jbodies);                                      // Direct N-Body
   stop("Direct N-Body");                                        // Stop timer
 
-  //! Evaluate relaitve L2 norm error
+  //! Verify result
   double pDif = 0, pNrm = 0, FDif = 0, FNrm = 0;
   for (int b=0; b<int(bodies.size()); b++) {                    // Loop over bodies & bodies2
     pDif += (bodies[b].p - bodies2[b].p) * (bodies[b].p - bodies2[b].p);// Difference of potential
@@ -74,7 +74,7 @@ int main(int argc, char ** argv) {                              // Main function
     FNrm += bodies2[b].F[0] * bodies2[b].F[0] + bodies2[b].F[1] * bodies2[b].F[1];//  Value of force
   }                                                             // End loop over bodies & bodies2
   printf("--- %-16s ------------\n", "FMM vs. direct");         // Print message
-  printf("Rel. L2 Error (p)  : %e\n",sqrtf(pDif/pNrm));         // Print potential error
-  printf("Rel. L2 Error (F)  : %e\n",sqrtf(FDif/FNrm));         // Print force error
+  printf("Rel. L2 Error (p)  : %e\n",sqrt(pDif/pNrm));          // Print potential error
+  printf("Rel. L2 Error (F)  : %e\n",sqrt(FDif/FNrm));          // Print force error
   return 0;
 }
