@@ -4,22 +4,11 @@
 #include <cstdlib>
 #include <cstdio>
 #include <vector>
-#include "vec.h"
 
 namespace exafmm {
   // Basic type definitions
   typedef double real_t;                                        //!< Floating point type
   typedef std::complex<real_t> complex_t;                       //!< Complex type
-  const complex_t I(0.,1.);                                     //!< Imaginary unit
-
-  typedef vec<3,real_t> vec3;                                   //!< Vector of 3 real_t types
-  typedef vec<4,real_t> vec4;                                   //!< Vector of 4 real_t types
-
-  //! Center and radius of bounding box
-  struct Box {
-    real_t X[3];                                                //!< Box center
-    real_t R;                                                   //!< Box radius
-  };
 
   //! Structure of bodies
   struct Body {
@@ -42,6 +31,5 @@ namespace exafmm {
     std::vector<complex_t> L;                                   //!< Local expansion coefs
   };
   typedef std::vector<Cell> Cells;                              //!< Vector of cells
-  typedef typename Cells::iterator C_iter;                      //!< Iterator of cell vector
 }
 #endif

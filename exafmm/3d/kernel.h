@@ -3,14 +3,14 @@
 #include "types.h"
 
 namespace exafmm {
-  std::vector<real_t> prefactor;                                //!< sqrt( (n - |m|)! / (n + |m|)! )
-  std::vector<real_t> Anm;                                      //!< (-1)^n / sqrt( (n + m)! / (n - m)! )
-  std::vector<complex_t> Cnm;                                   //!< M2L translation matrix Cjknm
-
+  const complex_t I(0.,1.);                                     //!< Imaginary unit
   int P;                                                        //!< Order of expansions
   int NTERM;                                                    //!< Number of coefficients
   real_t dX[3];                                                 //!< Distance vector
   real_t Xperiodic[3];                                          //!< Periodic coordinate offset
+  std::vector<real_t> prefactor;                                //!< sqrt( (n - |m|)! / (n + |m|)! )
+  std::vector<real_t> Anm;                                      //!< (-1)^n / sqrt( (n + m)! / (n - m)! )
+  std::vector<complex_t> Cnm;                                   //!< M2L translation matrix Cjknm
 
   //! Odd or even
   inline int oddOrEven(int n) {

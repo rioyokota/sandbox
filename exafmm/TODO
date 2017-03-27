@@ -1,8 +1,5 @@
 [3d]
 remove [0]
-Copy 2-D build_tree
-remove vec.h
 
 [2d/2dp]
 add kernel.cxx
-Bounds inside build_tree
