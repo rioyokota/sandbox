@@ -9,7 +9,7 @@ namespace exafmm {
 
   int P;                                                        //!< Order of expansions
   int NTERM;                                                    //!< Number of coefficients
-  vec3 dX;                                                      //!< Distance vector
+  real_t dX[3];                                                 //!< Distance vector
   vec3 Xperiodic;                                               //!< Periodic coordinate offset
 
   //! Odd or even
@@ -18,7 +18,7 @@ namespace exafmm {
   }
 
   //! Get r,theta,phi from x,y,z
-  void cart2sph(vec3 dX, real_t & r, real_t & theta, real_t & phi) {
+  void cart2sph(real_t * dX, real_t & r, real_t & theta, real_t & phi) {
     r = sqrt(dX[0] * dX[0] + dX[1] * dX[1] + dX[2] * dX[2]);    // r = sqrt(x^2 + y^2 + z^2)
     theta = r == 0 ? 0 : acos(dX[2] / r);                       // theta = acos(z / r)
     phi = atan2(dX[1], dX[0]);                                  // phi = atan(y / x)
@@ -105,11 +105,11 @@ namespace exafmm {
   }
 
   void initKernel() {
-    NTERM = P * (P + 1) / 2;
-    Xperiodic = 0;
-    prefactor.resize(4*P*P);
-    Anm.resize(4*P*P);
-    Cnm.resize(P*P*P*P);
+    NTERM = P * (P + 1) / 2;                                    // Calculate number of coefficients
+    for (int d=0; d<3; d++) Xperiodic[d] = 0;                   // Initialize periodic coordinate shift
+    prefactor.resize(4*P*P);                                    // Resize prefactor
+    Anm.resize(4*P*P);                                          // Resize Anm
+    Cnm.resize(P*P*P*P);                                        // Resize Cnm
     for (int n=0; n<2*P; n++) {                                 // Loop over n in Anm
       for (int m=-n; m<=n; m++) {                               //  Loop over m in Anm
         int nm = n*n+n+m;                                       //   Index of Anm
@@ -155,7 +155,7 @@ namespace exafmm {
         if (R2 != 0) {
           real_t invR2 = 1.0 / R2;
           real_t invR = Bj[j].q * sqrt(invR2);
-          dX *= invR2 * invR;
+          for (int d=0; d<3; d++) dX[d] *= invR2 * invR;
           pot += invR;
           ax += dX[0];
           ay += dX[1];
