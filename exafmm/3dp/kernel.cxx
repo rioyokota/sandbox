@@ -76,19 +76,17 @@ int main(int argc, char ** argv) {
   P2P(Ci, Cj);
 
   // Verify results
-  real_t potDif = 0, potNrm = 0, accDif = 0, accNrm = 0;
+  real_t pDif = 0, pNrm = 0, FDif = 0, FNrm = 0;
   for (int b=0; b<int(bodies.size()); b++) {
-    potDif += (bodies[b].p - bodies2[b].p) * (bodies[b].p - bodies2[b].p);
-    potNrm += bodies[b].p * bodies[b].p;
-    accDif += (bodies[b].F[0] - bodies2[b].F[0]) * (bodies[b].F[0] - bodies2[b].F[0]) +
+    pDif += (bodies[b].p - bodies2[b].p) * (bodies[b].p - bodies2[b].p);
+    pNrm += bodies[b].p * bodies[b].p;
+    FDif += (bodies[b].F[0] - bodies2[b].F[0]) * (bodies[b].F[0] - bodies2[b].F[0]) +
       (bodies[b].F[1] - bodies2[b].F[1]) * (bodies[b].F[1] - bodies2[b].F[1]) +
       (bodies[b].F[2] - bodies2[b].F[2]) * (bodies[b].F[2] - bodies2[b].F[2]);
-    accNrm += bodies[b].F[0] * bodies[b].F[0] + bodies[b].F[1] * bodies[b].F[1] +
+    FNrm += bodies[b].F[0] * bodies[b].F[0] + bodies[b].F[1] * bodies[b].F[1] +
       bodies[b].F[2] * bodies[b].F[2];
   }
-  real_t potRel = std::sqrt(potDif/potNrm);
-  real_t accRel = std::sqrt(accDif/accNrm);
-  printf("%-20s : %8.5e s\n","Rel. L2 Error (pot)", potRel);
-  printf("%-20s : %8.5e s\n","Rel. L2 Error (acc)", accRel);
+  printf("%-20s : %8.5e s\n","Rel. L2 Error (p)", sqrt(pDif/pNrm));
+  printf("%-20s : %8.5e s\n","Rel. L2 Error (F)", sqrt(FDif/FNrm));
   return 0;
 }

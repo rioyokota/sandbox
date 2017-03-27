@@ -22,9 +22,9 @@ namespace exafmm {
     for (int d=0; d<2; d++) dX[d] = Ci->X[d] - Cj->X[d];        // Distance vector from source to target
     real_t R2 = (dX[0] * dX[0] + dX[1] * dX[1]) * theta * theta;// Scalar distance squared
     if (R2 > (Ci->R + Cj->R) * (Ci->R + Cj->R)) {               // If distance is far enough
-      M2L(Ci, Cj);                                              //  Use approximate kernels
+      M2L(Ci, Cj);                                              //  M2L kernel
     } else if (Ci->NCHILD == 0 && Cj->NCHILD == 0) {            // Else if both cells are leafs
-      P2P(Ci, Cj);                                              //   Use exact kernel
+      P2P(Ci, Cj);                                              //  P2P kernel
     } else if (Cj->NCHILD == 0 || Ci->R >= Cj->R) {             // Else if Cj is leaf or Ci is larger
       for (Cell * ci=Ci->CHILD; ci!=Ci->CHILD+Ci->NCHILD; ci++) {// Loop over Ci's children
         traversal(ci, Cj);                                      //   Traverse a single pair of cells

@@ -66,18 +66,16 @@ int main(int argc, char ** argv) {
   stop("Direct N-Body");                                        // Stop timer
 
   //! Verify result
-  real_t pSum = 0, pSum2 = 0, FDif = 0, FNrm = 0;
+  real_t pDif = 0, pNrm = 0, FDif = 0, FNrm = 0;
   for (int b=0; b<int(bodies.size()); b++) {                    // Loop over bodies & bodies2
-    pSum += bodies[b].p * bodies[b].q;                          // Sum of potential for bodies
-    pSum2 += bodies2[b].p * bodies2[b].q;                       // Sum of potential for bodies2
+    pDif += (bodies[b].p - bodies2[b].p) * (bodies[b].p - bodies2[b].p);// Difference of potential
+    pNrm += bodies2[b].p * bodies2[b].p;                        //  Value of potential
     FDif += (bodies[b].F[0] - bodies2[b].F[0]) * (bodies[b].F[0] - bodies2[b].F[0]) +// Difference of force
       (bodies[b].F[1] - bodies2[b].F[1]) * (bodies[b].F[1] - bodies2[b].F[1]) +// Difference of force
       (bodies[b].F[2] - bodies2[b].F[2]) * (bodies[b].F[2] - bodies2[b].F[2]);// Difference of force
     FNrm += bodies[b].F[0] * bodies[b].F[0] + bodies[b].F[1] * bodies[b].F[1] +// Value of force
       bodies[b].F[2] * bodies[b].F[2];
   }                                                             // End loop over bodies & bodies2
-  real_t pDif = (pSum - pSum2) * (pSum - pSum2);                // Difference in sum
-  real_t pNrm = pSum * pSum;                                    // Norm of the sum
   printf("--- %-16s ------------\n", "FMM vs. direct");         // Print message
   printf("%-20s : %8.5e s\n","Rel. L2 Error (p)", sqrt(pDif/pNrm));// Print potential error
   printf("%-20s : %8.5e s\n","Rel. L2 Error (F)", sqrt(FDif/FNrm));// Print force error
