@@ -1,5 +1,2 @@
 [3d]
-remove [0]
-
-[2d/2dp]
-add kernel.cxx
+Make 3dp, 3d
