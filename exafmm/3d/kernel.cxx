@@ -8,7 +8,7 @@ int main(int argc, char ** argv) {
   // P2M
   Bodies jbodies(1);
   jbodies[0].X = 2;
-  jbodies[0].SRC = 1;
+  jbodies[0].q = 1;
   Cells cells(4);
   Cell * Cj = &cells[0];
   Cj->X = 1;
@@ -51,7 +51,7 @@ int main(int argc, char ** argv) {
   Bodies bodies(1);
   bodies[0].X = 2;
   bodies[0].X[0] = -2;
-  bodies[0].SRC = 1;
+  bodies[0].q = 1;
   bodies[0].TRG = 0;
   Ci->BODY = &bodies[0];
   Ci->NBODY = bodies.size();
@@ -68,7 +68,7 @@ int main(int argc, char ** argv) {
   Ci->BODY = &bodies2[0];
   P2P(Ci, Cj);
   for (int b=0; b<int(bodies2.size()); b++) {
-    bodies2[b].TRG /= bodies2[b].SRC;
+    bodies2[b].TRG /= bodies2[b].q;
   }
 
   // Verify results

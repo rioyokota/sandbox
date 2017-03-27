@@ -30,12 +30,12 @@ int main(int argc, char ** argv) {
     }
   }
   for (int b=0; b<int(bodies.size()); b++) {
-    bodies[b].SRC = drand48() - .5;
-    average += bodies[b].SRC;
+    bodies[b].q = drand48() - .5;
+    average += bodies[b].q;
   }
   average /= bodies.size();
   for (int b=0; b<int(bodies.size()); b++) {
-    bodies[b].SRC -= average;
+    bodies[b].q -= average;
     bodies[b].TRG = 0;
   }
   stop("Initialize bodies");
@@ -63,11 +63,11 @@ int main(int argc, char ** argv) {
   buffer = bodies;
   vec3 dipole = 0;
   for (int b=0; b<int(bodies.size()); b++) {
-    dipole += bodies[b].X * bodies[b].SRC;
+    dipole += bodies[b].X * bodies[b].q;
   }
   real_t coef = 4 * M_PI / (3 * cycle * cycle * cycle);
   for (int b=0; b<int(bodies.size()); b++) {
-    bodies[b].TRG[0] -= coef * norm(dipole) / bodies.size() / bodies[b].SRC;
+    bodies[b].TRG[0] -= coef * norm(dipole) / bodies.size() / bodies[b].q;
     for (int d=0; d!=3; d++) {
       bodies[b].TRG[d+1] -= coef * dipole[d];
     }
@@ -95,8 +95,8 @@ int main(int argc, char ** argv) {
   // Verify result
   real_t pSum = 0, pSum2 = 0, FDif = 0, FNrm = 0;
   for (int b=0; b<int(bodies.size()); b++) {
-    pSum += bodies[b].TRG[0] * bodies[b].SRC;
-    pSum2 += bodies2[b].TRG[0] * bodies2[b].SRC;
+    pSum += bodies[b].TRG[0] * bodies[b].q;
+    pSum2 += bodies2[b].TRG[0] * bodies2[b].q;
     FDif += (bodies[b].TRG[1] - bodies2[b].TRG[1]) * (bodies[b].TRG[1] - bodies2[b].TRG[1]) +
       (bodies[b].TRG[2] - bodies2[b].TRG[2]) * (bodies[b].TRG[2] - bodies2[b].TRG[2]) +
       (bodies[b].TRG[3] - bodies2[b].TRG[3]) * (bodies[b].TRG[3] - bodies2[b].TRG[3]);

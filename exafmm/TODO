@@ -1,8 +1,4 @@
 [3d]
-iterators > pointers
-B_iter > Body *
-C_iter > Cell *
-W_iter > Wave *
 SRC, TRG > q, p, F
 remove normalization
 remove vec.h

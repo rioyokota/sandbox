@@ -22,9 +22,9 @@ namespace exafmm {
   };
 
   //! Structure of bodies
-  struct Body {                                                 //!< Base components of body structure
+  struct Body {
     vec3  X;                                                    //!< Position
-    real_t SRC;                                                 //!< Scalar real values
+    real_t q;                                                   //!< Charge
     vec4 TRG;                                                   //!< Scalar+vector3 real values
   };
   typedef std::vector<Body> Bodies;                             //!< Vector of bodies

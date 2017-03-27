@@ -10,7 +10,6 @@ namespace exafmm {
     real_t IMAG;                                                //!< imaginary part of wave
   };
   typedef std::vector<Wave> Waves;                              //!< Vector of Wave types
-  typedef typename Waves::iterator W_iter;                      //!< Iterator of Wave types
 
   int ksize;                                                    //!< Number of waves in Ewald summation
   real_t alpha;                                                 //!< Scaling parameter for Ewald summation
@@ -30,8 +29,8 @@ namespace exafmm {
       for (int b=0; b<int(bodies.size()); b++) {                //  Loop over bodies
         real_t th = 0;                                          //   Initialize phase
         for (int d=0; d<3; d++) th += waves[w].K[d] * bodies[b].X[d] * scale[d];//  Determine phase
-        waves[w].REAL += bodies[b].SRC * std::cos(th);          //   Accumulate real component
-        waves[w].IMAG += bodies[b].SRC * std::sin(th);          //   Accumulate imaginary component
+        waves[w].REAL += bodies[b].q * std::cos(th);            //   Accumulate real component
+        waves[w].IMAG += bodies[b].q * std::sin(th);            //   Accumulate imaginary component
       }                                                         //  End loop over bodies
     }                                                           // End loop over waves
   }
@@ -94,9 +93,9 @@ namespace exafmm {
           real_t invRs = 1 / Rs;                                //    1 / (R * alpha)
           real_t invR2s = invRs * invRs;                        //    1 / (R * alpha)^2
           real_t invR3s = invR2s * invRs;                       //    1 / (R * alpha)^3
-          real_t dtmp = Bj->SRC * (M_2_SQRTPI * std::exp(-R2s) * invR2s + erfc(Rs) * invR3s);
+          real_t dtmp = Bj->q * (M_2_SQRTPI * std::exp(-R2s) * invR2s + erfc(Rs) * invR3s);
           dtmp *= alpha * alpha * alpha;                        //    Scale temporary value
-          Bi->TRG[0] += Bj->SRC * erfc(Rs) * invRs * alpha;     //    Ewald real potential
+          Bi->TRG[0] += Bj->q * erfc(Rs) * invRs * alpha;       //    Ewald real potential
           Bi->TRG[1] -= dX[0] * dtmp;                           //    x component of Ewald real force
           Bi->TRG[2] -= dX[1] * dtmp;                           //    y component of Ewald real force
           Bi->TRG[3] -= dX[2] * dtmp;                           //    z component of Ewald real force
@@ -148,7 +147,7 @@ namespace exafmm {
   //! Subtract self term
   void selfTerm(Bodies & bodies) {
     for (int b=0; b<int(bodies.size()); b++) {                  // Loop over all bodies
-      bodies[b].TRG[0] -= M_2_SQRTPI * bodies[b].SRC * alpha;   //  Self term of Ewald real part
+      bodies[b].TRG[0] -= M_2_SQRTPI * bodies[b].q * alpha;     //  Self term of Ewald real part
     }                                                           // End loop over all bodies in cell
   }
 }

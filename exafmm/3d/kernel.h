@@ -153,7 +153,7 @@ namespace exafmm {
         real_t R2 = norm(dX);
         if (R2 != 0) {
           real_t invR2 = 1.0 / R2;
-          real_t invR = Bj[j].SRC * sqrt(invR2);
+          real_t invR = Bj[j].q * sqrt(invR2);
           dX *= invR2 * invR;
           pot += invR;
           ax += dX[0];
@@ -179,7 +179,7 @@ namespace exafmm {
         for (int m=0; m<=n; m++) {
           int nm  = n * n + n + m;
           int nms = n * (n + 1) / 2 + m;
-          C->M[nms] += B->SRC * Ynm[nm];
+          C->M[nms] += B->q * Ynm[nm];
         }
       }
     }
