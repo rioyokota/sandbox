@@ -5,9 +5,26 @@
 namespace exafmm {
   int ncrit;                                                    //!< Number of bodies per leaf cell
 
+  //! Get bounding box of bodies
+  void getBounds(Bodies & bodies, real_t & R0, real_t * X0) {
+    real_t Xmin[2], Xmax[2];                                      // Min, max of domain
+    for (int d=0; d<2; d++) Xmin[d] = Xmax[d] = bodies[0].X[d];   // Initialize Xmin, Xmax
+    for (int b=0; b<int(bodies.size()); b++) {                             // Loop over range of bodies
+      for (int d=0; d<2; d++) Xmin[d] = fmin(bodies[b].X[d], Xmin[d]);//  Update Xmin
+      for (int d=0; d<2; d++) Xmax[d] = fmax(bodies[b].X[d], Xmax[d]);//  Update Xmax
+    }                                                             // End loop over range of bodies
+    for (int d=0; d<2; d++) X0[d] = (Xmax[d] + Xmin[d]) / 2;      // Calculate center of domain
+    R0 = 0;                                                       // Initialize localRadius
+    for (int d=0; d<2; d++) {                                     // Loop over dimensions
+      R0 = fmax(X0[d] - Xmin[d], R0);                             //  Calculate min distance from center
+      R0 = fmax(Xmax[d] - X0[d], R0);                             //  Calculate max distance from center
+    }                                                             // End loop over dimensions
+    R0 *= 1.00001;                                                // Add some leeway to radius
+  }
+
   //! Build cells of tree adaptively using a top-down approach based on recursion
-  void buildTree(Body * bodies, Body * buffer, int begin, int end, Cell * cell,
-                 real_t X[2], real_t R, int level=0, bool direction=false) {
+  void buildCells(Body * bodies, Body * buffer, int begin, int end, Cell * cell,
+                  real_t X[2], real_t R, int level=0, bool direction=false) {
     //! Create a tree cell
     cell->BODY = bodies + begin;                                // Pointer of first body in cell
     if(direction) cell->BODY = buffer + begin;                  // Pointer of first body in cell
@@ -62,11 +79,20 @@ namespace exafmm {
         Xchild[d] += r * (((i & 1 << d) >> d) * 2 - 1);         //   Shift center position to that of child cell
       }                                                         //  End loop over dimensions
       if (size[i]) {                                            //  If child exists
-        buildTree(buffer, bodies, offsets[i], offsets[i] + size[i],// Recursive call for each child
-                  &child[c], Xchild, R, level+1, !direction);
+        buildCells(buffer, bodies, offsets[i], offsets[i] + size[i],// Recursive call for each child
+                   &child[c], Xchild, R, level+1, !direction);
         c++;                                                    //   Increment child cell counter
       }                                                         //  End if for child
     }                                                           // End loop over children
+  }
+
+  Cell * buildTree(Bodies & bodies) {
+    real_t R0, X0[2];                                             // Radius and center root cell
+    getBounds(bodies, R0, X0);                                    // Get bounding box from bodies
+    Bodies buffer = bodies;                                       // Copy bodies to buffer
+    Cell * cells = new Cell();                                    // Create root cell
+    buildCells(&bodies[0], &buffer[0], 0, bodies.size(), cells, X0, R0);// Build tree recursively
+    return cells;                                                 // Return pointer of root cell
   }
 }
 

@@ -6,7 +6,6 @@ using namespace exafmm;
 
 int main(int argc, char ** argv) {                              // Main function
   const int numBodies = 10000;                                  // Number of bodies
-  const int numTargets = 10;                                    // Number of targets for checking answer
   const real_t cycle = 2 * M_PI;                                // Cycle of periodic boundary condition
   P = 10;                                                       // Order of expansions
   ncrit = 8;                                                    // Number of bodies per leaf cell
@@ -34,27 +33,9 @@ int main(int argc, char ** argv) {                              // Main function
   }                                                             // End loop over bodies
   stop("Initialize bodies");                                    // Stop timer
 
-  // ! Get Xmin and Xmax of domain
+  //! Build tree
   start("Build tree");                                          // Start timer
-  real_t R0;                                                    // Radius of root cell
-  real_t Xmin[2], Xmax[2], X0[2];                               // Min, max of domain, and center of root cell
-  for (int d=0; d<2; d++) Xmin[d] = Xmax[d] = bodies[0].X[d];   // Initialize Xmin, Xmax
-  for (int b=0; b<int(bodies.size()); b++) {                             // Loop over range of bodies
-    for (int d=0; d<2; d++) Xmin[d] = fmin(bodies[b].X[d], Xmin[d]);//  Update Xmin
-    for (int d=0; d<2; d++) Xmax[d] = fmax(bodies[b].X[d], Xmax[d]);//  Update Xmax
-  }                                                             // End loop over range of bodies
-  for (int d=0; d<2; d++) X0[d] = (Xmax[d] + Xmin[d]) / 2;      // Calculate center of domain
-  R0 = 0;                                                       // Initialize localRadius
-  for (int d=0; d<2; d++) {                                     // Loop over dimensions
-    R0 = fmax(X0[d] - Xmin[d], R0);                             //  Calculate min distance from center
-    R0 = fmax(Xmax[d] - X0[d], R0);                             //  Calculate max distance from center
-  }                                                             // End loop over dimensions
-  R0 *= 1.00001;                                                // Add some leeway to radius
-
-  //! Build tree structure
-  Bodies buffer = bodies;                                       // Copy bodies to buffer
-  Cell * cells = new Cell();                                    // Create root cell
-  buildTree(&bodies[0], &buffer[0], 0, bodies.size(), cells, X0, R0);// Build tree recursively
+  Cell * cells = buildTree(bodies);                             // Build tree
   stop("Build tree");                                           // Stop timer
 
   //! FMM evaluation
@@ -70,6 +51,7 @@ int main(int argc, char ** argv) {                              // Main function
 
   // Direct N-Body
   start("Direct N-Body");                                       // Start timer
+  const int numTargets = 10;                                    // Number of targets for checking answer
   Bodies jbodies = bodies;                                      // Save bodies in jbodies
   int stride = bodies.size() / numTargets;                      // Stride of sampling
   for (int b=0; b<numTargets; b++) {                            // Loop over target samples

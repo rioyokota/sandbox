@@ -1,9 +1,8 @@
 [3d]
-remove vec.h
 remove [0]
-remove new, delete
 Copy 2-D build_tree
+remove vec.h
 
 [2d/2dp]
 add kernel.cxx
-Use STL vector for bodies, cells
+Bounds inside build_tree
