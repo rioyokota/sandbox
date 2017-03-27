@@ -36,7 +36,7 @@ namespace exafmm {
     int NBODY;                                                  //!< Number of descendant bodies
     Cell * CHILD;                                               //!< Pointer of first child cell
     Body * BODY;                                                //!< Pointer of first body
-    vec3 X;                                                     //!< Cell center
+    real_t X[3];                                                //!< Cell center
     real_t R;                                                   //!< Cell radius
     std::vector<complex_t> M;                                   //!< Multipole expansion coefs
     std::vector<complex_t> L;                                   //!< Local expansion coefs
