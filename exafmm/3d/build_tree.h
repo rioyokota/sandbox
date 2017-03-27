@@ -120,7 +120,6 @@ namespace exafmm {
       }                                                         //   End loop over octants
       C_iter Ci = CN;                                           //   CN points to the next free memory address
       C->CHILD = &Ci[0];                                        //   Set pointer of first child cell
-      C->CHILD2 = Ci;                                           //   Set pointer of first child cell
       C->NCHILD = nchild;                                       //   Number of child cells
       CN += nchild;                                             //   Increment next free memory address
       for (int i=0; i<nchild; i++) {                            //   Loop over children

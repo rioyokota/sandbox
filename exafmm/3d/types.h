@@ -34,7 +34,6 @@ namespace exafmm {
     int NCHILD;                                                 //!< Number of child cells
     int NBODY;                                                  //!< Number of descendant bodies
     Cell * CHILD;                                               //!< Pointer of first child cell
-    std::vector<Cell>::iterator CHILD2;                         //!< Pointer of first child cell
     Body * BODY;                                                //!< Pointer of first body
     vec3 X;                                                     //!< Cell center
     real_t R;                                                   //!< Cell radius

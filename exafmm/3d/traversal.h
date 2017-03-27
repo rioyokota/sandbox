@@ -46,7 +46,6 @@ namespace exafmm {
     Cell * Ci = &pcells.back();                                 // Last cell is periodic parent cell
     *Ci = *Cj0;                                                 // Copy values from source root
     Ci->CHILD = &pcells[0];                                     // Pointer of first periodic child cell
-    Ci->CHILD2 = pcells.begin();                                // Pointer of first periodic child cell
     Ci->NCHILD = 26;                                            // Number of periodic child cells
     for (int level=0; level<images-1; level++) {                // Loop over sublevels of tree
       for (int ix=-1; ix<=1; ix++) {                            //  Loop over x periodic direction
