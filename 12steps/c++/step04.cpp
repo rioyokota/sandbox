@@ -1,4 +1,4 @@
-extern "C" int convection(double * u, int nx, double dx, double dt, double c) {
+extern "C" void convection(double * u, int nx, double dx, double dt, double c) {
   double un[nx];
   for (int i=0; i<nx; i++)
     un[i] = u[i];
