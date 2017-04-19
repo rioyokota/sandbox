@@ -1,5 +1,13 @@
 #include <cstdio>
+#include <sys/time.h>
+double get_time() {
+  struct timeval tv;
+  gettimeofday(&tv, NULL);
+  return double(tv.tv_sec)+double(tv.tv_usec)*1e-6;
+}
+
 extern "C" void navierstokes(double ** u, double ** v, double ** p, int nx, int ny, double dx, double dy, int nit, double rho, double nu, double dt) {
+  double tic = get_time();
   double un[ny][nx];
   double vn[ny][nx];
   double pn[ny][nx];
@@ -15,6 +23,9 @@ extern "C" void navierstokes(double ** u, double ** v, double ** p, int nx, int 
       b[j][i] = rho * (1. / dt * ((u[j][i+1] - u[j][i-1]) / (2 * dx) + (v[j+1][i] - v[j-1][i]) / (2 * dy)) - ((u[j][i+1] - u[j][i-1]) / (2 * dx)) * ((u[j][i+1] - u[j][i-1]) / (2 * dx)) - 2 * ((u[j+1][i] - u[j-1][i]) / (2 * dy) * (v[j][i+1] - v[j][i-1]) / (2 * dx)) - ((v[j+1][i] - v[j-1][i]) / (2 * dy)) * ((v[j+1][i] - v[j-1][i]) / (2 * dy)));
     }
   }
+  double toc = get_time();
+  printf("%-20s : %lf s\n","Setup", toc-tic);
+  tic = get_time();
   for (int it=0; it<nit; it++) {
     for (int j=0; j<ny; j++)
       p[j][nx-1] = p[j][nx-2];
@@ -33,6 +44,9 @@ extern "C" void navierstokes(double ** u, double ** v, double ** p, int nx, int 
       }
     }
   }
+  toc = get_time();
+  printf("%-20s : %lf s\n","Poisson", toc-tic);
+  tic = get_time();
   for (int i=1; i<nx-1; i++) {
     for (int j=1; j<ny-1; j++) {
       u[j][i] = un[j][i] - un[j][i] * dt / dx * (un[j][i] - un[j][i-1]) - vn[j][i] * dt / dy * (un[j][i] - un[j-1][i]) - dt / (2 * rho * dx) * (p[j][i+1] - p[j][i-1]) + nu * (dt / dx / dx * (un[j][i+1] - 2 * un[j][i] + un[j][i-1]) + dt / dy / dy * (un[j+1][i] - 2 * un[j][i] + un[j-1][i]));
@@ -55,4 +69,6 @@ extern "C" void navierstokes(double ** u, double ** v, double ** p, int nx, int 
     v[j][0] = 0;
   for (int j=0; j<ny; j++)
     v[j][nx-1] = 0;
+  toc = get_time();
+  printf("%-20s : %lf s\n","Navier-Stokes", toc-tic);
 }
