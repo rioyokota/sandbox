@@ -1,5 +1,4 @@
 #include <cstdio>
-#include <omp.h>
 #include <sys/time.h>
 double get_time() {
   struct timeval tv;
@@ -27,10 +26,6 @@ extern "C" void navierstokes(double ** u, double ** v, double ** p, int nx, int 
   double toc = get_time();
   printf("%-20s : %lf s\n","Setup", toc-tic);
   tic = get_time();
-#pragma omp parallel
-  {
-  int num_threads = omp_get_num_threads();
-  printf("%d\n",num_threads);
   for (int it=0; it<nit; it++) {
     for (int j=0; j<ny; j++)
       p[j][nx-1] = p[j][nx-2];
@@ -43,13 +38,11 @@ extern "C" void navierstokes(double ** u, double ** v, double ** p, int nx, int 
     for (int i=0; i<nx; i++)
       for (int j=0; j<ny; j++)
         pn[j][i] = p[j][i];
-#pragma omp for
     for (int i=1; i<nx-1; i++) {
       for (int j=1; j<ny-1; j++) {
         p[j][i] = ((pn[j][i+1] + pn[j][i-1]) * dy * dy + (pn[j+1][i] + pn[j-1][i]) * dx * dx) / (2 * (dx * dx + dy * dy)) - dx * dx * dy * dy / (2 * (dx * dx + dy * dy)) * b[j][i];
       }
     }
-  }
   }
   toc = get_time();
   printf("%-20s : %lf s\n","Poisson", toc-tic);
