@@ -16,6 +16,11 @@ int main(int argc, char **argv) {
     A[i] = new float [N];
     B[i] = new float [N];
     C[i] = new float [N];
+    for (int j=0; j<N; j++) {
+      A[i][j] = drand48();
+      B[i][j] = drand48();
+      C[i][j] = 0;
+    }
   }
   double tic = get_time();
 #pragma omp parallel for

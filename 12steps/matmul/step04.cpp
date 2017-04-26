@@ -1,3 +1,4 @@
+#include <cmath>
 #include <cstdlib>
 #include <cstdio>
 #include <immintrin.h>
@@ -17,6 +18,11 @@ int main(int argc, char **argv) {
     A[i] = new float [N];
     B[i] = new float [N];
     C[i] = new float [N];
+    for (int j=0; j<N; j++) {
+      A[i][j] = drand48();
+      B[i][j] = drand48();
+      C[i][j] = 0;
+    }
   }
   double tic = get_time();
 #pragma omp parallel for
@@ -33,6 +39,24 @@ int main(int argc, char **argv) {
   }
   double toc = get_time();
   printf("N=%d: %lf s (%lf GFlops)\n",N,toc-tic,2.*N*N*N/(toc-tic)/1e9);
+  tic = get_time();
+#pragma omp parallel for
+  for (int i=0; i<N; i++) {
+    for (int k=0; k<N; k++) {
+      for (int j=0; j<N; j++) {
+        C[i][j] -= A[i][k] * B[k][j];
+      }
+    }
+  }
+  toc = get_time();
+  printf("N=%d: %lf s (%lf GFlops)\n",N,toc-tic,2.*N*N*N/(toc-tic)/1e9);
+  float err = 0;
+  for (int i=0; i<N; i++) {
+    for (int j=0; j<N; j++) {
+      err += fabs(C[i][j]);
+    }
+  }
+  printf("error: %f\n",err/N/N);
   for (int i=0; i<N; i++) {
     delete[] A[i];
     delete[] B[i];
