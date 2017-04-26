@@ -26,7 +26,7 @@ int main(int argc, char **argv) {
     }
   }
   double toc = get_time();
-  printf("N=%d: %lf s (%lf GFlops)\n",N,toc-tic,2*N*N*N/(toc-tic)/1e9);
+  printf("N=%d: %lf s (%lf GFlops)\n",N,toc-tic,2.*N*N*N/(toc-tic)/1e9);
   for (int i=0; i<N; i++) {
     delete[] A[i];
     delete[] B[i];

@@ -9,7 +9,7 @@ sse: sse.c
 	$(ICC) $<
 	./a.out
 avx: avx.c
-	$(ICC) -mavx $<
+	$(CXX) -mavx $<
 	./a.out
 knc: knc.c
 	$(ICC) -mmic $<

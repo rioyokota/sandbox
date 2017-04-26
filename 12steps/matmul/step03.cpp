@@ -18,6 +18,7 @@ int main(int argc, char **argv) {
     C[i] = new float [N];
   }
   double tic = get_time();
+#pragma omp parallel for
   for (int i=0; i<N; i++) {
     for (int k=0; k<N; k++) {
       for (int j=0; j<N; j++) {
@@ -26,7 +27,7 @@ int main(int argc, char **argv) {
     }
   }
   double toc = get_time();
-  printf("N=%d: %lf s (%lf GFlops)\n",N,toc-tic,2*N*N*N/(toc-tic)/1e9);
+  printf("N=%d: %lf s (%lf GFlops)\n",N,toc-tic,2.*N*N*N/(toc-tic)/1e9);
   for (int i=0; i<N; i++) {
     delete[] A[i];
     delete[] B[i];
