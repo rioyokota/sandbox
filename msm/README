@@ -1,0 +1,29 @@
+Compile example:
+
+module load psxe/2017.1
+scl enable devtoolset-4 bash
+
+icpc -std=c++11 coulomb.cpp -qopenmp -o coulomb
+
+#for double precision
+#icpc -DCOULOMB_DOUBLE -std=c++11 coulomb.cpp -qopenmp -o coulomb
+
+icpc -std=c++11 error.cpp -o error
+
+#g++ -std=c++11 coulomb.cpp -fopenmp -o coulomb
+#g++ -std=c++11 error.cpp -o error
+
+Command example:
+
+#output force.dat by Ewald
+OMP_NUM_THREADS=8 ./coulomb ewald coulomb.in water.charge water.crd
+mv force.dat ewald_force.dat
+
+#output force.dat by MSM
+OMP_NUM_THREADS=1 ./coulomb msm coulomb.in water.charge water.crd
+#output relative-L2 error and rmsre
+./error ewald_force.dat force.dat
+
+#test MSM long interaction with direct evaluation in each level
+OMP_NUM_THREADS=8 ./coulomb test_msm coulomb.in water.charge water.crd
+

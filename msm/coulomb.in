@@ -1,0 +1,11 @@
+p 6 # B-spline order
+level 5 # Number of grid for each axis is set as 2^level
+sigma 3 # SD of Gaussian charge
+cutoff 12 # Cutoff of short interaction
+quadrature 5 # Number of Gaussian mixture
+range short_long # Compute short and long interaction
+#range short # Compute short interaction
+#range long # Compute long interaction
+nmax 50 # Cutoff of wave number for ewald
+target 10 # Number of target points for test_msm
+neighbor 10 # Number of neiboring periodic images for test_msm
