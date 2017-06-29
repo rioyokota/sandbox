@@ -14,11 +14,11 @@ V-List     : 1.050769e-01
 Error      : 1.588167e-13
 U-List     : 1.165731e+00
 V-List     : 2.170773e+00
-[./fmm_pts -T 72 -n 1000000 -P 4 -c 64] @ r2
+[./fmm_pts -T 72 -n 1000000 -P 4 -c 64] @ ec0
 Error      : 9.716759e-05
 U-List     : 6.566905e-02
 V-List     : 4.657955e-02
-[./fmm_pts -T 72 -n 1000000 -P 16 -c 320] @ r2
+[./fmm_pts -T 72 -n 1000000 -P 16 -c 320] @ ec0
 Error      : 1.588667e-13
 U-List     : 4.676812e-01
 V-List     : 8.559153e-01
