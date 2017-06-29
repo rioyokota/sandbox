@@ -3122,7 +3122,7 @@ public:
     }
   }
 
-  void FFT_Check2Equiv(size_t dof, size_t m, size_t ker_dim1, Vector<size_t>& ifft_vec, Vector<Real_t>& ifft_scal,
+  void FFT_Check2Equiv(size_t dof, size_t m, size_t ker_dim1, std::vector<size_t>& ifft_vec, Vector<Real_t>& ifft_scal,
 		       Vector<Real_t>& input_data, Vector<Real_t>& output_data, Vector<Real_t>& buffer_) {
     size_t n1=m*2;
     size_t n2=n1*n1;
@@ -3160,7 +3160,7 @@ public:
     }
     {
       assert(buffer_.Dim()>=2*fftsize_out*omp_p);
-      size_t n_out=ifft_vec.Dim();
+      size_t n_out=ifft_vec.size();
 #pragma omp parallel for
       for(int pid=0; pid<omp_p; pid++){
         size_t node_start=(n_out*(pid  ))/omp_p;
@@ -3215,7 +3215,7 @@ public:
     {
       size_t m, dof, ker_dim0, ker_dim1, n_blk0;
       std::vector<std::vector<size_t> >  fft_vec;
-      std::vector<Vector<size_t> > ifft_vec;
+      std::vector<std::vector<size_t> > ifft_vec;
       std::vector<Vector<Real_t> >  fft_scl;
       std::vector<Vector<Real_t> > ifft_scl;
       std::vector<Vector<size_t> > interac_vec;
@@ -3249,8 +3249,12 @@ public:
           data_ptr+=sizeof(size_t);
           memcpy(&fft_vec[blk0][0], data_ptr, fft_vec[blk0].size()*sizeof(size_t));
           data_ptr+=fft_vec[blk0].size()*sizeof(size_t);
-          ifft_vec[blk0].ReInit3(((size_t*)data_ptr)[0],(size_t*)(data_ptr+sizeof(size_t)),false);
-          data_ptr+=sizeof(size_t)+ifft_vec[blk0].Dim()*sizeof(size_t);
+          ifft_vec[blk0].resize(((size_t*)data_ptr)[0]);
+          data_ptr+=sizeof(size_t);
+          memcpy(&ifft_vec[blk0][0], data_ptr, ifft_vec[blk0].size()*sizeof(size_t));
+          data_ptr+=ifft_vec[blk0].size()*sizeof(size_t);
+          //ifft_vec[blk0].ReInit3(((size_t*)data_ptr)[0],(size_t*)(data_ptr+sizeof(size_t)),false);
+          //data_ptr+=sizeof(size_t)+ifft_vec[blk0].Dim()*sizeof(size_t);
           fft_scl[blk0].ReInit3(((size_t*)data_ptr)[0],(Real_t*)(data_ptr+sizeof(size_t)),false);
           data_ptr+=sizeof(size_t)+fft_scl[blk0].Dim()*sizeof(Real_t);
           ifft_scl[blk0].ReInit3(((size_t*)data_ptr)[0],(Real_t*)(data_ptr+sizeof(size_t)),false);
@@ -3273,7 +3277,7 @@ public:
       }
       for(size_t blk0=0;blk0<n_blk0;blk0++){
         size_t n_in = fft_vec[blk0].size();
-        size_t n_out=ifft_vec[blk0].Dim();
+        size_t n_out=ifft_vec[blk0].size();
         size_t  input_dim=n_in *ker_dim0*dof*fftsize;
         size_t output_dim=n_out*ker_dim1*dof*fftsize;
         size_t buffer_dim=2*(ker_dim0+ker_dim1)*dof*fftsize*omp_p;
