@@ -1,5 +1,7 @@
+Remove <1 loops
+
+
 Vector -> std::vector
- - remove global variables in fmm_tree
  - dev_buffer
  - rm ReInit
  - Resize -> resize
