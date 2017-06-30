@@ -74,9 +74,8 @@ namespace pvfmm{
     Matrix<Real_t>* output_data;
   };
 
-#if defined(__AVX__) || defined(__SSE3__)
-inline void matmult_8x8x2(double*& M_, double*& IN0, double*& IN1, double*& OUT0, double*& OUT1){
 #ifdef __AVX__
+inline void matmult_8x8x2(double*& M_, double*& IN0, double*& IN1, double*& OUT0, double*& OUT1){
   __m256d out00,out01,out10,out11;
   __m256d out20,out21,out30,out31;
   double* in0__ = IN0;
@@ -170,69 +169,11 @@ inline void matmult_8x8x2(double*& M_, double*& IN0, double*& IN1, double*& OUT0
   _mm256_store_pd(OUT1+8,out21);
   _mm256_store_pd(OUT0+12,out30);
   _mm256_store_pd(OUT1+12,out31);
-#elif defined __SSE3__
-  __m128d out00, out01, out10, out11;
-  __m128d in00, in01, in10, in11;
-  __m128d m00, m01, m10, m11;
-  for(int i1=0;i1<8;i1+=2){
-    double* IN0_=IN0;
-    double* IN1_=IN1;
-    out00 =_mm_load_pd (OUT0  );
-    out10 =_mm_load_pd (OUT0+2);
-    out01 =_mm_load_pd (OUT1  );
-    out11 =_mm_load_pd (OUT1+2);
-    for(int i2=0;i2<8;i2+=2){
-      m00 =_mm_load1_pd (M_   );
-      m10 =_mm_load1_pd (M_+ 2);
-      m01 =_mm_load1_pd (M_+16);
-      m11 =_mm_load1_pd (M_+18);
-      in00 =_mm_load_pd (IN0_  );
-      in10 =_mm_load_pd (IN0_+2);
-      in01 =_mm_load_pd (IN1_  );
-      in11 =_mm_load_pd (IN1_+2);
-      out00 = _mm_add_pd   (out00, _mm_mul_pd(m00 , in00 ));
-      out00 = _mm_add_pd   (out00, _mm_mul_pd(m01 , in10 ));
-      out01 = _mm_add_pd   (out01, _mm_mul_pd(m00 , in01 ));
-      out01 = _mm_add_pd   (out01, _mm_mul_pd(m01 , in11 ));
-      out10 = _mm_add_pd   (out10, _mm_mul_pd(m10 , in00 ));
-      out10 = _mm_add_pd   (out10, _mm_mul_pd(m11 , in10 ));
-      out11 = _mm_add_pd   (out11, _mm_mul_pd(m10 , in01 ));
-      out11 = _mm_add_pd   (out11, _mm_mul_pd(m11 , in11 ));
-      m00 =_mm_load1_pd (M_+   1);
-      m10 =_mm_load1_pd (M_+ 2+1);
-      m01 =_mm_load1_pd (M_+16+1);
-      m11 =_mm_load1_pd (M_+18+1);
-      in00 =_mm_shuffle_pd (in00,in00,_MM_SHUFFLE2(0,1));
-      in01 =_mm_shuffle_pd (in01,in01,_MM_SHUFFLE2(0,1));
-      in10 =_mm_shuffle_pd (in10,in10,_MM_SHUFFLE2(0,1));
-      in11 =_mm_shuffle_pd (in11,in11,_MM_SHUFFLE2(0,1));
-      out00 = _mm_addsub_pd(out00, _mm_mul_pd(m00, in00));
-      out00 = _mm_addsub_pd(out00, _mm_mul_pd(m01, in10));
-      out01 = _mm_addsub_pd(out01, _mm_mul_pd(m00, in01));
-      out01 = _mm_addsub_pd(out01, _mm_mul_pd(m01, in11));
-      out10 = _mm_addsub_pd(out10, _mm_mul_pd(m10, in00));
-      out10 = _mm_addsub_pd(out10, _mm_mul_pd(m11, in10));
-      out11 = _mm_addsub_pd(out11, _mm_mul_pd(m10, in01));
-      out11 = _mm_addsub_pd(out11, _mm_mul_pd(m11, in11));
-      M_+=32;
-      IN0_+=4;
-      IN1_+=4;
-    }
-    _mm_store_pd (OUT0  ,out00);
-    _mm_store_pd (OUT0+2,out10);
-    _mm_store_pd (OUT1  ,out01);
-    _mm_store_pd (OUT1+2,out11);
-    M_+=4-64*2;
-    OUT0+=4;
-    OUT1+=4;
-  }
-#endif
 }
 #endif
 
-#if defined(__SSE3__)
+#ifdef __SSE3__
 inline void matmult_8x8x2(float*& M_, float*& IN0, float*& IN1, float*& OUT0, float*& OUT1){
-#if defined __SSE3__
   __m128 out00,out01,out10,out11;
   __m128 out20,out21,out30,out31;
   float* in0__ = IN0;
@@ -325,7 +266,6 @@ inline void matmult_8x8x2(float*& M_, float*& IN0, float*& IN1, float*& OUT0, fl
   _mm_store_ps(OUT1+8,out21);
   _mm_store_ps(OUT0+12,out30);
   _mm_store_ps(OUT1+12,out31);
-#endif
 }
 #endif
 
