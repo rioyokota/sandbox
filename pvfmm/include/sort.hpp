@@ -197,46 +197,33 @@ namespace pvfmm{
   template<typename T>
   int ScatterForward(Vector<T>& data_, const Vector<size_t>& scatter_index){
     typedef SortPair<size_t,size_t> Pair_t;
-    size_t data_dim=0;
-    long long send_size=0;
-    long long recv_size=0;
-    {
-      recv_size=scatter_index.Dim();
-      long long loc_size[2]={(long long)(data_.Dim()*sizeof(T)), recv_size};
-      if(loc_size[0]==0 || loc_size[1]==0) return 0;
-      data_dim=loc_size[0]/loc_size[1];
-      send_size=(data_.Dim()*sizeof(T))/data_dim;
-    }
-    Vector<char> recv_buff(recv_size*data_dim);
-    std::vector<Pair_t> psorted(recv_size);
+    long long data_size=scatter_index.Dim();
+    long long loc_size[2]={(long long)(data_.Dim()*sizeof(T)), data_size};
+    if(loc_size[0]==0 || loc_size[1]==0) return 0;
+    size_t data_dim=loc_size[0]/loc_size[1];
+    Vector<char> buffer(data_size*data_dim);
+    std::vector<Pair_t> psorted(data_size);
     {
 #pragma omp parallel for
-      for(size_t i=0;i<recv_size;i++){
+      for(size_t i=0;i<data_size;i++){
 	psorted[i].key=scatter_index[i];
 	psorted[i].data=i;
       }
-      merge_sort(&psorted[0], &psorted[0]+recv_size);
+      merge_sort(&psorted[0], &psorted[0]+data_size);
     }
     {
       char* data=(char*)&data_[0];
 #pragma omp parallel for
-      for(size_t i=0;i<send_size;i++){
-	size_t src_indx=psorted[i].key*data_dim;
-	size_t trg_indx=i*data_dim;
-	for(size_t j=0;j<data_dim;j++) {
-	  recv_buff[trg_indx+j]=data[src_indx+j];
-	}
+      for(size_t i=0;i<data_size;i++){
+	for(size_t j=0;j<data_dim;j++)
+	  buffer[i*data_dim+j]=data[i*data_dim+j];
       }
-    }
-
-    {
-      char* data=(char*)&data_[0];
 #pragma omp parallel for
-      for(size_t i=0;i<recv_size;i++){
-	size_t src_indx=i*data_dim;
+      for(size_t i=0;i<data_size;i++){
+	size_t src_indx=psorted[i].key*data_dim;
 	size_t trg_indx=psorted[i].data*data_dim;
 	for(size_t j=0;j<data_dim;j++)
-	  data[trg_indx+j]=recv_buff[src_indx+j];
+	  data[trg_indx+j]=buffer[src_indx+j];
       }
     }
     return 0;

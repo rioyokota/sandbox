@@ -720,7 +720,7 @@ private:
         scal_exp=kernel->k_m2m->src_scal;
         for(size_t i=0;i<scal_exp.Dim();i++) scal_exp[i]=-scal_exp[i];
       }
-      P=equiv_surf_perm(m, p_indx, ker_perm, (ScaleInvar()?&scal_exp:NULL));
+      P=equiv_surf_perm(m, p_indx, ker_perm, &scal_exp);
       break;
     }
     case D2D_Type: {
@@ -734,7 +734,7 @@ private:
         ker_perm=kernel->k_l2l->perm_vec[C_Perm+p_indx];
         scal_exp=kernel->k_l2l->trg_scal;
       }
-      P=equiv_surf_perm(m, p_indx, ker_perm, (ScaleInvar()?&scal_exp:NULL));
+      P=equiv_surf_perm(m, p_indx, ker_perm, &scal_exp);
       break;
     }
     default:
@@ -748,7 +748,7 @@ private:
   }
 
   Matrix<Real_t>& Precomp(int level, Mat_Type type, size_t mat_indx) {
-    if(ScaleInvar()) level=0;
+    level=0;
     Matrix<Real_t>& M_ = mat->Mat(level, type, mat_indx);
     if(M_.Dim(0)!=0 && M_.Dim(1)!=0) return M_;
     else{
@@ -871,18 +871,14 @@ private:
       kernel->k_l2l->BuildMatrix(&equiv_surf[0], n_de, &check_surf[0], n_dc, &(M_pe2c[0][0]));
       Matrix<Real_t> M_c2e0=Precomp(level-1,DC2DE0_Type,0);
       Matrix<Real_t> M_c2e1=Precomp(level-1,DC2DE1_Type,0);
-      if(ScaleInvar()) {
-        Permutation<Real_t> ker_perm=kernel->k_l2l->perm_vec[C_Perm+Scaling];
-        Vector<Real_t> scal_exp=kernel->k_l2l->trg_scal;
-        Permutation<Real_t> P=equiv_surf_perm(multipole_order, Scaling, ker_perm, &scal_exp);
-        M_c2e0=P*M_c2e0;
-      }
-      if(ScaleInvar()) {
-        Permutation<Real_t> ker_perm=kernel->k_l2l->perm_vec[0     +Scaling];
-        Vector<Real_t> scal_exp=kernel->k_l2l->src_scal;
-        Permutation<Real_t> P=equiv_surf_perm(multipole_order, Scaling, ker_perm, &scal_exp);
-        M_c2e1=M_c2e1*P;
-      }
+      Permutation<Real_t> ker_perm=kernel->k_l2l->perm_vec[C_Perm+Scaling];
+      Vector<Real_t> scal_exp=kernel->k_l2l->trg_scal;
+      Permutation<Real_t> P=equiv_surf_perm(multipole_order, Scaling, ker_perm, &scal_exp);
+      M_c2e0=P*M_c2e0;
+      ker_perm=kernel->k_l2l->perm_vec[0     +Scaling];
+      scal_exp=kernel->k_l2l->src_scal;
+      P=equiv_surf_perm(multipole_order, Scaling, ker_perm, &scal_exp);
+      M_c2e1=M_c2e1*P;
       M=M_c2e0*(M_c2e1*M_pe2c);
       break;
     }
@@ -1005,7 +1001,7 @@ private:
       break;
     }
     case BC_Type:{
-      if(!ScaleInvar() || !multipole_order) break;
+      if(!multipole_order) break;
       if(kernel->k_m2l->ker_dim[0]!=kernel->k_m2m->ker_dim[0]) break;
       if(kernel->k_m2l->ker_dim[1]!=kernel->k_l2l->ker_dim[1]) break;
       int ker_dim[2]={kernel->k_m2l->ker_dim[0],kernel->k_m2l->ker_dim[1]};
@@ -1072,7 +1068,7 @@ private:
             if(mat_indx==0) M_m2m[-level] = M_equiv_zero_avg*M*M_equiv_zero_avg;
             else M_m2m[-level] += M_equiv_zero_avg*M*M_equiv_zero_avg;
           }
-          if(!ScaleInvar() || level==0){
+          if(level==0){
             Real_t s=(1UL<<(-level));
             Real_t dc_coord[3]={0,0,0};
             std::vector<Real_t> trg_coord=d_check_surf(multipole_order, dc_coord, level);
@@ -1091,20 +1087,16 @@ private:
             M_m2l[-level]=M_equiv_zero_avg*M_ue2dc * M_check_zero_avg;
           }else{
             M_m2l[-level]=M_equiv_zero_avg * M_m2l[-level-1] * M_check_zero_avg;
-            if(ScaleInvar()) {
-              Permutation<Real_t> ker_perm=kernel->k_m2l->perm_vec[0     +Scaling];
-              Vector<Real_t> scal_exp=kernel->k_m2l->src_scal;
-              for(size_t i=0;i<scal_exp.Dim();i++) scal_exp[i]=-scal_exp[i];
-              Permutation<Real_t> P=equiv_surf_perm(multipole_order, Scaling, ker_perm, &scal_exp);
-              M_m2l[-level]=P*M_m2l[-level];
-            }
-            if(ScaleInvar()) {
-              Permutation<Real_t> ker_perm=kernel->k_m2l->perm_vec[C_Perm+Scaling];
-              Vector<Real_t> scal_exp=kernel->k_m2l->trg_scal;
-              for(size_t i=0;i<scal_exp.Dim();i++) scal_exp[i]=-scal_exp[i];
-              Permutation<Real_t> P=equiv_surf_perm(multipole_order, Scaling, ker_perm, &scal_exp);
-              M_m2l[-level]=M_m2l[-level]*P;
-            }
+            Permutation<Real_t> ker_perm=kernel->k_m2l->perm_vec[0     +Scaling];
+            Vector<Real_t> scal_exp=kernel->k_m2l->src_scal;
+            for(size_t i=0;i<scal_exp.Dim();i++) scal_exp[i]=-scal_exp[i];
+            Permutation<Real_t> P=equiv_surf_perm(multipole_order, Scaling, ker_perm, &scal_exp);
+            M_m2l[-level]=P*M_m2l[-level];
+            ker_perm=kernel->k_m2l->perm_vec[C_Perm+Scaling];
+            scal_exp=kernel->k_m2l->trg_scal;
+            for(size_t i=0;i<scal_exp.Dim();i++) scal_exp[i]=-scal_exp[i];
+            P=equiv_surf_perm(multipole_order, Scaling, ker_perm, &scal_exp);
+            M_m2l[-level]=M_m2l[-level]*P;
           }
         }
         for(int level=-MAX_DEPTH;level<=0;level++){
@@ -1165,44 +1157,6 @@ private:
                   -M_err[i][0*ker_dim[1]+k]-M_err[i][4*ker_dim[1]+k]-M_err[i][5*ker_dim[1]+k]-M_err[i][6*ker_dim[1]+k])*dn_check_surf[j*3+0]*dn_check_surf[j*3+1]*dn_check_surf[j*3+2];
             }
         M-=M_grad;
-        if(!ScaleInvar()) {
-          Mat_Type type=D2D_Type;
-          for(int l=-MAX_DEPTH;l<0;l++)
-            for(size_t indx=0;indx<interacList.ListCount(type);indx++){
-              Matrix<Real_t>& M=mat->Mat(l, type, indx);
-              M.Resize(0,0);
-            }
-          type=U2U_Type;
-          for(int l=-MAX_DEPTH;l<0;l++)
-            for(size_t indx=0;indx<interacList.ListCount(type);indx++){
-              Matrix<Real_t>& M=mat->Mat(l, type, indx);
-              M.Resize(0,0);
-            }
-          type=DC2DE0_Type;
-          for(int l=-MAX_DEPTH;l<0;l++)
-            for(size_t indx=0;indx<interacList.ListCount(type);indx++){
-              Matrix<Real_t>& M=mat->Mat(l, type, indx);
-              M.Resize(0,0);
-            }
-          type=DC2DE1_Type;
-          for(int l=-MAX_DEPTH;l<0;l++)
-            for(size_t indx=0;indx<interacList.ListCount(type);indx++){
-              Matrix<Real_t>& M=mat->Mat(l, type, indx);
-              M.Resize(0,0);
-            }
-          type=UC2UE0_Type;
-          for(int l=-MAX_DEPTH;l<0;l++)
-            for(size_t indx=0;indx<interacList.ListCount(type);indx++){
-              Matrix<Real_t>& M=mat->Mat(l, type, indx);
-              M.Resize(0,0);
-            }
-          type=UC2UE1_Type;
-          for(int l=-MAX_DEPTH;l<0;l++)
-            for(size_t indx=0;indx<interacList.ListCount(type);indx++){
-              Matrix<Real_t>& M=mat->Mat(l, type, indx);
-              M.Resize(0,0);
-            }
-        }
       }
       break;
     }
@@ -1345,7 +1299,7 @@ public:
     kernel=kernel_;
     assert(kernel!=NULL);
     bool save_precomp=false;
-    mat=new PrecompMat(ScaleInvar());
+    mat=new PrecompMat(true);
     std::string mat_fname;
     if(mat_fname.size()==0){
       std::stringstream st;
@@ -1408,8 +1362,6 @@ public:
     Profile::Toc();
     }Profile::Toc();
   }
-
-  bool ScaleInvar(){return kernel->scale_invar;}
 
   FMM_Node* PreorderNxt(FMM_Node* curr_node) {
     assert(curr_node!=NULL);
@@ -1587,25 +1539,25 @@ public:
     Profile::Tic("UListSetup",false,3);
     for(size_t i=0;i<MAX_DEPTH;i++){
       setup_data[i+MAX_DEPTH*0].precomp_data=&precomp_lst[0];
-      U_ListSetup(setup_data[i+MAX_DEPTH*0],node_data_buff,node_lists,ScaleInvar()?(i==0?-1:MAX_DEPTH+1):i);
+      U_ListSetup(setup_data[i+MAX_DEPTH*0],node_data_buff,node_lists,i==0?-1:MAX_DEPTH+1);
     }
     Profile::Toc();
     Profile::Tic("WListSetup",false,3);
     for(size_t i=0;i<MAX_DEPTH;i++){
       setup_data[i+MAX_DEPTH*1].precomp_data=&precomp_lst[1];
-      W_ListSetup(setup_data[i+MAX_DEPTH*1],node_data_buff,node_lists,ScaleInvar()?(i==0?-1:MAX_DEPTH+1):i);
+      W_ListSetup(setup_data[i+MAX_DEPTH*1],node_data_buff,node_lists,i==0?-1:MAX_DEPTH+1);
     }
     Profile::Toc();
     Profile::Tic("XListSetup",false,3);
     for(size_t i=0;i<MAX_DEPTH;i++){
       setup_data[i+MAX_DEPTH*2].precomp_data=&precomp_lst[2];
-      X_ListSetup(setup_data[i+MAX_DEPTH*2],node_data_buff,node_lists,ScaleInvar()?(i==0?-1:MAX_DEPTH+1):i);
+      X_ListSetup(setup_data[i+MAX_DEPTH*2],node_data_buff,node_lists,i==0?-1:MAX_DEPTH+1);
     }
     Profile::Toc();
     Profile::Tic("VListSetup",false,3);
     for(size_t i=0;i<MAX_DEPTH;i++){
       setup_data[i+MAX_DEPTH*3].precomp_data=&precomp_lst[3];
-      V_ListSetup(setup_data[i+MAX_DEPTH*3],node_data_buff,node_lists,ScaleInvar()?(i==0?-1:MAX_DEPTH+1):i);
+      V_ListSetup(setup_data[i+MAX_DEPTH*3],node_data_buff,node_lists,i==0?-1:MAX_DEPTH+1);
     }
     Profile::Toc();
     Profile::Tic("D2DSetup",false,3);
@@ -1617,14 +1569,14 @@ public:
     Profile::Tic("D2TSetup",false,3);
     for(size_t i=0;i<MAX_DEPTH;i++){
       setup_data[i+MAX_DEPTH*5].precomp_data=&precomp_lst[5];
-      Down2TargetSetup(setup_data[i+MAX_DEPTH*5],node_data_buff,node_lists,ScaleInvar()?(i==0?-1:MAX_DEPTH+1):i);
+      Down2TargetSetup(setup_data[i+MAX_DEPTH*5],node_data_buff,node_lists,i==0?-1:MAX_DEPTH+1);
     }
     Profile::Toc();
 
     Profile::Tic("S2USetup",false,3);
     for(size_t i=0;i<MAX_DEPTH;i++){
       setup_data[i+MAX_DEPTH*6].precomp_data=&precomp_lst[6];
-      Source2UpSetup(setup_data[i+MAX_DEPTH*6],node_data_buff,node_lists,ScaleInvar()?(i==0?-1:MAX_DEPTH+1):i);
+      Source2UpSetup(setup_data[i+MAX_DEPTH*6],node_data_buff,node_lists,i==0?-1:MAX_DEPTH+1);
     }
     Profile::Toc();
     Profile::Tic("U2USetup",false,3);
@@ -2081,7 +2033,7 @@ public:
               for(size_t j=interac_blk_dsp[k-1];j<interac_blk_dsp[k];j++){
                 FMM_Node* trg_node=src_interac_list[i][j];
                 if(trg_node!=NULL && trg_node->node_id<n_out){
-                  size_t depth=(ScaleInvar()?trg_node->depth:0);
+                  size_t depth=trg_node->depth;
                   input_perm .push_back(precomp_data_offset[j][1+4*depth+0]);
                   input_perm .push_back(precomp_data_offset[j][1+4*depth+1]);
                   input_perm .push_back(interac_dsp[trg_node->node_id][j]*vec_size*sizeof(Real_t));
@@ -2098,7 +2050,7 @@ public:
             for(size_t i=0;i<n_out;i++){
               for(size_t j=interac_blk_dsp[k-1];j<interac_blk_dsp[k];j++){
                 if(trg_interac_list[i][j]!=NULL){
-                  size_t depth=(ScaleInvar()?nodes_out[i]->depth:0);
+                  size_t depth=nodes_out[i]->depth;
                   output_perm.push_back(precomp_data_offset[j][1+4*depth+2]);
                   output_perm.push_back(precomp_data_offset[j][1+4*depth+3]);
                   output_perm.push_back(interac_dsp[               i ][j]*vec_size*sizeof(Real_t));
@@ -2391,23 +2343,21 @@ public:
       std::vector<std::vector<size_t> > scal_idx_(omp_p);
       std::vector<std::vector<Real_t> > coord_shift_(omp_p);
       std::vector<std::vector<size_t> > interac_cnt_(omp_p);
-      if(ScaleInvar()){
-        const Kernel* ker=kernel->k_m2m;
-        for(size_t l=0;l<MAX_DEPTH;l++){
-          Vector<Real_t>& scal=data.pt_interac_data.scal[l*4+2];
-          Vector<Real_t>& scal_exp=ker->trg_scal;
-          scal.Resize(scal_exp.Dim());
-          for(size_t i=0;i<scal.Dim();i++){
-            scal[i]=powf(2.0,-scal_exp[i]*l);
-          }
+      const Kernel* ker=kernel->k_m2m;
+      for(size_t l=0;l<MAX_DEPTH;l++){
+        Vector<Real_t>& scal=data.pt_interac_data.scal[l*4+2];
+        Vector<Real_t>& scal_exp=ker->trg_scal;
+        scal.Resize(scal_exp.Dim());
+        for(size_t i=0;i<scal.Dim();i++){
+          scal[i]=powf(2.0,-scal_exp[i]*l);
         }
-        for(size_t l=0;l<MAX_DEPTH;l++){
-          Vector<Real_t>& scal=data.pt_interac_data.scal[l*4+3];
-          Vector<Real_t>& scal_exp=ker->src_scal;
-          scal.Resize(scal_exp.Dim());
-          for(size_t i=0;i<scal.Dim();i++){
-            scal[i]=powf(2.0,-scal_exp[i]*l);
-          }
+      }
+      for(size_t l=0;l<MAX_DEPTH;l++){
+        Vector<Real_t>& scal=data.pt_interac_data.scal[l*4+3];
+        Vector<Real_t>& scal_exp=ker->src_scal;
+        scal.Resize(scal_exp.Dim());
+        for(size_t i=0;i<scal.Dim();i++){
+          scal[i]=powf(2.0,-scal_exp[i]*l);
         }
       }
 #pragma omp parallel for
@@ -2514,7 +2464,7 @@ public:
   }
 
   void PeriodicBC(FMM_Node* node){
-    if(!ScaleInvar() || !multipole_order) return;
+    if(!multipole_order) return;
     Matrix<Real_t>& M = Precomp(0, BC_Type, 0);
     assert(node->FMMData()->upward_equiv.Dim()>0);
     int dof=1;
@@ -2535,14 +2485,10 @@ public:
       if(n->depth>depth) depth=n->depth;
     }
     Profile::Tic("S2U",false,5);
-    for(int i=0; i<=(ScaleInvar()?0:depth); i++){
-      if(!ScaleInvar()) SetupPrecomp(setup_data[i+MAX_DEPTH*6]);
-      Source2Up(setup_data[i+MAX_DEPTH*6]);
-    }
+    Source2Up(setup_data[MAX_DEPTH*6]);
     Profile::Toc();
     Profile::Tic("U2U",false,5);
     for(int i=depth-1; i>=0; i--){
-      if(!ScaleInvar()) SetupPrecomp(setup_data[i+MAX_DEPTH*7]);
       Up2Up(setup_data[i+MAX_DEPTH*7]);
     }
     Profile::Toc();
@@ -4121,23 +4067,21 @@ public:
       std::vector<std::vector<size_t> > scal_idx_(omp_p);
       std::vector<std::vector<Real_t> > coord_shift_(omp_p);
       std::vector<std::vector<size_t> > interac_cnt_(omp_p);
-      if(ScaleInvar()){
-        const Kernel* ker=kernel->k_l2l;
-        for(size_t l=0;l<MAX_DEPTH;l++){
-          Vector<Real_t>& scal=data.pt_interac_data.scal[l*4+0];
-          Vector<Real_t>& scal_exp=ker->trg_scal;
-          scal.Resize(scal_exp.Dim());
-          for(size_t i=0;i<scal.Dim();i++){
-            scal[i]=powf(2.0,-scal_exp[i]*l);
-          }
+      const Kernel* ker=kernel->k_l2l;
+      for(size_t l=0;l<MAX_DEPTH;l++){
+        Vector<Real_t>& scal=data.pt_interac_data.scal[l*4+0];
+        Vector<Real_t>& scal_exp=ker->trg_scal;
+        scal.Resize(scal_exp.Dim());
+        for(size_t i=0;i<scal.Dim();i++){
+          scal[i]=powf(2.0,-scal_exp[i]*l);
         }
-        for(size_t l=0;l<MAX_DEPTH;l++){
-          Vector<Real_t>& scal=data.pt_interac_data.scal[l*4+1];
-          Vector<Real_t>& scal_exp=ker->src_scal;
-          scal.Resize(scal_exp.Dim());
-          for(size_t i=0;i<scal.Dim();i++){
-            scal[i]=powf(2.0,-scal_exp[i]*l);
-          }
+      }
+      for(size_t l=0;l<MAX_DEPTH;l++){
+        Vector<Real_t>& scal=data.pt_interac_data.scal[l*4+1];
+        Vector<Real_t>& scal_exp=ker->src_scal;
+        scal.Resize(scal_exp.Dim());
+        for(size_t i=0;i<scal.Dim();i++){
+          scal[i]=powf(2.0,-scal_exp[i]*l);
         }
       }
 #pragma omp parallel for
@@ -4224,55 +4168,25 @@ public:
       if(n->depth>depth) depth=n->depth;
     }
     Profile::Toc();
-    for(size_t i=0; i<=(ScaleInvar()?0:depth); i++) {
-      if(!ScaleInvar()) {
-        std::stringstream level_str;
-        level_str<<"Level-"<<std::setfill('0')<<std::setw(2)<<i<<"\0";
-        Profile::Tic(level_str.str().c_str(),false,5);
-        Profile::Tic("Precomp",false,5);
-	{Profile::Tic("Precomp-U",false,10);
-        SetupPrecomp(setup_data[i+MAX_DEPTH*0]);
-        Profile::Toc();}
-        {Profile::Tic("Precomp-W",false,10);
-        SetupPrecomp(setup_data[i+MAX_DEPTH*1]);
-        Profile::Toc();}
-        {Profile::Tic("Precomp-X",false,10);
-        SetupPrecomp(setup_data[i+MAX_DEPTH*2]);
-        Profile::Toc();}
-        if(0){
-          Profile::Tic("Precomp-V",false,10);
-          SetupPrecomp(setup_data[i+MAX_DEPTH*3]);
-          Profile::Toc();
-        }
-	Profile::Toc();
-      }
-      {Profile::Tic("X-List",false,5);
-      X_List(setup_data[i+MAX_DEPTH*2]);
-      Profile::Toc();}
-      {Profile::Tic("W-List",false,5);
-      W_List(setup_data[i+MAX_DEPTH*1]);
-      Profile::Toc();}
-      {Profile::Tic("U-List",false,5);
-      U_List(setup_data[i+MAX_DEPTH*0]);
-      Profile::Toc();}
-      {Profile::Tic("V-List",false,5);
-      V_List(setup_data[i+MAX_DEPTH*3]);
-      Profile::Toc();}
-      if(!ScaleInvar()){
-        Profile::Toc();
-      }
-    }
+    Profile::Tic("X-List",false,5);
+    X_List(setup_data[MAX_DEPTH*2]);
+    Profile::Toc();
+    Profile::Tic("W-List",false,5);
+    W_List(setup_data[MAX_DEPTH*1]);
+    Profile::Toc();
+    Profile::Tic("U-List",false,5);
+    U_List(setup_data[MAX_DEPTH*0]);
+    Profile::Toc();
+    Profile::Tic("V-List",false,5);
+    V_List(setup_data[MAX_DEPTH*3]);
+    Profile::Toc();
     Profile::Tic("D2D",false,5);
     for(size_t i=0; i<=depth; i++) {
-      if(!ScaleInvar()) SetupPrecomp(setup_data[i+MAX_DEPTH*4]);
       Down2Down(setup_data[i+MAX_DEPTH*4]);
     }
     Profile::Toc();
     Profile::Tic("D2T",false,5);
-    for(int i=0; i<=(ScaleInvar()?0:depth); i++) {
-      if(!ScaleInvar()) SetupPrecomp(setup_data[i+MAX_DEPTH*5]);
-      Down2Target(setup_data[i+MAX_DEPTH*5]);
-    }
+    Down2Target(setup_data[MAX_DEPTH*5]);
     Profile::Toc();
   }
 
