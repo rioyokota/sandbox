@@ -48,7 +48,19 @@ namespace pvfmm{
     PackedData trg_value;
     InteracData pt_interac_data;
   };
-
+  struct VListData {
+    size_t buff_size;
+    size_t m;
+    size_t n_blk0;
+    std::vector<size_t> interac_mat;
+    std::vector<Real_t*> interac_mat_ptr;
+    std::vector<std::vector<size_t> > fft_vec;
+    std::vector<std::vector<size_t> > ifft_vec;
+    std::vector<std::vector<Real_t> > fft_scl;
+    std::vector<std::vector<Real_t> > ifft_scl;
+    std::vector<std::vector<size_t> > interac_vec;
+    std::vector<std::vector<size_t> > interac_dsp;
+  };
   struct SetupData {
     int level;
     const Kernel* kernel;
@@ -67,7 +79,7 @@ namespace pvfmm{
     std::vector<size_t> output_perm;
 
     ptSetupData pt_setup_data;
-    Vector<char> vlist_data;
+    VListData vlist_data;
     Vector<char>* precomp_data;
     Matrix<Real_t>* coord_data;
     Matrix<Real_t>* input_data;
@@ -519,8 +531,8 @@ private:
     return 0;
   }
 
-  void VListHadamard(size_t M_dim, Vector<size_t>& interac_dsp,
-                     Vector<size_t>& interac_vec, std::vector<Real_t*>& precomp_mat, Vector<Real_t>& fft_in, Vector<Real_t>& fft_out){
+  void VListHadamard(size_t M_dim, std::vector<size_t>& interac_dsp,
+                     std::vector<size_t>& interac_vec, std::vector<Real_t*>& precomp_mat, Vector<Real_t>& fft_in, Vector<Real_t>& fft_out){
     size_t chld_cnt=1UL<<3;
     size_t fftsize_in =M_dim*chld_cnt*2;
     size_t fftsize_out=M_dim*chld_cnt*2;
@@ -535,7 +547,7 @@ private:
       dnward_check_fft.SetZero();
     }
     size_t mat_cnt=precomp_mat.size();
-    size_t blk1_cnt=interac_dsp.Dim()/mat_cnt;
+    size_t blk1_cnt=interac_dsp.size()/mat_cnt;
     int BLOCK_SIZE = CACHE_SIZE * 4 / sizeof(Real_t);
     Real_t **IN_, **OUT_;
     err = posix_memalign((void**)&IN_ , MEM_ALIGN, BLOCK_SIZE*blk1_cnt*mat_cnt*sizeof(Real_t*));
@@ -589,7 +601,7 @@ private:
         }
       }
     }
-    Profile::Add_FLOP(8*8*8*(interac_vec.Dim()/2)*M_dim);
+    Profile::Add_FLOP(8*8*8*(interac_vec.size()/2)*M_dim);
     free(IN_ );
     free(OUT_);
     free(zero_vec0);
@@ -2766,7 +2778,6 @@ public:
     size_t n_in =nodes_in .size();
     size_t n_out=nodes_out.size();
     Profile::Tic("Interac-Data",true,25);
-    Vector<char>& vlist_data=setup_data.vlist_data;
     if(n_out>0 && n_in >0){
       size_t precomp_offset=0;
       Mat_Type& interac_type=setup_data.interac_type[0];
@@ -2878,56 +2889,22 @@ public:
           }
         }
       }
-      {
-        size_t data_size=sizeof(size_t)*6;
-        for(size_t blk0=0;blk0<n_blk0;blk0++){
-          data_size+=sizeof(size_t)+    fft_vec[blk0].size()*sizeof(size_t);
-          data_size+=sizeof(size_t)+   ifft_vec[blk0].size()*sizeof(size_t);
-          data_size+=sizeof(size_t)+    fft_scl[blk0].size()*sizeof(Real_t);
-          data_size+=sizeof(size_t)+   ifft_scl[blk0].size()*sizeof(Real_t);
-          data_size+=sizeof(size_t)+interac_vec[blk0].size()*sizeof(size_t);
-          data_size+=sizeof(size_t)+interac_dsp[blk0].size()*sizeof(size_t);
-        }
-        data_size+=sizeof(size_t)+interac_mat.size()*sizeof(size_t);
-        data_size+=sizeof(size_t)+interac_mat_ptr.size()*sizeof(Real_t*);
-        if(data_size>vlist_data.Dim())
-          vlist_data.Resize(data_size);
-        char* data_ptr=&vlist_data[0];
-        ((size_t*)data_ptr)[0]=buff_size; data_ptr+=sizeof(size_t);
-        ((size_t*)data_ptr)[0]=        m; data_ptr+=sizeof(size_t);
-        ((size_t*)data_ptr)[0]=   n_blk0; data_ptr+=sizeof(size_t);
-        ((size_t*)data_ptr)[0]= interac_mat.size(); data_ptr+=sizeof(size_t);
-        memcpy(data_ptr, &interac_mat[0], interac_mat.size()*sizeof(size_t));
-        data_ptr+=interac_mat.size()*sizeof(size_t);
-        ((size_t*)data_ptr)[0]= interac_mat_ptr.size(); data_ptr+=sizeof(size_t);
-        memcpy(data_ptr, &interac_mat_ptr[0], interac_mat_ptr.size()*sizeof(Real_t*));
-        data_ptr+=interac_mat_ptr.size()*sizeof(Real_t*);
-        for(size_t blk0=0;blk0<n_blk0;blk0++){
-          ((size_t*)data_ptr)[0]= fft_vec[blk0].size(); data_ptr+=sizeof(size_t);
-          memcpy(data_ptr, & fft_vec[blk0][0],  fft_vec[blk0].size()*sizeof(size_t));
-          data_ptr+= fft_vec[blk0].size()*sizeof(size_t);
-          ((size_t*)data_ptr)[0]=ifft_vec[blk0].size(); data_ptr+=sizeof(size_t);
-          memcpy(data_ptr, &ifft_vec[blk0][0], ifft_vec[blk0].size()*sizeof(size_t));
-          data_ptr+=ifft_vec[blk0].size()*sizeof(size_t);
-          ((size_t*)data_ptr)[0]= fft_scl[blk0].size(); data_ptr+=sizeof(size_t);
-          memcpy(data_ptr, & fft_scl[blk0][0],  fft_scl[blk0].size()*sizeof(Real_t));
-          data_ptr+= fft_scl[blk0].size()*sizeof(Real_t);
-          ((size_t*)data_ptr)[0]=ifft_scl[blk0].size(); data_ptr+=sizeof(size_t);
-          memcpy(data_ptr, &ifft_scl[blk0][0], ifft_scl[blk0].size()*sizeof(Real_t));
-          data_ptr+=ifft_scl[blk0].size()*sizeof(Real_t);
-          ((size_t*)data_ptr)[0]=interac_vec[blk0].size(); data_ptr+=sizeof(size_t);
-          memcpy(data_ptr, &interac_vec[blk0][0], interac_vec[blk0].size()*sizeof(size_t));
-          data_ptr+=interac_vec[blk0].size()*sizeof(size_t);
-          ((size_t*)data_ptr)[0]=interac_dsp[blk0].size(); data_ptr+=sizeof(size_t);
-          memcpy(data_ptr, &interac_dsp[blk0][0], interac_dsp[blk0].size()*sizeof(size_t));
-          data_ptr+=interac_dsp[blk0].size()*sizeof(size_t);
-        }
-      }
+      setup_data.vlist_data.buff_size       = buff_size;
+      setup_data.vlist_data.m               = m;
+      setup_data.vlist_data.n_blk0          = n_blk0;
+      setup_data.vlist_data.interac_mat     = interac_mat;
+      setup_data.vlist_data.interac_mat_ptr = interac_mat_ptr;
+      setup_data.vlist_data.fft_vec         = fft_vec;
+      setup_data.vlist_data.ifft_vec        = ifft_vec;
+      setup_data.vlist_data.fft_scl         = fft_scl;
+      setup_data.vlist_data.ifft_scl        = ifft_scl;
+      setup_data.vlist_data.interac_vec     = interac_vec;
+      setup_data.vlist_data.interac_dsp     = interac_dsp;
     }
     Profile::Toc();
   }
 
-  void FFT_UpEquiv(size_t m, std::vector<size_t>& fft_vec, Vector<Real_t>& fft_scal,
+  void FFT_UpEquiv(size_t m, std::vector<size_t>& fft_vec, std::vector<Real_t>& fft_scal,
 		   Vector<Real_t>& input_data, Vector<Real_t>& output_data, Vector<Real_t>& buffer_) {
     size_t n1=m*2;
     size_t n2=n1*n1;
@@ -2991,7 +2968,7 @@ public:
     }
   }
 
-  void FFT_Check2Equiv(size_t m, std::vector<size_t>& ifft_vec, Vector<Real_t>& ifft_scal,
+  void FFT_Check2Equiv(size_t m, std::vector<size_t>& ifft_vec, std::vector<Real_t>& ifft_scal,
 		       Vector<Real_t>& input_data, Vector<Real_t>& output_data, Vector<Real_t>& buffer_) {
     size_t n1=m*2;
     size_t n2=n1*n1;
@@ -3058,97 +3035,52 @@ public:
   void V_List(SetupData&  setup_data){
     if(!multipole_order) return;
     int np=1;
-    if(setup_data.vlist_data.Dim()==0){
-      return;
-    }
     Profile::Tic("Host2Device",false,25);
     int level=setup_data.level;
     int dim0=setup_data.input_data->dim[0];
     int dim1=setup_data.input_data->dim[1];
-    size_t buff_size=*((size_t*)&setup_data.vlist_data[0]);
-    char* buff;
-    char* vlist_data;
-    Real_t* input_data;
-    Real_t* output_data;
+    size_t buff_size=*((size_t*)&setup_data.vlist_data.buff_size);
     if(dev_buffer.Dim()<buff_size) dev_buffer.Resize(buff_size);
-    buff=dev_buffer.data_ptr;
-    vlist_data=setup_data.vlist_data.data_ptr;
-    input_data=setup_data.input_data->data_ptr;
-    output_data=setup_data.output_data->data_ptr;
+    char * buff=dev_buffer.data_ptr;
+    VListData vlist_data=setup_data.vlist_data;
+    Real_t * input_data=setup_data.input_data->data_ptr;
+    Real_t * output_data=setup_data.output_data->data_ptr;
     Profile::Toc();
-    {
-      size_t m, n_blk0;
-      std::vector<std::vector<size_t> >  fft_vec;
-      std::vector<std::vector<size_t> > ifft_vec;
-      std::vector<Vector<Real_t> >  fft_scl;
-      std::vector<Vector<Real_t> > ifft_scl;
-      std::vector<Vector<size_t> > interac_vec;
-      std::vector<Vector<size_t> > interac_dsp;
-      std::vector<Real_t*> precomp_mat;
-      {
-        char* data_ptr=vlist_data;
-        buff_size=((size_t*)data_ptr)[0]; data_ptr+=sizeof(size_t);
-        m        =((size_t*)data_ptr)[0]; data_ptr+=sizeof(size_t);
-        n_blk0   =((size_t*)data_ptr)[0]; data_ptr+=sizeof(size_t);
-        fft_vec .resize(n_blk0);
-        ifft_vec.resize(n_blk0);
-        fft_scl .resize(n_blk0);
-        ifft_scl.resize(n_blk0);
-        interac_vec.resize(n_blk0);
-        interac_dsp.resize(n_blk0);
-        data_ptr+=sizeof(size_t)+((size_t*)data_ptr)[0]*sizeof(size_t);
-        std::vector<Real_t*> interac_mat_ptr(((size_t*)data_ptr)[0]);
-        data_ptr+=sizeof(size_t);
-        memcpy(&interac_mat_ptr[0], data_ptr, interac_mat_ptr.size()*sizeof(Real_t*));
-        data_ptr+=interac_mat_ptr.size()*sizeof(Real_t*);
-        precomp_mat.resize(interac_mat_ptr.size());
-        for(size_t i=0;i<interac_mat_ptr.size();i++){
-          precomp_mat[i]=interac_mat_ptr[i];
-        }
-        for(size_t blk0=0;blk0<n_blk0;blk0++){
-          fft_vec[blk0].resize(((size_t*)data_ptr)[0]);
-          data_ptr+=sizeof(size_t);
-          memcpy(&fft_vec[blk0][0], data_ptr, fft_vec[blk0].size()*sizeof(size_t));
-          data_ptr+=fft_vec[blk0].size()*sizeof(size_t);
-          ifft_vec[blk0].resize(((size_t*)data_ptr)[0]);
-          data_ptr+=sizeof(size_t);
-          memcpy(&ifft_vec[blk0][0], data_ptr, ifft_vec[blk0].size()*sizeof(size_t));
-          data_ptr+=ifft_vec[blk0].size()*sizeof(size_t);
-          fft_scl[blk0].ReInit3(((size_t*)data_ptr)[0],(Real_t*)(data_ptr+sizeof(size_t)),false);
-          data_ptr+=sizeof(size_t)+fft_scl[blk0].Dim()*sizeof(Real_t);
-          ifft_scl[blk0].ReInit3(((size_t*)data_ptr)[0],(Real_t*)(data_ptr+sizeof(size_t)),false);
-          data_ptr+=sizeof(size_t)+ifft_scl[blk0].Dim()*sizeof(Real_t);
-          interac_vec[blk0].ReInit3(((size_t*)data_ptr)[0],(size_t*)(data_ptr+sizeof(size_t)),false);
-          data_ptr+=sizeof(size_t)+interac_vec[blk0].Dim()*sizeof(size_t);
-          interac_dsp[blk0].ReInit3(((size_t*)data_ptr)[0],(size_t*)(data_ptr+sizeof(size_t)),false);
-          data_ptr+=sizeof(size_t)+interac_dsp[blk0].Dim()*sizeof(size_t);
-        }
-      }
-      int omp_p=omp_get_max_threads();
-      size_t M_dim, fftsize;
-      {
-        size_t n1=m*2;
-        size_t n2=n1*n1;
-        size_t n3_=n2*(n1/2+1);
-        size_t chld_cnt=1UL<<3;
-        fftsize=2*n3_*chld_cnt;
-        M_dim=n3_;
-      }
-      for(size_t blk0=0;blk0<n_blk0;blk0++){
-        size_t n_in = fft_vec[blk0].size();
-        size_t n_out=ifft_vec[blk0].size();
-        size_t  input_dim=n_in *fftsize;
-        size_t output_dim=n_out*fftsize;
-        size_t buffer_dim=4*fftsize*omp_p;
-        Vector<Real_t> fft_in ( input_dim, (Real_t*)buff,false);
-        Vector<Real_t> fft_out(output_dim, (Real_t*)(buff+input_dim*sizeof(Real_t)),false);
-        Vector<Real_t>  buffer(buffer_dim, (Real_t*)(buff+(input_dim+output_dim)*sizeof(Real_t)),false);
-        Vector<Real_t>  input_data_(dim0*dim1,input_data,false);
-        FFT_UpEquiv(m, fft_vec[blk0],  fft_scl[blk0],  input_data_, fft_in, buffer);
-        VListHadamard(M_dim, interac_dsp[blk0], interac_vec[blk0], precomp_mat, fft_in, fft_out);
-        Vector<Real_t> output_data_(dim0*dim1, output_data, false);
-        FFT_Check2Equiv(m, ifft_vec[blk0], ifft_scl[blk0], fft_out, output_data_, buffer);
-      }
+    buff_size     = vlist_data.buff_size;
+    size_t m      = vlist_data.m;
+    size_t n_blk0 = vlist_data.n_blk0;
+    size_t n1 = m * 2;
+    size_t n2 = n1 * n1;
+    size_t n3_ = n2 * (n1 / 2 + 1);
+    size_t chld_cnt = 8;
+    size_t fftsize = 2 * n3_ * chld_cnt;
+    size_t M_dim = n3_;
+    std::vector<Real_t*> interac_mat_ptr  = vlist_data.interac_mat_ptr;
+    std::vector<std::vector<size_t> >  fft_vec = vlist_data.fft_vec;
+    std::vector<std::vector<size_t> > ifft_vec = vlist_data.ifft_vec;
+    std::vector<std::vector<Real_t> >  fft_scl = vlist_data.fft_scl;
+    std::vector<std::vector<Real_t> > ifft_scl = vlist_data.ifft_scl;
+    std::vector<std::vector<size_t> > interac_vec = vlist_data.interac_vec;
+    std::vector<std::vector<size_t> > interac_dsp = vlist_data.interac_dsp;
+    std::vector<Real_t*> precomp_mat(interac_mat_ptr.size());
+    for(size_t i=0;i<interac_mat_ptr.size();i++){
+      precomp_mat[i]=interac_mat_ptr[i];
+    }
+    int omp_p=omp_get_max_threads();
+    for(size_t blk0=0;blk0<n_blk0;blk0++){
+      size_t n_in = fft_vec[blk0].size();
+      size_t n_out=ifft_vec[blk0].size();
+      size_t  input_dim=n_in *fftsize;
+      size_t output_dim=n_out*fftsize;
+      size_t buffer_dim=4*fftsize*omp_p;
+      Vector<Real_t> fft_in ( input_dim, (Real_t*)buff,false);
+      Vector<Real_t> fft_out(output_dim, (Real_t*)(buff+input_dim*sizeof(Real_t)),false);
+      Vector<Real_t>  buffer(buffer_dim, (Real_t*)(buff+(input_dim+output_dim)*sizeof(Real_t)),false);
+      Vector<Real_t>  input_data_(dim0*dim1,input_data,false);
+      FFT_UpEquiv(m, fft_vec[blk0],  fft_scl[blk0],  input_data_, fft_in, buffer);
+      VListHadamard(M_dim, interac_dsp[blk0], interac_vec[blk0], precomp_mat, fft_in, fft_out);
+      Vector<Real_t> output_data_(dim0*dim1, output_data, false);
+      FFT_Check2Equiv(m, ifft_vec[blk0], ifft_scl[blk0], fft_out, output_data_, buffer);
     }
   }
 

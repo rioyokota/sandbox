@@ -1,3 +1,5 @@
+1UL<<3 to 8
+
 Vector -> std::vector
  - dev_buffer
  - rm ReInit
@@ -5,7 +7,6 @@ Vector -> std::vector
  - Dim -> size
  - Vector -> std::vector
 Matrix -> std::vector(std::vector) for non-Real_t
-debug double Setup phase
 vec.h <- kernel, fmm_tree
 template -> Real_t
 Real_t -> real_t
