@@ -52,8 +52,7 @@ namespace pvfmm{
     size_t buff_size;
     size_t m;
     size_t n_blk0;
-    std::vector<size_t> interac_mat;
-    std::vector<Real_t*> interac_mat_ptr;
+    std::vector<Real_t*> precomp_mat;
     std::vector<std::vector<size_t> > fft_vec;
     std::vector<std::vector<size_t> > ifft_vec;
     std::vector<std::vector<Real_t> > fft_scl;
@@ -2783,12 +2782,11 @@ public:
       Mat_Type& interac_type=setup_data.interac_type[0];
       size_t mat_cnt=interacList.ListCount(interac_type);
       Matrix<size_t> precomp_data_offset;
-      std::vector<size_t> interac_mat;
-      std::vector<Real_t*> interac_mat_ptr;
+      std::vector<Real_t*> precomp_mat;
       {
         for(size_t mat_id=0;mat_id<mat_cnt;mat_id++){
           Matrix<Real_t>& M = mat->Mat(level, interac_type, mat_id);
-          interac_mat_ptr.push_back(&M[0][0]);
+          precomp_mat.push_back(&M[0][0]);
         }
       }
       size_t m=multipole_order;
@@ -2889,17 +2887,16 @@ public:
           }
         }
       }
-      setup_data.vlist_data.buff_size       = buff_size;
-      setup_data.vlist_data.m               = m;
-      setup_data.vlist_data.n_blk0          = n_blk0;
-      setup_data.vlist_data.interac_mat     = interac_mat;
-      setup_data.vlist_data.interac_mat_ptr = interac_mat_ptr;
-      setup_data.vlist_data.fft_vec         = fft_vec;
-      setup_data.vlist_data.ifft_vec        = ifft_vec;
-      setup_data.vlist_data.fft_scl         = fft_scl;
-      setup_data.vlist_data.ifft_scl        = ifft_scl;
-      setup_data.vlist_data.interac_vec     = interac_vec;
-      setup_data.vlist_data.interac_dsp     = interac_dsp;
+      setup_data.vlist_data.buff_size   = buff_size;
+      setup_data.vlist_data.m           = m;
+      setup_data.vlist_data.n_blk0      = n_blk0;
+      setup_data.vlist_data.precomp_mat = precomp_mat;
+      setup_data.vlist_data.fft_vec     = fft_vec;
+      setup_data.vlist_data.ifft_vec    = ifft_vec;
+      setup_data.vlist_data.fft_scl     = fft_scl;
+      setup_data.vlist_data.ifft_scl    = ifft_scl;
+      setup_data.vlist_data.interac_vec = interac_vec;
+      setup_data.vlist_data.interac_dsp = interac_dsp;
     }
     Profile::Toc();
   }
@@ -3055,17 +3052,13 @@ public:
     size_t chld_cnt = 8;
     size_t fftsize = 2 * n3_ * chld_cnt;
     size_t M_dim = n3_;
-    std::vector<Real_t*> interac_mat_ptr  = vlist_data.interac_mat_ptr;
+    std::vector<Real_t*> precomp_mat = vlist_data.precomp_mat;
     std::vector<std::vector<size_t> >  fft_vec = vlist_data.fft_vec;
     std::vector<std::vector<size_t> > ifft_vec = vlist_data.ifft_vec;
     std::vector<std::vector<Real_t> >  fft_scl = vlist_data.fft_scl;
     std::vector<std::vector<Real_t> > ifft_scl = vlist_data.ifft_scl;
     std::vector<std::vector<size_t> > interac_vec = vlist_data.interac_vec;
     std::vector<std::vector<size_t> > interac_dsp = vlist_data.interac_dsp;
-    std::vector<Real_t*> precomp_mat(interac_mat_ptr.size());
-    for(size_t i=0;i<interac_mat_ptr.size();i++){
-      precomp_mat[i]=interac_mat_ptr[i];
-    }
     int omp_p=omp_get_max_threads();
     for(size_t blk0=0;blk0<n_blk0;blk0++){
       size_t n_in = fft_vec[blk0].size();
