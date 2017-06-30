@@ -1159,7 +1159,6 @@ public:
       std::vector<Vector<size_t>*> scatter_lst;
       root_node->NodeDataVec(coord_lst, value_lst, scatter_lst);
       assert(coord_lst.size()==value_lst.size());
-      assert(coord_lst.size()==scatter_lst.size());
 
       Vector<size_t> scatter_index;
       for(size_t i=0;i<coord_lst.size();i++){
@@ -1171,11 +1170,11 @@ public:
         for(size_t i=0;i<pt_cnt;i++){
     	  pt_mid[i]=MortonId(pt_c[i*3+0],pt_c[i*3+1],pt_c[i*3+2],max_depth);
         }
-        SortScatterIndex(pt_mid  , scatter_index, &lin_oct[0]);
-        ScatterForward  (pt_c, scatter_index);
+        SortIndex(pt_mid, scatter_index, &lin_oct[0]);
+        Forward  (pt_c, scatter_index);
         if(value_lst[i]!=NULL){
           Vector<Real_t>& pt_v=*value_lst[i];
-          ScatterForward(pt_v, scatter_index);
+          Forward(pt_v, scatter_index);
         }
         if(scatter_lst[i]!=NULL){
           Vector<size_t>& pt_s=*scatter_lst[i];

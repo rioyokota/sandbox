@@ -118,8 +118,8 @@ class FMM_Node {
   }
 
   void NodeDataVec(std::vector<Vector<Real_t>*>& coord,
-                           std::vector<Vector<Real_t>*>& value,
-                           std::vector<Vector<size_t>*>& scatter){
+                   std::vector<Vector<Real_t>*>& value,
+                   std::vector<Vector<size_t>*>& scatter){
     coord  .push_back(&pt_coord  );
     value  .push_back(&pt_value  );
     scatter.push_back(&pt_scatter);
@@ -215,7 +215,7 @@ class FMM_Node {
             chld_vec.Resize((cdata[i+1]-cdata[i])*dof);
             for (int k=cdata[i]*dof; k<cdata[i+1]*dof; k++) {
               chld_vec[k-cdata[i]*dof] = vec[k];
-            } 
+            }
           }
 	  vec.Resize(0);
 	}

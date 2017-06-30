@@ -25,10 +25,10 @@ cleandat:
 tags:
 	find . -name "*.cpp" -o -name "*.hpp" | xargs etags -f TAGS
 
-m4:
+r4:
 	./a.out -T 4 -n 100000 -P 4 -c 64
 
-m16:
+r16:
 	./a.out -T 4 -n 100000 -P 16 -c 320
 
 y4:
@@ -37,8 +37,8 @@ y4:
 y16:
 	./a.out -T 16 -n 1000000 -P 16 -c 320
 
-r4:
+e4:
 	./a.out -T 72 -n 1000000 -P 4 -c 64
 
-r16:
+e16:
 	./a.out -T 72 -n 1000000 -P 16 -c 320

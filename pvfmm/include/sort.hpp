@@ -175,7 +175,7 @@ namespace pvfmm{
   }
 
   template<typename T>
-  int SortScatterIndex(const std::vector<T>& key, Vector<size_t>& scatter_index, const T* split_key_){
+  int SortIndex(const std::vector<T>& key, Vector<size_t>& index, const T* split_key_){
     typedef SortPair<T,size_t> Pair_t;
     std::vector<Pair_t> parray(key.size());
     long long loc_size=key.size();
@@ -186,18 +186,18 @@ namespace pvfmm{
     }
     std::vector<Pair_t> psorted;
     HyperQuickSort(parray, psorted);
-    scatter_index.Resize(psorted.size());
+    index.Resize(psorted.size());
 #pragma omp parallel for
     for(size_t i=0;i<psorted.size();i++){
-      scatter_index[i]=psorted[i].data;
+      index[i]=psorted[i].data;
     }
     return 0;
   }
 
   template<typename T>
-  int ScatterForward(Vector<T>& data_, const Vector<size_t>& scatter_index){
+  int Forward(Vector<T>& data_, const Vector<size_t>& index){
     typedef SortPair<size_t,size_t> Pair_t;
-    long long data_size=scatter_index.Dim();
+    long long data_size=index.Dim();
     long long loc_size[2]={(long long)(data_.Dim()*sizeof(T)), data_size};
     if(loc_size[0]==0 || loc_size[1]==0) return 0;
     size_t data_dim=loc_size[0]/loc_size[1];
@@ -206,7 +206,7 @@ namespace pvfmm{
     {
 #pragma omp parallel for
       for(size_t i=0;i<data_size;i++){
-	psorted[i].key=scatter_index[i];
+	psorted[i].key=index[i];
 	psorted[i].data=i;
       }
       merge_sort(&psorted[0], &psorted[0]+data_size);
