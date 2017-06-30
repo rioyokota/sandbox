@@ -580,8 +580,8 @@ private:
     return 0;
   }
 
-  void VListHadamard(size_t dof, size_t M_dim, size_t ker_dim0, size_t ker_dim1, std::vector<size_t>& interac_dsp,
-                     std::vector<size_t>& interac_vec, std::vector<Real_t*>& precomp_mat, Vector<Real_t>& fft_in, Vector<Real_t>& fft_out){
+  void VListHadamard(size_t dof, size_t M_dim, size_t ker_dim0, size_t ker_dim1, Vector<size_t>& interac_dsp,
+                     Vector<size_t>& interac_vec, std::vector<Real_t*>& precomp_mat, Vector<Real_t>& fft_in, Vector<Real_t>& fft_out){
     size_t chld_cnt=1UL<<3;
     size_t fftsize_in =M_dim*ker_dim0*chld_cnt*2;
     size_t fftsize_out=M_dim*ker_dim1*chld_cnt*2;
@@ -596,7 +596,7 @@ private:
       dnward_check_fft.SetZero();
     }
     size_t mat_cnt=precomp_mat.size();
-    size_t blk1_cnt=interac_dsp.size()/mat_cnt;
+    size_t blk1_cnt=interac_dsp.Dim()/mat_cnt;
     int BLOCK_SIZE = CACHE_SIZE * 4 / sizeof(Real_t);
     Real_t **IN_, **OUT_;
     err = posix_memalign((void**)&IN_ , MEM_ALIGN, BLOCK_SIZE*blk1_cnt*mat_cnt*sizeof(Real_t*));
@@ -652,7 +652,7 @@ private:
         }
       }
     }
-    Profile::Add_FLOP(8*8*8*(interac_vec.size()/2)*M_dim*ker_dim0*ker_dim1*dof);
+    Profile::Add_FLOP(8*8*8*(interac_vec.Dim()/2)*M_dim*ker_dim0*ker_dim1*dof);
     free(IN_ );
     free(OUT_);
     free(zero_vec0);
@@ -3054,7 +3054,7 @@ public:
     Profile::Toc();
   }
 
-  void FFT_UpEquiv(size_t dof, size_t m, size_t ker_dim0, std::vector<size_t>& fft_vec, std::vector<Real_t>& fft_scl,
+  void FFT_UpEquiv(size_t dof, size_t m, size_t ker_dim0, std::vector<size_t>& fft_vec, Vector<Real_t>& fft_scal,
 		   Vector<Real_t>& input_data, Vector<Real_t>& output_data, Vector<Real_t>& buffer_) {
     size_t n1=m*2;
     size_t n2=n1*n1;
@@ -3106,7 +3106,7 @@ public:
             for(int j1=0;j1<dof;j1++)
             for(int j0=0;j0<(int)chld_cnt;j0++)
             for(int i=0;i<ker_dim0;i++)
-              upward_equiv_fft[idx+(j0+(i+j1*ker_dim0)*chld_cnt)*n3]=upward_equiv[j0][ker_dim0*(n*j1+k)+i]*fft_scl[ker_dim0*node_idx+i];
+              upward_equiv_fft[idx+(j0+(i+j1*ker_dim0)*chld_cnt)*n3]=upward_equiv[j0][ker_dim0*(n*j1+k)+i]*fft_scal[ker_dim0*node_idx+i];
           }
           for(int i=0;i<dof;i++)
             fft_execute_dft_r2c(vlist_fftplan, (Real_t*)&upward_equiv_fft[i*  n3 *ker_dim0*chld_cnt],
@@ -3122,7 +3122,7 @@ public:
     }
   }
 
-  void FFT_Check2Equiv(size_t dof, size_t m, size_t ker_dim1, std::vector<size_t>& ifft_vec, std::vector<Real_t>& ifft_scl,
+  void FFT_Check2Equiv(size_t dof, size_t m, size_t ker_dim1, std::vector<size_t>& ifft_vec, Vector<Real_t>& ifft_scal,
 		       Vector<Real_t>& input_data, Vector<Real_t>& output_data, Vector<Real_t>& buffer_) {
     size_t n1=m*2;
     size_t n2=n1*n1;
@@ -3184,7 +3184,7 @@ public:
             for(int j1=0;j1<dof;j1++)
             for(int j0=0;j0<(int)chld_cnt;j0++)
             for(int i=0;i<ker_dim1;i++)
-              dnward_equiv[ker_dim1*(n*(dof*j0+j1)+k)+i]+=buffer1[idx+(i+(j1+j0*dof)*ker_dim1)*n3]*ifft_scl[ker_dim1*node_idx+i];
+              dnward_equiv[ker_dim1*(n*(dof*j0+j1)+k)+i]+=buffer1[idx+(i+(j1+j0*dof)*ker_dim1)*n3]*ifft_scal[ker_dim1*node_idx+i];
           }
         }
       }
@@ -3216,10 +3216,10 @@ public:
       size_t m, dof, ker_dim0, ker_dim1, n_blk0;
       std::vector<std::vector<size_t> >  fft_vec;
       std::vector<std::vector<size_t> > ifft_vec;
-      std::vector<std::vector<Real_t> >  fft_scl;
-      std::vector<std::vector<Real_t> > ifft_scl;
-      std::vector<std::vector<size_t> > interac_vec;
-      std::vector<std::vector<size_t> > interac_dsp;
+      std::vector<Vector<Real_t> >  fft_scl;
+      std::vector<Vector<Real_t> > ifft_scl;
+      std::vector<Vector<size_t> > interac_vec;
+      std::vector<Vector<size_t> > interac_dsp;
       std::vector<Real_t*> precomp_mat;
       {
         char* data_ptr=vlist_data;
@@ -3253,22 +3253,16 @@ public:
           data_ptr+=sizeof(size_t);
           memcpy(&ifft_vec[blk0][0], data_ptr, ifft_vec[blk0].size()*sizeof(size_t));
           data_ptr+=ifft_vec[blk0].size()*sizeof(size_t);
-          fft_scl[blk0].resize(((size_t*)data_ptr)[0]);
-          data_ptr+=sizeof(size_t);
-          memcpy(&fft_scl[blk0][0], data_ptr, fft_scl[blk0].size()*sizeof(Real_t));
-          data_ptr+=fft_scl[blk0].size()*sizeof(Real_t);
-          ifft_scl[blk0].resize(((size_t*)data_ptr)[0]);
-          data_ptr+=sizeof(size_t);
-          memcpy(&ifft_scl[blk0][0], data_ptr, ifft_scl[blk0].size()*sizeof(Real_t));
-          data_ptr+=ifft_scl[blk0].size()*sizeof(Real_t);
-          interac_vec[blk0].resize(((size_t*)data_ptr)[0]);
-          data_ptr+=sizeof(size_t);
-          memcpy(&interac_vec[blk0][0], data_ptr, interac_vec[blk0].size()*sizeof(size_t));
-          data_ptr+=interac_vec[blk0].size()*sizeof(size_t);
-          interac_dsp[blk0].resize(((size_t*)data_ptr)[0]);
-          data_ptr+=sizeof(size_t);
-          memcpy(&interac_dsp[blk0][0], data_ptr, interac_dsp[blk0].size()*sizeof(size_t));
-          data_ptr+=interac_dsp[blk0].size()*sizeof(size_t);
+          //ifft_vec[blk0].ReInit3(((size_t*)data_ptr)[0],(size_t*)(data_ptr+sizeof(size_t)),false);
+          //data_ptr+=sizeof(size_t)+ifft_vec[blk0].Dim()*sizeof(size_t);
+          fft_scl[blk0].ReInit3(((size_t*)data_ptr)[0],(Real_t*)(data_ptr+sizeof(size_t)),false);
+          data_ptr+=sizeof(size_t)+fft_scl[blk0].Dim()*sizeof(Real_t);
+          ifft_scl[blk0].ReInit3(((size_t*)data_ptr)[0],(Real_t*)(data_ptr+sizeof(size_t)),false);
+          data_ptr+=sizeof(size_t)+ifft_scl[blk0].Dim()*sizeof(Real_t);
+          interac_vec[blk0].ReInit3(((size_t*)data_ptr)[0],(size_t*)(data_ptr+sizeof(size_t)),false);
+          data_ptr+=sizeof(size_t)+interac_vec[blk0].Dim()*sizeof(size_t);
+          interac_dsp[blk0].ReInit3(((size_t*)data_ptr)[0],(size_t*)(data_ptr+sizeof(size_t)),false);
+          data_ptr+=sizeof(size_t)+interac_dsp[blk0].Dim()*sizeof(size_t);
         }
       }
       int omp_p=omp_get_max_threads();
