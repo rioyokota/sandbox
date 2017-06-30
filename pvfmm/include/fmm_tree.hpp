@@ -60,7 +60,6 @@ namespace pvfmm{
 
     size_t M_dim0;
     size_t M_dim1;
-    size_t dof;
     std::vector<size_t> interac_blk;
     std::vector<size_t> interac_cnt;
     std::vector<size_t> interac_mat;
@@ -1916,7 +1915,7 @@ public:
       std::vector<size_t> interac_blk;
       std::vector<size_t>  input_perm;
       std::vector<size_t> output_perm;
-      size_t dof=0, M_dim0=0, M_dim1=0;
+      size_t M_dim0=0, M_dim1=0;
       size_t precomp_offset=0;
       size_t buff_size=1024l*1024l*1024l;
       if(n_out && n_in) for(size_t type_indx=0; type_indx<interac_type_lst.size(); type_indx++){
@@ -1988,12 +1987,11 @@ public:
         Matrix<size_t> interac_dsp(n_out,mat_cnt);
         std::vector<size_t> interac_blk_dsp(1,0);
         {
-          dof=1;
 	  Matrix<Real_t>& M0 = interacList.ClassMat(level, interac_type_lst[0], 0);
           M_dim0=M0.Dim(0); M_dim1=M0.Dim(1);
         }
         {
-          size_t vec_size=(M_dim0+M_dim1)*sizeof(Real_t)*dof;
+          size_t vec_size=(M_dim0+M_dim1)*sizeof(Real_t);
           for(size_t j=0;j<mat_cnt;j++){
             size_t vec_cnt=0;
             for(size_t i=0;i<n_out;i++){
@@ -2024,7 +2022,7 @@ public:
           interac_blk_dsp.push_back(mat_cnt);
         }
         {
-          size_t vec_size=M_dim0*dof;
+          size_t vec_size=M_dim0;
           for(size_t i=0;i<n_out;i++) nodes_out[i]->node_id=i;
           for(size_t k=1;k<interac_blk_dsp.size();k++){
             for(size_t i=0;i<n_in ;i++){
@@ -2043,7 +2041,7 @@ public:
           }
         }
         {
-          size_t vec_size=M_dim1*dof;
+          size_t vec_size=M_dim1;
           for(size_t k=1;k<interac_blk_dsp.size();k++){
             for(size_t i=0;i<n_out;i++){
               for(size_t j=interac_blk_dsp[k-1];j<interac_blk_dsp[k];j++){
@@ -2071,7 +2069,6 @@ public:
       if(dev_buffer.Dim()<buff_size) dev_buffer.Resize(buff_size);
       setup_data.M_dim0 = M_dim0;
       setup_data.M_dim1 = M_dim1;
-      setup_data.dof = dof;
       setup_data.interac_blk = interac_blk;
       setup_data.interac_cnt = interac_cnt;
       setup_data.interac_mat = interac_mat;
@@ -2097,7 +2094,6 @@ public:
     {
       size_t M_dim0 = setup_data.M_dim0;
       size_t M_dim1 = setup_data.M_dim1;
-      size_t dof = setup_data.dof;
       Vector<size_t> interac_blk = setup_data.interac_blk;
       Vector<size_t> interac_cnt = setup_data.interac_cnt;
       Vector<size_t> interac_mat = setup_data.interac_mat;
@@ -2115,7 +2111,7 @@ public:
             continue;
           }
           char* buff_in =buff;
-          char* buff_out=buff+vec_cnt*dof*M_dim0*sizeof(Real_t);
+          char* buff_out=buff+vec_cnt*M_dim0*sizeof(Real_t);
 #pragma omp parallel for
           for(int tid=0;tid<omp_p;tid++){
             size_t a=( tid   *vec_cnt)/omp_p;
@@ -2138,10 +2134,10 @@ public:
             Matrix<Real_t> M(M_dim0, M_dim1, (Real_t*)(precomp_data+interac_mat0), false);
 #pragma omp parallel for
             for(int tid=0;tid<omp_p;tid++){
-              size_t a=(dof*vec_cnt1*(tid  ))/omp_p;
-              size_t b=(dof*vec_cnt1*(tid+1))/omp_p;
-              Matrix<Real_t> Ms(b-a, M_dim0, (Real_t*)(buff_in +M_dim0*vec_cnt0*dof*sizeof(Real_t))+M_dim0*a, false);
-              Matrix<Real_t> Mt(b-a, M_dim1, (Real_t*)(buff_out+M_dim1*vec_cnt0*dof*sizeof(Real_t))+M_dim1*a, false);
+              size_t a=(vec_cnt1*(tid  ))/omp_p;
+              size_t b=(vec_cnt1*(tid+1))/omp_p;
+              Matrix<Real_t> Ms(b-a, M_dim0, (Real_t*)(buff_in +M_dim0*vec_cnt0*sizeof(Real_t))+M_dim0*a, false);
+              Matrix<Real_t> Mt(b-a, M_dim1, (Real_t*)(buff_out+M_dim1*vec_cnt0*sizeof(Real_t))+M_dim1*a, false);
               Matrix<Real_t>::GEMM(Mt,Ms,M);
             }
             vec_cnt0+=vec_cnt1;
@@ -2465,13 +2461,12 @@ public:
     if(!multipole_order) return;
     Matrix<Real_t>& M = Precomp(0, BC_Type, 0);
     assert(node->FMMData()->upward_equiv.Dim()>0);
-    int dof=1;
     Vector<Real_t>& upward_equiv=node->FMMData()->upward_equiv;
     Vector<Real_t>& dnward_equiv=node->FMMData()->dnward_equiv;
-    assert(upward_equiv.Dim()==M.Dim(0)*dof);
-    assert(dnward_equiv.Dim()==M.Dim(1)*dof);
-    Matrix<Real_t> d_equiv(dof,M.Dim(1),&dnward_equiv[0],false);
-    Matrix<Real_t> u_equiv(dof,M.Dim(0),&upward_equiv[0],false);
+    assert(upward_equiv.Dim()==M.Dim(0));
+    assert(dnward_equiv.Dim()==M.Dim(1));
+    Matrix<Real_t> d_equiv(1,M.Dim(1),&dnward_equiv[0],false);
+    Matrix<Real_t> u_equiv(1,M.Dim(0),&upward_equiv[0],false);
     Matrix<Real_t>::GEMM(d_equiv,u_equiv,M);
   }
 
@@ -2846,7 +2841,6 @@ public:
           interac_mat_ptr.push_back(&M[0][0]);
         }
       }
-      size_t dof;
       size_t m=multipole_order;
       size_t ker_dim0=setup_data.kernel->ker_dim[0];
       size_t ker_dim1=setup_data.kernel->ker_dim[1];
@@ -2857,11 +2851,10 @@ public:
         size_t n3_=n2*(n1/2+1);
         size_t chld_cnt=1UL<<3;
         fftsize=2*n3_*chld_cnt;
-        dof=1;
       }
       int omp_p=omp_get_max_threads();
       size_t buff_size=1024l*1024l*1024l;
-      size_t n_blk0=2*fftsize*dof*(ker_dim0*n_in +ker_dim1*n_out)*sizeof(Real_t)/buff_size;
+      size_t n_blk0=2*fftsize*(ker_dim0*n_in +ker_dim1*n_out)*sizeof(Real_t)/buff_size;
       if(n_blk0==0) n_blk0=1;
       std::vector<std::vector<size_t> >  fft_vec(n_blk0);
       std::vector<std::vector<size_t> > ifft_vec(n_blk0);
@@ -2893,9 +2886,9 @@ public:
             for(typename std::set<FMM_Node*>::iterator node=nodes_in.begin(); node != nodes_in.end(); node++){
               nodes_in_.push_back(*node);
             }
-            size_t  input_dim=nodes_in_ .size()*ker_dim0*dof*fftsize;
-            size_t output_dim=nodes_out_.size()*ker_dim1*dof*fftsize;
-            size_t buffer_dim=2*(ker_dim0+ker_dim1)*dof*fftsize*omp_p;
+            size_t  input_dim=nodes_in_ .size()*ker_dim0*fftsize;
+            size_t output_dim=nodes_out_.size()*ker_dim1*fftsize;
+            size_t buffer_dim=2*(ker_dim0+ker_dim1)*fftsize*omp_p;
             if(buff_size<(input_dim + output_dim + buffer_dim)*sizeof(Real_t))
               buff_size=(input_dim + output_dim + buffer_dim)*sizeof(Real_t);
           }
@@ -2935,8 +2928,8 @@ public:
                 for(size_t i=blk1_start;i<blk1_end;i++){
                   std::vector<FMM_Node*>& lst=nodes_out_[i]->interac_list[interac_type];
                   if(lst[k]!=NULL && lst[k]->pt_cnt[0]){
-                    interac_vec[blk0].push_back(lst[k]->node_id*fftsize*ker_dim0*dof);
-                    interac_vec[blk0].push_back(    i          *fftsize*ker_dim1*dof);
+                    interac_vec[blk0].push_back(lst[k]->node_id*fftsize*ker_dim0);
+                    interac_vec[blk0].push_back(    i          *fftsize*ker_dim1);
                     interac_dsp_++;
                   }
                 }
@@ -2963,9 +2956,6 @@ public:
         char* data_ptr=&vlist_data[0];
         ((size_t*)data_ptr)[0]=buff_size; data_ptr+=sizeof(size_t);
         ((size_t*)data_ptr)[0]=        m; data_ptr+=sizeof(size_t);
-        ((size_t*)data_ptr)[0]=      dof; data_ptr+=sizeof(size_t);
-        ((size_t*)data_ptr)[0]= ker_dim0; data_ptr+=sizeof(size_t);
-        ((size_t*)data_ptr)[0]= ker_dim1; data_ptr+=sizeof(size_t);
         ((size_t*)data_ptr)[0]=   n_blk0; data_ptr+=sizeof(size_t);
         ((size_t*)data_ptr)[0]= interac_mat.size(); data_ptr+=sizeof(size_t);
         memcpy(data_ptr, &interac_mat[0], interac_mat.size()*sizeof(size_t));
@@ -3148,7 +3138,7 @@ public:
     output_data=setup_data.output_data->data_ptr;
     Profile::Toc();
     {
-      size_t m, dof, ker_dim0, ker_dim1, n_blk0;
+      size_t m, n_blk0;
       std::vector<std::vector<size_t> >  fft_vec;
       std::vector<std::vector<size_t> > ifft_vec;
       std::vector<Vector<Real_t> >  fft_scl;
@@ -3160,9 +3150,6 @@ public:
         char* data_ptr=vlist_data;
         buff_size=((size_t*)data_ptr)[0]; data_ptr+=sizeof(size_t);
         m        =((size_t*)data_ptr)[0]; data_ptr+=sizeof(size_t);
-        dof      =((size_t*)data_ptr)[0]; data_ptr+=sizeof(size_t);
-        ker_dim0 =((size_t*)data_ptr)[0]; data_ptr+=sizeof(size_t);
-        ker_dim1 =((size_t*)data_ptr)[0]; data_ptr+=sizeof(size_t);
         n_blk0   =((size_t*)data_ptr)[0]; data_ptr+=sizeof(size_t);
         fft_vec .resize(n_blk0);
         ifft_vec.resize(n_blk0);
@@ -3188,8 +3175,6 @@ public:
           data_ptr+=sizeof(size_t);
           memcpy(&ifft_vec[blk0][0], data_ptr, ifft_vec[blk0].size()*sizeof(size_t));
           data_ptr+=ifft_vec[blk0].size()*sizeof(size_t);
-          //ifft_vec[blk0].ReInit3(((size_t*)data_ptr)[0],(size_t*)(data_ptr+sizeof(size_t)),false);
-          //data_ptr+=sizeof(size_t)+ifft_vec[blk0].Dim()*sizeof(size_t);
           fft_scl[blk0].ReInit3(((size_t*)data_ptr)[0],(Real_t*)(data_ptr+sizeof(size_t)),false);
           data_ptr+=sizeof(size_t)+fft_scl[blk0].Dim()*sizeof(Real_t);
           ifft_scl[blk0].ReInit3(((size_t*)data_ptr)[0],(Real_t*)(data_ptr+sizeof(size_t)),false);
@@ -3213,9 +3198,9 @@ public:
       for(size_t blk0=0;blk0<n_blk0;blk0++){
         size_t n_in = fft_vec[blk0].size();
         size_t n_out=ifft_vec[blk0].size();
-        size_t  input_dim=n_in *ker_dim0*dof*fftsize;
-        size_t output_dim=n_out*ker_dim1*dof*fftsize;
-        size_t buffer_dim=2*(ker_dim0+ker_dim1)*dof*fftsize*omp_p;
+        size_t  input_dim=n_in *fftsize;
+        size_t output_dim=n_out*fftsize;
+        size_t buffer_dim=4*fftsize*omp_p;
         Vector<Real_t> fft_in ( input_dim, (Real_t*)buff,false);
         Vector<Real_t> fft_out(output_dim, (Real_t*)(buff+input_dim*sizeof(Real_t)),false);
         Vector<Real_t>  buffer(buffer_dim, (Real_t*)(buff+(input_dim+output_dim)*sizeof(Real_t)),false);
