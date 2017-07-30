@@ -1,8 +1,8 @@
 include ${PETSC_DIR}/lib/petsc/conf/variables
 include ${PETSC_DIR}/lib/petsc/conf/rules
 OBJS = lorasp.o tree.o edge.o redNode.o blackNode.o superNode.o node.o params.o
-EIGEN_DIR = $(HOME)/eigen
-SCOTCH_DIR = $(HOME)/scotch_6.0.4
+EIGEN_DIR = ../../eigen
+SCOTCH_DIR = ../../scotch_6.0.4
 CINCLUDES = -I$(EIGEN_DIR) -I$(SCOTCH_DIR)/include
 LFLAGS = -L$(SCOTCH_DIR)/lib
 CFLAGS = -O3 -std=c++0x
