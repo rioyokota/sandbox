@@ -1,6 +1,8 @@
+include ${PETSC_DIR}/lib/petsc/conf/variables
+include ${PETSC_DIR}/lib/petsc/conf/rules
 OBJS = LoRaSp.o tree.o edge.o redNode.o blackNode.o superNode.o node.o params.o
-EIGEN_DIR = "../eigen"
-SCOTCH_DIR = "../scotch_6.0.4"
+EIGEN_DIR = $(HOME)/eigen
+SCOTCH_DIR = $(HOME)/scotch_6.0.4
 CINCLUDES = -I$(EIGEN_DIR) -I$(SCOTCH_DIR)/include
 LFLAGS = -L$(SCOTCH_DIR)/lib
 CFLAGS = -O3 -std=c++0x
@@ -10,7 +12,7 @@ LIBS = -lscotch -lscotcherr -lm -lpthread
 default: LoRaSp
 
 LoRaSp: $(OBJS)
-	$(CPP) $(CFLAGS) $(CINCLUDES) -o LoRaSp $(OBJS) $(LFLAGS) $(LIBS)
+	$(CPP) $(CFLAGS) $(CINCLUDES) -o lorasp.out $(OBJS) $(LFLAGS) $(LIBS)
 
 LoRaSp.o: LoRaSp.cpp gmres.h eyePC.h diagPC.h tree.cpp tree.h params.cpp params.h node.cpp node.h
 	$(CPP) $(CFLAGS) $(CINCLUDES) -c LoRaSp.cpp
@@ -36,5 +38,9 @@ node.o: tree.h tree.cpp node.h node.cpp params.h params.cpp edge.h edge.cpp
 params.o: params.h params.cpp
 	$(CPP) $(CFLAGS) -c params.cpp
 
-clean:
-	rm -rf *.o LoRaSp
+petsc: petsc.o chkopts
+	${CLINKER} -o petsc.out petsc.o ${PETSC_KSP_LIB}
+	./a.out
+
+clean::
+	rm -rf *.o *.out *.mtx *.txt
