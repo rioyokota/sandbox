@@ -38,7 +38,7 @@ params.o:
 	$(CPP) $(CFLAGS) -c params.cpp
 
 petsc: petsc.o chkopts
-	${CLINKER} -fopenmp -o petsc.out petsc.o ${PETSC_KSP_LIB}
+	${CLINKER} -o petsc.out petsc.o ${PETSC_KSP_LIB}
 	./petsc.out -ksp_monitor -ksp_rtol 1e-12 -pc_type ilu
 
 clean::

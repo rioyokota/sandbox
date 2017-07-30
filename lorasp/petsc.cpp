@@ -45,7 +45,6 @@ int main(int argc,char **args) {
     yi[i] = drand48();
     zi[i] = drand48();
   }
-#pragma omp parallel for reduction(+:nnz)
   for (i=0; i<n; i++) {
     if (i%100==0) printf("Set mat  : %d/%d\n",i,n);
     for (j=0; j<n; j++) {
