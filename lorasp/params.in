@@ -60,7 +60,7 @@ A.mtx
 # 1: Diagonal Preconditioner
 # 2: ILU
 # 3: H2
-3
+2
 
 # GMRES Verbose ?
 1

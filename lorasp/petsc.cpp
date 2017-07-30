@@ -5,7 +5,7 @@ double kernel(int i, int j, double * xi, double * yi, double * zi) {
   double dy = yi[i] - yi[j];
   double dz = zi[i] - zi[j];
   double r2 = dx * dx + dy * dy + dz * dz;
-  return expf(-r2*10000);
+  return expf(-r2*1000);
   //return sqrtf(1+r2*10000);
   //return 1/sqrtf(1+r2*10000);
 }
@@ -15,11 +15,10 @@ int main(int argc,char **args) {
   Mat            A;
   KSP            ksp;
   PC             pc;
-  PetscReal      norm,tol=1.e-14;
+  PetscReal      norm,tol=1.e-12;
   PetscErrorCode ierr;
-  PetscInt       i,j,its,nnz,n=100;
+  PetscInt       i,j,its,nnz,n=10000;
   PetscMPIInt    size;
-  PetscBool      nonzeroguess = PETSC_FALSE;
   FILE           *fid;
 
   const char help[] = "Solves a tridiagonal linear system with KSP.\n\n";
@@ -46,7 +45,9 @@ int main(int argc,char **args) {
     yi[i] = drand48();
     zi[i] = drand48();
   }
+#pragma omp parallel for reduction(+:nnz)
   for (i=0; i<n; i++) {
+    if (i%100==0) printf("Set mat  : %d/%d\n",i,n);
     for (j=0; j<n; j++) {
       PetscReal f = kernel(i, j, xi, yi, zi);
       if (fabs(f) > tol) {
@@ -59,6 +60,7 @@ int main(int argc,char **args) {
   fid = fopen("A.mtx","w");
   fprintf(fid, "%d %d %d\n", n, n, nnz);
   for (int i=0; i<n; i++) {
+    if (i%100==0) printf("Write mat: %d/%d\n",i,n);
     for (int j=0; j<n; j++) {
       PetscReal f = kernel(i, j, xi, yi, zi);
       if (fabs(f) > tol) {
@@ -83,9 +85,6 @@ int main(int argc,char **args) {
   ierr = VecAXPY(x,-1.0,u);CHKERRQ(ierr);
   ierr = VecNorm(x,NORM_2,&norm);CHKERRQ(ierr);
   ierr = KSPGetIterationNumber(ksp,&its);CHKERRQ(ierr);
-  if (norm > tol) {
-    ierr = PetscPrintf(PETSC_COMM_WORLD,"Norm of error %g, Iterations %D\n",(double)norm,its);CHKERRQ(ierr);
-  }
   ierr = VecDestroy(&x);CHKERRQ(ierr); ierr = VecDestroy(&u);CHKERRQ(ierr);
   ierr = VecDestroy(&b);CHKERRQ(ierr); ierr = MatDestroy(&A);CHKERRQ(ierr);
   ierr = KSPDestroy(&ksp);CHKERRQ(ierr);
