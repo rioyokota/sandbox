@@ -1,7 +1,9 @@
 *.a
 *.dat
+*.data
 *genmod*
 *.mod
+*.mtx
 *.o
 *.so
 *.out*
