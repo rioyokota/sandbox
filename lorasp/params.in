@@ -1,0 +1,75 @@
+######################################INPUT PARAMETER FILE###############################
+#DO NOT CHANGE THE ORDER OF PARAMETERS BUT YOU CAN ADD COMMENT USING HASH TAG => EACH LINE BEGINS WITH: HASH OR DATA OR NULL
+
+#The input matrix address
+A.mtx
+#Graph14/A.mtx
+#voro32k/A.mtx
+#struct256k/A.mtx
+#nonSym256k_4/A.mtx
+#randomStruct/A.mtx
+#/Users/hadip/Downloads/stiffness/unStructured/cylinderHead/330k/localmat0
+#/Users/hadip/Downloads/input_FETI/unStructured/TardecAres/localmat1
+#/Users/hadip/Downloads/stiffness/unStructured/cylinderHead/54k/localmat0
+#/Users/hadip/Downloads/simons/matrix_pfc_3d_p1_ref15.mtx
+#PC/3D_131072x131072_P3_d4_A.mtx
+#3D_196608x196608_P5_d1_A.mtx
+#3D_294912x294912_P2_d2_A.mtx
+#6D_262144x262144_P0_d0_A.mtx
+#3D_294912x294912_P2_d2_A.mtx
+
+#The maximum level of the tree starting from 0 (root)
+14
+
+#Low-Rank-Approximation method for compression: (0:SVD, 1:rSVD)
+0
+
+#Compression cut-off method:
+# method 0: sigma(k) < epsilon
+# method 1: sigma(k) / sigma(0) < epsilon
+# method 2: sigma(k) / ||level||_F < epsilon
+# method 3: sigma(k) / ||full matrix so far||_F < epsilon
+# method 4: ||A - USV||_F / ||level||_F < epsilon
+# method 5: ||A - USV||_F^2 / ||level||_F^2 < epsilon^2 * size(A) / size(level)
+# method 6: ||A - USV||_F / ||full matrix so far||_F < epsilon
+# method 7: ||A - USV||_F^2 / ||full matrix so far||_F^2 < epsilon^2 * size(A) / size(full matrix so far)
+# method 8: constant rank = a priori rank
+6
+
+#Compression epsilon
+1e-6
+
+#A priori rank for compression: (used for rSVD or method 8)
+16
+
+# Enforce a cap on rank
+# increased by a geometric series with factor: (zero means no cap!)
+1.1
+
+#rSVD deploy factor for compression
+.5
+
+# GMRES number of iterations
+100
+
+# GMRES residual epsilon
+1e-12
+
+# GMRES Preconditioner
+# 0: No Precondiitoner
+# 1: Diagonal Preconditioner
+# 2: ILU
+# 3: H2
+3
+
+# GMRES Verbose ?
+1
+
+# ILU Droptol
+1e-6
+
+# ILU fill
+4
+
+# Normalize columns? (i.e., divide by maximum entry of the column)
+0

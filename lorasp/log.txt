@@ -1,0 +1,24 @@
+matrixSize= 100
+nnzMatrix= 3028
+Padding happened? 0
+LargePivot happened? 0
+low-rank method= 0
+epsilon= 1e-06
+cut-off method= 6
+a priori rank= 16
+Rank cap factor= 1.1
+rSVD deploy factor= 0.5
+assembleTime= 0.067839
+PrecondFactTime= 0.084731
+GMRES totalTime= 0.156164
+treeDepth= 14
+GMRES epsilon = 1e-12
+GMRES Preconditinoer = 3
+ILU DropTol = 1e-06
+ILU Fill = 4
+GMRES final (actual) residual = 1.0707e-13
+GMRES final accuracy = 6.02642e-09
+GMRES maxIters = 100
+GMRES totalIters= 29
+
+
