@@ -5,8 +5,8 @@ double kernel(int i, int j, double * xi, double * yi, double * zi) {
   double dy = yi[i] - yi[j];
   double dz = zi[i] - zi[j];
   double r2 = dx * dx + dy * dy + dz * dz;
-  return expf(-r2*1000);
-  //return sqrtf(1+r2*10000);
+  //return expf(-r2*10000);
+  return sqrtf(1+r2*10000);
   //return 1/sqrtf(1+r2*10000);
 }
 
@@ -17,7 +17,7 @@ int main(int argc,char **args) {
   PC             pc;
   PetscReal      norm,tol=1.e-12;
   PetscErrorCode ierr;
-  PetscInt       i,j,its,nnz,n=10000;
+  PetscInt       i,j,its,nnz,n=1000;
   PetscMPIInt    size;
   FILE           *fid;
 
