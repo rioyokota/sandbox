@@ -1,8 +1,13 @@
 #include <petscksp.h>
 
-double kernel(int i, int j) {
-  double r = std::abs(i - j);
-  return exp(-r*r/10);
+double kernel(int i, int j, double * xi, double * yi, double * zi) {
+  double dx = xi[i] - xi[j];
+  double dy = yi[i] - yi[j];
+  double dz = zi[i] - zi[j];
+  double r2 = dx * dx + dy * dy + dz * dz;
+  //return sqrtf(1+r2*10000);
+  //return 1/sqrtf(1+r2*10000);
+  return r2*logf(sqrtf(r2)+1e-15);
 }
 
 int main(int argc,char **args) {
@@ -34,11 +39,19 @@ int main(int argc,char **args) {
   ierr = MatSetFromOptions(A);CHKERRQ(ierr);
   ierr = MatSetUp(A);CHKERRQ(ierr);
 
+  double * xi = new double [n];
+  double * yi = new double [n];
+  double * zi = new double [n];
   nnz = 0;
   for (i=0; i<n; i++) {
+    xi[i] = drand48();
+    yi[i] = drand48();
+    zi[i] = drand48();
+  }
+  for (i=0; i<n; i++) {
     for (j=0; j<n; j++) {
-      PetscReal f = kernel(i,j);
-      if (f > tol) {
+      PetscReal f = kernel(i, j, xi, yi, zi);
+      if (fabs(f) > tol) {
         ierr = MatSetValues(A,1,&i,1,&j,&f,INSERT_VALUES);CHKERRQ(ierr);
         nnz++;
       }
@@ -49,8 +62,8 @@ int main(int argc,char **args) {
   fprintf(fid, "%d %d %d\n", n, n, nnz);
   for (int i=0; i<n; i++) {
     for (int j=0; j<n; j++) {
-      PetscReal f = kernel(i,j);
-      if (f > tol) {
+      PetscReal f = kernel(i, j, xi, yi, zi);
+      if (fabs(f) > tol) {
         fprintf(fid, "%d %d %lf\n", i+1, j+1, f);
       }
     }
