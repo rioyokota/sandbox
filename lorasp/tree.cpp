@@ -21,15 +21,19 @@ tree::tree(params* par)
   /*******************************************************/
   /* READ MATRIX AND RHS FROM FILE AND STORE AS TRIPLETS */
   /*******************************************************/
-  
+
   // Read the input matrix data
   /* We will store input data as triplets */
-  
+
   std::ifstream matrix_file( (char*) (param_->Input_Matrix_File().c_str()) );
+  if(!matrix_file.good()) {
+    std::cout << "A.mtx file does not exist." << std::endl;
+    abort();
+  }
 
   //number of rows, columns, and non-zero elements in the matrix
   int nrows , ncols;
-  
+
   std::string first_line;
   std::getline(matrix_file,first_line);
   bool symmetric = false;
@@ -48,8 +52,8 @@ tree::tree(params* par)
       std::istringstream first_line_in(first_line);
       first_line_in >> nrows >> ncols >> nnz;
     }
-  
-  n_ = nrows; 
+
+  n_ = nrows;
 
   std::cout<<"numRows = "<<nrows<<" , numCols = "<<ncols<<" , NNZ = "<<nnz<<"\n";
 
@@ -58,7 +62,7 @@ tree::tree(params* par)
       std::cout<<" This code does not suppot non-square matrices!"<<std::endl;
       exit(1);
     }
-  
+
   // The i,j indecies of an entry
   int index_i, index_j;
 
@@ -73,7 +77,7 @@ tree::tree(params* par)
   for ( int i = 0; i < nnz; i++ )
     {
       matrix_file>>index_i>>index_j>>value_ij;
-      //  Changing index from 1,2,.. to 0,1,.. 
+      //  Changing index from 1,2,.. to 0,1,..
       TripletList_.push_back( TRIPLET( index_i-1, index_j-1, value_ij ) );
       if ( index_i != index_j )
 	{
@@ -86,7 +90,7 @@ tree::tree(params* par)
 	    }
 	}
     }
-  
+
   matrix_file.close();
 
   // Init. RHS to all zeros
@@ -96,7 +100,7 @@ tree::tree(params* par)
   // Allocate memory to the solution vector
   VAR_ = new VectorXd( n_ );
 
-  
+
   // Assigne memory for the full matrix
   matrix_ = new spMat(n_,n_);
   symb_matrix_ = new spMatBool(n_,n_);
@@ -128,21 +132,21 @@ tree::tree(params* par)
       redNodeStrList newRedLevel;
       redNodeList_.push_back( newRedLevel );
       redNodeList_.back().reserve( 1<<l );
-      
+
       superNodeStrList newSuperLevel;
       superNodeList_.push_back( newSuperLevel );
       superNodeList_.back().reserve( 1<<l );
-      
+
       frobNorms.push_back(0);
-      totalSizes.push_back(0);      
+      totalSizes.push_back(0);
     }
-  
+
   /*******************************************************/
   /*                  Create the tree                    */
   /*******************************************************/
-  
+
   //! Constructing the root
-  /*! 
+  /*!
     The root of the tree is a redNode.
     We need to pass the range of columns that belong to each node.
     The tree will be created in a BFS order.
@@ -167,7 +171,7 @@ tree::tree(params* par)
   // Since the 0'th level does not have any actual superNode, we just create an empty list
   superNodeStrList NewLevel;
   superNodeList_.push_back(NewLevel);
-  
+
   // std::cout<<"The original Symb Matrix = "<<*symb_matrix_<<std::endl;
 
   // loop over levels, create them, and perform permutations
@@ -243,7 +247,7 @@ void tree::addSuperNode( unsigned int l, superNode* ptr)
 void tree::permuteMatrix()
 {
   (*permutationMatrix) = permMat(*permutationVector);
-    
+
   *permuted_matrix_ = matrix_->transpose();
   *matrix_ = (*permutationMatrix) * (*permuted_matrix_);
   *permuted_matrix_ = matrix_->transpose();
@@ -331,7 +335,7 @@ void tree::createAdjList()
 	    myRedNode = redNodeList_[i][j];
 	    leftRedChild = myRedNode -> child() -> leftChild();
 	    rightRedChild = myRedNode -> child() -> rightChild();
-	    
+
 	    // Go through (grand) parent of adjacent nodes of my (grand) children, and add them to my adjacent list
 
 	    // Left (grand) child
@@ -367,7 +371,7 @@ void tree::createLeafEdges()
       // location of columns corresponding to this leaf
       int colFirst = leaf->IndexFirst();
       int colWidth = leaf->IndexLast() - colFirst + 1;
-      
+
       // Go through adjacency list of each node
       for ( std::set<redNode*>::iterator it = leafAdjSet->begin(); it != leafAdjSet->end(); ++it )
 	{
@@ -378,13 +382,13 @@ void tree::createLeafEdges()
 	  // Creating the edge and add it to in/out edges list of two leaves
 	  leaf->outEdges.push_back(new edge(leaf, *it));
 	  (*it)->inEdges.push_back(leaf->outEdges.back());
-	  
+
 	  // Create the interaction matrix and put that on the edge
-	  leaf -> outEdges.back() -> matrix = new densMat( matrix_ -> block(rowFirst, colFirst, rowWidth, colWidth) ); 	 
+	  leaf -> outEdges.back() -> matrix = new densMat( matrix_ -> block(rowFirst, colFirst, rowWidth, colWidth) );
 	}
-	
+
     }
-  
+
 }
 
 // Create superNodes at level [l] of the tree
@@ -396,7 +400,7 @@ double tree::createSuperNodes( unsigned int l )
   for ( unsigned int i = 0; i < redNodeList_[l-1].size(); i++ )
     {
       time_elapsed += redNodeList_[l-1][i] -> child() -> mergeChildren();
-      //std::cout << " superNode = " << redNodeList_[l-1][i] -> child() -> superChild() << "  , blackParent = " << redNodeList_[l-1][i] -> child() << "  , redParent = " << redNodeList_[l-1][i] << std::endl; 
+      //std::cout << " superNode = " << redNodeList_[l-1][i] -> child() -> superChild() << "  , blackParent = " << redNodeList_[l-1][i] -> child() << "  , redParent = " << redNodeList_[l-1][i] << std::endl;
     }
   return time_elapsed;
   //std::cout<<std::endl;
@@ -432,7 +436,7 @@ timeTuple4 tree::eliminate( unsigned int l )
   // std::cout<<std::endl;
   return times;
 }
-                                                                                                                                                                                                                                                           
+
 // solveU blackNodes and superNodes at level[l], (superNodes solution split to redNodes solution)
 void tree::solveU( unsigned int l )
 {
@@ -442,7 +446,7 @@ void tree::solveU( unsigned int l )
       // Solve for the blackNode first
       superNodeList_[l][i-1] -> parent() -> solveU();
       //      std::cout<<" blackNode solved! \n";
-      
+
       // Then solve for the superNode
       superNodeList_[l][i-1] -> solveU();
       //      std::cout<<" superNode solved! \n";
@@ -476,10 +480,10 @@ void tree::solveL( unsigned int l )
 // Set leaf level RHS
 void tree::setRHS( VectorXd& rhs_ )
 {
-  
+
   // first set the RHS of the leaf redNodes
   setLeafRHS( rhs_ );
-  
+
   // now set the RHS of all other red and black nodes zero
   for ( unsigned int l = 0; l < redNodeList_.size()-1; l++)
     {
@@ -487,21 +491,21 @@ void tree::setRHS( VectorXd& rhs_ )
 	{
 	  // pointer to a red node
 	  redNode* rNode = redNodeList_[l][i];
-	  
+
 	  if ( rNode->m() > 0 )
 	    {
 	      // make RHS of the redNode 0
 	      //*( rNode -> RHS() ) = VectorXd::Zero( rNode->m() );
 	      rNode -> RHS() -> setZero();
 	    }
-	  
+
 	  if ( rNode->child()->m() > 0 )
 	    {
 	      // make RHS of its black child zero
-	      //( rNode -> child() -> RHS() ) = VectorXd::Zero( rNode -> child() -> m() );	  
+	      //( rNode -> child() -> RHS() ) = VectorXd::Zero( rNode -> child() -> m() );
 	      rNode -> child() -> RHS() -> setZero();
 	    }
-	  
+
 	}
     }
 }
@@ -510,7 +514,7 @@ void tree::setRHS( VectorXd& rhs_ )
 // Set leaf level RHS
 void tree::setLeafRHS( VectorXd& rhs_ )
 {
-  
+
   // go through all leaves
   for ( unsigned int i = 0; i < redNodeList_.back().size(); i++ )
     {
@@ -520,7 +524,7 @@ void tree::setLeafRHS( VectorXd& rhs_ )
       // location of columns/rows corresponding to this leaf
       int colFirst = leaf->IndexFirst();
       int colWidth = leaf->IndexLast() - colFirst + 1;
-      
+
       // Assign the RHS
       *( leaf -> RHS() ) = rhs_.segment( colFirst, colWidth );
 
@@ -530,7 +534,7 @@ void tree::setLeafRHS( VectorXd& rhs_ )
 // set leaf level VAR
 void tree::setLeafRHSVAR()
 {
-  
+
   // go through all leaves
   for ( unsigned int i = 0; i < redNodeList_.back().size(); i++ )
     {
@@ -554,10 +558,10 @@ void tree::setLeafRHSVAR()
 // collect the solution of all leaves
 VectorXd& tree::computeSolution()
 {
-  
+
   // number of filled
   int numFilled = 0;
-  
+
   // Go through all leaves, and concatenate their solutions
   for ( unsigned int i = 0; i < redNodeList_.back().size(); i++ )
     {
@@ -617,7 +621,7 @@ void tree::log( std::string fileName )
   output<<"assembleTime= "<<assembleTime<<"\n";
   output<<"PrecondFactTime= "<<precondFactTime<<"\n";
   output<<"GMRES totalTime= "<<gmresTotalTime<<"\n";
-  output<<"treeDepth= "<<param_->treeLevelThreshold()<<"\n";  
+  output<<"treeDepth= "<<param_->treeLevelThreshold()<<"\n";
   output<<"GMRES epsilon = "<<param_->gmresEpsilon()<<"\n";
   output<<"GMRES Preconditinoer = "<<param_->gmresPC()<<"\n";
   output<<"ILU DropTol = "<<param_->ILUDropTol()<<"\n";
@@ -659,7 +663,7 @@ void tree::log( std::string fileName )
     }
   output2<<"\n";
   output2.close();
-    
+
 }
 
 void tree::computeFrobNorm( unsigned int l )
@@ -694,13 +698,13 @@ VectorXd& tree::solve()
 // first set the RHS of all super/black nodes, then call solve()
 VectorXd& tree::solve( VectorXd &RHS )
 {
-  
+
   // CALL SET RHS FOR THE GIVEN RHS
   setRHS( RHS );
-  
+
   clock_t start, finish;
   start = clock();
- 
+
   // std::cout<<"start bottom to top solve\n";
   //! bottom to top traverse to solve L z = b
   for ( unsigned int l = maxLevel(); l > 0; l-- )
@@ -713,7 +717,7 @@ VectorXd& tree::solve( VectorXd &RHS )
     {
       solveU(l);
     }
-  finish = clock(); 
+  finish = clock();
 
   return computeSolution();
 }
@@ -747,7 +751,7 @@ void tree::normalize_cols( spMat* A)
   // each colmn
   for ( int i = 0; i < A -> outerSize(); i++ )
     {
-      
+
       // find max of the column
       double max_entry = -1e30;
       for ( int j = A->outerIndexPtr()[i]; j < A->outerIndexPtr()[i+1]; j++ )
@@ -763,5 +767,5 @@ void tree::normalize_cols( spMat* A)
 	  A -> valuePtr()[j] *= max_entry;
 	}
     }
-  
+
 }

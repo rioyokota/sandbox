@@ -6,42 +6,40 @@ SCOTCH_DIR = $(HOME)/scotch_6.0.4
 CINCLUDES = -I$(EIGEN_DIR) -I$(SCOTCH_DIR)/include
 LFLAGS = -L$(SCOTCH_DIR)/lib
 CFLAGS = -O3 -std=c++0x
-CPP = icpc
+CPP = g++
 LIBS = -lscotch -lscotcherr -lm -lpthread
-
-default: lorasp
 
 lorasp: $(OBJS)
 	$(CPP) $(CFLAGS) $(CINCLUDES) -o lorasp.out $(OBJS) $(LFLAGS) $(LIBS)
-	./lorasp.out param.in
+	./lorasp.out params.in
 
-lorasp.o: lorasp.cpp gmres.h eyePC.h diagPC.h tree.cpp tree.h params.cpp params.h node.cpp node.h
+lorasp.o:
 	$(CPP) $(CFLAGS) $(CINCLUDES) -c lorasp.cpp
 
-tree.o: tree.h tree.cpp node.h node.cpp params.h params.cpp
+tree.o:
 	$(CPP) $(CFLAGS) $(CINCLUDES) -c tree.cpp
 
-edge.o: edge.cpp edge.h node.cpp
+edge.o:
 	$(CPP) $(CFLAGS) $(CINCLUDES) -c edge.cpp
 
-superNode.o: tree.h tree.cpp node.h node.cpp superNode.h superNode.cpp params.h params.cpp edge.h edge.cpp
+superNode.o:
 	$(CPP) $(CFLAGS) $(CINCLUDES) -c superNode.cpp
 
-blackNode.o: tree.h tree.cpp node.h node.cpp blackNode.h blackNode.cpp params.h params.cpp edge.h edge.cpp
+blackNode.o:
 	$(CPP) $(CFLAGS) $(CINCLUDES) -c blackNode.cpp
 
-redNode.o: tree.h tree.cpp node.h node.cpp redNode.h redNode.cpp params.h params.cpp edge.h edge.cpp
+redNode.o:
 	$(CPP) $(CFLAGS) $(CINCLUDES) -c redNode.cpp
 
-node.o: tree.h tree.cpp node.h node.cpp params.h params.cpp edge.h edge.cpp
+node.o:
 	$(CPP) $(CFLAGS) $(CINCLUDES) -c node.cpp
 
-params.o: params.h params.cpp
+params.o:
 	$(CPP) $(CFLAGS) -c params.cpp
 
 petsc: petsc.o chkopts
 	${CLINKER} -o petsc.out petsc.o ${PETSC_KSP_LIB}
-	./petsc.out
+	./petsc.out -ksp_monitor
 
 clean::
 	rm -rf *.o *.out *.mtx *.txt

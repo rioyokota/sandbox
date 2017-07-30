@@ -5,9 +5,9 @@ double kernel(int i, int j, double * xi, double * yi, double * zi) {
   double dy = yi[i] - yi[j];
   double dz = zi[i] - zi[j];
   double r2 = dx * dx + dy * dy + dz * dz;
+  return expf(-r2*10000);
   //return sqrtf(1+r2*10000);
   //return 1/sqrtf(1+r2*10000);
-  return r2*logf(sqrtf(r2)+1e-15);
 }
 
 int main(int argc,char **args) {

@@ -33,7 +33,7 @@ int main(int argc, char *argv[])
       //! Creating the param object from provided parameters
       PARAM = new params( argv[1], atoi(argv[2]), atoi(argv[3]), atoi(argv[4]), atof(argv[5]), atoi(argv[6]), atof(argv[7]), atof(argv[8]), atoi(argv[9]), atof(argv[10]), atoi(argv[11]), atof(argv[12]), atoi(argv[13]), atoi(argv[14]) );
     }
-  
+
   clock_t start, finish;
   start = clock();
   //! Creating the FMM tree with its root-node
@@ -41,7 +41,7 @@ int main(int argc, char *argv[])
   finish = clock();
   std::cout<<" Creating FMM tree time = "<<double(finish-start)/CLOCKS_PER_SEC<<std::endl;
   TREE.assembleTime = double(finish-start)/CLOCKS_PER_SEC;
- 
+
   start = clock();
   //! Create the columns to leaves map
   TREE.createCol2LeafMap();
@@ -83,7 +83,7 @@ int main(int argc, char *argv[])
 	TREE.precondFactTime = double(finish-start)/CLOCKS_PER_SEC;
 	gmres<diagPC> GMRES( TREE.Matrix(), &DIAGPC, &b, &x0, PARAM->gmresMaxIters(), PARAM->gmresEpsilon(), PARAM->gmresVerbose() );
 	GMRES.solve( );
-	
+
 	x0 = x - *(GMRES.retVal());
 	TREE.accuracy = x0.norm()/x.norm();
 	x0 = b - (*TREE.Matrix()) * (*GMRES.retVal());
@@ -102,7 +102,7 @@ int main(int argc, char *argv[])
 	TREE.precondFactTime = double(finish-start)/CLOCKS_PER_SEC;
 	gmres<Eigen::IncompleteLUT<double>> GMRES( TREE.Matrix(), &ILU, &b, &x0, PARAM->gmresMaxIters(), PARAM->gmresEpsilon(), PARAM->gmresVerbose() );
 	GMRES.solve( );
-	
+
 	x0 = x - *(GMRES.retVal());
 	TREE.accuracy = x0.norm()/x.norm();
 	x0 = b - (*TREE.Matrix()) * (*GMRES.retVal());
@@ -121,7 +121,7 @@ int main(int argc, char *argv[])
 	TREE.precondFactTime = double(finish-start)/CLOCKS_PER_SEC;
 	gmres<tree> GMRES( TREE.Matrix(), &TREE, &b, &x0, PARAM->gmresMaxIters(), PARAM->gmresEpsilon(), PARAM->gmresVerbose() );
 	GMRES.solve( );
-	
+
 	x0 = x - *(GMRES.retVal());
 	TREE.accuracy = x0.norm()/x.norm();
 	x0 = b - (*TREE.Matrix()) * (*GMRES.retVal());
@@ -140,7 +140,7 @@ int main(int argc, char *argv[])
 	TREE.precondFactTime = double(finish-start)/CLOCKS_PER_SEC;
 	gmres<eyePC> GMRES( TREE.Matrix(), &EYEPC, &b, &x0, PARAM->gmresMaxIters(), PARAM->gmresEpsilon(), PARAM->gmresVerbose() );
 	GMRES.solve( );
-	
+
 	x0 = x - *(GMRES.retVal());
 	TREE.accuracy = x0.norm()/x.norm();
 	x0 = b - (*TREE.Matrix()) * (*GMRES.retVal());
@@ -159,7 +159,7 @@ int main(int argc, char *argv[])
   std::cout<<"GMRES NUM ITERS  = "<<TREE.gmresTotalIters<<std::endl;
   std::cout<<"GMRES RESIDUAL = "<<TREE.residual<<std::endl;
   std::cout<<"GMRES ACCURACY = "<<TREE.accuracy<<"\n\n\n";
- 
-  
+
+
   TREE.log("log.txt");
 }
