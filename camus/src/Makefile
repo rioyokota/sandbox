@@ -14,20 +14,19 @@ $(TARGET): $(OBJS)
 	$(FC) -o $(TARGET) $(OBJS) $(FFLAGS)
 
 .c.o:
-	$(CC) -c $(CFLAGS) $< -o $@ 
+	$(CC) -c $(CFLAGS) $< -o $@
 
 .f90.o:
-	$(FC) -c $(FFLAGS) $< -o $@ 
+	$(FC) -c $(FFLAGS) $< -o $@
 
 sub.o: v5.o tea.o
 sub.o: v5.o tea.o
 read_file.o: v5.o
 
-test: 
+test:
 	make clean ; make  ; cd ../input_gen/ ; ./$(TARGET) zz_test.inp_5k
 
 clean:
-	rm *.o *.mod *genmod* gmon.out  $(TARGET)
+	rm *.o *.mod $(TARGET)
 	$(RM) $(TARGET) $(OBJS)  $(OBJS:.o=.mod)
 	$(RM) core gmon.out *~ #*#
-
