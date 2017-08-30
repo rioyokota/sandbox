@@ -17,5 +17,9 @@ hilbert2: hilbert2.o
 	$(CXX) $? -o $@
 	./hilbert2 1000000000 100000000
 
+hilbert3: hilbert3.o
+	$(CXX) $? -o $@
+	./hilbert3 1000000 100000 10000
+
 clean:
-	rm -f *.o
+	rm -f *.o morton2 morton3 hilbert2 hilbert3
