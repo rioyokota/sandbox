@@ -1,7 +1,6 @@
 #include <iostream>
 #include <cstdlib>
 #include <stdint.h>
-#include <string>
 #include "vec.h"
 #define HILBERT 1
 
