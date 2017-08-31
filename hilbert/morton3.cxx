@@ -25,6 +25,16 @@ ivec3 get3DIndex(uint64_t i, int levels) {
   return iX;
 }
 
+int getLevel(uint64_t key) {
+  int level = -1;
+  uint64_t offset = 0;
+  while (key >= offset) {
+    level++;
+    offset += (uint64_t)1 << 3 * level;
+  }
+  return level;
+}
+
 int main(int argc, char ** argv) {
   ivec3 iX;
   int levels = 21;
@@ -33,6 +43,9 @@ int main(int argc, char ** argv) {
   iX[2] = atoi(argv[3]);
   uint64_t i = getKey(iX, levels);
   std::cout << i << std::endl;
+  i += (((uint64_t)1 << 3 * levels) - 1) / 7;
+  std::cout << getLevel(i) << std::endl;
+  i -= (((uint64_t)1 << 3 * levels) - 1) / 7;
   iX = get3DIndex(i, levels);
   std::cout << iX << std::endl;
 }
