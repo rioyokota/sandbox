@@ -1,6 +1,12 @@
 #include <bits/stdc++.h>
+#include <sys/time.h>
 using namespace std;
 
+double get_time() {
+  struct timeval tv;
+  gettimeofday(&tv,NULL);
+  return (double)(tv.tv_sec+tv.tv_usec*1e-6);
+}
 
 class DistributionNode;
 class Distribution;
@@ -344,20 +350,31 @@ int main(){
 	Checker checker(in.getN());
 	cout << "pre ok" << endl;
 	while(true){
+          double tic = get_time();
 		for(int i = 0;i < 2*k;i++){
 			data[i]->makeData();
 		}
+          double toc = get_time();
+          printf("makeData: %lf s\n",toc-tic);
 		sort(data.begin(), data.end(),[](Data* a,Data* b){
 			return a->score < b->score;
 		});
+          tic = get_time();
+          printf("sort    : %lf s\n",tic-toc);
 		cout << data[0]->score << endl;
 
 		checker.check(*data[0]);
+          toc = get_time();
+          printf("check   : %lf s\n",toc-tic);
 
 		distribution.reflesh();
+          tic = get_time();
+          printf("refresh : %lf s\n",tic-toc);
 		for(int i = 0;i < k;i++){
 			distribution.learning(data[i]);
 		}
+          toc = get_time();
+          printf("learning: %lf s\n",toc-tic);
 	}
 	return 0;
 }
