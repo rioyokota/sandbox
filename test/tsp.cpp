@@ -404,5 +404,6 @@ int main(int argc, char ** argv){
     tic = get_time();
     if(!MPIRANK) printf("learning: %lf s\n",tic-toc);
   }
+  MPI_Finalize();
   return 0;
 }
