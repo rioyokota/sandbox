@@ -327,6 +327,7 @@ public:
         if(!MPIRANK) cout << answer[i] << " ";
       }
       if(!MPIRANK) cout << endl;
+      MPI_Finalize();
       exit(0);
     }
   }
