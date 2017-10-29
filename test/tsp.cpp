@@ -369,6 +369,8 @@ int main(int argc, char ** argv){
       }
       sendscore[i] = data[i]->score;
     }
+    double toc = get_time();
+    if(!MPIRANK) printf("makeData: %lf s\n",toc-tic);
     MPI_Allgather(&sendcicle[0], 2*in.getN()*local_2k, MPI_INT,
                   &recvcicle[0], 2*in.getN()*local_2k, MPI_INT, MPI_COMM_WORLD);
     MPI_Allgather(&sendscore[0], local_2k, MPI_INT,
@@ -380,27 +382,27 @@ int main(int argc, char ** argv){
       }
       data[i]->score = recvscore[i];
     }
-    double toc = get_time();
-    if(!MPIRANK) printf("makeData: %lf s\n",toc-tic);
+    tic = get_time();
+    if(!MPIRANK) printf("sendData: %lf s\n",tic-toc);
     sort(data.begin(), data.end(),[](Data* a,Data* b){
         return a->score < b->score;
       });
-    tic = get_time();
-    if(!MPIRANK) printf("sort    : %lf s\n",tic-toc);
+    toc = get_time();
+    if(!MPIRANK) printf("sort    : %lf s\n",toc-tic);
     if(!MPIRANK) cout << data[0]->score << endl;
 
     checker.check(*data[0]);
-    toc = get_time();
-    if(!MPIRANK) printf("check   : %lf s\n",toc-tic);
+    tic = get_time();
+    if(!MPIRANK) printf("check   : %lf s\n",tic-toc);
 
     distribution.reflesh();
-    tic = get_time();
-    if(!MPIRANK) printf("refresh : %lf s\n",tic-toc);
+    toc = get_time();
+    if(!MPIRANK) printf("refresh : %lf s\n",toc-tic);
     for(int i = 0;i < k;i++){
       distribution.learning(data[i]);
     }
-    toc = get_time();
-    if(!MPIRANK) printf("learning: %lf s\n",toc-tic);
+    tic = get_time();
+    if(!MPIRANK) printf("learning: %lf s\n",tic-toc);
   }
   return 0;
 }
