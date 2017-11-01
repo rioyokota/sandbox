@@ -351,6 +351,7 @@ int main(){
 	cout << "pre ok" << endl;
 	while(true){
           double tic = get_time();
+#pragma omp parallel for
 		for(int i = 0;i < 2*k;i++){
 			data[i]->makeData();
 		}
