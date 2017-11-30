@@ -6,7 +6,7 @@ ICC = icc -Wall -qopenmp -O3 -fimf-domain-exclusion=15
 NVCC = nvcc -O3 -use_fast_math -arch=sm_61 -Xcompiler "-Wall -fopenmp -O3 -ffast-math -funroll-loops"
 
 sse: sse.c
-	$(ICC) $<
+	$(CXX) $<
 	./a.out
 avx: avx.c
 	$(CXX) -mavx $<
