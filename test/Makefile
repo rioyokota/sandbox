@@ -25,6 +25,9 @@ pthreads: pthreads.o
 template: template.o
 	$(CXX) $?
 	./a.out
+tsp: tsp.o
+	$(CXX) $?
+	mpirun -np 2 ./a.out
 vtk: vtk.o
 	$(CXX) $? -lvtkCharts -lvtkRendering -lvtkGraphics -lvtkFiltering -lvtkViews -lvtkCommon -lvtkWidgets -lvtkIO
 	./a.out

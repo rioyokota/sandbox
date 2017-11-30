@@ -15,7 +15,7 @@ knc: knc.c
 	$(ICC) -mmic $<
 	ssh $(HOSTNAME)-mic0 LD_LIBRARY_PATH=/opt/intel/compiler/latest/lib/mic direct/a.out
 knl: knl.c
-	$(ICC) -xMIC-AVX512 $<
+	$(CXX) -xMIC-AVX512 $<
 	./a.out
 cuda: cuda.cu
 	$(NVCC) $<
