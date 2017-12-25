@@ -11,9 +11,9 @@ double get_time() {
   return (double)(tv.tv_sec+tv.tv_usec*1e-6);
 }
 
-int main() {
+int main(int argc, char ** argv) {
 // Initialize
-  int N = 1 << 16;
+  int N = 1 << 18;
   int NALIGN = 32;
   float OPS = 20. * N * N * 1e-9;
   float EPS2 = 1e-6;
@@ -147,7 +147,7 @@ int main() {
 // No AVX
   float pdiff = 0, pnorm = 0, adiff = 0, anorm = 0;
   tic = get_time();
-#pragma omp parallel for private(j) reduction(+: pdiff, pnorm, adiff, anorm)
+#pragma omp parallel for reduction(+: pdiff, pnorm, adiff, anorm)
   for (int i=0; i<N; i++) {
     float pi = 0;
     float axi = 0;
