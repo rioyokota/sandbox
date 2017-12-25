@@ -9,13 +9,14 @@ FC = mpif90 -ggdb3 -Wall -O3 -fopenmp -ffast-math -funroll-loops -I../include
 .f90.o	:
 	$(FC) -c $? -o $@
 
-direct: direct.o
-	$(CXX) $? -o direct_mpi
 host: host.o
 	$(CXX) $?
 	mpirun -np 2 ./a.out
 hostf: hostf.o
 	$(FC) $?
+	mpirun -np 2 ./a.out
+mpi_knl: mpi_knl.cxx
+	mpiicpc $? -qopenmp -xMIC-AVX512
 	mpirun -np 2 ./a.out
 async: async.o
 	$(CXX) $?
