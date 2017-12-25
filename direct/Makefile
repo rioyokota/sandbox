@@ -17,6 +17,10 @@ knc: knc.c
 knl: knl.c
 	$(CXX) -xMIC-AVX512 $<
 	./a.out
+mpi_avx: mpi_avx.cxx
+	mpiicpc $? -qopenmp -xCORE-AVX2 -o mpi_avx
+mpi_knl: mpi_knl.cxx
+	mpiicpc $? -qopenmp -xMIC-AVX512 -o mpi_knl
 cuda: cuda.cu
 	$(NVCC) $<
 	./a.out
