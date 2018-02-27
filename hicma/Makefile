@@ -6,8 +6,8 @@ CXX = mpicxx -ggdb3 -Wall -O3 -fopenmp -I.
 	$(CXX) -c $? -o $@
 
 block_lu: block_lu.o
-	$(CXX) $? -llapack
-	mpirun -np 1 ./a.out
+	$(CXX) $? -lblas -llapack
+	valgrind ./a.out
 
 clean:
 	$(RM) *.o *.out
