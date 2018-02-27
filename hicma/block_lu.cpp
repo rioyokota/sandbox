@@ -1,8 +1,10 @@
+#include "mpi_utils.h"
+#include <algorithm>
 #include <cmath>
 #include <cstdlib>
-#include "mpi_utils.h"
 #include "print.h"
 #include "timer.h"
+#include <vector>
 
 using namespace hicma;
 
@@ -14,10 +16,10 @@ extern "C" {
 int main(int argc, char** argv) {
   int N = 64;
   int info;
-  int* ipiv = new int [N+1];
-  double* x = new double [N];
-  double* b = new double [N];
-  double* A = new double [N*N];
+  std::vector<int> ipiv(N);
+  std::vector<double> x(N);
+  std::vector<double> b(N);
+  std::vector<double> A(N*N);
   for (int i=0; i<N; i++) {
     x[i] = drand48();
     b[i] = 0;
@@ -33,7 +35,7 @@ int main(int argc, char** argv) {
   }
   stop("Init matrix");
   start("LU decomposition");
-  dgetrf_(&N, &N, A, &N, ipiv, &info);
+  dgetrf_(&N, &N, &A[0], &N, &ipiv[0], &info);
   stop("LU decomposition");
   char c_side = 'l';
   char c_uplo = 'l';
@@ -42,12 +44,12 @@ int main(int argc, char** argv) {
   int one = 1;
   double alpha = 1;
   start("Forward substitution");
-  dtrsm_(&c_side, &c_uplo, &c_transa, &c_diag, &N, &one, &alpha, A, &N, b, &N);
+  dtrsm_(&c_side, &c_uplo, &c_transa, &c_diag, &N, &one, &alpha, &A[0], &N, &b[0], &N);
   stop("Forward substitution");
   c_uplo = 'u';
   c_diag = 'n';
   start("Backward substitution");
-  dtrsm_(&c_side, &c_uplo, &c_transa, &c_diag, &N, &one, &alpha, A, &N, b, &N);
+  dtrsm_(&c_side, &c_uplo, &c_transa, &c_diag, &N, &one, &alpha, &A[0], &N, &b[0], &N);
   stop("Backward substitution");
 
   double diff = 0, norm = 0;
@@ -57,9 +59,5 @@ int main(int argc, char** argv) {
   }
   print("Accuracy");
   print("Rel. L2 Error", std::sqrt(diff/norm), false);
-  delete[] A;
-  delete[] x;
-  delete[] b;
-  delete[] ipiv;
   return 0;
 }
