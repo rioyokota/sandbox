@@ -4,7 +4,7 @@
 #include "print.h"
 #include <sys/time.h>
 
-namespace exafmm {
+namespace hicma {
   timeval t;
   std::map<std::string,timeval> timer;
 

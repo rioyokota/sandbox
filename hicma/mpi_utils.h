@@ -2,7 +2,7 @@
 #define mpi_utils_h
 #include <mpi.h>
 
-namespace exafmm {
+namespace hicma {
   int MPIRANK;                                  //!< Rank of MPI communicator
   int MPISIZE;                                  //!< Size of MPI communicator
   int EXTERNAL;                                 //!< Flag to indicate external MPI_Init/Finalize

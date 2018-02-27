@@ -6,9 +6,9 @@
 #include <unistd.h>
 #include <vector>
 
-namespace exafmm {
+namespace hicma {
   bool VERBOSE = true;                          //!< Print to screen
-  static const int stringLength = 20;           //!< Length of formatted string
+  static const int stringLength = 24;           //!< Length of formatted string
   static const int decimal = 7;                 //!< Decimal precision
   static const int wait = 100;                  //!< Waiting time between output of different ranks
 
