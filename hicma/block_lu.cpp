@@ -16,8 +16,8 @@ extern "C" {
 }
 
 int main(int argc, char** argv) {
-  int N = 6;
-  int Nb = 3;
+  int N = 64;
+  int Nb = 4;
   int Nc = N / Nb;
   int info;
   std::vector<int> ipiv(Nb);
@@ -61,7 +61,7 @@ int main(int argc, char** argv) {
     }
     for (int jc=ic+1; jc<Nc; jc++) {
       for (int kc=ic+1; kc<Nc; kc++) {
-        dgemm_(&c_t, &c_t, &Nb, &Nb, &Nb, &m1, &A[Nb*Nb*Nc*jc+Nb*Nb*ic], &Nb, &A[Nb*Nb*Nc*ic+Nb*Nb*kc], &Nb, &p1, &A[Nb*Nb*Nc*jc+Nb*Nb*kc], &Nb);
+        dgemm_(&c_n, &c_n, &Nb, &Nb, &Nb, &m1, &A[Nb*Nb*Nc*ic+Nb*Nb*kc], &Nb, &A[Nb*Nb*Nc*jc+Nb*Nb*ic], &Nb, &p1, &A[Nb*Nb*Nc*jc+Nb*Nb*kc], &Nb);
       }
     }
   }
