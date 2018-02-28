@@ -54,18 +54,27 @@ int main(int argc, char** argv) {
   double p1 = 1;
   double m1 = -1;
   for (int ic=0; ic<Nc; ic++) {
+    start("-DGETRF");
     dgetrf_(&Nb, &Nb, &A[Nb*Nb*Nc*ic+Nb*Nb*ic], &Nb, &ipiv[0], &info);
+    stop("-DGETRF", false);
     for (int jc=ic+1; jc<Nc; jc++) {
+      start("-DTRSM");
       dtrsm_(&c_r, &c_l, &c_t, &c_u, &Nb, &Nb, &p1, &A[Nb*Nb*Nc*ic+Nb*Nb*ic], &Nb, &A[Nb*Nb*Nc*ic+Nb*Nb*jc], &Nb);
       dtrsm_(&c_l, &c_u, &c_t, &c_n, &Nb, &Nb, &p1, &A[Nb*Nb*Nc*ic+Nb*Nb*ic], &Nb, &A[Nb*Nb*Nc*jc+Nb*Nb*ic], &Nb);
+      stop("-DTRSM", false);
     }
     for (int jc=ic+1; jc<Nc; jc++) {
       for (int kc=ic+1; kc<Nc; kc++) {
+        start("-DGEMM");
         dgemm_(&c_n, &c_n, &Nb, &Nb, &Nb, &m1, &A[Nb*Nb*Nc*ic+Nb*Nb*kc], &Nb, &A[Nb*Nb*Nc*jc+Nb*Nb*ic], &Nb, &p1, &A[Nb*Nb*Nc*jc+Nb*Nb*kc], &Nb);
+        stop("-DGEMM", false);
       }
     }
   }
   stop("LU decomposition");
+  print2("-DGETRF");
+  print2("-DTRSM");
+  print2("-DGEMM");
   start("Forward substitution");
   for (int ic=0; ic<Nc; ic++) {
     for (int jc=0; jc<ic; jc++) {

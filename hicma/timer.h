@@ -5,20 +5,25 @@
 #include <sys/time.h>
 
 namespace hicma {
-  timeval t;
-  std::map<std::string,timeval> timer;
+  std::map<std::string,timeval> tic;
+  std::map<std::string,double> sumTime;
 
   void start(std::string event) {
+    timeval t;
     gettimeofday(&t, NULL);
-    timer[event] = t;
+    tic[event] = t;
   }
 
-  double stop(std::string event) {
-    gettimeofday(&t, NULL);
-    double eventTime = t.tv_sec - timer[event].tv_sec +
-      (t.tv_usec - timer[event].tv_usec) * 1e-6;
-    print(event, eventTime);
-    return eventTime;
+  void stop(std::string event, bool verbose=true) {
+    timeval toc;
+    gettimeofday(&toc, NULL);
+    sumTime[event] += toc.tv_sec - tic[event].tv_sec +
+      (toc.tv_usec - tic[event].tv_usec) * 1e-6;
+    if (verbose) print(event, sumTime[event]);
+  }
+
+  void print2(std::string event) {
+    print(event, sumTime[event]);
   }
 }
 #endif
