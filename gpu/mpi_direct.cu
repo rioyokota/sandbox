@@ -72,7 +72,7 @@ int main(int argc, char **argv) {
 
   // Initialize
   //int N = 1 << 16;
-  int N = 1 << 20;
+  int N = 1 << 24;
   real_t OPS = 20. * N * N * 1e-9;
   real_t EPS2 = 1e-6;
   double tic, toc;
@@ -107,9 +107,12 @@ int main(int argc, char **argv) {
   cudaMemcpy(y_d, y, N * sizeof(real_t), cudaMemcpyHostToDevice);
   cudaMemcpy(z_d, z, N * sizeof(real_t), cudaMemcpyHostToDevice);
   cudaMemcpy(m_d, m, N * sizeof(real_t), cudaMemcpyHostToDevice);
-  tic = get_time();
-  GPUkernel<<<N/THREADS,THREADS>>>(N, x_d, y_d, z_d, m_d, p_d, ax_d, ay_d, az_d, EPS2);
-  toc = get_time();
+  for (int i=0; i<20; i++) {
+    tic = get_time();
+    GPUkernel<<<N/THREADS,THREADS>>>(N, x_d, y_d, z_d, m_d, p_d, ax_d, ay_d, az_d, EPS2);
+    toc = get_time();
+    if(!mpirank) printf(" i     : %d, %lf s\n",i,toc-tic);
+  }
   cudaMemcpy(p, p_d, N * sizeof(real_t), cudaMemcpyDeviceToHost);
   cudaMemcpy(ax, ax_d, N * sizeof(real_t), cudaMemcpyDeviceToHost);
   cudaMemcpy(ay, ay_d, N * sizeof(real_t), cudaMemcpyDeviceToHost);

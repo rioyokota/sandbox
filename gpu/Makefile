@@ -1,7 +1,7 @@
 .SUFFIXES: .cxx .cu .o
 
-CXX = mpicxx -Wall -O3 -fopenmp -msse4a -ffast-math -funroll-loops -I../include -I/usr/include/vtk-5.8
-NVCC = nvcc -O3 -use_fast_math -arch=sm_60 -Xcompiler "-Wall -fopenmp -O3 -ffast-math -funroll-loops"
+CXX = mpicxx -Wall -O3 -qopenmp
+NVCC = nvcc -O3 -use_fast_math -arch=sm_60 -Xcompiler "-Wall -fopenmp -O3"
 
 .cxx.o	:
 	$(CXX) -c $? -o $@
@@ -15,3 +15,6 @@ device: device.o
 mpi_direct: mpi_direct.o
 	$(CXX) $? -lcudart
 	mpirun -np 2 ./a.out
+
+clean:
+	$(RM) *.o *.out
