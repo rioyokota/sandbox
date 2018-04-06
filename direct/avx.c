@@ -10,6 +10,12 @@ double get_time() {
   return (double)(tv.tv_sec+tv.tv_usec*1e-6);
 }
 
+inline void rsqrt_newton(__m256& rinv, const __m256& r2, const float& nwtn_const){
+  rinv = _mm256_mul_ps(rinv,_mm256_sub_ps(_mm256_set_ps(nwtn_const, nwtn_const, nwtn_const, nwtn_const,
+                                                        nwtn_const, nwtn_const, nwtn_const, nwtn_const),
+                                          _mm256_mul_ps(r2,_mm256_mul_ps(rinv,rinv))));
+}
+
 int main() {
 // Initialize
   int N = 1 << 16;
@@ -68,6 +74,8 @@ int main() {
     z2 = _mm256_set1_ps(z[1]);
     for (j=0; j<N-2; j++) {
       invR = _mm256_rsqrt_ps(R2);
+      rsqrt_newton(invR, R2, float(3));
+      rsqrt_newton(invR, R2, float(12));
       R2 = _mm256_set1_ps(EPS2);
       x2 = _mm256_sub_ps(x2, xi);
       y2 = _mm256_sub_ps(y2, yi);
@@ -97,6 +105,8 @@ int main() {
       z2 = _mm256_set1_ps(z[j+2]);
     }
     invR = _mm256_rsqrt_ps(R2);
+    rsqrt_newton(invR, R2, float(3));
+    rsqrt_newton(invR, R2, float(12));
     R2 = _mm256_set1_ps(EPS2);
     x2 = _mm256_sub_ps(x2, xi);
     y2 = _mm256_sub_ps(y2, yi);
@@ -122,6 +132,8 @@ int main() {
     z2 = _mm256_mul_ps(z2, z2);
     R2 = _mm256_add_ps(R2, z2);
     invR = _mm256_rsqrt_ps(R2);
+    rsqrt_newton(invR, R2, float(3));
+    rsqrt_newton(invR, R2, float(12));
     mj = _mm256_mul_ps(mj, invR);
     pi = _mm256_add_ps(pi, mj);
     invR = _mm256_mul_ps(invR, invR);
@@ -157,7 +169,7 @@ int main() {
       float dy = y[j] - yi;
       float dz = z[j] - zi;
       float R2 = dx * dx + dy * dy + dz * dz + EPS2;
-      float invR = 1.0f / sqrtf(R2);
+      float invR = 16.0f / sqrtf(R2);
       float invR3 = m[j] * invR * invR * invR;
       pi += m[j] * invR;
       axi += dx * invR3;
@@ -169,7 +181,7 @@ int main() {
     adiff += (ax[i] - axi) * (ax[i] - axi)
       + (ay[i] - ayi) * (ay[i] - ayi)
       + (az[i] - azi) * (az[i] - azi);
-    anorm += axi * axi + ayi * ayi + azi * azi;    
+    anorm += axi * axi + ayi * ayi + azi * azi;
   }
   toc = get_time();
   printf("No SIMD: %e s : %lf GFlops\n",toc-tic, OPS/(toc-tic));
