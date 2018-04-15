@@ -15,7 +15,7 @@ knc: knc.c
 	$(ICC) -mmic $<
 	ssh $(HOSTNAME)-mic0 LD_LIBRARY_PATH=/opt/intel/compiler/latest/lib/mic direct/a.out
 knl: knl.c
-	$(CXX) -xMIC-AVX512 $<
+	$(ICC) -xMIC-AVX512 $<
 	./a.out
 mpi_avx: mpi_avx.cxx
 	mpiicpc $? -qopenmp -xCORE-AVX2 -o mpi_avx
