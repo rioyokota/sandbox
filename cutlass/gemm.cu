@@ -6,9 +6,9 @@
 #define DEBUG
 
 #include <gemm/dispatch.h>
+#include <gemm/epilogue_function.h>
 #include "util/matrix.h"
 #include "util/timer.h"
-#include "cutlass_dispatch.h"
 
 using namespace cutlass;
 
@@ -37,7 +37,6 @@ int main(int argc, const char **argv) {
   B.sync_device();
   C.sync_device();
   C2.sync_device();
-  cutlass_gemm_dispatch<gemm::tiling_strategy::Large, math_op, TransformA, TransformB, value_t, accum_t> cutlass;
   cublasHandle_t g_cublas_handle;
   cublasCreate(&g_cublas_handle);
   gpu_timer timer;
@@ -63,20 +62,29 @@ int main(int argc, const char **argv) {
   int64_t num_flops = (2 * int64_t(m) * int64_t(n) * int64_t(k)) + (2 * int64_t(m) * int64_t(n));
   double tcublas = timer.elapsed_millis() / g_timing_iterations;
   double cublas_flops = double(num_flops) / tcublas / 1.0e6;
+  typedef gemm::blas_scaled_epilogue<accum_t, accum_t, accum_t> epilogue_op_t;
+  epilogue_op_t epilogue(alpha, beta);
   for (int i = 0; i < g_timing_iterations+2; i++) {
     if (i == 2) timer.start();
-    CUDA_PERROR(cutlass(
-                        g_cublas_handle,
-                        m,
-                        n,
-                        k,
-                        A.d_data(),
-                        B.d_data(),
-                        C2.d_data(),
-                        alpha,
-                        beta,
-                        stream,
-                        false).result);
+    gemm::device_gemm<
+      gemm::tiling_strategy::Large,
+      math_op,
+      TransformA,
+      16,
+      TransformB,
+      16,
+      value_t,
+      accum_t,
+      epilogue_op_t,
+      4>(m,
+         n,
+         k,
+         epilogue,
+         A.d_data(),
+         B.d_data(),
+         C2.d_data(),
+         stream,
+         false);
   }
   timer.stop();
   double tcutlass = timer.elapsed_millis() / g_timing_iterations;
@@ -86,12 +94,12 @@ int main(int argc, const char **argv) {
   C2.sync_host();
   double diff = 0, norm = 0;
   for (int i=0; i<n; i++) {
-    printf("%d %f %f\n",i,C.get(i,0), C2.get(i,0));
+    //printf("%d %f %f\n",i,C.get(i,0), C2.get(i,0));
     for (int j=0; j<m; j++) {
       diff += (C.get(i,j) - C2.get(i,j)) * (C.get(i,j) - C2.get(i,j));
       norm += C.get(i,j) * C.get(i,j);
     }
   }
-  printf("L2 Error: %.2lf\n", sqrtf(diff/norm));
+  printf("L2 Error: %lf\n", sqrtf(diff/norm));
   cublasDestroy(g_cublas_handle);
 }
