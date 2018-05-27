@@ -71,16 +71,6 @@ int main(int argc, const char **argv) {
       4,
       AllowRaggedTiles
       >(
-        gemm::kernel<
-        TransformA,
-        16,
-        TransformB,
-        16,
-        value_t,
-        accum_t,
-        epilogue_op_t,
-        4,
-        AllowRaggedTiles>,
         m,
         n,
         k,

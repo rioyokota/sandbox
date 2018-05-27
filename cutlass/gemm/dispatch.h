@@ -134,10 +134,8 @@ struct launch_configuration
 template <
   typename                    epilogue_op_t,
   int                         LdgAlignC,          ///< Alignment of C matrix elements in bytes
-  bool                        AllowRaggedTiles,
-  typename                    kernel_ptr_t>       ///< GEMM kernel function pointer type
+  bool                        AllowRaggedTiles>
 launch_configuration dispatch(
-                              kernel_ptr_t    kernel_ptr,
     int             m,                              ///< Height in rows of op(A) and C
     int             n,                              ///< Width in columns of op(B) and C
     int             k,                              ///< Width in columns of op(A) and height in rows of op(B)
@@ -166,12 +164,7 @@ launch_configuration dispatch(
   launch_configuration config;
   config.block = dim3(block_task_policy_t::BlockThreads);
   int dynamic_smem_bytes = 0;
-  int max_sm_occupancy;
-  cudaOccupancyMaxActiveBlocksPerMultiprocessor(
-                                                &max_sm_occupancy,
-                                                kernel_ptr,
-                                                config.block.x * config.block.y,
-                                                dynamic_smem_bytes);
+  int max_sm_occupancy = 8;
   config.grid = grid_raster_t::grid_dims(m, n);
   int sm_count;
   get_sm_count(sm_count);
