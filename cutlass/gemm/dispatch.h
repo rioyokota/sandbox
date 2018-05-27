@@ -174,7 +174,15 @@ template <
     typename                    epilogue_op_t,      ///< Epilogue operation applied to update matrix C
     int                         LdgAlignC,          ///< Alignment of C elements in bytes
     bool                        AllowRaggedTiles>   ///< Boolean to indicate whether AllowRaggedTiles handling is enabled
-__global__ void kernel(param_pack<value_t, accum_t, epilogue_op_t> pack)
+__global__ void kernel(
+                       int m,                      ///< Height in rows of op(A) and C
+                       int n,                      ///< Width in columns of op(B) and C
+                       int k,                      ///< Width in columns of op(A) and height in rows of op(B)
+                       k_split_control k_split,    ///< Abstraction for controlling inter-block k-splitting
+                       epilogue_op_t op,           ///< Epilogue operation to update matrix C
+                       value_t *d_a,               ///< Pointer to matrix A array values
+                       value_t *d_b,               ///< Pointer to matrix B array values
+                       accum_t *d_c)               ///< Pointer to matrix C array values
 {
     // Parameterize task type
   typedef gemm::gemm_policy<value_t, accum_t, TransformA, TransformB, gemm::tiling_strategy::Large> block_task_policy_t;
@@ -196,14 +204,14 @@ __global__ void kernel(param_pack<value_t, accum_t, epilogue_op_t> pack)
     // Construct and run the task
     block_task_t(
         &smem,
-        pack.d_a,
-        pack.d_b,
-        pack.d_c,
-        pack.epilogue_op,
-        pack.m,
-        pack.n,
-        pack.k,
-        pack.k_split).run();
+        d_a,
+        d_b,
+        d_c,
+        op,
+        m,
+        n,
+        k,
+        k_split).run();
 }
 
 
@@ -279,9 +287,7 @@ struct launch_configuration
  * tuning parameterizations of kernel.
  */
 template <
-    typename                    value_t,            ///< Multiplicand value type (matrices A and B)
-    typename                    accum_t,            ///< Accumulator value type (matrix C and scalars)
-    typename                    epilogue_op_t,      ///< Epilogue operation
+  typename                    epilogue_op_t,
     int                         LdgAlignC,          ///< Alignment of C matrix elements in bytes
     bool                        AllowRaggedTiles,   ///< Boolean to indicate whether AllowRaggedTiles handling is enabled
     typename                    kernel_ptr_t>       ///< GEMM kernel function pointer type
@@ -290,10 +296,11 @@ launch_configuration dispatch(
     int             m,                              ///< Height in rows of op(A) and C
     int             n,                              ///< Width in columns of op(B) and C
     int             k,                              ///< Width in columns of op(A) and height in rows of op(B)
-    epilogue_op_t   epilogue_op,                    ///< Epilogue operation to update matrix C
-    value_t         *d_a,                           ///< Device pointer to matrix A array values
-    value_t         *d_b,                           ///< Device pointer to matrix B array values
-    accum_t         *d_c,                           ///< Device pointer to matrix C array values
+    float           alpha,
+    float           beta,
+    float         *d_a,                           ///< Device pointer to matrix A array values
+    float         *d_b,                           ///< Device pointer to matrix B array values
+    float         *d_c,                           ///< Device pointer to matrix C array values
     cudaStream_t    stream = 0,                     ///< CUDA stream to launch kernels within.  Default is stream<sub>0</sub>.
     bool            debug_synchronous = true)       ///< Whether or not to synchronize the stream after every kernel launch
                                                     ///  to check for errors.  Also causes launch configurations to be printed
@@ -302,7 +309,8 @@ launch_configuration dispatch(
     // Thread block rasterization type
   static const matrix_transform_t::kind_t TransformA = matrix_transform_t::NonTranspose;
   static const matrix_transform_t::kind_t TransformB = matrix_transform_t::NonTranspose;
-  typedef gemm::gemm_policy<value_t, accum_t, TransformA, TransformB, gemm::tiling_strategy::Large> block_task_policy_t;
+  typedef gemm_policy<float, float, TransformA, TransformB, gemm::tiling_strategy::Large> block_task_policy_t;
+  epilogue_op_t epilogue(alpha, beta);
   typedef grid_raster<
     block_task_policy_t::BlockItemsY,
     block_task_policy_t::BlockItemsX,
@@ -334,18 +342,15 @@ launch_configuration dispatch(
                           config.block,
                           config.grid);
   config.split_k = k_split.split_k;
-
-  param_pack<value_t, accum_t, epilogue_op_t> pack(
-                                                   m,
-                                                   n,
-                                                   k,
-                                                   k_split,
-                                                   epilogue_op,
-                                                   d_a,
-                                                   d_b,
-                                                   d_c);
-
-  kernel_ptr<<< config.grid, config.block, dynamic_smem_bytes, stream >>>(pack);
+  kernel_ptr<<< config.grid, config.block, dynamic_smem_bytes, stream >>>(
+                                                                          m,
+                                                                          n,
+                                                                          k,
+                                                                          k_split,
+                                                                          epilogue,
+                                                                          d_a,
+                                                                          d_b,
+                                                                          d_c);
   return config;
 }
 
