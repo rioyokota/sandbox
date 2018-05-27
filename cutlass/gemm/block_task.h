@@ -110,9 +110,7 @@ template <
     typename                    block_task_policy_t,    ///< Parameterization of block_task_policy
     typename                    value_t,                ///< Multiplicand value type (matrices A and B)
     typename                    accum_t,                ///< Accumulator value type (matrix C and scalars)
-    matrix_transform_t::kind_t  TransformA,             ///< View transform enumerant for matrix A
     int                         LdgAlignA,              ///< Alignment (in bytes) for A operand
-    matrix_transform_t::kind_t  TransformB,             ///< View transform enumerant for matrix B
     int                         LdgAlignB,              ///< Alignment (in bytes) for B operand
     typename                    epilogue_op_t,          ///< Epilogue operation applied to GEMM
     int                         LdgAlignC,              ///< Alignment (in bytes) for C operand
@@ -172,12 +170,12 @@ struct block_task
 
         /// Number of dp_vector_t along M-axis that can be read in a single LDS from the shared A-tile (up to 128b if more than one value_t)
         LdsVectorDpVectorsA = __NV_STD_MIN(
-            ThreadItemsY, 
+            ThreadItemsY,
             __NV_STD_MAX(1, (128 / (__NV_STD_MAX(sizeof(dp_vector_t), sizeof(accum_t)) * 8)))),
 
         /// Number of dp_vector_t along N-axis that can be read in a single LDS from the shared B-tile (up to 128b if more than one value_t)
         LdsVectorDpVectorsB = __NV_STD_MIN(
-            ThreadItemsX, 
+            ThreadItemsX,
             __NV_STD_MAX(1, (128 / (__NV_STD_MAX(sizeof(dp_vector_t), sizeof(accum_t)) * 8)))),
 
         /// Number of strip-mined LDS vector reads from shared A-tile
@@ -221,8 +219,8 @@ struct block_task
     typedef grid_raster<
             BlockItemsY,
             BlockItemsX,
-            TransformA,
-            TransformB,
+      matrix_transform_t::NonTranspose,
+      matrix_transform_t::NonTranspose,
             block_task_policy_t::RasterStrategy>
         grid_raster_t;
 
@@ -236,9 +234,7 @@ struct block_task
             LdgAlignA,                                          // MatrixAlignBytes
             AllowRaggedTiles,                                   // AllowRaggedTiles
             dp_vector_t,                                        // dp_vector_t
-            (TransformA == matrix_transform_t::NonTranspose) ?  // LoadAlgorithm
-                load_algorithm::CongruousCopy :
-                load_algorithm::CrosswiseCopy>
+      load_algorithm::CongruousCopy>
         block_loader_a_t;
 
 
@@ -251,23 +247,14 @@ struct block_task
             LdgAlignB,                                          // MatrixAlignBytes
             AllowRaggedTiles,                                   // AllowRaggedTiles
             dp_vector_t,                                        // dp_vector_t
-            (TransformB == matrix_transform_t::NonTranspose) ?  // LoadAlgorithm
-                load_algorithm::CrosswiseCopy :
-                load_algorithm::CongruousCopy>
+      load_algorithm::CrosswiseCopy>
         block_loader_b_t;
 
 
     enum
     {
-        /// Number of value_t to pad the end of each row of the shared A-tile
-        PadItemsA = (TransformA == matrix_transform_t::NonTranspose) ?
-            __NV_STD_MAX(LdsVectorDpVectorsA, block_loader_a_t::AlignmentDpVectorsL) :
-            LdsVectorDpVectorsA,
-
-        /// Number of value_t to pad the end of each row of the shared B-tile
-        PadItemsB = (TransformB == matrix_transform_t::NonTranspose) ?
-            LdsVectorDpVectorsB :
-            __NV_STD_MAX(LdsVectorDpVectorsB, block_loader_b_t::AlignmentDpVectorsL),
+      PadItemsA = __NV_STD_MAX(LdsVectorDpVectorsA, block_loader_a_t::AlignmentDpVectorsL),
+      PadItemsB = LdsVectorDpVectorsB,
     };
 
 
@@ -426,8 +413,8 @@ struct block_task
         loader_a(
             d_a,                                                            // d_matrix
             dim_m,                                                          // matrix_values_l
-            (TransformA == matrix_transform_t::NonTranspose) ? dim_m : 1,   // matrix_values_stride_k
-            (TransformA == matrix_transform_t::NonTranspose) ? 1 : dim_k,   // matrix_values_stride_l
+            dim_m,
+            1,
             make_int2(                                                      // block_begin_item_coords
                 grid_raster.block_item_coords.y,
                 block_item_coords_k),
@@ -435,9 +422,9 @@ struct block_task
 
         loader_b(
             d_b,                                                            // d_matrix
-            dim_n,                                                          // matrix_values_l
-            (TransformB == matrix_transform_t::NonTranspose) ? 1 : dim_n,   // matrix_values_stride_k
-            (TransformB == matrix_transform_t::NonTranspose) ? dim_k : 1,   // matrix_values_stride_l
+            dim_n,
+            1,
+            dim_k,
             make_int2(                                                      // block_begin_item_coords
                 grid_raster.block_item_coords.x,
                 block_item_coords_k),
