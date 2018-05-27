@@ -3,7 +3,6 @@
 #include "../util/util.h"
 #include "block_task.h"
 #include "grid_raster.h"
-#include "dispatch_policies.h"
 #include "k_split_control.h"
 
 namespace cutlass {
@@ -20,19 +19,14 @@ namespace gemm {
                        float *d_b,               ///< Pointer to matrix B array values
                        float *d_c)               ///< Pointer to matrix C array values
 {
-    // Parameterize task type
-  static const matrix_transform_t::kind_t TransformA = matrix_transform_t::NonTranspose;
-  static const matrix_transform_t::kind_t TransformB = matrix_transform_t::NonTranspose;
-  typedef gemm::gemm_policy<float, float, TransformA, TransformB, gemm::tiling_strategy::Large> block_task_policy_t;
-    typedef block_task<
-        block_task_policy_t,
-        float,
-        float,
-        16,
-        16,
-        epilogue_op_t,
-        4,
-        false> block_task_t;
+  typedef block_task<
+    float,
+    float,
+    16,
+    16,
+    epilogue_op_t,
+    4,
+    false> block_task_t;
 
     // Declare statically-allocated shared storage
     __shared__ typename block_task_t::scratch_storage_t smem;
@@ -140,17 +134,16 @@ launch_configuration dispatch(
     // Thread block rasterization type
   static const matrix_transform_t::kind_t TransformA = matrix_transform_t::NonTranspose;
   static const matrix_transform_t::kind_t TransformB = matrix_transform_t::NonTranspose;
-  typedef gemm_policy<float, float, TransformA, TransformB, gemm::tiling_strategy::Large> block_task_policy_t;
   epilogue_op_t epilogue(alpha, beta);
   typedef grid_raster<
-    block_task_policy_t::BlockItemsY,
-    block_task_policy_t::BlockItemsX,
+    64,
+    64,
     TransformA,
     TransformB,
-    block_task_policy_t::RasterStrategy>
+    grid_raster_strategy::Default>
     grid_raster_t;
   launch_configuration config;
-  config.block = dim3(block_task_policy_t::BlockThreads);
+  config.block = dim3(64);
   int dynamic_smem_bytes = 0;
   int max_sm_occupancy = 8;
   config.grid = grid_raster_t::grid_dims(m, n);
@@ -164,7 +157,7 @@ launch_configuration dispatch(
                           sm_count,
                           max_sm_occupancy,
                           k,
-                          block_task_policy_t::BlockItemsK,
+                          8,
                           config.block,
                           config.grid);
   config.split_k = k_split.split_k;

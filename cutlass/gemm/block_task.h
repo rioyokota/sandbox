@@ -55,44 +55,23 @@ namespace gemm {
  * Once parameterized, \p block_task_policy provides the member constant
  * \p BlockThreads indicating to the required thread block size
  */
-template <
-    int _BlockItemsY,                               ///< Height in rows of a block-wide tile in matrix C
-    int _BlockItemsX,                               ///< Width in columns of a block-wide tile in matrix C
-    int _BlockItemsK,                               ///< Extent of block-wide A|B tiles in value_t along the K-axis
-    int _ThreadItemsY,                              ///< Height in rows of a thread tile in C
-    int _ThreadItemsX,                              ///< Width in columns of a thread tile in C
-    bool _UseDoubleScratchTiles,                    ///< Whether to halve synchronization overhead at the expense of doubled shared memory and addressing overhead
-    grid_raster_strategy::kind_t _RasterStrategy>   ///< Strategy for enumerating \p block_task within an input matrix
 struct block_task_policy
 {
     enum
     {
-        /// Height in rows of a block-wide tile in matrix C
-        BlockItemsY = _BlockItemsY,
-
-        /// Width in columns of a block-wide tile in matrix C
-        BlockItemsX = _BlockItemsX,
-
-        /// Height in rows of a thread tile in C
-        ThreadItemsY = _ThreadItemsY,
-
-        /// Width in columns of a thread tile in C
-        ThreadItemsX = _ThreadItemsX,
-
-        /// Extent of block-wide A|B tiles in value_t along the K-axis
-        BlockItemsK = _BlockItemsK,
-
-        /// Whether to halve synchronization overhead at the expense of doubled shared memory and addressing overhead
-        UseDoubleScratchTiles = _UseDoubleScratchTiles,
-
-        /// Number of threads in each thread block (blockDim.x)
+        BlockItemsY = 64,
+        BlockItemsX = 64,
+        ThreadItemsY = 8,
+        ThreadItemsX = 8,
+        BlockItemsK = 8,
+        UseDoubleScratchTiles = false,
         BlockThreads = divide_assert<
-                            (BlockItemsY * BlockItemsX),
-                            (ThreadItemsY * ThreadItemsX)>::value,
+        (BlockItemsY * BlockItemsX),
+        (ThreadItemsY * ThreadItemsX)>::value,
     };
 
     /// Strategy for enumerating \p block_task within an input matrix
-    static const grid_raster_strategy::kind_t RasterStrategy = _RasterStrategy;
+  static const grid_raster_strategy::kind_t RasterStrategy = grid_raster_strategy::Default;
 };
 
 
@@ -107,7 +86,6 @@ struct block_task_policy
  * consuming the corresponding stripes of the input matrices A and B.
  */
 template <
-    typename                    block_task_policy_t,    ///< Parameterization of block_task_policy
     typename                    value_t,                ///< Multiplicand value type (matrices A and B)
     typename                    accum_t,                ///< Accumulator value type (matrix C and scalars)
     int                         LdgAlignA,              ///< Alignment (in bytes) for A operand
@@ -125,13 +103,13 @@ struct block_task
     enum
     {
         /// Number of threads in each thread block (blockDim.x)
-        BlockThreads = block_task_policy_t::BlockThreads,
+        BlockThreads = 64,
 
         /// Extent of thread tile in value_t along M-axis
-        ThreadItemsY = block_task_policy_t::ThreadItemsY,
+        ThreadItemsY = 8,
 
         /// Extent of thread tile in value_t along N-axis
-        ThreadItemsX = block_task_policy_t::ThreadItemsX,
+        ThreadItemsX = 8,
     };
 
     /// Accumulator type
@@ -154,16 +132,16 @@ struct block_task
         DpVectorItems = divide_assert<sizeof(dp_vector_t), sizeof(value_t)>::value,
 
         /// Extent of block-wide C-tile in accum_t (and A-tiles in value_t) along M-axis (height)
-        BlockItemsY = block_task_policy_t::BlockItemsY,
+        BlockItemsY = 64,
 
         /// Extent of block-wide C-tile in accum_t (and B-tiles in value_t) along N-axis (width)
-        BlockItemsX = block_task_policy_t::BlockItemsX,
+        BlockItemsX = 64,
 
         /// Extent of block-wide A|B tiles in value_t along the K-axis
-        BlockItemsK = block_task_policy_t::BlockItemsK,
+        BlockItemsK = 8,
 
         /// Whether to halve synchronization overhead at the expense of doubled shared memory and addressing overhead
-        UseDoubleScratchTiles = block_task_policy_t::UseDoubleScratchTiles,
+        UseDoubleScratchTiles = false,
 
         /// Extent of block-wide A|B tiles in dp_vector_t along the K-axis
         BlockDpVectorsK = divide_assert<BlockItemsK, DpVectorItems>::value,
@@ -217,12 +195,12 @@ struct block_task
 
     /// Thread block rasterization helper type
     typedef grid_raster<
-            BlockItemsY,
-            BlockItemsX,
+      BlockItemsY,
+      BlockItemsX,
       matrix_transform_t::NonTranspose,
       matrix_transform_t::NonTranspose,
-            block_task_policy_t::RasterStrategy>
-        grid_raster_t;
+      grid_raster_strategy::Default>
+    grid_raster_t;
 
 
     /// Tile loader type for matrix A
