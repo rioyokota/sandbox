@@ -1,36 +1,3 @@
-/******************************************************************************
- * Copyright (c) 2017, NVIDIA CORPORATION.  All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
- *     * Redistributions of source code must retain the above copyright
- *       notice, this list of conditions and the following disclaimer.
- *     * Redistributions in binary form must reproduce the above copyright
- *       notice, this list of conditions and the following disclaimer in the
- *       documentation and/or other materials provided with the distribution.
- *     * Neither the name of the NVIDIA CORPORATION nor the
- *       names of its contributors may be used to endorse or promote products
- *       derived from this software without specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
- * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
- * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- * DISCLAIMED. IN NO EVENT SHALL NVIDIA CORPORATION BE LIABLE FOR ANY
- * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
- * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *
- ******************************************************************************/
-
-/**
- * \file gemm.cu
- * GEMM test driver
- *
- */
-
 #include <iostream>
 #include <typeinfo>
 #include <random>
@@ -297,7 +264,7 @@ bool test(
             }
             else
             {
-                printf("Avg runtime: %.3f ms, total flops: %lld, GFLOP/s: %.2f\n",
+                printf("Avg runtime: %.3f ms, total flops: %ld, GFLOP/s: %.2f\n",
                     avg_ms,
                     num_flops,
                     gflops_per_sec);
@@ -427,67 +394,23 @@ bool test(
 /**
  * Main
  */
-int main(int argc, const char **argv)
-{
-    //
-    // Problem type (compiler-supplied so we don't compile everything)
-    //
-
-    // Define value_t and accum_t (multiplicand and accumulator types, respectively)
-#if defined(TEST_SGEMM)
-    typedef float       value_t;
-    typedef float       accum_t;
-    const math_operation_class_t math_op = math_operation_class_t::scalar;
-#elif defined(TEST_DGEMM)
-    typedef double      value_t;
-    typedef double      accum_t;
-    const math_operation_class_t math_op = math_operation_class_t::scalar;
-#elif defined(TEST_HGEMM)
-    typedef __half      value_t;
-    typedef __half      accum_t;
-    const math_operation_class_t math_op = math_operation_class_t::scalar;
-#elif defined(TEST_IGEMM)
-    typedef int8_t      value_t;
-    typedef int32_t     accum_t;
-    const math_operation_class_t math_op = math_operation_class_t::scalar;
-#elif defined(TEST_WGEMM)
-    typedef half        value_t;
-    typedef float       accum_t;
-    const math_operation_class_t math_op = math_operation_class_t::matrix;
-#else
-    #error Unknown GEMM type requested.
-#endif
+int main(int argc, const char **argv) {
+  typedef float       value_t;
+  typedef float       accum_t;
+  const math_operation_class_t math_op = math_operation_class_t::scalar;
+  static const matrix_transform_t::kind_t TransformA = matrix_transform_t::NonTranspose;
+  static const matrix_transform_t::kind_t TransformB = matrix_transform_t::NonTranspose;
 
 
-    // Define transpose constants
-#ifdef TRANSPOSE_A
-    static const matrix_transform_t::kind_t TransformA = matrix_transform_t::Transpose;
-#else
-    static const matrix_transform_t::kind_t TransformA = matrix_transform_t::NonTranspose;
-#endif
-
-#ifdef TRANSPOSE_B
-    static const matrix_transform_t::kind_t TransformB = matrix_transform_t::Transpose;
-#else
-    static const matrix_transform_t::kind_t TransformB = matrix_transform_t::NonTranspose;
-#endif
-
-
-    //
-    // Commandline parsing
-    //
-
-    // Initialize command line
     command_line args(argc, argv);
-
-    int m_factor    = args.device_prop.multiProcessorCount * 128;
-    int m           = round_nearest(4096, m_factor);
+    int m           = 10240;
     int k           = 4096;
     int n           = 4096;
     float alpha     = 1.0;
     float beta      = 0.0;
 
     g_device_id = args.device_id;
+    std::cout << g_device_id << std::endl;
     args.get_cmd_line_argument("m", m);
     args.get_cmd_line_argument("n", n);
     args.get_cmd_line_argument("k", k);
@@ -495,19 +418,6 @@ int main(int argc, const char **argv)
     args.get_cmd_line_argument("alpha", alpha);
     args.get_cmd_line_argument("beta", beta);
     args.get_cmd_line_argument("schmoo", g_schmoo);
-
-    // Print usage
-    if (args.check_cmd_line_flag("help"))
-    {
-        printf("%s "
-            "[--help] "
-            "[--i=<timing iterations>] "
-            "[--device=<device-id>] "
-            "[--alpha=<alpha> --beta=<beta>] "
-            "[--schmoo=<samples> || --m=<height> --n=<width> --k=<depth>]"
-            "\n", argv[0]);
-        exit(0);
-    }
 
     // Initialize cuBLAS
     if (cublasCreate(&g_cublas_handle) != CUBLAS_STATUS_SUCCESS)
