@@ -279,203 +279,58 @@ bool test(
 /**
  * Compute C = (alpha * A * B) + (beta * C)
  */
-template <
-    math_operation_class_t     math_op,
-    matrix_transform_t::kind_t TransformA,  ///< Transformation op for matrix A
-    matrix_transform_t::kind_t TransformB,  ///< Transformation op for matrix B
-    typename value_t,                       ///< Multiplicand value type (matrices A and B)
-    typename accum_t>                       ///< Accumulator value type (matrix C and scalars)
-bool test(
-    int m,          ///< Height of C in rows
-    int n,          ///< Width of C in columns
-    int k,          ///< Width (height) of A (B)
-    accum_t alpha,  ///< Multiplicand scalar
-    accum_t beta)   ///< Addend scalar
-{
-    uint64_t flop_base = 1ull << 41;
-    int max_timing_iterations = 10000;
-    int min_timing_iterations = 10;
+bool test(int m, int n, int k, float alpha, float beta) {
+  const math_operation_class_t math_op = math_operation_class_t::scalar;
+  static const matrix_transform_t::kind_t TransformA = matrix_transform_t::NonTranspose;
+  static const matrix_transform_t::kind_t TransformB = matrix_transform_t::NonTranspose;
+  typedef float value_t;
+  typedef float accum_t;
+  uint64_t flop_base = 1ull << 41;
+  int max_timing_iterations = 10000;
+  int min_timing_iterations = 10;
+  bool test_error = false;
+  uint64_t num_flops = (2 * uint64_t(m) * uint64_t(n) * uint64_t(k)) + (2 * uint64_t(m) * uint64_t(n));
+  g_timing_iterations = (int) ((flop_base / sizeof(value_t)) / num_flops);
+  g_timing_iterations = (int) __NV_STD_MIN(max_timing_iterations, g_timing_iterations);
+  g_timing_iterations = (int) __NV_STD_MAX(min_timing_iterations, g_timing_iterations);
 
-    bool test_error = false;
+  printf("\n------------------------------------------------------------\n");
+  printf("%dx%dx%d, GEMM_%c%c, %d C elements, %d timing iterations\n",
+         m, n, k,
+         (TransformA == matrix_transform_t::NonTranspose) ? 'n' : 't',
+         (TransformB == matrix_transform_t::NonTranspose) ? 'n' : 't',
+         m * n,
+         g_timing_iterations);
+  fflush(stdout);
 
-    // Scale the number of timing iterations with respect to problem size (if not specified on commandline)
-    if ((g_timing_iterations < 0) || g_schmoo)
-    {
-        uint64_t num_flops = (2 * uint64_t(m) * uint64_t(n) * uint64_t(k)) + (2 * uint64_t(m) * uint64_t(n));
-        g_timing_iterations = (int) ((flop_base / sizeof(value_t)) / num_flops);
+  // CUBLAS
+  test_error |= test<
+    cublas_gemm<gemm::tiling_strategy::Unknown, math_op, TransformA, TransformB, value_t, accum_t>,
+      TransformA,
+      TransformB,
+      value_t,
+      accum_t>(m, n, k, accum_t(alpha), accum_t(beta));
 
-        g_timing_iterations = (int) __NV_STD_MIN(max_timing_iterations, g_timing_iterations);
-        g_timing_iterations = (int) __NV_STD_MAX(min_timing_iterations, g_timing_iterations);
-    }
-
-    if (g_schmoo)
-    {
-        printf("%d, %d, %d, %c%c, %d, %d",
-            m, n, k,
-            (TransformA == matrix_transform_t::NonTranspose) ? 'n' : 't',
-            (TransformB == matrix_transform_t::NonTranspose) ? 'n' : 't',
-            m * n,
-            g_timing_iterations);
-    }
-    else
-    {
-        printf("\n------------------------------------------------------------\n");
-        printf("%dx%dx%d, GEMM_%c%c, %d C elements, %d timing iterations\n",
-            m, n, k,
-            (TransformA == matrix_transform_t::NonTranspose) ? 'n' : 't',
-            (TransformB == matrix_transform_t::NonTranspose) ? 'n' : 't',
-            m * n,
-            g_timing_iterations);
-    }
-    fflush(stdout);
-
-    // CUBLAS
-    test_error |= test<
-        cublas_gemm<gemm::tiling_strategy::Unknown, math_op, TransformA, TransformB, value_t, accum_t>,
-        TransformA,
-        TransformB,
-        value_t,
-        accum_t>(m, n, k, accum_t(alpha), accum_t(beta));
-
-    // CUTLASS
-    test_error |= test<
-        cutlass_gemm_dispatch<gemm::tiling_strategy::Small, math_op, TransformA, TransformB, value_t, accum_t>,
-        TransformA,
-        TransformB,
-        value_t,
-        accum_t>(m, n, k, accum_t(alpha), accum_t(beta));
-
-    test_error |= test<
-        cutlass_gemm_dispatch<gemm::tiling_strategy::Medium, math_op, TransformA, TransformB, value_t, accum_t>,
-        TransformA,
-        TransformB,
-        value_t,
-        accum_t>(m, n, k, accum_t(alpha), accum_t(beta));
-
-    test_error |= test<
-        cutlass_gemm_dispatch<gemm::tiling_strategy::Large, math_op, TransformA, TransformB, value_t, accum_t>,
-        TransformA,
-        TransformB,
-        value_t,
-        accum_t>(m, n, k, accum_t(alpha), accum_t(beta));
-
-    test_error |= test<
-        cutlass_gemm_dispatch<gemm::tiling_strategy::Tall, math_op, TransformA, TransformB, value_t, accum_t>,
-        TransformA,
-        TransformB,
-        value_t,
-        accum_t>(m, n, k, accum_t(alpha), accum_t(beta));
-
-    test_error |= test<
-        cutlass_gemm_dispatch<gemm::tiling_strategy::Wide, math_op, TransformA, TransformB, value_t, accum_t>,
-        TransformA,
-        TransformB,
-        value_t,
-        accum_t>(m, n, k, accum_t(alpha), accum_t(beta));
-
-    test_error |= test<
-        cutlass_gemm_dispatch<gemm::tiling_strategy::Huge, math_op, TransformA, TransformB, value_t, accum_t>,
-        TransformA,
-        TransformB,
-        value_t,
-        accum_t>(m, n, k, accum_t(alpha), accum_t(beta));
+  // CUTLASS
+  test_error |= test<
+    cutlass_gemm_dispatch<gemm::tiling_strategy::Large, math_op, TransformA, TransformB, value_t, accum_t>,
+      TransformA,
+      TransformB,
+      value_t,
+      accum_t>(m, n, k, accum_t(alpha), accum_t(beta));
 
     return test_error;
 }
 
-
-
-
-/******************************************************************************
- * Main
- ******************************************************************************/
-
-
-/**
- * Main
- */
 int main(int argc, const char **argv) {
-  typedef float       value_t;
-  typedef float       accum_t;
-  const math_operation_class_t math_op = math_operation_class_t::scalar;
-  static const matrix_transform_t::kind_t TransformA = matrix_transform_t::NonTranspose;
-  static const matrix_transform_t::kind_t TransformB = matrix_transform_t::NonTranspose;
-
-
-    command_line args(argc, argv);
-    int m           = 10240;
-    int k           = 4096;
-    int n           = 4096;
-    float alpha     = 1.0;
-    float beta      = 0.0;
-
-    g_device_id = args.device_id;
-    std::cout << g_device_id << std::endl;
-    args.get_cmd_line_argument("m", m);
-    args.get_cmd_line_argument("n", n);
-    args.get_cmd_line_argument("k", k);
-    args.get_cmd_line_argument("i", g_timing_iterations);
-    args.get_cmd_line_argument("alpha", alpha);
-    args.get_cmd_line_argument("beta", beta);
-    args.get_cmd_line_argument("schmoo", g_schmoo);
-
-    // Initialize cuBLAS
-    if (cublasCreate(&g_cublas_handle) != CUBLAS_STATUS_SUCCESS)
-    {
-        fprintf(stderr, "cublasCreate() failed\n");
-        exit(1);
-    }
-
+    int m = 10240;
+    int k = 4096;
+    int n = 4096;
+    float alpha = 1.0;
+    float beta = 0.0;
+    g_device_id = 0;
+    cublasCreate(&g_cublas_handle);
     bool test_error = false;
-
-    if (g_schmoo)
-    {
-        // Run a schmoo of problem sizes
-        printf("M, N, K, transpose, total_flops, timing_iterations, sol_flop/s, cublas_sol, cutlass_small_sol, cutlass_med_sol, cutlass_large_sol, cutlass_tall_sol, cutlass_wide_sol, cutlass_huge_sol\n");
-
-        // Generate power-law distribution from [32, 16384)
-        std::mt19937 gen(0);
-        std::uniform_real_distribution<float> dis(5, 14);
-        for (int i = 0; i < g_schmoo; ++i)
-        {
-        	int m = int(pow(float(2), dis(gen)));
-        	int n = int(pow(float(2), dis(gen)));
-        	int k = int(pow(float(2), dis(gen)));
-
-        	// Round m and n to nearest multiple of 32 if < 128, otherwise to the nearest 128
-        	m = (m < 128) ?
-        			round_nearest(m, 32) :
-        			round_nearest(m, 128);
-        	n = (n < 128) ?
-        			round_nearest(n, 32) :
-        			round_nearest(n, 128);
-
-        	// Round k to the nearest 16
-            k = (sizeof(value_t) == 1) ?
-                round_nearest(k, 32) :
-                round_nearest(k, 16);
-
-        	test_error |= test<math_op, TransformA, TransformB, value_t, accum_t>(
-                m, n, k,
-                from_float<accum_t>(alpha),
-                from_float<accum_t>(beta));
-
-        	printf("\n"); fflush(stdout);
-        }
-    }
-    else
-    {
-        // Test a single GEMM problem size
-        test_error |= test<math_op, TransformA, TransformB, value_t, accum_t>(
-            m,
-            n,
-            k,
-            from_float<accum_t>(alpha),
-            from_float<accum_t>(beta));
-    }
-
-    // Cleanup
+    test_error |= test(m, n, k, alpha, beta);
     cublasDestroy(g_cublas_handle);
-
-    return test_error;
 }
