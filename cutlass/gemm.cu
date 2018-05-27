@@ -2,32 +2,12 @@
 #include <typeinfo>
 #include <random>
 #include <stdint.h>
-
-// CUBLAS GEMM API
 #include <cublas_v2.h>
-
-// Set Cutlass debug macro to enable console printing of library errors
 #define DEBUG
 
-#if defined(WMMA)
-// Conditionally include WMMA headers (CUDA 9 Preview Feature)
-#include <mma.h>
-#endif
-
-// Cutlass GEMM API
-#include <util/util.h>
 #include <gemm/dispatch.h>
-#include <gemm/epilogue_function.h>
-
-// Test utilities
-#include "util/command_line.h"
-#include "util/half.h"
 #include "util/matrix.h"
 #include "util/timer.h"
-#include "util/type_conversion.h"
-
-// Dispatch routines to CUBLAS and CUTLASS
-#include "cublas_dispatch.h"
 #include "cutlass_dispatch.h"
 
 using namespace cutlass;
@@ -57,25 +37,27 @@ int main(int argc, const char **argv) {
   B.sync_device();
   C.sync_device();
   C2.sync_device();
-  cublas_gemm<gemm::tiling_strategy::Unknown, math_op, TransformA, TransformB, value_t, accum_t> cublas;
   cutlass_gemm_dispatch<gemm::tiling_strategy::Large, math_op, TransformA, TransformB, value_t, accum_t> cutlass;
   cublasHandle_t g_cublas_handle;
   cublasCreate(&g_cublas_handle);
   gpu_timer timer;
   for (int i = 0; i < g_timing_iterations+2; i++) {
     if (i == 2) timer.start();
-    CUDA_PERROR(cublas(
-                       g_cublas_handle,
-                       m,
-                       n,
-                       k,
-                       A.d_data(),
-                       B.d_data(),
-                       C.d_data(),
-                       alpha,
-                       beta,
-                       stream,
-                       false).result);
+    CUDA_PERROR(cublasSgemm(
+                            g_cublas_handle,
+                            (cublasOperation_t) TransformA,
+                            (cublasOperation_t) TransformB,
+                            m,
+                            n,
+                            k,
+                            &alpha,
+                            A.d_data(),
+                            m,
+                            B.d_data(),
+                            k,
+                            &beta,
+                            C.d_data(),
+                            m));
   }
   timer.stop();
   int64_t num_flops = (2 * int64_t(m) * int64_t(n) * int64_t(k)) + (2 * int64_t(m) * int64_t(n));
