@@ -44,47 +44,6 @@
 namespace cutlass {
 namespace gemm {
 
-
-/******************************************************************************
- * block_task_policy
- ******************************************************************************/
-
-/**
- * \brief Parameterizable tuning policy for \p block_task
- *
- * Once parameterized, \p block_task_policy provides the member constant
- * \p BlockThreads indicating to the required thread block size
- */
-struct block_task_policy
-{
-    enum
-    {
-        BlockItemsY = 64,
-        BlockItemsX = 64,
-        ThreadItemsY = 8,
-        ThreadItemsX = 8,
-        BlockItemsK = 8,
-        UseDoubleScratchTiles = false,
-        BlockThreads = divide_assert<
-        (BlockItemsY * BlockItemsX),
-        (ThreadItemsY * ThreadItemsX)>::value,
-    };
-
-    /// Strategy for enumerating \p block_task within an input matrix
-  static const grid_raster_strategy::kind_t RasterStrategy = grid_raster_strategy::Default;
-};
-
-
-/******************************************************************************
- * block_task
- ******************************************************************************/
-
-/**
- * \brief A block-wide task abstraction for computing device-wide GEMM
- *
- * Each thread_block is assigned a unique tile of output matrix C to compute by
- * consuming the corresponding stripes of the input matrices A and B.
- */
 template <
     typename                    value_t,                ///< Multiplicand value type (matrices A and B)
     typename                    accum_t,                ///< Accumulator value type (matrix C and scalars)
@@ -195,8 +154,8 @@ struct block_task
 
     /// Thread block rasterization helper type
     typedef grid_raster<
-      BlockItemsY,
-      BlockItemsX,
+      64,
+      64,
       matrix_transform_t::NonTranspose,
       matrix_transform_t::NonTranspose,
       grid_raster_strategy::Default>
@@ -205,28 +164,28 @@ struct block_task
 
     /// Tile loader type for matrix A
     typedef block_loader<
-            BlockThreads,                                       // BlockThreads
-            BlockDpVectorsK,                                    // BlockDpVectorsK
-            BlockItemsY,                                        // BlockItemsL
-            value_t,                                            // value_t
-            LdgAlignA,                                          // MatrixAlignBytes
-            AllowRaggedTiles,                                   // AllowRaggedTiles
-            dp_vector_t,                                        // dp_vector_t
+      64,                                       // BlockThreads
+      8,                                    // BlockDpVectorsK
+      64,                                        // BlockItemsL
+      float,                                            // value_t
+      16,                                          // MatrixAlignBytes
+      false,                                   // AllowRaggedTiles
+      dp_vector_t,                                        // dp_vector_t
       load_algorithm::CongruousCopy>
-        block_loader_a_t;
+    block_loader_a_t;
 
 
     /// Tile loader type for matrix B
     typedef block_loader<
-            BlockThreads,                                       // BlockThreads
-            BlockDpVectorsK,                                    // BlockDpVectorsK
-            BlockItemsX,                                        // BlockItemsL
-            value_t,                                            // value_t
-            LdgAlignB,                                          // MatrixAlignBytes
-            AllowRaggedTiles,                                   // AllowRaggedTiles
-            dp_vector_t,                                        // dp_vector_t
+      64,                                       // BlockThreads
+      8,                                    // BlockDpVectorsK
+      64,                                        // BlockItemsL
+      float,                                            // value_t
+      16,                                          // MatrixAlignBytes
+      false,                                   // AllowRaggedTiles
+      dp_vector_t,                                        // dp_vector_t
       load_algorithm::CrosswiseCopy>
-        block_loader_b_t;
+    block_loader_b_t;
 
 
     enum
@@ -553,10 +512,10 @@ struct block_task
             // Request global prefetch for next tile on first strip
             if ((tile_offset_k == 0) && DoGlobalPrefetch)
             {
-                loader_b.request();
-                loader_b.next();
-                loader_a.request();
-                loader_a.next();
+              loader_b.request();
+              loader_b.next();
+              loader_a.request();
+              loader_a.next();
             }
 
             // Cast strip-mined loads to contiguous array of dp_vector_t

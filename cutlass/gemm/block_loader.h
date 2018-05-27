@@ -159,4 +159,3 @@ struct block_loader
 
 #include "block_loader_crosswise.h"
 #include "block_loader_congruous_dp1.h"
-#include "block_loader_congruous_idp4.h"
