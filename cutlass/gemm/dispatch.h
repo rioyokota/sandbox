@@ -496,28 +496,6 @@ launch_configuration device_gemm(
     // (TODO: use a policy dispatch mechanism based upon SM version)
     typedef gemm_policy<value_t, accum_t, TransformA, TransformB, TilingStrategy> block_task_policy_t;
 
-    // AllowRaggedTiles-tile check
-    if ((m % block_task_policy_t::BlockItemsY != 0) ||
-        (n % block_task_policy_t::BlockItemsX != 0) ||
-        (k % block_task_policy_t::BlockItemsK != 0))
-    {
-        // Needs ragged tile-handling
-        static const bool AllowRaggedTiles = true;
-
-        return dispatch<math_op, block_task_policy_t, TransformA, LdgAlignA, TransformB, LdgAlignB, value_t, accum_t, epilogue_op_t, LdgAlignC, AllowRaggedTiles>(
-            kernel<math_op,block_task_policy_t, TransformA, LdgAlignA, TransformB, LdgAlignB, value_t, accum_t, epilogue_op_t, LdgAlignC, AllowRaggedTiles>,
-            m,
-            n,
-            k,
-            epilogue_op,
-            d_a,
-            d_b,
-            d_c,
-            stream,
-            debug_synchronous);
-    }
-    else
-    {
         // Does not need ragged tile-handling
         static const bool AllowRaggedTiles = false;
 
@@ -532,8 +510,6 @@ launch_configuration device_gemm(
             d_c,
             stream,
             debug_synchronous);
-    }
-
 
 }
 

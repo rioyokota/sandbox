@@ -63,12 +63,13 @@ int main(int argc, const char **argv) {
   double tcublas = timer.elapsed_millis() / g_timing_iterations;
   double cublas_flops = double(num_flops) / tcublas / 1.0e6;
   typedef gemm::blas_scaled_epilogue<accum_t, accum_t, accum_t> epilogue_op_t;
+  typedef gemm::gemm_policy<value_t, accum_t, TransformA, TransformB, gemm::tiling_strategy::Large> block_task_policy_t;
+  static const bool AllowRaggedTiles = false;
   epilogue_op_t epilogue(alpha, beta);
   for (int i = 0; i < g_timing_iterations+2; i++) {
     if (i == 2) timer.start();
-    gemm::device_gemm<
-      gemm::tiling_strategy::Large,
-      math_op,
+    gemm::dispatch<math_op,
+      block_task_policy_t,
       TransformA,
       16,
       TransformB,
@@ -76,15 +77,29 @@ int main(int argc, const char **argv) {
       value_t,
       accum_t,
       epilogue_op_t,
-      4>(m,
-         n,
-         k,
-         epilogue,
-         A.d_data(),
-         B.d_data(),
-         C2.d_data(),
-         stream,
-         false);
+      4,
+      AllowRaggedTiles
+      >(
+        gemm::kernel<math_op,
+        block_task_policy_t,
+        TransformA,
+        16,
+        TransformB,
+        16,
+        value_t,
+        accum_t,
+        epilogue_op_t,
+        4,
+        AllowRaggedTiles>,
+        m,
+        n,
+        k,
+        epilogue,
+        A.d_data(),
+        B.d_data(),
+        C2.d_data(),
+        stream,
+        false);
   }
   timer.stop();
   double tcutlass = timer.elapsed_millis() / g_timing_iterations;
