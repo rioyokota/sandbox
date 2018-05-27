@@ -9,39 +9,32 @@
 namespace cutlass {
 namespace gemm {
 
-template <
-    matrix_transform_t::kind_t  TransformA,         ///< Transformation op for matrix A
-    int                         LdgAlignA,          ///< Alignment of A matrix elements in bytes
-    matrix_transform_t::kind_t  TransformB,         ///< Transformation op for matrix B
-    int                         LdgAlignB,          ///< Alignment of B matrix elements in bytes
-    typename                    value_t,            ///< Multiplicand value type (matrices A and B)
-    typename                    accum_t,            ///< Accumulator value type (matrix C and scalars)
-    typename                    epilogue_op_t,      ///< Epilogue operation applied to update matrix C
-    int                         LdgAlignC,          ///< Alignment of C elements in bytes
-    bool                        AllowRaggedTiles>   ///< Boolean to indicate whether AllowRaggedTiles handling is enabled
-__global__ void kernel(
+  template <typename epilogue_op_t>
+  __global__ void kernel(
                        int m,                      ///< Height in rows of op(A) and C
                        int n,                      ///< Width in columns of op(B) and C
                        int k,                      ///< Width in columns of op(A) and height in rows of op(B)
                        k_split_control k_split,    ///< Abstraction for controlling inter-block k-splitting
                        epilogue_op_t op,           ///< Epilogue operation to update matrix C
-                       value_t *d_a,               ///< Pointer to matrix A array values
-                       value_t *d_b,               ///< Pointer to matrix B array values
-                       accum_t *d_c)               ///< Pointer to matrix C array values
+                       float *d_a,               ///< Pointer to matrix A array values
+                       float *d_b,               ///< Pointer to matrix B array values
+                       float *d_c)               ///< Pointer to matrix C array values
 {
     // Parameterize task type
-  typedef gemm::gemm_policy<value_t, accum_t, TransformA, TransformB, gemm::tiling_strategy::Large> block_task_policy_t;
+  static const matrix_transform_t::kind_t TransformA = matrix_transform_t::NonTranspose;
+  static const matrix_transform_t::kind_t TransformB = matrix_transform_t::NonTranspose;
+  typedef gemm::gemm_policy<float, float, TransformA, TransformB, gemm::tiling_strategy::Large> block_task_policy_t;
     typedef block_task<
         block_task_policy_t,
-        value_t,
-        accum_t,
+        float,
+        float,
         TransformA,
-        LdgAlignA,
+        16,
         TransformB,
-        LdgAlignB,
+        16,
         epilogue_op_t,
-        LdgAlignC,
-        AllowRaggedTiles> block_task_t;
+        4,
+        false> block_task_t;
 
     // Declare statically-allocated shared storage
     __shared__ typename block_task_t::scratch_storage_t smem;
@@ -131,10 +124,7 @@ struct launch_configuration
  * This function also serves as the autotuning entrypoint to evaluate different
  * tuning parameterizations of kernel.
  */
-template <
-  typename                    epilogue_op_t,
-  int                         LdgAlignC,          ///< Alignment of C matrix elements in bytes
-  bool                        AllowRaggedTiles>
+template <typename epilogue_op_t>
 launch_configuration dispatch(
     int             m,                              ///< Height in rows of op(A) and C
     int             n,                              ///< Width in columns of op(B) and C
@@ -180,16 +170,7 @@ launch_configuration dispatch(
                           config.block,
                           config.grid);
   config.split_k = k_split.split_k;
-  gemm::kernel<
-    TransformA,
-    16,
-    TransformB,
-    16,
-    float,
-    float,
-    epilogue_op_t,
-    4,
-    AllowRaggedTiles>
+  gemm::kernel<epilogue_op_t>
     <<< config.grid,
     config.block,
     dynamic_smem_bytes,

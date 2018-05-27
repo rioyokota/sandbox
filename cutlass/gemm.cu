@@ -62,15 +62,10 @@ int main(int argc, const char **argv) {
   double tcublas = timer.elapsed_millis() / g_timing_iterations;
   double cublas_flops = double(num_flops) / tcublas / 1.0e6;
   typedef gemm::blas_scaled_epilogue<float, float, float> epilogue_op_t;
-  static const bool AllowRaggedTiles = false;
   epilogue_op_t epilogue(alpha, beta);
   for (int i = 0; i < g_timing_iterations+2; i++) {
     if (i == 2) timer.start();
-    gemm::dispatch<
-      epilogue_op_t,
-      4,
-      AllowRaggedTiles
-      >(
+    gemm::dispatch<epilogue_op_t>(
         m,
         n,
         k,
