@@ -18,7 +18,6 @@ int main(int argc, const char **argv) {
   int n = 4096;
   float alpha = 1.0;
   float beta = 0.0;
-  const math_operation_class_t math_op = math_operation_class_t::scalar;
   static const matrix_transform_t::kind_t TransformA = matrix_transform_t::NonTranspose;
   static const matrix_transform_t::kind_t TransformB = matrix_transform_t::NonTranspose;
   typedef float value_t;
@@ -63,26 +62,18 @@ int main(int argc, const char **argv) {
   double tcublas = timer.elapsed_millis() / g_timing_iterations;
   double cublas_flops = double(num_flops) / tcublas / 1.0e6;
   typedef gemm::blas_scaled_epilogue<accum_t, accum_t, accum_t> epilogue_op_t;
-  typedef gemm::gemm_policy<value_t, accum_t, TransformA, TransformB, gemm::tiling_strategy::Large> block_task_policy_t;
   static const bool AllowRaggedTiles = false;
-  typedef gemm::gemm_block_task<math_op,block_task_policy_t,value_t,accum_t,TransformA,16,TransformB,16,epilogue_op_t,4,AllowRaggedTiles>::type block_task_t;
   epilogue_op_t epilogue(alpha, beta);
   for (int i = 0; i < g_timing_iterations+2; i++) {
     if (i == 2) timer.start();
-    gemm::dispatch<math_op,
-      block_task_policy_t,
-      TransformA,
-      16,
-      TransformB,
-      16,
+    gemm::dispatch<
       value_t,
       accum_t,
       epilogue_op_t,
       4,
       AllowRaggedTiles
       >(
-        gemm::kernel<math_op,
-        block_task_policy_t,
+        gemm::kernel<
         TransformA,
         16,
         TransformB,
