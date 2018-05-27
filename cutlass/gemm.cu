@@ -65,6 +65,7 @@ int main(int argc, const char **argv) {
   typedef gemm::blas_scaled_epilogue<accum_t, accum_t, accum_t> epilogue_op_t;
   typedef gemm::gemm_policy<value_t, accum_t, TransformA, TransformB, gemm::tiling_strategy::Large> block_task_policy_t;
   static const bool AllowRaggedTiles = false;
+  typedef gemm::gemm_block_task<math_op,block_task_policy_t,value_t,accum_t,TransformA,16,TransformB,16,epilogue_op_t,4,AllowRaggedTiles>::type block_task_t;
   epilogue_op_t epilogue(alpha, beta);
   for (int i = 0; i < g_timing_iterations+2; i++) {
     if (i == 2) timer.start();
