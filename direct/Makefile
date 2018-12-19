@@ -11,6 +11,12 @@ sse: sse.c
 avx: avx.c
 	$(CXX) -mavx $<
 	./a.out
+avx_i: avx_i.c
+	$(CXX) -mavx $< -o i.out
+	./i.out 10
+avx_j: avx_j.c
+	$(CXX) -mavx $< -o j.out
+	./j.out 10
 knc: knc.c
 	$(ICC) -mmic $<
 	ssh $(HOSTNAME)-mic0 LD_LIBRARY_PATH=/opt/intel/compiler/latest/lib/mic direct/a.out
