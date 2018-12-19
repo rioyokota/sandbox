@@ -319,6 +319,7 @@ launch_configuration dispatch(
                                                 kernel_ptr,
                                                 config.block.x * config.block.y,
                                                 dynamic_smem_bytes);
+  std::cout << max_sm_occupancy << std::endl;
   config.grid = grid_raster_t::grid_dims(m, n);
   int sm_count;
   get_sm_count(sm_count);

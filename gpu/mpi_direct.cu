@@ -71,8 +71,8 @@ int main(int argc, char **argv) {
   }
 
   // Initialize
-  //int N = 1 << 16;
-  int N = 1 << 24;
+  int N = 1 << 16;
+  //int N = 1 << 24;
   real_t OPS = 20. * N * N * 1e-9;
   real_t EPS2 = 1e-6;
   double tic, toc;
