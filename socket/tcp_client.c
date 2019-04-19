@@ -1,35 +1,21 @@
-#include <unistd.h>
-#include <arpa/inet.h>
 #include <stdio.h>
-#include <sys/socket.h>
-#include <stdlib.h>
-#include <netinet/in.h>
+#include <unistd.h>
 #include <string.h>
-#define PORT 8081
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+
+#define PORT 1024
 
 int main(int argc, char **argv)  {
-  struct sockaddr_in address;
-  int sock = 0, valread;
-  struct sockaddr_in serv_addr;
-  char *hello = argv[1];
-  char buffer[1024] = {0};
-  if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
-    printf("\n Socket creation error \n");
-    return -1;
-  }
-
-  serv_addr.sin_family = AF_INET;
-  serv_addr.sin_port = htons(PORT);
-
-  // Convert IPv4 and IPv6 addresses from text to binary form
-  if(inet_pton(AF_INET, "127.0.0.1", &serv_addr.sin_addr)<=0) {
-    printf("\nInvalid address/ Address not supported \n");
-    return -1;
-  }
-  if (connect(sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
-    printf("\nConnection Failed \n");
-    return -1;
-  }
-  send(sock , hello , strlen(hello) , 0 );
+  int s;
+  struct sockaddr_in servaddr;
+  char *buf = argv[1];
+  s = socket(AF_INET, SOCK_STREAM, 0);
+  servaddr.sin_family = AF_INET;
+  servaddr.sin_port = htons(PORT);
+  inet_pton(AF_INET, "127.0.0.1", &servaddr.sin_addr);
+  connect(s, (struct sockaddr *)&servaddr, sizeof(servaddr));
+  send(s, buf, strlen(buf), 0);
   return 0;
 }
