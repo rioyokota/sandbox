@@ -3,7 +3,7 @@
 .cpp.o:
 	g++ -c $? -o $@
 
-main: main.cpp scope.o
+scope: scope.cpp bar.o
 	g++ $?
 
 clean:

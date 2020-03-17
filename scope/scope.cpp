@@ -1,6 +1,12 @@
-#include "scope.h"
+void foo();
+void bar();
 
-void bar() {
-  static int e = 0;
-  printf("%d\n",e++);
+int a = 10;
+int b = 10;
+
+int main() {
+  for (int i=0; i<4; i++) {
+    foo();
+    bar();
+  }
 }
