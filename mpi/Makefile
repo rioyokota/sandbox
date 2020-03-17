@@ -28,10 +28,4 @@ tau: tau.cxx
 	tau_cxx.sh tau.cxx
 	mpirun -np 8 ./a.out
 clean:
-	@make -C .. clean
-commit:
-	@make -C .. commit
-save:
-	@make -C .. save
-revert:
-	@make -C .. revert
+	$(RM) *.o *.out
