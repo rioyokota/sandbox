@@ -18,7 +18,7 @@ int main() {
   bind(s, (struct sockaddr *)&servaddr, sizeof(servaddr));
   listen(s, 3);
   s = accept(s, (struct sockaddr *)&servaddr, &l);
-  n = read(s, buf, strlen(buf));
+  n = read(s, buf, sizeof(buf));
   buf[n] = '\0';
   printf("%s\n",buf);
   return 0;

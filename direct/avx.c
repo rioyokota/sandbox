@@ -12,12 +12,12 @@ double get_time() {
 
 inline void rsqrt_newton(__m256& rinv, const __m256& r2, const float& nwtn_const){
   rinv = _mm256_mul_ps(rinv,_mm256_sub_ps(_mm256_set_ps(nwtn_const, nwtn_const, nwtn_const, nwtn_const,
-                                                        nwtn_const, nwtn_const, nwtn_const, nwtn_const),
-                                          _mm256_mul_ps(r2,_mm256_mul_ps(rinv,rinv))));
+          nwtn_const, nwtn_const, nwtn_const, nwtn_const),
+        _mm256_mul_ps(r2,_mm256_mul_ps(rinv,rinv))));
 }
 
 int main() {
-// Initialize
+  // Initialize
   int N = 1 << 16;
   int NALIGN = 32;
   int i, j;
@@ -40,7 +40,7 @@ int main() {
   }
   printf("N      : %d\n",N);
 
-// AVX
+  // AVX
   tic = get_time();
 #pragma omp parallel for private(j)
   for (i=0; i<N; i+=8) {
@@ -48,7 +48,9 @@ int main() {
     __m256 axi = _mm256_setzero_ps();
     __m256 ayi = _mm256_setzero_ps();
     __m256 azi = _mm256_setzero_ps();
+    asm volatile("# begin");
     __m256 xi = _mm256_load_ps(x+i);
+    asm volatile("# end");
     __m256 yi = _mm256_load_ps(y+i);
     __m256 zi = _mm256_load_ps(z+i);
     __m256 R2 = _mm256_set1_ps(EPS2);
@@ -152,7 +154,7 @@ int main() {
   toc = get_time();
   printf("AVX    : %e s : %lf GFlops\n",toc-tic, OPS/(toc-tic));
 
-// No AVX
+  // No AVX
   float pdiff = 0, pnorm = 0, adiff = 0, anorm = 0;
   tic = get_time();
 #pragma omp parallel for private(j) reduction(+: pdiff, pnorm, adiff, anorm)
@@ -188,7 +190,7 @@ int main() {
   printf("P ERR  : %e\n",sqrt(pdiff/pnorm));
   printf("A ERR  : %e\n",sqrt(adiff/anorm));
 
-// DEALLOCATE
+  // DEALLOCATE
   _mm_free(x);
   _mm_free(y);
   _mm_free(z);
