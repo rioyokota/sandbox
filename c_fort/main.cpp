@@ -1,10 +1,9 @@
 #include <cstdio>
 
-extern "C" void vecref_( int[], int * );
+extern "C" int sub_mp_vecsum_(int*);
 
 int main() {
-  int i, sum;
   int v[9] = {1,1,1,1,1,1,1,1,1};
-  vecref_( v, &sum );
+  int sum = sub_mp_vecsum_(v);
   printf("%d\n",sum);
 }
