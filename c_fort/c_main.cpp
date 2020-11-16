@@ -1,9 +1,9 @@
 #include <cstdio>
 
-extern "C" int sub_mp_vecsum_(int*);
+extern "C" int vecsum_(int*);
 
 int main() {
   int v[9] = {1,1,1,1,1,1,1,1,1};
-  int sum = sub_mp_vecsum_(v);
+  int sum = vecsum_(v);
   printf("%d\n",sum);
 }

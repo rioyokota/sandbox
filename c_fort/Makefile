@@ -9,8 +9,11 @@ F90 = ifort
 .f90.o  :
 	$(F90) -c $? -o $@
 
-main: main.o sub.o
+from_c: c_main.o f_sub.o
 	$(CXX) $?
 	./a.out
+from_f: f_main.o c_sub.o
+	$(F90) $? -lstdc++
+	./a.out
 clean:
-	$(RM) *.o *.out
+	$(RM) *.mod *.o *.out
