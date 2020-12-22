@@ -9,3 +9,4 @@
 *.out*
 *.th_o
 .deps
+.python-version
