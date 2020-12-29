@@ -35,5 +35,6 @@ for param in model.parameters():
     print(param.data)
     dist.all_reduce(param.data, op=dist.ReduceOp.SUM)
     print(param.data)
+    param.data /= dist.get_world_size()
 
 dist.destroy_process_group()
