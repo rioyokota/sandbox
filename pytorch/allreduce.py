@@ -29,6 +29,7 @@ device = rank % ngpus
 model = torch.nn.Sequential(
     torch.nn.Linear(1,1,bias=False)
 ).to(device)
+model.train()
 
 for param in model.parameters():
     torch.nn.init.constant_(param,1)
