@@ -11,12 +11,16 @@ def download(url, pathname):
         os.remove(filename)
 
 def main():
-    df = pd.read_csv('2021-01-01.tsv.gz',header=None,sep='\t',chunksize=1,nrows=20)
+    url_file = '2021-01-01.tsv.gz'
+    save_path = 'data/data/'
+    if not os.path.exists(save_path):
+        os.makedirs(save_path)
+    df = pd.read_csv(url_file,header=None,sep='\t',chunksize=1,nrows=10)
     for line in df:
         if line.values[0][6] != 'グランブルー ファンタジー':
             url = line.values[0][3]
-            print(line.values[0][0])
-            download(url,'data/')
+            print(line.values[0])
+            download(url,save_path)
 
 if __name__ == '__main__':
     main()
