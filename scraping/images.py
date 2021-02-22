@@ -12,21 +12,21 @@ def download(url, pathname):
         os.remove(filename)
 
 def main():
-    url_file = '2021-01-01.tsv.gz'
-    #save_path = '/groups1/gcc50533/data/twitter/'
-    save_path = 'data/'
+    date = '2021-01-01'
+    url_file = 'url/' + date + '.tsv.gz'
+    save_path = '/groups1/gcc50533/data/twitter/' + date + '/'
     if not os.path.exists(save_path):
         os.makedirs(save_path)
     f = pd.read_csv(url_file,header=None,sep='\t')
     total = len(f)
-    df = pd.read_csv(url_file,header=None,sep='\t',chunksize=1,nrows=10)
+    df = pd.read_csv(url_file,header=None,sep='\t',chunksize=1) #,nrows=10)
     tic = timer()
     for count, line in enumerate(df):
-        if line.values[0][6] != 'グランブルー ファンタジー':
+        if count > 433429 and line.values[0][6] != 'グランブルー ファンタジー':
             url = line.values[0][3]
             download(url,save_path)
-            toc = timer()
-            print(f'{count} / {total} : {toc-tic} s')
+        toc = timer()
+        print(f'{count} / {total} : {toc-tic} s')
 
 if __name__ == '__main__':
     main()
