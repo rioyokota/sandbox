@@ -1,22 +1,16 @@
 import torch
 
-def printnorm(self, input, output):
-    print('Inside ' + self.__class__.__name__ + ' forward')
-    print('')
-    print('input: ', type(input))
-    print('input[0]: ', type(input[0]))
-    print('output: ', type(output))
-    print('')
-    print('input size:', input[0].size())
-    print('output size:', output.data.size())
-    print('output data:', output.data)
+def printgradnorm(self, grad_input, grad_output):
+    print('d loss / d y_p:', grad_output[0])
+    print('d loss / d x  :', grad_input[0])
+    print('d loss / d w  :', grad_input[1])
 
 x = torch.tensor([[1.],[2.]],requires_grad=True)
-y = torch.tensor([[0.],[0.]])
+y = torch.tensor([[1.],[1.]])
 model = torch.nn.Linear(1,1,bias=False)
 for param in model.parameters():
-    torch.nn.init.constant_(param,1)
-model.register_forward_hook(printnorm)
+    torch.nn.init.constant_(param,2)
+model.register_backward_hook(printgradnorm)
 criterion = torch.nn.MSELoss(reduction='mean')
 y_p = model(x)
 loss = criterion(y_p, y)
