@@ -10,10 +10,10 @@ struct node {
 
 struct node* create(int data) {
   struct node* new_node = (struct node*) malloc (sizeof(struct node));
-  new_node->data = data;
+  new_node->data = data; // data
   new_node->left = NULL;
   new_node->right = NULL;
-  return new_node;
+  return new_node; // new_node
 }
 
 struct node* rotate_left(struct node* root) {
@@ -31,43 +31,21 @@ struct node* rotate_right(struct node* root) {
 }
 
 int height(struct node* root) {
-  int lh, rh;
-  if (root->left == NULL)
-    lh = 0;
-  else
-    lh = 1 + height(root->left);
-  if (root->right == NULL)
-    rh = 0;
-  else
-    rh = 1 + height(root->right);
+  if (root == NULL) 
+    return -1;                
+  int lh = 1 + height(root->left);
+  int rh = 1 + height(root->right);
   if (lh > rh)
     return (lh);
   return (rh);
 }
 
-int balance_factor(struct node* root) {
-  int lh, rh;
-  if (root == NULL)
-    return 0;
-  if (root->left == NULL)
-    lh = 0;
-  else
-    lh = 1 + height(root->left);
-  if (root->right == NULL)
-    rh = 0;
-  else
-    rh = 1 + height(root->right);
-  return lh - rh;
-}
-
 struct node* insert(struct node* root, int data) {
-  if (root == NULL) {
-    struct node* new_node = create(data);
-    root = new_node;
-  }
-  else if (data > root->data) {
+  if (root == NULL) root = create(data);
+  else if (data > root->data)
+  {
     root->right = insert(root->right, data);
-    if (balance_factor(root) == -2) {
+    if (height(root->left) - height(root->right) == -2) {
       if (data >= root->right->data)
         root = rotate_left(root);
       else {
@@ -79,7 +57,7 @@ struct node* insert(struct node* root, int data) {
   else
   {
     root->left = insert(root->left, data);
-    if (balance_factor(root) == 2) {
+    if (height(root->left) - height(root->right) == 2) {
       if (data <= root->left->data)
         root = rotate_right(root);
       else {
@@ -99,7 +77,7 @@ void inorder(struct node* root) {
 }
 
 int main() {
-  int N = 50;
+  int N = 70;
   struct node* root = NULL;
   srand((unsigned int)time(NULL));
   for (int i=0; i<N; i++) {
