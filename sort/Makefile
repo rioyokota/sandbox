@@ -1,11 +1,16 @@
-.SUFFIXES: .cxx .o
+.SUFFIXES: .cxx .c .o
 
+CC = gcc -ggdb3 -Wall -O3
 CXX = mpicxx -ggdb3 -Wall -O3 -fopenmp -msse4a -ffast-math -funroll-loops -I../include
 #CXX = icpc -Wall -xHOST -O3 -openmp -funroll-loops -finline-functions -ansi-alias -I../include
 
+.c.o	:
+	$(CC) -c $? -o $@
 .cxx.o	:
 	$(CXX) -c $? -o $@
-
+avlsort: avlsort.o
+	$(CC) $?
+	./a.out
 binary: binary.o
 	$(CXX) $? $(VFLAGS)
 	./a.out
