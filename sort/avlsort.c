@@ -17,8 +17,8 @@ struct node* create(int data) {
 }
 
 struct node* rotate_left(struct node* root) {
-  struct node* right_child = root->right; // ->right
-  root->right = right_child->left; // ->left
+  struct node* right_child = root->right; // right
+  root->right = right_child->left; // right
   right_child->left = root;
   return right_child;
 }
@@ -35,12 +35,12 @@ int height(struct node* root) {
     return -1;                
   int lh = 1 + height(root->left);
   int rh = 1 + height(root->right);
-  return lh > rh ? lh : rh;
+  return lh > rh ? lh : rh; // ?
 }
 
 struct node* insert(struct node* root, int data) {
   if (root == NULL) root = create(data);
-  else if (data > root->data)
+  else if (data >= root->data)
   {
     root->right = insert(root->right, data);
     if (height(root->left) - height(root->right) == -2) {
