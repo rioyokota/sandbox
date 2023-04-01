@@ -11,12 +11,6 @@ CXX = mpicxx -ggdb3 -Wall -O3 -fopenmp -msse4a -ffast-math -funroll-loops -I../i
 avlsort: avlsort.o
 	$(CC) $?
 	./a.out
-	sleep 1
-	./a.out
-	sleep 1
-	./a.out
-	sleep 1
-	./a.out
 binary: binary.o
 	$(CXX) $? $(VFLAGS)
 	./a.out

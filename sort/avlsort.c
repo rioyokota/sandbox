@@ -30,17 +30,20 @@ struct node* rotate_right(struct node* root) {
   return left_child;
 }
 
+int max_height = 0;
+
 int height(struct node* root) {
-  if (root == NULL) 
-    return -1;                
-  int lh = 1 + height(root->left);
-  int rh = 1 + height(root->right);
-  return lh > rh ? lh : rh; // ?
+  if (root == NULL) return -1;                
+  int left = 1 + height(root->left);
+  int right = 1 + height(root->right);
+  int height = left > right ? left : right;
+  max_height = max_height > height ? max_height : height;
+  return height; // ?
 }
 
 struct node* insert(struct node* root, int data) {
   if (root == NULL) root = create(data);
-  else if (data >= root->data)
+  else if (data > root->data)
   {
     root->right = insert(root->right, data);
     if (height(root->left) - height(root->right) == -2) {
@@ -86,4 +89,5 @@ int main() {
   printf("\n");
   inorder(root);
   printf("\n");
+  printf("%d\n",max_height);
 }
