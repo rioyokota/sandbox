@@ -12,8 +12,6 @@ struct node* root = NULL;
 
 struct node* create(int);
 struct node* insert(struct node*, int);
-struct node* delete(struct node*, int);
-struct node* search(struct node*, int);
 struct node* rotate_left(struct node*);
 struct node* rotate_right(struct node*);
 int balance_factor(struct node*);
@@ -112,81 +110,6 @@ struct node* insert(struct node* root, int data) {
   return root;
 }
 
-struct node * delete(struct node *root, int x) {
-  struct node * temp = NULL;
-  if (root == NULL)
-    return NULL;
-
-  if (x > root->data)
-  {
-    root->right = delete(root->right, x);
-    if (balance_factor(root) == 2)
-    {
-      if (balance_factor(root->left) >= 0)
-        root = rotate_right(root);
-      else {
-        root->left = rotate_left(root->left);
-        root = rotate_right(root);
-      }
-    }
-  }
-  else if (x < root->data)
-  {
-    root->left = delete(root->left, x);
-    if (balance_factor(root) == -2)
-    {
-      if (balance_factor(root->right) <= 0)
-        root = rotate_left(root);
-      else
-      {
-        root->right = rotate_right(root->right);
-        root = rotate_left(root);
-      }
-    }
-  }
-  else
-  {
-    if (root->right != NULL)
-    {
-      temp = root->right;
-      while (temp->left != NULL)
-        temp = temp->left;
-
-      root->data = temp->data;
-      root->right = delete(root->right, temp->data);
-      if (balance_factor(root) == 2)
-      {
-        if (balance_factor(root->left) >= 0)
-        {
-          root = rotate_right(root);
-        }
-        else
-        {
-          root->left = rotate_left(root->left);
-          root = rotate_right(root);
-        }
-      }
-    }
-    else
-    {
-      return (root->left);
-    }
-  }
-  root->ht = height(root);
-  return (root);
-}
-
-struct node* search(struct node* root, int key) {
-  if (root == NULL)
-    return NULL;
-  if(root->data == key)
-    return root;
-  if(key > root->data)
-    return search(root->right, key);
-  else
-    return search(root->left, key);
-}
-
 void inorder(struct node* root) {
   if (root == NULL) return;
   inorder(root->left);
@@ -211,8 +134,9 @@ void postorder(struct node* root) {
 int main() {
   int data[20];
   for (int i=0; i<20; i++) {
-    data[i] = rand() % 20;
-    printf("%d ",data[i]);
+    data[i] = 0; rand() % 50;
+    root = insert(root, data[i]);
   }
+  inorder(root);
   printf("\n");
 }
