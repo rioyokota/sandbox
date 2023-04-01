@@ -83,9 +83,6 @@ int height(struct node* root) {
 struct node* insert(struct node* root, int data) {
   if (root == NULL) {
     struct node* new_node = create(data);
-    if (new_node == NULL) {
-      return NULL;
-    }
     root = new_node;
   }
   else if (data > root->data) {
