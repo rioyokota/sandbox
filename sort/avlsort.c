@@ -16,65 +16,65 @@ struct node* create(int data) {
   return new_node; // new_node
 }
 
-struct node* rotate_left(struct node* root) {
-  struct node* right_child = root->right; // right
-  root->right = right_child->left; // right
-  right_child->left = root;
+struct node* rotate_left(struct node* p) {
+  struct node* right_child = p->right; // right
+  p->right = right_child->left; // right
+  right_child->left = p;
   return right_child;
 }
 
-struct node* rotate_right(struct node* root) {
-  struct node* left_child = root->left;
-  root->left = left_child->right;
-  left_child->right = root;
+struct node* rotate_right(struct node* p) {
+  struct node* left_child = p->left;
+  p->left = left_child->right;
+  left_child->right = p;
   return left_child;
 }
 
 int max_height = 0;
 
-int height(struct node* root) {
-  if (root == NULL) return -1;                
-  int left = 1 + height(root->left);
-  int right = 1 + height(root->right);
+int height(struct node* p) {
+  if (p == NULL) return -1;
+  int left = 1 + height(p->left);
+  int right = 1 + height(p->right);
   int height = left > right ? left : right; // ?
   max_height = max_height > height ? max_height : height;
   return height;
 }
 
-struct node* insert(struct node* root, int data) {
-  if (root == NULL) root = create(data);
-  else if (data > root->data)
+struct node* insert(struct node* p, int data) {
+  if (p == NULL) p = create(data);
+  else if (data > p->data)
   {
-    root->right = insert(root->right, data);
-    if (height(root->left) - height(root->right) == -2) {
-      if (data >= root->right->data)
-        root = rotate_left(root);
+    p->right = insert(p->right, data);
+    if (height(p->left) - height(p->right) == -2) {
+      if (data >= p->right->data)
+        p = rotate_left(p);
       else {
-        root->right = rotate_right(root->right);
-        root = rotate_left(root);
+        p->right = rotate_right(p->right);
+        p = rotate_left(p);
       }
     }
   }
   else
   {
-    root->left = insert(root->left, data);
-    if (height(root->left) - height(root->right) == 2) {
-      if (data <= root->left->data)
-        root = rotate_right(root);
+    p->left = insert(p->left, data);
+    if (height(p->left) - height(p->right) == 2) {
+      if (data <= p->left->data)
+        p = rotate_right(p);
       else {
-        root->left = rotate_left(root->left);
-        root = rotate_right(root);
+        p->left = rotate_left(p->left);
+        p = rotate_right(p);
       }
     }
   }
-  return root;
+  return p;
 }
 
-void traversal(struct node* root) {
-  if (root == NULL) return;
-  traversal(root->left);
-  printf("%d ", root->data);
-  traversal(root->right);
+void traversal(struct node* p) {
+  if (p == NULL) return;
+  traversal(p->left); // a)
+  printf("%d ", p->data);  // c)
+  traversal(p->right); // b)
 }
 
 int main() {
