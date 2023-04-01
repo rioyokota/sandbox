@@ -17,8 +17,8 @@ struct node* create(int data) {
 }
 
 struct node* rotate_left(struct node* root) {
-  struct node* right_child = root->right;
-  root->right = right_child->left;
+  struct node* right_child = root->right; // ->right
+  root->right = right_child->left; // ->left
   right_child->left = root;
   return right_child;
 }
