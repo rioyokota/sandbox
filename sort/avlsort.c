@@ -36,9 +36,9 @@ int height(struct node* root) {
   if (root == NULL) return -1;                
   int left = 1 + height(root->left);
   int right = 1 + height(root->right);
-  int height = left > right ? left : right;
+  int height = left > right ? left : right; // ?
   max_height = max_height > height ? max_height : height;
-  return height; // ?
+  return height;
 }
 
 struct node* insert(struct node* root, int data) {
@@ -70,11 +70,11 @@ struct node* insert(struct node* root, int data) {
   return root;
 }
 
-void inorder(struct node* root) {
+void traversal(struct node* root) {
   if (root == NULL) return;
-  inorder(root->left);
+  traversal(root->left);
   printf("%d ", root->data);
-  inorder(root->right);
+  traversal(root->right);
 }
 
 int main() {
@@ -87,7 +87,7 @@ int main() {
     printf("%d ",data);
   }
   printf("\n");
-  inorder(root);
+  traversal(root);
   printf("\n");
   printf("%d\n",max_height);
 }
