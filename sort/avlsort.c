@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
 
 struct node {
   int data;
@@ -86,7 +87,7 @@ struct node* insert(struct node* root, int data) {
   else if (data > root->data) {
     root->right = insert(root->right, data);
     if (balance_factor(root) == -2) {
-      if (data > root->right->data)
+      if (data >= root->right->data)
         root = rotate_left(root);
       else {
         root->right = rotate_right(root->right);
@@ -98,7 +99,7 @@ struct node* insert(struct node* root, int data) {
   {
     root->left = insert(root->left, data);
     if (balance_factor(root) == 2) {
-      if (data < root->left->data)
+      if (data <= root->left->data)
         root = rotate_right(root);
       else {
         root->left = rotate_left(root->left);
@@ -132,11 +133,15 @@ void postorder(struct node* root) {
 }
 
 int main() {
-  int data[20];
-  for (int i=0; i<20; i++) {
-    data[i] = 0; rand() % 50;
+  int N = 50;
+  int data[N];
+  srand((unsigned int)time(NULL));
+  for (int i=0; i<N; i++) {
+    data[i] = rand() % N;
     root = insert(root, data[i]);
+    printf("%d ",data[i]);
   }
+  printf("\n");
   inorder(root);
   printf("\n");
 }
