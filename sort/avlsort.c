@@ -6,10 +6,7 @@ struct node {
   int data;
   struct node* left;
   struct node* right;
-  int ht;
 };
-
-struct node* root = NULL;
 
 struct node* create(int);
 struct node* insert(struct node*, int);
@@ -33,8 +30,6 @@ struct node* rotate_left(struct node* root) {
   struct node* right_child = root->right;
   root->right = right_child->left;
   right_child->left = root;
-  root->ht = height(root);
-  right_child->ht = height(right_child);
   return right_child;
 }
 
@@ -42,8 +37,6 @@ struct node* rotate_right(struct node* root) {
   struct node* left_child = root->left;
   root->left = left_child->right;
   left_child->right = root;
-  root->ht = height(root);
-  left_child->ht = height(left_child);
   return left_child;
 }
 
@@ -54,11 +47,11 @@ int balance_factor(struct node* root) {
   if (root->left == NULL)
     lh = 0;
   else
-    lh = 1 + root->left->ht;
+    lh = 1 + height(root->left);
   if (root->right == NULL)
     rh = 0;
   else
-    rh = 1 + root->right->ht;
+    rh = 1 + height(root->right);
   return lh - rh;
 }
 
@@ -69,11 +62,11 @@ int height(struct node* root) {
   if (root->left == NULL)
     lh = 0;
   else
-    lh = 1 + root->left->ht;
+    lh = 1 + height(root->left);
   if (root->right == NULL)
     rh = 0;
   else
-    rh = 1 + root->right->ht;
+    rh = 1 + height(root->right);
   if (lh > rh)
     return (lh);
   return (rh);
@@ -107,7 +100,6 @@ struct node* insert(struct node* root, int data) {
       }
     }
   }
-  root->ht = height(root);
   return root;
 }
 
@@ -134,12 +126,12 @@ void postorder(struct node* root) {
 
 int main() {
   int N = 50;
-  int data[N];
+  struct node* root = NULL;
   srand((unsigned int)time(NULL));
   for (int i=0; i<N; i++) {
-    data[i] = rand() % N;
-    root = insert(root, data[i]);
-    printf("%d ",data[i]);
+    int data = rand() % N;
+    root = insert(root, data);
+    printf("%d ",data);
   }
   printf("\n");
   inorder(root);
