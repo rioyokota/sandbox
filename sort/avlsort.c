@@ -54,7 +54,7 @@ struct node* insert(struct node* p, int data)
     p->right = insert(p->right, data);
     if (height(p->left) - height(p->right) == -2)
     {
-      if (data >= p->right->data)
+      if (data > p->right->data)
         p = rotate_left(p);
       else
       {
@@ -68,13 +68,13 @@ struct node* insert(struct node* p, int data)
     p->left = insert(p->left, data);
     if (height(p->left) - height(p->right) == 2)
     {
-      if (data <= p->left->data)
-        p = rotate_right(p);
-      else
+      if (data > p->left->data)
       {
         p->left = rotate_left(p->left);
         p = rotate_right(p);
       }
+      else
+        p = rotate_right(p);
     }
   }
   return p;
