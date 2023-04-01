@@ -35,9 +35,7 @@ int height(struct node* root) {
     return -1;                
   int lh = 1 + height(root->left);
   int rh = 1 + height(root->right);
-  if (lh > rh)
-    return (lh);
-  return (rh);
+  return lh > rh ? lh : rh;
 }
 
 struct node* insert(struct node* root, int data) {
