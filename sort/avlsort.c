@@ -39,7 +39,7 @@ int height(struct node* p)
   if (p == NULL) return -1;
   int left = 1 + height(p->left);
   int right = 1 + height(p->right);
-  return left > right ? left : right; // ?
+  return left > right ? left : right;
 }
 
 struct node* insert(struct node* p, int data)
