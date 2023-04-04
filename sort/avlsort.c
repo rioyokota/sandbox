@@ -12,16 +12,16 @@ struct node
 struct node* create(int data)
 {
   struct node* new_node = (struct node*) malloc (sizeof(struct node));
-  new_node->data = data; // data
+  new_node->data = data;
   new_node->left = NULL;
   new_node->right = NULL;
-  return new_node; // new_node
+  return new_node;
 }
 
 struct node* rotate_left(struct node* p)
 {
-  struct node* right_child = p->right; // right
-  p->right = right_child->left; // right
+  struct node* right_child = p->right;
+  p->right = right_child->left;
   right_child->left = p;
   return right_child;
 }
