@@ -95,7 +95,7 @@ int main()
   const int N = 7;
   srand((unsigned int)time(NULL));
   int data[N] = {0,2,3,4,6,1,5};
-  for (int i=0; i<N; i++) {
+  for (int i = 0; i < N; i++) {
     //int data = rand() % N;
     root = insert(root, data[i]);
     printf("%d ",data[i]);
