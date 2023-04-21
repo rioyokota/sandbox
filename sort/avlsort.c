@@ -39,7 +39,8 @@ int height(struct node* p)
   if (p == NULL) return -1;
   int left = 1 + height(p->left);
   int right = 1 + height(p->right);
-  return left > right ? left : right;
+  if (left > right) return left;
+  else return right;
 }
 
 struct node* insert(struct node* p, int data)
@@ -48,7 +49,7 @@ struct node* insert(struct node* p, int data)
   else if (data > p->data)
   {
     p->right = insert(p->right, data);
-#define ROTATE 0
+#define ROTATE 1
 #if ROTATE
     if (height(p->left) - height(p->right) == -2)
     {
