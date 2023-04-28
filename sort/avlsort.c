@@ -2,15 +2,13 @@
 #include <stdlib.h>
 #include <time.h>
 
-struct node
-{
+struct node {
   int data;
   struct node* left;
   struct node* right;
 };
 
-struct node* create(int data)
-{
+struct node* create(int data) {
   struct node* new_node = (struct node*) malloc (sizeof(struct node));
   new_node->data = data;
   new_node->left = NULL;
@@ -18,24 +16,21 @@ struct node* create(int data)
   return new_node;
 }
 
-struct node* rotate_left(struct node* p)
-{
+struct node* rotate_left(struct node* p) {
   struct node* right_child = p->right;
   p->right = right_child->left;
   right_child->left = p;
   return right_child;
 }
 
-struct node* rotate_right(struct node* p)
-{
+struct node* rotate_right(struct node* p) {
   struct node* left_child = p->left;
   p->left = left_child->right;
   left_child->right = p;
   return left_child;
 }
 
-int height(struct node* p)
-{
+int height(struct node* p) {
   if (p == NULL) return -1;
   int left = 1 + height(p->left);
   int right = 1 + height(p->right);
@@ -43,34 +38,27 @@ int height(struct node* p)
   else return right;
 }
 
-struct node* insert(struct node* p, int data)
-{
+struct node* insert(struct node* p, int data) {
   if (p == NULL) p = create(data);
-  else if (data > p->data)
-  {
+  else if (data > p->data) {
     p->right = insert(p->right, data);
 #define ROTATE 1
 #if ROTATE
-    if (height(p->left) - height(p->right) == -2)
-    {
+    if (height(p->right) - height(p->left) == 2) {
       if (data > p->right->data)
         p = rotate_left(p);
-      else
-      {
+      else {
         p->right = rotate_right(p->right);
         p = rotate_left(p);
       }
     }
 #endif
   }
-  else
-  {
+  else {
     p->left = insert(p->left, data);
 #if ROTATE
-    if (height(p->left) - height(p->right) == 2)
-    {
-      if (data > p->left->data)
-      {
+    if (height(p->left) - height(p->right) == 2) {
+      if (data > p->left->data) {
         p->left = rotate_left(p->left);
         p = rotate_right(p);
       }
