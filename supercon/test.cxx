@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <sys/time.h>
 #include <random>
+#include <omp.h>
 
 double get_time() {
   struct timeval tv;
@@ -29,14 +30,21 @@ int main(int argc, char* argv[]) {
   double *Y2 = new double [N];
   double toc = get_time();
   printf("Alloc      : %e s\n",toc-tic);
-  std::mt19937 generator(123);
   std::uniform_real_distribution<double> dis(0.0, 1.0);
-  for (uint64_t i=0; i<N; i++) {
-    X[i] = dis(generator);
-    Y[i] = dis(generator);
+  const int blocks = 128;
+#pragma omp parallel for
+  for (int ib=0; ib<blocks; ib++) {
+    std::mt19937 generator(ib);
+    int begin = ib * (N / blocks);
+    int end = (ib + 1) * (N / blocks);
+    for (uint64_t i=begin; i<end; i++) {
+      X[i] = dis(generator);
+      Y[i] = dis(generator);
+    }
   }
   tic = get_time();
   printf("Init       : %e s\n",tic-toc);
+#pragma omp parallel for
   for (uint64_t i=0; i<N; i++) {
     uint64_t ix = X[i] * Nx;
     uint64_t iy = Y[i] * Nx;
