@@ -32,6 +32,8 @@ int main(int argc, char* argv[]) {
   uint64_t *permutation = new uint64_t [N]; 
   double *X2 = new double [N];
   double *Y2 = new double [N];
+  double memory = (double)N * 6 * 8 + (double)range * (threads + 2) * 8;
+  printf("Memory     : %e GB\n",memory/1e9);
   double toc = get_time();
   printf("Alloc      : %e s\n",toc-tic);
   std::uniform_real_distribution<double> dis(0.0, 1.0);
