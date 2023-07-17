@@ -25,11 +25,13 @@ int main(int argc, char* argv[]) {
   double *Y = new double [N];
   uint64_t *key = new uint64_t [N]; 
   uint64_t *bucket = new uint64_t [range];
-  uint64_t (*bucketPerThread)[range] = new uint64_t [threads][range]();
   uint64_t *offset = new uint64_t [range+1];
   uint64_t *permutation = new uint64_t [N]; 
   double *X2 = new double [N];
   double *Y2 = new double [N];
+  uint64_t **bucketPerThread = new uint64_t* [threads];
+  for (int i=0; i<threads; i++)
+    bucketPerThread[i] = new uint64_t [range];
   double toc = get_time();
   printf("Alloc      : %e s\n",toc-tic);
   std::uniform_real_distribution<double> dis(0.0, 1.0);
@@ -158,6 +160,8 @@ int main(int argc, char* argv[]) {
   delete[] Y;
   delete[] key;
   delete[] bucket;
+  for (int i=0; i<threads; i++)
+    delete[] bucketPerThread[i];
   delete[] bucketPerThread;
   delete[] offset;
   delete[] permutation;
