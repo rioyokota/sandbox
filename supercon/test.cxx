@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <sys/time.h>
+#include <random>
 
 double get_time() {
   struct timeval tv;
@@ -13,6 +14,7 @@ double get_time() {
 int main(int argc, char* argv[]) {
   const uint64_t N = 1 << atoi(argv[1]);
   const int level = atoi(argv[2]);
+  const int ranking = 5;
   const int Nx = 1 << level;
   const uint64_t range = Nx * Nx;
   printf("N          : %llu\n",N);
@@ -27,10 +29,11 @@ int main(int argc, char* argv[]) {
   double *Y2 = new double [N];
   double toc = get_time();
   printf("Alloc      : %e s\n",toc-tic);
-  srand48(1);
+  std::mt19937 generator(123);
+  std::uniform_real_distribution<double> dis(0.0, 1.0);
   for (uint64_t i=0; i<N; i++) {
-    X[i] = drand48();
-    Y[i] = drand48();
+    X[i] = dis(generator);
+    Y[i] = dis(generator);
   }
   tic = get_time();
   printf("Init       : %e s\n",tic-toc);
@@ -68,9 +71,12 @@ int main(int argc, char* argv[]) {
   }
   toc = get_time();
   printf("Permute    : %e s\n",toc-tic);
-  uint64_t minI = 0;
-  uint64_t minJ = 0;
-  double minD2 = 2;
+  uint64_t minI[ranking],minJ[ranking];
+  double minD[ranking];
+  for (int i=0; i<ranking; i++) {
+    minI[i] = minJ[i] = 0;
+    minD[i] = 1;
+  }
 #pragma omp parallel for
   for (uint64_t i=0; i<range; i++) {
     int ix = 0;
@@ -90,13 +96,21 @@ int main(int argc, char* argv[]) {
            j |= (jy & (uint64_t)1 << l) <<  l;
            j |= (jx & (uint64_t)1 << l) << (l + 1);
         }
+	if (j > i) break;
         for (int ii=offset[i]; ii<offset[i+1]; ii++) {
 	  for (int jj=offset[j]; jj<offset[j+1]; jj++) {
-            double D2 = (X2[ii] - X2[jj]) * (X2[ii] - X2[jj]) + (Y2[ii] - Y2[jj]) * (Y2[ii] - Y2[jj]);
-	    if (minD2 > D2 && ii != jj) {
-              minI = ii;
-	      minJ = jj;
-	      minD2 = D2;
+            double dd = (X2[ii] - X2[jj]) * (X2[ii] - X2[jj]) + (Y2[ii] - Y2[jj]) * (Y2[ii] - Y2[jj]);
+	    if (minD[ranking-1] > dd && ii < jj) {
+	      int k = ranking-1;
+	      while (k>0 && dd < minD[k-1]) {
+                minI[k] = minI[k-1];
+                minJ[k] = minJ[k-1];
+                minD[k] = minD[k-1];
+		k--;
+	      }
+              minI[k] = ii;
+	      minJ[k] = jj;
+	      minD[k] = dd;
 	    }
 	  }
 	}
@@ -105,11 +119,14 @@ int main(int argc, char* argv[]) {
   }
   tic = get_time();
   printf("Search     : %e s\n",tic-toc);
-  minI = permutation[minI];
-  minJ = permutation[minJ];
-  printf("%llu %10.15e %10.15e\n",minI,X[minI],Y[minI]);
-  printf("%llu %10.15e %10.15e\n",minJ,X[minJ],Y[minJ]);
-  printf("%10.15e\n",sqrt(minD2));
+  for (int i=0; i<ranking; i++) {
+    minI[i] = permutation[minI[i]];
+    minJ[i] = permutation[minJ[i]];
+    printf("\n#%d closest\n",i+1);
+    printf("Point I  : %llu %10.15e %10.15e\n",minI[i],X[minI[i]],Y[minI[i]]);
+    printf("Point J  : %llu %10.15e %10.15e\n",minJ[i],X[minJ[i]],Y[minJ[i]]);
+    printf("Distance : %10.15e\n",sqrt(minD[i]));
+  }
   delete X;
   delete Y;
   delete key;
