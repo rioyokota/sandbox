@@ -11,7 +11,7 @@ double getTime() {
 
 int main() {
   double tic = getTime();
-  const int N = 10000000;
+  const int N = 1 << 25;
   Neighbor NE(N);
   double *X[3];
   for (int d=0; d<3; d++) {

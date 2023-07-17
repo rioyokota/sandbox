@@ -57,22 +57,32 @@ int main(int argc, char* argv[]) {
   }
   toc = get_time();
   printf("Index      : %e s\n",toc-tic);
-  for (uint64_t i=0; i<range; i++)
-    bucket[i] = 0;
-  for (uint64_t i=0; i<N; i++)
-    bucket[key[i]]++;
-  for (uint64_t i=1; i<range; i++)
-    bucket[i] += bucket[i-1];
-  offset[0] = 0;
-  for (uint64_t i=0; i<range; i++)
-    offset[i+1] = bucket[i];
-  for (int64_t i=N-1; i>=0; i--) {
-    bucket[key[i]]--;
-    uint64_t inew = bucket[key[i]];
-    permutation[inew] = i;
+#pragma omp parallel
+  {
+#pragma omp for
+    for (uint64_t i=0; i<range; i++)
+      bucket[i] = 0;
+#pragma omp for
+    for (uint64_t i=0; i<N; i++)
+#pragma omp atomic update
+      bucket[key[i]]++;
+#pragma omp single
+    for (uint64_t i=1; i<range; i++)
+      bucket[i] += bucket[i-1];
+    offset[0] = 0;
+#pragma omp for
+    for (uint64_t i=0; i<range; i++)
+      offset[i+1] = bucket[i];
+#pragma omp for
+    for (int64_t i=N-1; i>=0; i--) {
+      bucket[key[i]]--;
+      uint64_t inew = bucket[key[i]];
+      permutation[inew] = i;
+    }
   }
   tic = get_time();
   printf("Sort       : %e s\n",tic-toc);
+#pragma omp parallel for
   for (uint64_t i=0; i<N; i++) {
     X2[i] = X[permutation[i]];
     Y2[i] = Y[permutation[i]];
