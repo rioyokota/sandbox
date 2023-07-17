@@ -81,10 +81,10 @@ int main(int argc, char* argv[]) {
 #pragma omp for
     for (uint64_t i=0; i<range; i++)
       offset[i+1] = bucket[i];
-#if 0
+#if 1
     t = omp_get_thread_num();
 #pragma omp for
-    for (int64_t i=N-1; i>=0; i--) {
+    for (int64_t i=0; i<N; i++) {
       bucketPerThread[t][key[i]]--;
       uint64_t inew = offset[key[i]] + bucketPerThread[t][key[i]];
       permutation[inew] = i;
@@ -104,7 +104,6 @@ int main(int argc, char* argv[]) {
   for (uint64_t i=0; i<N; i++) {
     X2[i] = X[permutation[i]];
     Y2[i] = Y[permutation[i]];
-    //printf("%llu %llu\n",i,key[permutation[i]]);
   }
   toc = get_time();
   printf("Permute    : %e s\n",toc-tic);
