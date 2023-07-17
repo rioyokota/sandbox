@@ -13,26 +13,26 @@ double get_time() {
 }
 
 int main(int argc, char* argv[]) {
-  const uint64_t N = 1 << atoi(argv[1]);
+  const int N = 1 << atoi(argv[1]);
   const int level = atoi(argv[2]);
   const int threads = 48;
   const int ranking = 10000;
   const int Nx = 1 << level;
-  const uint64_t range = Nx * Nx;
-  printf("N          : %llu\n",N);
+  const int range = Nx * Nx;
+  printf("N          : %d\n",N);
   double tic = get_time();
   double *X = new double [N];
   double *Y = new double [N];
-  uint64_t *key = new uint64_t [N]; 
-  uint64_t *bucket = new uint64_t [range];
-  uint64_t **bucketPerThread = new uint64_t* [threads];
+  int *key = new int [N]; 
+  int *bucket = new int [range];
+  int **bucketPerThread = new int* [threads];
   for (int i=0; i<threads; i++)
-    bucketPerThread[i] = new uint64_t [range];
-  uint64_t *offset = new uint64_t [range+1];
-  uint64_t *permutation = new uint64_t [N]; 
+    bucketPerThread[i] = new int [range];
+  int *offset = new int [range+1];
+  int *permutation = new int [N]; 
   double *X2 = new double [N];
   double *Y2 = new double [N];
-  double memory = (double)N * 6 * 8 + (double)range * (threads + 2) * 8;
+  double memory = (double)N * 5 * 8 + (double)range * (threads + 2) * 4;
   printf("Memory     : %e GB\n",memory/1e9);
   double toc = get_time();
   printf("Alloc      : %e s\n",toc-tic);
@@ -43,7 +43,7 @@ int main(int argc, char* argv[]) {
     int begin = ib * (N / threads);
     int end = (ib + 1) * (N / threads);
     if(ib == threads-1) end = N > end ? N : end;
-    for (uint64_t i=begin; i<end; i++) {
+    for (int i=begin; i<end; i++) {
       X[i] = dis(generator);
       Y[i] = dis(generator);
     }
@@ -51,13 +51,13 @@ int main(int argc, char* argv[]) {
   tic = get_time();
   printf("Init       : %e s\n",tic-toc);
 #pragma omp parallel for
-  for (uint64_t i=0; i<N; i++) {
-    uint64_t ix = X[i] * Nx;
-    uint64_t iy = Y[i] * Nx;
-    uint64_t k = 0;
+  for (int i=0; i<N; i++) {
+    int ix = X[i] * Nx;
+    int iy = Y[i] * Nx;
+    int k = 0;
     for (int l=0; l<level; l++) {
-       k |= (iy & (uint64_t)1 << l) <<  l;
-       k |= (ix & (uint64_t)1 << l) << (l + 1);
+       k |= (iy & 1 << l) <<  l;
+       k |= (ix & 1 << l) << (l + 1);
     }
     key[i] = k;
   }
@@ -66,55 +66,55 @@ int main(int argc, char* argv[]) {
 #pragma omp parallel
   {
     int t = omp_get_thread_num();
-    for (uint64_t i=0; i<range; i++)
+    for (int i=0; i<range; i++)
       bucketPerThread[t][i] = 0;
 #pragma omp for
-    for (uint64_t i=0; i<N; i++)
+    for (int i=0; i<N; i++)
       bucketPerThread[t][key[i]]++;
 #pragma omp single
     for (int t=1; t<threads; t++)
-      for (uint64_t i=0; i<range; i++)
+      for (int i=0; i<range; i++)
 	bucketPerThread[t][i] += bucketPerThread[t-1][i];
 #pragma omp for
-    for (uint64_t i=0; i<range; i++)
+    for (int i=0; i<range; i++)
       bucket[i] = bucketPerThread[threads-1][i];
 #pragma omp single
-    for (uint64_t i=1; i<range; i++)
+    for (int i=1; i<range; i++)
       bucket[i] += bucket[i-1];
     offset[0] = 0;
 #pragma omp for
-    for (uint64_t i=0; i<range; i++)
+    for (int i=0; i<range; i++)
       offset[i+1] = bucket[i];
     t = omp_get_thread_num();
 #pragma omp for
     for (int64_t i=0; i<N; i++) {
       bucketPerThread[t][key[i]]--;
-      uint64_t inew = offset[key[i]] + bucketPerThread[t][key[i]];
+      int inew = offset[key[i]] + bucketPerThread[t][key[i]];
       permutation[inew] = i;
     }
   }
   tic = get_time();
   printf("Sort       : %e s\n",tic-toc);
 #pragma omp parallel for
-  for (uint64_t i=0; i<N; i++) {
+  for (int i=0; i<N; i++) {
     X2[i] = X[permutation[i]];
     Y2[i] = Y[permutation[i]];
   }
   toc = get_time();
   printf("Permute    : %e s\n",toc-tic);
-  uint64_t minI[ranking],minJ[ranking];
+  int minI[ranking],minJ[ranking];
   double minD[ranking];
   for (int i=0; i<ranking; i++) {
     minI[i] = minJ[i] = 0;
     minD[i] = 1;
   }
 #pragma omp parallel for
-  for (uint64_t i=0; i<range; i++) {
+  for (int i=0; i<range; i++) {
     int ix = 0;
     int iy = 0;
     for (int l=0; l<level; l++) {
-      iy |= (i & (uint64_t)1 <<  2 * l)      >>  l;
-      ix |= (i & (uint64_t)1 << (2 * l + 1)) >> (l + 1);
+      iy |= (i & 1 <<  2 * l)      >>  l;
+      ix |= (i & 1 << (2 * l + 1)) >> (l + 1);
     }
     int minjx = 0 > ix-1 ? 0 : ix-1;
     int maxjx = ix+1 < Nx-1 ? ix+1 : Nx-1;
@@ -122,10 +122,10 @@ int main(int argc, char* argv[]) {
     int maxjy = iy+1 < Nx-1 ? iy+1 : Nx-1;
     for (int jx=minjx; jx<=maxjx; jx++) {
       for (int jy=minjy; jy<=maxjy; jy++) {
-        uint64_t j = 0;
+        int j = 0;
         for (int l=0; l<level; l++) {
-           j |= (jy & (uint64_t)1 << l) <<  l;
-           j |= (jx & (uint64_t)1 << l) << (l + 1);
+           j |= (jy & 1 << l) <<  l;
+           j |= (jx & 1 << l) << (l + 1);
         }
 	if (j > i) break;
         for (int ii=offset[i]; ii<offset[i+1]; ii++) {
@@ -155,8 +155,8 @@ int main(int argc, char* argv[]) {
     minJ[i] = permutation[minJ[i]];
     if (i==0 || i==9 || i==99 || i==999 || i==9999) {
       printf("\n#%d closest\n",i+1);
-      printf("Point I  : %llu %10.15e %10.15e\n",minI[i],X[minI[i]],Y[minI[i]]);
-      printf("Point J  : %llu %10.15e %10.15e\n",minJ[i],X[minJ[i]],Y[minJ[i]]);
+      printf("Point I  : %d %10.15e %10.15e\n",minI[i],X[minI[i]],Y[minI[i]]);
+      printf("Point J  : %d %10.15e %10.15e\n",minJ[i],X[minJ[i]],Y[minJ[i]]);
       printf("Distance : %10.15e\n",sqrt(minD[i]));
     }
   }
