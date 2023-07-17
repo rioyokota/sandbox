@@ -31,12 +31,13 @@ int main(int argc, char* argv[]) {
   double toc = get_time();
   printf("Alloc      : %e s\n",toc-tic);
   std::uniform_real_distribution<double> dis(0.0, 1.0);
-  const int blocks = 128;
+  const int threads = 48;
 #pragma omp parallel for
-  for (int ib=0; ib<blocks; ib++) {
+  for (int ib=0; ib<threads; ib++) {
     std::mt19937 generator(ib);
-    int begin = ib * (N / blocks);
-    int end = (ib + 1) * (N / blocks);
+    int begin = ib * (N / threads);
+    int end = (ib + 1) * (N / threads);
+    if(ib == threads-1) end = N > end ? N : end;
     for (uint64_t i=begin; i<end; i++) {
       X[i] = dis(generator);
       Y[i] = dis(generator);
@@ -73,7 +74,7 @@ int main(int argc, char* argv[]) {
 #pragma omp for
     for (uint64_t i=0; i<range; i++)
       offset[i+1] = bucket[i];
-#pragma omp for
+#pragma omp single
     for (int64_t i=N-1; i>=0; i--) {
       bucket[key[i]]--;
       uint64_t inew = bucket[key[i]];
