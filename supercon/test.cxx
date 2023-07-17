@@ -107,7 +107,9 @@ int main(int argc, char* argv[]) {
   printf("Search     : %e s\n",tic-toc);
   minI = permutation[minI];
   minJ = permutation[minJ];
-  printf("%llu %e %e %llu %e %e %e\n",minI,X[minI],Y[minI],minJ,X[minJ],Y[minJ],minD2);
+  printf("%llu %10.15e %10.15e\n",minI,X[minI],Y[minI]);
+  printf("%llu %10.15e %10.15e\n",minJ,X[minJ],Y[minJ]);
+  printf("%10.15e\n",sqrt(minD2));
   delete X;
   delete Y;
   delete key;
