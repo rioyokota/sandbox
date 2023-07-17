@@ -14,34 +14,36 @@ int main() {
   const uint64_t N = 1 << 10;
   const int level = 2;
   const int Nx = 1 << level;
-  const int range = Nx * Nx;
+  const uint64_t range = Nx * Nx;
   printf("N          : %llu\n",N);
   double tic = get_time();
-  float *X = new float [N];
-  float *Y = new float [N];
-  uint64_t *I = new uint64_t [N]; 
+  double *X = new double [N];
+  double *Y = new double [N];
   uint64_t *key = new uint64_t [N]; 
   uint64_t *bucket = new uint64_t [range];
+  uint64_t *offset = new uint64_t [range+1];
   uint64_t *permutation = new uint64_t [N]; 
+  double *X2 = new double [N];
+  double *Y2 = new double [N];
+  uint64_t *key2 = new uint64_t [N]; 
   double toc = get_time();
   printf("Alloc      : %e s\n",toc-tic);
   srand48(1);
   for (uint64_t i=0; i<N; i++) {
     X[i] = drand48();
     Y[i] = drand48();
-    I[i] = i;
   }
   tic = get_time();
   printf("Init       : %e s\n",tic-toc);
   for (uint64_t i=0; i<N; i++) {
-    uint64_t jx = X[i] * Nx;
-    uint64_t jy = Y[i] * Nx;
-    uint64_t j = 0;
+    uint64_t ix = X[i] * Nx;
+    uint64_t iy = Y[i] * Nx;
+    uint64_t k = 0;
     for (int l=0; l<level; l++) {
-       j |= (jy & (uint64_t)1 << l) <<  l;
-       j |= (jx & (uint64_t)1 << l) << (l + 1);
+       k |= (iy & (uint64_t)1 << l) <<  l;
+       k |= (ix & (uint64_t)1 << l) << (l + 1);
     }
-    key[i] = j;
+    key[i] = k;
   }
   toc = get_time();
   printf("Index      : %e s\n",toc-tic);
@@ -51,6 +53,9 @@ int main() {
     bucket[key[i]]++;
   for (uint64_t i=1; i<range; i++)
     bucket[i] += bucket[i-1];
+  offset[0] = 0;
+  for (uint64_t i=0; i<range; i++)
+    offset[i+1] = bucket[i];
   for (int64_t i=N-1; i>=0; i--) {
     bucket[key[i]]--;
     uint64_t inew = bucket[key[i]];
@@ -59,13 +64,57 @@ int main() {
   tic = get_time();
   printf("Sort       : %e s\n",tic-toc);
   for (uint64_t i=0; i<N; i++) {
-    printf("%llu %llu %llu\n",i,permutation[i],key[permutation[i]]);
+    X2[i] = X[permutation[i]];
+    Y2[i] = Y[permutation[i]];
+    key2[i] = key[permutation[i]];
   }
+  toc = get_time();
+  printf("Permute    : %e s\n",toc-tic);
+  uint64_t minI = 0;
+  uint64_t minJ = 0;
+  double minD2 = 2;
+  for (uint64_t i=0; i<range; i++) {
+    int ix = 0;
+    int iy = 0;
+    for (int l=0; l<level; l++) {
+      ix |= (i & (uint64_t)1 <<  2 * l)      >>  l;
+      iy |= (i & (uint64_t)1 << (2 * l + 1)) >> (l + 1);
+    }
+    int minjx = 0 > ix-1 ? 0 : ix-1;
+    int maxjx = ix+1 < Nx-1 ? ix+1 : Nx-1;
+    int minjy = 0 > iy-1 ? 0 : iy-1;
+    int maxjy = iy+1 < Nx-1 ? iy+1 : Nx-1;
+    for (int jx=minjx; jx<=maxjx; jx++) {
+      for (int jy=minjy; jy<=maxjy; jy++) {
+        uint64_t j = 0;
+        for (int l=0; l<level; l++) {
+           j |= (jy & (uint64_t)1 << l) <<  l;
+           j |= (jx & (uint64_t)1 << l) << (l + 1);
+        }
+	for (int ii=offset[i]; ii<offset[i+1]; ii++) {
+	  for (int jj=offset[j]; jj<offset[j+1]; jj++) {
+            double D2 = (X2[ii] - X2[jj]) * (X2[ii] - X2[jj]) + (Y2[ii] - Y2[jj]) * (Y2[ii] - Y2[jj]);
+	    if (minD2 > D2 && ii != jj) {
+              minI = ii;
+	      minJ = jj;
+	      minD2 = D2;
+	    }
+	  }
+	}
+      }
+    }
+  }
+  tic = get_time();
+  printf("Search     : %e s\n",tic-toc);
+  printf("%llu %e %e %llu %e %e\n",permutation[minI],X[permutation[minI]],Y[permutation[minI]],permutation[minJ],X[permutation[minJ]],Y[permutation[minJ]]);
   delete X;
   delete Y;
-  delete I;
   delete key;
   delete bucket;
+  delete offset;
   delete permutation;
+  delete X2;
+  delete Y2;
+  delete key2;
   return 0;
 }
