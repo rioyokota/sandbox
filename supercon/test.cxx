@@ -66,7 +66,6 @@ int main(int argc, char* argv[]) {
       bucketPerThread[t][i] = 0;
 #pragma omp for
     for (uint64_t i=0; i<N; i++)
-#pragma omp atomic update
       bucketPerThread[t][key[i]]++;
 #pragma omp barrier
 #pragma omp single
@@ -83,12 +82,22 @@ int main(int argc, char* argv[]) {
 #pragma omp for
     for (uint64_t i=0; i<range; i++)
       offset[i+1] = bucket[i];
+#if 0
+    t = omp_get_thread_num();
+#pragma omp for
+    for (int64_t i=N-1; i>=0; i--) {
+      bucketPerThread[t][key[i]]--;
+      uint64_t inew = bucketPerThread[t][key[i]];
+      permutation[inew] = i;
+    }
+#else
 #pragma omp single
     for (int64_t i=N-1; i>=0; i--) {
       bucket[key[i]]--;
       uint64_t inew = bucket[key[i]];
       permutation[inew] = i;
     }
+#endif
   }
   tic = get_time();
   printf("Sort       : %e s\n",tic-toc);
@@ -96,6 +105,7 @@ int main(int argc, char* argv[]) {
   for (uint64_t i=0; i<N; i++) {
     X2[i] = X[permutation[i]];
     Y2[i] = Y[permutation[i]];
+    //printf("%llu %llu\n",i,key[permutation[i]]);
   }
   toc = get_time();
   printf("Permute    : %e s\n",toc-tic);
