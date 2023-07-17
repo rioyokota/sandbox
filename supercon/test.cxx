@@ -11,8 +11,8 @@ double get_time() {
 }
 
 int main(int argc, char* argv[]) {
-  const uint64_t N = 1 << 16;
-  const int level = atoi(argv[1]);
+  const uint64_t N = 1 << atoi(argv[1]);
+  const int level = atoi(argv[2]);
   const int Nx = 1 << level;
   const uint64_t range = Nx * Nx;
   printf("N          : %llu\n",N);
@@ -71,6 +71,7 @@ int main(int argc, char* argv[]) {
   uint64_t minI = 0;
   uint64_t minJ = 0;
   double minD2 = 2;
+#pragma omp parallel for
   for (uint64_t i=0; i<range; i++) {
     int ix = 0;
     int iy = 0;
@@ -89,26 +90,13 @@ int main(int argc, char* argv[]) {
            j |= (jy & (uint64_t)1 << l) <<  l;
            j |= (jx & (uint64_t)1 << l) << (l + 1);
         }
-	if (i == j) {
-	  for (int ii=offset[i]; ii<offset[i+1]; ii++) {
-	    for (int jj=offset[j]; jj<offset[j+1]; jj++) {
-              double D2 = (X2[ii] - X2[jj]) * (X2[ii] - X2[jj]) + (Y2[ii] - Y2[jj]) * (Y2[ii] - Y2[jj]);
-	      if (minD2 > D2 && ii != jj) {
-                minI = ii;
-	        minJ = jj;
-	        minD2 = D2;
-	      }
-	    }
-	  }
-	} else {
-	  for (int ii=offset[i]; ii<offset[i+1]; ii++) {
-	    for (int jj=offset[j]; jj<offset[j+1]; jj++) {
-              double D2 = (X2[ii] - X2[jj]) * (X2[ii] - X2[jj]) + (Y2[ii] - Y2[jj]) * (Y2[ii] - Y2[jj]);
-	      if (minD2 > D2) {
-                minI = ii;
-	        minJ = jj;
-	        minD2 = D2;
-	      }
+        for (int ii=offset[i]; ii<offset[i+1]; ii++) {
+	  for (int jj=offset[j]; jj<offset[j+1]; jj++) {
+            double D2 = (X2[ii] - X2[jj]) * (X2[ii] - X2[jj]) + (Y2[ii] - Y2[jj]) * (Y2[ii] - Y2[jj]);
+	    if (minD2 > D2 && ii != jj) {
+              minI = ii;
+	      minJ = jj;
+	      minD2 = D2;
 	    }
 	  }
 	}
