@@ -14,7 +14,8 @@ double get_time() {
 
 int main(int argc, char* argv[]) {
   const uint64_t N = 1 << atoi(argv[1]);
-  const int level = atoi(argv[2]);
+  const int level = 11;
+  const int threads = 48;
   const int ranking = 5;
   const int Nx = 1 << level;
   const uint64_t range = Nx * Nx;
@@ -24,6 +25,7 @@ int main(int argc, char* argv[]) {
   double *Y = new double [N];
   uint64_t *key = new uint64_t [N]; 
   uint64_t *bucket = new uint64_t [range];
+  uint64_t (*bucketPerThread)[range] = new uint64_t [threads][range]();
   uint64_t *offset = new uint64_t [range+1];
   uint64_t *permutation = new uint64_t [N]; 
   double *X2 = new double [N];
@@ -31,7 +33,6 @@ int main(int argc, char* argv[]) {
   double toc = get_time();
   printf("Alloc      : %e s\n",toc-tic);
   std::uniform_real_distribution<double> dis(0.0, 1.0);
-  const int threads = 48;
 #pragma omp parallel for
   for (int ib=0; ib<threads; ib++) {
     std::mt19937 generator(ib);
@@ -60,13 +61,21 @@ int main(int argc, char* argv[]) {
   printf("Index      : %e s\n",toc-tic);
 #pragma omp parallel
   {
-#pragma omp for
+    int t = omp_get_thread_num();
     for (uint64_t i=0; i<range; i++)
-      bucket[i] = 0;
+      bucketPerThread[t][i] = 0;
 #pragma omp for
     for (uint64_t i=0; i<N; i++)
 #pragma omp atomic update
-      bucket[key[i]]++;
+      bucketPerThread[t][key[i]]++;
+#pragma omp barrier
+#pragma omp single
+    for (int t=1; t<threads; t++)
+      for (uint64_t i=0; i<range; i++)
+	bucketPerThread[t][i] += bucketPerThread[t-1][i];
+#pragma omp single
+    for (uint64_t i=0; i<range; i++)
+      bucket[i] = bucketPerThread[threads-1][i];
 #pragma omp single
     for (uint64_t i=1; i<range; i++)
       bucket[i] += bucket[i-1];
@@ -146,13 +155,14 @@ int main(int argc, char* argv[]) {
     printf("Point J  : %llu %10.15e %10.15e\n",minJ[i],X[minJ[i]],Y[minJ[i]]);
     printf("Distance : %10.15e\n",sqrt(minD[i]));
   }
-  delete X;
-  delete Y;
-  delete key;
-  delete bucket;
-  delete offset;
-  delete permutation;
-  delete X2;
-  delete Y2;
+  delete[] X;
+  delete[] Y;
+  delete[] key;
+  delete[] bucket;
+  delete[] bucketPerThread;
+  delete[] offset;
+  delete[] permutation;
+  delete[] X2;
+  delete[] Y2;
   return 0;
 }
