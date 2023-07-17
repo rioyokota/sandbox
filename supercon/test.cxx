@@ -1,4 +1,5 @@
 #include <math.h>
+#include <inttypes.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <sys/time.h>
@@ -10,21 +11,24 @@ double get_time() {
 }
 
 int main() {
-  int N = 1 << 16;
-  float OPS = 20. * N * N * 1e-9;
-  float * x = (float*) malloc(N * sizeof(float));
-  float * y = (float*) malloc(N * sizeof(float));
-  for (int i=0; i<N; i++) {
-    x[i] = drand48();
-    y[i] = drand48();
-  }
-  printf("N      : %d\n",N);
-
+  uint64_t N = 1 << 20;
+  uint64_t *I = new uint64_t [N]; 
+  float *X = new float [N];
+  float *Y = new float [N];
+  srand48(1);
   double tic = get_time();
-  double toc = get_time();
-  printf("No SIMD: %e s : %lf GFlops\n",toc-tic, OPS/(toc-tic));
+  for (uint64_t i=0; i<N; i++) {
+    I[i] = i;
+    X[i] = drand48();
+    Y[i] = drand48();
+  }
+  printf("N      : %llu\n",N);
 
-  free(x);
-  free(y);
+  double toc = get_time();
+  printf("%e s\n",toc-tic);
+
+  delete I;
+  delete X;
+  delete Y;
   return 0;
 }
