@@ -67,7 +67,6 @@ int main(int argc, char* argv[]) {
 #pragma omp for
     for (uint64_t i=0; i<N; i++)
       bucketPerThread[t][key[i]]++;
-#pragma omp barrier
 #pragma omp single
     for (int t=1; t<threads; t++)
       for (uint64_t i=0; i<range; i++)
@@ -87,12 +86,12 @@ int main(int argc, char* argv[]) {
 #pragma omp for
     for (int64_t i=N-1; i>=0; i--) {
       bucketPerThread[t][key[i]]--;
-      uint64_t inew = bucketPerThread[t][key[i]];
+      uint64_t inew = offset[key[i]] + bucketPerThread[t][key[i]];
       permutation[inew] = i;
     }
 #else
 #pragma omp single
-    for (int64_t i=N-1; i>=0; i--) {
+    for (int64_t i=0; i<N; i++) {
       bucket[key[i]]--;
       uint64_t inew = bucket[key[i]];
       permutation[inew] = i;
