@@ -71,7 +71,7 @@ int main(int argc, char* argv[]) {
     for (int t=1; t<threads; t++)
       for (uint64_t i=0; i<range; i++)
 	bucketPerThread[t][i] += bucketPerThread[t-1][i];
-#pragma omp single
+#pragma omp for
     for (uint64_t i=0; i<range; i++)
       bucket[i] = bucketPerThread[threads-1][i];
 #pragma omp single
@@ -81,7 +81,6 @@ int main(int argc, char* argv[]) {
 #pragma omp for
     for (uint64_t i=0; i<range; i++)
       offset[i+1] = bucket[i];
-#if 1
     t = omp_get_thread_num();
 #pragma omp for
     for (int64_t i=0; i<N; i++) {
@@ -89,14 +88,6 @@ int main(int argc, char* argv[]) {
       uint64_t inew = offset[key[i]] + bucketPerThread[t][key[i]];
       permutation[inew] = i;
     }
-#else
-#pragma omp single
-    for (int64_t i=0; i<N; i++) {
-      bucket[key[i]]--;
-      uint64_t inew = bucket[key[i]];
-      permutation[inew] = i;
-    }
-#endif
   }
   tic = get_time();
   printf("Sort       : %e s\n",tic-toc);
