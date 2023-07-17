@@ -14,9 +14,9 @@ double get_time() {
 
 int main(int argc, char* argv[]) {
   const uint64_t N = 1 << atoi(argv[1]);
-  const int level = 11;
+  const int level = atoi(argv[2]);
   const int threads = 48;
-  const int ranking = 5;
+  const int ranking = 10000;
   const int Nx = 1 << level;
   const uint64_t range = Nx * Nx;
   printf("N          : %llu\n",N);
@@ -25,13 +25,13 @@ int main(int argc, char* argv[]) {
   double *Y = new double [N];
   uint64_t *key = new uint64_t [N]; 
   uint64_t *bucket = new uint64_t [range];
+  uint64_t **bucketPerThread = new uint64_t* [threads];
+  for (int i=0; i<threads; i++)
+    bucketPerThread[i] = new uint64_t [range];
   uint64_t *offset = new uint64_t [range+1];
   uint64_t *permutation = new uint64_t [N]; 
   double *X2 = new double [N];
   double *Y2 = new double [N];
-  uint64_t **bucketPerThread = new uint64_t* [threads];
-  for (int i=0; i<threads; i++)
-    bucketPerThread[i] = new uint64_t [range];
   double toc = get_time();
   printf("Alloc      : %e s\n",toc-tic);
   std::uniform_real_distribution<double> dis(0.0, 1.0);
@@ -151,10 +151,12 @@ int main(int argc, char* argv[]) {
   for (int i=0; i<ranking; i++) {
     minI[i] = permutation[minI[i]];
     minJ[i] = permutation[minJ[i]];
-    printf("\n#%d closest\n",i+1);
-    printf("Point I  : %llu %10.15e %10.15e\n",minI[i],X[minI[i]],Y[minI[i]]);
-    printf("Point J  : %llu %10.15e %10.15e\n",minJ[i],X[minJ[i]],Y[minJ[i]]);
-    printf("Distance : %10.15e\n",sqrt(minD[i]));
+    if (i==0 || i==9 || i==99 || i==999 || i==9999) {
+      printf("\n#%d closest\n",i+1);
+      printf("Point I  : %llu %10.15e %10.15e\n",minI[i],X[minI[i]],Y[minI[i]]);
+      printf("Point J  : %llu %10.15e %10.15e\n",minJ[i],X[minJ[i]],Y[minJ[i]]);
+      printf("Distance : %10.15e\n",sqrt(minD[i]));
+    }
   }
   delete[] X;
   delete[] Y;
