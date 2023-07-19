@@ -13,10 +13,10 @@ double get_time() {
 }
 
 int main(int argc, char* argv[]) {
-  const int N = 1 << atoi(argv[1]);
+  const int N = atoi(argv[1]);
   const int level = atoi(argv[2]);
   const int threads = 48;
-  const int ranking = 10000;
+  const int ranking = 1000;
   const int Nx = 1 << level;
   const int range = Nx * Nx;
   printf("N          : %d\n",N);
