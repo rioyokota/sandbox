@@ -1,29 +1,58 @@
-#include <math.h>
-#include <inttypes.h>
-#include <omp.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <sys/time.h>
+#include <cmath>
+#include <cstdlib>
+#include <cstdio>
 #include <random>
 #include <vector>
+#include <sys/time.h>
+#include <omp.h>
 
-double get_time() {
-  struct timeval tv;
-  gettimeofday(&tv,NULL);
-  return (double)(tv.tv_sec+tv.tv_usec*1e-6);
-}
+  double get_time() {
+    struct timeval tv;
+    gettimeofday(&tv,NULL);
+    return (double)(tv.tv_sec+tv.tv_usec*1e-6);
+  }
+
+namespace sc {
+  constexpr int maxThreads = 48;
+  double *X, *Y;
+
+  void input(int N) {
+    X = new double [N];
+    Y = new double [N];
+    std::uniform_real_distribution<double> dis(0.0, 1.0);
+#pragma omp parallel for
+    for (int ib=0; ib<maxThreads; ib++) {
+      std::mt19937 generator(ib);
+      int begin = ib * (N / maxThreads);
+      int end = (ib + 1) * (N / maxThreads);
+      if(ib == maxThreads-1) end = N > end ? N : end;
+      for (int i=begin; i<end; i++) {
+        X[i] = dis(generator);
+        Y[i] = dis(generator);
+      }
+    }
+  }
+
+  void finalize() {
+    delete[] X;
+    delete[] Y;    
+  }
+};
+
+using namespace sc;
 
 int main(int argc, char* argv[]) {
   const int N = atoi(argv[1]);
+  double tic = get_time();
+  sc::input(N);
+  double toc = get_time();
+  printf("Init       : %e s\n",toc-tic);
+
   const int level = atoi(argv[2]);
-  const int maxThreads = 48;
   const int ranking = 1000;
   const int Nx = 1 << level;
   const int range = Nx * Nx;
   printf("N          : %d\n",N);
-  double tic = get_time();
-  double *X = new double [N];
-  double *Y = new double [N];
   int *key = new int [N]; 
   int *bucket = new int [range];
   int **bucketPerThread = new int* [maxThreads];
@@ -35,22 +64,8 @@ int main(int argc, char* argv[]) {
   double *Y2 = new double [N];
   double memory = (double)N * 5 * 8 + (double)range * (maxThreads + 2) * 4;
   printf("Memory     : %e GB\n",memory/1e9);
-  double toc = get_time();
-  printf("Alloc      : %e s\n",toc-tic);
-  std::uniform_real_distribution<double> dis(0.0, 1.0);
-#pragma omp parallel for
-  for (int ib=0; ib<maxThreads; ib++) {
-    std::mt19937 generator(ib);
-    int begin = ib * (N / maxThreads);
-    int end = (ib + 1) * (N / maxThreads);
-    if(ib == maxThreads-1) end = N > end ? N : end;
-    for (int i=begin; i<end; i++) {
-      X[i] = dis(generator);
-      Y[i] = dis(generator);
-    }
-  }
   tic = get_time();
-  printf("Init       : %e s\n",tic-toc);
+  printf("Alloc      : %e s\n",tic-toc);
 #pragma omp parallel for
   for (int i=0; i<N; i++) {
     int ix = X[i] * Nx;
@@ -173,8 +188,6 @@ int main(int argc, char* argv[]) {
       printf("Distance : %10.15e\n",sqrt(minD[ii]));
     }
   }
-  delete[] X;
-  delete[] Y;
   delete[] key;
   delete[] bucket;
   for (int i=0; i<maxThreads; i++)
@@ -184,5 +197,6 @@ int main(int argc, char* argv[]) {
   delete[] permutation;
   delete[] X2;
   delete[] Y2;
+  sc::finalize();
   return 0;
 }
