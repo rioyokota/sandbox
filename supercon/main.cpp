@@ -6,19 +6,32 @@
 #include <sys/time.h>
 #include <omp.h>
 
+namespace sc {
+  constexpr int maxThreads = 48;
+  constexpr int ranking = 1000;
+  double TIME0;
+  double *X, *Y;
+
+  struct Pair {
+    int i, j;
+    double dist2;
+
+    bool operator<(const Pair &rhs) const {
+      return dist2 < rhs.dist2;
+    }
+  };
+  Pair *pairs;
+
   double get_time() {
     struct timeval tv;
     gettimeofday(&tv,NULL);
     return (double)(tv.tv_sec+tv.tv_usec*1e-6);
   }
 
-namespace sc {
-  constexpr int maxThreads = 48;
-  double *X, *Y;
-
   void input(int N) {
     X = new double [N];
     Y = new double [N];
+    pairs = new Pair [ranking];
     std::uniform_real_distribution<double> dis(0.0, 1.0);
 #pragma omp parallel for
     for (int ib=0; ib<maxThreads; ib++) {
@@ -31,11 +44,21 @@ namespace sc {
         Y[i] = dis(generator);
       }
     }
+    TIME0 = get_time();
+  }
+
+  void output() {
+    printf("%e s\n",get_time()-TIME0);
+    for(size_t k : {0, 9, 99, 999}) {
+      const Pair &pp = pairs[k];
+      printf("#%4zu : %10.15e (%d,%d)\n", k+1, sqrt(pp.dist2), pp.i, pp.j);
+    }
   }
 
   void finalize() {
     delete[] X;
-    delete[] Y;    
+    delete[] Y;
+    delete[] pairs;
   }
 };
 
@@ -43,16 +66,15 @@ using namespace sc;
 
 int main(int argc, char* argv[]) {
   const int N = atoi(argv[1]);
+  printf("N          : %d\n",N);
   double tic = get_time();
   sc::input(N);
   double toc = get_time();
   printf("Init       : %e s\n",toc-tic);
 
   const int level = atoi(argv[2]);
-  const int ranking = 1000;
   const int Nx = 1 << level;
   const int range = Nx * Nx;
-  printf("N          : %d\n",N);
   int *key = new int [N]; 
   int *bucket = new int [range];
   int **bucketPerThread = new int* [maxThreads];
@@ -62,8 +84,6 @@ int main(int argc, char* argv[]) {
   int *permutation = new int [N]; 
   double *X2 = new double [N];
   double *Y2 = new double [N];
-  double memory = (double)N * 5 * 8 + (double)range * (maxThreads + 2) * 4;
-  printf("Memory     : %e GB\n",memory/1e9);
   tic = get_time();
   printf("Alloc      : %e s\n",tic-toc);
 #pragma omp parallel for
@@ -179,14 +199,9 @@ int main(int argc, char* argv[]) {
   printf("Sort2      : %e s\n",toc-tic);
   for (int i=0; i<ranking; i++) {
     int ii = index[i];
-    int minIp = permutation[minI[ii]];
-    int minJp = permutation[minJ[ii]];
-    if (i==0 || i==9 || i==99 || i==999 || i==9999) {
-      printf("\n#%d closest\n",i+1);
-      printf("Point I  : %d %10.15e %10.15e\n",minIp,X[minIp],Y[minIp]);
-      printf("Point J  : %d %10.15e %10.15e\n",minJp,X[minJp],Y[minJp]);
-      printf("Distance : %10.15e\n",sqrt(minD[ii]));
-    }
+    pairs[i].i = permutation[minI[ii]];
+    pairs[i].j = permutation[minJ[ii]];
+    pairs[i].dist2 = minD[ii];
   }
   delete[] key;
   delete[] bucket;
@@ -197,6 +212,8 @@ int main(int argc, char* argv[]) {
   delete[] permutation;
   delete[] X2;
   delete[] Y2;
+
+  sc::output();
   sc::finalize();
   return 0;
 }
