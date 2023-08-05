@@ -1,75 +1,12 @@
-#include <cmath>
-#include <cstdlib>
-#include <cstdio>
-#include <random>
+#include <sc_header.hpp>
 #include <vector>
-#include <sys/time.h>
-#include <omp.h>
-
-namespace sc {
-  constexpr int maxThreads = 48;
-  constexpr int ranking = 1000;
-  double TIME0;
-  double *X, *Y;
-
-  struct Pair {
-    int i, j;
-    double dist2;
-
-    bool operator<(const Pair &rhs) const {
-      return dist2 < rhs.dist2;
-    }
-  };
-  Pair *pairs;
-
-  double get_time() {
-    struct timeval tv;
-    gettimeofday(&tv,NULL);
-    return (double)(tv.tv_sec+tv.tv_usec*1e-6);
-  }
-
-  void input(int N) {
-    X = new double [N];
-    Y = new double [N];
-    pairs = new Pair [ranking];
-    std::uniform_real_distribution<double> dis(0.0, 1.0);
-#pragma omp parallel for
-    for (int ib=0; ib<maxThreads; ib++) {
-      std::mt19937 generator(ib);
-      int begin = ib * (N / maxThreads);
-      int end = (ib + 1) * (N / maxThreads);
-      if(ib == maxThreads-1) end = N > end ? N : end;
-      for (int i=begin; i<end; i++) {
-        X[i] = dis(generator);
-        Y[i] = dis(generator);
-      }
-    }
-    TIME0 = get_time();
-  }
-
-  void output() {
-    printf("%e s\n",get_time()-TIME0);
-    for(size_t k : {0, 9, 99, 999}) {
-      const Pair &pp = pairs[k];
-      printf("#%4zu : %10.15e (%d,%d)\n", k+1, sqrt(pp.dist2), pp.i, pp.j);
-    }
-  }
-
-  void finalize() {
-    delete[] X;
-    delete[] Y;
-    delete[] pairs;
-  }
-};
-
-using namespace sc;
 
 int main(int argc, char* argv[]) {
   const int N = atoi(argv[1]);
   printf("N          : %d\n",N);
-  double tic = get_time();
+  double tic = sc::get_time();
   sc::input(N);
-  double toc = get_time();
+  double toc = sc::get_time();
   printf("Init       : %e s\n",toc-tic);
 
   const int level = atoi(argv[2]);
@@ -77,19 +14,19 @@ int main(int argc, char* argv[]) {
   const int range = Nx * Nx;
   int *key = new int [N]; 
   int *bucket = new int [range];
-  int **bucketPerThread = new int* [maxThreads];
-  for (int i=0; i<maxThreads; i++)
+  int **bucketPerThread = new int* [sc::maxThreads];
+  for (int i=0; i<sc::maxThreads; i++)
     bucketPerThread[i] = new int [range];
   int *offset = new int [range+1];
   int *permutation = new int [N]; 
   double *X2 = new double [N];
   double *Y2 = new double [N];
-  tic = get_time();
+  tic = sc::get_time();
   printf("Alloc      : %e s\n",tic-toc);
 #pragma omp parallel for
   for (int i=0; i<N; i++) {
-    int ix = X[i] * Nx;
-    int iy = Y[i] * Nx;
+    int ix = sc::X[i] * Nx;
+    int iy = sc::Y[i] * Nx;
     int k = 0;
     for (int l=0; l<level; l++) {
        k |= (iy & 1 << l) <<  l;
@@ -97,7 +34,7 @@ int main(int argc, char* argv[]) {
     }
     key[i] = k;
   }
-  toc = get_time();
+  toc = sc::get_time();
   printf("Index      : %e s\n",toc-tic);
 #pragma omp parallel
   {
@@ -129,24 +66,24 @@ int main(int argc, char* argv[]) {
       permutation[inew] = i;
     }
   }
-  tic = get_time();
+  tic = sc::get_time();
   printf("Sort       : %e s\n",tic-toc);
 #pragma omp parallel for
   for (int i=0; i<N; i++) {
-    X2[i] = X[permutation[i]];
-    Y2[i] = Y[permutation[i]];
+    X2[i] = sc::X[permutation[i]];
+    Y2[i] = sc::Y[permutation[i]];
   }
-  toc = get_time();
+  toc = sc::get_time();
   printf("Permute    : %e s\n",toc-tic);
-  int minI[ranking*maxThreads],minJ[ranking*maxThreads];
-  double minD[ranking*maxThreads];
-  for (int i=0; i<ranking*maxThreads; i++) {
+  int minI[sc::ranking*sc::maxThreads],minJ[sc::ranking*sc::maxThreads];
+  double minD[sc::ranking*sc::maxThreads];
+  for (int i=0; i<sc::ranking*sc::maxThreads; i++) {
     minI[i] = minJ[i] = 0;
     minD[i] = 1;
   }
 #pragma omp parallel for
   for (int i=0; i<range; i++) {
-    int threadOffset = ranking*omp_get_thread_num();
+    int threadOffset = sc::ranking*omp_get_thread_num();
     int ix = 0;
     int iy = 0;
     for (int l=0; l<level; l++) {
@@ -168,8 +105,8 @@ int main(int argc, char* argv[]) {
         for (int ii=offset[i]; ii<offset[i+1]; ii++) {
 	  for (int jj=offset[j]; jj<offset[j+1]; jj++) {
             double dd = (X2[ii] - X2[jj]) * (X2[ii] - X2[jj]) + (Y2[ii] - Y2[jj]) * (Y2[ii] - Y2[jj]);
-	    if (minD[ranking-1 + threadOffset] > dd && ii < jj) {
-	      int k = ranking-1;
+	    if (minD[sc::ranking-1 + threadOffset] > dd && ii < jj) {
+	      int k = sc::ranking-1;
 	      while (k>0 && dd < minD[k-1 + threadOffset]) {
                 minI[k + threadOffset] = minI[k-1 + threadOffset];
                 minJ[k + threadOffset] = minJ[k-1 + threadOffset];
@@ -185,27 +122,27 @@ int main(int argc, char* argv[]) {
       }
     }
   }
-  tic = get_time();
+  tic = sc::get_time();
   printf("Search     : %e s\n",tic-toc);
-  std::vector<int> index(ranking*maxThreads);
-  for (int i=0; i<ranking*maxThreads; i++)
+  std::vector<int> index(sc::ranking*sc::maxThreads);
+  for (int i=0; i<sc::ranking*sc::maxThreads; i++)
     index[i] = i;
   sort(index.begin(), index.end(),
     [&](const int& a, const int& b) {
       return (minD[a] < minD[b]);
     }
   );
-  toc = get_time();
+  toc = sc::get_time();
   printf("Sort2      : %e s\n",toc-tic);
-  for (int i=0; i<ranking; i++) {
+  for (int i=0; i<sc::ranking; i++) {
     int ii = index[i];
-    pairs[i].i = permutation[minI[ii]];
-    pairs[i].j = permutation[minJ[ii]];
-    pairs[i].dist2 = minD[ii];
+    sc::pairs[i].i = permutation[minI[ii]];
+    sc::pairs[i].j = permutation[minJ[ii]];
+    sc::pairs[i].dist2 = minD[ii];
   }
   delete[] key;
   delete[] bucket;
-  for (int i=0; i<maxThreads; i++)
+  for (int i=0; i<sc::maxThreads; i++)
     delete[] bucketPerThread[i];
   delete[] bucketPerThread;
   delete[] offset;
