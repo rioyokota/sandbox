@@ -1,10 +1,11 @@
 #include <math.h>
 #include <inttypes.h>
+#include <omp.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <sys/time.h>
 #include <random>
-#include <omp.h>
+#include <vector>
 
 double get_time() {
   struct timeval tv;
@@ -15,7 +16,7 @@ double get_time() {
 int main(int argc, char* argv[]) {
   const int N = atoi(argv[1]);
   const int level = atoi(argv[2]);
-  const int threads = 48;
+  const int maxThreads = 48;
   const int ranking = 1000;
   const int Nx = 1 << level;
   const int range = Nx * Nx;
@@ -25,24 +26,24 @@ int main(int argc, char* argv[]) {
   double *Y = new double [N];
   int *key = new int [N]; 
   int *bucket = new int [range];
-  int **bucketPerThread = new int* [threads];
-  for (int i=0; i<threads; i++)
+  int **bucketPerThread = new int* [maxThreads];
+  for (int i=0; i<maxThreads; i++)
     bucketPerThread[i] = new int [range];
   int *offset = new int [range+1];
   int *permutation = new int [N]; 
   double *X2 = new double [N];
   double *Y2 = new double [N];
-  double memory = (double)N * 5 * 8 + (double)range * (threads + 2) * 4;
+  double memory = (double)N * 5 * 8 + (double)range * (maxThreads + 2) * 4;
   printf("Memory     : %e GB\n",memory/1e9);
   double toc = get_time();
   printf("Alloc      : %e s\n",toc-tic);
   std::uniform_real_distribution<double> dis(0.0, 1.0);
 #pragma omp parallel for
-  for (int ib=0; ib<threads; ib++) {
+  for (int ib=0; ib<maxThreads; ib++) {
     std::mt19937 generator(ib);
-    int begin = ib * (N / threads);
-    int end = (ib + 1) * (N / threads);
-    if(ib == threads-1) end = N > end ? N : end;
+    int begin = ib * (N / maxThreads);
+    int end = (ib + 1) * (N / maxThreads);
+    if(ib == maxThreads-1) end = N > end ? N : end;
     for (int i=begin; i<end; i++) {
       X[i] = dis(generator);
       Y[i] = dis(generator);
@@ -65,12 +66,13 @@ int main(int argc, char* argv[]) {
   printf("Index      : %e s\n",toc-tic);
 #pragma omp parallel
   {
-    int t = omp_get_thread_num();
+    int tid = omp_get_thread_num();
+    int threads = omp_get_num_threads();
     for (int i=0; i<range; i++)
-      bucketPerThread[t][i] = 0;
+      bucketPerThread[tid][i] = 0;
 #pragma omp for
     for (int i=0; i<N; i++)
-      bucketPerThread[t][key[i]]++;
+      bucketPerThread[tid][key[i]]++;
 #pragma omp single
     for (int t=1; t<threads; t++)
       for (int i=0; i<range; i++)
@@ -85,11 +87,10 @@ int main(int argc, char* argv[]) {
 #pragma omp for
     for (int i=0; i<range; i++)
       offset[i+1] = bucket[i];
-    t = omp_get_thread_num();
 #pragma omp for
-    for (int64_t i=0; i<N; i++) {
-      bucketPerThread[t][key[i]]--;
-      int inew = offset[key[i]] + bucketPerThread[t][key[i]];
+    for (int i=0; i<N; i++) {
+      bucketPerThread[tid][key[i]]--;
+      int inew = offset[key[i]] + bucketPerThread[tid][key[i]];
       permutation[inew] = i;
     }
   }
@@ -102,14 +103,15 @@ int main(int argc, char* argv[]) {
   }
   toc = get_time();
   printf("Permute    : %e s\n",toc-tic);
-  int minI[ranking],minJ[ranking];
-  double minD[ranking];
-  for (int i=0; i<ranking; i++) {
+  int minI[ranking*maxThreads],minJ[ranking*maxThreads];
+  double minD[ranking*maxThreads];
+  for (int i=0; i<ranking*maxThreads; i++) {
     minI[i] = minJ[i] = 0;
     minD[i] = 1;
   }
 #pragma omp parallel for
   for (int i=0; i<range; i++) {
+    int threadOffset = ranking*omp_get_thread_num();
     int ix = 0;
     int iy = 0;
     for (int l=0; l<level; l++) {
@@ -131,17 +133,17 @@ int main(int argc, char* argv[]) {
         for (int ii=offset[i]; ii<offset[i+1]; ii++) {
 	  for (int jj=offset[j]; jj<offset[j+1]; jj++) {
             double dd = (X2[ii] - X2[jj]) * (X2[ii] - X2[jj]) + (Y2[ii] - Y2[jj]) * (Y2[ii] - Y2[jj]);
-	    if (minD[ranking-1] > dd && ii < jj) {
+	    if (minD[ranking-1 + threadOffset] > dd && ii < jj) {
 	      int k = ranking-1;
-	      while (k>0 && dd < minD[k-1]) {
-                minI[k] = minI[k-1];
-                minJ[k] = minJ[k-1];
-                minD[k] = minD[k-1];
+	      while (k>0 && dd < minD[k-1 + threadOffset]) {
+                minI[k + threadOffset] = minI[k-1 + threadOffset];
+                minJ[k + threadOffset] = minJ[k-1 + threadOffset];
+                minD[k + threadOffset] = minD[k-1 + threadOffset];
 		k--;
 	      }
-              minI[k] = ii;
-	      minJ[k] = jj;
-	      minD[k] = dd;
+              minI[k + threadOffset] = ii;
+	      minJ[k + threadOffset] = jj;
+	      minD[k + threadOffset] = dd;
 	    }
 	  }
 	}
@@ -150,21 +152,32 @@ int main(int argc, char* argv[]) {
   }
   tic = get_time();
   printf("Search     : %e s\n",tic-toc);
+  std::vector<int> index(ranking*maxThreads);
+  for (int i=0; i<ranking*maxThreads; i++)
+    index[i] = i;
+  sort(index.begin(), index.end(),
+    [&](const int& a, const int& b) {
+      return (minD[a] < minD[b]);
+    }
+  );
+  toc = get_time();
+  printf("Sort2      : %e s\n",toc-tic);
   for (int i=0; i<ranking; i++) {
-    minI[i] = permutation[minI[i]];
-    minJ[i] = permutation[minJ[i]];
+    int ii = index[i];
+    int minIp = permutation[minI[ii]];
+    int minJp = permutation[minJ[ii]];
     if (i==0 || i==9 || i==99 || i==999 || i==9999) {
       printf("\n#%d closest\n",i+1);
-      printf("Point I  : %d %10.15e %10.15e\n",minI[i],X[minI[i]],Y[minI[i]]);
-      printf("Point J  : %d %10.15e %10.15e\n",minJ[i],X[minJ[i]],Y[minJ[i]]);
-      printf("Distance : %10.15e\n",sqrt(minD[i]));
+      printf("Point I  : %d %10.15e %10.15e\n",minIp,X[minIp],Y[minIp]);
+      printf("Point J  : %d %10.15e %10.15e\n",minJp,X[minJp],Y[minJp]);
+      printf("Distance : %10.15e\n",sqrt(minD[ii]));
     }
   }
   delete[] X;
   delete[] Y;
   delete[] key;
   delete[] bucket;
-  for (int i=0; i<threads; i++)
+  for (int i=0; i<maxThreads; i++)
     delete[] bucketPerThread[i];
   delete[] bucketPerThread;
   delete[] offset;
