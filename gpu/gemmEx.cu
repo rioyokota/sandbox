@@ -54,7 +54,7 @@ int main(int argc, const char **argv) {
   int64_t num_flops = (2 * int64_t(m) * int64_t(n) * int64_t(k)) + (2 * int64_t(m) * int64_t(n));
   double tcublas = chrono::duration<double>(toc - tic).count() / Nt;
   double cublas_flops = double(num_flops) / tcublas / 1.0e12;
-  printf("CUBLAS: %.2f TFlops\n", cublas_flops);
+  printf("SgemmEx: %.2f TFlops\n", cublas_flops);
   cudaFree(A);
   cudaFree(B);
   cudaFree(C);
