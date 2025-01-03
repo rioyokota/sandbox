@@ -15,8 +15,8 @@ filters = [
         {'tags':'main'}
         ]
 
-for i in range(5):
-    model = models[i]
+samples = 10000
+for i,model in enumerate(models):
     runs = api.runs(teams[i]+projects[i],filters=filters[i])
     print(f'From project {teams[i]+projects[i]}')
 
@@ -27,7 +27,9 @@ for i in range(5):
     for run in runs:
         batch_size = config.batch_size[model]
         max_sequence_length = config.max_sequence_length[model]
-        history = run.history()
+        history = run.history(samples=samples)
+        samples = 1000
+        print(len(history))
         if '_step' in history:
             print(f'Run {run.name}: Steps {history._step.min()} to {history._step.max()}')
             history['tokens'] = history._step * batch_size * max_sequence_length / 1e9
