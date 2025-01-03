@@ -1,9 +1,8 @@
 import pandas as pd
 import matplotlib.pyplot as plt
+import numpy as np
 import wandb
 
-api = wandb.Api()
-config = pd.read_csv('models.csv',index_col=1)
 models = ['llmjp3-1.8b','llmjp3-3.7b','llmjp3-7.2b','llmjp3-13b','llmjp3-172b']
 projects = ['nii-geniac-1.7B','v3-3.8b','v3-7.3b','Llama-2-13B','Llama-2-175B']
 teams = ['llm-jp/','llm-jp/','llm-jp/','nii-geniac/','nii-geniac/']
@@ -14,44 +13,31 @@ filters = [
         {'display_name':{'$regex':'(llama-2-13b-exp4-sakura-2024.*)|(llama-2-13b-exp4-2024.*)'}},
         {'tags':'main'}
         ]
+samples = 10000
 
-for i in range(5):
-    model = models[i]
-    runs = api.runs(teams[i]+projects[i],filters=filters[i])
-    print(f'From project {teams[i]+projects[i]}')
+api = wandb.Api()
+config = pd.read_csv('models.csv',index_col=1)
+scores = pd.read_csv('scores.csv',index_col=0)
+plt.figure()
+ax = plt.subplot()
+for i,model in enumerate(models):
+    batch_size = config.batch_size[model]
+    max_sequence_length = config.max_sequence_length[model]
+    loss = pd.read_csv(model+'.csv',index_col=0)
+    loss_steps = loss['steps'].to_numpy()
+    loss_value = loss['loss'].to_numpy()
+    score = scores.groupby(['model']).get_group((model,)).sort_values(by='iteration')
+    eval_steps = score['iteration'].to_numpy()
+    eval_value = score['AVG'].to_numpy()
+    loss_value = np.interp(eval_steps,loss_steps,loss_value)
+    ax.plot(loss_value,eval_value,'o')
 
-    plt.figure(i)
-    ax = plt.subplot()
-    tokens = []
-    loss = []
-    for run in runs:
-        batch_size = config.batch_size[model]
-        max_sequence_length = config.max_sequence_length[model]
-        history = run.history()
-        if '_step' in history:
-            print(f'Run {run.name}: Steps {history._step.min()} to {history._step.max()}')
-            history['tokens'] = history._step * batch_size * max_sequence_length / 1e9
-            history.plot(ax=ax,x='tokens',y='lm-loss-training/lm loss',logx=True,logy=True)
-            tokens = tokens + history['tokens'].to_list()
-            loss = loss + history['lm-loss-training/lm loss'].to_list()
-        else:
-            print(f'Run {run.name} does not have any logs.')
-    ax.set_xlim((1,3000))
-    ax.set_ylim((1,10))
-    ax.grid(which='major')
-    ax.grid(which='minor',linestyle='--')
-    ax.set_xlabel('Trained tokens [$10^9$]')
-    ax.set_ylabel('Train loss')
-    ax.get_legend().remove()
-    ax.set_title(model)
-    plt.figure(5)
-    ax = plt.subplot()
-    ax.loglog(tokens,loss,label=model)
-    ax.set_xlim((1,3000))
-    ax.set_ylim((1,10))
-    ax.grid(which='major')
-    ax.grid(which='minor',linestyle='--')
-    ax.set_xlabel('Trained tokens [$10^9$]')
-    ax.set_ylabel('Train loss')
-    ax.legend()
+ax.set_xlim((1,10))
+ax.set_ylim((0,1))
+ax.grid(which='major')
+ax.grid(which='minor',linestyle='--')
+ax.set_xlabel('Train loss')
+ax.set_ylabel('llm-jp-eval 1.4.1 - AVG')
+ax.set_title('AVG')
+ax.invert_xaxis()
 plt.show()
