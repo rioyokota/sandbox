@@ -2,9 +2,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 # Billion parameters
-params = np.array([1.3, 7, 13, 70, 172, 70*8, 172*8])
-isoFLOPs_levels = [5e23, 1e24, 2e24]
-flops_per_param_token = 550 * 10**12 * 2500 * 30 * 24 * 2600 / (172 * 2000)
+params = np.array([1.3, 7, 13, 70, 172, 460, 1110])
+gpu_months = np.array([100, 1000, 10000, 100000])
+isoFLOPs_levels = gpu_months * 430. * 10**12 * 3600 * 24 * 30
+print(isoFLOPs_levels)
+flops_per_param_token = 430 * 10**12 * 3600 * 24 * 30 * 2600 / (172 * 2000)
 
 def calculate_isoFLOPs(params,tokens):
     N = params * 10**9
@@ -22,8 +24,7 @@ colors = ['r', 'g', 'b', 'c', 'm']
 for i,flops in enumerate(isoFLOPs_levels):
     tokens = flops / flops_per_param_token / params
     iso_loss = calculate_isoFLOPs(params,tokens)
-    print(iso_loss)
-    plt.plot(params, iso_loss, 'o-', color=colors[i], label=f'IsoFLOPs {flops:.0e}')
+    plt.plot(params, iso_loss, 'o-', color=colors[i], label=f'{gpu_months[i]} GPU months')
 
 plt.xscale('log')
 plt.xlabel('Number of Parameters (in billions)')
