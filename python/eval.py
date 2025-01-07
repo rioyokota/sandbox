@@ -3,12 +3,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 from scipy.optimize import curve_fit
 
-def sigmoid(x, x0, k):
-    return (1 / (1 + np.exp(-k*(x0-x))))
-
 models = ['llmjp3-1.8b','llmjp3-3.7b','llmjp3-7.2b','llmjp3-13b','llmjp3-172b']
-tasks = ['AVG','EL','FA','HE','MC','MR','MT','NLI','QA','RC','SUM']
-#tasks = ['AVG']
+#tasks = ['AVG','EL','FA','HE','MC','MR','MT','NLI','QA','RC','SUM']
+tasks = ['AVG']
 
 config = pd.read_csv('models.csv',index_col=1)
 scores = pd.read_csv('scores.csv',index_col=0)
@@ -41,6 +38,9 @@ for model in models:
 eval_min = [0.03,0,0,0,0.2,0,0.33,0.33,0,0,0]
 eval_max = [0.6,0.7,0.4,0.7,0.85,0.9,0.83,0.7,0.7,0.88,0.11]
 x = np.arange(1, 10, 0.1)
+
+def sigmoid(x, x0, k):
+    return (1 / (1 + np.exp(-k*(x0-x))))
 
 for i,task in enumerate(tasks):
     ax[2*i+0].set_xlim((1,3000))

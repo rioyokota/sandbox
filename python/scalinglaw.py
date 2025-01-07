@@ -5,7 +5,6 @@ import numpy as np
 params = np.array([1.3, 7, 13, 70, 172, 460, 1110])
 gpu_months = np.array([100, 1000, 10000, 100000])
 isoFLOPs_levels = gpu_months * 430. * 10**12 * 3600 * 24 * 30
-print(isoFLOPs_levels)
 flops_per_param_token = 430 * 10**12 * 3600 * 24 * 30 * 2600 / (172 * 2000)
 
 def calculate_isoFLOPs(params,tokens):
