@@ -15,8 +15,8 @@ scores = pd.read_csv('scores.csv',index_col=0)
 N = []
 D = []
 L = []
-plt.figure(figsize=(8,8),tight_layout=True)
-ax = plt.subplot(211)
+plt.figure()
+ax = plt.subplot()
 for model in models:
     batch_size = config.batch_size[model]
     max_sequence_length = config.max_sequence_length[model]
@@ -38,7 +38,7 @@ for model in models:
     ax.loglog(gpu_months,loss_value,'o')
 ax.set_ylim((1,20))
 ax.grid(which='major')
-ax.grid(which='minor',linestyle='--')
+ax.grid(which='minor',ls='--')
 ax.set_xlabel('Training budget [GPU months]')
 ax.set_ylabel('Train loss')
 ax.legend(models)
@@ -72,10 +72,9 @@ for i,model in enumerate(models):
     D = tokens
     L = E + A/np.array(N)**alpha + B/np.array(D)**beta
     ax.loglog(gpu_months,L,color=colors[i],ls='-')
-print(f'A: {A}, B: {B}, E:{E}, alpha: {alpha}, beta: {beta}')
 
 params = np.array([1.3, 7, 13, 70, 172, 460, 1110])
-gpu_months = np.array([100, 1000, 10000, 100000])
+gpu_months = np.array([1000, 2000, 5000, 10000, 20000])
 isoFLOPs_levels = gpu_months * 430. * 10**12 * 3600 * 24 * 30
 flops_per_param_token = 430 * 10**12 * 3600 * 24 * 30 * 2600 / (172 * 2000)
 
@@ -84,15 +83,50 @@ def calculate_isoFLOPs(params,tokens):
     D = tokens * 10**9
     return E + A / N**alpha + B / D**beta
 
-ax = plt.subplot(212)
+plt.figure()
+ax = plt.subplot()
 for i,flops in enumerate(isoFLOPs_levels):
     tokens = flops / flops_per_param_token / params
     iso_loss = calculate_isoFLOPs(params,tokens)
     ax.semilogx(params, iso_loss, 'o-', label=f'{gpu_months[i]} GPU months')
-
 ax.set_xlabel('Number of Parameters (in billions)')
 ax.set_ylabel('Training Loss')
 ax.legend()
 ax.grid(which='major')
-ax.grid(which='minor',linestyle='--')
+ax.grid(which='minor',ls='--')
+
+def format_token(token):
+    if token > 2e6:
+        token_format = f'{int(token/1e6)}Q'
+    elif token > 1e6:
+        token_format = f'{token/1e6:.1f}Q'
+    elif token > 2e3:
+        token_format = f'{int(token/1e3)}T'
+    elif token > 1e3:
+        token_format = f'{token/1e3:.1f}T'
+    else:
+        token_format = f'{int(token)}B'
+    return token_format
+
+data = pd.read_csv('loss2eval.csv',index_col=0)
+loss_value = data['loss'].to_numpy()
+eval_value = data['eval'].to_numpy()
+x_params = np.arange(1,1200)
+plt.figure()
+ax = plt.subplot()
+for i,flops in enumerate(isoFLOPs_levels):
+    tokens = flops / flops_per_param_token / params
+    iso_loss = calculate_isoFLOPs(params,tokens)
+    iso_eval = np.interp(iso_loss,loss_value,eval_value)
+    ax.semilogx(params, iso_eval, '.-', label=f'{gpu_months[i]} GPU months')
+    for j,token in enumerate(tokens):
+        token_format = format_token(token)
+        ax.text(params[j],iso_eval[j],token_format,fontsize=7)
+ax.semilogx(x_params, [0.537]*len(x_params), '--', label='gpt-3.5')
+ax.semilogx(x_params, [0.624]*len(x_params), '--', label='gpt-4')
+ax.set_xlabel('Number of Parameters (in billions)')
+ax.set_ylabel('llm-jp-eval 1.4.1')
+ax.legend(loc='upper left')
+ax.grid(which='major')
+ax.grid(which='minor',ls='--')
 plt.show()
