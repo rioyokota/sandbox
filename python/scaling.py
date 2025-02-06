@@ -74,9 +74,8 @@ for i,model in enumerate(models):
     ax.loglog(gpu_months,L,color=colors[i],ls='-')
 
 params = np.array([1.3, 7, 13, 70, 172, 460, 1110])
-gpu_months = np.array([1000, 2000, 5000, 10000, 20000])
-isoFLOPs_levels = gpu_months * 430. * 10**12 * 3600 * 24 * 30
-flops_per_param_token = 430 * 10**12 * 3600 * 24 * 30 * 2600 / (172 * 2000)
+gpu_months = np.array([1e3, 2e3, 5e3, 1e4, 2e4])
+isoFLOPs_levels = gpu_months * h100_flop_per_month
 
 def calculate_isoFLOPs(params,tokens):
     N = params * 10**9
@@ -86,7 +85,7 @@ def calculate_isoFLOPs(params,tokens):
 plt.figure()
 ax = plt.subplot()
 for i,flops in enumerate(isoFLOPs_levels):
-    tokens = flops / flops_per_param_token / params
+    tokens = flops / flops_per_param_token / params / 1e18
     iso_loss = calculate_isoFLOPs(params,tokens)
     ax.semilogx(params, iso_loss, 'o-', label=f'{gpu_months[i]} GPU months')
 ax.set_xlabel('Number of Parameters (in billions)')
@@ -115,7 +114,7 @@ x_params = np.arange(1,1200)
 plt.figure()
 ax = plt.subplot()
 for i,flops in enumerate(isoFLOPs_levels):
-    tokens = flops / flops_per_param_token / params
+    tokens = flops / flops_per_param_token / params / 1e18
     iso_loss = calculate_isoFLOPs(params,tokens)
     iso_eval = np.interp(iso_loss,loss_value,eval_value)
     ax.semilogx(params, iso_eval, '.-', label=f'{gpu_months[i]} GPU months')
