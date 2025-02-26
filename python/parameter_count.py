@@ -3,8 +3,8 @@ p = 1 # pipeline parallel size
 t = 1 # tensor parallel size
 c = 1 # context parallel size
 v = 99487 # vocabulary size
-e = 2 # number of experts
-m = 172 # model size
+e = 8 # number of experts
+m = 13 # model size
 
 if m == 13:
     a = 40 # number of attention heads
