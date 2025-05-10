@@ -11,6 +11,9 @@ NVCC = nvcc -O3 -use_fast_math -arch=sm_60 -Xcompiler "-Wall -fopenmp -O3"
 device: device.o
 	$(CXX) $? -lcudart
 
+gemmEx: gemmEx.o
+	$(NVCC) $? -lcublas
+
 mpi_direct: mpi_direct.o
 	$(CXX) $? -lcudart
 
