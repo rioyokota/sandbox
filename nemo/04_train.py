@@ -33,14 +33,14 @@ model = llm.GPTModel(gpt_config, tokenizer=tokenizer)
 
 data_module = PreTrainingDataModule(
     paths={
-        "train": ["small_gpt_text_document"],
-        "validation": ["small_gpt_text_document"],
-        "test": ["small_gpt_text_document"]
+        "train": ["train_gpt_text_document"],
+        "validation": ["validation_gpt_text_document"],
+        "test": ["test_gpt_text_document"]
     },
     seq_length=128,
     micro_batch_size=2,
     global_batch_size=2,
-    split="90,10,0"
+    split="100,100,100"
 )
 
 strategy = nl.MegatronStrategy(
