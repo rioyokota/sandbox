@@ -3,7 +3,7 @@ trainer:
   accelerator: gpu
   max_steps: 100
   log_every_n_steps: 10
-  precision: 32
+  precision: bf16-mixed
   strategy:
     tensor_model_parallel_size: 1
     pipeline_model_parallel_size: 1
