@@ -16,17 +16,17 @@ tokenizer = get_nmt_tokenizer(
     merges_file=tokenizer_cfg.merge_file
 )
 
-# Tiny GPT config
+# Setup model using config
 gpt_config = llm.GPTConfig(
-    num_layers=2,
-    hidden_size=64,
-    ffn_hidden_size=256,
-    num_attention_heads=4,
-    seq_length=128,
-    init_method_std=0.02,
-    hidden_dropout=0.1,
-    attention_dropout=0.1,
-    layernorm_epsilon=1e-5
+    num_layers=config.model.num_layers,
+    hidden_size=config.model.hidden_size,
+    ffn_hidden_size=config.model.ffn_hidden_size,
+    num_attention_heads=config.model.num_attention_heads,
+    seq_length=config.model.seq_length,
+    init_method_std=config.model.init_method_std,
+    hidden_dropout=config.model.hidden_dropout,
+    attention_dropout=config.model.attention_dropout,
+    layernorm_epsilon=config.model.layernorm_epsilon
 )
 
 model = llm.GPTModel(gpt_config, tokenizer=tokenizer)
