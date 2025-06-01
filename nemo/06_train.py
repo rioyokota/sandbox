@@ -1,19 +1,20 @@
+from omegaconf import OmegaConf
 from nemo import lightning as nl
 from nemo.collections import llm
 from nemo.collections.nlp.modules.common.tokenizer_utils import get_nmt_tokenizer
 from nemo.collections.llm.gpt.data import PreTrainingDataModule
 
-# Tokenizer setup
-vocab_path = "tokenizer/vocab.json"
-merges_path = "tokenizer/merges.txt"
+# Load configuration from YAML
+config = OmegaConf.load("05_train.yaml")
 
+# Setup tokenizer
+tokenizer_cfg = config.model.tokenizer
 tokenizer = get_nmt_tokenizer(
-    library="megatron",
-    model_name="GPT2BPETokenizer",
-    vocab_file=vocab_path,
-    merges_file=merges_path
+    library=tokenizer_cfg.library,
+    model_name=tokenizer_cfg.type,
+    vocab_file=tokenizer_cfg.vocab_file,
+    merges_file=tokenizer_cfg.merge_file
 )
-print(f"Tokenizer initialized (vocab size = {tokenizer.vocab_size}).")
 
 # Tiny GPT config
 gpt_config = llm.GPTConfig(

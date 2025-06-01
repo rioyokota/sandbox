@@ -1,0 +1,35 @@
+trainer:
+  devices: 1
+  accelerator: gpu
+  max_steps: 100
+  log_every_n_steps: 10
+  precision: 32
+  strategy:
+    tensor_model_parallel_size: 1
+    pipeline_model_parallel_size: 1
+
+model:
+  num_layers: 2
+  hidden_size: 64
+  ffn_hidden_size: 256
+  num_attention_heads: 4
+  seq_length: 128
+  init_method_std: 0.02
+  hidden_dropout: 0.1
+  attention_dropout: 0.1
+  layernorm_epsilon: 1e-5
+  tokenizer:
+    library: megatron
+    type: GPT2BPETokenizer
+    vocab_file: tokenizer/vocab.json
+    merge_file: tokenizer/merges.txt
+
+data:
+  seq_length: 128
+  micro_batch_size: 2
+  global_batch_size: 2
+  paths:
+    train: ["train_gpt_text_sentence"]
+    validation: ["validation_gpt_text_sentence"]
+    test: ["test_gpt_text_sentence"]
+  split: "100,100,100"
