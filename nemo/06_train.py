@@ -31,31 +31,30 @@ gpt_config = llm.GPTConfig(
 
 model = llm.GPTModel(gpt_config, tokenizer=tokenizer)
 
+# Setup DataModule from YAML config
+paths = OmegaConf.to_container(config.data.paths, resolve=True)
 data_module = PreTrainingDataModule(
-    paths={
-        "train": ["train_gpt_text_document"],
-        "validation": ["validation_gpt_text_document"],
-        "test": ["test_gpt_text_document"]
-    },
-    seq_length=128,
-    micro_batch_size=2,
-    global_batch_size=2,
-    split="100,100,100"
+    paths=paths,
+    seq_length=config.data.seq_length,
+    micro_batch_size=config.data.micro_batch_size,
+    global_batch_size=config.data.global_batch_size,
+    split=config.data.split
 )
 
+# Setup trainer from YAML config
 strategy = nl.MegatronStrategy(
-    tensor_model_parallel_size=1,
-    pipeline_model_parallel_size=1
+    tensor_model_parallel_size=config.trainer.strategy.tensor_model_parallel_size,
+    pipeline_model_parallel_size=config.trainer.strategy.pipeline_model_parallel_size
 )
 
 trainer = nl.Trainer(
-    devices=1, accelerator="gpu",
-    max_steps=100,
-    log_every_n_steps=10,
-    precision=32,
+    devices=config.trainer.devices,
+    accelerator=config.trainer.accelerator,
+    max_steps=config.trainer.max_steps,
+    log_every_n_steps=config.trainer.log_every_n_steps,
+    precision=config.trainer.precision,
     strategy=strategy
 )
 
-print("Starting training...")
+# Start training
 trainer.fit(model, datamodule=data_module)
-print("Training completed.")
