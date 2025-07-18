@@ -20,3 +20,5 @@ llmjp3*.csv
 lightning_logs
 preprocess_data_for_megatron.py
 tokenizer
+credentials.json
+token.json
