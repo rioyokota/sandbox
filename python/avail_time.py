@@ -13,6 +13,7 @@ from googleapiclient.discovery import build
 DISPLAY_TIMEZONE = "Asia/Tokyo"
 START_TIME = time(9, 0)
 END_TIME = time(20, 30)
+MIN_SLOT_DURATION = timedelta(minutes=30)
 
 # OAuth scope - read-only access to Calendars is sufficient for free/busy query
 SCOPES = ["https://www.googleapis.com/auth/calendar.readonly"]
@@ -129,7 +130,7 @@ def main():
                 slot_start = max(current.replace(hour=START_TIME.hour, minute=START_TIME.minute, second=0, microsecond=0), current)
                 slot_end = current.replace(hour=END_TIME.hour, minute=END_TIME.minute, second=0, microsecond=0)
 
-                if slot_start < slot_end and slot_start < end_local:
+                if slot_start < slot_end and slot_start < end_local and (min(slot_end, end_local) - slot_start) >= MIN_SLOT_DURATION:
                     final_start = slot_start
                     final_end = min(slot_end, end_local)
                     print(f"{final_start.strftime('%m/%d %H:%M')}–{final_end.strftime('%H:%M')}")
