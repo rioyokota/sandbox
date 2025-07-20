@@ -1,7 +1,9 @@
 import os.path
 import pytz
 import sys
+import glob
 from datetime import datetime, timedelta, timezone, time
+from collections import defaultdict
 
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
@@ -11,9 +13,10 @@ from googleapiclient.discovery import build
 # Set display time zone (e.g., "America/New_York", "Europe/London", "Asia/Tokyo")
 # List of valid time zones https://en.wikipedia.org/wiki/List_of_tz_database_time_zones
 DISPLAY_TIMEZONE = "Asia/Tokyo"
-START_TIME = time(9, 0)
-END_TIME = time(20, 30)
-MIN_SLOT_DURATION = timedelta(minutes=30)
+START_TIME = time(hour=9, minute=0)
+END_TIME = time(hour=20, minute=30)
+QUERY_RANGE = timedelta(days=30)
+MIN_SLOT_DURATION = timedelta(hours=0, minutes=30)
 
 # OAuth scope - read-only access to Calendars is sufficient for free/busy query
 SCOPES = ["https://www.googleapis.com/auth/calendar.readonly"]
@@ -36,7 +39,11 @@ def main():
         if creds and creds.expired and creds.refresh_token:
             creds.refresh(Request())
         else:
-            flow = InstalledAppFlow.from_client_secrets_file("credentials.json", SCOPES)
+            credential_files = glob.glob("credentials*.json")
+            if credential_files:
+                flow = InstalledAppFlow.from_client_secrets_file(credential_files[0], SCOPES)
+            else:
+                raise FileNotFoundError("No credentials file matching 'credentials*.json' found.")
             creds = flow.run_local_server(port=0)
         # Save the credentials for the next run
         with open("token.json", "w") as token_file:
@@ -48,7 +55,7 @@ def main():
     # Define the time range: from now (today) to one month from now, in UTC
     now_utc = datetime.now(tz=timezone.utc)
     time_min = now_utc.isoformat()  # RFC3339 timestamp for start (inclusive)
-    time_max = (now_utc + timedelta(days=30)).isoformat()  # end (exclusive)
+    time_max = (now_utc + QUERY_RANGE).isoformat()  # end (exclusive)
     # Prepare the request body for freeBusy.query
     body = {
         "timeMin": time_min,
@@ -120,6 +127,8 @@ def main():
 
     print(f"Free time slots ({DISPLAY_TIMEZONE}) from {now_utc.date()} to {(now_utc + timedelta(days=30)).date()}:")
 
+    daily_slots = defaultdict(list)
+
     for start, end in free_slots:
         start_local = start.astimezone(target_tz)
         end_local = end.astimezone(target_tz)
@@ -133,9 +142,16 @@ def main():
                 if slot_start < slot_end and slot_start < end_local and (min(slot_end, end_local) - slot_start) >= MIN_SLOT_DURATION:
                     final_start = slot_start
                     final_end = min(slot_end, end_local)
-                    print(f"{final_start.strftime('%m/%d %H:%M')}–{final_end.strftime('%H:%M')}")
+                    if (final_end - final_start) >= MIN_SLOT_DURATION:
+                        date_key = final_start.strftime('%m/%d (%a)')
+                        slot_str = f"{final_start.strftime('%H:%M')}–{final_end.strftime('%H:%M')}"
+                        daily_slots[date_key].append(slot_str)
 
             current = (current + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
+
+    for date, slots in sorted(daily_slots.items()):
+        slots_str = ", ".join(slots)
+        print(f"{date} {slots_str}")
 
 if __name__ == "__main__":
     main()
