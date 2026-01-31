@@ -2,6 +2,7 @@ import os.path
 import pytz
 import sys
 import glob
+import holidays
 from datetime import datetime, timedelta, timezone, time
 from collections import defaultdict
 
@@ -13,6 +14,7 @@ from googleapiclient.discovery import build
 # Set display time zone (e.g., "America/New_York", "Europe/London", "Asia/Tokyo")
 # List of valid time zones https://en.wikipedia.org/wiki/List_of_tz_database_time_zones
 DISPLAY_TIMEZONE = "Asia/Tokyo"
+JP_HOLIDAYS = holidays.country_holidays("JP")
 START_TIME = time(hour=9, minute=0)
 END_TIME = time(hour=20, minute=30)
 QUERY_RANGE = timedelta(days=30)
@@ -135,7 +137,7 @@ def main():
      
         current = start_local
         while current < end_local:
-            if current.weekday() < 5:  # Monday=0, Sunday=6; limit to weekdays
+            if current.weekday() < 5 and current.date() not in JP_HOLIDAYS: # Monday=0, Sunday=6; limit to weekdays and avoid holidays
                 slot_start = max(current.replace(hour=START_TIME.hour, minute=START_TIME.minute, second=0, microsecond=0), current)
                 slot_end = current.replace(hour=END_TIME.hour, minute=END_TIME.minute, second=0, microsecond=0)
 
