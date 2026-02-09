@@ -1,7 +1,7 @@
 import argparse
 import re
 
-UNIT = 11000
+UNIT = 110000
 
 def parse_yen(value: str) -> int:
     # Remove currency symbols, commas, spaces, and other separators
