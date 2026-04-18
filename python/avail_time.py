@@ -17,7 +17,7 @@ DISPLAY_TIMEZONE = "Asia/Tokyo"
 JP_HOLIDAYS = holidays.country_holidays("JP")
 START_TIME = time(hour=9, minute=0)
 END_TIME = time(hour=20, minute=30)
-QUERY_RANGE = timedelta(days=30)
+QUERY_RANGE = timedelta(days=90)
 MIN_SLOT_DURATION = timedelta(hours=0, minutes=30)
 
 # OAuth scope - read-only access to Calendars is sufficient for free/busy query
@@ -25,9 +25,9 @@ SCOPES = ["https://www.googleapis.com/auth/calendar.readonly"]
 
 # Calendar IDs to check (replace with your three calendars' IDs or use 'primary')
 calendar_ids = [
-    "rioyokota@rio.scrc.iir.isct.ac.jp",
-    "rio.gsic.titech.ac.jp_igf61u54oabk6gt9uqnv60avlk@group.calendar.google.com",
-    "rio.gsic.titech.ac.jp_fou7rom2g1kd7tinua0dos6920@group.calendar.google.com"
+    "rioyokota@rio.scrc.iir.isct.ac.jp", # Rio Yokota (public)
+    "rio.gsic.titech.ac.jp_igf61u54oabk6gt9uqnv60avlk@group.calendar.google.com", # Rio Yokota (private)
+    "rio.gsic.titech.ac.jp_fou7rom2g1kd7tinua0dos6920@group.calendar.google.com"  # Yokota Lab
 ]
 
 def main():
